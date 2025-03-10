@@ -1,0 +1,62 @@
+{
+  "INTEGRATION_APPS": {
+    "FETCHING": "Integrationen werden abgerufen",
+    "NO_HOOK_CONFIGURED": "Es wurden keine {integrationId} Integrationen in diesem Konto konfiguriert.",
+    "HEADER": "Anwendungen",
+    "STATUS": {
+      "ENABLED": "Aktiviert",
+      "DISABLED": "Deaktiviert"
+    },
+    "CONFIGURE": "Konfigurieren",
+    "ADD_BUTTON": "Neuen Hook hinzufügen",
+    "DELETE": {
+      "TITLE": {
+        "INBOX": "Löschen bestätigen",
+        "ACCOUNT": "Verbindung trennen"
+      },
+      "MESSAGE": {
+        "INBOX": "Sind Sie sicher, dass Sie das löschen möchten?",
+        "ACCOUNT": "Möchten Sie die Verbindung wirklich trennen?"
+      },
+      "CONFIRM_BUTTON_TEXT": {
+        "INBOX": "Ja, löschen",
+        "ACCOUNT": "Ja, Verbindung trennen"
+      },
+      "CANCEL_BUTTON_TEXT": "Abbrechen",
+      "API": {
+        "SUCCESS_MESSAGE": "Hook wurde erfolgreich gelöscht",
+        "ERROR_MESSAGE": "Es konnte keine Verbindung zum Woot-Server hergestellt werden. Bitte versuchen Sie es später erneut"
+      }
+    },
+    "LIST": {
+      "FETCHING": "Hooks werden abgerufen",
+      "INBOX": "Posteingang",
+      "DELETE": {
+        "BUTTON_TEXT": "Löschen"
+      }
+    },
+    "ADD": {
+      "FORM": {
+        "INBOX": {
+          "LABEL": "Eingang auswählen",
+          "PLACEHOLDER": "Posteingang auswählen"
+        },
+        "SUBMIT": "Erstellen",
+        "CANCEL": "Abbrechen"
+      },
+      "API": {
+        "SUCCESS_MESSAGE": "Integrations-Hook erfolgreich hinzugefügt",
+        "ERROR_MESSAGE": "Es konnte keine Verbindung zum Woot-Server hergestellt werden. Bitte versuchen Sie es später erneut"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "Verbinden"
+    },
+    "DISCONNECT": {
+      "BUTTON_TEXT": "Verbindung trennen"
+    },
+    "SIDEBAR_DESCRIPTION": {
+      "DIALOGFLOW": "Dialogflow is a natural language understanding platform that makes it easy to design and integrate a conversational user interface into your mobile app, web application, device, bot, interactive voice response system, and so on. <br /> <br /> Dialogflow integration with {installationName} allows you to configure a Dialogflow bot with your inboxes which lets the bot handle the queries initially and hand them over to an agent when needed. Dialogflow can be used to qualifying the leads, reduce the workload of agents by providing frequently asked questions etc. <br /> <br /> To add Dialogflow, you need to create a Service Account in your Google project console and share the credentials. Please refer to the Dialogflow docs for more information."
+    }
+  }
+}

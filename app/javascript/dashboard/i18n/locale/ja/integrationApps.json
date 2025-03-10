@@ -1,0 +1,62 @@
+{
+  "INTEGRATION_APPS": {
+    "FETCHING": "連携情報を取得中",
+    "NO_HOOK_CONFIGURED": "このアカウントには{integrationId}の連携が設定されていません。",
+    "HEADER": "アプリケーション",
+    "STATUS": {
+      "ENABLED": "有効",
+      "DISABLED": "無効"
+    },
+    "CONFIGURE": "設定",
+    "ADD_BUTTON": "新しい連携を追加",
+    "DELETE": {
+      "TITLE": {
+        "INBOX": "削除の確認",
+        "ACCOUNT": "接続解除"
+      },
+      "MESSAGE": {
+        "INBOX": "この設定を本当に削除しますか？",
+        "ACCOUNT": "本当に接続を解除しますか？"
+      },
+      "CONFIRM_BUTTON_TEXT": {
+        "INBOX": "削除する",
+        "ACCOUNT": "はい、接続解除します"
+      },
+      "CANCEL_BUTTON_TEXT": "キャンセル",
+      "API": {
+        "SUCCESS_MESSAGE": "連携設定が正常に削除されました",
+        "ERROR_MESSAGE": "Woot Serverに接続できませんでした。後でもう一度お試しください。"
+      }
+    },
+    "LIST": {
+      "FETCHING": "連携設定を取得中",
+      "INBOX": "受信トレイ",
+      "DELETE": {
+        "BUTTON_TEXT": "削除"
+      }
+    },
+    "ADD": {
+      "FORM": {
+        "INBOX": {
+          "LABEL": "受信トレイを選択",
+          "PLACEHOLDER": "受信トレイを選択"
+        },
+        "SUBMIT": "作成",
+        "CANCEL": "キャンセル"
+      },
+      "API": {
+        "SUCCESS_MESSAGE": "連携設定が正常に追加されました",
+        "ERROR_MESSAGE": "Woot Serverに接続できませんでした。後でもう一度お試しください。"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "接続"
+    },
+    "DISCONNECT": {
+      "BUTTON_TEXT": "接続解除"
+    },
+    "SIDEBAR_DESCRIPTION": {
+      "DIALOGFLOW": "Dialogflowは、モバイルアプリ、Webアプリ、デバイス、ボット、音声応答システムなどに会話型インターフェイスを簡単に設計・連携できる自然言語理解プラットフォームです。<br /> <br /> {installationName}とのDialogflow連携を利用すると、Dialogflowボットを受信トレイに設定し、最初にボットが問い合わせを処理し、必要に応じてエージェントに引き継ぐことが可能です。Dialogflowはリードの選別やFAQの提供を通じてエージェントの負担を軽減するのに役立ちます。<br /> <br /> Dialogflowを追加するには、Googleプロジェクトコンソールでサービスアカウントを作成し、その資格情報を共有する必要があります。詳細については、Dialogflowドキュメントをご参照ください。"
+    }
+  }
+}

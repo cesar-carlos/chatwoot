@@ -1,0 +1,62 @@
+{
+  "INTEGRATION_APPS": {
+    "FETCHING": "Integrációk lekérése",
+    "NO_HOOK_CONFIGURED": "Ebben a fiókban nincs beállítva {integrationId} integráció",
+    "HEADER": "Alkalmazások",
+    "STATUS": {
+      "ENABLED": "Engedélyezve",
+      "DISABLED": "Letiltva"
+    },
+    "CONFIGURE": "Beállítások",
+    "ADD_BUTTON": "Új hook hozzáadása",
+    "DELETE": {
+      "TITLE": {
+        "INBOX": "Törlés megerősítése",
+        "ACCOUNT": "Leválasztás"
+      },
+      "MESSAGE": {
+        "INBOX": "Biztos abban, hogy törli?",
+        "ACCOUNT": "Biztosan leválasztja?"
+      },
+      "CONFIRM_BUTTON_TEXT": {
+        "INBOX": "Igen, Törlés",
+        "ACCOUNT": "Igen, leválasztás"
+      },
+      "CANCEL_BUTTON_TEXT": "Mégse",
+      "API": {
+        "SUCCESS_MESSAGE": "Hook törlésre került",
+        "ERROR_MESSAGE": "Nem sikerült csatlakozni a Woot szerverhez, kérjük próbáld később"
+      }
+    },
+    "LIST": {
+      "FETCHING": "Integrációs hookok betöltése",
+      "INBOX": "Fiók",
+      "DELETE": {
+        "BUTTON_TEXT": "Törlés"
+      }
+    },
+    "ADD": {
+      "FORM": {
+        "INBOX": {
+          "LABEL": "Válassz fiókot",
+          "PLACEHOLDER": "Válassz fiókot"
+        },
+        "SUBMIT": "Létrehozás",
+        "CANCEL": "Mégse"
+      },
+      "API": {
+        "SUCCESS_MESSAGE": "Integrációs hookok hozzáadásra kerültek",
+        "ERROR_MESSAGE": "Nem sikerült csatlakozni a Woot szerverhez, kérjük próbáld később"
+      }
+    },
+    "CONNECT": {
+      "BUTTON_TEXT": "Kapcsolódás"
+    },
+    "DISCONNECT": {
+      "BUTTON_TEXT": "Leválasztás"
+    },
+    "SIDEBAR_DESCRIPTION": {
+      "DIALOGFLOW": "Dialogflow is a natural language understanding platform that makes it easy to design and integrate a conversational user interface into your mobile app, web application, device, bot, interactive voice response system, and so on. <br /> <br /> Dialogflow integration with {installationName} allows you to configure a Dialogflow bot with your inboxes which lets the bot handle the queries initially and hand them over to an agent when needed. Dialogflow can be used to qualifying the leads, reduce the workload of agents by providing frequently asked questions etc. <br /> <br /> To add Dialogflow, you need to create a Service Account in your Google project console and share the credentials. Please refer to the Dialogflow docs for more information."
+    }
+  }
+}
