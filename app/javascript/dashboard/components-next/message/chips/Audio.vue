@@ -26,7 +26,7 @@ const isPlaying = ref(false);
 const isMuted = ref(false);
 const currentTime = ref(0);
 const duration = ref(0);
-const playbackSpeed = ref(1);
+const playbackSpeed = ref(2);
 const showTranscription = ref(false);
 const isTranscribing = ref(false);
 const transcriptionText = ref('');
@@ -88,12 +88,12 @@ const playOrPause = () => {
 const onEnd = () => {
   isPlaying.value = false;
   currentTime.value = 0;
-  playbackSpeed.value = 1;
-  audioPlayer.value.playbackRate = 1;
+  playbackSpeed.value = 2;
+  audioPlayer.value.playbackRate = 2;
 };
 
 const changePlaybackSpeed = () => {
-  const speeds = [1, 1.5, 2];
+  const speeds = [1, 1.5, 2, 3];
   const currentIndex = speeds.indexOf(playbackSpeed.value);
   const nextIndex = (currentIndex + 1) % speeds.length;
   playbackSpeed.value = speeds[nextIndex];
@@ -134,73 +134,78 @@ const handleTranscribeAudio = async () => {
 
 <template>
   <div class="flex flex-col items-end my-4">
-    <div class="flex items-center justify-center w-full">
-      <button
-        class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
-        :title="$t('CONVERSATION.TRANSCRIBE_AUDIO')"
-        @click="handleTranscribeAudio"
-      >
-        <Icon icon="i-lucide-ear" class="size-3 text-n-slate-11" />
-      </button>
-      <audio
-        ref="audioPlayer"
-        :src="timeStampURL"
-        class="hidden"
-        @loadedmetadata="onLoadedMetadata"
-        @timeupdate="onTimeUpdate"
-        @ended="onEnd"
-      />
-      <div class="flex items-center justify-center w-full">
+    <div class="w-[280px]">
+      <div class="flex items-center">
         <button
           class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
-          @click="playOrPause"
+          :title="$t('CONVERSATION.TRANSCRIBE_AUDIO')"
+          @click="handleTranscribeAudio"
         >
-          <Icon
-            :icon="isPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
-            class="size-3 text-n-slate-11"
-          />
+          <Icon icon="i-lucide-ear" class="size-3 text-n-slate-11" />
         </button>
-        <div class="flex-1 min-w-[200px] flex flex-col justify-center">
-          <input
-            type="range"
-            :value="currentTime"
-            :max="duration"
-            class="w-full"
-            @input="seek"
-          />
-          <div class="flex justify-between text-xs text-n-slate-11">
-            <span>{{ formatTime(currentTime) }}</span>
-            <span>{{ formatTime(duration) }}</span>
+        <audio
+          ref="audioPlayer"
+          :src="timeStampURL"
+          class="hidden"
+          @loadedmetadata="onLoadedMetadata"
+          @timeupdate="onTimeUpdate"
+          @ended="onEnd"
+        />
+        <div class="flex items-center flex-1">
+          <button
+            class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
+            @click="playOrPause"
+          >
+            <Icon
+              :icon="isPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
+              class="size-3 text-n-slate-11"
+            />
+          </button>
+          <div class="flex-1 min-w-[200px] flex flex-col justify-center">
+            <input
+              type="range"
+              :value="currentTime"
+              :max="duration"
+              class="w-full"
+              @input="seek"
+            />
+            <div class="flex justify-between text-xs text-n-slate-11">
+              <span>{{ formatTime(currentTime) }}</span>
+              <span>{{ formatTime(duration) }}</span>
+            </div>
           </div>
+          <button
+            class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
+            @click="toggleMute"
+          >
+            <Icon
+              :icon="isMuted ? 'i-lucide-volume-x' : 'i-lucide-volume-2'"
+              class="size-3 text-n-slate-11"
+            />
+          </button>
+          <button
+            class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
+            @click="changePlaybackSpeed"
+          >
+            <span class="text-xs text-n-slate-11">{{
+              playbackSpeedLabel
+            }}</span>
+          </button>
+          <button
+            class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
+            @click="downloadAudio"
+          >
+            <Icon icon="i-lucide-download" class="size-3 text-n-slate-11" />
+          </button>
         </div>
-        <button
-          class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
-          @click="toggleMute"
-        >
-          <Icon
-            :icon="isMuted ? 'i-lucide-volume-x' : 'i-lucide-volume-2'"
-            class="size-3 text-n-slate-11"
-          />
-        </button>
-        <button
-          class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
-          @click="changePlaybackSpeed"
-        >
-          <span class="text-xs text-n-slate-11">{{ playbackSpeedLabel }}</span>
-        </button>
-        <button
-          class="p-1 rounded-full hover:bg-n-alpha-1 transition-colors"
-          @click="downloadAudio"
-        >
-          <Icon icon="i-lucide-download" class="size-3 text-n-slate-11" />
-        </button>
       </div>
     </div>
     <div
       v-if="showTranscription"
-      class="p-2 bg-n-alpha-1 rounded-lg text-sm text-n-slate-11 max-w-[80%] mt-1"
+      class="p-2 bg-n-alpha-1 rounded-lg text-sm text-n-slate-11 max-w-[800px] mt-1 flex items-start gap-2"
     >
-      {{ transcriptionText }}
+      <Icon icon="i-lucide-lock" class="size-4 text-n-slate-11 mt-0.5" />
+      <span>{{ transcriptionText }}</span>
     </div>
   </div>
 </template>
