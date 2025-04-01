@@ -4,6 +4,7 @@ import { useAlert } from 'dashboard/composables';
 import { emitter } from 'shared/helpers/mitt';
 
 import EmailTranscriptModal from './EmailTranscriptModal.vue';
+import VoiceCallModal from './VoiceCallModal.vue';
 import ResolveAction from '../../buttons/ResolveAction.vue';
 import ButtonV4 from 'dashboard/components-next/button/Button.vue';
 
@@ -16,12 +17,14 @@ import {
 export default {
   components: {
     EmailTranscriptModal,
+    VoiceCallModal,
     ResolveAction,
     ButtonV4,
   },
   data() {
     return {
       showEmailActionsModal: false,
+      showVoiceCallModal: false,
     };
   },
   computed: {
@@ -51,6 +54,9 @@ export default {
     },
     toggleEmailActionsModal() {
       this.showEmailActionsModal = !this.showEmailActionsModal;
+    },
+    toggleVoiceCallModal() {
+      this.showVoiceCallModal = !this.showVoiceCallModal;
     },
     assignAgent() {
       const {
@@ -127,6 +133,14 @@ export default {
       icon="i-lucide-user-round"
       @click="assignAgent"
     />
+    <ButtonV4
+      v-tooltip="$t('CONVERSATION.VOICE_CALL')"
+      size="sm"
+      variant="ghost"
+      color="slate"
+      icon="i-lucide-phone"
+      @click="toggleVoiceCallModal"
+    />
 
     <ResolveAction
       :conversation-id="currentChat.id"
@@ -137,6 +151,12 @@ export default {
       :show="showEmailActionsModal"
       :current-chat="currentChat"
       @cancel="toggleEmailActionsModal"
+    />
+    <VoiceCallModal
+      v-if="showVoiceCallModal"
+      :show="showVoiceCallModal"
+      :current-chat="currentChat"
+      @close="toggleVoiceCallModal"
     />
   </div>
 </template>

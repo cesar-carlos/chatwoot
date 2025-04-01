@@ -49,7 +49,9 @@ class Attachment < ApplicationRecord
     return base_data.merge(fallback_data) if file_type.to_sym == :fallback
     return base_data.merge(contact_metadata) if file_type.to_sym == :contact
 
-    base_data.merge(file_metadata)
+    data = base_data.merge(file_metadata)
+    data[:meta] = { transcription: transcription } if transcription.present?
+    data
   end
 
   # NOTE: the URl returned does a 301 redirect to the actual file

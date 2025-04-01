@@ -235,7 +235,17 @@
     "SIDEBAR": {
       "CONTACT": "Contact",
       "COPILOT": "Copilot"
-    }
+    },
+    "VOICE_CALL": "Voice Call",
+    "START_VOICE_CALL": "Start Call",
+    "NO_PHONE_NUMBER": "No phone number available",
+    "CALL_STARTED": "Call started successfully",
+    "CALL_ERROR": "Error during call",
+    "CALL_FAILED": "Could not start call",
+    "INCOMING_CALL": "Incoming Call",
+    "UNKNOWN_CALLER": "Unknown Number",
+    "REJECT_CALL": "Reject",
+    "ANSWER_CALL": "Answer"
   },
   "EMAIL_TRANSCRIPT": {
     "TITLE": "Send conversation transcript",

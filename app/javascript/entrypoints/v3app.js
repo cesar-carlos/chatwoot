@@ -1,5 +1,7 @@
 import { createApp } from 'vue';
 import { createI18n } from 'vue-i18n';
+import Toast from 'vue-toastification';
+import 'vue-toastification/dist/index.css';
 
 import i18nMessages from 'dashboard/i18n';
 import * as Sentry from '@sentry/vue';
@@ -32,6 +34,23 @@ app.use(router);
 // Vue.use(VueI18n);
 // Vue.prototype.$emitter = emitter;
 app.component('fluent-icon', FluentIcon);
+
+const options = {
+  position: 'bottom-right',
+  timeout: 5000,
+  closeOnClick: true,
+  pauseOnFocusLoss: true,
+  pauseOnHover: true,
+  draggable: true,
+  draggablePercent: 0.6,
+  showCloseButtonOnHover: false,
+  hideProgressBar: true,
+  closeButton: 'button',
+  icon: true,
+  rtl: false,
+};
+
+app.use(Toast, options);
 
 if (window.errorLoggingConfig) {
   Sentry.init({
