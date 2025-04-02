@@ -44,6 +44,7 @@ export default {
         { digit: '0', letters: '+', key: '0' },
         { digit: '#', letters: '', key: '#' },
       ],
+      isMuted: false,
     };
   },
   computed: {
@@ -102,7 +103,7 @@ export default {
           break;
       }
     },
-    onClose() {
+    handleClose() {
       if (this.isCallActive) {
         this.endCall();
       }
@@ -183,7 +184,25 @@ export default {
         this.toast.error(this.$t('CONVERSATION.END_CALL_ERROR'));
       } finally {
         this.isCallActive = false;
-        this.onClose();
+        this.handleClose();
+      }
+    },
+    toggleMute() {
+      if (!this.wavoip || !this.isCallActive) return;
+
+      try {
+        this.isMuted = !this.isMuted;
+        this.wavoip.toggleMute();
+
+        if (this.isMuted) {
+          this.toast.success(this.$t('CONVERSATION.VOICE_CALL_MODAL.MUTED'));
+        } else {
+          this.toast.success(this.$t('CONVERSATION.VOICE_CALL_MODAL.UNMUTED'));
+        }
+      } catch (error) {
+        this.toast.error(
+          this.$t('CONVERSATION.VOICE_CALL_MODAL.ERROR.MUTE_ERROR')
+        );
       }
     },
   },
@@ -191,78 +210,83 @@ export default {
 </script>
 
 <template>
-  <Modal
-    :show="show"
-    :on-close="onClose"
-    class="!max-w-[280px] !w-[280px] !inset-0 !m-auto !h-fit"
-  >
-    <div class="w-[280px] bg-white rounded-lg shadow-lg">
-      <div class="p-4">
-        <!-- Display Number Section -->
-        <div class="text-center mb-8">
-          <div class="text-xl font-medium text-gray-800">
-            {{ displayNumber || phoneNumber || '+1' }}
-          </div>
-          <div
-            class="flex items-center justify-center gap-1 text-sm text-gray-700 mt-1"
-          >
-            <span>{{ contactName }}</span>
-          </div>
-        </div>
-
-        <!-- Dialpad Grid -->
-        <div class="grid grid-cols-3 gap-4">
-          <button
-            v-for="(number, index) in dialpadItems"
-            :key="index"
-            class="aspect-square rounded-full bg-gray-100 hover:bg-gray-200 transition-colors flex flex-col items-center justify-center"
-            @click="appendNumber(number.digit)"
-          >
-            <span class="text-lg font-medium text-gray-800">{{
-              number.digit
-            }}</span>
-            <span
-              v-if="number.letters"
-              class="text-[10px] text-gray-700 mt-0.5"
+  <div>
+    <Modal
+      :show="show"
+      class="!max-w-[280px] !w-[280px] !inset-0 !m-auto !h-fit"
+      @close="handleClose"
+    >
+      <div class="w-[280px] bg-white rounded-lg shadow-lg">
+        <div class="p-4">
+          <!-- Display Number Section -->
+          <div class="text-center mb-8">
+            <div class="text-xl font-medium text-gray-800">
+              {{ displayNumber || phoneNumber || '+1' }}
+            </div>
+            <div
+              class="flex items-center justify-center gap-1 text-sm text-gray-700 mt-1"
             >
-              {{ number.letters }}
-            </span>
-          </button>
-        </div>
+              <span>{{ contactName }}</span>
+            </div>
+          </div>
 
-        <!-- Action Buttons -->
-        <div class="flex justify-between items-center mt-6">
-          <button
-            class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
-          >
-            <FluentIcon icon="chat" class="w-5 h-5 text-gray-600" />
-          </button>
+          <!-- Dialpad Grid -->
+          <div class="grid grid-cols-3 gap-4">
+            <button
+              v-for="(number, index) in dialpadItems"
+              :key="index"
+              class="aspect-square rounded-full bg-gray-100 hover:bg-gray-200 transition-colors flex flex-col items-center justify-center"
+              @click="appendNumber(number.digit)"
+            >
+              <span class="text-lg font-medium text-gray-800">
+                {{ number.digit }}
+              </span>
+              <span
+                v-if="number.letters"
+                class="text-[10px] text-gray-700 mt-0.5"
+              >
+                {{ number.letters }}
+              </span>
+            </button>
+          </div>
 
-          <button
-            class="w-14 h-14 rounded-full transition-colors flex items-center justify-center"
-            :class="[
-              isCallActive
-                ? 'bg-red-500 hover:bg-red-600'
-                : 'bg-green-500 hover:bg-green-600',
-            ]"
-            @click="isCallActive ? endCall() : startCall()"
-          >
-            <FluentIcon
-              :icon="isCallActive ? 'dismiss' : 'call'"
-              class="w-7 h-7 text-white"
-            />
-          </button>
+          <!-- Action Buttons -->
+          <div class="flex justify-between items-center mt-6">
+            <button
+              class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              :class="{ 'bg-gray-200': isMuted }"
+              @click="toggleMute"
+            >
+              <FluentIcon
+                :icon="isMuted ? 'mic-off' : 'mic'"
+                class="w-5 h-5"
+                :class="{ 'text-red-500': isMuted, 'text-gray-600': !isMuted }"
+              />
+            </button>
 
-          <button
-            class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
-            @click="deleteLastNumber"
-          >
-            <FluentIcon icon="delete" class="w-5 h-5 text-gray-800" />
-          </button>
+            <button
+              class="w-14 h-14 rounded-full transition-colors flex items-center justify-center"
+              :class="[
+                isCallActive
+                  ? 'bg-red-500 hover:bg-red-600'
+                  : 'bg-green-500 hover:bg-green-600',
+              ]"
+              @click="isCallActive ? endCall() : startCall()"
+            >
+              <FluentIcon icon="call" class="w-7 h-7 text-white" />
+            </button>
+
+            <button
+              class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              @click="deleteLastNumber"
+            >
+              <FluentIcon icon="delete" class="w-5 h-5 text-gray-800" />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
-  </Modal>
+    </Modal>
+  </div>
 </template>
 
 <style scoped>
