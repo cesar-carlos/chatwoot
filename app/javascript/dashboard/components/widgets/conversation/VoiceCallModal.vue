@@ -4,6 +4,7 @@ import Modal from '@/dashboard/components/Modal.vue';
 import Wavoip from 'wavoip-api';
 import { computed } from 'vue';
 import { useStore } from 'dashboard/composables/store';
+import ApiClient from '@/dashboard/api/ApiClient';
 
 export default {
   components: {
@@ -32,6 +33,7 @@ export default {
       isCallActive: false,
       wavoip: null,
       wavoipInstance: null,
+      contactDetails: null,
       dialpadItems: [
         { digit: '1', letters: '', key: '1' },
         { digit: '2', letters: 'ABC', key: '2' },
@@ -43,73 +45,93 @@ export default {
         { digit: '8', letters: 'TUV', key: '8' },
         { digit: '9', letters: 'WXYZ', key: '9' },
         { digit: '*', letters: '', key: '*' },
-        { digit: '0', letters: '+', key: '0' },
+        { digit: '0', letters: '', key: '0' },
         { digit: '#', letters: '', key: '#' },
       ],
       isMuted: false,
       isConnecting: false,
+      incomingCall: false,
+      callStatus: 'idle', // idle, connecting, active, ended
     };
   },
   computed: {
     contactName() {
       return (
+        this.contactDetails?.name ||
         this.currentChat?.meta?.sender?.name ||
         this.$t('CONVERSATION.UNKNOWN_CALLER')
       );
     },
     phoneNumber() {
-      return this.currentChat?.meta?.sender?.phone_number || '';
+      return (
+        this.contactDetails?.phone_number ||
+        this.currentChat?.meta?.sender?.phone_number ||
+        ''
+      );
+    },
+    contactAvatar() {
+      return (
+        this.contactDetails?.avatar_url ||
+        this.currentChat?.meta?.sender?.avatar_url
+      );
     },
   },
   mounted() {
     this.wavoip = new Wavoip();
+    window.addEventListener('keydown', this.handleKeydown);
   },
   beforeUnmount() {
     if (this.wavoipInstance?.socket) {
       this.wavoipInstance.socket.disconnect();
     }
+    window.removeEventListener('keydown', this.handleKeydown);
   },
   methods: {
     handleKeydown(event) {
       if (!this.show) return;
 
-      const key = event.key;
-      // Números de 0-9
+      const key = event.key.toLowerCase();
+
+      // Teclas numéricas (0-9)
       if (/^[0-9]$/.test(key)) {
         this.appendNumber(key);
+        return;
       }
+
       // Teclas especiais
       switch (key) {
         case '#':
-          this.appendNumber('#');
-          break;
         case '*':
-          this.appendNumber('*');
-          break;
         case '+':
-          this.appendNumber('0');
+          event.preventDefault();
+          this.appendNumber(key === '+' ? '0' : key);
           break;
-        case 'Backspace':
+        case 'backspace':
+          event.preventDefault();
           this.deleteLastNumber();
           break;
-        case 'Delete':
+        case 'delete':
+          event.preventDefault();
           this.clearNumber();
           break;
-        case 'Enter':
+        case 'enter':
+          event.preventDefault();
           if (!this.isCallActive) {
             this.startCall();
           } else {
             this.endCall();
           }
           break;
+        case 'escape':
+          event.preventDefault();
+          this.handleClose();
+          break;
         default:
           break;
       }
     },
     handleClose() {
-      if (this.isCallActive) {
-        this.endCall();
-      }
+      this.endCall();
       this.$emit('close');
     },
     appendNumber(number) {
@@ -129,20 +151,20 @@ export default {
       try {
         this.isCallActive = true;
         this.isConnecting = true;
+        this.callStatus = 'connecting';
 
         if (!this.wavoip) {
           this.wavoip = new Wavoip();
         }
 
-        const token = window.env?.WAVOIP_TOKEN;
+        const token = window.chatwootConfig.wavoipToken;
 
         if (!token) {
           throw new Error(
-            'Token do Wavoip não encontrado. Verifique se a variável WAVOIP_TOKEN está configurada no ambiente.'
+            'Token do Wavoip não encontrado. Verifique se a variável WAVOIP_TOKEN está configurada no ambiente ou no perfil do usuário.'
           );
         }
 
-        // Remove possíveis aspas extras do token
         const cleanToken = token.replace(/^"|"$/g, '');
         this.wavoipInstance = await this.wavoip.connect(cleanToken);
 
@@ -159,6 +181,7 @@ export default {
 
           if (!number) {
             this.isCallActive = false;
+            this.callStatus = 'idle';
             this.toast.error(this.$t('CONVERSATION.NO_NUMBER'));
             return;
           }
@@ -167,11 +190,38 @@ export default {
             whatsappid: number,
           });
 
+          this.callStatus = 'active';
           this.toast.success(this.$t('CONVERSATION.CALL_STARTED'));
+        });
+
+        this.wavoipInstance.socket.on('incomingCall', () => {
+          this.incomingCall = true;
+          this.callStatus = 'incoming';
+          this.toast.info(
+            this.$t('CONVERSATION.VOICE_CALL_MODAL.CALL_WAITING')
+          );
+        });
+
+        this.wavoipInstance.socket.on('callStart', () => {
+          this.incomingCall = false;
+          this.callStatus = 'active';
+          this.toast.success(
+            this.$t('CONVERSATION.VOICE_CALL_MODAL.CALL_ANSWERED')
+          );
+        });
+
+        this.wavoipInstance.socket.on('callEnd', () => {
+          this.isCallActive = false;
+          this.incomingCall = false;
+          this.callStatus = 'ended';
+          this.toast.info(
+            this.$t('CONVERSATION.VOICE_CALL_MODAL.CALL_ENDED_BY_OTHER')
+          );
         });
 
         this.wavoipInstance.socket.on('error', error => {
           this.isCallActive = false;
+          this.callStatus = 'idle';
           this.toast.error(
             `${this.$t('CONVERSATION.CALL_ERROR')}: ${error.message}`
           );
@@ -179,10 +229,12 @@ export default {
 
         this.wavoipInstance.socket.on('disconnect', () => {
           this.isCallActive = false;
+          this.callStatus = 'idle';
           this.toast.error(this.$t('CONVERSATION.CALL_DISCONNECTED'));
         });
       } catch (error) {
         this.isCallActive = false;
+        this.callStatus = 'idle';
         this.toast.error(
           `${this.$t('CONVERSATION.CALL_FAILED')}: ${error.message}`
         );
@@ -199,14 +251,17 @@ export default {
         this.toast.error(this.$t('CONVERSATION.END_CALL_ERROR'));
       } finally {
         this.isCallActive = false;
+        this.callStatus = 'idle';
       }
     },
     toggleMute() {
-      if (!this.wavoipInstance || !this.isCallActive) return;
+      if (!this.wavoipInstance || !this.isCallActive) {
+        return;
+      }
 
       try {
         this.isMuted = !this.isMuted;
-        this.wavoipInstance.toggleMute();
+        this.wavoipInstance.socket.emit('toggleMute', { muted: this.isMuted });
 
         if (this.isMuted) {
           this.toast.success(this.$t('CONVERSATION.VOICE_CALL_MODAL.MUTED'));
@@ -217,6 +272,22 @@ export default {
         this.toast.error(
           this.$t('CONVERSATION.VOICE_CALL_MODAL.ERROR.MUTE_ERROR')
         );
+      }
+    },
+    async fetchContactDetails() {
+      try {
+        const api = new ApiClient();
+        const response = await api.get(
+          `/api/v1/accounts/${this.currentChat.account_id}/contacts/${this.currentChat.meta.sender.id}`
+        );
+        if (response.data) {
+          this.contactDetails = {
+            ...this.currentChat.meta.sender,
+            ...response.data,
+          };
+        }
+      } catch (error) {
+        // Ignora o erro silenciosamente
       }
     },
   },
@@ -247,25 +318,27 @@ export default {
             <div class="flex flex-col items-center justify-center">
               <div class="w-12 h-12 rounded-full overflow-hidden mb-0.5">
                 <img
-                  :src="currentChat?.meta?.sender?.avatar_url"
+                  :src="contactAvatar"
                   :alt="contactName"
                   class="w-full h-full object-cover"
                 />
               </div>
               <div class="text-xl font-medium text-gray-800">
-                {{ displayNumber || phoneNumber || '+1' }}
+                {{ contactName }}
               </div>
-              <span class="text-lg font-medium mt-0.5">{{ contactName }}</span>
+              <span class="text-lg font-medium mt-0.5">
+                {{ displayNumber || phoneNumber || '+1' }}
+              </span>
               <div class="flex items-center gap-2 mt-0.5">
                 <span
-                  v-if="isConnecting"
+                  v-if="callStatus === 'connecting'"
                   class="text-sm text-blue-500 animate-pulse flex items-center gap-1"
                 >
                   <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
                   {{ $t('CONVERSATION.VOICE_CALL_MODAL.CONNECTING') }}
                 </span>
                 <span
-                  v-else-if="isCallActive"
+                  v-else-if="callStatus === 'active'"
                   class="text-sm text-green-500 animate-pulse flex items-center gap-1"
                 >
                   <div
@@ -274,18 +347,34 @@ export default {
                   {{ $t('CONVERSATION.VOICE_CALL_MODAL.IN_CALL') }}
                 </span>
                 <span
-                  v-else-if="isConnected"
+                  v-else-if="callStatus === 'incoming'"
+                  class="text-sm text-yellow-500 animate-pulse flex items-center gap-1"
+                >
+                  <div
+                    class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"
+                  />
+                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CALL_WAITING') }}
+                </span>
+                <span
+                  v-else-if="callStatus === 'ended'"
                   class="text-sm text-gray-500 flex items-center gap-1"
                 >
                   <div class="w-2 h-2 rounded-full bg-gray-500" />
-                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CONNECTED') }}
+                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CALL_ENDED_BY_OTHER') }}
+                </span>
+                <span
+                  v-else
+                  class="text-sm text-gray-500 flex items-center gap-1"
+                >
+                  <div class="w-2 h-2 rounded-full bg-gray-500" />
+                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.READY') }}
                 </span>
               </div>
             </div>
           </div>
 
           <!-- Dialpad Grid -->
-          <div class="grid grid-cols-3 gap-4 mb-6">
+          <div class="grid grid-cols-3 gap-4">
             <button
               v-for="(number, index) in dialpadItems"
               :key="index"
@@ -319,10 +408,12 @@ export default {
               "
               @click="toggleMute"
             >
-              <FluentIcon
-                :icon="isMuted ? 'microphone-off' : 'microphone'"
+              <i
                 class="w-5 h-5"
-                :class="{ 'text-red-600': isMuted, 'text-gray-600': !isMuted }"
+                :class="{
+                  'i-lucide-mic-off text-red-600': isMuted,
+                  'i-lucide-mic text-gray-600': !isMuted,
+                }"
               />
             </button>
 
@@ -335,7 +426,7 @@ export default {
               ]"
               @click="isCallActive ? endCall() : startCall()"
             >
-              <FluentIcon icon="call" class="w-7 h-7 text-white" />
+              <i class="w-7 h-7 text-white i-lucide-phone" />
             </button>
 
             <button
@@ -343,7 +434,7 @@ export default {
               :title="$t('CONVERSATION.VOICE_CALL_MODAL.DELETE')"
               @click="deleteLastNumber"
             >
-              <FluentIcon icon="delete" class="w-5 h-5 text-gray-800" />
+              <i class="w-5 h-5 text-gray-800 i-lucide-trash-2" />
             </button>
           </div>
         </div>
