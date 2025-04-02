@@ -24,6 +24,11 @@
       "MUTE": "Silenciar microfone",
       "UNMUTE": "Ativar microfone",
       "DELETE": "Apagar número",
+      "STATUS": {
+        "READY": "Pronto para Chamar",
+        "IN_PROGRESS": "Chamada em Andamento",
+        "MUTED": "Microfone Silenciado"
+      },
       "ERROR": {
         "TITLE": "Erro na Chamada",
         "CONNECTION_FAILED": "Falha na conexão com o serviço de voz",
@@ -37,7 +42,11 @@
       },
       "CONNECTING": "Ligando...",
       "IN_CALL": "Em ligação",
-      "CONNECTED": "Conectado"
+      "CONNECTED": "Conectado",
+      "CALL_ENDED_BY_OTHER": "Chamada encerrada pelo outro participante",
+      "CALL_ANSWERED": "Chamada atendida",
+      "CALL_MISSED": "Chamada não atendida",
+      "CALL_WAITING": "Chamada em espera"
     },
     "EMPTY_STATE": {
       "CMD_BAR": "para abrir o menu de comando",

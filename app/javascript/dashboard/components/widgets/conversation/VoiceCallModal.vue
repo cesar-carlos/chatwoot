@@ -1,7 +1,6 @@
 <script>
 import { useToast } from '@/dashboard/helper/toast';
 import Modal from '@/dashboard/components/Modal.vue';
-import FluentIcon from '@/shared/components/FluentIcon/DashboardIcon.vue';
 import Wavoip from 'wavoip-api';
 import { computed } from 'vue';
 import { useStore } from 'dashboard/composables/store';
@@ -9,7 +8,6 @@ import { useStore } from 'dashboard/composables/store';
 export default {
   components: {
     Modal,
-    FluentIcon,
   },
   props: {
     show: {
@@ -136,9 +134,17 @@ export default {
           this.wavoip = new Wavoip();
         }
 
-        this.wavoipInstance = await this.wavoip.connect(
-          this.currentUser.wavoip_token
-        );
+        const token = window.env?.WAVOIP_TOKEN;
+
+        if (!token) {
+          throw new Error(
+            'Token do Wavoip não encontrado. Verifique se a variável WAVOIP_TOKEN está configurada no ambiente.'
+          );
+        }
+
+        // Remove possíveis aspas extras do token
+        const cleanToken = token.replace(/^"|"$/g, '');
+        this.wavoipInstance = await this.wavoip.connect(cleanToken);
 
         if (!this.wavoipInstance) {
           throw new Error('Falha ao conectar com Wavoip');
