@@ -2,12 +2,13 @@ class TranscriptionService
   def self.transcribe_audio(attachment)
     Rails.logger.info "[TranscriptionService] Iniciando transcrição do attachment #{attachment.id}"
 
-    return nil if ENV['GROQ_API_KEY'].blank?
+    user = attachment.message&.sender
+    return nil if user&.groq_token.blank?
 
     audio_file = download_audio(attachment)
     return nil unless audio_file
 
-    transcribe_with_groq(audio_file, attachment)
+    transcribe_with_groq(audio_file, attachment, user)
   rescue StandardError => e
     Rails.logger.error "[TranscriptionService] Erro inesperado: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
@@ -26,8 +27,8 @@ class TranscriptionService
     nil
   end
 
-  def self.transcribe_with_groq(audio_file, attachment)
-    response = make_groq_request(audio_file)
+  def self.transcribe_with_groq(audio_file, attachment, user)
+    response = make_groq_request(audio_file, user)
     Rails.logger.info "[TranscriptionService] Resposta da API: #{response.code} - #{response.body}"
 
     if response.success?
@@ -44,11 +45,11 @@ class TranscriptionService
     nil
   end
 
-  def self.make_groq_request(audio_file)
+  def self.make_groq_request(audio_file, user)
     HTTParty.post(
       'https://api.groq.com/openai/v1/audio/transcriptions',
       headers: {
-        'Authorization' => "Bearer #{ENV.fetch('GROQ_API_KEY')}",
+        'Authorization' => "Bearer #{user.groq_token}",
         'Content-Type' => 'multipart/form-data'
       },
       body: {

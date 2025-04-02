@@ -1,5 +1,6 @@
 {
   "CONVERSATION": {
-    "TRANSCRIBE_AUDIO": "Transcribe audio"
+    "TRANSCRIBE_AUDIO": "Transcribe audio",
+    "TRANSCRIBING": "Transcribing..."
   }
 }

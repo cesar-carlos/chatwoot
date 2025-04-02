@@ -4,6 +4,7 @@ import Icon from 'next/icon/Icon.vue';
 import { timeStampAppendedURL } from 'dashboard/helper/URLHelper';
 import { downloadFile } from '@chatwoot/utils';
 import axios from 'axios';
+import { useI18n } from 'vue-i18n';
 
 const { attachment } = defineProps({
   attachment: {
@@ -11,6 +12,8 @@ const { attachment } = defineProps({
     required: true,
   },
 });
+
+const { t: $t } = useI18n();
 
 defineOptions({
   inheritAttrs: false,
@@ -110,7 +113,7 @@ const handleTranscribeAudio = async () => {
 
   try {
     isTranscribing.value = true;
-    transcriptionText.value = 'Transcrevendo...';
+    transcriptionText.value = $t('CONVERSATION.TRANSCRIBING');
     showTranscription.value = true;
 
     const response = await axios.post(

@@ -1,10 +1,12 @@
 import axios from 'axios';
+import { getCurrentUser } from 'dashboard/store/modules/auth/getters';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
 export const transcribeAudio = async audioUrl => {
-  if (!window.chatwootConfig?.groqApiKey) {
-    throw new Error('GROQ_API_KEY não está configurada');
+  const currentUser = getCurrentUser();
+  if (!currentUser?.groq_token) {
+    throw new Error('Token Groq não configurado no perfil do usuário');
   }
 
   // Primeiro, baixa o arquivo de áudio
@@ -24,7 +26,7 @@ export const transcribeAudio = async audioUrl => {
 
   const response = await axios.post(GROQ_API_URL, formData, {
     headers: {
-      Authorization: `Bearer ${window.chatwootConfig.groqApiKey}`,
+      Authorization: `Bearer ${currentUser.groq_token}`,
       'Content-Type': 'multipart/form-data',
     },
   });
