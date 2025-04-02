@@ -3,6 +3,8 @@ import { useToast } from '@/dashboard/helper/toast';
 import Modal from '@/dashboard/components/Modal.vue';
 import FluentIcon from '@/shared/components/FluentIcon/DashboardIcon.vue';
 import Wavoip from 'wavoip-api';
+import { computed } from 'vue';
+import { useStore } from 'dashboard/composables/store';
 
 export default {
   components: {
@@ -22,7 +24,9 @@ export default {
   emits: ['close'],
   setup() {
     const toast = useToast();
-    return { toast };
+    const store = useStore();
+    const currentUser = computed(() => store.getters.getCurrentUser);
+    return { toast, currentUser };
   },
   data() {
     return {
@@ -45,6 +49,7 @@ export default {
         { digit: '#', letters: '', key: '#' },
       ],
       isMuted: false,
+      isConnecting: false,
     };
   },
   computed: {
@@ -125,13 +130,14 @@ export default {
 
       try {
         this.isCallActive = true;
+        this.isConnecting = true;
 
         if (!this.wavoip) {
           this.wavoip = new Wavoip();
         }
 
         this.wavoipInstance = await this.wavoip.connect(
-          import.meta.env.VITE_WAVOIP_TOKEN
+          this.currentUser.wavoip_token
         );
 
         if (!this.wavoipInstance) {
@@ -144,6 +150,7 @@ export default {
 
         this.wavoipInstance.socket.on('connect', () => {
           const number = this.displayNumber || this.phoneNumber;
+
           if (!number) {
             this.isCallActive = false;
             this.toast.error(this.$t('CONVERSATION.NO_NUMBER'));
@@ -173,6 +180,8 @@ export default {
         this.toast.error(
           `${this.$t('CONVERSATION.CALL_FAILED')}: ${error.message}`
         );
+      } finally {
+        this.isConnecting = false;
       }
     },
     endCall() {
@@ -184,15 +193,14 @@ export default {
         this.toast.error(this.$t('CONVERSATION.END_CALL_ERROR'));
       } finally {
         this.isCallActive = false;
-        this.handleClose();
       }
     },
     toggleMute() {
-      if (!this.wavoip || !this.isCallActive) return;
+      if (!this.wavoipInstance || !this.isCallActive) return;
 
       try {
         this.isMuted = !this.isMuted;
-        this.wavoip.toggleMute();
+        this.wavoipInstance.toggleMute();
 
         if (this.isMuted) {
           this.toast.success(this.$t('CONVERSATION.VOICE_CALL_MODAL.MUTED'));
@@ -218,20 +226,60 @@ export default {
     >
       <div class="w-[280px] bg-white rounded-lg shadow-lg">
         <div class="p-4">
+          <!-- Botão de fechar -->
+          <div class="flex justify-end mb-4">
+            <woot-button
+              variant="clear"
+              color-scheme="secondary"
+              icon="close"
+              @click="handleClose"
+            />
+          </div>
+
           <!-- Display Number Section -->
-          <div class="text-center mb-8">
-            <div class="text-xl font-medium text-gray-800">
-              {{ displayNumber || phoneNumber || '+1' }}
-            </div>
-            <div
-              class="flex items-center justify-center gap-1 text-sm text-gray-700 mt-1"
-            >
-              <span>{{ contactName }}</span>
+          <div class="text-center mb-1">
+            <div class="flex flex-col items-center justify-center">
+              <div class="w-12 h-12 rounded-full overflow-hidden mb-0.5">
+                <img
+                  :src="currentChat?.meta?.sender?.avatar_url"
+                  :alt="contactName"
+                  class="w-full h-full object-cover"
+                />
+              </div>
+              <div class="text-xl font-medium text-gray-800">
+                {{ displayNumber || phoneNumber || '+1' }}
+              </div>
+              <span class="text-lg font-medium mt-0.5">{{ contactName }}</span>
+              <div class="flex items-center gap-2 mt-0.5">
+                <span
+                  v-if="isConnecting"
+                  class="text-sm text-blue-500 animate-pulse flex items-center gap-1"
+                >
+                  <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CONNECTING') }}
+                </span>
+                <span
+                  v-else-if="isCallActive"
+                  class="text-sm text-green-500 animate-pulse flex items-center gap-1"
+                >
+                  <div
+                    class="w-2 h-2 rounded-full bg-green-500 animate-pulse"
+                  />
+                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.IN_CALL') }}
+                </span>
+                <span
+                  v-else-if="isConnected"
+                  class="text-sm text-gray-500 flex items-center gap-1"
+                >
+                  <div class="w-2 h-2 rounded-full bg-gray-500" />
+                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CONNECTED') }}
+                </span>
+              </div>
             </div>
           </div>
 
           <!-- Dialpad Grid -->
-          <div class="grid grid-cols-3 gap-4">
+          <div class="grid grid-cols-3 gap-4 mb-6">
             <button
               v-for="(number, index) in dialpadItems"
               :key="index"
@@ -251,16 +299,24 @@ export default {
           </div>
 
           <!-- Action Buttons -->
-          <div class="flex justify-between items-center mt-6">
+          <div class="flex justify-between items-center">
             <button
-              class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
-              :class="{ 'bg-gray-200': isMuted }"
+              class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+              :class="{
+                'bg-red-100 hover:bg-red-200': isMuted,
+                'hover:bg-gray-100': !isMuted,
+              }"
+              :title="
+                isMuted
+                  ? $t('CONVERSATION.VOICE_CALL_MODAL.UNMUTE')
+                  : $t('CONVERSATION.VOICE_CALL_MODAL.MUTE')
+              "
               @click="toggleMute"
             >
               <FluentIcon
-                :icon="isMuted ? 'mic-off' : 'mic'"
+                :icon="isMuted ? 'microphone-off' : 'microphone'"
                 class="w-5 h-5"
-                :class="{ 'text-red-500': isMuted, 'text-gray-600': !isMuted }"
+                :class="{ 'text-red-600': isMuted, 'text-gray-600': !isMuted }"
               />
             </button>
 
@@ -278,6 +334,7 @@ export default {
 
             <button
               class="w-10 h-10 rounded-full hover:bg-gray-100 flex items-center justify-center"
+              :title="$t('CONVERSATION.VOICE_CALL_MODAL.DELETE')"
               @click="deleteLastNumber"
             >
               <FluentIcon icon="delete" class="w-5 h-5 text-gray-800" />
