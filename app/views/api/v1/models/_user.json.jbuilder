@@ -7,6 +7,7 @@ json.display_name resource.display_name
 json.message_signature resource.message_signature
 json.email resource.email
 json.groq_token resource.groq_token
+json.wavoip_token resource.wavoip_token
 json.hmac_identifier resource.hmac_identifier if GlobalConfig.get('CHATWOOT_INBOX_HMAC_KEY')['CHATWOOT_INBOX_HMAC_KEY'].present?
 json.id resource.id
 json.inviter_id resource.active_account_user&.inviter_id

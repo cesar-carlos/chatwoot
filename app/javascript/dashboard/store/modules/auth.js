@@ -11,6 +11,7 @@ const initialState = {
     email: null,
     name: null,
     groq_token: '',
+    wavoip_token: '',
   },
   uiFlags: {
     isFetching: true,

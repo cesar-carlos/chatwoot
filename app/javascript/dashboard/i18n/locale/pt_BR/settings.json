@@ -214,6 +214,14 @@
         "API_SUCCESS": "Token GROQ atualizado com sucesso",
         "API_ERROR": "Falha ao atualizar o token GROQ",
         "SAVE_BUTTON": "Salvar token"
+      },
+      "WAVOIP_TOKEN": {
+        "TITLE": "Token Wavoip",
+        "NOTE": "Seu token de API Wavoip para recursos de chamada de voz",
+        "PLACEHOLDER": "Digite seu token Wavoip",
+        "SAVE_BUTTON": "Salvar token",
+        "API_SUCCESS": "Token Wavoip atualizado com sucesso",
+        "API_ERROR": "Falha ao atualizar o token Wavoip"
       }
     }
   },

@@ -29,8 +29,13 @@ class Api::V1::ProfilesController < Api::V1::BaseController
   end
 
   def set_active_account
-    @user.account_users.find_by(account_id: params[:account_id]).update(active_at: Time.now.utc)
-    head :ok
+    account_user = @user.account_users.find_by(account_id: params[:account_id])
+    if account_user
+      account_user.update(active_at: Time.now.utc)
+      head :ok
+    else
+      render json: { error: 'Account not found' }, status: :not_found
+    end
   end
 
   def resend_confirmation
@@ -60,7 +65,8 @@ class Api::V1::ProfilesController < Api::V1::BaseController
       :password,
       :password_confirmation,
       :avatar,
-      :groq_token
+      :groq_token,
+      :wavoip_token
     )
   end
 

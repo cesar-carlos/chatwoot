@@ -23,6 +23,7 @@ import {
   ROLES,
   CONVERSATION_PERMISSIONS,
 } from 'dashboard/constants/permissions.js';
+import WavoipToken from './WavoipToken.vue';
 
 export default {
   components: {
@@ -38,6 +39,7 @@ export default {
     AudioNotifications,
     AccessToken,
     GroqToken,
+    WavoipToken,
   },
   mixins: [globalConfigMixin],
   setup() {
@@ -60,6 +62,7 @@ export default {
       email: '',
       messageSignature: '',
       groqToken: '',
+      wavoipToken: '',
       hotKeys: [
         {
           key: 'enter',
@@ -109,6 +112,7 @@ export default {
       this.displayName = this.currentUser.display_name;
       this.messageSignature = this.currentUser.message_signature;
       this.groqToken = this.currentUser.groq_token;
+      this.wavoipToken = this.currentUser.wavoip_token;
     },
     async dispatchUpdate(payload, successMessage, errorMessage) {
       let alertMessage = '';
@@ -191,6 +195,17 @@ export default {
         'PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_SUCCESS'
       );
       let errorMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_ERROR');
+
+      await this.dispatchUpdate(payload, successMessage, errorMessage);
+    },
+    async updateWavoipToken(token) {
+      const payload = { wavoip_token: token };
+      let successMessage = this.$t(
+        'PROFILE_SETTINGS.FORM.WAVOIP_TOKEN.API_SUCCESS'
+      );
+      let errorMessage = this.$t(
+        'PROFILE_SETTINGS.FORM.WAVOIP_TOKEN.API_ERROR'
+      );
 
       await this.dispatchUpdate(payload, successMessage, errorMessage);
     },
@@ -305,6 +320,17 @@ export default {
         :value="groqToken"
         @on-copy="onCopyToken"
         @on-save="updateGroqToken"
+      />
+    </FormSection>
+
+    <FormSection
+      :title="$t('PROFILE_SETTINGS.FORM.WAVOIP_TOKEN.TITLE')"
+      :description="$t('PROFILE_SETTINGS.FORM.WAVOIP_TOKEN.NOTE')"
+    >
+      <WavoipToken
+        :value="wavoipToken"
+        @on-copy="onCopyToken"
+        @on-save="updateWavoipToken"
       />
     </FormSection>
   </div>

@@ -29,6 +29,7 @@
 #  ui_settings            :jsonb
 #  uid                    :string           default(""), not null
 #  unconfirmed_email      :string
+#  wavoip_token           :string           default(""), not null
 #  created_at             :datetime         not null
 #  updated_at             :datetime         not null
 #
@@ -39,6 +40,7 @@
 #  index_users_on_pubsub_token          (pubsub_token) UNIQUE
 #  index_users_on_reset_password_token  (reset_password_token) UNIQUE
 #  index_users_on_uid_and_provider      (uid,provider) UNIQUE
+#  index_users_on_wavoip_token          (wavoip_token)
 #
 class SuperAdmin < User
 end

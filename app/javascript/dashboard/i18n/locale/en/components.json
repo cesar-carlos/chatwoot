@@ -43,5 +43,8 @@
   "FEATURE_SPOTLIGHT": {
     "LEARN_MORE": "Learn more",
     "WATCH_VIDEO": "Watch video"
+  },
+  "CODE": {
+    "BUTTON_TEXT": "Copy code"
   }
 }
