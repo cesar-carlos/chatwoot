@@ -156,7 +156,7 @@ export default {
       v-if="showVoiceCallModal"
       :show="showVoiceCallModal"
       :current-chat="currentChat"
-      @close="toggleVoiceCallModal"
+      @close="showVoiceCallModal = false"
     />
   </div>
 </template>

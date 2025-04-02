@@ -294,3 +294,15 @@ en:
     seconds:
       one: '%{count} second'
       other: '%{count} seconds'
+  PROFILE_SETTINGS:
+    FORM:
+      GROQ_TOKEN:
+        TITLE: 'GROQ Token'
+        NOTE: 'Your GROQ API token for AI features'
+        PLACEHOLDER: 'Enter your GROQ token'
+        API_SUCCESS: 'GROQ token updated successfully'
+        API_ERROR: 'Failed to update GROQ token'
+  COMPONENTS:
+    CODE:
+      COPY: 'Copy'
+      COPY_SUCCESSFUL: 'Copied successfully'

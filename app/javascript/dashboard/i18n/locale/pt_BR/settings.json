@@ -206,6 +206,14 @@
         "LABEL": "Confirme a nova senha",
         "ERROR": "A confirmação da senha é diferente. Favor digitar novamente",
         "PLACEHOLDER": "Por favor, digite sua nova senha "
+      },
+      "GROQ_TOKEN": {
+        "TITLE": "Token GROQ",
+        "NOTE": "Seu token de API GROQ para recursos de IA",
+        "PLACEHOLDER": "Digite seu token GROQ",
+        "API_SUCCESS": "Token GROQ atualizado com sucesso",
+        "API_ERROR": "Falha ao atualizar o token GROQ",
+        "SAVE_BUTTON": "Salvar token"
       }
     }
   },
@@ -236,9 +244,8 @@
   },
   "COMPONENTS": {
     "CODE": {
-      "BUTTON_TEXT": "Copiar",
-      "CODEPEN": "Abrir em CodePen",
-      "COPY_SUCCESSFUL": "Código copiado para área de transferência com sucesso"
+      "COPY": "Copiar",
+      "COPY_SUCCESSFUL": "Copiado com sucesso"
     },
     "SHOW_MORE_BLOCK": {
       "SHOW_MORE": "Mostrar Mais",

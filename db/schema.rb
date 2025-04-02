@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_03_26_034635) do
+ActiveRecord::Schema[7.0].define(version: 2025_04_02_224347) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1051,7 +1051,9 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_26_034635) do
     t.jsonb "custom_attributes", default: {}
     t.string "type"
     t.text "message_signature"
+    t.string "groq_token", default: "", null: false
     t.index ["email"], name: "index_users_on_email"
+    t.index ["groq_token"], name: "index_users_on_groq_token"
     t.index ["pubsub_token"], name: "index_users_on_pubsub_token", unique: true
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["uid", "provider"], name: "index_users_on_uid_and_provider", unique: true

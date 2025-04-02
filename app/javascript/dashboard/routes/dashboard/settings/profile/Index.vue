@@ -17,6 +17,7 @@ import NotificationPreferences from './NotificationPreferences.vue';
 import AudioNotifications from './AudioNotifications.vue';
 import FormSection from 'dashboard/components/FormSection.vue';
 import AccessToken from './AccessToken.vue';
+import GroqToken from './GroqToken.vue';
 import Policy from 'dashboard/components/policy.vue';
 import {
   ROLES,
@@ -36,6 +37,7 @@ export default {
     NotificationPreferences,
     AudioNotifications,
     AccessToken,
+    GroqToken,
   },
   mixins: [globalConfigMixin],
   setup() {
@@ -57,6 +59,7 @@ export default {
       displayName: '',
       email: '',
       messageSignature: '',
+      groqToken: '',
       hotKeys: [
         {
           key: 'enter',
@@ -105,6 +108,7 @@ export default {
       this.avatarUrl = this.currentUser.avatar_url;
       this.displayName = this.currentUser.display_name;
       this.messageSignature = this.currentUser.message_signature;
+      this.groqToken = this.currentUser.groq_token;
     },
     async dispatchUpdate(payload, successMessage, errorMessage) {
       let alertMessage = '';
@@ -180,6 +184,15 @@ export default {
     async onCopyToken(value) {
       await copyTextToClipboard(value);
       useAlert(this.$t('COMPONENTS.CODE.COPY_SUCCESSFUL'));
+    },
+    async updateGroqToken(token) {
+      const payload = { groq_token: token };
+      let successMessage = this.$t(
+        'PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_SUCCESS'
+      );
+      let errorMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_ERROR');
+
+      await this.dispatchUpdate(payload, successMessage, errorMessage);
     },
   },
 };
@@ -282,6 +295,17 @@ export default {
       "
     >
       <AccessToken :value="currentUser.access_token" @on-copy="onCopyToken" />
+    </FormSection>
+
+    <FormSection
+      :title="$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.TITLE')"
+      :description="$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.NOTE')"
+    >
+      <GroqToken
+        :value="groqToken"
+        @on-copy="onCopyToken"
+        @on-save="updateGroqToken"
+      />
     </FormSection>
   </div>
 </template>
