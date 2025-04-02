@@ -14,6 +14,25 @@
     "SEARCH_MESSAGES": "Pesquisar por mensagens nas conversas",
     "VIEW_ORIGINAL": "Ver original",
     "VIEW_TRANSLATED": "Ver traduzido",
+    "TRANSCRIBE_AUDIO": "Transcrever áudio",
+    "VOICE_CALL": "Chamada de Voz",
+    "VOICE_CALL_MODAL": {
+      "TITLE": "Chamada de Voz",
+      "CALL_STARTED": "Chamada iniciada",
+      "MUTED": "Microfone silenciado",
+      "UNMUTED": "Microfone ativado",
+      "ERROR": {
+        "TITLE": "Erro na Chamada",
+        "CONNECTION_FAILED": "Falha na conexão com o serviço de voz",
+        "SOCKET_ERROR": "Erro na conexão com o servidor",
+        "NO_NUMBER": "Nenhum número de telefone disponível",
+        "CALL_FAILED": "Não foi possível iniciar a chamada",
+        "DISCONNECTED": "Chamada encerrada",
+        "END_CALL_ERROR": "Erro ao encerrar a chamada",
+        "MUTE_ERROR": "Erro ao alterar o estado do microfone",
+        "CLOSE": "Fechar"
+      }
+    },
     "EMPTY_STATE": {
       "CMD_BAR": "para abrir o menu de comando",
       "KEYBOARD_SHORTCUTS": "para ver os atalhos de teclado"
@@ -234,7 +253,13 @@
     "SIDEBAR": {
       "CONTACT": "Contato",
       "COPILOT": "Copiloto"
-    }
+    },
+    "CALL_STARTED": "Chamada iniciada",
+    "CALL_DISCONNECTED": "Chamada encerrada",
+    "CALL_ERROR": "Erro na chamada",
+    "CALL_FAILED": "Falha na chamada",
+    "END_CALL_ERROR": "Erro ao encerrar a chamada",
+    "NO_NUMBER": "Nenhum número de telefone disponível"
   },
   "EMAIL_TRANSCRIPT": {
     "TITLE": "Enviar transcrição de conversa",
