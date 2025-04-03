@@ -146,9 +146,9 @@ export const actions = {
 
   updateUISettings: async ({ commit }, params) => {
     try {
-      commit(types.SET_CURRENT_USER_UI_SETTINGS, params);
       const response = await authAPI.updateUISettings(params);
       commit(types.SET_CURRENT_USER, response.data);
+      commit(types.SET_CURRENT_USER_UI_SETTINGS, params);
     } catch (error) {
       // Ignore error
     }

@@ -66,7 +66,8 @@ class Api::V1::ProfilesController < Api::V1::BaseController
       :password_confirmation,
       :avatar,
       :groq_token,
-      :wavoip_token
+      :wavoip_token,
+      ui_settings: {}
     )
   end
 
