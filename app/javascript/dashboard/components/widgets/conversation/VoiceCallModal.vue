@@ -22,12 +22,15 @@ export default {
       required: true,
     },
   },
-  emits: ['close'],
+  emits: ['close', 'error'],
   setup() {
     const toast = useToast();
     const store = useStore();
     const currentUser = computed(() => store.getters.getCurrentUser);
-    return { toast, currentUser };
+    const hasWavoipToken = computed(() => {
+      return currentUser.value?.wavoip_token?.length > 0;
+    });
+    return { toast, currentUser, hasWavoipToken };
   },
   data() {
     return {
@@ -53,7 +56,7 @@ export default {
       isMuted: false,
       isConnecting: false,
       incomingCall: false,
-      callStatus: 'idle', // idle, connecting, active, ended
+      callStatus: 'idle', // idle, connecting, active, ended, failed, busy, no-answer
     };
   },
   computed: {
@@ -150,6 +153,14 @@ export default {
     async startCall() {
       if (this.isCallActive) return;
 
+      if (!this.hasWavoipToken) {
+        this.$emit(
+          'error',
+          this.$t('CONVERSATION.VOICE_CALL_MODAL.ERROR.NO_WAVOIP_TOKEN')
+        );
+        return;
+      }
+
       try {
         this.isCallActive = true;
         this.isConnecting = true;
@@ -163,7 +174,7 @@ export default {
 
         if (!token) {
           throw new Error(
-            'Token do Wavoip não encontrado. Configure o token no seu perfil.'
+            this.$t('CONVERSATION.VOICE_CALL_MODAL.ERROR.NO_WAVOIP_TOKEN')
           );
         }
 
@@ -221,9 +232,29 @@ export default {
           );
         });
 
+        this.wavoipInstance.socket.on('callFailed', () => {
+          this.isCallActive = false;
+          this.callStatus = 'failed';
+          this.toast.error(
+            this.$t('CONVERSATION.VOICE_CALL_MODAL.CALL_FAILED')
+          );
+        });
+
+        this.wavoipInstance.socket.on('callBusy', () => {
+          this.isCallActive = false;
+          this.callStatus = 'busy';
+          this.toast.error(this.$t('CONVERSATION.VOICE_CALL_MODAL.CALL_BUSY'));
+        });
+
+        this.wavoipInstance.socket.on('noAnswer', () => {
+          this.isCallActive = false;
+          this.callStatus = 'no-answer';
+          this.toast.error(this.$t('CONVERSATION.VOICE_CALL_MODAL.NO_ANSWER'));
+        });
+
         this.wavoipInstance.socket.on('error', error => {
           this.isCallActive = false;
-          this.callStatus = 'idle';
+          this.callStatus = 'failed';
           this.toast.error(
             `${this.$t('CONVERSATION.CALL_ERROR')}: ${error.message}`
           );
@@ -235,10 +266,10 @@ export default {
           this.toast.error(this.$t('CONVERSATION.CALL_DISCONNECTED'));
         });
       } catch (error) {
-        this.isCallActive = false;
-        this.callStatus = 'idle';
-        this.toast.error(
-          `${this.$t('CONVERSATION.CALL_FAILED')}: ${error.message}`
+        this.$emit(
+          'error',
+          error.message ||
+            this.$t('CONVERSATION.VOICE_CALL_MODAL.ERROR.GENERIC')
         );
       } finally {
         this.isConnecting = false;
@@ -340,7 +371,7 @@ export default {
                     <div
                       class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
                     />
-                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.CONNECTING') }}
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.CONNECTING') }}
                   </span>
                   <span
                     v-else-if="callStatus === 'active'"
@@ -349,7 +380,7 @@ export default {
                     <div
                       class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
                     />
-                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.IN_CALL') }}
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.IN_CALL') }}
                   </span>
                   <span
                     v-else-if="callStatus === 'incoming'"
@@ -358,7 +389,9 @@ export default {
                     <div
                       class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"
                     />
-                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.CALL_WAITING') }}
+                    {{
+                      $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.CALL_WAITING')
+                    }}
                   </span>
                   <span
                     v-else-if="callStatus === 'ended'"
@@ -366,8 +399,31 @@ export default {
                   >
                     <div class="w-1.5 h-1.5 rounded-full bg-gray-500" />
                     {{
-                      $t('CONVERSATION.VOICE_CALL_MODAL.CALL_ENDED_BY_OTHER')
+                      $t(
+                        'CONVERSATION.VOICE_CALL_MODAL.STATUS.CALL_ENDED_BY_OTHER'
+                      )
                     }}
+                  </span>
+                  <span
+                    v-else-if="callStatus === 'failed'"
+                    class="text-xs text-red-500 flex items-center justify-center gap-1"
+                  >
+                    <div class="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.CALL_FAILED') }}
+                  </span>
+                  <span
+                    v-else-if="callStatus === 'busy'"
+                    class="text-xs text-orange-500 flex items-center justify-center gap-1"
+                  >
+                    <div class="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.CALL_BUSY') }}
+                  </span>
+                  <span
+                    v-else-if="callStatus === 'no-answer'"
+                    class="text-xs text-yellow-500 flex items-center justify-center gap-1"
+                  >
+                    <div class="w-1.5 h-1.5 rounded-full bg-yellow-500" />
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.NO_ANSWER') }}
                   </span>
                   <span
                     v-else

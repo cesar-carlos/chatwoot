@@ -246,7 +246,22 @@
     "INCOMING_CALL": "Incoming Call",
     "UNKNOWN_CALLER": "Unknown Number",
     "REJECT_CALL": "Reject",
-    "ANSWER_CALL": "Answer"
+    "ANSWER_CALL": "Answer",
+    "GROQ_TOKEN_MISSING": "To use audio transcription, configure your GROQ token in profile settings",
+    "VOICE_CALL_MODAL": {
+      "ERROR": {
+        "TITLE": "Call Error",
+        "CONNECTION_FAILED": "Failed to connect to voice service",
+        "SOCKET_ERROR": "Server connection error",
+        "NO_NUMBER": "No phone number available",
+        "CALL_FAILED": "Could not start call",
+        "DISCONNECTED": "Call disconnected",
+        "END_CALL_ERROR": "Error ending call",
+        "MUTE_ERROR": "Error changing microphone state",
+        "CLOSE": "Close",
+        "NO_WAVOIP_TOKEN": "To make calls, configure your Wavoip token in profile settings"
+      }
+    }
   },
   "EMAIL_TRANSCRIPT": {
     "TITLE": "Send conversation transcript",

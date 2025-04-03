@@ -16,6 +16,7 @@
     "VIEW_TRANSLATED": "Ver traduzido",
     "TRANSCRIBE_AUDIO": "Transcrever áudio",
     "TRANSCRIBING": "Transcrevendo...",
+    "GROQ_TOKEN_MISSING": "Para usar a transcrição de áudio, configure seu token GROQ nas configurações do perfil",
     "VOICE_CALL": "Chamada de Voz",
     "VOICE_CALL_MODAL": {
       "TITLE": "Chamada de Voz",
@@ -26,9 +27,14 @@
       "UNMUTE": "Ativar microfone",
       "DELETE": "Apagar número",
       "STATUS": {
-        "READY": "Pronto para Chamar",
-        "IN_PROGRESS": "Chamada em Andamento",
-        "MUTED": "Microfone Silenciado"
+        "READY": "Pronto para ligar",
+        "CONNECTING": "Conectando...",
+        "IN_CALL": "Em chamada",
+        "CALL_WAITING": "Aguardando resposta",
+        "CALL_ENDED_BY_OTHER": "Chamada encerrada",
+        "CALL_FAILED": "Chamada falhou",
+        "CALL_BUSY": "Linha ocupada",
+        "NO_ANSWER": "Sem resposta"
       },
       "ERROR": {
         "TITLE": "Erro na Chamada",
@@ -39,7 +45,8 @@
         "DISCONNECTED": "Chamada encerrada",
         "END_CALL_ERROR": "Erro ao encerrar a chamada",
         "MUTE_ERROR": "Erro ao alterar o estado do microfone",
-        "CLOSE": "Fechar"
+        "CLOSE": "Fechar",
+        "NO_WAVOIP_TOKEN": "Para fazer chamadas, configure seu token Wavoip nas configurações do perfil"
       },
       "CONNECTING": "Ligando...",
       "IN_CALL": "Em ligação",
@@ -275,7 +282,10 @@
     "CALL_ERROR": "Erro na chamada",
     "CALL_FAILED": "Falha na chamada",
     "END_CALL_ERROR": "Erro ao encerrar a chamada",
-    "NO_NUMBER": "Nenhum número de telefone disponível"
+    "NO_NUMBER": "Nenhum número de telefone disponível",
+    "TRANSCRIPTION_ERROR": {
+      "TITLE": "Erro de Transcrição"
+    }
   },
   "EMAIL_TRANSCRIPT": {
     "TITLE": "Enviar transcrição de conversa",

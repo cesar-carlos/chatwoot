@@ -25,6 +25,8 @@ export default {
     return {
       showEmailActionsModal: false,
       showVoiceCallModal: false,
+      showWavoipAlert: false,
+      wavoipError: '',
     };
   },
   computed: {
@@ -32,6 +34,9 @@ export default {
       currentChat: 'getSelectedChat',
       currentUser: 'getCurrentUser',
     }),
+    hasWavoipToken() {
+      return this.currentUser?.wavoip_token?.length > 0;
+    },
   },
   mounted() {
     emitter.on(CMD_MUTE_CONVERSATION, this.mute);
@@ -56,7 +61,16 @@ export default {
       this.showEmailActionsModal = !this.showEmailActionsModal;
     },
     toggleVoiceCallModal() {
+      if (!this.hasWavoipToken) {
+        this.wavoipError = '';
+        this.showWavoipAlert = true;
+        return;
+      }
       this.showVoiceCallModal = !this.showVoiceCallModal;
+    },
+    closeWavoipAlert() {
+      this.showWavoipAlert = false;
+      this.wavoipError = '';
     },
     assignAgent() {
       const {
@@ -92,6 +106,11 @@ export default {
         .then(() => {
           useAlert(this.$t('CONVERSATION.CHANGE_AGENT'));
         });
+    },
+    handleVoiceCallError(error) {
+      this.wavoipError = error;
+      this.showWavoipAlert = true;
+      this.showVoiceCallModal = false;
     },
   },
 };
@@ -157,7 +176,40 @@ export default {
       :show="showVoiceCallModal"
       :current-chat="currentChat"
       @close="showVoiceCallModal = false"
+      @error="handleVoiceCallError"
     />
+
+    <!-- Alerta de Token Wavoip ou Erro de Chamada -->
+    <div
+      v-if="showWavoipAlert"
+      class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+    >
+      <div
+        class="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg max-w-md w-full mx-4 relative"
+      >
+        <div class="mb-4">
+          <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200">
+            {{ $t('CONVERSATION.VOICE_CALL_MODAL.ERROR.TITLE') }}
+          </h3>
+        </div>
+        <div class="mb-6">
+          <p class="text-slate-700 dark:text-slate-300">
+            {{
+              wavoipError ||
+              $t('CONVERSATION.VOICE_CALL_MODAL.ERROR.NO_WAVOIP_TOKEN')
+            }}
+          </p>
+        </div>
+        <div class="flex justify-end">
+          <button
+            class="px-4 py-2 bg-woot-500 text-white rounded hover:bg-woot-600 transition-colors"
+            @click="closeWavoipAlert"
+          >
+            {{ $t('CONVERSATION.VOICE_CALL_MODAL.ERROR.CLOSE') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

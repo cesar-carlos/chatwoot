@@ -699,13 +699,38 @@ export default {
         this.clearMessage();
         this.hideEmojiPicker();
         this.$emit('update:popoutReplyBox', false);
+
+        // Garantir que a rolagem aconteça após o envio da mensagem
+        this.$nextTick(() => {
+          setTimeout(() => {
+            this.scrollToBottom();
+          }, 200); // Pequeno atraso para garantir que o DOM foi atualizado
+        });
       }
     },
     sendMessageAsMultipleMessages(message) {
       const messages = this.getMessagePayloadForWhatsapp(message);
-      messages.forEach(messagePayload => {
-        this.sendMessage(messagePayload);
-      });
+      let sentCount = 0;
+
+      const sendNextMessage = () => {
+        if (sentCount < messages.length) {
+          this.sendMessage(messages[sentCount]).then(() => {
+            sentCount += 1;
+            // Pequeno atraso entre o envio de cada mensagem
+            setTimeout(sendNextMessage, 300);
+          });
+        } else {
+          // Após enviar todas as mensagens, garantir que a rolagem aconteça
+          this.$nextTick(() => {
+            setTimeout(() => {
+              this.scrollToBottom();
+            }, 200);
+          });
+        }
+      };
+
+      // Iniciar o envio da primeira mensagem
+      sendNextMessage();
     },
     sendMessageAnalyticsData(isPrivate) {
       // Analytics data for message signature is enabled or not in channels
@@ -751,6 +776,13 @@ export default {
         emitter.emit(BUS_EVENTS.MESSAGE_SENT);
         this.removeFromDraft();
         this.sendMessageAnalyticsData(messagePayload.private);
+
+        // Garantir que a rolagem aconteça após o DOM ser atualizado
+        this.$nextTick(() => {
+          setTimeout(() => {
+            this.scrollToBottom();
+          }, 100); // Pequeno atraso para garantir que o DOM foi atualizado
+        });
       } catch (error) {
         const errorMessage =
           error?.response?.data?.error || this.$t('CONVERSATION.MESSAGE_ERROR');
@@ -758,11 +790,18 @@ export default {
       }
     },
     async onSendWhatsAppReply(messagePayload) {
-      this.sendMessage({
+      await this.sendMessage({
         conversationId: this.currentChat.id,
         ...messagePayload,
       });
       this.hideWhatsappTemplatesModal();
+
+      // Garantir que a rolagem aconteça após o envio da mensagem
+      this.$nextTick(() => {
+        setTimeout(() => {
+          this.scrollToBottom();
+        }, 200);
+      });
     },
     replaceText(message) {
       if (this.sendWithSignature && !this.private) {
@@ -1066,6 +1105,37 @@ export default {
       this.attachedFiles = this.attachedFiles.filter(
         file => !file?.isRecordedAudio
       );
+    },
+    scrollToBottom() {
+      const messageContainer = document.querySelector('.conversation-panel');
+      if (messageContainer) {
+        // Primeiro, tentamos rolar para mensagens não lidas
+        const unreadMessages =
+          messageContainer.querySelectorAll('.message--unread');
+        if (unreadMessages.length > 0) {
+          unreadMessages[0].scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+
+        // Se não houver mensagens não lidas, verificamos se há sugestões de etiquetas
+        const labelSuggestions =
+          messageContainer.querySelector('.label-suggestion');
+        if (labelSuggestions) {
+          labelSuggestions.scrollIntoView({ behavior: 'smooth' });
+          return;
+        }
+
+        // Se não houver sugestões de etiquetas, rolamos para a última mensagem lida
+        const readMessages =
+          messageContainer.querySelectorAll('.message--read');
+        const lastMessage = readMessages[readMessages.length - 1];
+        if (lastMessage) {
+          lastMessage.scrollIntoView({ behavior: 'smooth' });
+        } else {
+          // Fallback: rolar para o final do contêiner
+          messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+      }
     },
   },
 };

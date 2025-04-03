@@ -5,6 +5,7 @@ import { timeStampAppendedURL } from 'dashboard/helper/URLHelper';
 import { downloadFile } from '@chatwoot/utils';
 import axios from 'axios';
 import { useI18n } from 'vue-i18n';
+import { useMapGetter } from 'dashboard/composables/store';
 
 const { attachment } = defineProps({
   attachment: {
@@ -18,6 +19,9 @@ const { t: $t } = useI18n();
 defineOptions({
   inheritAttrs: false,
 });
+
+const currentUser = useMapGetter('getCurrentUser');
+const hasGroqToken = computed(() => currentUser.value?.groq_token?.length > 0);
 
 const timeStampURL = computed(() => {
   return timeStampAppendedURL(attachment.dataUrl);
@@ -33,6 +37,8 @@ const playbackSpeed = ref(2);
 const showTranscription = ref(false);
 const isTranscribing = ref(false);
 const transcriptionText = ref('');
+const showGroqAlert = ref(false);
+const transcriptionError = ref('');
 
 const onLoadedMetadata = () => {
   duration.value = audioPlayer.value?.duration;
@@ -108,8 +114,18 @@ const downloadAudio = async () => {
   downloadFile({ url: dataUrl, type: fileType, extension });
 };
 
+const closeGroqAlert = () => {
+  showGroqAlert.value = false;
+  transcriptionError.value = '';
+};
+
 const handleTranscribeAudio = async () => {
   if (isTranscribing.value) return;
+
+  if (!hasGroqToken.value) {
+    showGroqAlert.value = true;
+    return;
+  }
 
   try {
     isTranscribing.value = true;
@@ -126,9 +142,11 @@ const handleTranscribeAudio = async () => {
       throw new Error(response.data.error);
     }
   } catch (error) {
-    transcriptionText.value =
+    transcriptionError.value =
       error.response?.data?.error ||
       'Erro ao transcrever o áudio. Por favor, tente novamente.';
+    showGroqAlert.value = true;
+    transcriptionText.value = '';
   } finally {
     isTranscribing.value = false;
   }
@@ -209,6 +227,35 @@ const handleTranscribeAudio = async () => {
     >
       <Icon icon="i-lucide-lock" class="size-4 text-n-slate-11 mt-0.5" />
       <span>{{ transcriptionText }}</span>
+    </div>
+
+    <!-- Alerta de Token GROQ ou Erro de Transcrição -->
+    <div
+      v-if="showGroqAlert"
+      class="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50"
+    >
+      <div
+        class="bg-white dark:bg-slate-800 rounded-lg p-6 shadow-lg max-w-md w-full mx-4 relative"
+      >
+        <div class="mb-4">
+          <h3 class="text-lg font-semibold text-slate-800 dark:text-slate-200">
+            {{ $t('CONVERSATION.TRANSCRIPTION_ERROR.TITLE') }}
+          </h3>
+        </div>
+        <div class="mb-6">
+          <p class="text-slate-700 dark:text-slate-300">
+            {{ transcriptionError || $t('CONVERSATION.GROQ_TOKEN_MISSING') }}
+          </p>
+        </div>
+        <div class="flex justify-end">
+          <button
+            class="px-4 py-2 bg-woot-500 text-white rounded hover:bg-woot-600 transition-colors"
+            @click="closeGroqAlert"
+          >
+            {{ $t('CONVERSATION.VOICE_CALL_MODAL.ERROR.CLOSE') }}
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </template>
