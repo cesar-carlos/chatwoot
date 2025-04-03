@@ -44,6 +44,16 @@ if (isLibraryMode) {
 
 export default defineConfig({
   plugins: plugins,
+  server: {
+    host: '0.0.0.0',
+    port: 3036,
+    strictPort: true,
+    hmr: {
+      clientPort: 3036,
+      host: 'https://chat.se7esistemassinop.com.br',
+      protocol: 'ws',
+    },
+  },
   build: {
     rollupOptions: {
       output: {
