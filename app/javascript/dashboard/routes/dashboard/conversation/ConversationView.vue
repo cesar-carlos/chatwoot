@@ -74,7 +74,7 @@ export default {
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
     }),
     showConversationList() {
-      return this.isOnExpandedLayout ? !this.conversationId : true;
+      return true;
     },
     showMessageView() {
       return this.conversationId ? true : !this.isOnExpandedLayout;
@@ -213,6 +213,7 @@ export default {
       :conversation-type="conversationType"
       :folders-id="foldersId"
       :is-on-expanded-layout="isOnExpandedLayout"
+      class="flex-shrink-0"
       @conversation-load="onConversationLoad"
     >
       <PopOverSearch
@@ -226,6 +227,7 @@ export default {
       :inbox-id="inboxId"
       :is-contact-panel-open="isContactPanelOpen"
       :is-on-expanded-layout="isOnExpandedLayout"
+      class="flex-1"
       @contact-panel-toggle="onToggleContactPanel"
     />
     <CmdBarConversationSnooze />
