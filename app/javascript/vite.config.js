@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   server: {
-    host: 'https://chat.se7esistemassinop.com.br',
+    host: `https://${process.env.VITE_HOST || 'localhost'}`,
     port: 3036,
   },
 });

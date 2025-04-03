@@ -50,7 +50,7 @@ export default defineConfig({
     strictPort: true,
     hmr: {
       clientPort: 3036,
-      host: 'https://chat.se7esistemassinop.com.br',
+      host: `https://${process.env.VITE_HOST || 'localhost'}`,
       protocol: 'ws',
     },
   },
