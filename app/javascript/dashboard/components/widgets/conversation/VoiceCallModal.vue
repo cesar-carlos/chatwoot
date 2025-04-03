@@ -5,10 +5,12 @@ import Wavoip from 'wavoip-api';
 import { computed } from 'vue';
 import { useStore } from 'dashboard/composables/store';
 import ApiClient from '@/dashboard/api/ApiClient';
+import Thumbnail from '@/dashboard/components/widgets/Thumbnail.vue';
 
 export default {
   components: {
     Modal,
+    Thumbnail,
   },
   props: {
     show: {
@@ -316,59 +318,65 @@ export default {
           <!-- Display Number Section -->
           <div class="text-center mb-1">
             <div class="flex flex-col items-center justify-center">
-              <div class="w-12 h-12 rounded-full overflow-hidden mb-0.5">
-                <img
-                  :src="contactAvatar"
-                  :alt="contactName"
-                  class="w-full h-full object-cover"
-                />
-              </div>
+              <Thumbnail
+                :src="contactAvatar"
+                :username="contactName"
+                size="80px"
+              />
               <div class="text-xl font-medium text-gray-800">
                 {{ contactName }}
               </div>
               <span class="text-lg font-medium mt-0.5">
                 {{ displayNumber || phoneNumber || '+1' }}
               </span>
-              <div class="flex items-center gap-2 mt-0.5">
-                <span
-                  v-if="callStatus === 'connecting'"
-                  class="text-sm text-blue-500 animate-pulse flex items-center gap-1"
+              <div class="flex items-center justify-center">
+                <div
+                  class="px-1.5 py-0.5 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center w-fit"
                 >
-                  <div class="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CONNECTING') }}
-                </span>
-                <span
-                  v-else-if="callStatus === 'active'"
-                  class="text-sm text-green-500 animate-pulse flex items-center gap-1"
-                >
-                  <div
-                    class="w-2 h-2 rounded-full bg-green-500 animate-pulse"
-                  />
-                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.IN_CALL') }}
-                </span>
-                <span
-                  v-else-if="callStatus === 'incoming'"
-                  class="text-sm text-yellow-500 animate-pulse flex items-center gap-1"
-                >
-                  <div
-                    class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"
-                  />
-                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CALL_WAITING') }}
-                </span>
-                <span
-                  v-else-if="callStatus === 'ended'"
-                  class="text-sm text-gray-500 flex items-center gap-1"
-                >
-                  <div class="w-2 h-2 rounded-full bg-gray-500" />
-                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.CALL_ENDED_BY_OTHER') }}
-                </span>
-                <span
-                  v-else
-                  class="text-sm text-gray-500 flex items-center gap-1"
-                >
-                  <div class="w-2 h-2 rounded-full bg-gray-500" />
-                  {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.READY') }}
-                </span>
+                  <span
+                    v-if="callStatus === 'connecting'"
+                    class="text-xs text-blue-500 animate-pulse flex items-center justify-center gap-1"
+                  >
+                    <div
+                      class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
+                    />
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.CONNECTING') }}
+                  </span>
+                  <span
+                    v-else-if="callStatus === 'active'"
+                    class="text-xs text-green-500 animate-pulse flex items-center justify-center gap-1"
+                  >
+                    <div
+                      class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"
+                    />
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.IN_CALL') }}
+                  </span>
+                  <span
+                    v-else-if="callStatus === 'incoming'"
+                    class="text-xs text-yellow-500 animate-pulse flex items-center justify-center gap-1"
+                  >
+                    <div
+                      class="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse"
+                    />
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.CALL_WAITING') }}
+                  </span>
+                  <span
+                    v-else-if="callStatus === 'ended'"
+                    class="text-xs text-gray-500 flex items-center justify-center gap-1"
+                  >
+                    <div class="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                    {{
+                      $t('CONVERSATION.VOICE_CALL_MODAL.CALL_ENDED_BY_OTHER')
+                    }}
+                  </span>
+                  <span
+                    v-else
+                    class="text-xs text-gray-500 flex items-center justify-center gap-1"
+                  >
+                    <div class="w-1.5 h-1.5 rounded-full bg-gray-500" />
+                    {{ $t('CONVERSATION.VOICE_CALL_MODAL.STATUS.READY') }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
