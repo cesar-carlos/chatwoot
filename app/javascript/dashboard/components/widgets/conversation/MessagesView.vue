@@ -287,6 +287,9 @@ export default {
     // until the chat is changed and the flag is reset in the watch for currentChat
     emitter.on(BUS_EVENTS.MESSAGE_SENT, () => {
       this.messageSentSinceOpened = true;
+      this.$nextTick(() => {
+        this.scrollToBottom();
+      });
     });
   },
 

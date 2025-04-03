@@ -14,6 +14,8 @@
     "SEARCH_MESSAGES": "Search for messages in conversations",
     "VIEW_ORIGINAL": "View original",
     "VIEW_TRANSLATED": "View translated",
+    "TRANSCRIBE_AUDIO": "Transcribe audio",
+    "TRANSCRIBING": "Transcribing...",
     "EMPTY_STATE": {
       "CMD_BAR": "to open command menu",
       "KEYBOARD_SHORTCUTS": "to view keyboard shortcuts"
@@ -234,6 +236,31 @@
     "SIDEBAR": {
       "CONTACT": "Contact",
       "COPILOT": "Copilot"
+    },
+    "VOICE_CALL": "Voice Call",
+    "START_VOICE_CALL": "Start Call",
+    "NO_PHONE_NUMBER": "No phone number available",
+    "CALL_STARTED": "Call started successfully",
+    "CALL_ERROR": "Error during call",
+    "CALL_FAILED": "Could not start call",
+    "INCOMING_CALL": "Incoming Call",
+    "UNKNOWN_CALLER": "Unknown Number",
+    "REJECT_CALL": "Reject",
+    "ANSWER_CALL": "Answer",
+    "GROQ_TOKEN_MISSING": "To use audio transcription, configure your GROQ token in profile settings",
+    "VOICE_CALL_MODAL": {
+      "ERROR": {
+        "TITLE": "Call Error",
+        "CONNECTION_FAILED": "Failed to connect to voice service",
+        "SOCKET_ERROR": "Server connection error",
+        "NO_NUMBER": "No phone number available",
+        "CALL_FAILED": "Could not start call",
+        "DISCONNECTED": "Call disconnected",
+        "END_CALL_ERROR": "Error ending call",
+        "MUTE_ERROR": "Error changing microphone state",
+        "CLOSE": "Close",
+        "NO_WAVOIP_TOKEN": "To make calls, configure your Wavoip token in profile settings"
+      }
     }
   },
   "EMAIL_TRANSCRIPT": {

@@ -10,6 +10,8 @@ const initialState = {
     accounts: [],
     email: null,
     name: null,
+    groq_token: '',
+    wavoip_token: '',
   },
   uiFlags: {
     isFetching: true,
@@ -103,8 +105,8 @@ export const actions = {
     try {
       const response = await authAPI.validityCheck();
       const currentUser = response.data.payload.data;
-      setUser(currentUser);
       context.commit(types.SET_CURRENT_USER, currentUser);
+      setUser(currentUser);
     } catch (error) {
       if (error?.response?.status === 401) {
         clearCookiesOnLogout();
@@ -144,9 +146,9 @@ export const actions = {
 
   updateUISettings: async ({ commit }, params) => {
     try {
-      commit(types.SET_CURRENT_USER_UI_SETTINGS, params);
       const response = await authAPI.updateUISettings(params);
       commit(types.SET_CURRENT_USER, response.data);
+      commit(types.SET_CURRENT_USER_UI_SETTINGS, params);
     } catch (error) {
       // Ignore error
     }
@@ -244,7 +246,11 @@ export const mutations = {
     _state.currentUser = initialState.currentUser;
   },
   [types.SET_CURRENT_USER](_state, currentUser) {
-    _state.currentUser = currentUser;
+    _state.currentUser = {
+      ..._state.currentUser,
+      ...currentUser,
+      accounts: currentUser.accounts || _state.currentUser.accounts || [],
+    };
   },
   [types.SET_CURRENT_USER_UI_SETTINGS](_state, { uiSettings }) {
     _state.currentUser = {

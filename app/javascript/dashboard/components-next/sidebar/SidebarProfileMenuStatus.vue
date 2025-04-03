@@ -84,9 +84,9 @@ function updateAutoOffline(autoOffline) {
             >
               <div class="flex gap-1 items-center flex-grow text-sm">
                 <div class="p-1 flex-shrink-0">
-                  <div class="size-2 rounded-sm" :class="activeStatus.color" />
+                  <div class="size-2 rounded-sm" :class="activeStatus?.color" />
                 </div>
-                <span>{{ activeStatus.label }}</span>
+                <span>{{ activeStatus?.label }}</span>
               </div>
             </Button>
           </template>

@@ -157,7 +157,7 @@ export default {
 
 <style lang="scss" scoped>
 .conversation-details-wrap {
-  @apply flex flex-col min-w-0 w-full;
+  @apply flex flex-col min-w-0 w-full flex-1;
 }
 
 .dashboard-app--tabs {

@@ -125,12 +125,21 @@ export function useUISettings() {
   const uiSettings = computed(() => getters.getUISettings.value);
 
   const updateUISettings = (settings = {}) => {
+    const updatedSettings = {
+      ...uiSettings.value,
+      ...settings,
+    };
+
+    // Atualiza o store
     store.dispatch('updateUISettings', {
-      uiSettings: {
-        ...uiSettings.value,
-        ...settings,
-      },
+      uiSettings: updatedSettings,
     });
+
+    // Persiste no localStorage
+    localStorage.setItem(
+      'chatwoot_ui_settings',
+      JSON.stringify(updatedSettings)
+    );
   };
 
   return {

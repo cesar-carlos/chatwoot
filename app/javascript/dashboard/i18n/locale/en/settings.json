@@ -144,7 +144,7 @@
           "SLA_MISSED_NEXT_RESPONSE": "A conversation misses next response SLA",
           "SLA_MISSED_RESOLUTION": "A conversation misses resolution SLA"
         },
-        "BROWSER_PERMISSION": "Enable push notifications for your browser so you’re able to receive them"
+        "BROWSER_PERMISSION": "Enable push notifications for your browser so you're able to receive them"
       },
       "API": {
         "UPDATE_SUCCESS": "Your notification preferences are updated successfully",
@@ -206,6 +206,22 @@
         "LABEL": "Confirm new password",
         "ERROR": "Confirm password should match the password",
         "PLACEHOLDER": "Please re-enter your new password"
+      },
+      "GROQ_TOKEN": {
+        "TITLE": "GROQ Token",
+        "NOTE": "Your GROQ API token for AI features",
+        "PLACEHOLDER": "Enter your GROQ token",
+        "API_SUCCESS": "GROQ token updated successfully",
+        "API_ERROR": "Failed to update GROQ token",
+        "SAVE_BUTTON": "Save token"
+      },
+      "WAVOIP_TOKEN": {
+        "TITLE": "Wavoip Token",
+        "NOTE": "Your Wavoip API token for voice call features",
+        "PLACEHOLDER": "Enter your Wavoip token",
+        "SAVE_BUTTON": "Save token",
+        "API_SUCCESS": "Wavoip token updated successfully",
+        "API_ERROR": "Failed to update Wavoip token"
       }
     }
   },
@@ -236,9 +252,8 @@
   },
   "COMPONENTS": {
     "CODE": {
-      "BUTTON_TEXT": "Copy",
-      "CODEPEN": "Open in CodePen",
-      "COPY_SUCCESSFUL": "Copied to clipboard"
+      "COPY": "Copy",
+      "COPY_SUCCESSFUL": "Copied successfully"
     },
     "SHOW_MORE_BLOCK": {
       "SHOW_MORE": "Show More",

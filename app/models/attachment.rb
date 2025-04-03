@@ -10,6 +10,7 @@
 #  fallback_title   :string
 #  file_type        :integer          default("image")
 #  meta             :jsonb
+#  transcription    :text
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null
 #  account_id       :integer          not null
@@ -48,7 +49,9 @@ class Attachment < ApplicationRecord
     return base_data.merge(fallback_data) if file_type.to_sym == :fallback
     return base_data.merge(contact_metadata) if file_type.to_sym == :contact
 
-    base_data.merge(file_metadata)
+    data = base_data.merge(file_metadata)
+    data[:meta] = { transcription: transcription } if transcription.present?
+    data
   end
 
   # NOTE: the URl returned does a 301 redirect to the actual file

@@ -1,18 +1,18 @@
-class Api::V1::ProfilesController < Api::BaseController
+class Api::V1::ProfilesController < Api::V1::BaseController
   before_action :set_user
 
-  def show; end
+  def show
+    @user = current_user
+    render json: @user
+  end
 
   def update
-    if password_params[:password].present?
-      render_could_not_create_error('Invalid current password') and return unless @user.valid_password?(password_params[:current_password])
-
-      @user.update!(password_params.except(:current_password))
+    @user = current_user
+    if @user.update(profile_params)
+      render json: @user
+    else
+      render json: { errors: @user.errors.full_messages }, status: :unprocessable_entity
     end
-
-    @user.assign_attributes(profile_params)
-    @user.custom_attributes.merge!(custom_attributes_params)
-    @user.save!
   end
 
   def avatar
@@ -29,8 +29,13 @@ class Api::V1::ProfilesController < Api::BaseController
   end
 
   def set_active_account
-    @user.account_users.find_by(account_id: profile_params[:account_id]).update(active_at: Time.now.utc)
-    head :ok
+    account_user = @user.account_users.find_by(account_id: params[:account_id])
+    if account_user
+      account_user.update(active_at: Time.now.utc)
+      head :ok
+    else
+      render json: { error: 'Account not found' }, status: :not_found
+    end
   end
 
   def resend_confirmation
@@ -54,12 +59,14 @@ class Api::V1::ProfilesController < Api::BaseController
 
   def profile_params
     params.require(:profile).permit(
-      :email,
       :name,
       :display_name,
+      :email,
+      :password,
+      :password_confirmation,
       :avatar,
-      :message_signature,
-      :account_id,
+      :groq_token,
+      :wavoip_token,
       ui_settings: {}
     )
   end

@@ -13,4 +13,7 @@ json.payload @attachments do |attachment|
   json.height attachment.push_event_data[:height]
   json.created_at attachment.message.created_at.to_i
   json.sender attachment.message.sender.push_event_data if attachment.message.sender
+  json.meta do
+    json.transcription attachment.transcription if attachment.transcription.present?
+  end
 end

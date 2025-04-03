@@ -101,6 +101,9 @@ onMounted(() => {
   conversationSidebarItems.value = conversationSidebarItemsOrder.value;
   getContactDetails();
   store.dispatch('attributes/get', 0);
+  if (!isContactSidebarItemOpen('is_conv_actions_open')) {
+    toggleSidebarUIState('is_conv_actions_open');
+  }
 });
 </script>
 
@@ -133,9 +136,7 @@ onMounted(() => {
                   $t('CONVERSATION_SIDEBAR.ACCORDION.CONVERSATION_ACTIONS')
                 "
                 :is-open="isContactSidebarItemOpen('is_conv_actions_open')"
-                @toggle="
-                  value => toggleSidebarUIState('is_conv_actions_open', value)
-                "
+                @toggle="toggleSidebarUIState('is_conv_actions_open')"
               >
                 <ConversationAction
                   :conversation-id="conversationId"

@@ -93,9 +93,7 @@ export default {
   setActiveAccount({ accountId }) {
     const urlData = endPoints('setActiveAccount');
     return axios.put(urlData.url, {
-      profile: {
-        account_id: accountId,
-      },
+      account_id: accountId,
     });
   },
   resendConfirmation() {
