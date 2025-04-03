@@ -40,7 +40,6 @@
         fbApiVersion: '<%= @global_config['FACEBOOK_API_VERSION'] %>',
         signupEnabled: '<%= @global_config['ENABLE_ACCOUNT_SIGNUP'] %>',
         isEnterprise: '<%= @global_config['IS_ENTERPRISE'] %>',
-        wavoipToken: '<%= ENV.fetch('WAVOIP_TOKEN', '') %>',
         <% if @global_config['IS_ENTERPRISE'] %>
         enterprisePlanName: '<%= @global_config['INSTALLATION_PRICING_PLAN'] %>',
         <% end %>

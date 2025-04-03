@@ -157,11 +157,11 @@ export default {
           this.wavoip = new Wavoip();
         }
 
-        const token = window.chatwootConfig.wavoipToken;
+        const token = this.currentUser.wavoip_token;
 
         if (!token) {
           throw new Error(
-            'Token do Wavoip não encontrado. Verifique se a variável WAVOIP_TOKEN está configurada no ambiente ou no perfil do usuário.'
+            'Token do Wavoip não encontrado. Configure o token no seu perfil.'
           );
         }
 
