@@ -20,15 +20,15 @@ sudo apt-get update
 sudo apt-get install -y \
   curl git build-essential libpq-dev libssl-dev libreadline-dev \
   zlib1g-dev libyaml-dev libxml2-dev libxslt1-dev libffi-dev \
-  libgmp-dev libncurses5-dev libvips imagemagick \
-  postgresql-client libpq-dev
+  libgmp-dev libncurses5-dev libgdbm-dev libgdbm6 \
+  libvips imagemagick postgresql-client
 
 # 2. PostgreSQL 16
 echo ""
 echo ">> 2/7 Installing PostgreSQL 16..."
 if ! command -v psql &>/dev/null || ! psql --version | grep -q 16; then
-  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+  wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql-keyring.gpg
+  sudo sh -c 'echo "deb [signed-by=/usr/share/keyrings/postgresql-keyring.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
   sudo apt-get update
   sudo apt-get install -y postgresql-16 postgresql-16-pgvector postgresql-contrib
 fi
@@ -53,8 +53,9 @@ echo ">> 4/7 Installing rbenv and Ruby 3.4.4..."
 if ! command -v rbenv &>/dev/null; then
   git clone https://github.com/rbenv/rbenv.git ~/.rbenv
   git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-  echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
-  echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+  touch ~/.bashrc
+  grep -qxF 'export PATH="$HOME/.rbenv/bin:$PATH"' ~/.bashrc || echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+  grep -qxF 'eval "$(rbenv init -)"' ~/.bashrc || echo 'eval "$(rbenv init -)"' >> ~/.bashrc
   export PATH="$HOME/.rbenv/bin:$PATH"
   eval "$(rbenv init -)"
 fi
@@ -69,7 +70,7 @@ rbenv global 3.4.4
 echo ""
 echo ">> 5/7 Installing Node 24 and pnpm..."
 if ! command -v node &>/dev/null || [[ $(node -v | cut -d. -f1 | tr -d v) -lt 24 ]]; then
-  mkdir -p /tmp/nodesource
+  sudo mkdir -p /etc/apt/keyrings
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
   sudo apt-get update
@@ -82,10 +83,14 @@ fi
 # 6. Create PostgreSQL databases (if not exists)
 echo ""
 echo ">> 6/7 Configuring PostgreSQL..."
+# Create databases owned by postgres user
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='chatwoot_dev'" | grep -q 1 || \
   sudo -u postgres createdb chatwoot_dev 2>/dev/null || true
 sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='chatwoot_test'" | grep -q 1 || \
   sudo -u postgres createdb chatwoot_test 2>/dev/null || true
+
+# Configure peer authentication for local connections (no password needed)
+echo "PostgreSQL configured with peer authentication (local connections don't need password)"
 
 # 7. App setup (from project root)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -103,9 +108,12 @@ echo "== Setup complete =="
 echo ""
 echo "Configure .env with:"
 echo "  POSTGRES_USERNAME=postgres"
-echo "  POSTGRES_PASSWORD=your_password"
+echo "  POSTGRES_PASSWORD=  # Leave empty for local peer authentication"
 echo "  REDIS_URL=redis://localhost:6379"
 echo "  FRONTEND_URL=http://YOUR_IP:3000  # for network access"
+echo ""
+echo "Note: PostgreSQL uses 'peer' authentication for local connections,"
+echo "so no password is needed when connecting as the postgres user locally."
 echo ""
 echo "Then run:"
 echo "  bundle exec rails db:prepare"
