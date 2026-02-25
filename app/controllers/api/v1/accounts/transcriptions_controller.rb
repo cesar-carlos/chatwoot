@@ -1,7 +1,8 @@
+# rubocop:disable Metrics/ClassLength
 class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseController
   AUDIO_MAX_SIZE = 25.megabytes
-  GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
-  DEFAULT_MODEL = 'whisper-large-v3-turbo'
+  GROQ_API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'.freeze
+  DEFAULT_MODEL = 'whisper-large-v3-turbo'.freeze
   REQUEST_TIMEOUT = 60
   OPEN_TIMEOUT = 10
   ALLOWED_AUDIO_TYPES = %w[
@@ -14,7 +15,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   before_action :validate_audio_file, only: [:create]
 
   def create
-    Rails.logger.info "Starting audio transcription", {
+    Rails.logger.info 'Starting audio transcription', {
       attachment_id: params[:attachment_id],
       has_file: params[:file].present?,
       user_id: current_user.id,
@@ -23,7 +24,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
 
     check_cache_and_transcribe
   rescue StandardError => e
-    Rails.logger.error "Audio transcription failed", {
+    Rails.logger.error 'Audio transcription failed', {
       error: e.message,
       attachment_id: params[:attachment_id],
       user_id: current_user.id
@@ -45,7 +46,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     cached_transcription = get_cached_transcription(attachment)
 
     if cached_transcription && !force_refresh?
-      Rails.logger.info "Audio transcription cache hit", {
+      Rails.logger.info 'Audio transcription cache hit', {
         attachment_id: attachment&.id,
         user_id: current_user.id
       }
@@ -53,7 +54,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     else
       transcription = perform_transcription(attachment)
       save_to_cache(attachment, transcription) if attachment
-      Rails.logger.info "Audio transcription completed", {
+      Rails.logger.info 'Audio transcription completed', {
         attachment_id: attachment&.id,
         user_id: current_user.id,
         text_length: transcription[:text]&.length
@@ -63,7 +64,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   end
 
   def find_attachment
-    return nil unless params[:attachment_id].present?
+    return nil if params[:attachment_id].blank?
 
     Current.account.attachments.find_by(id: params[:attachment_id])
   end
@@ -72,7 +73,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     return nil unless attachment
     return nil unless attachment.meta.is_a?(Hash)
 
-    attachment.meta.dig('transcription')
+    attachment.meta['transcription']
   end
 
   def force_refresh?
@@ -212,7 +213,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     return unless audio_file_hash[:tempfile]
 
     audio_file_hash[:tempfile].close
-    File.delete(audio_file_hash[:tempfile].path) if File.exist?(audio_file_hash[:tempfile].path)
+    FileUtils.rm_f(audio_file_hash[:tempfile].path)
   end
 
   def check_feature_enabled
@@ -234,8 +235,9 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     }, status: :unprocessable_entity
   end
 
+  # rubocop:disable Metrics/MethodLength
   def validate_audio_file
-    unless params[:file].present? || params[:attachment_id].present?
+    if params[:file].blank? && params[:attachment_id].blank?
       render json: {
         error_type: 'validation_error',
         message: 'Audio file or attachment_id is required'
@@ -243,7 +245,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
       return
     end
 
-    return unless params[:file].present?
+    return if params[:file].blank?
 
     file_size = params[:file].size
     if file_size > AUDIO_MAX_SIZE
@@ -264,6 +266,7 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
       message: "Audio format #{content_type} is not supported"
     }, status: :unprocessable_entity
   end
+  # rubocop:enable Metrics/MethodLength
 
   def extension_from_content_type(content_type)
     subtype = content_type.to_s.downcase.split(';').first.to_s.split('/').last.to_s
@@ -287,50 +290,25 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   end
 
   def format_error_message(error_msg)
-    error_map = {
-      /api key|invalid_api_key|authentication/i => {
-        message: 'Invalid or expired Groq API key',
-        key: 'AUDIO.API_ERROR.INVALID_KEY'
-      },
-      /model not found/i => {
-        message: 'Transcription model not found',
-        key: 'AUDIO.API_ERROR.MODEL_NOT_FOUND'
-      },
-      /invalid audio format|unsupported/i => {
-        message: 'Audio format not supported by API',
-        key: 'AUDIO.API_ERROR.INVALID_FORMAT'
-      },
-      /file too large|size/i => {
-        message: 'File too large for processing',
-        key: 'AUDIO.API_ERROR.FILE_TOO_LARGE'
-      },
-      /timeout|timed out/i => {
-        message: 'Processing timeout. Try a smaller file or different preset.',
-        key: 'AUDIO.API_ERROR.TIMEOUT'
-      },
-      /connection|network/i => {
-        message: 'Connection problem with Groq API',
-        key: 'AUDIO.API_ERROR.CONNECTION'
-      },
-      /unauthorized|forbidden|401|403/i => {
-        message: 'Unauthorized. Check your Groq API token.',
-        key: 'AUDIO.API_ERROR.UNAUTHORIZED'
-      },
-      /rate limit|429/i => {
-        message: 'Rate limit exceeded. Please wait and try again.',
-        key: 'AUDIO.API_ERROR.RATE_LIMIT'
-      }
+    matched_error = error_patterns.find { |pattern, _| error_msg.match?(pattern) }
+    matched_error ? matched_error[1] : default_error(error_msg)
+  end
+
+  def error_patterns
+    {
+      /api key|invalid_api_key|authentication/i => { message: 'Invalid or expired Groq API key', key: 'AUDIO.API_ERROR.INVALID_KEY' },
+      /model not found/i => { message: 'Transcription model not found', key: 'AUDIO.API_ERROR.MODEL_NOT_FOUND' },
+      /invalid audio format|unsupported/i => { message: 'Audio format not supported by API', key: 'AUDIO.API_ERROR.INVALID_FORMAT' },
+      /file too large|size/i => { message: 'File too large for processing', key: 'AUDIO.API_ERROR.FILE_TOO_LARGE' },
+      /timeout|timed out/i => { message: 'Processing timeout. Try a smaller file', key: 'AUDIO.API_ERROR.TIMEOUT' },
+      /connection|network/i => { message: 'Connection problem with Groq API', key: 'AUDIO.API_ERROR.CONNECTION' },
+      /unauthorized|forbidden|401|403/i => { message: 'Unauthorized. Check your Groq API token.', key: 'AUDIO.API_ERROR.UNAUTHORIZED' },
+      /rate limit|429/i => { message: 'Rate limit exceeded. Please wait and try again.', key: 'AUDIO.API_ERROR.RATE_LIMIT' }
     }
+  end
 
-    matched_error = error_map.find { |pattern, _| error_msg.match?(pattern) }
-
-    if matched_error
-      matched_error[1]
-    else
-      {
-        message: "Transcription failed: #{error_msg}",
-        key: 'AUDIO.API_ERROR.GENERIC'
-      }
-    end
+  def default_error(error_msg)
+    { message: "Transcription failed: #{error_msg}", key: 'AUDIO.API_ERROR.GENERIC' }
   end
 end
+# rubocop:enable Metrics/ClassLength
