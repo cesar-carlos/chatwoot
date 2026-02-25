@@ -209,8 +209,12 @@
 - Token already filtered by existing parameter filter regex
 - Temp file cleanup handled in controller with FileUtils.rm_f
 
-**Phase 7: I18n** ✅ (completed during other phases)
-- All frontend strings in `en.json` (settings, conversation, errors)
+**Phase 7: I18n** ✅
+- All frontend strings in `en.json` and `pt_BR.json` (settings, conversation, errors)
+- Complete translations for:
+  - Profile settings (GROQ_TOKEN section)
+  - Audio transcription UI (AUDIO section)
+  - All error messages and feedback
 - Backend error messages with translation keys
 
 **Phase 8: Testing & Validation** 🔄 (in progress)

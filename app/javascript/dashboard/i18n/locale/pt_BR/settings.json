@@ -108,6 +108,21 @@
         "RESET_SUCCESS": "Token de acesso gerado novamente com sucesso",
         "RESET_ERROR": "Não foi possível regerar o token de acesso. Por favor, tente novamente"
       },
+      "GROQ_TOKEN": {
+        "TITLE": "Token da API Groq",
+        "NOTE": "Configure seu token da API Groq para habilitar recursos de transcrição de áudio. Obtenha seu token no Console Groq.",
+        "LABEL": "Token da API Groq",
+        "PLACEHOLDER": "Digite seu token da API Groq",
+        "HELP_TEXT": "Este token é usado para transcrever mensagens de áudio. Mantenha-o seguro e não o compartilhe.",
+        "GET_TOKEN_TEXT": "Obtenha seu token em",
+        "CONSOLE_LINK_TEXT": "Console Groq",
+        "SAVE_BTN": "Salvar Token",
+        "COPY": "Copiar",
+        "COPY_SUCCESS": "Token copiado para a área de transferência",
+        "COPY_ERROR": "Falha ao copiar o token",
+        "API_SUCCESS": "Token Groq atualizado com sucesso",
+        "API_ERROR": "Falha ao atualizar o token Groq. Por favor, tente novamente"
+      },
       "AUDIO_NOTIFICATIONS_SECTION": {
         "TITLE": "Alertas de áudio",
         "NOTE": "Habilitar notificações de áudio no painel para novas mensagens e conversas.",
