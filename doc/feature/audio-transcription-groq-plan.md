@@ -66,13 +66,13 @@
 - Bring the proven UX behavior into current audio chip with minimal coupling.
 
 ### TODO Checklist
-- [ ] Add transcribe action button to audio chip UI.
-- [ ] Add loading/disabled/feedback states.
-- [ ] Show token-missing dialog with action to profile settings.
-- [ ] Render transcript with priority: local API response -> persisted attachment transcript.
-- [ ] Keep existing playback, mute, speed, and download behavior unchanged.
-- [ ] Prevent repeated click storms while request/job is already `processing`.
-- [ ] Add/adjust frontend i18n strings (`en.json`) for all UI labels and errors.
+- [x] Add transcribe action button to audio chip UI.
+- [x] Add loading/disabled/feedback states.
+- [x] Show token-missing dialog with action to profile settings.
+- [x] Render transcript with priority: local API response -> persisted attachment transcript.
+- [x] Keep existing playback, mute, speed, and download behavior unchanged.
+- [x] Prevent repeated click storms while request/job is already `processing`.
+- [x] Add/adjust frontend i18n strings (`en.json`) for all UI labels and errors.
 
 ## Phase 5 - Unify with Existing Automatic Transcription
 - Preserve current enterprise async flow while eliminating metadata inconsistencies.
