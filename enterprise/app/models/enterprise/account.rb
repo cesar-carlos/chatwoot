@@ -116,6 +116,9 @@ module Enterprise::Account
   end
 
   def business_or_enterprise_plan?
+    # FORK: Self-hosted enterprise has no Stripe plan_name but should unlock business/enterprise sync rules
+    return true if ChatwootApp.self_hosted_enterprise?
+
     if billing_provider == 'shopify'
       return Enterprise::Billing::PlanConfiguration.current_plan(self)&.fetch('features', [])&.include?('advanced_assignment')
     end
