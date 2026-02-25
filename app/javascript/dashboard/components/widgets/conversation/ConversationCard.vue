@@ -53,11 +53,21 @@ const currentUser = useMapGetter('getCurrentUser');
 
 const chatMetadata = computed(() => props.chat.meta || {});
 
-const assignee = computed(() => chatMetadata.value.assignee || {});
-const isAssigned = computed(() => !!assignee.value.id);
-const showAssignmentButton = computed(
-  () => !isAssigned.value && !!currentUser.value?.id && props.canAssignToMe
-);
+const assignee = computed(() => chatMetadata.value.assignee);
+// FORK: assignme - Robust check for unassigned state - treat null, undefined, empty object, or missing id as unassigned
+const isAssigned = computed(() => {
+  if (!assignee.value) return false;
+  const assigneeId = assignee.value.id;
+  return assigneeId !== null && assigneeId !== undefined && assigneeId !== '' && assigneeId !== 0;
+});
+const showAssignmentButton = computed(() => {
+  // FORK: assignme - Show button if conversation is unassigned AND user is logged in AND has permission
+  const hasPermission = props.canAssignToMe;
+  const userExists = !!currentUser.value?.id;
+  const notAssigned = !isAssigned.value;
+  
+  return notAssigned && userExists && hasPermission;
+});
 
 const currentUserAgentInfo = computed(() => ({
   id: currentUser.value.id,
@@ -345,6 +355,7 @@ const fastAssign = e => {
         />
         <button
           v-show="showAssignmentButton"
+          :key="`assign-btn-${chat.id}-${assignee?.id || 'unassigned'}`"
           v-tooltip.bottom="$t('CONVERSATION.FAST_ASSIGN')"
           type="button"
           class="mt-1 ltr:ml-auto rtl:mr-auto bg-n-slate-5 dark:bg-n-slate-7 text-n-slate-12 text-xxs px-1.5 py-0.5 rounded font-medium transition-all duration-200 hover:bg-n-slate-6 dark:hover:bg-n-slate-8"

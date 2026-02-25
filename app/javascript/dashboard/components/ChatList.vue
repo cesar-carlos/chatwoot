@@ -48,15 +48,10 @@ import {
 import {
   getUserPermissions,
   filterItemsByPermission,
-  hasPermissions,
 } from 'dashboard/helper/permissionsHelper.js';
 import { matchesFilters } from '../store/modules/conversations/helpers/filterHelpers';
 import { CONVERSATION_EVENTS } from '../helper/AnalyticsHelper/events';
-import {
-  ASSIGNEE_TYPE_TAB_PERMISSIONS,
-  MANAGE_ALL_CONVERSATION_PERMISSIONS,
-  CONVERSATION_UNASSIGNED_PERMISSIONS,
-} from 'dashboard/constants/permissions.js';
+import { ASSIGNEE_TYPE_TAB_PERMISSIONS } from 'dashboard/constants/permissions.js';
 
 const props = defineProps({
   conversationInbox: { type: [String, Number], default: 0 },
@@ -201,12 +196,10 @@ const showAssigneeInConversationCard = computed(() => {
 });
 
 const canAssignToMe = computed(() => {
-  // FORK: assignme - Show button only for users with explicit conversation management permissions.
-  // Requires either MANAGE_ALL_CONVERSATION or CONVERSATION_UNASSIGNED permissions.
-  return hasPermissions(
-    [MANAGE_ALL_CONVERSATION_PERMISSIONS, CONVERSATION_UNASSIGNED_PERMISSIONS],
-    userPermissions.value
-  );
+  // FORK: assignme - If user can view unassigned conversations, they can assign to themselves.
+  // This is implied by their access to the conversation list.
+  // Only hide for users with no conversation access at all.
+  return !!currentUser.value && currentUser.value.id;
 });
 
 const currentPageFilterKey = computed(() => {
