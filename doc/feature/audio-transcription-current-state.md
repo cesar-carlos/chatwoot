@@ -1,5 +1,7 @@
 # Audio Transcription - Current State Analysis
 
+> **Status**: Implementation complete. This document describes the baseline state before changes and the decisions made. See `audio-transcription-groq-plan.md` for full implementation details.
+
 ## Existing Infrastructure
 
 ### Automatic Transcription Flow (Enterprise)
@@ -60,7 +62,7 @@
 - `transcribed_text` reading for legacy data
 - Message update events
 - Search reindexing behavior
-- Captain usage limit checks
+- ~~Captain usage limit checks~~ (removed: feature is standalone per scope decision)
 
 ### Migration Strategy
 - Add new canonical metadata structure alongside legacy
