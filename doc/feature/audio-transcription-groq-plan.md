@@ -89,14 +89,14 @@
 - Make the implementation resilient under real traffic and failures.
 
 ### TODO Checklist
-- [ ] Add explicit timeouts for external API requests.
-- [ ] Add controlled retry/discard strategy for async jobs and bad requests.
-- [ ] Enforce max audio size and allowed MIME/content validation.
-- [ ] Add safe temporary file handling and cleanup.
-- [ ] Add structured logs for transcription lifecycle and failure causes.
-- [ ] Add basic observability counters (success/error/cache-hit/latency) if instrumentation hooks exist.
-- [ ] Add feature kill switch (global) and account-level guard to disable transcription quickly.
-- [ ] Validate no secret/token leakage in logs, traces, and error payloads.
+- [x] Add explicit timeouts for external API requests.
+- [x] Add controlled retry/discard strategy for async jobs and bad requests.
+- [x] Enforce max audio size and allowed MIME/content validation.
+- [x] Add safe temporary file handling and cleanup.
+- [x] Add structured logs for transcription lifecycle and failure causes.
+- [x] Add basic observability counters (success/error/cache-hit/latency) if instrumentation hooks exist.
+- [x] Add feature kill switch (global) and account-level guard to disable transcription quickly.
+- [x] Validate no secret/token leakage in logs, traces, and error payloads.
 
 ## Phase 7 - Tests and Validation
 - Validate behavior end-to-end and prevent regressions.

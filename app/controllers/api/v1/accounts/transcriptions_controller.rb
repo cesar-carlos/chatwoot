@@ -4,13 +4,30 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   DEFAULT_MODEL = 'whisper-large-v3-turbo'
   REQUEST_TIMEOUT = 60
   OPEN_TIMEOUT = 10
+  ALLOWED_AUDIO_TYPES = %w[
+    audio/flac audio/mp3 audio/mp4 audio/m4a audio/mpeg audio/mpga
+    audio/ogg audio/wav audio/x-wav audio/webm
+  ].freeze
 
+  before_action :check_feature_enabled
   before_action :validate_groq_token
   before_action :validate_audio_file, only: [:create]
 
   def create
+    Rails.logger.info "Starting audio transcription", {
+      attachment_id: params[:attachment_id],
+      has_file: params[:file].present?,
+      user_id: current_user.id,
+      account_id: Current.account.id
+    }
+
     check_cache_and_transcribe
   rescue StandardError => e
+    Rails.logger.error "Audio transcription failed", {
+      error: e.message,
+      attachment_id: params[:attachment_id],
+      user_id: current_user.id
+    }
     handle_error(e)
   end
 
@@ -28,10 +45,19 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     cached_transcription = get_cached_transcription(attachment)
 
     if cached_transcription && !force_refresh?
+      Rails.logger.info "Audio transcription cache hit", {
+        attachment_id: attachment&.id,
+        user_id: current_user.id
+      }
       render json: format_cached_response(cached_transcription)
     else
       transcription = perform_transcription(attachment)
       save_to_cache(attachment, transcription) if attachment
+      Rails.logger.info "Audio transcription completed", {
+        attachment_id: attachment&.id,
+        user_id: current_user.id,
+        text_length: transcription[:text]&.length
+      }
       render json: transcription.merge(cached: false)
     end
   end
@@ -189,6 +215,15 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     File.delete(audio_file_hash[:tempfile].path) if File.exist?(audio_file_hash[:tempfile].path)
   end
 
+  def check_feature_enabled
+    return if Current.account.audio_transcriptions
+
+    render json: {
+      error_type: 'feature_disabled',
+      message: 'Audio transcription is not enabled for this account'
+    }, status: :forbidden
+  end
+
   def validate_groq_token
     return if current_user&.groq_token.present?
 
@@ -211,12 +246,22 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     return unless params[:file].present?
 
     file_size = params[:file].size
-    return unless file_size > AUDIO_MAX_SIZE
+    if file_size > AUDIO_MAX_SIZE
+      render json: {
+        error_type: 'validation_error',
+        translation_key: 'AUDIO.FILE_TOO_LARGE',
+        message: "File size #{(file_size / 1.megabyte).round(1)}MB exceeds maximum of 25MB"
+      }, status: :unprocessable_entity
+      return
+    end
+
+    content_type = params[:file].content_type
+    return if ALLOWED_AUDIO_TYPES.include?(content_type)
 
     render json: {
       error_type: 'validation_error',
-      translation_key: 'AUDIO.FILE_TOO_LARGE',
-      message: "File size #{(file_size / 1.megabyte).round(1)}MB exceeds maximum of 25MB"
+      translation_key: 'AUDIO.API_ERROR.INVALID_FORMAT',
+      message: "Audio format #{content_type} is not supported"
     }, status: :unprocessable_entity
   end
 
