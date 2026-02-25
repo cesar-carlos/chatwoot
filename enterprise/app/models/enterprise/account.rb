@@ -81,6 +81,9 @@ module Enterprise::Account
   end
 
   def business_or_enterprise_plan?
+    # FORK: Self-hosted enterprise has no Stripe plan_name but should unlock business/enterprise sync rules
+    return true if ChatwootApp.self_hosted_enterprise?
+
     plan_name = custom_attributes['plan_name']
     %w[Business Enterprise].include?(plan_name)
   end
