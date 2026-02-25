@@ -107,8 +107,8 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
   end
 
   def check_cloud_env
-    # FORK: Allow self-hosted Enterprise to access limits endpoint
-    return if ChatwootApp.self_hosted_enterprise?
+    # FORK: Allow self-hosted Enterprise only for limits endpoint
+    return if action_name == 'limits' && ChatwootApp.self_hosted_enterprise?
 
     render json: { error: 'Not found' }, status: :not_found unless ChatwootApp.chatwoot_cloud?
   end
