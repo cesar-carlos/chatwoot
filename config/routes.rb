@@ -282,6 +282,12 @@ Rails.application.routes.draw do
             end
           end
           resources :labels, only: [:index, :show, :create, :update, :destroy]
+          # FORK: audio transcription endpoint
+          resources :transcriptions, only: [:create] do
+            collection do
+              get :presets
+            end
+          end
 
           resources :notifications, only: [:index, :update, :destroy] do
             collection do

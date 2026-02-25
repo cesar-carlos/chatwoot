@@ -488,5 +488,33 @@
   },
   "GALLERY_VIEW": {
     "ERROR_DOWNLOADING": "Unable to download attachment. Please try again"
+  },
+  "AUDIO": {
+    "TRANSCRIBE": "Transcribe audio",
+    "TRANSCRIPTION": {
+      "SUCCESS": "Audio transcribed successfully",
+      "SUCCESS_CACHED": "Transcription loaded from cache",
+      "ERROR": "Failed to transcribe audio. Please try again"
+    },
+    "TOKEN_MISSING": {
+      "TITLE": "Groq Token Required",
+      "MESSAGE": "Please configure your Groq API token in Settings → Profile to use transcription features",
+      "GO_TO_SETTINGS": "Go to Settings",
+      "CANCEL": "Cancel"
+    },
+    "API_ERROR": {
+      "INVALID_KEY": "Invalid or expired Groq API key",
+      "MODEL_NOT_FOUND": "Transcription model not found",
+      "INVALID_FORMAT": "Audio format not supported by API",
+      "FILE_TOO_LARGE": "File too large for processing",
+      "TIMEOUT": "Processing timeout. Try a smaller file",
+      "CONNECTION": "Connection problem with Groq API",
+      "UNAUTHORIZED": "Unauthorized. Check your Groq API token",
+      "RATE_LIMIT": "Rate limit exceeded. Please wait and try again",
+      "GENERIC": "Transcription failed. Please try again"
+    },
+    "PRESETS": {
+      "ERROR": "Failed to load transcription presets"
+    }
   }
 }
