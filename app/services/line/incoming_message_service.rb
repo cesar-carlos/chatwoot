@@ -154,6 +154,12 @@ class Line::IncomingMessageService
     return if @conversation
 
     @conversation = ::Conversation.create!(conversation_params)
+    # FORK: make LINE honor lock_to_single_conversation inbox configuration
+    @conversation = Conversations::Resolver.new(
+      inbox: @inbox,
+      contact_inbox: @contact_inbox,
+      conversation_params: conversation_params
+    ).perform
   end
 
   def contact_attributes

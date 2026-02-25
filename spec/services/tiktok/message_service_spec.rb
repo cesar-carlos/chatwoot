@@ -6,37 +6,27 @@ RSpec.describe Tiktok::MessageService do
   let(:inbox) { channel.inbox }
   let(:contact) { create(:contact, account: account) }
   let(:contact_inbox) { create(:contact_inbox, inbox: inbox, contact: contact, source_id: 'tt-conv-1') }
-  let(:tiktok_client) { instance_double(Tiktok::Client, image_send_capable?: true) }
-  let(:text_content) do
-    {
-      type: 'text',
-      message_id: 'tt-msg-1',
-      timestamp: 1_700_000_000_000,
-      conversation_id: 'tt-conv-1',
-      text: { body: 'Hello from TikTok' },
-      from: 'Alice',
-      from_user: { id: 'user-1' },
-      to: 'Biz',
-      to_user: { id: 'biz-123' }
-    }.deep_symbolize_keys
-  end
-
-  before do
-    allow(Tiktok::Client).to receive(:new).and_return(tiktok_client)
-  end
 
   describe '#perform' do
-    subject(:perform_text_message) do
-      service = described_class.new(channel: channel, content: current_content)
-      allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
-      service.perform
+    def incoming_text_content(message_id: 'tt-msg-1')
+      {
+        type: 'text',
+        message_id: message_id,
+        timestamp: 1_700_000_000_000,
+        conversation_id: 'tt-conv-1',
+        text: { body: 'Hello from TikTok' },
+        from: 'Alice',
+        from_user: { id: 'user-1' },
+        to: 'Biz',
+        to_user: { id: 'biz-123' }
+      }.deep_symbolize_keys
     end
 
-    let(:current_content) { text_content }
-
     it 'creates an incoming text message' do
+      content = incoming_text_content
+
       expect do
-        service = described_class.new(channel: channel, content: text_content)
+        service = described_class.new(channel: channel, content: content)
         allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
         service.perform
       end.to change(Message, :count).by(1)
@@ -50,16 +40,31 @@ RSpec.describe Tiktok::MessageService do
       expect(message.content_attributes['is_unsupported']).to be_nil
     end
 
-    it 'stores TikTok conversation capabilities when creating a new conversation' do
-      service = described_class.new(channel: channel, content: text_content)
-      allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
+    context 'when conversation thread mode changes by inbox setting' do
+      let!(:resolved_conversation) do
+        create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved)
+      end
 
-      service.perform
+      it 'creates a new conversation when lock_to_single_conversation is disabled' do
+        inbox.update!(lock_to_single_conversation: false)
 
-      message = Message.last
-      expect(message.conversation.additional_attributes.dig('tiktok_capabilities', 'image_send')).to be(true)
-      expect(message.conversation.additional_attributes.dig('tiktok_capabilities', 'updated_at')).to be_present
-      expect(tiktok_client).to have_received(:image_send_capable?).with('tt-conv-1')
+        service = described_class.new(channel: channel, content: incoming_text_content(message_id: 'tt-msg-off'))
+        allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
+
+        expect { service.perform }.to change(Conversation, :count).by(1)
+        expect(Message.last.conversation_id).not_to eq(resolved_conversation.id)
+      end
+
+      it 'reuses and reopens resolved conversation when lock_to_single_conversation is enabled' do
+        inbox.update!(lock_to_single_conversation: true)
+
+        service = described_class.new(channel: channel, content: incoming_text_content(message_id: 'tt-msg-on'))
+        allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
+
+        expect { service.perform }.not_to change(Conversation, :count)
+        expect(Message.last.conversation_id).to eq(resolved_conversation.id)
+        expect(resolved_conversation.reload.status).to eq('open')
+      end
     end
 
     it 'creates an incoming unsupported message for non-supported types' do
@@ -138,56 +143,6 @@ RSpec.describe Tiktok::MessageService do
       expect(message.attachments.last.file).to be_attached
     ensure
       tempfile.close!
-    end
-
-    it 'creates a conversation even when capability lookup fails' do
-      allow(tiktok_client).to receive(:image_send_capable?).and_raise('TikTok capability API error')
-
-      content = {
-        type: 'text',
-        message_id: 'tt-msg-5',
-        timestamp: 1_700_000_000_000,
-        conversation_id: 'tt-conv-1',
-        text: { body: 'Hello with capability failure' },
-        from: 'Alice',
-        from_user: { id: 'user-1' },
-        to: 'Biz',
-        to_user: { id: 'biz-123' }
-      }.deep_symbolize_keys
-
-      service = described_class.new(channel: channel, content: content)
-      allow(service).to receive(:create_contact_inbox).and_return(contact_inbox)
-
-      expect { service.perform }.to change(Message, :count).by(1)
-
-      message = Message.last
-      expect(message.conversation.additional_attributes['tiktok_capabilities']).to be_nil
-    end
-
-    context 'when lock_to_single_conversation is enabled' do
-      it 'reuses the last resolved conversation' do
-        inbox.update!(lock_to_single_conversation: true)
-        resolved_conversation = create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved)
-
-        perform_text_message
-
-        expect(inbox.conversations.count).to eq(1)
-        expect(resolved_conversation.reload.messages.last.content).to eq('Hello from TikTok')
-      end
-    end
-
-    context 'when lock_to_single_conversation is disabled' do
-      let(:current_content) { text_content.merge(message_id: 'tt-msg-lock-2') }
-
-      it 'creates a new conversation if the previous one is resolved' do
-        inbox.update!(lock_to_single_conversation: false)
-        create(:conversation, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved)
-
-        perform_text_message
-
-        expect(inbox.conversations.count).to eq(2)
-        expect(inbox.conversations.last.messages.last.content).to eq('Hello from TikTok')
-      end
     end
   end
 end

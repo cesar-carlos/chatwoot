@@ -29,6 +29,12 @@ class Tiktok::MessageService
                         contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
                       end
     @conversation ||= create_conversation(channel, contact_inbox, tt_conversation_id)
+    # FORK: make TikTok honor lock_to_single_conversation inbox configuration
+    @conversation ||= Conversations::Resolver.new(
+      inbox: channel.inbox,
+      contact_inbox: contact_inbox,
+      conversation_params: conversation_params(channel, contact_inbox, tt_conversation_id)
+    ).perform
   end
 
   def create_message

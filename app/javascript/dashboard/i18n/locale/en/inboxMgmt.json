@@ -92,14 +92,6 @@
           "PLACEHOLDER": "Please enter your Webhook URL",
           "ERROR": "Please enter a valid URL"
         },
-        "CHANNEL_WEBHOOK_SECRET": {
-          "LABEL": "Webhook Secret",
-          "COPY": "Copy secret to clipboard",
-          "COPY_SUCCESS": "Secret copied to clipboard",
-          "TOGGLE": "Toggle secret visibility",
-          "RESET_SUCCESS": "Webhook secret regenerated successfully",
-          "RESET_ERROR": "Unable to regenerate webhook secret. Please try again"
-        },
         "CHANNEL_DOMAIN": {
           "LABEL": "Website Domain",
           "PLACEHOLDER": "Enter your website domain (eg: acme.com)"
@@ -411,7 +403,6 @@
           "AUTH_PROCESSING": "Authenticating with Meta",
           "WAITING_FOR_BUSINESS_INFO": "Please complete business setup in the Meta window...",
           "PROCESSING": "Setting up your WhatsApp Business Account",
-          "ENABLING_CALLING": "Enabling WhatsApp Calling on your number…",
           "LOADING_SDK": "Loading Facebook SDK...",
           "CANCELLED": "WhatsApp Signup was cancelled",
           "SUCCESS_TITLE": "WhatsApp Business Account Connected!",
@@ -585,10 +576,6 @@
             "TITLE": "WhatsApp",
             "DESCRIPTION": "Support your customers on WhatsApp"
           },
-          "WHATSAPP_CALL": {
-            "TITLE": "WhatsApp Call",
-            "DESCRIPTION": "Take voice calls on your WhatsApp number"
-          },
           "EMAIL": {
             "TITLE": "Email",
             "DESCRIPTION": "Connect with Gmail, Outlook, or other providers"
@@ -729,10 +716,8 @@
         "DISABLED": "Disabled"
       },
       "LOCK_TO_SINGLE_CONVERSATION": {
-        "ENABLED": "Reopen same conversation",
-        "DISABLED": "Create new conversations",
-        "ENABLED_DESCRIPTION": "When a contact messages again, the previous conversation will be reopened.",
-        "DISABLED_DESCRIPTION": "A new conversation will be created each time after the previous one is resolved."
+        "ENABLED": "Enabled",
+        "DISABLED": "Disabled"
       },
       "ENABLE_HMAC": {
         "LABEL": "Enable"
@@ -1136,9 +1121,8 @@
       "SENDER_NAME_SECTION_TEXT": "Enable/Disable showing Agent's name in email, if disabled it will show business name",
       "ENABLE_CONTINUITY_VIA_EMAIL": "Enable conversation continuity via email",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "Conversations will continue over email if the contact email address is available.",
-      "ENABLE_CONTINUITY_VIA_EMAIL_DISABLED_TEXT": "This feature is available on a paid plan. Upgrade to enable conversation continuity via email.",
-      "LOCK_TO_SINGLE_CONVERSATION": "Conversation Routing",
-      "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Configure conversation creation for existing contacts",
+      "LOCK_TO_SINGLE_CONVERSATION": "Reuse and reopen previous conversation",
+      "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "When enabled, new messages from the same contact reopen the previous conversation instead of creating a new one. Reports follow this mode for this inbox.",
       "INBOX_UPDATE_TITLE": "Inbox Settings",
       "INBOX_UPDATE_SUB_TEXT": "Update your inbox settings",
       "AUTO_ASSIGNMENT_SUB_TEXT": "Enable or disable the automatic assignment of new conversations to the agents added to this inbox.",
@@ -1425,8 +1409,8 @@
         },
         "SELECT_PLACEHOLDER": "select labels"
       },
-      "NOTE": "Note: CSAT surveys are sent only once per conversation",
-      "WHATSAPP_NOTE": "Note: When you save, the system creates a dedicated CSAT template in WhatsApp (used to capture rating and feedback in reports) and submits it as Utility for approval. Meta may still classify it as Marketing based on content. After approval, surveys are sent only once per conversation as per the survey rule.",
+      "NOTE": "Note: CSAT surveys are sent once per conversation by default. If single-conversation mode is enabled on the inbox, surveys are sent once per resolution cycle.",
+      "WHATSAPP_NOTE": "Note: When you save, the system creates a dedicated CSAT template in WhatsApp (used to capture rating and feedback in reports) and submits it as Utility for approval. Meta may still classify it as Marketing based on content. By default, surveys are sent once per conversation. If single-conversation mode is enabled on the inbox, surveys are sent once per resolution cycle as per the survey rule.",
       "API": {
         "SUCCESS_MESSAGE": "CSAT settings updated successfully",
         "ERROR_MESSAGE": "We couldn't update CSAT settings. Please try again later."
@@ -1479,8 +1463,7 @@
         "LABEL": "Password",
         "PLACE_HOLDER": "Password"
       },
-      "ENABLE_SSL": "Enable SSL",
-      "AUTH_MECHANISM": "Authentication"
+      "ENABLE_SSL": "Enable SSL"
     },
     "MICROSOFT": {
       "TITLE": "Microsoft",
