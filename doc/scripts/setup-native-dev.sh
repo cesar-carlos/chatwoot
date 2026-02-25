@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Setup Chatwoot development environment (native, no Docker)
 # OS: Ubuntu 24.04 LTS
-# Installs: PostgreSQL 16, Redis, Ruby 3.4.4 (rbenv), Node 24, pnpm
+# Installs: PostgreSQL 16, Redis, Ruby 3.4.4 (rbenv), Node 24, pnpm, ffmpeg
 
 set -e
 
@@ -21,7 +21,7 @@ sudo apt-get install -y \
   curl git build-essential libpq-dev libssl-dev libreadline-dev \
   zlib1g-dev libyaml-dev libxml2-dev libxslt1-dev libffi-dev \
   libgmp-dev libncurses5-dev libgdbm-dev libgdbm6 \
-  libvips imagemagick postgresql-client
+  libvips imagemagick postgresql-client ffmpeg
 
 # 2. PostgreSQL 16
 echo ""
@@ -105,6 +105,9 @@ pnpm install
 
 echo ""
 echo "== Setup complete =="
+echo ""
+echo "ffmpeg:"
+ffmpeg -version | sed -n '1p' || echo "  not found (check apt install logs)"
 echo ""
 echo "Configure .env with:"
 echo "  POSTGRES_USERNAME=postgres"

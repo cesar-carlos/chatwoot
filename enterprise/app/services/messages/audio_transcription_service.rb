@@ -109,15 +109,16 @@ class Messages::AudioTranscriptionService< Llm::LegacyBaseOpenAiService
   def update_transcription(transcribed_text)
     return if transcribed_text.blank?
 
-    # FORK: safe merge of meta to preserve other keys
+    # FORK: safe merge of meta to preserve other keys, using canonical shape
     current_meta = attachment.meta.to_h
-    current_meta['transcribed_text'] = transcribed_text
+    current_meta['transcribed_text'] = transcribed_text # backward compatibility
     current_meta['transcription'] = {
       'text' => transcribed_text,
       'state' => 'success',
       'provider' => 'openai',
       'model' => WHISPER_MODEL,
-      'transcribed_at' => Time.current.to_i
+      'transcribed_at' => Time.current.to_i,
+      'metadata' => {}
     }
 
     attachment.update!(meta: current_meta)

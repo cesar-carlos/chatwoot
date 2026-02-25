@@ -16,7 +16,7 @@ import { emitter } from 'shared/helpers/mitt';
 import { useTranscription } from 'dashboard/composables/useTranscription'; // FORK: audio transcription
 import { useI18n } from 'vue-i18n'; // FORK: audio transcription i18n
 
-const { attachment } = defineProps({
+const props = defineProps({
   attachment: {
     type: Object,
     required: true,
@@ -26,6 +26,8 @@ const { attachment } = defineProps({
     default: true,
   },
 });
+
+const { attachment } = props;
 
 defineOptions({
   inheritAttrs: false,
@@ -270,7 +272,7 @@ const transcriptText = computed(() => {
 
     <!-- FORK: audio transcription display with priority -->
     <div
-      v-if="transcriptText && showTranscribedText"
+      v-if="transcriptText && props.showTranscribedText"
       class="text-n-slate-12 p-3 text-sm bg-n-alpha-1 rounded-lg w-full break-words"
     >
       {{ displayedTranscript }}
