@@ -7,6 +7,7 @@
 
 ## Scope Decisions
 - Provider strategy: Groq token per user profile.
+- Independence: Audio transcription is a standalone feature, NOT tied to Captain or any other feature.
 - Fork strategy: minimal core edits, isolate behavior where possible, and mark divergent lines with `FORK:` tags.
 - Delivery strategy: feature branch -> internal review -> integration branch from updated `main` -> merge to fork `main`.
 - Security strategy: do not index `users.groq_token`, never log token values, and keep token masked in UI.
@@ -198,6 +199,8 @@
 - Updated AudioTranscriptionService to use safe meta merge
 - Write to both `transcribed_text` (legacy) and `transcription` (canonical)
 - Added idempotency check reading both metadata keys
+- Removed Captain dependency (feature is now standalone)
+- Removed usage limit checks (independent feature)
 - Preserved existing message update and search reindex behavior
 - All changes marked with FORK comments
 
