@@ -52,15 +52,15 @@
 - Implement account-scoped endpoint for on-demand transcription from audio message UI.
 
 ### TODO Checklist
-- [ ] Add routes for `transcriptions#create` and `transcriptions#presets`.
-- [ ] Create controller for transcription request lifecycle.
-- [ ] Validate token presence, file constraints, and request parameters.
-- [ ] Prefer `attachment_id` server-side fetch to avoid browser re-upload bottleneck.
-- [ ] Keep multipart fallback path only if strictly necessary.
-- [ ] Implement robust error mapping (invalid key, timeout, rate limit, format issues).
-- [ ] Add safe caching in attachment metadata (merge, never overwrite full `meta`).
-- [ ] Add explicit API timeouts (`open_timeout`, `read_timeout`) and map timeout errors to stable API responses.
-- [ ] Ensure non-retryable errors are classified correctly (401/403/validation) vs retryable (timeout/network/429).
+- [x] Add routes for `transcriptions#create` and `transcriptions#presets`.
+- [x] Create controller for transcription request lifecycle.
+- [x] Validate token presence, file constraints, and request parameters.
+- [x] Prefer `attachment_id` server-side fetch to avoid browser re-upload bottleneck.
+- [x] Keep multipart fallback path only if strictly necessary.
+- [x] Implement robust error mapping (invalid key, timeout, rate limit, format issues).
+- [x] Add safe caching in attachment metadata (merge, never overwrite full `meta`).
+- [x] Add explicit API timeouts (`open_timeout`, `read_timeout`) and map timeout errors to stable API responses.
+- [x] Ensure non-retryable errors are classified correctly (401/403/validation) vs retryable (timeout/network/429).
 
 ## Phase 4 - Conversation Audio UI Behavior
 - Bring the proven UX behavior into current audio chip with minimal coupling.
