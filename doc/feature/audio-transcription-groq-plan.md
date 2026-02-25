@@ -231,6 +231,7 @@
 4. **Error Handling**: Comprehensive mapping with translation keys
 5. **Performance**: Server-side file fetch to avoid browser re-upload
 6. **Reliability**: Feature flag, timeouts, MIME validation, structured logging
+7. **I18n**: Complete translations in English and Portuguese (pt-BR)
 
 ### Files Modified (with FORK markers)
 - `app/controllers/api/v1/profiles_controller.rb`
@@ -248,6 +249,12 @@
 - `app/javascript/dashboard/composables/useTranscription.js`
 - `doc/feature/audio-transcription-groq-plan.md`
 - `doc/feature/audio-transcription-current-state.md`
+
+### I18n Files Modified
+- `app/javascript/dashboard/i18n/locale/en/settings.json` (GROQ_TOKEN section)
+- `app/javascript/dashboard/i18n/locale/en/conversation.json` (AUDIO section)
+- `app/javascript/dashboard/i18n/locale/pt_BR/settings.json` (GROQ_TOKEN section)
+- `app/javascript/dashboard/i18n/locale/pt_BR/conversation.json` (AUDIO section)
 
 ### Next Steps
 1. Start development server and test token configuration
