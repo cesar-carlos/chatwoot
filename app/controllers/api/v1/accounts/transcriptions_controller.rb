@@ -15,20 +15,11 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   before_action :validate_audio_file, only: [:create]
 
   def create
-    Rails.logger.info 'Starting audio transcription', {
-      attachment_id: params[:attachment_id],
-      has_file: params[:file].present?,
-      user_id: current_user.id,
-      account_id: Current.account.id
-    }
+    Rails.logger.info "Starting audio transcription: attachment_id=#{params[:attachment_id]} user_id=#{current_user.id}"
 
     check_cache_and_transcribe
   rescue StandardError => e
-    Rails.logger.error 'Audio transcription failed', {
-      error: e.message,
-      attachment_id: params[:attachment_id],
-      user_id: current_user.id
-    }
+    Rails.logger.error "Audio transcription failed: #{e.message} attachment_id=#{params[:attachment_id]}"
     handle_error(e)
   end
 
@@ -46,19 +37,12 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     cached_transcription = get_cached_transcription(attachment)
 
     if cached_transcription && !force_refresh?
-      Rails.logger.info 'Audio transcription cache hit', {
-        attachment_id: attachment&.id,
-        user_id: current_user.id
-      }
+      Rails.logger.info "Audio transcription cache hit: attachment_id=#{attachment&.id}"
       render json: format_cached_response(cached_transcription)
     else
       transcription = perform_transcription(attachment)
       save_to_cache(attachment, transcription) if attachment
-      Rails.logger.info 'Audio transcription completed', {
-        attachment_id: attachment&.id,
-        user_id: current_user.id,
-        text_length: transcription[:text]&.length
-      }
+      Rails.logger.info "Audio transcription completed: attachment_id=#{attachment&.id} length=#{transcription[:text]&.length}"
       render json: transcription.merge(cached: false)
     end
   end
