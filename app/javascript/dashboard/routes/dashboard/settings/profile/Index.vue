@@ -20,6 +20,7 @@ import SectionLayout from '../account/components/SectionLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import AccessToken from './AccessToken.vue';
 import MfaSettingsCard from './MfaSettingsCard.vue';
+import GroqToken from './GroqToken.vue'; // FORK: audio transcription token config
 import ActiveSessions from './ActiveSessions.vue';
 import Policy from 'dashboard/components/policy.vue';
 import RadioCard from 'dashboard/components-next/radioCard/RadioCard.vue';
@@ -43,6 +44,7 @@ export default {
     AudioNotifications,
     AccessToken,
     MfaSettingsCard,
+    GroqToken,
     ActiveSessions,
     BaseSettingsHeader,
   },
@@ -67,6 +69,7 @@ export default {
       displayName: '',
       email: '',
       messageSignature: '',
+      groqToken: '', // FORK: audio transcription token
       hotKeys: [
         {
           key: 'enter',
@@ -135,6 +138,7 @@ export default {
       this.avatarUrl = this.currentUser.avatar_url;
       this.displayName = this.currentUser.display_name;
       this.messageSignature = this.currentUser.message_signature;
+      this.groqToken = this.currentUser.groq_token || ''; // FORK: audio transcription token
     },
     async dispatchUpdate(payload, successMessage, errorMessage) {
       let alertMessage = '';
@@ -183,6 +187,15 @@ export default {
       let errorMessage = this.$t(
         'PROFILE_SETTINGS.FORM.MESSAGE_SIGNATURE_SECTION.API_ERROR'
       );
+
+      await this.dispatchUpdate(payload, successMessage, errorMessage);
+    },
+    // FORK: audio transcription token update
+    async updateGroqToken(token) {
+      this.groqToken = token;
+      const payload = { groq_token: token };
+      let successMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_SUCCESS');
+      let errorMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_ERROR');
 
       await this.dispatchUpdate(payload, successMessage, errorMessage);
     },
@@ -368,6 +381,14 @@ export default {
         @on-copy="onCopyToken"
         @on-reset="resetAccessToken"
       />
+    </SectionLayout>
+    <!-- FORK: audio transcription token config -->
+    <SectionLayout
+      with-border
+      :title="$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.TITLE')"
+      :description="$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.NOTE')"
+    >
+      <GroqToken :groq-token="groqToken" @update-groq-token="updateGroqToken" />
     </SectionLayout>
   </div>
 </template>
