@@ -6,11 +6,15 @@ import {
   ref,
   getCurrentInstance,
 } from 'vue';
+import { useRouter } from 'vue-router'; // FORK: audio transcription navigation
 import Icon from 'next/icon/Icon.vue';
+import Dialog from 'dashboard/components-next/dialog/Dialog.vue'; // FORK: audio transcription token dialog
 import { timeStampAppendedURL } from 'dashboard/helper/URLHelper';
 import { downloadFile } from '@chatwoot/utils';
 import { useEmitter } from 'dashboard/composables/emitter';
 import { emitter } from 'shared/helpers/mitt';
+import { useTranscription } from 'dashboard/composables/useTranscription'; // FORK: audio transcription
+import { useI18n } from 'vue-i18n'; // FORK: audio transcription i18n
 
 const { attachment } = defineProps({
   attachment: {
@@ -51,6 +55,14 @@ const duration = ref(0);
 const playbackSpeed = ref(1);
 
 const { uid } = getCurrentInstance();
+const { t } = useI18n(); // FORK: audio transcription
+const router = useRouter(); // FORK: audio transcription
+
+// FORK: audio transcription composable
+const { isTranscribing, transcription, hasGroqToken, transcribe } =
+  useTranscription();
+
+const tokenMissingDialogRef = ref(null); // FORK: audio transcription dialog
 
 // MediaRecorder-produced WebM/Opus blobs lack a Duration header → <audio>.duration
 // resolves to Infinity until we seek past the end, which forces the engine to
@@ -159,6 +171,27 @@ const downloadAudio = async () => {
   const { fileType, dataUrl, extension } = attachment;
   downloadFile({ url: dataUrl, type: fileType, extension });
 };
+
+// FORK: audio transcription handler
+const handleTranscribe = async () => {
+  if (!hasGroqToken()) {
+    tokenMissingDialogRef.value?.open();
+    return;
+  }
+
+  await transcribe(attachment);
+};
+
+// FORK: audio transcription navigation to settings
+const goToSettings = () => {
+  tokenMissingDialogRef.value?.close();
+  router.push({ name: 'profile_settings_index' });
+};
+
+// FORK: computed transcript text with priority
+const transcriptText = computed(() => {
+  return transcription.value || attachment.transcribedText || '';
+});
 </script>
 
 <template>
@@ -177,7 +210,20 @@ const downloadAudio = async () => {
     v-bind="$attrs"
     class="rounded-xl w-full gap-2 p-1.5 bg-n-alpha-white flex flex-col items-center border border-n-container shadow-[0px_2px_8px_0px_rgba(94,94,94,0.06)]"
   >
-    <div class="flex gap-1 w-full flex-1 items-center justify-start">
+    <div class="flex gap-0.5 w-full flex-1 items-center justify-start">
+      <!-- FORK: audio transcription button -->
+      <button
+        class="p-0 border-0 size-6 grid place-content-center"
+        :disabled="isTranscribing"
+        :title="t('AUDIO.TRANSCRIBE')"
+        @click="handleTranscribe"
+      >
+        <Icon
+          class="size-3.5"
+          :class="{ 'animate-pulse': isTranscribing }"
+          icon="i-lucide-ear"
+        />
+      </button>
       <button class="p-0 border-0 size-8" @click="playOrPause">
         <Icon
           v-if="isPlaying"
@@ -222,8 +268,9 @@ const downloadAudio = async () => {
       </button>
     </div>
 
+    <!-- FORK: audio transcription display with priority -->
     <div
-      v-if="attachment.transcribedText && showTranscribedText"
+      v-if="transcriptText && showTranscribedText"
       class="text-n-slate-12 p-3 text-sm bg-n-alpha-1 rounded-lg w-full break-words"
     >
       {{ displayedTranscript }}
@@ -238,6 +285,19 @@ const downloadAudio = async () => {
             : $t('CONVERSATION.VOICE_CALL.TRANSCRIPT_SHOW_MORE')
         }}
       </button>
+      {{ transcriptText }}
     </div>
   </div>
+
+  <!-- FORK: audio transcription token missing dialog -->
+  <Dialog
+    ref="tokenMissingDialogRef"
+    type="alert"
+    width="md"
+    :title="t('AUDIO.TOKEN_MISSING.TITLE')"
+    :description="t('AUDIO.TOKEN_MISSING.MESSAGE')"
+    :confirm-button-label="t('AUDIO.TOKEN_MISSING.GO_TO_SETTINGS')"
+    :cancel-button-label="t('AUDIO.TOKEN_MISSING.CANCEL')"
+    @confirm="goToSettings"
+  />
 </template>
