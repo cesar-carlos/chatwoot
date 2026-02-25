@@ -29,7 +29,8 @@ class Messages::AudioTranscriptionService
   end
 
   def transcribe_audio
-    transcribed_text = attachment.meta&.[]('transcribed_text') || ''
+    # FORK: check both legacy and canonical keys for idempotency
+    transcribed_text = attachment.meta&.dig('transcription', 'text') || attachment.meta&.[]('transcribed_text') || ''
     return transcribed_text if transcribed_text.present?
 
     transcribed_text = Llm::SpeechToTextService.new(blob: attachment.file.blob, account: account).perform
@@ -40,7 +41,18 @@ class Messages::AudioTranscriptionService
   def update_transcription(transcribed_text)
     return if transcribed_text.blank?
 
-    attachment.update!(meta: { transcribed_text: transcribed_text })
+    # FORK: safe merge of meta to preserve other keys
+    current_meta = attachment.meta.to_h
+    current_meta['transcribed_text'] = transcribed_text
+    current_meta['transcription'] = {
+      'text' => transcribed_text,
+      'state' => 'success',
+      'provider' => 'openai',
+      'model' => WHISPER_MODEL,
+      'transcribed_at' => Time.current.to_i
+    }
+
+    attachment.update!(meta: current_meta)
     message.reload.send_update_event
 
     return unless ChatwootApp.advanced_search_allowed?
