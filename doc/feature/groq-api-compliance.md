@@ -26,16 +26,15 @@ https://console.groq.com/docs/speech-to-text
 - ✅ `temperature`: 0.0 (recomendado pela documentação)
 
 ### Formatos de Áudio Suportados
-Documentação Groq: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, webm
+Documentação Groq: flac, mp3, mp4, mpeg, mpga, m4a, ogg, opus, wav, webm
 
 Nossa implementação:
-```ruby
-ALLOWED_AUDIO_TYPES = %w[
-  audio/flac audio/mp3 audio/mp4 audio/m4a audio/mpeg audio/mpga
-  audio/ogg audio/wav audio/x-wav audio/webm
-].freeze
-```
-✅ Todos os formatos cobertos (incluindo x-wav como variante)
+- **Envio direto** (sem conversão): flac, mp3, mp4, mpeg, mpga, m4a, ogg, opus, wav, webm
+- **Normalização MIME**: `audio/oga` e `audio/x-oga` → `audio/ogg` (Groq aceita ogg)
+- **Normalização de filename**: `.oga` → `.ogg` (Groq valida pela extensão do arquivo)
+- **Conversão via FFmpeg** (`AudioConverterService`): aac, amr, vnd.wave → mp3
+- Serviço: `app/services/audio_converter_service.rb`
+✅ Formatos nativos enviados direto; formatos não suportados convertidos para mp3
 
 ### Limites de Arquivo
 - ✅ Max: 25 MB (tier gratuito) / 100 MB (tier dev)
@@ -58,6 +57,11 @@ ALLOWED_AUDIO_TYPES = %w[
 **Depois**: Removido temporariamente (é opcional)
 
 **Motivo**: Simplificar para garantir funcionamento básico primeiro
+
+### 3. Normalização de arquivos .oga
+**Problema**: Arquivos com extensão `.oga` (mesmo com content-type `audio/opus` ou `audio/ogg`) eram rejeitados pelo Groq.
+**Solução**: Em `fetch_audio_from_attachment`, normalizar filename `.oga` → `.ogg` e content-type `audio/oga`/`audio/x-oga` → `audio/ogg` antes de enviar.
+**Motivo**: Groq valida pela extensão do arquivo; `.oga` não está na lista aceita.
 
 ## 📋 Response Format
 
@@ -85,22 +89,22 @@ ALLOWED_AUDIO_TYPES = %w[
 }
 ```
 
-### Nossa implementação salva:
+### Nossa implementação salva (canonical shape):
 ```ruby
 {
   text: data['text'],
   state: 'success',
   provider: 'groq',
   model: data['model'],
+  transcribed_at: Time.current.to_i,
   metadata: {
-    transcribed_at: Time.current.to_i,
     segments: data['segments'],
     language: data['language'],
     duration: data['duration']
   }
 }
 ```
-✅ Compatível e preserva informações importantes
+✅ Compatível com documentação; `transcribed_at` no nível raiz; `metadata` para dados extras
 
 ## 🎯 Recomendações da Documentação Groq
 

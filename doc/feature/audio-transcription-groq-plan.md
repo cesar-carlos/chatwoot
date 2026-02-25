@@ -10,7 +10,7 @@
 - Independence: Audio transcription is a standalone feature, NOT tied to Captain or any other feature.
 - Fork strategy: minimal core edits, isolate behavior where possible, and mark divergent lines with `FORK:` tags.
 - Delivery strategy: feature branch -> internal review -> integration branch from updated `main` -> merge to fork `main`.
-- Security strategy: do not index `users.groq_token`, never log token values, and keep token masked in UI.
+- Security strategy: do not index `users.groq_token`, never log token values, expose only `has_groq_token` (boolean) from API; token is write-only via profile update.
 - API strategy: prefer `attachment_id` server-side transcription path; keep multipart only as fallback.
 - Data strategy: unify transcript cache contract while keeping backward compatibility with legacy `transcribed_text`.
 
@@ -42,7 +42,7 @@
 ### TODO Checklist
 - [x] Add migration for `users.groq_token` (without index).
 - [x] Permit `groq_token` in profile update params.
-- [x] Expose `groq_token` in user serializer payload.
+- [x] Expose `has_groq_token` (boolean) in user serializer; token is write-only from API.
 - [x] Add `GroqToken` UI section in profile settings page.
 - [x] Ensure token field remains masked and is never printed in client logs/errors.
 - [x] Ensure backend filtered parameters include `groq_token` to prevent sensitive logging.
@@ -189,7 +189,7 @@
 **Phase 2: User Token Configuration** ✅
 - Added `groq_token` column to users table (no index for security)
 - Updated ProfilesController to permit token (with FORK marker)
-- Exposed token in user serializer
+- Exposed `has_groq_token` (boolean) in user serializer; token is write-only from API
 - Created GroqToken.vue component for token management
 - Integrated token section in profile settings UI
 - Added i18n strings for all token-related UI
@@ -235,6 +235,16 @@
 - Added `AudioConverterService` for conditional conversion of unsupported formats
 - Added MIME normalization (`audio/oga`/`audio/x-oga` -> `audio/ogg`) to avoid unnecessary conversion
 
+**Hardening Pass (2026-02)** ✅
+- Security: Token write-only; `has_groq_token` boolean exposed instead of token value
+- Backend: `.oga` filename extension normalized to `.ogg` in `fetch_audio_from_attachment` (Groq validates by extension)
+- Backend: Explicit `attachment_id` validation with 404 response when not found
+- Backend: HTTP status mapping (401, 408, 429, 502, 503) per error type; `:unprocessable_content` where appropriate
+- Frontend: Fixed `Audio.vue` props usage (`showTranscribedText`); multipart header removed (browser sets boundary)
+- I18n: Added `AUDIO.API_ERROR.FFMPEG_MISSING` and `FILE_TOO_LARGE` keys (en, pt_BR)
+- Metadata: Canonical metadata shape aligned across manual and automatic flows (`transcribed_at`, `metadata` structure)
+- Setup: Added `ffmpeg` to `doc/scripts/setup-native-dev.sh`
+
 **Phase 7: I18n** ✅
 - All frontend strings in `en.json` and `pt_BR.json` (settings, conversation, errors)
 - Complete translations for:
@@ -253,7 +263,7 @@
 
 1. **Metadata Strategy**: Canonical `transcription` object + legacy `transcribed_text` for compatibility
 2. **Idempotency**: Check both keys before processing to avoid duplicate work
-3. **Security**: No index on token, filtered from logs, masked in UI
+3. **Security**: No index on token, filtered from logs; API exposes only `has_groq_token` (boolean); token is write-only via profile update
 4. **Error Handling**: Comprehensive mapping with translation keys
 5. **Performance**: Server-side file fetch to avoid browser re-upload
 6. **Reliability**: Feature flag, timeouts, MIME validation, structured logging
@@ -262,9 +272,12 @@
 
 ### Files Modified (with FORK markers)
 - `app/controllers/api/v1/profiles_controller.rb`
-- `app/views/api/v1/models/_user.json.jbuilder`
+- `app/views/api/v1/models/_user.json.jbuilder` (exposes `has_groq_token`, not token)
 - `app/javascript/dashboard/routes/dashboard/settings/profile/Index.vue`
+- `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
 - `app/javascript/dashboard/components-next/message/chips/Audio.vue`
+- `app/javascript/dashboard/api/transcription.js`
+- `app/javascript/dashboard/composables/useTranscription.js`
 - `config/routes.rb`
 - `enterprise/app/services/messages/audio_transcription_service.rb`
 
@@ -277,6 +290,7 @@
 - `app/javascript/dashboard/composables/useTranscription.js`
 - `doc/feature/audio-transcription-groq-plan.md`
 - `doc/feature/audio-transcription-current-state.md`
+- `doc/scripts/setup-native-dev.sh` (ffmpeg dependency)
 
 ### I18n Files Modified
 - `app/javascript/dashboard/i18n/locale/en/settings.json` (GROQ_TOKEN section)
