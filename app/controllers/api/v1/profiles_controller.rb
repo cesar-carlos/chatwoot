@@ -65,6 +65,7 @@ class Api::V1::ProfilesController < Api::BaseController
       :avatar,
       :message_signature,
       :account_id,
+      :groq_token, # FORK: audio transcription with Groq per-user token
       ui_settings: {}
     )
   end
