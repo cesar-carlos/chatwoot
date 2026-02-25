@@ -138,6 +138,24 @@
     "OPEN_AI": {
       "AI_ASSIST": "Inteligência Artificial",
       "WITH_AI": " {option} com IA ",
+      "REPLY_OPTIONS": {
+        "IMPROVE_REPLY": "Melhorar resposta",
+        "IMPROVE_REPLY_SELECTION": "Melhorar a seleção",
+        "CHANGE_TONE": {
+          "TITLE": "Alterar tom",
+          "OPTIONS": {
+            "PROFESSIONAL": "Profissional",
+            "CASUAL": "Casual",
+            "STRAIGHTFORWARD": "Objetivo",
+            "CONFIDENT": "Confiante",
+            "FRIENDLY": "Amigável"
+          }
+        },
+        "GRAMMAR": "Corrigir gramática e ortografia",
+        "SUGGESTION": "Sugerir uma resposta",
+        "SUMMARIZE": "Resumir a conversa",
+        "ASK_COPILOT": "Perguntar ao Copilot"
+      },
       "OPTIONS": {
         "REPLY_SUGGESTION": "Sugestão de resposta",
         "SUMMARIZE": "Resumir",
