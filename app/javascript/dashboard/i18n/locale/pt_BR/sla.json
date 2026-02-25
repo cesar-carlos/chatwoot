@@ -9,7 +9,7 @@
     "LOADING": "Buscando SLAs",
     "SEARCH_PLACEHOLDER": "Pesquisar SLA...",
     "SEARCH": {
-      "NO_RESULTS": "Nenhuma SLA encontrada correspondente à sua busca"
+      "NO_RESULTS": "Nenhum SLA encontrado para sua pesquisa"
     },
     "PAYWALL": {
       "TITLE": "Atualize para criar SLAs",
@@ -35,8 +35,8 @@
         "TITLE_2": "Enterprise P1",
         "DESC_2": "Questões levantadas por clientes empresariais que precisam ser reconhecidas rapidamente."
       },
-      "BUSINESS_HOURS_ON": "Ativado",
-      "BUSINESS_HOURS_OFF": "Desativado",
+      "BUSINESS_HOURS_ON": "Horários de funcionamento",
+      "BUSINESS_HOURS_OFF": "Horário comercial desligado",
       "RESPONSE_TYPES": {
         "FRT": "Próximo limite de tempo de resposta",
         "NRT": "Próximo limite de tempo de resposta",
