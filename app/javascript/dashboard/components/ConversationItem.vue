@@ -175,6 +175,57 @@ const onAssignPriority = priority => {
 const onDeleteConversation = () => {
   deleteConversation(props.source.id);
   closeContextMenu();
+export default {
+  components: {
+    ConversationCard,
+  },
+  inject: [
+    'selectConversation',
+    'deSelectConversation',
+    'assignAgent',
+    'assignTeam',
+    'assignLabels',
+    'removeLabels',
+    'updateConversationStatus',
+    'toggleContextMenu',
+    'markAsUnread',
+    'markAsRead',
+    'assignPriority',
+    'isConversationSelected',
+    // FORK: assignme - Expose assignment pending state for fast-assign loading.
+    'isAssignPending',
+    'deleteConversation',
+  ],
+  props: {
+    source: {
+      type: Object,
+      required: true,
+    },
+    teamId: {
+      type: [String, Number],
+      default: 0,
+    },
+    label: {
+      type: String,
+      default: '',
+    },
+    conversationType: {
+      type: String,
+      default: '',
+    },
+    foldersId: {
+      type: [String, Number],
+      default: 0,
+    },
+    showAssignee: {
+      type: Boolean,
+      default: false,
+    },
+    canAssignToMe: {
+      type: Boolean,
+      default: false,
+    },
+  },
 };
 </script>
 
@@ -206,6 +257,8 @@ const onDeleteConversation = () => {
     :inbox="inbox"
     :selected="isConversationSelected(source.id)"
     :is-active-chat="isActiveChat"
+    :is-assign-pending="isAssignPending(source.id)"
+    :can-assign-to-me="canAssignToMe"
     :show-assignee="showAssignee"
     :show-inbox-name="showInboxName"
     @click="onCardClick"

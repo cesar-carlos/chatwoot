@@ -12,6 +12,7 @@ import UnreadBadge from 'dashboard/components-next/Conversation/ConversationCard
 import SLACardLabel from './components/SLACardLabel.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
+import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -24,6 +25,10 @@ const props = defineProps({
   showInboxName: { type: Boolean, default: false },
   hideThumbnail: { type: Boolean, default: false },
   compact: { type: Boolean, default: false },
+  enableContextMenu: { type: Boolean, default: false },
+  allowedContextMenuOptions: { type: Array, default: () => [] },
+  isAssignPending: { type: Boolean, default: false },
+  canAssignToMe: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -34,6 +39,44 @@ const emit = defineEmits([
 ]);
 
 const hovered = ref(false);
+const showContextMenu = ref(false);
+const contextMenu = ref({
+  x: null,
+  y: null,
+});
+
+const currentChat = useMapGetter('getSelectedChat');
+const inboxesList = useMapGetter('inboxes/getInboxes');
+const activeInbox = useMapGetter('getSelectedInbox');
+const accountId = useMapGetter('getCurrentAccountId');
+const currentUser = useMapGetter('getCurrentUser');
+
+const chatMetadata = computed(() => props.chat.meta || {});
+
+const assignee = computed(() => chatMetadata.value.assignee || {});
+const isAssigned = computed(() => !!assignee.value.id);
+const showAssignmentButton = computed(
+  () => !isAssigned.value && !!currentUser.value?.id && props.canAssignToMe
+);
+
+const currentUserAgentInfo = computed(() => ({
+  id: currentUser.value.id,
+  name: currentUser.value.name,
+  email: currentUser.value.email,
+  avatar_url: currentUser.value.avatar_url,
+}));
+
+const senderId = computed(() => chatMetadata.value.sender?.id);
+
+const currentContact = computed(() => {
+  return senderId.value
+    ? store.getters['contacts/getContact'](senderId.value)
+    : {};
+});
+
+const isActiveChat = computed(() => {
+  return currentChat.value.id === props.chat.id;
+});
 
 const unreadCount = computed(() => props.chat.unread_count);
 const hasUnread = computed(() => unreadCount.value > 0);
@@ -71,9 +114,17 @@ const showLabelsSection = computed(() => {
 });
 
 const messagePreviewClass = computed(() => {
+  let previewPaddingClass = '';
+  if (showAssignmentButton.value) {
+    previewPaddingClass = 'ltr:pr-24 rtl:pl-24';
+  } else if (!props.compact && hasUnread.value) {
+    previewPaddingClass = 'ltr:pr-4 rtl:pl-4';
+  }
+
   return [
     hasUnread.value ? 'font-medium text-n-slate-12' : 'text-n-slate-11',
-    !props.compact && hasUnread.value ? 'ltr:pr-4 rtl:pl-4' : '',
+    // FORK: assignme - Reserve width so message preview doesn't overlap fast-assign action.
+    previewPaddingClass,
     props.compact && hasUnread.value ? 'ltr:pr-6 rtl:pl-6' : '',
   ];
 });
@@ -105,6 +156,63 @@ watch(
     hovered.value = false;
   }
 );
+const closeContextMenu = () => {
+  emit('contextMenuToggle', false);
+  showContextMenu.value = false;
+  contextMenu.value.x = null;
+  contextMenu.value.y = null;
+};
+
+const onUpdateConversation = (status, snoozedUntil) => {
+  closeContextMenu();
+  emit('updateConversationStatus', props.chat.id, status, snoozedUntil);
+};
+
+const onAssignAgent = agent => {
+  emit('assignAgent', agent, [props.chat.id]);
+  closeContextMenu();
+};
+
+const onAssignLabel = label => {
+  emit('assignLabel', [label.title], [props.chat.id]);
+};
+
+const onRemoveLabel = label => {
+  emit('removeLabel', [label.title], [props.chat.id]);
+};
+
+const onAssignTeam = team => {
+  emit('assignTeam', team, props.chat.id);
+  closeContextMenu();
+};
+
+const markAsUnread = () => {
+  emit('markAsUnread', props.chat.id);
+  closeContextMenu();
+};
+
+const markAsRead = () => {
+  emit('markAsRead', props.chat.id);
+  closeContextMenu();
+};
+
+const assignPriority = priority => {
+  emit('assignPriority', priority, props.chat.id);
+  closeContextMenu();
+};
+
+const deleteConversation = () => {
+  emit('deleteConversation', props.chat.id);
+  closeContextMenu();
+};
+
+const fastAssign = e => {
+  // FORK: assignme - Prevent card navigation on button click and guard against concurrent requests.
+  e.stopPropagation();
+  if (props.isAssignPending) return;
+
+  emit('assignAgent', currentUserAgentInfo.value, [props.chat.id]);
+};
 </script>
 
 <template>
@@ -147,6 +255,10 @@ watch(
       </Avatar>
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
+    <!-- FORK: assignme - Keep card height stable across lists after assignment changes. -->
+    <div
+      class="px-0 pt-3 pb-8 border-b group-hover:border-transparent flex-1 border-n-slate-3 min-w-0"
+    >
       <div
         v-if="showMetaSection"
         class="flex items-center min-w-0 gap-1"
@@ -231,6 +343,30 @@ watch(
           :count="unreadCount"
           class="ltr:ml-auto rtl:mr-auto mt-1"
         />
+        <button
+          v-show="showAssignmentButton"
+          v-tooltip.bottom="$t('CONVERSATION.FAST_ASSIGN')"
+          type="button"
+          class="mt-1 ltr:ml-auto rtl:mr-auto bg-n-slate-5 dark:bg-n-slate-7 text-n-slate-12 text-xxs px-1.5 py-0.5 rounded font-medium transition-all duration-200 hover:bg-n-slate-6 dark:hover:bg-n-slate-8"
+          :class="{ 'opacity-70 pointer-events-none': isAssignPending }"
+          :disabled="isAssignPending"
+          :aria-label="$t('CONVERSATION.FAST_ASSIGN')"
+          @click="fastAssign($event)"
+        >
+          <template v-if="isAssignPending">
+            <Spinner
+              :size="10"
+              class="text-n-slate-12 ltr:mr-1 rtl:ml-1 inline-block"
+            />
+          </template>
+          {{ $t('CONVERSATION.FAST_ASSIGN') }}
+        </button>
+        <span
+          class="shadow-lg rounded-full text-xxs font-semibold h-4 leading-4 ltr:ml-auto rtl:mr-auto mt-1 min-w-[1rem] px-1 py-0 text-center text-white bg-n-teal-9"
+          :class="hasUnread ? 'block' : 'hidden'"
+        >
+          {{ unreadCount > 9 ? '9+' : unreadCount }}
+        </span>
       </div>
       <CardLabels
         v-if="showLabelsSection"
