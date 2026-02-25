@@ -40,7 +40,8 @@ class BulkActionsJob < ApplicationJob
   def available_params(params)
     return unless params[:fields]
 
-    params[:fields].delete_if { |key, value| value.nil? && key == 'status' }
+    # FORK: assignme - Handle both symbol and string keys to avoid nil-status filtering bugs.
+    params[:fields].delete_if { |key, value| value.nil? && key.to_s == 'status' }
   end
 
   def bulk_add_labels(conversation)

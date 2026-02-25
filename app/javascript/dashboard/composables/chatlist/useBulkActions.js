@@ -15,6 +15,9 @@ export function useBulkActions() {
     'bulkActions/getSelectedConversationIds'
   );
   const selectedInboxes = ref([]);
+  // FORK: assignme - Tracks pending conversation IDs to prevent concurrent assignment requests.
+  // Uses Set for O(1) lookup performance during rapid user interactions.
+  const pendingAssignConversationIds = ref(new Set());
 
   function selectConversation(conversationId, inboxId) {
     store.dispatch('bulkActions/setSelectedConversationIds', conversationId);
@@ -56,29 +59,96 @@ export function useBulkActions() {
     return selectedConversations.value.includes(id);
   }
 
+  // FORK: assignme - Keep a consistent payload shape for single and multiple assignment paths.
+  function normalizeConversationIds(conversationId) {
+    if (conversationId) {
+      return Array.isArray(conversationId) ? conversationId : [conversationId];
+    }
+
+    return selectedConversations.value;
+  }
+
+  // FORK: assignme - Used by conversation cards to render loading from real request state.
+  function isAssignPending(conversationId) {
+    return pendingAssignConversationIds.value.has(conversationId);
+  }
+
+  function markAssignPending(conversationIds) {
+    pendingAssignConversationIds.value = new Set([
+      ...pendingAssignConversationIds.value,
+      ...conversationIds,
+    ]);
+  }
+
+  function clearAssignPending(conversationIds) {
+    const nextPending = new Set(pendingAssignConversationIds.value);
+    conversationIds.forEach(id => nextPending.delete(id));
+    pendingAssignConversationIds.value = nextPending;
+  }
+
   // Same method used in context menu, conversationId being passed from there.
   async function onAssignAgent(agent, conversationId = null) {
+    const conversationIds = normalizeConversationIds(conversationId);
+    if (!conversationIds.length) return;
+
+    const assigneeId = agent?.id ?? null;
+    const assigneeName =
+      agent?.name || t('CONVERSATION_SIDEBAR.SELECT.PLACEHOLDER');
+
+    if (conversationIds.some(id => isAssignPending(id))) return;
+
+    markAssignPending(conversationIds);
+
     try {
       await store.dispatch('bulkActions/process', {
         type: 'Conversation',
-        ids: conversationId || selectedConversations.value,
+        ids: conversationIds,
         fields: {
-          assignee_id: agent.id,
+          assignee_id: assigneeId,
         },
       });
+
+      // FORK: assignme - Intentionally NOT doing optimistic UI update here.
+      // Optimistic assignee mutation conflicts with DynamicScroller reconciliation when item
+      // changes lists (unassigned -> assigned), causing null vnode errors. We rely on ActionCable
+      // to broadcast the change (200-500ms latency is acceptable for stability).
+
       store.dispatch('bulkActions/clearSelectedConversationIds');
       if (conversationId) {
         useAlert(
           t('CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.SUCCESFUL', {
-            agentName: agent.name,
-            conversationId,
+            agentName: assigneeName,
+            conversationId: conversationIds[0],
           })
         );
       } else {
         useAlert(t('BULK_ACTION.ASSIGN_SUCCESFUL'));
       }
     } catch (err) {
-      useAlert(t('BULK_ACTION.ASSIGN_FAILED'));
+      const status = err?.response?.status;
+      if (status === 403) {
+        useAlert(
+          t(
+            'CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.PERMISSION_DENIED'
+          )
+        );
+      } else if (status === 422) {
+        useAlert(
+          t(
+            'CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.VALIDATION_FAILED'
+          )
+        );
+      } else if (status === 408 || status === 504) {
+        useAlert(
+          t('CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.TIMEOUT')
+        );
+      } else {
+        useAlert(
+          t('CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.FAILED')
+        );
+      }
+    } finally {
+      clearAssignPending(conversationIds);
     }
   }
 
@@ -227,6 +297,7 @@ export function useBulkActions() {
     selectAllConversations,
     resetBulkActions,
     isConversationSelected,
+    isAssignPending,
     onAssignAgent,
     onAssignLabels,
     onRemoveLabels,

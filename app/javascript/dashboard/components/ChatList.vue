@@ -48,10 +48,15 @@ import {
 import {
   getUserPermissions,
   filterItemsByPermission,
+  hasPermissions,
 } from 'dashboard/helper/permissionsHelper.js';
 import { matchesFilters } from '../store/modules/conversations/helpers/filterHelpers';
 import { CONVERSATION_EVENTS } from '../helper/AnalyticsHelper/events';
-import { ASSIGNEE_TYPE_TAB_PERMISSIONS } from 'dashboard/constants/permissions.js';
+import {
+  ASSIGNEE_TYPE_TAB_PERMISSIONS,
+  MANAGE_ALL_CONVERSATION_PERMISSIONS,
+  CONVERSATION_UNASSIGNED_PERMISSIONS,
+} from 'dashboard/constants/permissions.js';
 
 const props = defineProps({
   conversationInbox: { type: [String, Number], default: 0 },
@@ -119,6 +124,7 @@ const {
   selectAllConversations,
   resetBulkActions,
   isConversationSelected,
+  isAssignPending,
   onAssignAgent,
   onAssignLabels,
   onRemoveLabels,
@@ -191,6 +197,15 @@ const showAssigneeInConversationCard = computed(() => {
   return (
     hasAppliedFiltersOrActiveFolders.value ||
     activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.ALL
+  );
+});
+
+const canAssignToMe = computed(() => {
+  // FORK: assignme - Show button only for users with explicit conversation management permissions.
+  // Requires either MANAGE_ALL_CONVERSATION or CONVERSATION_UNASSIGNED permissions.
+  return hasPermissions(
+    [MANAGE_ALL_CONVERSATION_PERMISSIONS, CONVERSATION_UNASSIGNED_PERMISSIONS],
+    userPermissions.value
   );
 });
 
@@ -847,6 +862,8 @@ provide('markAsUnread', markAsUnread);
 provide('markAsRead', markAsRead);
 provide('assignPriority', assignPriority);
 provide('isConversationSelected', isConversationSelected);
+// FORK: assignme - Lets conversation cards render assign loading from request state.
+provide('isAssignPending', isAssignPending);
 provide('deleteConversation', handleDelete);
 
 watch(activeTeam, () => resetAndFetchData());
@@ -963,6 +980,68 @@ watch(conversationFilters, (newVal, oldVal) => {
       :is-on-expanded-layout="isOnExpandedLayout"
       @load-more="loadMoreConversations"
     />
+    <div
+      ref="conversationListRef"
+      class="overflow-hidden flex-1 conversations-list hover:overflow-y-auto"
+      :class="{ 'overflow-hidden': isContextMenuOpen }"
+    >
+      <DynamicScroller
+        ref="conversationDynamicScroller"
+        :items="conversationList"
+        key-field="id"
+        :min-item-size="24"
+        class="overflow-auto w-full h-full"
+      >
+        <template #default="{ item, index, active }">
+          <!--
+            If we encounter resizing issues, we can set the `watchData` prop to true
+            this will deeply watch the entire object instead of just size dependencies
+            But it can impact performance
+          -->
+          <DynamicScrollerItem
+            :key="item.id"
+            :item="item"
+            :active="active"
+            :data-index="index"
+            :size-dependencies="[
+              item.messages,
+              item.labels,
+              item.uuid,
+              item.inbox_id,
+              item.meta?.assignee?.id,
+            ]"
+          >
+            <ConversationItem
+              :source="item"
+              :label="label"
+              :team-id="teamId"
+              :folders-id="foldersId"
+              :conversation-type="conversationType"
+              :can-assign-to-me="canAssignToMe"
+              :show-assignee="showAssigneeInConversationCard"
+              @select-conversation="selectConversation"
+              @de-select-conversation="deSelectConversation"
+            />
+          </DynamicScrollerItem>
+        </template>
+        <template #after>
+          <div v-if="chatListLoading" class="flex justify-center my-4">
+            <Spinner class="text-n-brand" />
+          </div>
+          <p
+            v-else-if="showEndOfListMessage"
+            class="p-4 text-center text-n-slate-11"
+          >
+            {{ $t('CHAT_LIST.EOF') }}
+          </p>
+          <IntersectionObserver
+            v-else
+            :options="intersectionObserverOptions"
+            @observed="loadMoreConversations"
+          />
+        </template>
+      </DynamicScroller>
+    </div>
     <Dialog
       ref="deleteConversationDialogRef"
       type="alert"

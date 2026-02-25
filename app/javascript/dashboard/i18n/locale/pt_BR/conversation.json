@@ -6,6 +6,7 @@
     "SWITCH_VIEW_LAYOUT": "Alternar o layout",
     "DASHBOARD_APP_TAB_MESSAGES": "Mensagens",
     "UNVERIFIED_SESSION": "A identidade deste usuário não foi verificada",
+    "FAST_ASSIGN": "Atribuir para mim",
     "NO_MESSAGE_1": "Oh oh! Parece que não há mensagens de clientes na sua caixa de entrada.",
     "NO_MESSAGE_2": " para enviar uma mensagem para sua página!",
     "NO_INBOX_1": "Hola! Parece que você não adicionou nenhuma caixa de entrada ainda.",
@@ -188,7 +189,10 @@
       "API": {
         "AGENT_ASSIGNMENT": {
           "SUCCESFUL": "ID da conversa {conversationId} atribuído para \"{agentName}\"",
-          "FAILED": "Não foi possível atribuir agente. Por favor, tente novamente."
+          "FAILED": "Não foi possível atribuir agente. Por favor, tente novamente.",
+          "PERMISSION_DENIED": "Você não tem permissão para atribuir esta conversa.",
+          "VALIDATION_FAILED": "Não foi possível atribuir a conversa. Revise os dados e tente novamente.",
+          "TIMEOUT": "A solicitação de atribuição expirou. Tente novamente."
         },
         "LABEL_ASSIGNMENT": {
           "SUCCESFUL": "Etiqueta #{labelName} atribuída para a conversa {conversationId}",

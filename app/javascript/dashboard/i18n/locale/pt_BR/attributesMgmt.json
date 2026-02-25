@@ -7,11 +7,10 @@
     "LEARN_MORE": "Saiba mais sobre atributos personalizados",
     "COUNT": "{n} atributo | {n} atributos",
     "SEARCH_PLACEHOLDER": "Pesquisar atributos...",
-    "NO_RESULTS": "Nenhum atributo encontrado correspondente à sua busca",
+    "NO_RESULTS": "Nenhum atributo encontrado para sua pesquisa",
     "ATTRIBUTE_MODELS": {
       "CONVERSATION": "Conversas",
-      "CONTACT": "Contato",
-      "COMPANY": "Empresa"
+      "CONTACT": "Contato"
     },
     "ATTRIBUTE_TYPES": {
       "TEXT": "Texto",
@@ -58,19 +57,15 @@
           "IN_VALID": "Chave inválida"
         },
         "REGEX_PATTERN": {
-          "LABEL": "Expressão Regex",
+          "LABEL": "Regex Pattern",
           "PLACEHOLDER": "Por favor, insira o padrão de expressão regular para atributo personalizado. (Opcional)"
         },
         "REGEX_CUE": {
-          "LABEL": "Orientação de validação Regex",
+          "LABEL": "Regex Cue",
           "PLACEHOLDER": "Por favor, insira uma dica para o padrão de expressão regular. (Opcional)"
         },
         "ENABLE_REGEX": {
           "LABEL": "Habilitar validação do regex"
-        },
-        "BADGES": {
-          "PRE_CHAT": "Pré-chat",
-          "RESOLUTION": "Resolução"
         }
       },
       "API": {
@@ -109,8 +104,7 @@
     "TABS": {
       "HEADER": "Atributos Personalizados",
       "CONVERSATION": "Conversas",
-      "CONTACT": "Contato",
-      "COMPANY": "Empresa"
+      "CONTACT": "Contato"
     },
     "LIST": {
       "TABLE_HEADER": {
@@ -128,11 +122,11 @@
         "NOT_FOUND": "Não há atributos personalizados configurados"
       },
       "REGEX_PATTERN": {
-        "LABEL": "Expressão Regex",
+        "LABEL": "Regex Pattern",
         "PLACEHOLDER": "Por favor, insira o padrão de expressão regular para atributo personalizado. (Opcional)"
       },
       "REGEX_CUE": {
-        "LABEL": "Orientação de validação Regex",
+        "LABEL": "Regex Cue",
         "PLACEHOLDER": "Por favor, insira uma dica para o padrão de expressão regular. (Opcional)"
       },
       "ENABLE_REGEX": {
