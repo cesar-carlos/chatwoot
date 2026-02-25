@@ -147,3 +147,109 @@
 - Duplicate transcription requests are safely deduplicated per attachment.
 - No secret/token appears in logs or API error payloads.
 - No upstream PR is created; merge is completed internally in fork `main`.
+
+---
+
+## Implementation Summary
+
+### Completed Phases (0-6)
+
+**Phase 0: Branch Setup** ✅
+- Created feature branch `feat/audio-transcription-groq`
+- Confirmed fork-internal workflow (no upstream PR)
+- Defined integration strategy via merge branch
+
+**Phase 1: Current State Analysis** ✅
+- Mapped existing automatic transcription flow in `enterprise/`
+- Documented metadata overwrite issue in legacy service
+- Defined canonical metadata contract with backward compatibility
+- Created detailed current state analysis document
+
+**Phase 2: User Token Configuration** ✅
+- Added `groq_token` column to users table (no index for security)
+- Updated ProfilesController to permit token (with FORK marker)
+- Exposed token in user serializer
+- Created GroqToken.vue component for token management
+- Integrated token section in profile settings UI
+- Added i18n strings for all token-related UI
+- Token automatically filtered from logs via existing parameter filter
+
+**Phase 3: Manual Transcription API** ✅
+- Created TranscriptionsController with create/presets endpoints
+- Implemented server-side fetch via `attachment_id` (preferred path)
+- Added multipart upload fallback for compatibility
+- Implemented safe metadata merge (preserves existing keys)
+- Added comprehensive error mapping for Groq API responses
+- Set explicit timeouts (60s request, 10s open)
+- Created frontend API client and useTranscription composable
+- Added i18n strings for audio transcription errors
+- Added routes with FORK marker
+
+**Phase 4: Conversation UI Integration** ✅
+- Added transcribe button with ear icon to Audio.vue chip
+- Integrated useTranscription composable with loading states
+- Added token-missing dialog with navigation to settings
+- Display transcript with priority: API response > cached text
+- Prevented duplicate clicks while transcribing
+- Preserved existing playback controls
+- All changes marked with FORK comments
+
+**Phase 5: Automatic Flow Integration** ✅
+- Updated AudioTranscriptionService to use safe meta merge
+- Write to both `transcribed_text` (legacy) and `transcription` (canonical)
+- Added idempotency check reading both metadata keys
+- Preserved existing message update and search reindex behavior
+- All changes marked with FORK comments
+
+**Phase 6: Reliability & Security** ✅
+- Added feature flag check (`audio_transcriptions` account setting)
+- Added structured logging for lifecycle events
+- Added MIME type validation for audio files
+- Improved file size validation with early return
+- Token already filtered by existing parameter filter regex
+- Temp file cleanup handled in controller with FileUtils.rm_f
+
+**Phase 7: I18n** ✅ (completed during other phases)
+- All frontend strings in `en.json` (settings, conversation, errors)
+- Backend error messages with translation keys
+
+**Phase 8: Testing & Validation** 🔄 (in progress)
+- [x] Migration executed successfully
+- [x] RuboCop offenses fixed
+- [x] ESLint auto-fixes applied
+- [ ] Manual testing pending
+
+### Key Technical Decisions
+
+1. **Metadata Strategy**: Canonical `transcription` object + legacy `transcribed_text` for compatibility
+2. **Idempotency**: Check both keys before processing to avoid duplicate work
+3. **Security**: No index on token, filtered from logs, masked in UI
+4. **Error Handling**: Comprehensive mapping with translation keys
+5. **Performance**: Server-side file fetch to avoid browser re-upload
+6. **Reliability**: Feature flag, timeouts, MIME validation, structured logging
+
+### Files Modified (with FORK markers)
+- `app/controllers/api/v1/profiles_controller.rb`
+- `app/views/api/v1/models/_user.json.jbuilder`
+- `app/javascript/dashboard/routes/dashboard/settings/profile/Index.vue`
+- `app/javascript/dashboard/components-next/message/chips/Audio.vue`
+- `config/routes.rb`
+- `enterprise/app/services/messages/audio_transcription_service.rb`
+
+### New Files Created
+- `db/migrate/20260225131709_add_groq_token_to_users.rb`
+- `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
+- `app/controllers/api/v1/accounts/transcriptions_controller.rb`
+- `app/javascript/dashboard/api/transcription.js`
+- `app/javascript/dashboard/composables/useTranscription.js`
+- `doc/feature/audio-transcription-groq-plan.md`
+- `doc/feature/audio-transcription-current-state.md`
+
+### Next Steps
+1. Start development server and test token configuration
+2. Test manual transcription with valid/invalid tokens
+3. Test automatic transcription compatibility
+4. Verify cache behavior and error messages
+5. Create integration branch from latest `main`
+6. Merge feature branch into integration branch
+7. Final validation and merge to fork `main`
