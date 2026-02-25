@@ -288,8 +288,8 @@
 - `app/services/audio_converter_service.rb`
 - `app/javascript/dashboard/api/transcription.js`
 - `app/javascript/dashboard/composables/useTranscription.js`
-- `doc/feature/audio-transcription-groq-plan.md`
-- `doc/feature/audio-transcription-current-state.md`
+- `doc/feature/audio-transcription/audio-transcription-groq-plan.md`
+- `doc/feature/audio-transcription/audio-transcription-current-state.md`
 - `doc/scripts/setup-native-dev.sh` (ffmpeg dependency)
 
 ### I18n Files Modified
