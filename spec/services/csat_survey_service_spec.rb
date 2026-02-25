@@ -74,6 +74,51 @@ describe CsatSurveyService do
         expect(Conversations::ActivityMessageJob).not_to have_received(:perform_later)
       end
 
+      context 'when lock_to_single_conversation is enabled' do
+        before do
+          inbox.update!(lock_to_single_conversation: true)
+          allow(conversation).to receive(:can_reply?).and_return(true)
+        end
+
+        it 'allows sending CSAT again for a new cycle after reopen' do
+          create(:message, conversation: conversation, content_type: :input_csat, message_type: :outgoing, created_at: 2.days.ago)
+          create(
+            :reporting_event,
+            account: account,
+            inbox: inbox,
+            conversation: conversation,
+            name: 'conversation_opened',
+            value: 0,
+            event_start_time: 1.day.ago,
+            event_end_time: 1.day.ago
+          )
+
+          service.perform
+
+          expect(MessageTemplates::Template::CsatSurvey).to have_received(:new).with(conversation: conversation)
+          expect(csat_template).to have_received(:perform)
+        end
+
+        it 'blocks duplicate CSAT in the same cycle' do
+          create(
+            :reporting_event,
+            account: account,
+            inbox: inbox,
+            conversation: conversation,
+            name: 'conversation_opened',
+            value: 0,
+            event_start_time: 2.hours.ago,
+            event_end_time: 2.hours.ago
+          )
+          create(:message, conversation: conversation, content_type: :input_csat, message_type: :outgoing, created_at: 1.hour.ago)
+
+          service.perform
+
+          expect(MessageTemplates::Template::CsatSurvey).not_to have_received(:new)
+          expect(Conversations::ActivityMessageJob).not_to have_received(:perform_later)
+        end
+      end
+
       it 'does nothing for Twitter conversations' do
         twitter_channel = create(:channel_twitter_profile)
         twitter_inbox = create(:inbox, channel: twitter_channel, csat_survey_enabled: true)
