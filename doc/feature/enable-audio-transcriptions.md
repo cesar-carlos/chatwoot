@@ -30,28 +30,13 @@ Account.find_each do |account|
 end
 ```
 
-## 🎨 Solução via UI (Requer Feature Captain)
+## 🎨 Solução via UI
 
-A interface de configuração `Audio Transcription` só aparece em **Settings → Account Settings** se a feature flag `captain_integration` estiver habilitada.
+A interface de configuração `Audio Transcription` aparece em **Settings → Account Settings**.
 
-Para habilitar Captain + Audio Transcription via console:
+Basta acessar a página e usar o toggle switch para habilitar/desabilitar.
 
-```ruby
-account = Account.find(1)
-
-# Habilita a feature Captain (necessária para mostrar a UI)
-account.enable_features!('captain_integration')
-
-# Habilita Audio Transcription
-account.audio_transcriptions = true
-account.save!
-
-puts "✅ Captain enabled: #{account.feature_captain_integration?}"
-puts "✅ Audio transcription enabled: #{account.audio_transcriptions}"
-```
-
-Depois disso, a opção aparecerá em:
-- **Settings → Account Settings → Audio Transcription** (toggle switch)
+**Nota**: A feature de transcrição é independente e NÃO requer Captain ou outras features.
 
 ## Testando
 

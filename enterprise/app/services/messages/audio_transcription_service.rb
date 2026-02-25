@@ -32,11 +32,11 @@ class Messages::AudioTranscriptionService< Llm::LegacyBaseOpenAiService
 
   private
 
+  # FORK: audio transcription is independent, not tied to Captain
   def can_transcribe?
-    return false unless account.feature_enabled?('captain_integration')
     return false if account.audio_transcriptions.blank?
 
-    account.usage_limits[:captain][:responses][:current_available].positive?
+    true
   end
 
   def audio_too_large?
@@ -122,7 +122,6 @@ class Messages::AudioTranscriptionService< Llm::LegacyBaseOpenAiService
 
     attachment.update!(meta: current_meta)
     message.reload.send_update_event
-    message.account.increment_response_usage
 
     return unless ChatwootApp.advanced_search_allowed?
 

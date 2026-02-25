@@ -62,11 +62,9 @@ export default {
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
       isOnChatwootCloud: 'globalConfig/isOnChatwootCloud',
     }),
+    // FORK: audio transcription is independent, not tied to Captain
     showAudioTranscriptionConfig() {
-      return this.isFeatureEnabledonAccount(
-        this.accountId,
-        FEATURE_FLAGS.CAPTAIN
-      );
+      return true;
     },
     languagesSortedByCode() {
       const enabledLanguages = [...this.enabledLanguages];
