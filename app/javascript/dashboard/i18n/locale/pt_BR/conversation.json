@@ -509,6 +509,7 @@
       "CONNECTION": "Problema de conexão com a API Groq",
       "UNAUTHORIZED": "Não autorizado. Verifique seu token da API Groq",
       "RATE_LIMIT": "Limite de taxa excedido. Por favor, aguarde e tente novamente",
+      "FFMPEG_MISSING": "FFmpeg não disponível. Falha na conversão do formato de áudio",
       "GENERIC": "Transcrição falhou. Por favor, tente novamente"
     },
     "PRESETS": {

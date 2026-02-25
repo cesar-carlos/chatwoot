@@ -19,13 +19,8 @@ const emit = defineEmits(['updateGroqToken']);
 const { t } = useI18n();
 const tokenValue = ref(props.groqToken);
 
-watch(
-  () => props.groqToken,
-  value => {
-    tokenValue.value = value;
-  },
-  { immediate: true }
-);
+// Token is write-only from backend, so we don't sync from props after mount
+// User must re-enter token to update it
 
 const updateToken = () => {
   emit('updateGroqToken', tokenValue.value);
