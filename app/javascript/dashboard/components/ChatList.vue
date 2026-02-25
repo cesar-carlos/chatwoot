@@ -199,7 +199,7 @@ const canAssignToMe = computed(() => {
   // FORK: assignme - If user can view unassigned conversations, they can assign to themselves.
   // This is implied by their access to the conversation list.
   // Only hide for users with no conversation access at all.
-  return !!currentUser.value && currentUser.value.id;
+  return !!(currentUser.value && currentUser.value.id);
 });
 
 const currentPageFilterKey = computed(() => {

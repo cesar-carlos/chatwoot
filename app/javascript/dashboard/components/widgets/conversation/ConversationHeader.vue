@@ -121,7 +121,7 @@ const copyConversationId = async () => {
         class="ltr:mr-2 rtl:ml-2"
       />
       <Avatar
-        :name="currentContact.name"
+        :name="currentContact.name ?? ''"
         :src="currentContact.thumbnail"
         :size="32"
         :status="currentContact.availability_status"

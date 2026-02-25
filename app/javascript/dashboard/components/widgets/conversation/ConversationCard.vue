@@ -245,7 +245,7 @@ const fastAssign = e => {
     >
       <Avatar
         v-if="!hideThumbnail"
-        :name="currentContact.name"
+        :name="currentContact.name ?? ''"
         :src="currentContact.thumbnail"
         :size="32"
         :status="currentContact.availability_status"
