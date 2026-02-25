@@ -37,8 +37,17 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
     head :no_content
   end
 
+  # rubocop:disable Metrics/MethodLength
   def limits
-    limits = if @account.billing_provider == Account::DEFAULT_BILLING_PROVIDER && default_plan?(@account)
+    limits = if ChatwootApp.self_hosted_enterprise?
+               # FORK: Self-hosted Enterprise gets unlimited usage (no billing)
+               {
+                 'conversation' => {},
+                 'non_web_inboxes' => {},
+                 'agents' => {},
+                 'captain' => {}
+               }
+             elsif @account.billing_provider == Account::DEFAULT_BILLING_PROVIDER && default_plan?(@account)
                {
                  'conversation' => {
                    'allowed' => 500,
@@ -60,6 +69,7 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
     # include id in response to ensure that the store can be updated on the frontend
     render json: { id: @account.id, limits: limits }, status: :ok
   end
+  # rubocop:enable Metrics/MethodLength
 
   def checkout
     return create_shopify_billing_session if shopify_billing?
@@ -117,6 +127,9 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
   end
 
   def check_cloud_env
+    # FORK: Allow self-hosted Enterprise to access limits endpoint
+    return if ChatwootApp.self_hosted_enterprise?
+
     render json: { error: 'Not found' }, status: :not_found unless ChatwootApp.chatwoot_cloud?
   end
 
