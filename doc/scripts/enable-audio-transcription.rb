@@ -26,13 +26,9 @@ if account_id.present?
   
   puts "\n📋 Status:"
   puts "   Audio Transcription: #{account.audio_transcriptions ? '✅ Enabled' : '❌ Disabled'}"
-  puts "   Captain Feature: #{account.feature_captain_integration? ? '✅ Enabled' : '❌ Disabled'}"
   
-  unless account.feature_captain_integration?
-    puts "\n💡 Dica: Habilite a feature Captain para ver a UI de configuração:"
-    puts "   account = Account.find(#{account.id})"
-    puts "   account.enable_features!('captain_integration')"
-  end
+  puts "\n💡 Dica: Configure o Token Groq nas configurações do usuário:"
+  puts "   Settings → Profile → Groq API Token"
 else
   # Habilita em todas as contas
   puts "Habilitando audio transcription em todas as contas...\n"
