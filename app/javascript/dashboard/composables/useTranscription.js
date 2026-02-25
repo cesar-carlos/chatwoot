@@ -14,7 +14,7 @@ export const useTranscription = () => {
   const isCached = ref(false);
 
   const hasGroqToken = () => {
-    return currentUser.value?.groq_token?.length > 0;
+    return currentUser.value?.has_groq_token === true;
   };
 
   const transcribe = async (attachment, options = {}) => {

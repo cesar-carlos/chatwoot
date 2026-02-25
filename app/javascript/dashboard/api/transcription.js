@@ -7,10 +7,8 @@ class TranscriptionAPI extends ApiClient {
   }
 
   transcribe(formData) {
+    // Let browser set Content-Type with proper boundary for multipart/form-data
     return axios.post(this.url, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
       timeout: 65000,
     });
   }

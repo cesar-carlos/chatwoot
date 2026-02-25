@@ -109,8 +109,27 @@
 - [ ] Frontend tests for audio-chip transcribe flow and token-missing state.
 - [ ] Add tests for idempotency behavior (parallel requests for same attachment).
 - [ ] Add tests confirming `meta` merge does not remove unrelated keys.
-- [ ] Manual smoke test on conversation UI with real audio attachment.
+- [x] Manual smoke test on conversation UI with real audio attachment.
 - [ ] Confirm no regressions in audio playback and existing message rendering.
+- [ ] Validate format matrix (direct send vs conversion):
+  - [ ] `oga` / `x-oga` -> normalize to `ogg` and send direct
+  - [ ] `opus` / `x-opus` -> send direct
+  - [ ] `wav` / `mp3` / `m4a` / `webm` -> send direct
+  - [ ] `aac` / `amr` -> convert to `mp3` (requires ffmpeg)
+- [ ] Validate ffmpeg behavior:
+  - [ ] conversion path works when ffmpeg is installed
+  - [ ] user-facing error is clear when ffmpeg is missing
+
+### Session Validation Status (2026-02-25)
+- [x] Profile token UI rendered and accepted token save flow.
+- [x] Account guard behavior validated (`feature_disabled` when `audio_transcriptions` is off).
+- [x] Endpoint wiring validated (`POST /api/v1/accounts/:id/transcriptions` is reachable from audio chip).
+- [x] `attachment_id` lookup path validated and fixed (`Attachment.find_by(id, account_id)`).
+- [x] Error mapping path validated (422/500/403 surfaced correctly during troubleshooting).
+- [x] Groq payload adjusted to match docs (`file`, `model`, `response_format`, `temperature`, optional `language`/`prompt`).
+- [x] MIME normalization implemented for `audio/oga` and `audio/x-oga` to `audio/ogg`.
+- [ ] Confirm successful end-to-end transcription after latest format/normalization fixes.
+- [ ] Complete per-format success matrix (`oga`, `opus`, `wav`, `mp3`, `m4a`, `webm`, `aac`, `amr`).
 
 ## Phase 8 - Internal Review, Integration Branch, and Final Merge
 - Perform final fork-internal rollout steps only after approval.
@@ -148,6 +167,7 @@
 - Duplicate transcription requests are safely deduplicated per attachment.
 - No secret/token appears in logs or API error payloads.
 - No upstream PR is created; merge is completed internally in fork `main`.
+- Audio format handling is explicit and validated (`oga/opus` direct support, `aac/amr` conversion path).
 
 ---
 
@@ -179,6 +199,7 @@
 - Created TranscriptionsController with create/presets endpoints
 - Implemented server-side fetch via `attachment_id` (preferred path)
 - Added multipart upload fallback for compatibility
+- Added audio conversion pipeline (`AudioConverterService`) for unsupported formats before Groq call
 - Implemented safe metadata merge (preserves existing keys)
 - Added comprehensive error mapping for Groq API responses
 - Set explicit timeouts (60s request, 10s open)
@@ -207,10 +228,12 @@
 **Phase 6: Reliability & Security** ✅
 - Added feature flag check (`audio_transcriptions` account setting)
 - Added structured logging for lifecycle events
-- Added MIME type validation for audio files
+- Added MIME/content handling strategy aligned with Groq support
 - Improved file size validation with early return
 - Token already filtered by existing parameter filter regex
 - Temp file cleanup handled in controller with FileUtils.rm_f
+- Added `AudioConverterService` for conditional conversion of unsupported formats
+- Added MIME normalization (`audio/oga`/`audio/x-oga` -> `audio/ogg`) to avoid unnecessary conversion
 
 **Phase 7: I18n** ✅
 - All frontend strings in `en.json` and `pt_BR.json` (settings, conversation, errors)
@@ -235,6 +258,7 @@
 5. **Performance**: Server-side file fetch to avoid browser re-upload
 6. **Reliability**: Feature flag, timeouts, MIME validation, structured logging
 7. **I18n**: Complete translations in English and Portuguese (pt-BR)
+8. **Audio Compatibility**: direct send for Groq-supported formats, conversion only for unsupported ones
 
 ### Files Modified (with FORK markers)
 - `app/controllers/api/v1/profiles_controller.rb`
@@ -248,6 +272,7 @@
 - `db/migrate/20260225131709_add_groq_token_to_users.rb`
 - `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
 - `app/controllers/api/v1/accounts/transcriptions_controller.rb`
+- `app/services/audio_converter_service.rb`
 - `app/javascript/dashboard/api/transcription.js`
 - `app/javascript/dashboard/composables/useTranscription.js`
 - `doc/feature/audio-transcription-groq-plan.md`
