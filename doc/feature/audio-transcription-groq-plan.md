@@ -18,22 +18,22 @@
 - Ensure no upstream PR workflow is used.
 
 ### TODO Checklist
-- [ ] Create feature branch from fork `main` (example: `feat/audio-transcription-groq`).
-- [ ] Confirm repository remotes and team workflow are fork-internal only.
-- [ ] Define integration branch name for final sync (example: `merge/audio-transcription-main`).
-- [ ] Confirm final merge policy (regular merge only, no destructive history rewrite).
+- [x] Create feature branch from fork `main` (example: `feat/audio-transcription-groq`).
+- [x] Confirm repository remotes and team workflow are fork-internal only.
+- [x] Define integration branch name for final sync (example: `merge/audio-transcription-main`).
+- [x] Confirm final merge policy (regular merge only, no destructive history rewrite).
 
 ## Phase 1 - Current State Mapping and Merge-Safe Design
 - Lock down exactly what already exists in current codebase.
 - Define minimum-delta changes for controllers, serializer, settings UI, and message audio chip.
 
 ### TODO Checklist
-- [ ] Map current automatic transcription flow in `enterprise/` and identify reusable parts.
-- [ ] Document all required touchpoints in `app/` and `enterprise/`.
-- [ ] Mark files where core edits are unavoidable and plan `FORK:` markers.
-- [ ] Define canonical transcript metadata contract (single source of truth) with compatibility reader for legacy keys.
-- [ ] Define explicit transcription states (`pending`, `processing`, `success`, `error`) and when each state is persisted.
-- [ ] Define idempotency strategy per `attachment_id` (lock key + TTL + duplicate request behavior).
+- [x] Map current automatic transcription flow in `enterprise/` and identify reusable parts.
+- [x] Document all required touchpoints in `app/` and `enterprise/`.
+- [x] Mark files where core edits are unavoidable and plan `FORK:` markers.
+- [x] Define canonical transcript metadata contract (single source of truth) with compatibility reader for legacy keys.
+- [x] Define explicit transcription states (`pending`, `processing`, `success`, `error`) and when each state is persisted.
+- [x] Define idempotency strategy per `attachment_id` (lock key + TTL + duplicate request behavior).
 
 ## Phase 2 - User Groq Token Configuration
 - Add user token persistence and profile UI setup matching desired UX.
