@@ -50,7 +50,8 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   def find_attachment
     return nil if params[:attachment_id].blank?
 
-    Current.account.attachments.find_by(id: params[:attachment_id])
+    # Attachment belongs_to :account, so we query directly with account_id for security
+    Attachment.find_by(id: params[:attachment_id], account_id: Current.account.id)
   end
 
   def get_cached_transcription(attachment)
