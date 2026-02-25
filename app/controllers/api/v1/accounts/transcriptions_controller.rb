@@ -130,13 +130,15 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   def build_groq_payload(audio_file)
     file_io, filename, content_type = extract_file_params(audio_file)
 
+    # Build payload according to Groq API docs
     payload = {
       file: Faraday::UploadIO.new(file_io, content_type, filename),
       model: params[:model] || DEFAULT_MODEL,
       response_format: 'verbose_json',
-      timestamp_granularities: %w[word segment]
+      temperature: '0.0' # Must be string for multipart form-data
     }
 
+    # Optional parameters
     payload[:language] = params[:language] if params[:language].present?
     payload[:prompt] = params[:prompt] if params[:prompt].present?
 
