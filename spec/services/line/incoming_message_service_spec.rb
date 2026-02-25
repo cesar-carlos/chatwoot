@@ -275,6 +275,35 @@ describe Line::IncomingMessageService do
         expect(line_channel.inbox.messages.first.content).to eq('Hello, world')
       end
 
+      it 'creates a new conversation after resolution when lock_to_single_conversation is disabled' do
+        line_channel.inbox.update!(lock_to_single_conversation: false)
+        described_class.new(inbox: line_channel.inbox, params: params).perform
+        first_conversation = line_channel.inbox.conversations.last
+        first_conversation.update!(status: :resolved)
+
+        second_params = params.deep_dup
+        second_params[:events][0][:message][:id] = '325709'
+        second_params[:events][0][:message][:text] = 'Hello again'
+        described_class.new(inbox: line_channel.inbox, params: second_params).perform
+
+        expect(line_channel.inbox.conversations.count).to eq(2)
+      end
+
+      it 'reuses and reopens the same conversation when lock_to_single_conversation is enabled' do
+        line_channel.inbox.update!(lock_to_single_conversation: true)
+        described_class.new(inbox: line_channel.inbox, params: params).perform
+        first_conversation = line_channel.inbox.conversations.last
+        first_conversation.update!(status: :resolved)
+
+        second_params = params.deep_dup
+        second_params[:events][0][:message][:id] = '325710'
+        second_params[:events][0][:message][:text] = 'Hello reopen'
+        described_class.new(inbox: line_channel.inbox, params: second_params).perform
+
+        expect(line_channel.inbox.conversations.count).to eq(1)
+        expect(first_conversation.reload.status).to eq('open')
+      end
+
       it 'creates appropriate conversations, message and contacts for multi user' do
         line_user_profile2 = double
         allow(line_bot).to receive(:get_profile).with('U4af49806292').and_return(line_user_profile2)

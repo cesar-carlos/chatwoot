@@ -1169,4 +1169,33 @@ RSpec.describe Conversation do
       end
     end
   end
+
+  describe 'single history cycle reset on reopen' do
+    let(:account) { create(:account) }
+    let(:inbox) { create(:inbox, account: account, lock_to_single_conversation: lock_to_single_conversation) }
+    let(:conversation) do
+      create(:conversation, account: account, inbox: inbox, status: :resolved, first_reply_created_at: 2.hours.ago)
+    end
+
+    context 'when lock_to_single_conversation is enabled' do
+      let(:lock_to_single_conversation) { true }
+
+      it 'resets first_reply_created_at when conversation is reopened' do
+        conversation.update!(status: :open)
+
+        expect(conversation.reload.first_reply_created_at).to be_nil
+      end
+    end
+
+    context 'when lock_to_single_conversation is disabled' do
+      let(:lock_to_single_conversation) { false }
+
+      it 'keeps first_reply_created_at unchanged when conversation is reopened' do
+        previous_first_reply = conversation.first_reply_created_at
+        conversation.update!(status: :open)
+
+        expect(conversation.reload.first_reply_created_at).to be_within(1.second).of(previous_first_reply)
+      end
+    end
+  end
 end
