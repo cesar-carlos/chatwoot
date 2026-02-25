@@ -78,11 +78,11 @@
 - Preserve current enterprise async flow while eliminating metadata inconsistencies.
 
 ### TODO Checklist
-- [ ] Ensure manual and automatic paths converge on one canonical metadata shape.
-- [ ] Keep backward compatibility reading legacy `transcribed_text` during transition window.
-- [ ] Avoid duplicate transcription work for same attachment (idempotency guard).
-- [ ] Ensure message update event is emitted only after successful transcript persistence.
-- [ ] Ensure search-related behavior remains compatible.
+- [x] Ensure manual and automatic paths converge on one canonical metadata shape.
+- [x] Keep backward compatibility reading legacy `transcribed_text` during transition window.
+- [x] Avoid duplicate transcription work for same attachment (idempotency guard).
+- [x] Ensure message update event is emitted only after successful transcript persistence.
+- [x] Ensure search-related behavior remains compatible.
 - [ ] Add optional migration/backfill strategy only if required for search consistency.
 
 ## Phase 6 - Reliability, Performance, and Security Hardening
