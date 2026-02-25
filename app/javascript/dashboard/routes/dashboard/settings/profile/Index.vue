@@ -194,7 +194,9 @@ export default {
     async updateGroqToken(token) {
       this.groqToken = token;
       const payload = { groq_token: token };
-      let successMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_SUCCESS');
+      let successMessage = this.$t(
+        'PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_SUCCESS'
+      );
       let errorMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_ERROR');
 
       await this.dispatchUpdate(payload, successMessage, errorMessage);
