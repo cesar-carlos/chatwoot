@@ -39,13 +39,13 @@
 - Add user token persistence and profile UI setup matching desired UX.
 
 ### TODO Checklist
-- [ ] Add migration for `users.groq_token` (without index).
-- [ ] Permit `groq_token` in profile update params.
-- [ ] Expose `groq_token` in user serializer payload.
-- [ ] Add `GroqToken` UI section in profile settings page.
-- [ ] Ensure token field remains masked and is never printed in client logs/errors.
-- [ ] Ensure backend filtered parameters include `groq_token` to prevent sensitive logging.
-- [ ] Add frontend i18n keys in `en.json`.
+- [x] Add migration for `users.groq_token` (without index).
+- [x] Permit `groq_token` in profile update params.
+- [x] Expose `groq_token` in user serializer payload.
+- [x] Add `GroqToken` UI section in profile settings page.
+- [x] Ensure token field remains masked and is never printed in client logs/errors.
+- [x] Ensure backend filtered parameters include `groq_token` to prevent sensitive logging.
+- [x] Add frontend i18n keys in `en.json`.
 - [ ] Add backend i18n keys in `en.yml` (only if needed by API responses).
 
 ## Phase 3 - Manual Transcription API (Account Scoped)
