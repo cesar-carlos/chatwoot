@@ -1,0 +1,37 @@
+doc/scripts/
+│
+├── README.md                    # 📚 Índice principal - COMECE AQUI
+│
+├── setup/                       # 🔧 Scripts de configuração inicial
+│   ├── README.md               # Documentação dos scripts de setup
+│   ├── production.sh           # Setup completo para produção
+│   └── dev.sh                  # Setup para desenvolvimento
+│
+└── production/                  # 🚀 Scripts e documentação de produção
+    ├── README.md               # Guia completo de produção
+    ├── deploy.sh               # Script de deploy/atualização
+    ├── verify.sh               # Script de verificação automatizada
+    └── docs/                   # 📖 Documentação técnica
+        ├── README.md           # Índice da documentação
+        ├── improvements.md     # Análise das melhorias
+        └── changelog.md        # Histórico de mudanças
+
+FLUXO DE USO:
+
+1. Setup Inicial (uma vez)
+   └─> setup/production.sh
+
+2. Deploy/Atualização (sempre que houver updates)
+   └─> production/deploy.sh
+
+3. Verificação (após setup ou troubleshooting)
+   └─> production/verify.sh
+
+DOCUMENTAÇÃO:
+
+Principal     → README.md
+Produção      → production/README.md
+Setup         → setup/README.md
+Melhorias     → production/docs/improvements.md
+Histórico     → production/docs/changelog.md
+
