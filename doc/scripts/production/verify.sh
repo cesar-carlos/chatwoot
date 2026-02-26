@@ -180,6 +180,14 @@ else
   warn "Socket Unix do Puma não encontrado (Puma pode não estar rodando)"
   ((WARNINGS++))
 fi
+
+# Verificar diretório storage (Active Storage com ACTIVE_STORAGE_SERVICE=local)
+if [ -d "/home/chatwoot/chatwoot/storage" ]; then
+  pass "Diretório storage existe (uploads)"
+else
+  warn "Diretório storage não existe (criar: mkdir -p /home/chatwoot/chatwoot/storage && chown chatwoot:chatwoot)"
+  ((WARNINGS++))
+fi
 echo ""
 
 # 5. Testes de conectividade

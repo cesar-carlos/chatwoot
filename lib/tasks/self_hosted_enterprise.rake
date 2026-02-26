@@ -22,9 +22,7 @@ namespace :chatwoot do
       premium_features = available_premium_features
       accounts = target_accounts
       expected_features = selected_features
-      pricing_plan = InstallationConfig.find_by(name: 'INSTALLATION_PRICING_PLAN')&.value
-
-      puts "INSTALLATION_PRICING_PLAN=#{pricing_plan}"
+      puts "INSTALLATION_PRICING_PLAN=#{ChatwootHub.pricing_plan}"
       puts "self_hosted_enterprise=#{ChatwootApp.self_hosted_enterprise?}"
       puts "target_accounts=#{accounts.pluck(:id).join(',')}"
       puts "verify_mode=#{all_premium_mode? ? 'all_premium' : 'base_enterprise'}"

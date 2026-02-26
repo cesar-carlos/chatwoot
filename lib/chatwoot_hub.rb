@@ -36,8 +36,13 @@ class ChatwootHub
     "#{billing_base_url}?installation_identifier=#{installation_identifier}"
   end
 
+  VALID_PRICING_PLANS = %w[community business enterprise premium].freeze
+
   def self.pricing_plan
     return 'community' unless ChatwootApp.enterprise?
+
+    env_value = ENV['INSTALLATION_PRICING_PLAN']
+    return env_value if env_value.present? && VALID_PRICING_PLANS.include?(env_value)
 
     InstallationConfig.find_by(name: 'INSTALLATION_PRICING_PLAN')&.value || 'community'
   end
