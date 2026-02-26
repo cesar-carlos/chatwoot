@@ -273,7 +273,7 @@ const fastAssign = e => {
       <UnreadCountBadge
         v-if="!hideThumbnail"
         :count="unreadCount"
-        class="absolute z-20 top-0 ltr:left-0 rtl:right-0"
+        class="absolute z-20 -top-1 ltr:-left-1 rtl:-right-1"
       />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
