@@ -253,6 +253,7 @@ const fastAssign = e => {
   >
     <div
       class="relative"
+      :class="!showInboxName ? 'mt-4' : 'mt-8'"
       @mouseenter="onThumbnailHover"
       @mouseleave="onThumbnailLeave"
     >
@@ -262,7 +263,6 @@ const fastAssign = e => {
         :src="currentContact.thumbnail"
         :size="40"
         :status="currentContact.availability_status"
-        :class="!showInboxName ? 'mt-4' : 'mt-8'"
         hide-offline-status
       >
         <template #overlay="{ size }">
@@ -280,7 +280,7 @@ const fastAssign = e => {
       <UnreadCountBadge
         v-if="!hideThumbnail"
         :count="unreadCount"
-        class="absolute z-20 top-0 ltr:left-0 rtl:right-0"
+        class="absolute z-20 top-1 ltr:left-1 rtl:right-1"
       />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
