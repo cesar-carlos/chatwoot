@@ -171,33 +171,14 @@ class Rack::Attack
   ###-----------Widget API Throttling---------------###
   ###-----------------------------------------------###
 
-  # Set ENABLE_RACK_ATTACK_WIDGET_API to false to disable all widget throttles (e.g. iframe embeds).
-  # Each throttle also has its own ENABLE_*/RATE_LIMIT_* override.
-  # TODO: Deprecate the blanket ENABLE_RACK_ATTACK_WIDGET_API switch after finding a better solution
-  if ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK_WIDGET_API', true))
-    ## Conversation creation, keyed on (IP, website_token) so widgets behind a shared NAT get separate buckets.
-    if ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK_WIDGET_CONVERSATIONS', true))
-      throttle('api/v1/widget/conversations',
-               limit: ENV.fetch('RATE_LIMIT_WIDGET_CONVERSATIONS', '30').to_i,
-               period: 1.minute) do |req|
-        next unless req.path_without_extensions == '/api/v1/widget/conversations' && req.post?
-
-        # ActionDispatch precedence (query wins) matches the controller, so a body token can't fork the bucket.
-        token = ActionDispatch::Request.new(req.env).params['website_token'].presence
-        "#{req.ip}:#{token}" if token
-      end
-    end
-
-    ## Message creation, keyed the same way, to cap single-conversation floods.
-    if ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK_WIDGET_MESSAGES', true))
-      throttle('api/v1/widget/messages',
-               limit: ENV.fetch('RATE_LIMIT_WIDGET_MESSAGES', '60').to_i,
-               period: 1.minute) do |req|
-        next unless req.path_without_extensions == '/api/v1/widget/messages' && req.post?
-
-        token = ActionDispatch::Request.new(req.env).params['website_token'].presence
-        "#{req.ip}:#{token}" if token
-      end
+  # Rack attack on widget APIs can be disabled by setting ENABLE_RACK_ATTACK_WIDGET_API to false
+  # For clients using the widgets in specific conditions like inside and iframe
+  # TODO: Deprecate this feature in future after finding a better solution
+  # FORK: Self-hosted enterprise should not be blocked by widget API throttles.
+  if ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK_WIDGET_API', true)) && !ChatwootApp.self_hosted_enterprise?
+    ## Prevent Conversation Bombing on Widget APIs ###
+    throttle('api/v1/widget/conversations', limit: 6, period: 12.hours) do |req|
+      req.ip if req.path_without_extensions == '/api/v1/widget/conversations' && req.post?
     end
 
     ## Prevent Contact update Bombing in Widget API ###
