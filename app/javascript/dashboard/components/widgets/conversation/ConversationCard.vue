@@ -12,6 +12,7 @@ import SLACardLabel from './components/SLACardLabel.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import UnreadCountBadge from 'dashboard/components-next/Conversation/ConversationCard/UnreadCountBadge.vue';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -88,6 +89,16 @@ const isActiveChat = computed(() => {
 });
 
 const unreadCount = computed(() => props.chat.unread_count);
+// FORK: unread badge over avatar - normalize unread count to keep badge rendering safe.
+const unreadCount = computed(() => {
+  const parsedUnreadCount = Number(props.chat.unread_count);
+  if (Number.isNaN(parsedUnreadCount) || parsedUnreadCount <= 0) {
+    return 0;
+  }
+
+  return Math.floor(parsedUnreadCount);
+});
+
 const hasUnread = computed(() => unreadCount.value > 0);
 const lastMessageInChat = computed(() => getLastMessage(props.chat));
 
@@ -120,15 +131,12 @@ const messagePreviewClass = computed(() => {
   let previewPaddingClass = '';
   if (showAssignmentButton.value) {
     previewPaddingClass = 'ltr:pr-24 rtl:pl-24';
-  } else if (!props.compact && hasUnread.value) {
-    previewPaddingClass = 'ltr:pr-4 rtl:pl-4';
   }
 
   return [
     hasUnread.value ? 'font-medium text-n-slate-12' : 'text-n-slate-11',
     // FORK: assignme - Reserve width so message preview doesn't overlap fast-assign action.
     previewPaddingClass,
-    props.compact && hasUnread.value ? 'ltr:pr-6 rtl:pl-6' : '',
   ];
 });
 
@@ -256,6 +264,12 @@ const fastAssign = e => {
           </label>
         </template>
       </Avatar>
+      <!-- FORK: unread badge over avatar -->
+      <UnreadCountBadge
+        v-if="!hideThumbnail"
+        :count="unreadCount"
+        class="absolute z-20 -top-1 ltr:-right-1 rtl:-left-1"
+      />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
     <!-- FORK: assignme - Keep card height stable across lists after assignment changes. -->
@@ -360,12 +374,6 @@ const fastAssign = e => {
           </template>
           {{ $t('CONVERSATION.FAST_ASSIGN') }}
         </button>
-        <span
-          class="shadow-lg rounded-full text-xxs font-semibold h-4 leading-4 ltr:ml-auto rtl:mr-auto mt-1 min-w-[1rem] px-1 py-0 text-center text-white bg-n-teal-9"
-          :class="hasUnread ? 'block' : 'hidden'"
-        >
-          {{ unreadCount > 9 ? '9+' : unreadCount }}
-        </span>
       </div>
       <CardLabels
         v-if="showLabelsSection"
