@@ -23,23 +23,23 @@ if account_id.present?
   # Habilita em uma conta específica
   account = Account.find(account_id)
   enable_for_account(account)
-  
+
   puts "\n📋 Status:"
   puts "   Audio Transcription: #{account.audio_transcriptions ? '✅ Enabled' : '❌ Disabled'}"
-  
+
   puts "\n💡 Dica: Configure o Token Groq nas configurações do usuário:"
-  puts "   Settings → Profile → Groq API Token"
+  puts '   Settings → Profile → Groq API Token'
 else
   # Habilita em todas as contas
   puts "Habilitando audio transcription em todas as contas...\n"
-  
+
   Account.find_each do |account|
     enable_for_account(account)
   end
-  
+
   total = Account.count
   enabled = Account.where("settings->>'audio_transcriptions' = 'true'").count
-  
+
   puts "\n📊 Resumo:"
   puts "   Total de contas: #{total}"
   puts "   Com audio transcription: #{enabled}"

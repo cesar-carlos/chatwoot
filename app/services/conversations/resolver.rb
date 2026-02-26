@@ -12,8 +12,9 @@ class Conversations::Resolver
   private
 
   def find_conversation
-    return contact_inbox.conversations.last if inbox.lock_to_single_conversation?
+    # FORK: ensure deterministic newest-conversation selection
+    return contact_inbox.conversations.order(created_at: :desc).first if inbox.lock_to_single_conversation?
 
-    contact_inbox.conversations.where.not(status: :resolved).last
+    contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
   end
 end

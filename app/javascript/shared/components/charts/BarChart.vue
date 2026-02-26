@@ -64,7 +64,7 @@ const defaultChartOptions = {
       ticks: {
         fontFamily: fontFamily,
         beginAtZero: true,
-        stepSize: 1,
+        maxTicksLimit: 10,
       },
       grid: {
         drawOnChartArea: false,

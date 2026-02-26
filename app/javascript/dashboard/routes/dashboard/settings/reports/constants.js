@@ -131,7 +131,7 @@ const createChartConfig = yAxisTickCallback => ({
       ticks: {
         fontFamily: CHART_FONT_FAMILY,
         beginAtZero: true,
-        stepSize: 1,
+        maxTicksLimit: 10,
         callback: yAxisTickCallback,
       },
       grid: {
