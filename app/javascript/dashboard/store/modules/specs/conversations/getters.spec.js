@@ -615,8 +615,16 @@ describe('#getters', () => {
         allConversations: [
           mockConversations[0],
           mockConversations[1],
-          { ...mockConversations[1], id: 4, meta: { assignee: null, team: { id: 7 } } },
-          { ...mockConversations[1], id: 5, meta: { assignee: null, team: { id: 99 } } },
+          {
+            ...mockConversations[1],
+            id: 4,
+            meta: { assignee: null, team: { id: 7 } },
+          },
+          {
+            ...mockConversations[1],
+            id: 5,
+            meta: { assignee: null, team: { id: 99 } },
+          },
         ],
         chatSortFilter: 'last_activity_at_desc',
         appliedFilters: [],
@@ -643,7 +651,10 @@ describe('#getters', () => {
         rootGetters
       );
 
-      expect(result).toEqual([state.allConversations[2], state.allConversations[0]]);
+      expect(result).toEqual([
+        state.allConversations[2],
+        state.allConversations[0],
+      ]);
     });
 
     it('filters conversations for custom role with no permissions', () => {
