@@ -50,6 +50,19 @@ RSpec.describe User do
         end
       end
     end
+
+    context 'when self-hosted enterprise' do
+      before do
+        allow(ChatwootApp).to receive(:self_hosted_enterprise?).and_return(true)
+        allow(ChatwootHub).to receive(:pricing_plan).and_return('premium')
+        allow(ChatwootHub).to receive(:pricing_plan_quantity).and_return(1)
+      end
+
+      it 'does not add license error when creating user over limit' do
+        new_user.valid?
+        expect(new_user.errors[:base]).to be_empty
+      end
+    end
   end
 
   describe 'audit log' do

@@ -13,15 +13,15 @@
 
 ```ruby
 def check_cloud_env
-  # FORK: Allow self-hosted Enterprise to access limits endpoint
-  return if ChatwootApp.self_hosted_enterprise?
+  # FORK: Allow self-hosted Enterprise only for limits endpoint
+  return if action_name == 'limits' && ChatwootApp.self_hosted_enterprise?
 
   render json: { error: 'Not found' }, status: :not_found unless ChatwootApp.chatwoot_cloud?
 end
 ```
 
 **Efeito:**
-- Self-hosted Enterprise pode acessar os endpoints protegidos por `check_cloud_env`
+- Self-hosted Enterprise pode acessar **apenas** o endpoint `limits` (não `toggle_deletion` nem outros protegidos por `check_cloud_env`)
 - Cloud continua funcionando normalmente
 - Community edition (não Enterprise) ainda recebe 404
 
@@ -107,7 +107,4 @@ Todas as mudanças foram marcadas com `# FORK:` para rastreamento em merges com 
 
 ## Endpoints afetados
 
-A mudança em `check_cloud_env` também permite acesso self-hosted Enterprise ao endpoint:
-- `POST /enterprise/api/v1/accounts/:id/toggle_deletion`
-
-Para este endpoint, o comportamento é apropriado - self-hosted Enterprise pode marcar contas para deleção.
+O bypass em `check_cloud_env` aplica-se **somente** à action `limits`. O endpoint `toggle_deletion` continua exigindo `chatwoot_cloud?` e retorna 404 em self-hosted.

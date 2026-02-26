@@ -99,16 +99,40 @@ curl -H "api_access_token: YOUR_TOKEN" \
 | Regras de assignment | Advanced Assignment | Criar regra complexa | Regra criada com sucesso | ⏳ Pendente |
 | Validar assignment | Nova conversa | - | Conversa atribuída conforme regra | ⏳ Pendente |
 
-## 4. Validação de Não-regressão
+## 4. Validação Self-hosted Enterprise — Sem Limitações
 
-### 4.1. Contas não-Enterprise (se houver)
+### 4.1. Banner de licença oculto
+
+| Teste | Contexto | Esperado | Status |
+|-------|----------|----------|--------|
+| Banner oculto | Super Admin → Settings, self-hosted enterprise, User.count > pricing_plan_quantity | Banner "You have X agents. Please add more licenses" **não** aparece | ⏳ Pendente |
+| Banner visível em cloud | Cloud, User.count > licenses | Banner aparece | ⏳ Pendente |
+
+### 4.2. Widget sem 429
+
+| Teste | Contexto | Esperado | Status |
+|-------|----------|----------|--------|
+| Widget normal | Self-hosted enterprise, fluxo normal de conversas/widget | Sem 429 (throttles desativados) | ⏳ Pendente |
+| Widget em community | Community edition | Throttles ativos (comportamento esperado) | ⏳ Pendente |
+
+### 4.3. Cloud/Community sem regressões
+
+| Teste | Contexto | Esperado | Status |
+|-------|----------|----------|--------|
+| Cloud limits | Chatwoot Cloud | Endpoint limits retorna limites do plano Stripe | ⏳ Pendente |
+| Community limits | Self-hosted community | Endpoint limits retorna 404 | ⏳ Pendente |
+| Cloud banner | Cloud com excesso de usuários | Banner de licença aparece | ⏳ Pendente |
+
+## 5. Validação de Não-regressão
+
+### 5.1. Contas não-Enterprise (se houver)
 
 | Teste | Contexto | Esperado | Status |
 |-------|----------|----------|--------|
 | Features desabilitadas | Conta sem features Enterprise | Menus/features não aparecem | ⏳ Pendente |
 | API retorna 403 | Tentar acessar feature sem permissão | `403 Forbidden` | ⏳ Pendente |
 
-### 4.2. Features OSS não afetadas
+### 5.2. Features OSS não afetadas
 
 | Teste | Feature | Esperado | Status |
 |-------|---------|----------|--------|
@@ -119,9 +143,9 @@ curl -H "api_access_token: YOUR_TOKEN" \
 | Macros | Criar/usar macro | Funcionamento normal | ⏳ Pendente |
 | Automações | Criar/executar automação | Funcionamento normal | ⏳ Pendente |
 
-## 5. Validação de Console/Logs
+## 6. Validação de Console/Logs
 
-### 5.1. Frontend (Browser Console)
+### 6.1. Frontend (Browser Console)
 
 | Check | Esperado | Status |
 |-------|----------|--------|
@@ -129,7 +153,7 @@ curl -H "api_access_token: YOUR_TOKEN" \
 | Sem erros JS | Sem erros não tratados | ⏳ Pendente |
 | Sem warnings críticos | Apenas warnings de dev aceitáveis | ⏳ Pendente |
 
-### 5.2. Backend (Rails Logs)
+### 6.2. Backend (Rails Logs)
 
 | Check | Esperado | Status |
 |-------|----------|--------|
@@ -147,7 +171,7 @@ bundle exec rake routes | grep enterprise | grep limits
 tail -f log/development.log
 ```
 
-## 6. Checklist de Validação Rápida (Smoke Test)
+## 7. Checklist de Validação Rápida (Smoke Test)
 
 Para validação rápida após implementação, executar na ordem:
 
@@ -167,7 +191,7 @@ Para validação rápida após implementação, executar na ordem:
 - [ ] 7. Verificar branding removido (sem logo Chatwoot)
 - [ ] 8. Testar conversa básica (não-regressão)
 
-## 7. Critérios de Sucesso
+## 8. Critérios de Sucesso
 
 ✅ **Aprovado para produção/lab** quando:
 - Todas as validações de API retornam 200 (não 404)
