@@ -512,6 +512,17 @@ Rails.application.routes.draw do
               get :outgoing_messages_count
             end
           end
+          resources :service_session_reports, only: [] do # FORK: service session reports API
+            collection do
+              get :summary
+              get :open
+              get :closed
+              get :by_agent
+              get :by_inbox
+              get :by_team
+              get :by_label
+            end
+          end
           resource :year_in_review, only: [:show]
           resources :live_reports, only: [] do
             collection do

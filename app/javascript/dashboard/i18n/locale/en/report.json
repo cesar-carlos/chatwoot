@@ -636,6 +636,57 @@
       "VIEW_DETAILS": "View Details"
     }
   },
+  "SERVICE_SESSION_REPORTS": {
+    "HEADER": "Service Sessions",
+    "DESCRIPTION": "Track each support cycle from open/reopen to resolution as an individual service session.",
+    "LOADING": "Loading service session reports...",
+    "ERRORS": {
+      "FETCH_FAILED": "Failed to fetch service session reports"
+    },
+    "COMMON": {
+      "NOT_AVAILABLE": "N/A"
+    },
+    "EMPTY_STATE": {
+      "NO_DATA": "No data available for the selected filters"
+    },
+    "TABS": {
+      "SUMMARY": "Summary",
+      "OPEN": "Open",
+      "CLOSED": "Closed",
+      "BY_AGENT": "By Agent",
+      "BY_INBOX": "By Inbox",
+      "BY_TEAM": "By Team",
+      "BY_LABEL": "By Label"
+    },
+    "METRICS": {
+      "OPEN_SESSIONS": "Open Sessions",
+      "CLOSED_SESSIONS": "Closed Sessions",
+      "TOTAL_SESSIONS": "Total Sessions",
+      "AVG_SESSION_DURATION": "Avg. Session Duration",
+      "AVG_FIRST_RESPONSE_TIME": "Avg. First Response Time",
+      "REOPEN_RATE": "Reopen Rate",
+      "P95_FIRST_RESPONSE_TIME": "P95 First Response Time",
+      "P95_SESSION_RESOLUTION_TIME": "P95 Session Resolution Time",
+      "OPEN_SESSIONS_AVG_AGE": "Open Sessions Avg. Age",
+      "OPEN_SESSIONS_P95_AGE": "Open Sessions P95 Age",
+      "OPEN_SESSIONS_OVER_24H": "Open Sessions > 24h",
+      "OPEN_SESSIONS_OVER_72H": "Open Sessions > 72h",
+      "OPEN_SESSIONS_OVER_7D": "Open Sessions > 7d"
+    },
+    "TABLE": {
+      "NAME": "Name",
+      "CONTACT": "Contact",
+      "AGENT": "Agent",
+      "INBOX": "Inbox",
+      "STATUS": "Status",
+      "SESSION_STARTED_AT": "Session Started At",
+      "SESSION_DURATION": "Session Duration",
+      "RESOLVED_AT": "Resolved At",
+      "OPEN_SESSIONS": "Open Sessions",
+      "CLOSED_SESSIONS": "Closed Sessions",
+      "AVG_SESSION_DURATION": "Avg. Session Duration"
+    }
+  },
   "SUMMARY_REPORTS": {
     "INBOX": "Inbox",
     "AGENT": "Agent",

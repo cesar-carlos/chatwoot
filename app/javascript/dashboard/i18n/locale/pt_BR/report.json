@@ -594,6 +594,57 @@
       "VIEW_DETAILS": "Ver detalhes"
     }
   },
+  "SERVICE_SESSION_REPORTS": {
+    "HEADER": "Relatórios de Atendimentos",
+    "DESCRIPTION": "Acompanhe cada ciclo de atendimento, da abertura/reabertura até a resolução, como uma sessão individual.",
+    "LOADING": "Carregando relatórios de atendimentos...",
+    "ERRORS": {
+      "FETCH_FAILED": "Falha ao carregar relatórios de atendimentos"
+    },
+    "COMMON": {
+      "NOT_AVAILABLE": "N/D"
+    },
+    "EMPTY_STATE": {
+      "NO_DATA": "Não há dados para os filtros selecionados"
+    },
+    "TABS": {
+      "SUMMARY": "Resumo",
+      "OPEN": "Abertos",
+      "CLOSED": "Concluídos",
+      "BY_AGENT": "Por Agente",
+      "BY_INBOX": "Por Caixa",
+      "BY_TEAM": "Por Time",
+      "BY_LABEL": "Por Etiqueta"
+    },
+    "METRICS": {
+      "OPEN_SESSIONS": "Atendimentos Abertos",
+      "CLOSED_SESSIONS": "Atendimentos Concluídos",
+      "TOTAL_SESSIONS": "Total de Atendimentos",
+      "AVG_SESSION_DURATION": "Duração Média",
+      "AVG_FIRST_RESPONSE_TIME": "Tempo Médio de Primeira Resposta",
+      "REOPEN_RATE": "Taxa de Reabertura",
+      "P95_FIRST_RESPONSE_TIME": "P95 de Primeira Resposta",
+      "P95_SESSION_RESOLUTION_TIME": "P95 de Resolução da Sessão",
+      "OPEN_SESSIONS_AVG_AGE": "Idade Média das Sessões Abertas",
+      "OPEN_SESSIONS_P95_AGE": "P95 de Idade das Sessões Abertas",
+      "OPEN_SESSIONS_OVER_24H": "Sessões Abertas > 24h",
+      "OPEN_SESSIONS_OVER_72H": "Sessões Abertas > 72h",
+      "OPEN_SESSIONS_OVER_7D": "Sessões Abertas > 7d"
+    },
+    "TABLE": {
+      "NAME": "Nome",
+      "CONTACT": "Contato",
+      "AGENT": "Agente",
+      "INBOX": "Caixa de Entrada",
+      "STATUS": "Status",
+      "SESSION_STARTED_AT": "Início da Sessão",
+      "SESSION_DURATION": "Duração da Sessão",
+      "RESOLVED_AT": "Resolvido em",
+      "OPEN_SESSIONS": "Atendimentos Abertos",
+      "CLOSED_SESSIONS": "Atendimentos Concluídos",
+      "AVG_SESSION_DURATION": "Duração Média"
+    }
+  },
   "SUMMARY_REPORTS": {
     "INBOX": "Caixa de Entrada",
     "AGENT": "Agente",

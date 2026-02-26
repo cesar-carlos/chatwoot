@@ -309,6 +309,11 @@ const newReportRoutes = () => [
     to: accountScopedRoute('team_reports_index'),
     activeOn: ['team_reports_show'],
   },
+  {
+    name: 'Reports Service Sessions',
+    label: t('SIDEBAR.REPORTS_SERVICE_SESSIONS'),
+    to: accountScopedRoute('service_session_reports'),
+  },
 ];
 
 const reportRoutes = computed(() => newReportRoutes());

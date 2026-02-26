@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_25_131709) do
+ActiveRecord::Schema[7.1].define(version: 2026_02_26_124500) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1114,9 +1114,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_25_131709) do
     t.float "value_in_business_hours"
     t.datetime "event_start_time", precision: nil
     t.datetime "event_end_time", precision: nil
+    t.index ["account_id", "inbox_id", "name", "event_end_time"], name: "index_reporting_events_on_account_inbox_name_event_end_time"
     t.index ["account_id", "name", "created_at"], name: "reporting_events__account_id__name__created_at"
+    t.index ["account_id", "name", "event_end_time"], name: "index_reporting_events_on_account_name_event_end_time"
     t.index ["account_id", "name", "inbox_id", "created_at"], name: "index_reporting_events_for_response_distribution"
     t.index ["account_id"], name: "index_reporting_events_on_account_id"
+    t.index ["conversation_id", "name", "event_end_time"], name: "index_reporting_events_on_cycle_lookup"
     t.index ["conversation_id"], name: "index_reporting_events_on_conversation_id"
     t.index ["created_at"], name: "index_reporting_events_on_created_at"
     t.index ["inbox_id"], name: "index_reporting_events_on_inbox_id"
