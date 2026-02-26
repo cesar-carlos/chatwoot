@@ -114,14 +114,19 @@ Quando upstream atualizar `enterprise/app/controllers/enterprise/api/v1/accounts
 # Buscar todos os marcadores FORK no projeto:
 rg "FORK:" --type ruby --type js --type vue
 
-# Resultado esperado: apenas os 2 marcadores no accounts_controller.rb
+# Arquivos com mudanças self-hosted enterprise:
+# - enterprise/app/controllers/enterprise/api/v1/accounts_controller.rb (limits, check_cloud_env)
+# - enterprise/app/models/enterprise/concerns/user.rb (ensure_installation_pricing_plan_quantity)
+# - config/initializers/rack_attack.rb (widget API throttling)
+# - enterprise/app/models/enterprise/account.rb (business_or_enterprise_plan?)
+# - app/views/super_admin/settings/show.html.erb (banner de licenças, sem FORK:)
 ```
 
 ## Resumo de conformidade com regras
 
 | Regra | Status | Nota |
 |-------|--------|------|
-| Minimizar edições upstream | ✅ | Apenas 2 métodos em 1 arquivo |
+| Minimizar edições upstream | ✅ | Mudanças pontuais em 4 arquivos |
 | Usar `custom/` overlay | ⚠️ | Não aplicável - mudança em controller Enterprise |
 | Marcar com `FORK:` | ✅ | Todas as linhas alteradas marcadas |
 | Mudanças autocontidas | ✅ | Cada mudança é independente |

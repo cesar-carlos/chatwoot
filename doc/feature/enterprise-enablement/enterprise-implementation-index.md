@@ -273,11 +273,11 @@ curl -H "api_access_token: YOUR_TOKEN" \
 
 Checklist para concluir o objetivo de self-hosted enterprise sem limitações de billing/licenças, mantendo compatibilidade upstream:
 
-- [ ] Ajustar banner de licenças em `app/views/super_admin/settings/show.html.erb` para não aparecer em `ChatwootApp.self_hosted_enterprise?`.
-- [ ] Revisar limites de criação de usuários/licenças em `enterprise/app/models/enterprise/concerns/user.rb` para bypass em self-hosted enterprise.
-- [ ] Revisar throttle de widget em `config/initializers/rack_attack.rb` para evitar `429` indevido em self-hosted enterprise.
-- [ ] Garantir isolamento cloud: todos os bypasses devem manter comportamento cloud inalterado.
-- [ ] Marcar alterações com `FORK:` e documentar rationale técnico.
+- [x] Ajustar banner de licenças em `app/views/super_admin/settings/show.html.erb` para não aparecer em `ChatwootApp.self_hosted_enterprise?`.
+- [x] Revisar limites de criação de usuários/licenças em `enterprise/app/models/enterprise/concerns/user.rb` para bypass em self-hosted enterprise.
+- [x] Revisar throttle de widget em `config/initializers/rack_attack.rb` para evitar `429` indevido em self-hosted enterprise.
+- [x] Garantir isolamento cloud: todos os bypasses devem manter comportamento cloud inalterado.
+- [x] Marcar alterações com `FORK:` e documentar rationale técnico.
 - [ ] Atualizar `enterprise-validation-matrix.md` com casos de teste para:
   - [ ] banner de licença oculto em self-hosted enterprise;
   - [ ] widget sem `429` no fluxo normal;
@@ -298,5 +298,5 @@ Após restart, executar smoke test conforme `doc/enterprise-validation-matrix.md
 ---
 
 **Mantido por:** Sistema de implementação  
-**Última atualização:** 2026-02-25  
-**Versão:** 1.0
+**Última atualização:** 2026-02-26  
+**Versão:** 1.1
