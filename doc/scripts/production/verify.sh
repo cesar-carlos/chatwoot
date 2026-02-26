@@ -148,11 +148,16 @@ else
   ((WARNINGS++))
 fi
 
-# Verificar renovação automática
+# Verificar renovação automática (crontab, /etc/cron.d ou systemd timer)
 if crontab -l 2>/dev/null | grep -q "certbot renew"; then
-  pass "Renovação automática SSL configurada"
+  pass "Renovação automática SSL configurada (crontab)"
+elif [ -f /etc/cron.d/certbot ]; then
+  pass "Renovação automática SSL configurada (/etc/cron.d/certbot)"
+elif systemctl list-timers 2>/dev/null | grep -q certbot; then
+  pass "Renovação automática SSL configurada (systemd timer)"
 else
   warn "Renovação automática SSL não configurada"
+  info "Certbot geralmente configura em /etc/cron.d/certbot ou systemd. Verifique: ls -la /etc/cron.d/certbot; systemctl list-timers | grep certbot"
   ((WARNINGS++))
 fi
 echo ""
@@ -332,6 +337,24 @@ if [ -f "/home/chatwoot/chatwoot/.env" ]; then
 else
   fail "Arquivo .env NÃO encontrado"
   ((ERRORS++))
+fi
+
+# Verificar INSTALLATION_PRICING_PLAN (Enterprise)
+if grep -q "^INSTALLATION_PRICING_PLAN=enterprise" /home/chatwoot/chatwoot/.env 2>/dev/null; then
+  pass "INSTALLATION_PRICING_PLAN=enterprise (features Enterprise habilitadas)"
+else
+  info "INSTALLATION_PRICING_PLAN não é enterprise (features premium desabilitadas)"
+fi
+echo ""
+
+# 11. Verificar Enterprise (Rails)
+echo "1️⃣1️⃣  Verificando Enterprise..."
+if sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && export PATH="/home/chatwoot/.rbenv/bin:$PATH" && eval "$(rbenv init -)" 2>/dev/null && RAILS_ENV=production bundle exec rails chatwoot:self_hosted_enterprise:verify' 2>/dev/null; then
+  pass "Enterprise verificado com sucesso"
+else
+  warn "Não foi possível verificar Enterprise (rbenv/bundle pode não estar configurado)"
+  info "Execute manualmente: sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && eval \"\$(rbenv init -)\" && RAILS_ENV=production bundle exec rails chatwoot:self_hosted_enterprise:verify'"
+  ((WARNINGS++))
 fi
 echo ""
 

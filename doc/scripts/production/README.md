@@ -75,9 +75,26 @@ sudo bash doc/scripts/production/verify.sh chat.seudominio.com
 - Banco de dados e conexões
 - Redis
 - Variáveis de ambiente (.env)
+- Enterprise (`INSTALLATION_PRICING_PLAN` e `chatwoot:self_hosted_enterprise:verify`)
 - Logs de erro
 
 **Resultado**: Retorna 0 (OK), ou lista erros/avisos que precisam correção
+
+**Inclui verificação Enterprise**: O script também verifica `INSTALLATION_PRICING_PLAN` e executa `chatwoot:self_hosted_enterprise:verify`.
+
+### 4. Enterprise (produção)
+
+**Verificar status Enterprise**:
+```bash
+sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init -)" && RAILS_ENV=production bundle exec rails chatwoot:self_hosted_enterprise:verify'
+```
+
+**Habilitar features Enterprise em todas as contas** (após configurar `INSTALLATION_PRICING_PLAN=enterprise` no `.env`):
+```bash
+sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init -)" && RAILS_ENV=production bundle exec rails chatwoot:self_hosted_enterprise:enable'
+```
+
+**Pré-requisito**: Adicione `INSTALLATION_PRICING_PLAN=enterprise` no `.env` e reinicie os serviços (`sudo systemctl restart chatwoot-puma chatwoot-sidekiq`).
 
 ## Diferenças: Desenvolvimento vs Produção
 
