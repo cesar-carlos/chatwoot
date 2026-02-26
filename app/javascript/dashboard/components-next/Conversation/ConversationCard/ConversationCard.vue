@@ -115,7 +115,7 @@ const onCardClick = e => {
       <!-- FORK: unread badge over avatar -->
       <UnreadCountBadge
         :count="unreadCount"
-        class="absolute z-20 top-1 ltr:left-1 rtl:right-1"
+        class="absolute z-20 top-2 ltr:left-2 rtl:right-2"
       />
     </div>
     <div class="flex flex-col w-full gap-1 min-w-0">
