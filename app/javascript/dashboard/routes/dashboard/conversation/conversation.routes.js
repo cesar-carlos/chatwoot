@@ -8,6 +8,7 @@ const CONVERSATION_PERMISSIONS = [
   'agent',
   'conversation_manage',
   'conversation_unassigned_manage',
+  'conversation_team_unassigned_manage', // FORK: custom role team permission normalization
   'conversation_participating_manage',
 ];
 

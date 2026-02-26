@@ -61,5 +61,62 @@ RSpec.describe ConversationPolicy, type: :policy do
         expect(subject).not_to permit(context, conversation)
       end
     end
+
+    context 'when role grants conversation_team_unassigned_manage' do
+      let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_team_unassigned_manage']) }
+      let(:agent_team) { create(:team, account: account) }
+      let(:other_team) { create(:team, account: account) }
+
+      before do
+        agent_account_user.update!(role: :agent, custom_role: custom_role)
+        create(:team_member, team: agent_team, user: agent)
+      end
+
+      it 'allows access to conversations assigned to the agent' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: agent)
+
+        expect(subject).to permit(context, conversation)
+      end
+
+      it 'allows access to unassigned conversations in user team with inbox access' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil, team: agent_team)
+
+        expect(subject).to permit(context, conversation)
+      end
+
+      it 'denies access to unassigned conversations in user team without inbox access' do
+        other_inbox = create(:inbox, account: account)
+        conversation = create(:conversation, account: account, inbox: other_inbox, assignee: nil, team: agent_team)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+
+      it 'denies access to unassigned conversations in another team' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil, team: other_team)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+
+      it 'denies access to unassigned conversations without team' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil, team: nil)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+    end
+
+    context 'when role grants conversation_manage but user does not have inbox access' do
+      let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_manage']) }
+
+      before do
+        agent_account_user.update!(role: :agent, custom_role: custom_role)
+      end
+
+      it 'denies access to conversation in inaccessible inbox' do
+        other_inbox = create(:inbox, account: account)
+        conversation = create(:conversation, account: account, inbox: other_inbox, assignee: nil)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+    end
   end
 end

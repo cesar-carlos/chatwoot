@@ -1,6 +1,7 @@
 export const AVAILABLE_CUSTOM_ROLE_PERMISSIONS = [
   'conversation_manage',
   'conversation_unassigned_manage',
+  'conversation_team_unassigned_manage', // FORK: custom role team permission normalization
   'conversation_participating_manage',
   'contact_manage',
   'report_manage',
@@ -12,6 +13,7 @@ export const ROLES = ['agent', 'administrator'];
 export const CONVERSATION_PERMISSIONS = [
   'conversation_manage',
   'conversation_unassigned_manage',
+  'conversation_team_unassigned_manage', // FORK: custom role team permission normalization
   'conversation_participating_manage',
 ];
 
@@ -19,6 +21,9 @@ export const MANAGE_ALL_CONVERSATION_PERMISSIONS = 'conversation_manage';
 
 export const CONVERSATION_UNASSIGNED_PERMISSIONS =
   'conversation_unassigned_manage';
+
+export const CONVERSATION_TEAM_UNASSIGNED_PERMISSIONS =
+  'conversation_team_unassigned_manage'; // FORK: custom role team permission normalization
 
 export const CONVERSATION_PARTICIPATING_PERMISSIONS =
   'conversation_participating_manage';
@@ -40,6 +45,7 @@ export const ASSIGNEE_TYPE_TAB_PERMISSIONS = {
       ...ROLES,
       MANAGE_ALL_CONVERSATION_PERMISSIONS,
       CONVERSATION_UNASSIGNED_PERMISSIONS,
+      CONVERSATION_TEAM_UNASSIGNED_PERMISSIONS, // FORK: custom role team permission normalization
     ],
   },
   all: {
