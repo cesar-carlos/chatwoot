@@ -10,6 +10,7 @@ import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import CardMessagePreview from './CardMessagePreview.vue';
 import CardMessagePreviewWithMeta from './CardMessagePreviewWithMeta.vue';
 import CardPriorityIcon from './CardPriorityIcon.vue';
+import UnreadCountBadge from './UnreadCountBadge.vue';
 
 const props = defineProps({
   conversation: {
@@ -64,6 +65,18 @@ const showMessagePreviewWithoutMeta = computed(() => {
   );
 });
 
+// FORK: unread badge over avatar - normalize unread count across payload variants.
+const unreadCount = computed(() => {
+  const rawUnreadCount =
+    props.conversation?.unreadCount ?? props.conversation?.unread_count;
+  const parsedUnreadCount = Number(rawUnreadCount);
+  if (Number.isNaN(parsedUnreadCount) || parsedUnreadCount <= 0) {
+    return 0;
+  }
+
+  return Math.floor(parsedUnreadCount);
+});
+
 const onCardClick = e => {
   const path = frontendURL(
     conversationUrl({
@@ -90,13 +103,21 @@ const onCardClick = e => {
     class="flex w-full gap-3 px-3 py-4 transition-all duration-300 ease-in-out cursor-pointer"
     @click="onCardClick"
   >
-    <Avatar
-      :name="currentContactName"
-      :src="currentContactThumbnail"
-      :size="24"
-      :status="currentContactStatus"
-      rounded-full
-    />
+    <div class="relative flex-shrink-0">
+      <!-- FORK: unread badge over avatar -->
+      <Avatar
+        :name="currentContactName"
+        :src="currentContactThumbnail"
+        :size="24"
+        :status="currentContactStatus"
+        rounded-full
+      />
+      <!-- FORK: unread badge over avatar -->
+      <UnreadCountBadge
+        :count="unreadCount"
+        class="absolute z-20 -top-1 ltr:-right-1 rtl:-left-1"
+      />
+    </div>
     <div class="flex flex-col w-full gap-1 min-w-0">
       <div class="flex items-center justify-between h-6 gap-2">
         <h4 class="text-base font-medium truncate text-n-slate-12">
