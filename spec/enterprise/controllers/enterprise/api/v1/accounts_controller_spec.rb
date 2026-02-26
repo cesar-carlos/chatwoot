@@ -242,6 +242,29 @@ RSpec.describe 'Enterprise Billing APIs', type: :request do
           expect(JSON.parse(response.body)).to eq(expected_response)
         end
       end
+
+      context 'when self-hosted enterprise' do
+        before do
+          allow(ChatwootApp).to receive(:self_hosted_enterprise?).and_return(true)
+          InstallationConfig.where(name: 'DEPLOYMENT_ENV').first_or_create(value: 'self_hosted')
+        end
+
+        it 'returns 200 with empty limits (unlimited)' do
+          get "/enterprise/api/v1/accounts/#{account.id}/limits",
+              headers: admin.create_new_auth_token,
+              as: :json
+
+          expect(response).to have_http_status(:ok)
+          json_response = JSON.parse(response.body)
+          expect(json_response['id']).to eq(account.id)
+          expect(json_response['limits']).to eq(
+            'conversation' => {},
+            'non_web_inboxes' => {},
+            'agents' => {},
+            'captain' => {}
+          )
+        end
+      end
     end
   end
 

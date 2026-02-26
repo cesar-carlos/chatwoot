@@ -173,6 +173,9 @@ enterprise/app/controllers/enterprise/api/v1/accounts_controller.rb
 - [x] Correção de erro 404 no endpoint `/limits`
 - [x] Documentação completa
 - [x] Procedimentos de rollout/rollback
+- [x] Banner de licenças oculto em self-hosted enterprise
+- [x] Bypass de limite de usuários em self-hosted enterprise
+- [x] Widget sem throttle 429 em self-hosted enterprise
 
 ### Pendente ⏳
 - [ ] Restart do Rails server para aplicar mudanças
@@ -188,9 +191,9 @@ enterprise/app/controllers/enterprise/api/v1/accounts_controller.rb
 
 Objetivo: garantir que o modo `self_hosted_enterprise` opere sem limites de billing/licenças, preservando comportamento cloud e seguindo regras de fork (mudanças mínimas + `FORK:`).
 
-- [ ] **Licenças (UI):** remover alerta de licenças em self-hosted enterprise no `super_admin/settings/show.html.erb` (manter alerta para cloud).
-- [ ] **Licenças (modelo):** ignorar validações/restrições baseadas em `INSTALLATION_PRICING_PLAN_QUANTITY` quando `ChatwootApp.self_hosted_enterprise?` for `true`.
-- [ ] **Widget 429:** revisar throttle de `/widget` no `rack_attack.rb` para evitar bloqueio indevido em self-hosted enterprise (manter proteção para cloud).
+- [x] **Licenças (UI):** remover alerta de licenças em self-hosted enterprise no `super_admin/settings/show.html.erb` (manter alerta para cloud).
+- [x] **Licenças (modelo):** ignorar validações/restrições baseadas em `INSTALLATION_PRICING_PLAN_QUANTITY` quando `ChatwootApp.self_hosted_enterprise?` for `true`.
+- [x] **Widget 429:** revisar throttle de `/widget` no `rack_attack.rb` para evitar bloqueio indevido em self-hosted enterprise (manter proteção para cloud).
 - [ ] **Paridade doc x código:** alinhar documentação do `check_cloud_env` com implementação real (ou ajustar implementação para refletir o texto).
 - [ ] **Validação pós-ajuste:** executar smoke test completo com foco em:
   - [ ] ausência de banner de licença para self-hosted enterprise;
