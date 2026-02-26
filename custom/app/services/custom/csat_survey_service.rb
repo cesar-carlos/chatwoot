@@ -8,7 +8,8 @@ module Custom::CsatSurveyService
     cycle_start_time = csat_cycle_start_time
     return scope.exists? if cycle_start_time.blank?
 
-    scope.exists?(['created_at >= ?', cycle_start_time])
+    # FORK: avoid second-precision boundary collisions on cycle reopen
+    scope.exists?(['created_at > ?', cycle_start_time])
   end
 
   def csat_cycle_start_time

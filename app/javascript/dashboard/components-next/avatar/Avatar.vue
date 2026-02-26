@@ -13,8 +13,8 @@ const props = defineProps({
     default: '',
   },
   name: {
-    type: String,
-    required: true,
+    type: [String, null],
+    default: '',
   },
   size: {
     type: Number,

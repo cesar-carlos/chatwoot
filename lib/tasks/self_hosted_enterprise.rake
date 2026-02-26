@@ -3,24 +3,6 @@
 # rubocop:disable Metrics/BlockLength
 namespace :chatwoot do
   namespace :self_hosted_enterprise do
-    # FORK: Core features required for internal self-hosted enterprise rollout
-    BASE_ENTERPRISE_FEATURES = %w[
-      assignment_v2
-      advanced_assignment
-      sla
-      custom_roles
-      csat_review_notes
-      conversation_required_attributes
-      audit_logs
-      disable_branding
-      saml
-      captain_integration
-      captain_integration_v2
-      channel_voice
-    ].freeze
-    # FORK: Premium features may depend on internal non-premium flags
-    REQUIRED_DEPENDENCY_FEATURES = %w[assignment_v2].freeze
-
     desc 'Enable self-hosted enterprise mode and account features (idempotent)'
     task enable: :environment do
       ensure_enterprise_pricing_plan!
@@ -74,8 +56,8 @@ namespace :chatwoot do
     end
 
     def selected_features
-      base_features = all_premium_mode? ? available_premium_features : BASE_ENTERPRISE_FEATURES
-      (base_features + REQUIRED_DEPENDENCY_FEATURES).uniq
+      base_features = all_premium_mode? ? available_premium_features : base_enterprise_features
+      (base_features + required_dependency_features).uniq
     end
 
     def all_premium_mode?
@@ -88,6 +70,29 @@ namespace :chatwoot do
           .map { |feature| feature['name'] }
           .uniq
           .sort
+    end
+
+    def base_enterprise_features
+      # FORK: Core features required for internal self-hosted enterprise rollout
+      %w[
+        assignment_v2
+        advanced_assignment
+        sla
+        custom_roles
+        csat_review_notes
+        conversation_required_attributes
+        audit_logs
+        disable_branding
+        saml
+        captain_integration
+        captain_integration_v2
+        channel_voice
+      ]
+    end
+
+    def required_dependency_features
+      # FORK: Premium features may depend on internal non-premium flags
+      %w[assignment_v2]
     end
 
     def enable_features_for_account(account, features)

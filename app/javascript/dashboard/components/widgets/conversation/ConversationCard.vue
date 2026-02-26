@@ -247,7 +247,7 @@ const fastAssign = e => {
         v-if="!hideThumbnail"
         :name="currentContact.name ?? ''"
         :src="currentContact.thumbnail"
-        :size="32"
+        :size="40"
         :status="currentContact.availability_status"
         :class="!showInboxName ? 'mt-4' : 'mt-8'"
         hide-offline-status
