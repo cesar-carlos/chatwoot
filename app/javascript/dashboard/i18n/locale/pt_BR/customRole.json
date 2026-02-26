@@ -54,7 +54,8 @@
       },
       "PERMISSIONS": {
         "LABEL": "Permissões",
-        "ERROR": "Permissões são necessárias."
+        "ERROR": "Permissões são necessárias.",
+        "INBOX_SCOPE_NOTE": "As permissões de conversa também são limitadas pelas caixas de entrada às quais o agente tem acesso."
       },
       "CANCEL_BUTTON_TEXT": "Cancelar",
       "API": {

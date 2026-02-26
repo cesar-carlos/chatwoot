@@ -112,6 +112,9 @@ const getTranslationKey = base => {
 const modalTitle = computed(() => t(getTranslationKey('TITLE')));
 const modalDescription = computed(() => t(getTranslationKey('DESC')));
 const submitButtonText = computed(() => t(getTranslationKey('SUBMIT')));
+const permissionsScopeNote = computed(() =>
+  t('CUSTOM_ROLE.FORM.PERMISSIONS.INBOX_SCOPE_NOTE')
+); // FORK: custom role inbox access note
 
 const handleCustomRole = async () => {
   v$.value.$touch();
@@ -189,6 +192,9 @@ const isSubmitDisabled = computed(
         <label :class="{ 'text-n-ruby-9': v$.selectedPermissions.$error }">
           {{ $t('CUSTOM_ROLE.FORM.PERMISSIONS.LABEL') }}
         </label>
+        <p class="text-xs text-n-slate-11 mt-1">
+          {{ permissionsScopeNote }}
+        </p>
         <div class="flex flex-col gap-2.5 mb-4 mt-2">
           <div
             v-for="permission in AVAILABLE_CUSTOM_ROLE_PERMISSIONS"
