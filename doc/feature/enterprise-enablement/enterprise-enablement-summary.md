@@ -184,6 +184,20 @@ enterprise/app/controllers/enterprise/api/v1/accounts_controller.rb
 - [ ] Expansão para contas adicionais (se houver)
 - [ ] Configuração de features que exigem setup (SLA, SAML, etc.)
 
+## 🧩 TODOs para "Sem Limitações" (Próximo Ciclo)
+
+Objetivo: garantir que o modo `self_hosted_enterprise` opere sem limites de billing/licenças, preservando comportamento cloud e seguindo regras de fork (mudanças mínimas + `FORK:`).
+
+- [ ] **Licenças (UI):** remover alerta de licenças em self-hosted enterprise no `super_admin/settings/show.html.erb` (manter alerta para cloud).
+- [ ] **Licenças (modelo):** ignorar validações/restrições baseadas em `INSTALLATION_PRICING_PLAN_QUANTITY` quando `ChatwootApp.self_hosted_enterprise?` for `true`.
+- [ ] **Widget 429:** revisar throttle de `/widget` no `rack_attack.rb` para evitar bloqueio indevido em self-hosted enterprise (manter proteção para cloud).
+- [ ] **Paridade doc x código:** alinhar documentação do `check_cloud_env` com implementação real (ou ajustar implementação para refletir o texto).
+- [ ] **Validação pós-ajuste:** executar smoke test completo com foco em:
+  - [ ] ausência de banner de licença para self-hosted enterprise;
+  - [ ] ausência de 429 no widget no fluxo padrão;
+  - [ ] ausência de regressão em cloud/community.
+- [ ] **Cobertura mínima de testes:** adicionar/atualizar specs para os gates de self-hosted enterprise (UI + regras de limite + throttle).
+
 ## 📋 Próximos Passos Recomendados
 
 ### 1. Aplicar Mudanças (5-10 min)
