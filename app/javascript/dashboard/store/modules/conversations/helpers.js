@@ -75,7 +75,9 @@ export const applyRoleFilter = (
   conversation,
   role,
   permissions,
-  currentUserId
+  currentUserId,
+  userTeams = [],
+  userInboxIds = []
 ) => {
   // the role === "agent" check is typically not correct on it's own
   // the backend handles this by checking the custom_role_id at the user model
@@ -83,6 +85,22 @@ export const applyRoleFilter = (
   // so we can check the role === "agent" directly
   if (['administrator', 'agent'].includes(role)) {
     return true;
+  }
+
+  // FORK: custom role team permission normalization
+  if (!Array.isArray(userInboxIds) || userInboxIds.length === 0) {
+    return false;
+  }
+
+  const conversationInboxId = Number(
+    conversation?.inbox_id ?? conversation?.meta?.inbox?.id
+  );
+  const hasInboxAccess =
+    Number.isFinite(conversationInboxId) &&
+    userInboxIds.map(inboxId => Number(inboxId)).includes(conversationInboxId);
+
+  if (!hasInboxAccess) {
+    return false;
   }
 
   // Check for full conversation management permission
@@ -97,6 +115,17 @@ export const applyRoleFilter = (
   // Check unassigned management permission
   if (permissions.includes('conversation_unassigned_manage')) {
     return isUnassigned || isAssignedToUser;
+  }
+
+  // FORK: custom role team permission normalization
+  if (permissions.includes('conversation_team_unassigned_manage')) {
+    const conversationTeamId = conversation.meta?.team?.id;
+    const userTeamIds = userTeams.map(team => Number(team.id));
+    const belongsToUserTeam =
+      Number.isFinite(Number(conversationTeamId)) &&
+      userTeamIds.includes(Number(conversationTeamId));
+
+    return isAssignedToUser || (isUnassigned && belongsToUserTeam);
   }
 
   // Check participating conversation management permission
