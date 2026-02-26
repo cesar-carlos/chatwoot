@@ -39,7 +39,7 @@ const unreadMessagesCount = computed(() => {
       class="w-full"
       :class="unreadMessagesCount > 0 ? 'text-n-slate-12' : 'text-n-slate-11'"
     />
-    <div class="flex items-center flex-shrink-0 gap-2 pb-2">
+    <div class="flex items-center flex-shrink-0 pb-2">
       <Avatar
         v-if="assignee.name"
         :name="assignee.name"
@@ -48,14 +48,6 @@ const unreadMessagesCount = computed(() => {
         :status="assignee.status"
         rounded-full
       />
-      <div
-        v-if="unreadMessagesCount > 0"
-        class="inline-flex items-center justify-center rounded-full size-5 bg-n-brand"
-      >
-        <span class="text-xs font-semibold text-white">
-          {{ unreadMessagesCount }}
-        </span>
-      </div>
     </div>
   </div>
 </template>

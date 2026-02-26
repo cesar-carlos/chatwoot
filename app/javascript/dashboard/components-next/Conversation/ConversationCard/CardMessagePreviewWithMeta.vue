@@ -61,21 +61,12 @@ defineExpose({
 
 <template>
   <div class="flex flex-col w-full gap-1">
-    <div class="flex items-center justify-between w-full gap-2 py-1 h-7">
+    <div class="flex items-center w-full gap-2 py-1 h-7">
       <MessagePreview
         :message="lastNonActivityMessage"
         class="flex-1 min-w-0"
         :class="unreadMessagesCount > 0 ? 'text-n-slate-12' : 'text-n-slate-11'"
       />
-
-      <div
-        v-if="unreadMessagesCount > 0"
-        class="inline-flex items-center justify-center flex-shrink-0 rounded-full size-5 bg-n-brand"
-      >
-        <span class="text-xs font-semibold text-white">
-          {{ unreadMessagesCount }}
-        </span>
-      </div>
     </div>
 
     <div
