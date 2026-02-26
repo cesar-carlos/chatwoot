@@ -422,18 +422,21 @@ describe('#getters', () => {
     const mockConversations = [
       {
         id: 1,
+        inbox_id: 10, // FORK: custom role team permission normalization
         status: 'open',
         meta: { assignee: { id: 1 } },
         last_activity_at: 1000,
       },
       {
         id: 2,
+        inbox_id: 10, // FORK: custom role team permission normalization
         status: 'open',
         meta: {},
         last_activity_at: 2000,
       },
       {
         id: 3,
+        inbox_id: 10, // FORK: custom role team permission normalization
         status: 'resolved',
         meta: { assignee: { id: 2 } },
         last_activity_at: 3000,
@@ -446,6 +449,8 @@ describe('#getters', () => {
         accounts: [{ id: 1, role: 'agent', permissions: [] }],
       },
       getCurrentAccountId: 1,
+      'teams/getMyTeams': [{ id: 7 }], // FORK: custom role team permission normalization
+      'inboxes/getInboxes': [{ id: 10 }], // FORK: custom role team permission normalization
     };
 
     it('filters conversations based on role permissions for administrator', () => {
@@ -603,6 +608,42 @@ describe('#getters', () => {
 
       // Should only include conversation assigned to user (id: 1)
       expect(result).toEqual([mockConversations[0]]);
+    });
+
+    it('filters conversations for custom role with conversation_team_unassigned_manage permission', () => {
+      const state = {
+        allConversations: [
+          mockConversations[0],
+          mockConversations[1],
+          { ...mockConversations[1], id: 4, meta: { assignee: null, team: { id: 7 } } },
+          { ...mockConversations[1], id: 5, meta: { assignee: null, team: { id: 99 } } },
+        ],
+        chatSortFilter: 'last_activity_at_desc',
+        appliedFilters: [],
+      };
+
+      const rootGetters = {
+        ...mockRootGetters,
+        getCurrentUser: {
+          ...mockRootGetters.getCurrentUser,
+          accounts: [
+            {
+              id: 1,
+              custom_role_id: 5,
+              permissions: ['conversation_team_unassigned_manage'],
+            },
+          ],
+        },
+      };
+
+      const result = getters.getFilteredConversations(
+        state,
+        {},
+        {},
+        rootGetters
+      );
+
+      expect(result).toEqual([state.allConversations[2], state.allConversations[0]]);
     });
 
     it('filters conversations for custom role with no permissions', () => {

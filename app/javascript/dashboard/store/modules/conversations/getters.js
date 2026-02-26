@@ -27,6 +27,11 @@ const getters = {
     const currentUser = rootGetters.getCurrentUser;
     const currentUserId = rootGetters.getCurrentUser.id;
     const currentAccountId = rootGetters.getCurrentAccountId;
+    // FORK: custom role team permission normalization
+    const userTeams = rootGetters['teams/getMyTeams'] || [];
+    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
+      inbox => inbox.id
+    );
 
     const permissions = getUserPermissions(currentUser, currentAccountId);
     const userRole = getUserRole(currentUser, currentAccountId);
@@ -41,7 +46,9 @@ const getters = {
           conversation,
           userRole,
           permissions,
-          currentUserId
+          currentUserId,
+          userTeams,
+          userInboxIds
         );
 
         return matchesFilterResult && allowedForRole;
@@ -121,6 +128,11 @@ const getters = {
     const currentUser = rootGetters.getCurrentUser;
     const currentUserId = rootGetters.getCurrentUser.id;
     const currentAccountId = rootGetters.getCurrentAccountId;
+    // FORK: custom role team permission normalization
+    const userTeams = rootGetters['teams/getMyTeams'] || [];
+    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
+      inbox => inbox.id
+    );
 
     const permissions = getUserPermissions(currentUser, currentAccountId);
     const userRole = getUserRole(currentUser, currentAccountId);
@@ -131,7 +143,9 @@ const getters = {
         conversation,
         userRole,
         permissions,
-        currentUserId
+        currentUserId,
+        userTeams,
+        userInboxIds
       );
 
       return shouldFilter && allowedForRole;
