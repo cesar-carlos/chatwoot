@@ -280,13 +280,13 @@ const fastAssign = e => {
       <UnreadCountBadge
         v-if="!hideThumbnail"
         :count="unreadCount"
-        class="absolute z-20 -top-1 ltr:-right-1 rtl:-left-1"
+        class="absolute z-20 top-0 ltr:left-0 rtl:right-0"
       />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
     <!-- FORK: assignme - Keep card height stable across lists after assignment changes. -->
     <div
-      class="px-0 pt-3 pb-8 border-b group-hover:border-transparent flex-1 border-n-slate-3 min-w-0"
+      class="px-0 py-3 border-b group-hover:border-transparent flex-1 border-n-slate-3 min-w-0"
     >
       <div
         v-if="showMetaSection"
