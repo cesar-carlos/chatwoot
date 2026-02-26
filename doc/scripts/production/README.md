@@ -46,7 +46,7 @@ sudo bash doc/scripts/setup/production.sh
 **Execução**: Como usuário `chatwoot`, sempre que houver updates
 
 ```bash
-sudo -u chatwoot bash doc/scripts/production/deploy.sh
+sudo -u chatwoot REPO_URL=https://github.com/cesar-carlos/chatwoot.git DEPLOY_BRANCH=main bash doc/scripts/production/deploy.sh
 ```
 
 **O que faz**:
@@ -83,7 +83,7 @@ sudo bash doc/scripts/production/verify.sh chat.seudominio.com
 
 | Aspecto | Desenvolvimento | Produção |
 |---------|----------------|----------|
-| **Servidor web** | Puma standalone (dev mode) | Nginx + Puma (socket Unix) |
+| **Servidor web** | Puma standalone (dev mode) | Nginx + Puma (localhost:3000) |
 | **Process manager** | Overmind/Foreman | systemd |
 | **Banco de dados** | PostgreSQL (peer auth) | PostgreSQL (password) |
 | **SSL/TLS** | Não | Let's Encrypt |
@@ -135,7 +135,7 @@ sudo bash doc/scripts/setup/production.sh
 
 ```bash
 # 1. Clone o código (como usuário chatwoot)
-sudo -u chatwoot git clone https://github.com/chatwoot/chatwoot.git /home/chatwoot/chatwoot
+sudo -u chatwoot git clone https://github.com/cesar-carlos/chatwoot.git /home/chatwoot/chatwoot
 
 # 2. Configure variáveis de ambiente
 sudo -u chatwoot cp /home/chatwoot/chatwoot/.env.template /home/chatwoot/chatwoot/.env
@@ -149,8 +149,34 @@ sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && pnpm install'
 sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && RAILS_ENV=production bundle exec rails db:prepare'
 sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && RAILS_ENV=production bundle exec rails db:seed'
 
-# 5. Compile assets
-sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && RAILS_ENV=production bundle exec rails assets:precompile'
+# 5. Compile assets (ajuste heap em VPS pequena)
+sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && NODE_OPTIONS="--max-old-space-size=4096" RAILS_ENV=production bundle exec rails assets:precompile'
+
+# 6. Crie diretório de storage (para uploads com ACTIVE_STORAGE_SERVICE=local)
+sudo -u chatwoot mkdir -p /home/chatwoot/chatwoot/storage /home/chatwoot/chatwoot/tmp/sockets
+```
+
+### Migração de repositório (oficial -> fork)
+
+Se o servidor já está rodando com outro remoto, sincronize para este projeto:
+
+```bash
+# Pare a aplicação
+sudo systemctl stop chatwoot-puma chatwoot-sidekiq
+
+# Troque para o fork e branch principal
+sudo -u chatwoot git -C /home/chatwoot/chatwoot remote set-url origin https://github.com/cesar-carlos/chatwoot.git
+sudo -u chatwoot git -C /home/chatwoot/chatwoot fetch origin
+sudo -u chatwoot git -C /home/chatwoot/chatwoot checkout -B main origin/main
+sudo -u chatwoot git -C /home/chatwoot/chatwoot reset --hard origin/main
+```
+
+### Reset completo do banco (instalação limpa)
+
+Use apenas quando quiser recriar tudo do zero:
+
+```bash
+sudo -u chatwoot bash -lc 'cd /home/chatwoot/chatwoot && export PATH="$HOME/.rbenv/bin:$PATH" && eval "$(rbenv init -)" && DISABLE_DATABASE_ENVIRONMENT_CHECK=1 RAILS_ENV=production bundle exec rails db:drop db:create db:prepare'
 ```
 
 ### Passo 3: Configure SSL
@@ -259,10 +285,23 @@ sudo -u chatwoot bash -c 'cd /home/chatwoot/chatwoot && RAILS_ENV=production bun
 # Corrija ownership
 sudo chown -R chatwoot:chatwoot /home/chatwoot/chatwoot
 
-# Permissões de socket
-sudo mkdir -p /home/chatwoot/chatwoot/tmp/sockets
-sudo chown chatwoot:chatwoot /home/chatwoot/chatwoot/tmp/sockets
+# Permissões de socket e storage (Active Storage)
+sudo mkdir -p /home/chatwoot/chatwoot/tmp/sockets /home/chatwoot/chatwoot/storage
+sudo chown -R chatwoot:chatwoot /home/chatwoot/chatwoot/tmp/sockets /home/chatwoot/chatwoot/storage
 ```
+
+### Erro ao enviar anexos/arquivos (storage)
+
+Quando `ACTIVE_STORAGE_SERVICE=local`, os uploads vão para `storage/`. Se a pasta não existir ou tiver permissões incorretas, o envio de arquivos falha.
+
+```bash
+# Crie a pasta e corrija permissões
+sudo mkdir -p /home/chatwoot/chatwoot/storage
+sudo chown chatwoot:chatwoot /home/chatwoot/chatwoot/storage
+sudo systemctl restart chatwoot-puma chatwoot-sidekiq
+```
+
+O script de deploy (`deploy.sh`) já cria `storage/` automaticamente em cada atualização.
 
 ### Erro 502 Bad Gateway
 
@@ -275,6 +314,15 @@ ls -la /home/chatwoot/chatwoot/tmp/sockets/puma.sock
 
 # Verifique logs do Nginx
 sudo tail -f /var/log/nginx/error.log
+```
+
+### Erro 403 no Nginx após deploy
+
+```bash
+# Garanta que o Nginx consiga atravessar o home e ler arquivos públicos
+sudo chmod o+x /home/chatwoot
+sudo chmod -R o+rX /home/chatwoot/chatwoot/public
+sudo systemctl restart nginx
 ```
 
 ### Assets não carregam
@@ -316,7 +364,7 @@ sudo tail -f /var/log/postgresql/postgresql-16-main.log
 
 ```bash
 # Use o script de deploy
-sudo -u chatwoot bash doc/scripts/production/deploy.sh
+sudo -u chatwoot REPO_URL=https://github.com/cesar-carlos/chatwoot.git DEPLOY_BRANCH=main bash doc/scripts/production/deploy.sh
 ```
 
 ### Atualizar sistema operacional
