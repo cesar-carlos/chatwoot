@@ -58,14 +58,19 @@ const assignee = computed(() => chatMetadata.value.assignee);
 const isAssigned = computed(() => {
   if (!assignee.value) return false;
   const assigneeId = assignee.value.id;
-  return assigneeId !== null && assigneeId !== undefined && assigneeId !== '' && assigneeId !== 0;
+  return (
+    assigneeId !== null &&
+    assigneeId !== undefined &&
+    assigneeId !== '' &&
+    assigneeId !== 0
+  );
 });
 const showAssignmentButton = computed(() => {
   // FORK: assignme - Show button if conversation is unassigned AND user is logged in AND has permission
   const hasPermission = props.canAssignToMe;
   const userExists = !!currentUser.value?.id;
   const notAssigned = !isAssigned.value;
-  
+
   return notAssigned && userExists && hasPermission;
 });
 

@@ -6,7 +6,6 @@ import { useAlert } from 'dashboard/composables';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useConfig } from 'dashboard/composables/useConfig';
 import { useAccount } from 'dashboard/composables/useAccount';
-import { FEATURE_FLAGS } from '../../../../featureFlags';
 import WithLabel from 'v3/components/Form/WithLabel.vue';
 import NextInput from 'next/input/Input.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
@@ -59,7 +58,6 @@ export default {
     ...mapGetters({
       getAccount: 'accounts/getAccount',
       uiFlags: 'accounts/getUIFlags',
-      isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
       isOnChatwootCloud: 'globalConfig/isOnChatwootCloud',
     }),
     // FORK: audio transcription is independent, not tied to Captain
@@ -184,6 +182,7 @@ export default {
           </WithLabel>
           <WithLabel
             name="site-language"
+            name="account-locale"
             :has-error="v$.locale.$error"
             :label="$t('GENERAL_SETTINGS.FORM.LANGUAGE.LABEL')"
             :error-message="$t('GENERAL_SETTINGS.FORM.LANGUAGE.ERROR')"
@@ -201,6 +200,7 @@ export default {
           <WithLabel
             v-if="featureCustomReplyDomainEnabled"
             name="custom-domain"
+            name="account-domain"
             :label="$t('GENERAL_SETTINGS.FORM.DOMAIN.LABEL')"
           >
             <NextInput
@@ -224,6 +224,7 @@ export default {
           <WithLabel
             v-if="featureCustomReplyEmailEnabled"
             name="support-email"
+            name="account-support-email"
             :label="$t('GENERAL_SETTINGS.FORM.SUPPORT_EMAIL.LABEL')"
           >
             <NextInput
