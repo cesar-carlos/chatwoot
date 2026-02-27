@@ -5,7 +5,6 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   DEFAULT_MODEL = 'whisper-large-v3-turbo'.freeze
   REQUEST_TIMEOUT = 60
   OPEN_TIMEOUT = 10
-  before_action :check_feature_enabled
   before_action :validate_groq_token
   before_action :validate_audio_file, only: [:create]
 
@@ -238,15 +237,6 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
 
     audio_file_hash[:tempfile].close
     FileUtils.rm_f(audio_file_hash[:tempfile].path)
-  end
-
-  def check_feature_enabled
-    return if Current.account.audio_transcriptions
-
-    render json: {
-      error_type: 'feature_disabled',
-      message: 'Audio transcription is not enabled for this account'
-    }, status: :forbidden
   end
 
   def validate_groq_token
