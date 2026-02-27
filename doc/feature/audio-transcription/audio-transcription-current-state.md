@@ -11,7 +11,7 @@
 - Uses OpenAI Whisper (`whisper-1`)
 - Reads/writes `meta['transcribed_text']` (legacy key)
 - **Issue**: Overwrites entire `meta` object (line 92)
-- Checks `account.audio_transcriptions` setting
+- Does not require `account.audio_transcriptions` for manual profile-token flow
 - Checks Captain usage limits
 
 **Job**: `enterprise/app/jobs/messages/audio_transcription_job.rb`
@@ -47,6 +47,8 @@
 5. **OpenAI only**: No Groq support or per-user token configuration.
 
 ## Required Changes Summary
+
+> Historical note: the list below reflects the original baseline. Some items are now implemented and should be read as completed deltas.
 
 ### Must Add
 - User `groq_token` field (no index)
@@ -111,6 +113,12 @@ These core files will need minimal edits with `# FORK:` or `// FORK:` markers:
 - `db/migrate/*_add_groq_token_to_users.rb`
 - `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
 - `app/controllers/api/v1/accounts/transcriptions_controller.rb`
+
+## Current Effective Rules (implemented)
+
+- Manual transcription access is gated by user token presence (`users.groq_token`).
+- Account-level `audio_transcriptions` is not used as a blocker for manual transcription.
+- Profile payload now carries `groq_token` and profile UI reload shows masked token value.
 - `app/javascript/dashboard/api/transcription.js`
 - `app/javascript/dashboard/composables/useTranscription.js`
 - I18n keys in `config/locales/en.yml` and `app/javascript/dashboard/i18n/locale/en/*.json`
