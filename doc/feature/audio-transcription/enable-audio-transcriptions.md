@@ -1,54 +1,30 @@
-# Como Habilitar Transcrição de Áudio
+# Como habilitar transcrição de áudio (estado atual)
 
-## ⚠️ Problema: Erro 403 (Forbidden)
+## Regra de habilitação
 
-```
-Audio transcription is not enabled for this account
-```
+A transcrição manual de áudio é habilitada por **usuário**, com base no token Groq salvo no perfil.
 
-## ✅ Solução Rápida via Rails Console (Recomendado)
+- Requisito: `users.groq_token` preenchido para o usuário autenticado.
+- Não depende de `account.audio_transcriptions`.
+- Não depende de Captain.
 
-1. Abra o Rails console:
-```bash
-cd /home/cesar/chatwoot
-bundle exec rails console
-```
+## Configuração
 
-2. Habilite para a conta específica (substitua `1` pelo ID da sua conta):
-```ruby
-account = Account.find(1)
-account.audio_transcriptions = true
-account.save!
-puts "✅ Habilitado: #{account.audio_transcriptions}"
-```
+1. Acesse **Settings → Profile**.
+2. Preencha **Token da API Groq**.
+3. Clique em **Salvar Token**.
+4. Recarregue a página e valide se o campo permanece mascarado (`••••`), indicando valor carregado.
 
-3. Para habilitar em todas as contas:
-```ruby
-Account.find_each do |account|
-  account.update!(audio_transcriptions: true)
-  puts "✅ Account #{account.id} - #{account.name}: enabled"
-end
-```
+## Teste rápido
 
-## 🎨 Solução via UI
-
-A interface de configuração `Audio Transcription` aparece em **Settings → Account Settings**.
-
-Basta acessar a página e usar o toggle switch para habilitar/desabilitar.
-
-**Nota**: A feature de transcrição é independente e NÃO requer Captain ou outras features.
-
-## Testando
-
-Após habilitar:
-1. Recarregue a página no navegador
-2. Configure seu token Groq em Settings → Profile
-3. Envie uma mensagem de áudio
-4. Clique no botão de transcrição (ícone de ouvido)
+1. Abra uma conversa com anexo de áudio.
+2. Clique no botão de transcrição (ícone de ouvido).
+3. Confirme que o endpoint `POST /api/v1/accounts/:id/transcriptions` retorna sucesso.
+4. Confirme que o texto transcrito aparece no card de áudio.
 
 ## Troubleshooting
 
-Se ainda receber erro 403:
-- Limpe o cache do navegador
-- Faça logout e login novamente
-- Verifique os logs do Rails: `tail -f log/development.log`
+Se ocorrer erro:
+- Valide no banco se o usuário tem `groq_token` preenchido.
+- Faça logout/login para renovar estado do usuário no frontend.
+- Verifique logs do backend para status da chamada ao provedor.
