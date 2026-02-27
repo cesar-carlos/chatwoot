@@ -53,7 +53,8 @@ const currentUser = useMapGetter('getCurrentUser');
 
 const chatMetadata = computed(() => props.chat.meta || {});
 
-const assignee = computed(() => chatMetadata.value.assignee);
+// FORK: guard against null/undefined assignee payloads in conversation meta.
+const assignee = computed(() => chatMetadata.value.assignee || {});
 // FORK: assignme - Robust check for unassigned state - treat null, undefined, empty object, or missing id as unassigned
 const isAssigned = computed(() => {
   if (!assignee.value) return false;
@@ -122,6 +123,9 @@ const showMetaSection = computed(() => {
   return (
     props.showInboxName ||
     (props.showAssignee && props.assignee.name) ||
+    showInboxName.value ||
+    // FORK: avoid runtime TypeError when assignee is absent.
+    (props.showAssignee && assignee.value?.name) ||
     props.chat.priority
   );
 });
