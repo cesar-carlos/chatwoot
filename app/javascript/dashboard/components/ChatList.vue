@@ -369,6 +369,22 @@ const showEndOfListMessage = computed(() => {
   );
 });
 
+// FORK: reset virtual-scroller size cache when list context changes (tabs/filters),
+// preventing stale item heights from previous views (ex.: unassigned -> all).
+const scrollerContextKey = computed(() => {
+  return [
+    activeAssigneeTab.value,
+    activeStatus.value,
+    activeSortBy.value,
+    props.conversationInbox || 'all_inboxes',
+    props.teamId || 'all_teams',
+    props.label || 'all_labels',
+    props.conversationType || 'all_types',
+    props.foldersId || 'no_folder',
+    hasAppliedFiltersOrActiveFolders.value ? 'filtered' : 'default',
+  ].join('|');
+});
+
 const allConversationsSelected = computed(() => {
   return (
     conversationList.value.length === selectedConversations.value.length &&
@@ -1004,6 +1020,7 @@ watch(appliedFilters, () => resetBulkActions());
     >
       <DynamicScroller
         ref="conversationDynamicScroller"
+        :key="scrollerContextKey"
         :items="conversationList"
         key-field="id"
         :min-item-size="24"
@@ -1023,9 +1040,18 @@ watch(appliedFilters, () => resetBulkActions());
             :size-dependencies="[
               item.messages,
               item.labels,
+              item.labels?.length,
               item.uuid,
               item.inbox_id,
               item.meta?.assignee?.id,
+              item.meta?.assignee?.name,
+              item.priority,
+              item.sla_policy_id,
+              showAssigneeInConversationCard,
+              canAssignToMe,
+              activeInbox?.id,
+              inboxesList?.length,
+              isAssignPending(item.id),
             ]"
           >
             <ConversationItem
