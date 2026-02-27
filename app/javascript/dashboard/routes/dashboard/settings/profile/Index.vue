@@ -138,7 +138,7 @@ export default {
       this.avatarUrl = this.currentUser.avatar_url;
       this.displayName = this.currentUser.display_name;
       this.messageSignature = this.currentUser.message_signature;
-      this.groqToken = ''; // FORK: audio transcription token (write-only, not exposed from API)
+      this.groqToken = this.currentUser.groq_token || ''; // FORK: audio transcription token
     },
     async dispatchUpdate(payload, successMessage, errorMessage) {
       let alertMessage = '';
@@ -392,7 +392,6 @@ export default {
     >
       <GroqToken
         :groq-token="groqToken"
-        :has-groq-token="!!currentUser?.has_groq_token"
         @update-groq-token="updateGroqToken"
       />
     </SectionLayout>
