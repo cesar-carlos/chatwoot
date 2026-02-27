@@ -46,7 +46,11 @@ export default {
         formData.append(`profile[${key}]`, profileAttributes[key]);
       }
     });
-    formData.append('profile[display_name]', displayName || '');
+    // Only send display_name when explicitly in payload; otherwise we'd overwrite
+    // it with '' on partial updates (e.g. groq_token, message_signature).
+    if (displayName !== undefined) {
+      formData.append('profile[display_name]', displayName || '');
+    }
     if (avatar) {
       formData.append('profile[avatar]', avatar);
     }

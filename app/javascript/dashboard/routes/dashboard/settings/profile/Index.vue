@@ -370,7 +370,11 @@ export default {
       :title="$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.TITLE')"
       :description="$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.NOTE')"
     >
-      <GroqToken :groq-token="groqToken" @update-groq-token="updateGroqToken" />
+      <GroqToken
+        :groq-token="groqToken"
+        :has-groq-token="!!currentUser?.has_groq_token"
+        @update-groq-token="updateGroqToken"
+      />
     </SectionLayout>
   </div>
 </template>
