@@ -645,12 +645,14 @@ function updateAssigneeTab(selectedTab) {
     resetBulkActions();
     emitter.emit('clearSearchInput');
     activeAssigneeTab.value = selectedTab;
-    if (!currentPage.value) {
-      fetchConversations();
-    } else {
-      store.dispatch('invalidateConversationListRequests');
-      store.dispatch('updateChatListFilters', conversationFilters.value);
-    }
+    // Always fetch when switching tabs: each tab (me/unassigned/all) has different
+    // server-side data; skipping fetch leaves stale allConversations from the previous tab.
+    store.dispatch('invalidateConversationListRequests');
+    store.dispatch('conversationPage/setCurrentPage', {
+      filter: selectedTab,
+      page: 0,
+    });
+    fetchConversations();
   }
 }
 
