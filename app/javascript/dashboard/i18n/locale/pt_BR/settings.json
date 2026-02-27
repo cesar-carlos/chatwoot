@@ -100,7 +100,6 @@
         "NOTE": "Configure seu token da API Groq para habilitar recursos de transcrição de áudio. Obtenha seu token no Console Groq.",
         "LABEL": "Token da API Groq",
         "PLACEHOLDER": "Digite seu token da API Groq",
-        "CONFIGURED_PLACEHOLDER": "Token configurado (digite um novo valor para atualizar)",
         "HELP_TEXT": "Este token é usado para transcrever mensagens de áudio. Mantenha-o seguro e não o compartilhe.",
         "GET_TOKEN_TEXT": "Obtenha seu token em",
         "CONSOLE_LINK_TEXT": "Console Groq",

@@ -5,7 +5,7 @@ json.avatar_url resource.avatar_url
 json.confirmed resource.confirmed?
 json.display_name resource.display_name
 json.message_signature resource.message_signature
-json.has_groq_token resource.groq_token.present? # FORK: audio transcription - expose capability only, not token value
+json.groq_token resource.groq_token # FORK: audio transcription token
 json.email resource.email
 json.hmac_identifier resource.hmac_identifier if GlobalConfig.get('CHATWOOT_INBOX_HMAC_KEY')['CHATWOOT_INBOX_HMAC_KEY'].present?
 json.id resource.id
