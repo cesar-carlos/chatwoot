@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { copyTextToClipboard } from 'shared/helpers/clipboard';
 import { useAlert } from 'dashboard/composables';
@@ -12,10 +12,6 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  hasGroqToken: {
-    type: Boolean,
-    default: false,
-  },
 });
 
 const emit = defineEmits(['updateGroqToken']);
@@ -23,12 +19,11 @@ const emit = defineEmits(['updateGroqToken']);
 const { t } = useI18n();
 const tokenValue = ref(props.groqToken);
 
-// Token is write-only from backend; we never receive the value. When hasGroqToken
-// is true, show a configured placeholder so the user knows the save succeeded.
-const inputPlaceholder = computed(() =>
-  props.hasGroqToken && !tokenValue.value
-    ? t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.CONFIGURED_PLACEHOLDER')
-    : t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.PLACEHOLDER')
+watch(
+  () => props.groqToken,
+  newVal => {
+    tokenValue.value = newVal;
+  }
 );
 
 const updateToken = () => {
@@ -58,7 +53,7 @@ const copyToken = async () => {
         v-model="tokenValue"
         type="password"
         class="w-full"
-        :placeholder="inputPlaceholder"
+        :placeholder="t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.PLACEHOLDER')"
       />
     </WithLabel>
     <div class="flex items-center gap-2 text-sm text-n-slate-11">
