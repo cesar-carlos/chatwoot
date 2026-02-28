@@ -61,10 +61,11 @@ const { t } = useI18n(); // FORK: audio transcription
 const router = useRouter(); // FORK: audio transcription
 
 // FORK: audio transcription composable
-const { isTranscribing, transcription, hasGroqToken, transcribe } =
+const { isTranscribing, transcription, transcriptionError, hasGroqToken, transcribe } =
   useTranscription();
 
 const tokenMissingDialogRef = ref(null); // FORK: audio transcription dialog
+const tokenInvalidDialogRef = ref(null); // FORK: audio transcription invalid token dialog
 
 // MediaRecorder-produced WebM/Opus blobs lack a Duration header → <audio>.duration
 // resolves to Infinity until we seek past the end, which forces the engine to
@@ -181,7 +182,11 @@ const handleTranscribe = async () => {
     return;
   }
 
-  await transcribe(attachment);
+  const result = await transcribe(attachment);
+  
+  if (!result.success && result.error?.status && (result.error.status === 401 || result.error.status === 403)) {
+    tokenInvalidDialogRef.value?.open();
+  }
 };
 
 // FORK: audio transcription navigation to settings
@@ -300,6 +305,18 @@ const transcriptText = computed(() => {
     :description="t('AUDIO.TOKEN_MISSING.MESSAGE')"
     :confirm-button-label="t('AUDIO.TOKEN_MISSING.GO_TO_SETTINGS')"
     :cancel-button-label="t('AUDIO.TOKEN_MISSING.CANCEL')"
+    @confirm="goToSettings"
+  />
+
+  <!-- FORK: audio transcription token invalid dialog -->
+  <Dialog
+    ref="tokenInvalidDialogRef"
+    type="alert"
+    width="md"
+    :title="t('AUDIO.TOKEN_INVALID.TITLE')"
+    :description="t('AUDIO.TOKEN_INVALID.MESSAGE')"
+    :confirm-button-label="t('AUDIO.TOKEN_INVALID.GO_TO_SETTINGS')"
+    :cancel-button-label="t('AUDIO.TOKEN_INVALID.CANCEL')"
     @confirm="goToSettings"
   />
 </template>
