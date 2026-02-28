@@ -70,6 +70,7 @@ export default {
       email: '',
       messageSignature: '',
       groqToken: '', // FORK: audio transcription token
+      isUpdatingGroqToken: false, // FORK: audio transcription token loading state
       hotKeys: [
         {
           key: 'enter',
@@ -175,6 +176,7 @@ export default {
     },
     // FORK: audio transcription token update
     async updateGroqToken(token) {
+      this.isUpdatingGroqToken = true;
       this.groqToken = token;
       const payload = { groq_token: token };
       let successMessage = this.$t(
@@ -182,7 +184,11 @@ export default {
       );
       let errorMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_ERROR');
 
-      await this.dispatchUpdate(payload, successMessage, errorMessage);
+      try {
+        await this.dispatchUpdate(payload, successMessage, errorMessage);
+      } finally {
+        this.isUpdatingGroqToken = false;
+      }
     },
     updateProfilePicture({ file, url }) {
       this.avatarFile = file;
@@ -372,6 +378,7 @@ export default {
     >
       <GroqToken
         :groq-token="groqToken"
+        :is-updating="isUpdatingGroqToken"
         @update-groq-token="updateGroqToken"
       />
     </SectionLayout>

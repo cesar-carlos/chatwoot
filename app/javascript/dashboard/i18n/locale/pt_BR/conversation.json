@@ -456,6 +456,12 @@
       "GO_TO_SETTINGS": "Ir para Configurações",
       "CANCEL": "Cancelar"
     },
+    "TOKEN_INVALID": {
+      "TITLE": "Token Groq Inválido",
+      "MESSAGE": "Seu token da API Groq parece estar inválido ou expirado. Por favor, atualize-o em Configurações → Perfil",
+      "GO_TO_SETTINGS": "Ir para Configurações",
+      "CANCEL": "Cancelar"
+    },
     "API_ERROR": {
       "INVALID_KEY": "Chave da API Groq inválida ou expirada",
       "MODEL_NOT_FOUND": "Modelo de transcrição não encontrado",

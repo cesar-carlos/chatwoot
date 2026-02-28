@@ -506,6 +506,12 @@
       "GO_TO_SETTINGS": "Go to Settings",
       "CANCEL": "Cancel"
     },
+    "TOKEN_INVALID": {
+      "TITLE": "Invalid Groq Token",
+      "MESSAGE": "Your Groq API token appears to be invalid or expired. Please update it in Settings → Profile",
+      "GO_TO_SETTINGS": "Go to Settings",
+      "CANCEL": "Cancel"
+    },
     "API_ERROR": {
       "INVALID_KEY": "Invalid or expired Groq API key",
       "MODEL_NOT_FOUND": "Transcription model not found",
