@@ -82,12 +82,18 @@ export const useTranscription = () => {
       };
     } catch (error) {
       const errorData = error.response?.data || {};
-      const errorMessage = errorData.message || t('AUDIO.TRANSCRIPTION.ERROR');
+      const status = error.response?.status;
+      let errorMessage = errorData.message || t('AUDIO.TRANSCRIPTION.ERROR');
+
+      if (status === 401 || status === 403) {
+        errorMessage = t('AUDIO.API_ERROR.UNAUTHORIZED');
+      }
 
       transcriptionError.value = {
         type: errorData.error_type || 'unknown',
         message: errorMessage,
         translationKey: errorData.translation_key,
+        status,
       };
 
       useAlert(errorMessage);

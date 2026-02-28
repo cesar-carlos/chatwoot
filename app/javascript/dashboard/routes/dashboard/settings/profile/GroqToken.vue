@@ -12,6 +12,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  isUpdating: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['updateGroqToken']);
@@ -68,7 +72,7 @@ const copyToken = async () => {
       </a>
     </div>
     <div class="flex items-center gap-2">
-      <NextButton type="submit" blue>
+      <NextButton type="submit" blue :disabled="isUpdating" :loading="isUpdating">
         {{ t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.SAVE_BTN') }}
       </NextButton>
       <NextButton
@@ -76,7 +80,7 @@ const copyToken = async () => {
         slate
         outline
         icon="i-lucide-copy"
-        :disabled="!tokenValue"
+        :disabled="!tokenValue || isUpdating"
         @click="copyToken"
       >
         {{ t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.COPY') }}
