@@ -22,12 +22,12 @@ const props = defineProps({
     type: String,
     default: '',
   },
-  tokenMissingDialogRef: {
-    type: Object,
+  setTokenMissingDialog: {
+    type: Function,
     default: null,
   },
-  tokenInvalidDialogRef: {
-    type: Object,
+  setTokenInvalidDialog: {
+    type: Function,
     default: null,
   },
   handleTranscribe: {
@@ -43,15 +43,11 @@ const props = defineProps({
 const { t } = useI18n();
 
 const setTokenMissingDialogRef = el => {
-  if (props.tokenMissingDialogRef) {
-    props.tokenMissingDialogRef.value = el;
-  }
+  props.setTokenMissingDialog?.(el);
 };
 
 const setTokenInvalidDialogRef = el => {
-  if (props.tokenInvalidDialogRef) {
-    props.tokenInvalidDialogRef.value = el;
-  }
+  props.setTokenInvalidDialog?.(el);
 };
 </script>
 

@@ -34,9 +34,9 @@
     },
     "PERMISSIONS": {
       "CONVERSATION_MANAGE": "Gerenciar todas conversas",
-      "CONVERSATION_UNASSIGNED_MANAGE": "Gerenciar conversas não atribuídas e aquelas atribuídas a elas",
-      "CONVERSATION_TEAM_UNASSIGNED_MANAGE": "Gerenciar conversas não atribuídas do seu time e aquelas atribuídas a elas",
-      "CONVERSATION_PARTICIPATING_MANAGE": "Gerenciar conversas que participa e aquelas atribuídas a elas",
+      "CONVERSATION_UNASSIGNED_MANAGE": "Gerenciar conversas não atribuídas e aquelas atribuídas ao agente",
+      "CONVERSATION_TEAM_UNASSIGNED_MANAGE": "Gerenciar conversas não atribuídas dos times do agente e aquelas atribuídas ao agente",
+      "CONVERSATION_PARTICIPATING_MANAGE": "Gerenciar conversas que participa e aquelas atribuídas ao agente",
       "CONTACT_MANAGE": "Gerenciar contatos",
       "REPORT_MANAGE": "Gerenciar relatórios",
       "KNOWLEDGE_BASE_MANAGE": "Gerenciar base de conhecimento"
@@ -59,7 +59,7 @@
       },
       "CANCEL_BUTTON_TEXT": "Cancelar",
       "API": {
-        "ERROR_MESSAGE": "Não foi possível desconectar o agente robô. Por favor, tente novamente mais tarde."
+        "ERROR_MESSAGE": "Não foi possível conectar ao servidor Woot. Por favor, tente novamente."
       }
     },
     "ADD": {
@@ -83,7 +83,7 @@
       "BUTTON_TEXT": "Excluir",
       "API": {
         "SUCCESS_MESSAGE": "Função personalizada excluída com sucesso.",
-        "ERROR_MESSAGE": "Não foi possível desconectar o agente robô. Por favor, tente novamente mais tarde."
+        "ERROR_MESSAGE": "Não foi possível conectar ao servidor Woot. Por favor, tente novamente."
       },
       "CONFIRM": {
         "TITLE": "Confirmar exclusão",

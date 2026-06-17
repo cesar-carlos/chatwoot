@@ -217,6 +217,7 @@ const onDeleteConversation = () => {
     @contextmenu="openContextMenu"
     @select-conversation="selectConversation"
     @de-select-conversation="deSelectConversation"
+    @assign-agent="onAssignAgent"
   />
 
   <!-- Shared context menu for both layouts -->

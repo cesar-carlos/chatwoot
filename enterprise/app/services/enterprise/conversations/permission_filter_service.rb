@@ -18,6 +18,7 @@ module Enterprise::Conversations::PermissionFilterService
   def filter_by_permissions(permissions)
     # Permission-based filtering with hierarchy
     # conversation_manage > conversation_unassigned_manage > conversation_participating_manage
+    # conversation_team_unassigned_manage is handled by Custom::Conversations::PermissionFilterService overlay
     if permissions.include?('conversation_manage')
       accessible_conversations
     elsif permissions.include?('conversation_unassigned_manage')

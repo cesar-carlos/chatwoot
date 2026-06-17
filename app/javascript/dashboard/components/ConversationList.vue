@@ -19,6 +19,7 @@ const props = defineProps({
   conversationType: { type: String, default: '' },
   showAssignee: { type: Boolean, default: false },
   isOnExpandedLayout: { type: Boolean, default: false },
+  canAssignToMe: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(['loadMore']);
@@ -77,6 +78,7 @@ defineExpose({ conversationListRef });
         :conversation-type="conversationType"
         :show-assignee="showAssignee"
         :show-expanded="showExpandedCards"
+        :can-assign-to-me="canAssignToMe"
       />
     </Virtualizer>
     <div v-if="isLoading" class="flex justify-center my-4">

@@ -41,7 +41,7 @@ class ChatwootHub
   def self.pricing_plan
     return 'community' unless ChatwootApp.enterprise?
 
-    env_value = ENV['INSTALLATION_PRICING_PLAN']
+    env_value = ENV.fetch('INSTALLATION_PRICING_PLAN', nil)
     return env_value if env_value.present? && VALID_PRICING_PLANS.include?(env_value)
 
     InstallationConfig.find_by(name: 'INSTALLATION_PRICING_PLAN')&.value || 'enterprise' # FORK: default enterprise for self-hosted when not set

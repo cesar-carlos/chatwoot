@@ -211,3 +211,5 @@ class Conversations::UnreadCounts::Counter
     @filtered_counter ||= ::Conversations::UnreadCounts::FilteredCounter.new(account: account, user: user)
   end
 end
+
+Conversations::UnreadCounts::Counter.prepend_mod_with('Conversations::UnreadCounts::Counter') # FORK: custom role team permission normalization
