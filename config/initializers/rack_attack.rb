@@ -173,24 +173,29 @@ class Rack::Attack
   # Rack attack on widget APIs can be disabled by setting ENABLE_RACK_ATTACK_WIDGET_API to false
   # For clients using the widgets in specific conditions like inside and iframe
   # TODO: Deprecate this feature in future after finding a better solution
-  # FORK: Self-hosted enterprise should not be blocked by widget API throttles.
-  if ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK_WIDGET_API', true)) && !ChatwootApp.self_hosted_enterprise?
+  # FORK: Self-hosted enterprise skips widget API throttles (checked per request).
+  if ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK_WIDGET_API', true))
     ## Prevent Conversation Bombing on Widget APIs ###
     throttle('api/v1/widget/conversations', limit: 6, period: 12.hours) do |req|
+      next if ::ChatwootApp.self_hosted_enterprise?
+
       req.ip if req.path_without_extensions == '/api/v1/widget/conversations' && req.post?
     end
 
     ## Prevent Contact update Bombing in Widget API ###
     throttle('api/v1/widget/contacts', limit: 60, period: 1.hour) do |req|
+      next if ::ChatwootApp.self_hosted_enterprise?
+
       req.ip if req.path_without_extensions == '/api/v1/widget/contacts' && (req.patch? || req.put?)
     end
 
     ## Prevent Conversation Bombing through multiple sessions
     throttle('widget?website_token={website_token}&cw_conversation={x-auth-token}', limit: 5, period: 1.hour) do |req|
+      next if ::ChatwootApp.self_hosted_enterprise?
+
       req.ip if req.path_without_extensions == '/widget' && ActionDispatch::Request.new(req.env).params['cw_conversation'].blank?
     end
   end
-  # Deferred to after_initialize because ChatwootApp.self_hosted_enterprise? needs GlobalConfig (DB).
 
   ##-----------------------------------------------##
 
@@ -280,21 +285,3 @@ ActiveSupport::Notifications.subscribe('throttle.rack_attack') do |_name, _start
 end
 
 Rack::Attack.enabled = Rails.env.production? ? ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK', true)) : false
-
-# FORK: Widget API throttles deferred until app is loaded (ChatwootApp.self_hosted_enterprise? needs GlobalConfig)
-Rails.application.config.after_initialize do
-  next unless ActiveModel::Type::Boolean.new.cast(ENV.fetch('ENABLE_RACK_ATTACK_WIDGET_API', true))
-  next if ChatwootApp.self_hosted_enterprise?
-
-  Rack::Attack.throttle('api/v1/widget/conversations', limit: 6, period: 12.hours) do |req|
-    req.ip if req.path_without_extentions == '/api/v1/widget/conversations' && req.post?
-  end
-
-  Rack::Attack.throttle('api/v1/widget/contacts', limit: 60, period: 1.hour) do |req|
-    req.ip if req.path_without_extentions == '/api/v1/widget/contacts' && (req.patch? || req.put?)
-  end
-
-  Rack::Attack.throttle('widget?website_token={website_token}&cw_conversation={x-auth-token}', limit: 5, period: 1.hour) do |req|
-    req.ip if req.path_without_extentions == '/widget' && ActionDispatch::Request.new(req.env).params['cw_conversation'].blank?
-  end
-end
