@@ -17,14 +17,17 @@
 #
 # Indexes
 #
-#  index_reporting_events_for_response_distribution  (account_id,name,inbox_id,created_at)
-#  index_reporting_events_on_account_id              (account_id)
-#  index_reporting_events_on_conversation_id         (conversation_id)
-#  index_reporting_events_on_created_at              (created_at)
-#  index_reporting_events_on_inbox_id                (inbox_id)
-#  index_reporting_events_on_name                    (name)
-#  index_reporting_events_on_user_id                 (user_id)
-#  reporting_events__account_id__name__created_at    (account_id,name,created_at)
+#  index_reporting_events_for_response_distribution             (account_id,name,inbox_id,created_at)
+#  index_reporting_events_on_account_id                         (account_id)
+#  index_reporting_events_on_account_inbox_name_event_end_time  (account_id,inbox_id,name,event_end_time)
+#  index_reporting_events_on_account_name_event_end_time        (account_id,name,event_end_time)
+#  index_reporting_events_on_conversation_id                    (conversation_id)
+#  index_reporting_events_on_created_at                         (created_at)
+#  index_reporting_events_on_cycle_lookup                       (conversation_id,name,event_end_time)
+#  index_reporting_events_on_inbox_id                           (inbox_id)
+#  index_reporting_events_on_name                               (name)
+#  index_reporting_events_on_user_id                            (user_id)
+#  reporting_events__account_id__name__created_at               (account_id,name,created_at)
 #
 
 class ReportingEvent < ApplicationRecord
