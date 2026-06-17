@@ -1,0 +1,8 @@
+{
+  "type": "CALL",
+  "action": "UPDATE",
+  "whatsapp_call_id": "REPLACE_WITH_SPIKE_ID",
+  "status": "HANDLED_REMOTELY",
+  "direction": "INCOMING",
+  "phone": "+5511999999999"
+}

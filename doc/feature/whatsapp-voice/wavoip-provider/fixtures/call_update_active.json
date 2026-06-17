@@ -1,0 +1,9 @@
+{
+  "type": "CALL",
+  "action": "UPDATE",
+  "whatsapp_call_id": "REPLACE_WITH_SPIKE_ID",
+  "status": "ACTIVE",
+  "direction": "INCOMING",
+  "phone": "+5511999999999",
+  "duration": 0
+}

@@ -1,0 +1,15 @@
+{
+  "type": "CALL",
+  "action": "CREATE",
+  "whatsapp_call_id": "REPLACE_WITH_SPIKE_ID",
+  "status": "OUTGOING_RING",
+  "direction": "OUTGOING",
+  "phone": "+5511999999999",
+  "peer": {
+    "phone": "+5511888888888",
+    "display_name": "Contato Teste"
+  },
+  "device_token": "REPLACE",
+  "id_session": 12345,
+  "call_type": "unofficial"
+}
