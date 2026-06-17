@@ -1,4 +1,4 @@
-# WhatsApp Provider — Documentação
+# Alternative WhatsApp Provider — Documentação
 
 Esta pasta consolida análise e decisões para usar **WhatsApp sem a Cloud API / WABA oficial** da Meta — por exemplo via NotificaMe, Evolution API ou outro gateway com sessão de cliente.
 

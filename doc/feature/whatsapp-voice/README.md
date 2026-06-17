@@ -10,12 +10,12 @@ Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp
 | [provider-coupling-and-extensibility.md](./provider-coupling-and-extensibility.md) | Acoplamento atual, padrão Twilio vs WhatsApp, viabilidade de novo provider |
 | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) | O que se perde ao usar stack Twilio em vez de WhatsApp Cloud Calling |
 | [second-provider-strategy.md](./second-provider-strategy.md) | Recomendação concreta para adicionar um segundo provider de chamadas WhatsApp |
-| [dual-channel-provider-architecture.md](../whatsapp-provider/dual-channel-provider-architecture.md) | **Arquitetura mestre** — dual-channel mensagens + voz, registries, interfaces, fork merge-safe |
-| [generic-whatsapp-call-channel.md](../whatsapp-provider/generic-whatsapp-call-channel.md) | Canal genérico de **chamadas** via API não oficial (Evolution, Baileys, CPaaS) — arquitetura fork |
+| [dual-channel-provider-architecture.md](../alternative-whatsapp-provider/dual-channel-provider-architecture.md) | **Arquitetura mestre** — dual-channel mensagens + voz, registries, interfaces, fork merge-safe |
+| [generic-whatsapp-call-channel.md](../alternative-whatsapp-provider/generic-whatsapp-call-channel.md) | Canal genérico de **chamadas** via API não oficial (Evolution, Baileys, CPaaS) — arquitetura fork |
 
 ## Provider não oficial (mensagens / voz)
 
-Se o fork **não** usar `whatsapp_cloud`, as restrições da Meta na API oficial deixam de aplicar — mas outras limitações aparecem. Ver [official-vs-unofficial-restrictions.md](../whatsapp-provider/official-vs-unofficial-restrictions.md), [generic-whatsapp-call-channel.md](../whatsapp-provider/generic-whatsapp-call-channel.md) e o [índice do provider alternativo](../whatsapp-provider/README.md).
+Se o fork **não** usar `whatsapp_cloud`, as restrições da Meta na API oficial deixam de aplicar — mas outras limitações aparecem. Ver [official-vs-unofficial-restrictions.md](../alternative-whatsapp-provider/official-vs-unofficial-restrictions.md), [generic-whatsapp-call-channel.md](../alternative-whatsapp-provider/generic-whatsapp-call-channel.md) e o [índice do provider alternativo](../alternative-whatsapp-provider/README.md).
 
 ## Visão geral
 

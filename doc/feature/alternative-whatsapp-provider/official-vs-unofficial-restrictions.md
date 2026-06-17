@@ -167,7 +167,7 @@ Abandonar o canal oficial é uma troca deliberada:
 
 | Documento | Relação |
 |-----------|---------|
-| [whatsapp-provider/README.md](./README.md) | Índice desta área de feature |
+| [alternative-whatsapp-provider/README.md](./README.md) | Índice desta área de feature |
 | [whatsapp-voice/README.md](../whatsapp-voice/README.md) | Voz oficial Meta no Chatwoot EE |
 | [architecture-and-flow.md](../whatsapp-voice/architecture-and-flow.md) | Fluxo SDP, `138006`, webhooks `calls` |
 | [twilio-vs-whatsapp-native.md](../whatsapp-voice/twilio-vs-whatsapp-native.md) | Por que PSTN Twilio ≠ WhatsApp Calling |
