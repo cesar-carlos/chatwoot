@@ -27,7 +27,8 @@ Wavoip cai no eixo **gateway com SDK browser + webhook proprietário**, não no 
 | **Onde aceita inbound** | `POST /whatsapp_calls/:id/accept` + SDP | `offer.accept()` no browser |
 | **Onde inicia outbound** | `POST /whatsapp_calls/initiate` + SDP | `wavoip.startCall({ to })` no browser |
 | **Modelo de canal** | `Channel::Whatsapp` (`whatsapp_cloud`) | `Channel::Wavoip` (`custom/`) |
-| **Tile UI** | `whatsapp_call` | `wavoip_call` |
+| **Tile UI** | `whatsapp_call` | `wavoip` |
+| **Setup na criação** | Embedded signup Meta | Formulário — [inbox-setup.md](./inbox-setup.md) |
 | **ID externo da call** | Meta `call_id` | `whatsapp_call_id` (webhook) |
 | **Gravação** | `MediaRecorder` → upload | Webhook `RECORD` + `record_url` |
 | **Permissão outbound Meta 138006** | Sim | Não documentado no Wavoip |
@@ -43,7 +44,7 @@ Wavoip cai no eixo **gateway com SDK browser + webhook proprietário**, não no 
 2. **Não** prepend `WhatsappEventsJob` com payload Wavoip — formatos diferentes; rota webhook dedicada.
 3. **Não** reutilizar `useWhatsappCallSession` — encapsula RTCPeerConnection Meta; Wavoip gerencia WebRTC internamente.
 4. **Não** usar `@wavoip/wavoip-webphone` no dashboard Vue — React 18 + Shadow DOM competindo com `FloatingCallWidget`.
-5. **Não** unificar tiles `whatsapp_call` e `wavoip_call` — gates e setup distintos.
+5. **Não** unificar tiles `whatsapp_call` e `wavoip` — gates e setup distintos.
 
 ---
 
@@ -52,7 +53,7 @@ Wavoip cai no eixo **gateway com SDK browser + webhook proprietário**, não no 
 | Cenário | Escolha |
 |---------|---------|
 | WABA oficial, embedded signup, Calling API Meta | **Meta** (`whatsapp_call`) |
-| Número no Wavoip / Evolution / Baileys via Wavoip, sem Graph Calling | **Wavoip** (`wavoip_call`) |
+| Número no Wavoip / Evolution / Baileys via Wavoip, sem Graph Calling | **Wavoip** (`wavoip`) |
 | Ligação telefônica PSTN | **Twilio** (tile `voice`) |
 | Mensagens gateway + voz Wavoip no mesmo número | **Dois inboxes** (ver [architecture.md](./architecture.md)) |
 
@@ -66,7 +67,7 @@ Os três caminhos podem coexistir:
 flowchart LR
   subgraph UI
     T1[whatsapp_call]
-    T2[wavoip_call]
+    T2[wavoip]
     T3[voice]
   end
   T1 --> M[Channel::Whatsapp cloud]
