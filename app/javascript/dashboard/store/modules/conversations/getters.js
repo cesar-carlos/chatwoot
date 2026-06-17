@@ -82,15 +82,31 @@ const getters = {
     return lastEmail;
   },
   getMineChats: (_state, _, __, rootGetters) => activeFilters => {
-    const currentUserID = rootGetters.getCurrentUser?.id;
+    const currentUser = rootGetters.getCurrentUser;
+    const currentUserID = currentUser?.id;
+    const currentAccountId = rootGetters.getCurrentAccountId;
+    // FORK: custom role team permission normalization
+    const userTeams = rootGetters['teams/getMyTeams'] || [];
+    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
+      inbox => inbox.id
+    );
+    const permissions = getUserPermissions(currentUser, currentAccountId);
+    const userRole = getUserRole(currentUser, currentAccountId);
 
     return _state.allConversations.filter(conversation => {
       const { assignee } = conversation.meta;
       const isAssignedToMe = assignee && assignee.id === currentUserID;
       const shouldFilter = applyPageFilters(conversation, activeFilters);
-      const isChatMine = isAssignedToMe && shouldFilter;
+      const allowedForRole = applyRoleFilter(
+        conversation,
+        userRole,
+        permissions,
+        currentUserID,
+        userTeams,
+        userInboxIds
+      );
 
-      return isChatMine;
+      return isAssignedToMe && shouldFilter && allowedForRole;
     });
   },
   getAppliedConversationFiltersV2: _state => {
@@ -104,11 +120,31 @@ const getters = {
     const hasAppliedFilters = _state.appliedFilters.length !== 0;
     return hasAppliedFilters ? filterQueryGenerator(_state.appliedFilters) : [];
   },
-  getUnAssignedChats: _state => activeFilters => {
+  getUnAssignedChats: (_state, _, __, rootGetters) => activeFilters => {
+    const currentUser = rootGetters.getCurrentUser;
+    const currentUserId = currentUser?.id;
+    const currentAccountId = rootGetters.getCurrentAccountId;
+    // FORK: custom role team permission normalization
+    const userTeams = rootGetters['teams/getMyTeams'] || [];
+    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
+      inbox => inbox.id
+    );
+    const permissions = getUserPermissions(currentUser, currentAccountId);
+    const userRole = getUserRole(currentUser, currentAccountId);
+
     return _state.allConversations.filter(conversation => {
       const isUnAssigned = !conversation.meta.assignee;
       const shouldFilter = applyPageFilters(conversation, activeFilters);
-      return isUnAssigned && shouldFilter;
+      const allowedForRole = applyRoleFilter(
+        conversation,
+        userRole,
+        permissions,
+        currentUserId,
+        userTeams,
+        userInboxIds
+      );
+
+      return isUnAssigned && shouldFilter && allowedForRole;
     });
   },
   getParticipatingChats: (_state, _, __, rootGetters) => activeFilters => {

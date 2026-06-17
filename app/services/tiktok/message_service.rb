@@ -23,18 +23,25 @@ class Tiktok::MessageService
   end
 
   def conversation
-    @conversation ||= if channel.inbox.lock_to_single_conversation
-                        contact_inbox.conversations.order(created_at: :desc).first
-                      else
-                        contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
-                      end
-    @conversation ||= create_conversation(channel, contact_inbox, tt_conversation_id)
+    @conversation ||= find_existing_conversation || create_conversation_for_contact
+  end
+
+  def find_existing_conversation
+    if channel.inbox.lock_to_single_conversation
+      contact_inbox.conversations.order(created_at: :desc).first
+    else
+      contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
+    end
+  end
+
+  def create_conversation_for_contact
+    create_conversation(channel, contact_inbox, tt_conversation_id) ||
+      Conversations::Resolver.new(
+        inbox: channel.inbox,
+        contact_inbox: contact_inbox,
+        conversation_params: conversation_params(channel, contact_inbox, tt_conversation_id)
+      ).perform
     # FORK: make TikTok honor lock_to_single_conversation inbox configuration
-    @conversation ||= Conversations::Resolver.new(
-      inbox: channel.inbox,
-      contact_inbox: contact_inbox,
-      conversation_params: conversation_params(channel, contact_inbox, tt_conversation_id)
-    ).perform
   end
 
   def create_message

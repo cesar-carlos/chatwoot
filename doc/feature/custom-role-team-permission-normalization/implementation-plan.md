@@ -68,14 +68,18 @@ Objetivos específicos:
 
 Estado atual validado no projeto:
 
-- Não existe `conversation_team_unassigned_manage`.
-- `CustomRole::PERMISSIONS` não contém a nova permissão.
-- `PermissionFilterService` suporta apenas:
+- `conversation_team_unassigned_manage` implementada ponta a ponta (backend + frontend).
+- `CustomRole::PERMISSIONS` inclui a nova permissão (com marcador `FORK:` em `enterprise/app/models/custom_role.rb`).
+- `PermissionFilterService` aplica hierarquia completa via overlay em `custom/`:
   - `conversation_manage`
   - `conversation_unassigned_manage`
+  - `conversation_team_unassigned_manage`
   - `conversation_participating_manage`
-- `conversation.routes.js` não inclui a nova permissão na lista local de acesso.
-- Frontend (`permissions.js`, helpers de filtro e i18n) não contempla a regra de time.
+- `ConversationPolicy` delega `permits_team_unassigned_manage?` com gate obrigatório de inbox.
+- `conversation.routes.js` inclui a nova permissão na lista local de acesso.
+- Frontend (`permissions.js`, `applyRoleFilter`, i18n en/pt_BR) contempla a regra de time + inbox.
+- `Conversations::UnreadCounts::Counter` aplica `team_unassigned_and_mine` via overlay em `custom/` (gap corrigido).
+- Specs automatizados backend e frontend passando; validação manual operacional (PR4) ainda pendente.
 
 ## Business Rules to Normalize
 
@@ -167,16 +171,16 @@ Goal: fechar regra de negócio e contrato antes de codar.
 
 Tasks:
 
-- [ ] Confirmar semântica final da nova permissão com produto/operação
-- [ ] Confirmar hierarquia oficial de precedência das permissões
-- [ ] Confirmar comportamento para conversa sem `team_id` (proposto: negar)
-- [ ] Confirmar regra mandatória de acesso à inbox (`assigned_inboxes`) em conjunto com a nova permissão
+- [x] Confirmar semântica final da nova permissão com produto/operação
+- [x] Confirmar hierarquia oficial de precedência das permissões
+- [x] Confirmar comportamento para conversa sem `team_id` (**decidido: negar**)
+- [x] Confirmar regra mandatória de acesso à inbox (`assigned_inboxes`) em conjunto com a nova permissão (**decidido: gate obrigatório**)
 - [ ] Confirmar se UI do card exibirá nome do time nesta entrega ou fase posterior
-- [ ] Registrar decisão final de contrato neste documento
+- [x] Registrar decisão final de contrato neste documento
 
 Deliverables:
 
-- Regra de autorização fechada e sem ambiguidades
+- Regra de autorização fechada e sem ambiguidades (exceto UX opcional de card)
 
 ### Phase 1 - Backend Domain and Authorization
 
@@ -193,6 +197,7 @@ Tasks:
 - [x] Validar precedência para não quebrar regras atuais
 - [x] Criar/atualizar specs de backend para matriz de autorização (permissão + team + inbox)
 - [x] Marcar linhas divergentes com `# FORK: custom role team permission normalization`
+- [x] Corrigir `Conversations::UnreadCounts::Counter` para `conversation_team_unassigned_manage` (`team_unassigned_and_mine`, inbox-scoped)
 
 Deliverables:
 
@@ -228,9 +233,9 @@ Tasks:
 
 - [x] Atualizar `conversation.routes.js` para incluir a nova permissão na constante local
 - [x] Revisar guardas que dependem de arrays locais de permissões
-- [ ] Validar `defaultRedirectPage()` para usuários com apenas a nova permissão
-- [ ] Criar teste de rota/guard para impedir regressão de redirect loop
-- [ ] Executar smoke manual de navegação inicial (`/`, `/dashboard`, inbox/team paths)
+- [x] Validar `defaultRedirectPage()` para usuários com apenas a nova permissão (`routeHelpers.spec.js`)
+- [x] Criar teste de rota/guard para impedir regressão de redirect loop (`routeHelpers.spec.js`)
+- [ ] Executar smoke manual de navegação inicial (`/`, `/dashboard`, inbox/team paths) — pendente PR4
 
 Deliverables:
 
@@ -370,7 +375,7 @@ Deliverables:
 
 ### Counts, Filters, and Deep Links
 
-- [ ] Validar coerência dos contadores (`mine`, `unassigned`, `all`) com a nova regra
+- [x] Validar coerência dos contadores (`mine`, `unassigned`, `all`) com a nova regra — **FIXED**: `UnreadCounts::Counter` overlay em `custom/`
 - [ ] Validar filtros (`q`, `team_id`, `inbox_id`, `assignee_type`) sem bypass de autorização
 - [ ] Validar acesso direto por URL de conversa (deep link) com policy aplicada corretamente
 
@@ -385,6 +390,7 @@ Deliverables:
 - [x] Nova permissão disponível no cadastro de custom role
 - [x] Backend aplica corretamente `team_unassigned + mine`
 - [x] Backend exige acesso à inbox como gate adicional
+- [x] Backend unread counts (`Conversations::UnreadCounts::Counter`) respeitam `conversation_team_unassigned_manage`
 - [x] Frontend aplica filtro equivalente (`team + inbox`) sem inconsistência
 - [x] Frontend adota fail-closed quando faltar contexto de inbox
 - [ ] Usuário com apenas a nova permissão acessa dashboard sem loop
@@ -660,6 +666,7 @@ This section tracks what is already implemented/validated in this workspace and 
 - [x] Backend: permission filter supports `team_unassigned + mine`
 - [x] Backend: inbox access remains mandatory in filtering
 - [x] Backend: conversation policy enforces inbox gate and team-scope checks for custom role
+- [x] Backend: `Conversations::UnreadCounts::Counter` supports `team_unassigned_and_mine` via `custom/` overlay
 - [x] Frontend: constants updated with `conversation_team_unassigned_manage`
 - [x] Frontend: `applyRoleFilter` updated with `userTeams + userInboxIds`
 - [x] Frontend: fail-closed behavior when inbox context is unavailable
@@ -668,7 +675,7 @@ This section tracks what is already implemented/validated in this workspace and 
 
 ### Automated validation completed
 
-- [x] Backend specs (enterprise permission filter + policy): passing
+- [x] Backend specs (enterprise permission filter + policy + unread counter): passing
 - [x] Frontend specs (conversation helpers + getters + settings helper): passing
 - [x] Lint diagnostics for modified files: no new issues
 

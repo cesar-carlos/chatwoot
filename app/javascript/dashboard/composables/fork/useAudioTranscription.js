@@ -5,12 +5,8 @@ import { useTranscription } from 'dashboard/composables/useTranscription';
 
 export const useAudioTranscription = attachmentSource => {
   const router = useRouter();
-  const {
-    isTranscribing,
-    transcription,
-    hasGroqToken,
-    transcribe,
-  } = useTranscription();
+  const { isTranscribing, transcription, hasGroqToken, transcribe } =
+    useTranscription();
 
   const tokenMissingDialogRef = ref(null);
   const tokenInvalidDialogRef = ref(null);
@@ -47,8 +43,12 @@ export const useAudioTranscription = attachmentSource => {
   return {
     isTranscribing,
     transcriptText,
-    tokenMissingDialogRef,
-    tokenInvalidDialogRef,
+    setTokenMissingDialog: el => {
+      tokenMissingDialogRef.value = el;
+    },
+    setTokenInvalidDialog: el => {
+      tokenInvalidDialogRef.value = el;
+    },
     handleTranscribe,
     goToSettings,
   };

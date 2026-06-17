@@ -24,6 +24,7 @@ flowchart TD
 | Tipo de provider | Exemplos | Estratégia | Doc |
 |------------------|----------|------------|-----|
 | **Meta-like / CPaaS proxy** | Reseller WABA com Graph `/calls` | Adapter + reuso `/whatsapp_calls` shape | **Este doc** |
+| **SDK browser + webhook** | Wavoip | Canal `Channel::Wavoip` em `custom/` | [wavoip-provider/](./wavoip-provider/) |
 | **Gateway não oficial** | Evolution, Baileys, Z-API | Canal/modelo separado em `custom/` + webhook dedicado | Este doc como checklist; adaptar contrato |
 | **PSTN** | Twilio, Vonage | Padrão Twilio — **não** WA in-app | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
 

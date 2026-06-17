@@ -9,6 +9,7 @@ import {
   AVAILABLE_CUSTOM_ROLE_PERMISSIONS,
   MANAGE_ALL_CONVERSATION_PERMISSIONS,
   CONVERSATION_UNASSIGNED_PERMISSIONS,
+  CONVERSATION_TEAM_UNASSIGNED_PERMISSIONS,
   CONVERSATION_PARTICIPATING_PERMISSIONS,
 } from 'dashboard/constants/permissions.js';
 
@@ -75,12 +76,14 @@ watch(
       !newValue.includes(MANAGE_ALL_CONVERSATION_PERMISSIONS);
 
     if (hasAddedManageAllConversation) {
+      // FORK: custom role team permission normalization
       // If manage all conversation permission is added,
-      // then add unassigned and participating permissions automatically
+      // then add unassigned, team unassigned, and participating permissions automatically
       selectedPermissions.value = [
         ...new Set([
           ...selectedPermissions.value,
           CONVERSATION_UNASSIGNED_PERMISSIONS,
+          CONVERSATION_TEAM_UNASSIGNED_PERMISSIONS,
           CONVERSATION_PARTICIPATING_PERMISSIONS,
         ]),
       ];

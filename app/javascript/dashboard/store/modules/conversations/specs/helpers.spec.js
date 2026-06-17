@@ -305,6 +305,70 @@ describe('Conversation Helpers', () => {
           )
         ).toBe(false);
       });
+
+      it('returns false when userInboxIds are empty (fail-closed)', () => {
+        expect(
+          applyRoleFilter(
+            conversationInUserTeam,
+            role,
+            permissions,
+            currentUserId,
+            userTeams,
+            []
+          )
+        ).toBe(false);
+      });
+
+      it('returns false for unassigned conversations without a team', () => {
+        expect(
+          applyRoleFilter(
+            conversationWithoutAssignee,
+            role,
+            permissions,
+            currentUserId,
+            userTeams,
+            userInboxIds
+          )
+        ).toBe(false);
+      });
+
+      it('returns false when team matches but inbox is not in userInboxIds', () => {
+        expect(
+          applyRoleFilter(
+            conversationInUserTeam,
+            role,
+            permissions,
+            currentUserId,
+            userTeams,
+            [99]
+          )
+        ).toBe(false);
+      });
+    });
+
+    describe('permission precedence', () => {
+      const role = 'custom_role';
+      const currentUserId = 1;
+      const userTeams = [{ id: 7 }];
+      const userInboxIds = [10];
+
+      it('conversation_unassigned_manage takes precedence over conversation_team_unassigned_manage', () => {
+        const permissions = [
+          'conversation_unassigned_manage',
+          'conversation_team_unassigned_manage',
+        ];
+
+        expect(
+          applyRoleFilter(
+            conversationInOtherTeam,
+            role,
+            permissions,
+            currentUserId,
+            userTeams,
+            userInboxIds
+          )
+        ).toBe(true);
+      });
     });
 
     it('returns false for custom role without any relevant permissions', () => {
