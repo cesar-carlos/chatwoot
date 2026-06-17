@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+if [ "$branch" != "develop" ]; then
+  exit 0
+fi
+
+if git diff --cached -G'FORK:' --name-only | grep -q .; then
+  echo "pre-commit: refusing commit on develop — staged changes contain FORK: markers." >&2
+  echo "pre-commit: custom fork work belongs on main. See AGENTS.md (Fork Strategy)." >&2
+  exit 1
+fi
+
+exit 0
