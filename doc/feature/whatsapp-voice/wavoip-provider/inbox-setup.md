@@ -4,7 +4,7 @@ Especificação do fluxo **Configurações → Caixas de Entrada → novo tile �
 
 **UI de referência:** slot vazio na grade de canais (ao lado de “Chamada WhatsApp” Meta).
 
-**Relacionado:** [implementation-plan.md](./implementation-plan.md) · [architecture.md](./architecture.md) · [frontend-integration.md](./frontend-integration.md) · [sdk-reference.md](./sdk-reference.md)
+**Relacionado:** [implementation-plan.md](./implementation-plan.md) · [architecture.md](./architecture.md) · [frontend-integration.md](./frontend-integration.md) · [sdk-reference.md](./sdk-reference.md) · [official-docs.md](./official-docs.md)
 
 ---
 
@@ -40,7 +40,7 @@ flowchart LR
 | `title` (i18n) | `INBOX_MGMT.ADD.AUTH.CHANNEL.WAVOIP.TITLE` — ex.: “Chamada Wavoip” |
 | `description` | `INBOX_MGMT.ADD.AUTH.CHANNEL.WAVOIP.DESCRIPTION` |
 | `isBeta` | `true` |
-| `isActive` | `enabledFeatures.channel_voice` (sem `whatsappAppId`) |
+| `isActive` | `enabledFeatures.channel_voice` && (`channel_wavoip` se em piloto) |
 
 Registro em `ChannelFactory.vue` (`# FORK:`):
 
@@ -63,12 +63,12 @@ Todos os campos abaixo são apresentados **na criação**. Pareamento do disposi
 
 ### 3.2 Seção — Dispositivo Wavoip
 
-Dados obtidos em [app.wavoip.com/devices](https://app.wavoip.com/devices) antes do formulário.
+Dados obtidos em [app.wavoip.com/devices](https://app.wavoip.com/devices) — ver [Vincule um Whatsapp](https://wavoip.gitbook.io/api/vincule-um-whatsapp.md) e [official-docs.md](./official-docs.md).
 
 | Campo | `provider_config` key | Obrigatório | Validação | Notas |
 |-------|----------------------|-------------|-----------|-------|
-| **Token do dispositivo** | `device_token` | Sim | present, min length | Input `type="password"`; nunca logar |
-| **ID da sessão** | `id_session` | Não | integer opcional | Se o admin tiver o `id_session` do painel; webhook `DEVICE` pode preencher depois |
+| **Token do dispositivo** | `device_token` | Sim | present, min length | `type="password"`; API lista mascarada `••••last4`; nunca logar |
+| **ID da sessão** | `id_session` | Não | integer opcional | **Somente cache/fallback** — webhook `DEVICE` preenche; resolução de inbox prioriza `phone_number` ([webhook-contract](./webhook-contract.md)) |
 
 Referência SDK: [`new Wavoip({ tokens: [...] })`](https://wavoip.gitbook.io/api/wavoip-api/primeiros-passos/initialization.md).
 
@@ -86,7 +86,7 @@ Gerado pelo Chatwoot na criação; admin configura no painel Wavoip (**Integraç
 
 | Campo | Storage | Obrigatório | Quem gera |
 |-------|---------|-------------|-----------|
-| **URL do webhook** | derivado | — | Read-only na UI: `{FRONTEND_URL}/webhooks/wavoip/{phone_number}` |
+| **URL do webhook** | derivado | — | Read-only: `{FRONTEND_URL}/webhooks/wavoip/{phone_e164}?secret={webhook_secret}` |
 | **Segredo do webhook** | `provider_config.webhook_secret` | Sim | Backend: `SecureRandom.hex(32)` se admin não informar |
 | **Segredo customizado** | mesmo key | Não | Campo opcional “avançado”; senão auto-gerado |
 
@@ -94,7 +94,7 @@ Gerado pelo Chatwoot na criação; admin configura no painel Wavoip (**Integraç
 |---------------------|-------------------------|
 | **Confirmo que configurei o webhook no painel Wavoip** | Sim (acknowledgment) |
 
-Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md) — eventos `CALL`, `RECORD`, `DEVICE`.
+Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md) · contrato auth [webhook-contract.md](./webhook-contract.md).
 
 ### 3.5 Seção — Notificações do agente (opcional, colapsada)
 
@@ -277,6 +277,8 @@ Tab **Chamadas** no inbox (`WavoipCallingPage.vue`) expõe os **mesmos campos** 
 | Reiniciar / logout | `restart()`, `logout()` | Admin troubleshooting |
 
 Detalhes: [sdk-reference.md §2](./sdk-reference.md#2-dispositivo-device).
+
+**`WavoipOnboardingChecklist`:** semáforo 6 passos — [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
 
 Campos editáveis:
 

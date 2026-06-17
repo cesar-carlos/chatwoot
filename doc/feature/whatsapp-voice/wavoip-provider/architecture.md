@@ -2,7 +2,7 @@
 
 Desenho técnico com **responsabilidades explícitas** e classes pequenas. Evita god class concentrando lógica em services nomeados por evento/ação.
 
-**Relacionado:** [wavoip-vs-meta.md](./wavoip-vs-meta.md) · [implementation-plan.md](./implementation-plan.md) · [sdk-reference.md](./sdk-reference.md)
+**Relacionado:** [wavoip-vs-meta.md](./wavoip-vs-meta.md) · [implementation-plan.md](./implementation-plan.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [official-docs.md](./official-docs.md)
 
 ---
 
@@ -100,11 +100,15 @@ end
 
 `Custom::Webhooks::WavoipController` — só autentica, enfileira job, retorna 200.
 
+Contrato completo: [webhook-contract.md](./webhook-contract.md).
+
 ```ruby
 # Responsabilidades: HTTP apenas
-# - validar secret (header ou query)
-# - resolver inbox por phone / id_session
+# - validar secret (query ?secret= ou header X-Chatwoot-Wavoip-Secret)
+# - rate limit (Rack::Attack)
+# - resolver inbox por phone_number (E.164) ou id_session fallback
 # - Wavoip::ProcessWebhookJob.perform_later(inbox_id, payload)
+# - log produção: type, action, whatsapp_call_id, status — sem token/secret
 ```
 
 ### 3.2 Job + dispatcher (sem god class)
@@ -132,13 +136,14 @@ HANDLERS = {
 | `Webhooks::PayloadNormalizer` | Hash simbólico a partir do JSON Wavoip | Side effects |
 | `Calls::StatusMapper` | `INCOMING_RING` → `ringing`, `ACTIVE` → `in_progress`, etc. | DB |
 | `Calls::ConversationLinker` | Contato + conversa (reusa regras WhatsApp) | Call API |
-| `Calls::CallUpsertService` | find_or_create `Call` por `provider_call_id` | Webhook parse |
+| `Calls::CallUpsertService` | find_or_create `Call` por `provider_call_id`; idempotente | Webhook parse |
+| `Calls::CallUpdateHandler` | Ignora regressão de status terminal | Aceitar chamada |
 | `Calls::MessageSyncService` | Bolha `voice_call` via `Voice::CallMessageBuilder` | WebRTC |
 | `Calls::Broadcaster` | ActionCable `voice_call.*` com `provider: wavoip` | — |
 
 ### 3.4 Mapeamento status Wavoip → Chatwoot
 
-Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md).
+Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md) — ver também [official-docs.md](./official-docs.md).
 
 **Importante:** o webhook usa vocabulário diferente do SDK (`CALLING`, `RINGING`, `ACTIVE`…). Ver tabela dual em [sdk-reference.md §7](./sdk-reference.md#7-dois-vocabulários-de-status-crítico). O `StatusMapper` Rails trata **só webhook**; o browser usa `lib/wavoip/callStatusUI.js` para o widget.
 
@@ -155,7 +160,19 @@ Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta
 
 ### 3.5 API REST mínima (fora do MVP)
 
-Rotas `register_attempt` / `ack_accept` **adiadas** — webhook + SDK são fonte de verdade. Reavaliar se relatórios exigirem `accepted_by_agent_id` antes do webhook `ACTIVE`.
+Rotas `register_attempt` / `ack_accept` **adiadas**. `accepted_by_agent_id` via PATCH no accept ou webhook `ACTIVE` — ver [webhook-contract §4](./webhook-contract.md#4-accepted_by_agent_id-sem-rest-mvp).
+
+### 3.6 ActionCable
+
+Contrato por provider documentado em [webhook-contract §5](./webhook-contract.md#5-actioncable--contrato-por-provider). Wavoip **não** usa `voice_call.outbound_connected` nem SDP.
+
+### 3.7 Serializer / API inbox
+
+| Campo | Exposição |
+|-------|-----------|
+| `device_token` | Somente admin inbox; listagem mascarada `••••{last4}` |
+| `webhook_secret` | Nunca na API; só URL com secret na criação/rotação |
+| `webhook_url` | Read-only derivado de `phone_number` |
 
 ---
 
@@ -171,9 +188,13 @@ module Custom::Call
   end
 end
 
-# config/initializers ou custom/initializer
+# config/initializers em custom/
 Call.prepend_mod_with('Custom::Call') if defined?(Call)
 ```
+
+**Verificação obrigatória:** spec ou smoke que `Call.providers.keys` inclui `%w[twilio whatsapp wavoip]` após boot.
+
+Enum prepend em Rails exige ordem estável — não reordenar valores existentes.
 
 Se Enterprise indisponível: model espelho mínimo só em `custom/` (último recurso).
 
@@ -220,6 +241,8 @@ export function useWavoipCallSession() {
 | Módulo | Linhas alvo | Faz |
 |--------|-------------|-----|
 | `lib/wavoip/wavoipClientRegistry.js` | ~80 | Map `inboxId → Wavoip` instance; dedupe tokens |
+| `lib/voice/browserVoiceProviders.js` | ~40 | `isBrowserVoiceProvider()` — evita FORK em 4+ Vue |
+| `lib/voice/voiceCallCableRegistry.js` | ~80 | ActionCable handlers whatsapp + wavoip |
 | `composables/wavoip/useWavoipConnection.js` | ~120 | `new Wavoip({ tokens, platform: 'chatwoot' })`; connect on online |
 | `composables/wavoip/useWavoipIncomingOffer.js` | ~150 | `on('offer')` → `calls` store; `accept`/`reject` |
 | `composables/wavoip/useWavoipOutboundCall.js` | ~100 | `startCall`; eventos `peerAccept`/`peerReject` |
@@ -236,10 +259,9 @@ export function useWavoipCallSession() {
 
 ```javascript
 // FORK: registry de providers de voz browser
-const BROWSER_VOICE_HANDLERS = {
-  [VOICE_CALL_PROVIDERS.WHATSAPP]: whatsappSession,
-  [VOICE_CALL_PROVIDERS.WAVOIP]: wavoipSession,
-};
+import { BROWSER_VOICE_HANDLERS } from 'customDashboard/lib/voice/voiceSessionRegistry';
+
+// voiceSessionRegistry.js (custom/) registra whatsapp + wavoip
 ```
 
 `getVoiceCallProvider` em `inbox.js`:
@@ -248,13 +270,13 @@ const BROWSER_VOICE_HANDLERS = {
 if (channelType === 'Channel::Wavoip') return VOICE_CALL_PROVIDERS.WAVOIP;
 ```
 
-### 5.4 `FloatingCallWidget`
+`isBrowserVoiceProvider(provider)` — import de `customDashboard/lib/voice/browserVoiceProviders` — usado em `FloatingCallWidget`, `calls.js`, etc. **sem FORK adicional**.
 
-Ajustes mínimos:
+### 5.4 `FloatingCallWidget` e bolha
 
-- `VOICE_CALL_PROVIDERS.WAVOIP` no mute (delegar `active.setMuted`)
-- Ringtone existente (`/audio/dashboard/ringtone.mp3`) — já implementado
-- Não auto-join outbound Wavoip (diferente de Twilio)
+- Mute: `isBrowserVoiceProvider(activeCall.provider)` → delegar handler do registry
+- Ringtone existente — sem FORK se usar helper compartilhado
+- Bolha `VoiceCall.vue`: ver [frontend-integration §12](./frontend-integration.md#12-bolha-voicecallvue) — sem join SDP para Wavoip
 
 ---
 
@@ -318,9 +340,10 @@ sequenceDiagram
 
 | Item | Abordagem |
 |------|-----------|
-| `device_token` | Armazenado em `provider_config`; exposto ao FE só para agentes autorizados no inbox |
-| Webhook | Secret por inbox em `provider_config`; validar em controller |
-| Token no FE | Carregar via API inbox (como credenciais Twilio voice) — nunca em `window.chatwootConfig` global |
+| `device_token` | `provider_config`; API mascarada; completo só admin edit |
+| Webhook | Secret por inbox; `secure_compare`; ver [webhook-contract](./webhook-contract.md) |
+| Token no FE | Via API inbox autorizada — nunca `window.chatwootConfig` nem `localStorage` Wavoip |
+| Logs | Sem payload completo em produção |
 
 ---
 
@@ -340,38 +363,37 @@ sequenceDiagram
 
 ```
 custom/
+  config/
+    features.yml          # channel_wavoip (piloto)
   app/
     models/channel/wavoip.rb
     models/custom/call.rb
     controllers/webhooks/wavoip_controller.rb
-    controllers/api/v1/accounts/wavoip_calls_controller.rb
-    jobs/wavoip/process_webhook_job.rb
+    jobs/wavoip/
+      process_webhook_job.rb
+      inbound_missed_push_job.rb
     services/wavoip/
-      webhooks/
-        dispatcher.rb
-        payload_normalizer.rb
-        handlers/
-          call_handler.rb
-          call_create_handler.rb
-          call_update_handler.rb
-          record_handler.rb
-          device_handler.rb
-      calls/
-        conversation_linker.rb
-        status_mapper.rb
-        call_upsert_service.rb
-        message_sync_service.rb
-        broadcaster.rb
+      ...
+  app/javascript/dashboard/
+    lib/voice/
+      browserVoiceProviders.js
+      voiceCallCableRegistry.js
+      voiceSessionRegistry.js
+    lib/wavoip/
+      ...
 ```
 
-### Edições `# FORK:` upstream (mínimas)
+**Migration `channel_wavoip`:** em `db/migrate/` do fork — não existe em `upstream/develop`.
+
+### Edições `# FORK:` upstream (≤ 8)
 
 | Arquivo | Mudança |
 |---------|---------|
-| `vite.shared.ts` | alias `customDashboard` → `custom/app/javascript/dashboard` |
+| `vite.shared.ts` | alias `customDashboard` |
 | `app/javascript/dashboard/helper/inbox.js` | `Channel::Wavoip` + `VOICE_CALL_PROVIDERS.WAVOIP` |
-| `app/javascript/dashboard/composables/useCallSession.js` | branch registry |
-| `app/javascript/dashboard/routes/.../ChannelList.vue` | tile `wavoip` |
-| `app/javascript/dashboard/routes/.../ChannelFactory.vue` | map para `Wavoip.vue` |
-| `app/javascript/dashboard/components/widgets/ChannelItem.vue` | gate `wavoip` |
-| `app/javascript/dashboard/helper/actionCable.js` | incluir `wavoip` nos filtros `voice_call.*` |
+| `ChannelList.vue` | tile `wavoip` |
+| `ChannelFactory.vue` | map para `Wavoip.vue` |
+| `ChannelItem.vue` | gate `channel_voice` / `channel_wavoip` |
+| `useCallSession.js` | import registry |
+| `actionCable.js` | delegação única ao `voiceCallCableRegistry` |
+| `VoiceCall.vue` | bolha sem SDP join para Wavoip |

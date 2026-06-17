@@ -2,15 +2,16 @@
 
 Como usar `@wavoip/wavoip-api` no Chatwoot **sem** `@wavoip/wavoip-webphone`, mapeando recursos do webphone para componentes existentes.
 
-**Refs Wavoip:**
+**Índice doc oficial Wavoip:** [official-docs.md](./official-docs.md)
 
-- [SDK — referência completa no fork](./sdk-reference.md) (Device, Media, Calls, Types, Troubleshooting)
-- [Inicializando o Webphone](https://wavoip.gitbook.io/api/webphone/primeiros-passos/inicializacao.md) — settings equivalentes
-- [API pública webphone](https://wavoip.gitbook.io/api/webphone/referencia/api-publica.md) — mapa mental dos métodos
+**Refs internas:** [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [operations-runbook.md](./operations-runbook.md)
+
+**Refs oficiais webphone (comportamento — não instalar):**
+
+- [Inicializando o Webphone](https://wavoip.gitbook.io/api/webphone/primeiros-passos/inicializacao.md)
+- [API pública webphone](https://wavoip.gitbook.io/api/webphone/referencia/api-publica.md)
 - [Notificações push](https://wavoip.gitbook.io/api/webphone/recursos/notificacoes-push.md)
 - [Diagnóstico de chamada](https://wavoip.gitbook.io/api/webphone/recursos/diagnostico.md)
-
----
 
 ## 1. Por que não usar o webphone
 
@@ -25,7 +26,30 @@ Usar apenas [`@wavoip/wavoip-api`](https://wavoip.gitbook.io/api/wavoip-api/prim
 
 ---
 
-## 2. Bootstrap do SDK
+## 2. Registry de providers (reduzir FORK)
+
+Centralizar em `custom/` para evitar `# FORK:` em cada componente Vue:
+
+```javascript
+// custom/.../lib/voice/browserVoiceProviders.js
+export const BROWSER_VOICE_PROVIDERS = ['whatsapp', 'wavoip'];
+
+export const isBrowserVoiceProvider = provider =>
+  BROWSER_VOICE_PROVIDERS.includes(provider);
+```
+
+| Consumidor | Uso |
+|------------|-----|
+| `FloatingCallWidget.vue` | `isBrowserVoiceProvider(activeCall?.provider)` para mute/end |
+| `calls.js` | `teardownByProvider` via registry |
+| `CallCard.vue` | Ícones/duração por provider |
+| `actionCable.js` | Delega a `voiceCallCableRegistry.js` |
+
+`inbox.js` reexporta `isBrowserVoiceProvider` com `# FORK:` mínimo.
+
+---
+
+## 3. Bootstrap do SDK
 
 Equivalente ao [bootstrap com configuração](https://wavoip.gitbook.io/api/webphone/primeiros-passos/inicializacao.md), mas sem `render()`:
 
@@ -50,7 +74,7 @@ const wavoip = new Wavoip({
 
 ---
 
-## 3. Lifecycle por agente
+## 4. Lifecycle por agente
 
 ```mermaid
 stateDiagram-v2
@@ -72,7 +96,7 @@ Implementar em `useWavoipConnection.js` — **não** misturar com lógica de off
 
 ---
 
-## 4. Mapa API webphone → composables Chatwoot
+## 5. Mapa API webphone → composables Chatwoot
 
 | API webphone (`window.wavoip`) | `@wavoip/wavoip-api` | Composable Chatwoot |
 |--------------------------------|----------------------|---------------------|
@@ -86,9 +110,9 @@ Implementar em `useWavoipConnection.js` — **não** misturar com lógica de off
 
 ---
 
-## 5. Notificações
+## 6. Notificações
 
-### 5.1 Comportamento Wavoip (referência)
+### 6.1 Comportamento Wavoip (referência)
 
 Fonte: [Notificações push](https://wavoip.gitbook.io/api/webphone/recursos/notificacoes-push.md)
 
@@ -99,7 +123,7 @@ Fonte: [Notificações push](https://wavoip.gitbook.io/api/webphone/recursos/not
 | Permissão não `granted` | Silencioso |
 | Aba fechada | **Não funciona** — precisa Web Push + SW |
 
-### 5.2 Estratégia Chatwoot
+### 6.2 Estratégia Chatwoot
 
 Camadas complementares:
 
@@ -124,7 +148,7 @@ export async function notifyIncomingOffer(offer) {
 }
 ```
 
-### 5.3 Limitações a documentar para usuários
+### 6.3 Limitações a documentar para usuários
 
 - **iOS Safari:** `Notification` só em PWA instalada — igual Wavoip doc.
 - **Sem aceitar pela notification** — clique foca aba; aceitar no widget (mesma limitação Wavoip).
@@ -132,7 +156,7 @@ export async function notifyIncomingOffer(offer) {
 
 ---
 
-## 6. Diagnóstico
+## 7. Diagnóstico
 
 Fonte: [Diagnóstico de chamada](https://wavoip.gitbook.io/api/webphone/recursos/diagnostico.md)
 
@@ -169,7 +193,7 @@ Tratar mensagens i18n para: `STUN_UNREACHABLE`, `ICE_GATHERING_TIMEOUT`, `ICE_CO
 
 ---
 
-## 7. Integração com `calls.js` (Pinia)
+## 8. Integração com `calls.js` (Pinia)
 
 Objeto no store — mesma forma que WhatsApp para `FloatingCallWidget`:
 
@@ -186,11 +210,11 @@ Objeto no store — mesma forma que WhatsApp para `FloatingCallWidget`:
 }
 ```
 
-`teardownByProvider` em `calls.js` — adicionar case `wavoip` chamando `useWavoipActiveCall().cleanup()`.
+`teardownByProvider` — usar `voiceSessionRegistry` em `custom/`; **não** FORK em `calls.js` se importar registry.
 
 ---
 
-## 8. `useCallSession` — contrato do branch Wavoip
+## 9. `useCallSession` — contrato do branch Wavoip
 
 Manter paridade com WhatsApp/Twilio para o widget:
 
@@ -206,19 +230,22 @@ Não duplicar timer — reusar `globalDurationTimer` em `useCallSession.js`.
 
 ---
 
-## 9. i18n
+## 10. i18n
 
 Chaves novas apenas em `en.json` e `pt_BR` (regra do projeto):
 
 - `INBOX_MGMT.WAVOIP_CALL.*` — tile e settings
 - `CONVERSATION.WAVOIP_CALL_*` — erros outbound
 - `WAVOIP_CONNECTIVITY.*` — issues de rede
+- `WAVOIP_ONBOARDING.*` — checklist semáforo
 
 Usar `replaceInstallationName` se strings mencionarem produto.
 
+**Outbound sem permissão Meta:** mensagem clara em `peerReject` / `unanswered` — Wavoip não tem UI de “call permission”.
+
 ---
 
-## 10. Performance
+## 11. Performance
 
 | Tática | Motivo |
 |--------|--------|
@@ -229,10 +256,39 @@ Usar `replaceInstallationName` se strings mencionarem produto.
 
 ---
 
-## 11. Arquivos frontend (resumo)
+## 12. Bolha `VoiceCall.vue`
+
+Hoje acoplada a `useWhatsappCallSession` e join via SDP. Comportamento Wavoip:
+
+| Estado bolha | WhatsApp | Wavoip |
+|--------------|----------|--------|
+| `ringing` inbound | Botão join + SDP | **Sem join** — usar widget flutuante |
+| `in_progress` | Join se não ativo | Chamada já no browser via SDK |
+| `completed` | Gravação upload local | `record_url` no `Call#meta` ou anexo (Fase 4) |
+| Replay / ligar de novo | Initiate via API Meta | `startCall` na conversa (`ConversationCallButton`) |
+
+```javascript
+// VoiceCall.vue — branch
+const isWavoip = computed(
+  () => call.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
+);
+
+// Ocultar botões join/rejoin SDP quando isWavoip
+// Mostrar AudioChip com record_url quando completed + URL presente
+```
+
+**Sem** `useWhatsappCallSession` para Wavoip — único `# FORK:` necessário na bolha.
+
+---
+
+## 13. Arquivos frontend (resumo)
 
 ```
 custom/app/javascript/dashboard/
+  lib/voice/
+    browserVoiceProviders.js
+    voiceCallCableRegistry.js
+    voiceSessionRegistry.js
   lib/wavoip/
     wavoipClientRegistry.js
     wavoipDiagnosticsCollector.js
@@ -252,6 +308,7 @@ custom/app/javascript/dashboard/
     WavoipNotificationFields.vue
   routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue
     WavoipDevicePanel.vue
+    WavoipOnboardingChecklist.vue
 ```
 
 Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).

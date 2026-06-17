@@ -2,7 +2,7 @@
 
 Guia para admins e suporte quando a integração não funciona como esperado.
 
-**Relacionado:** [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md)
+**Relacionado:** [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md) · [official-docs.md](./official-docs.md)
 
 ---
 
@@ -73,7 +73,7 @@ Ver logs: `Wavoip::ProcessWebhookJob` (sem payload em produção).
 | `SYMMETRIC_NAT_SUSPECTED` | Usar TURN; chamada `unofficial` (relay) |
 | `NO_HOST_CANDIDATES` | Desativar flag Chrome “Anonymize local IPs” |
 
-Ver [troubleshooting Wavoip](https://wavoip.gitbook.io/api/wavoip-api/referencia/troubleshooting.md).
+Ver [Troubleshooting Wavoip](https://wavoip.gitbook.io/api/wavoip-api/referencia/troubleshooting.md) e [official-docs.md](./official-docs.md).
 
 ### Outro agente atendeu (`acceptedElsewhere`)
 

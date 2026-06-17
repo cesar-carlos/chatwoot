@@ -2,7 +2,9 @@
 
 Mapeamento da documentação oficial do pacote npm para implementação no Chatwoot. **Somente browser** — não usar no Rails.
 
-**Fontes:**
+**Índice completo doc oficial:** [official-docs.md](./official-docs.md)
+
+**Fontes primárias (SDK):**
 
 - [Dispositivo](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/device.md)
 - [Mídia](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/media.md)

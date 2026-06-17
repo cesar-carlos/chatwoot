@@ -169,6 +169,7 @@ O plano de UI em [ui-design.md](./ui-design.md) mapeia componentes já usados no
 | Busca de contatos | `ComboBox` + `createContactSearcher()` |
 | Card visual de contato | Layout de `ContactMergeForm.vue` |
 | Resultado na conversa | `bubbles/Contact.vue` (sem novo bubble) |
+| Melhorias MVP / backlog | [improvements-backlog.md](./improvements-backlog.md) |
 
 ---
 

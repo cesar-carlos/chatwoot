@@ -46,6 +46,20 @@ Plano para **envio de contact card pelo agente**, reutilizando inbound + UI exis
 
 ---
 
+## Melhorias incorporadas ao MVP
+
+Revisão pós-plano — detalhes em [improvements-backlog.md](./improvements-backlog.md):
+
+- Outgoing sem botão "Salvar contato"
+- Preview "Shared contact" na lista + ícone
+- Guard `can_reply` no WhatsApp
+- E.164 no backend
+- Meta snake_case no bubble
+- Copy dedicada para mensagens do agente
+- `business_connection_id` no Telegram Business
+
+---
+
 ## Índice
 
 | Documento | Conteúdo |
@@ -54,6 +68,7 @@ Plano para **envio de contact card pelo agente**, reutilizando inbound + UI exis
 | [implementation-decision-tree.md](./implementation-decision-tree.md) | Opções, decisões de produto |
 | [ui-design.md](./ui-design.md) | Componentes, estilos, i18n, wireframes |
 | [implementation-plan.md](./implementation-plan.md) | Fases, arquivos, testes, fork |
+| [improvements-backlog.md](./improvements-backlog.md) | MVP obrigatório + P1/P2 + diagrama de estados |
 
 ---
 
