@@ -2,7 +2,7 @@
 
 Desenho técnico com **responsabilidades explícitas** e classes pequenas. Evita god class concentrando lógica em services nomeados por evento/ação.
 
-**Relacionado:** [wavoip-vs-meta.md](./wavoip-vs-meta.md) · [implementation-plan.md](./implementation-plan.md)
+**Relacionado:** [wavoip-vs-meta.md](./wavoip-vs-meta.md) · [implementation-plan.md](./implementation-plan.md) · [sdk-reference.md](./sdk-reference.md)
 
 ---
 
@@ -18,6 +18,7 @@ flowchart TB
       IN[useWavoipIncomingOffer]
       OUT[useWavoipOutboundCall]
       ACT[useWavoipActiveCall]
+      DEV[useWavoipDevicePanel]
     end
     UCS --> WCS
     WCS --> CONN & IN & OUT & ACT
@@ -127,7 +128,7 @@ HANDLERS = {
 | `Webhooks::Handlers::CallCreateHandler` | Inbound ring no servidor | WebRTC |
 | `Webhooks::Handlers::CallUpdateHandler` | Transições de status | Aceitar chamada |
 | `Webhooks::Handlers::RecordHandler` | Anexar `record_url` à mensagem | Gravar áudio |
-| `Webhooks::Handlers::DeviceHandler` | Atualizar status dispositivo no inbox | — |
+| `Webhooks::Handlers::DeviceHandler` | Atualizar status dispositivo no inbox (`open`/`close`/`hibernating` via SDK em settings) | — |
 | `Webhooks::PayloadNormalizer` | Hash simbólico a partir do JSON Wavoip | Side effects |
 | `Calls::StatusMapper` | `INCOMING_RING` → `ringing`, `ACTIVE` → `in_progress`, etc. | DB |
 | `Calls::ConversationLinker` | Contato + conversa (reusa regras WhatsApp) | Call API |
@@ -137,9 +138,11 @@ HANDLERS = {
 
 ### 3.4 Mapeamento status Wavoip → Chatwoot
 
-Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md):
+Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md).
 
-| `status` Wavoip | `Call.status` Chatwoot | Notas |
+**Importante:** o webhook usa vocabulário diferente do SDK (`CALLING`, `RINGING`, `ACTIVE`…). Ver tabela dual em [sdk-reference.md §7](./sdk-reference.md#7-dois-vocabulários-de-status-crítico). O `StatusMapper` Rails trata **só webhook**; o browser usa `lib/wavoip/callStatusUI.js` para o widget.
+
+| `status` Wavoip (webhook) | `Call.status` Chatwoot | Notas |
 |-----------------|------------------------|-------|
 | `INCOMING_RING`, `OUTGOING_RING`, `OUTGOING_CALLING`, `CONNECTING` | `ringing` | |
 | `ACTIVE` | `in_progress` | |
@@ -150,16 +153,9 @@ Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta
 
 `provider_call_id` = `whatsapp_call_id` do payload (stringified).
 
-### 3.5 API REST mínima (opcional, fina)
+### 3.5 API REST mínima (fora do MVP)
 
-Rotas em `custom/config/routes.rb` — **sem SDP**:
-
-| Método | Rota | Uso |
-|--------|------|-----|
-| `POST` | `/api/v1/accounts/:id/wavoip_calls/register_attempt` | Frontend registra outbound iniciado (conversation_id, peer phone) |
-| `POST` | `/api/v1/accounts/:id/wavoip_calls/:id/ack_accept` | Agente aceitou no SDK — grava `accepted_by_agent_id` |
-
-Alternativa MVP: confiar só no webhook e não expor REST até Fase 3.
+Rotas `register_attempt` / `ack_accept` **adiadas** — webhook + SDK são fonte de verdade. Reavaliar se relatórios exigirem `accepted_by_agent_id` antes do webhook `ACTIVE`.
 
 ---
 
@@ -174,7 +170,9 @@ module Custom::Call
     base.enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
   end
 end
-Call.prepend(Custom::Call) if defined?(Call)
+
+# config/initializers ou custom/initializer
+Call.prepend_mod_with('Custom::Call') if defined?(Call)
 ```
 
 Se Enterprise indisponível: model espelho mínimo só em `custom/` (último recurso).
@@ -227,7 +225,9 @@ export function useWavoipCallSession() {
 | `composables/wavoip/useWavoipOutboundCall.js` | ~100 | `startCall`; eventos `peerAccept`/`peerReject` |
 | `composables/wavoip/useWavoipActiveCall.js` | ~80 | `mute`/`end`; subscribe `ended` |
 | `composables/wavoip/useWavoipCallSession.js` | ~60 | Facade |
+| `composables/wavoip/useWavoipDevicePanel.js` | ~150 | QR, `pairingCode`, `wakeUp`, status — **Fase 1** |
 | `composables/wavoip/useWavoipNotifications.js` | ~100 | OS Notification quando aba sem foco |
+| `lib/wavoip/callStatusUI.js` | ~60 | Map SDK `CallStatus` → widget (não misturar com Rails) |
 | `lib/wavoip/wavoipDiagnosticsCollector.js` | ~120 | `iceDiagnostics`, `connectivityIssue`, `stats` (Fase 5) |
 
 **Limite prático:** nenhum arquivo > ~200 linhas; extrair helpers para `lib/wavoip/`.
@@ -368,9 +368,10 @@ custom/
 
 | Arquivo | Mudança |
 |---------|---------|
+| `vite.shared.ts` | alias `customDashboard` → `custom/app/javascript/dashboard` |
 | `app/javascript/dashboard/helper/inbox.js` | `Channel::Wavoip` + `VOICE_CALL_PROVIDERS.WAVOIP` |
 | `app/javascript/dashboard/composables/useCallSession.js` | branch registry |
-| `app/javascript/dashboard/routes/.../ChannelList.vue` | tile `wavoip_call` |
-| `app/javascript/dashboard/routes/.../ChannelFactory.vue` | map para `WavoipCall.vue` |
-| `app/javascript/dashboard/components/widgets/ChannelItem.vue` | gate `wavoip_call` |
+| `app/javascript/dashboard/routes/.../ChannelList.vue` | tile `wavoip` |
+| `app/javascript/dashboard/routes/.../ChannelFactory.vue` | map para `Wavoip.vue` |
+| `app/javascript/dashboard/components/widgets/ChannelItem.vue` | gate `wavoip` |
 | `app/javascript/dashboard/helper/actionCable.js` | incluir `wavoip` nos filtros `voice_call.*` |

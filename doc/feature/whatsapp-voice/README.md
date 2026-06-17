@@ -51,6 +51,7 @@ flowchart TD
 |-----------|----------|
 | [architecture-and-flow.md](./architecture-and-flow.md) | Fluxo E2E: setup, inbound, outbound, permissões, Meta API, frontend, gates EE |
 | [wavoip-provider/](./wavoip-provider/) | **Wavoip** — estratégia, arquitetura, plano de fases, frontend |
+| [wavoip-provider/inbox-setup.md](./wavoip-provider/inbox-setup.md) | Wizard caixa de entrada Wavoip (todos os campos na criação) |
 | [second-provider-strategy.md](./second-provider-strategy.md) | Plano para **segundo provider compatível com Meta Calling API** (CPaaS proxy) |
 | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) | O que se perde ao usar stack Twilio em vez de WhatsApp Cloud Calling |
 

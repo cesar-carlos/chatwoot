@@ -4,6 +4,7 @@ Como usar `@wavoip/wavoip-api` no Chatwoot **sem** `@wavoip/wavoip-webphone`, ma
 
 **Refs Wavoip:**
 
+- [SDK — referência completa no fork](./sdk-reference.md) (Device, Media, Calls, Types, Troubleshooting)
 - [Inicializando o Webphone](https://wavoip.gitbook.io/api/webphone/primeiros-passos/inicializacao.md) — settings equivalentes
 - [API pública webphone](https://wavoip.gitbook.io/api/webphone/referencia/api-publica.md) — mapa mental dos métodos
 - [Notificações push](https://wavoip.gitbook.io/api/webphone/recursos/notificacoes-push.md)
@@ -242,8 +243,17 @@ custom/app/javascript/dashboard/
     useWavoipActiveCall.js
     useWavoipCallSession.js
     useWavoipNotifications.js
-  routes/dashboard/settings/inbox/channels/WavoipCall.vue
+  routes/dashboard/settings/inbox/channels/Wavoip.vue
+  routes/dashboard/settings/inbox/channels/wavoip/
+    WavoipInboxIdentityFields.vue
+    WavoipDeviceFields.vue
+    WavoipCallBehaviorFields.vue
+    WavoipWebhookInstructions.vue
+    WavoipNotificationFields.vue
   routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue
+    WavoipDevicePanel.vue
 ```
+
+Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).
 
 Edições pontuais `# FORK:` em componentes upstream listados em [implementation-plan.md](./implementation-plan.md).
