@@ -1,21 +1,35 @@
 # WhatsApp Provider — Documentação
 
-Esta pasta consolida análise e decisões para usar **WhatsApp sem a Cloud API / WABA oficial** da Meta — por exemplo via NotificaMe, Evolution API ou outro gateway com sessão de cliente.
+Esta pasta consolida análise e decisões para integrar **providers WhatsApp alternativos** (Evolution API, Z-API, NotificaMe, gateways Baileys) no fork Chatwoot — em contraste com a **Cloud API / WABA oficial** da Meta.
 
-O objetivo é contrastar expectativas ("sem restrições WhatsApp") com **restrições reais evitadas, restrições que permanecem e novas restrições** do provider não oficial, inclusive **dois canais independentes** (mensagens + chamadas) com registries de provider extensíveis.
+Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloqueia**, **como adaptar com merge-safety** (`custom/`, `prepend_mod_with`, `# FORK:`) e **o que muda** ao abandonar a API oficial.
+
+---
+
+## Por onde começar
+
+| Perfil | Documento |
+|--------|-----------|
+| **Implementador novo** | [implementation-decision-tree.md](./implementation-decision-tree.md) → [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) |
+| **Revisão técnica do código atual** | [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) → [gaps-and-blockers.md](./gaps-and-blockers.md) |
+| **Escolha de gateway** | [provider-comparison.md](./provider-comparison.md) |
+| **Checklist feature a feature** | [feature-mapping.md](./feature-mapping.md) |
+
+---
 
 ## Índice
 
 | Documento | Conteúdo |
 |-----------|----------|
-| **[dual-channel-provider-architecture.md](./dual-channel-provider-architecture.md)** | **Documento mestre** — arquitetura dual-channel (mensagens + voz), interfaces `MessagingProvider` / `CallProvider`, fork merge-safe, fases |
-| [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) | Estado atual: providers, webhooks, incoming, frontend setup |
-| [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) | Plano concreto: estender `Channel::Whatsapp` com gateway (Evolution) |
-| [effort-estimate-and-phases.md](./effort-estimate-and-phases.md) | Cronograma e critérios de done por fase |
-| [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) | Comparação honesta: restrições Meta evitadas vs riscos do gateway; impacto em voz |
-| [unofficial-api-channel-feasibility.md](./unofficial-api-channel-feasibility.md) | Viabilidade técnica do canal não oficial |
-| [twilio-vs-unofficial-vs-cloud.md](./twilio-vs-unofficial-vs-cloud.md) | Twilio PSTN vs Cloud vs gateway |
-| [generic-whatsapp-call-channel.md](./generic-whatsapp-call-channel.md) | Canal genérico de **chamadas** via API não oficial — UI, opções de arquitetura, reuso |
+| [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) | Estado atual no código: providers, webhooks, incoming, frontend, extension points |
+| [gaps-and-blockers.md](./gaps-and-blockers.md) | **Lacunas que bloqueiam** providers alternativos + mitigações |
+| [feature-mapping.md](./feature-mapping.md) | Mapeamento feature oficial → implementação gateway |
+| [implementation-decision-tree.md](./implementation-decision-tree.md) | Árvore de decisão, fases, o que reusar vs criar |
+| [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) | Plano concreto, fases, critérios de done e estratégia de fork |
+| [provider-comparison.md](./provider-comparison.md) | Evolution API, Z-API, Baileys genérico, NotificaMe |
+| [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) | Restrições Meta evitadas vs riscos do gateway; impacto em voz |
+
+---
 
 ## Relação com outras áreas
 
@@ -23,15 +37,49 @@ O objetivo é contrastar expectativas ("sem restrições WhatsApp") com **restri
 |------|-----------|
 | Integração NotificaMe (mensagens) | [notificame-whatsapp-integration/plano-geral.md](../notificame-whatsapp-integration/plano-geral.md) |
 | Voz WhatsApp oficial (Meta Calling API) | [whatsapp-voice/README.md](../whatsapp-voice/README.md) |
-| Acoplamento e extensibilidade de voz | [whatsapp-voice/provider-coupling-and-extensibility.md](../whatsapp-voice/provider-coupling-and-extensibility.md) |
 | Segundo provider de **chamadas** (se SDP disponível) | [whatsapp-voice/second-provider-strategy.md](../whatsapp-voice/second-provider-strategy.md) |
 | Twilio PSTN vs WhatsApp nativo | [whatsapp-voice/twilio-vs-whatsapp-native.md](../whatsapp-voice/twilio-vs-whatsapp-native.md) |
-| Disciplina de branch e merge (fork) | [fork-strategy.mdc](../../.cursor/rules/fork-strategy.mdc) · [fork-merge-conflicts.mdc](../../.cursor/rules/fork-merge-conflicts.mdc) |
+| Disciplina de branch e merge (fork) | [fork-strategy.mdc](../../../.cursor/rules/fork-strategy.mdc) · [fork-merge-conflicts.mdc](../../../.cursor/rules/fork-merge-conflicts.mdc) |
 | Inventário de divergências FORK | `bin/fork-inventory` → `doc/fork-divergences.txt` |
 
-## Visão geral
+---
 
-- **Dois canais independentes:** mensagens (`whatsapp`) e chamadas (`whatsapp_call` / gateway) — ver [dual-channel-provider-architecture.md](./dual-channel-provider-architecture.md).
-- **Mensagens:** provider alternativo em `Channel::Whatsapp` remove gates da Cloud API (templates, janela 24h, WABA), mas **não** remove risco de ban nem instabilidade de sessão.
-- **Voz:** abandonar a API oficial **não garante** ligações no dashboard — o modelo de call depende do gateway; ver [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) §4 e [generic-whatsapp-call-channel.md](./generic-whatsapp-call-channel.md).
-- **Implementações oficiais Meta** são o **template de contrato** para adapters alternativos (`WhatsappCloudService`, `useWhatsappCallSession`).
+## Visão geral (jun/2026)
+
+### Recomendação arquitetural
+
+1. **Mensagens:** estender `Channel::Whatsapp` com novo `provider` (padrão 360dialog), código em `custom/`, **normalizer de webhook** → payload flat → `IncomingMessageService`.
+2. **Voz:** canal **independente** para gateways (`Channel::WhatsappCallGateway` / tile `whatsapp_call_gateway`); Meta oficial usa `Channel::Whatsapp` + tile `whatsapp_call` — ver [whatsapp-voice/README.md](../whatsapp-voice/README.md).
+3. **Referência de contrato:** `WhatsappCloudService` + `IncomingMessageWhatsappCloudService` (oficial); `Whatsapp360DialogService` (segundo provider no mesmo model).
+4. **Não editar** serviços cloud existentes — adapters finos em `custom/`.
+5. **Whitelist de provider:** exige edição mínima com `# FORK:` em `Channel::Whatsapp::PROVIDERS`; prepend sozinho não altera a validação já carregada.
+
+### Extension points principais
+
+| # | Ponto | Mecanismo |
+|---|-------|-----------|
+| 1 | Whitelist de provider | `# FORK:` mínimo em `PROVIDERS` |
+| 2 | Webhook incoming | `Webhooks::WhatsappEventsJob.prepend` + `GatewayNormalizer` |
+| 3 | Dispatch de provider | `Channel::Whatsapp.prepend` + `MessagingProvider::Registry` |
+| 4 | Regras 24h/templates | `MessageWindowService.prepend` + capability por provider |
+
+### Principais lacunas no código
+
+- `PROVIDERS` whitelist bloqueia novos providers
+- `provider_service` envia tudo que não é cloud para 360dialog
+- `MessageWindowService` força janela 24h em **todo** `Channel::Whatsapp`
+- Frontend só distingue `whatsapp_cloud` vs `default`
+
+Detalhes: [gaps-and-blockers.md](./gaps-and-blockers.md).
+
+### Restrições que desaparecem (e as que não desaparecem)
+
+- **Somem na API:** templates WABA, janela 24h Meta, embedded signup, Calling API enrollment
+- **Permanecem:** ToS WhatsApp, risco de ban, sessão/QR, compliance LGPD
+- **Chatwoot ainda pode impor:** janela 24h e templates via `SendOnWhatsappService` — bypass necessário no fork
+
+Ver [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md).
+
+---
+
+*Última atualização: jun/2026 — reanálise código + providers Evolution/Z-API.*
