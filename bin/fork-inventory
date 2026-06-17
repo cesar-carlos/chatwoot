@@ -24,5 +24,6 @@ mkdir -p "$ROOT/doc"
     || true
 } >"$OUTPUT"
 
-COUNT="$(rg -c "FORK:" "$OUTPUT" 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')"
+COUNT="$(rg -n "FORK:" app enterprise lib config custom app/javascript \
+  --type ruby --type js --type vue 2>/dev/null | wc -l | tr -d ' ')"
 echo "Wrote $COUNT FORK marker(s) to doc/fork-divergences.txt"
