@@ -2,6 +2,8 @@
 
 JSON de referência para specs e `PayloadNormalizer`. **Substituir** pelos payloads reais capturados no spike (Fase 0).
 
+**Schema oficial:** [Webhook (Beta)](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md) · [official-docs.md](../official-docs.md)
+
 | Arquivo | Evento |
 |---------|--------|
 | `call_create_inbound_ring.json` | `CALL` CREATE `INCOMING_RING` |

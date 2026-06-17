@@ -25,12 +25,18 @@ O Chatwoot já recebe e exibe contact cards em **WhatsApp** e **Telegram**. Falt
 ### In scope
 
 - `shared_contact_id` na API de mensagens
-- MessageBuilder → attachment `contact`
+- MessageBuilder → attachment `contact` + **E.164** em `fallback_title`
 - WhatsApp Cloud + 360dialog outbound (`type: contacts`)
-- Telegram outbound (`sendContact`)
+- Telegram outbound (`sendContact`) + **`business_connection_id`**
 - UI: botão ReplyBox + Dialog + ComboBox + atalho contato atual
+- **Guard `can_reply`** — botão oculto em WhatsApp fora da janela de sessão
 - Pending message otimista com attachment `contact`
 - i18n `en.json` + `pt_BR/conversation.json`
+- **Melhorias MVP** (ver [improvements-backlog.md](./improvements-backlog.md)):
+  - Outgoing sem "Salvar contato" em `Contact.vue`
+  - Preview lista com "Shared contact" + ícone `contact`
+  - Meta snake_case no bubble
+  - Copy outgoing (`CONTACT_OUTGOING`)
 
 ### Out of scope
 
@@ -95,13 +101,19 @@ def process_shared_contact
   raise StandardError, 'Contact phone number required' if contact.phone_number.blank?
 
   first_name, last_name = split_contact_name(contact.name)
+  phone = normalized_share_phone(contact.phone_number)
   @message.attachments.build(
     account_id: @account.id,
     file_type: :contact,
-    fallback_title: contact.phone_number,
+    fallback_title: phone,
     meta: { firstName: first_name, lastName: last_name }.compact
   )
-  @message.content ||= contact.name
+  # content vazio — preview da lista usa attachment (MVP-2)
+end
+
+def normalized_share_phone(phone_number)
+  parsed = TelephoneNumber.parse(phone_number)
+  parsed.valid? ? parsed.e164_number : phone_number
 end
 ```
 
@@ -194,19 +206,27 @@ def send_message(phone_number, message)
 
 ## Fase 4 — Frontend
 
-**Especificação visual completa:** [ui-design.md](./ui-design.md)
+**Especificação visual completa:** [ui-design.md](./ui-design.md) · **Melhorias:** [improvements-backlog.md](./improvements-backlog.md)
 
-### 4.1 Arquivos
+### 4.0 Ajustes em componentes existentes (MVP)
+
+| Arquivo | Mudança |
+|---------|---------|
+| `bubbles/Contact.vue` | Ocultar Save Contact em outgoing; meta snake_case; copy outgoing |
+| `ConversationCard/MessagePreview.vue` | Ícone `contact`; priorizar attachment type |
+| `widgets/conversation/MessagePreview.vue` | Idem (legado, se em uso) |
+
+### 4.1 Arquivos novos / alterados
 
 | Arquivo | Ação |
 |---------|------|
 | `widgets/conversation/ShareContact/ShareContactDialog.vue` | Criar |
 | `widgets/conversation/ShareContact/ShareContactForm.vue` | Criar |
 | `widgets/WootWriter/ReplyBottomPanel.vue` | Botão `i-ph-address-book` |
-| `widgets/conversation/ReplyBox.vue` | Wire dialog + `sendMessage` |
+| `widgets/conversation/ReplyBox.vue` | Wire dialog + `sendMessage` + **guard can_reply** |
 | `api/inbox/message.js` | `shared_contact_id` em `buildCreatePayload` |
 | `helper/commons.js` | Pending attachment `contact` |
-| `i18n/locale/en/conversation.json` | Chaves `SHARE_CONTACT` |
+| `i18n/locale/en/conversation.json` | Chaves `SHARE_CONTACT` + `CONTACT_OUTGOING` |
 | `i18n/locale/pt_BR/conversation.json` | Traduções pt |
 
 ### 4.2 Fluxo ReplyBox
@@ -234,11 +254,28 @@ async onShareContact(contact) {
 - Card atalho — layout `ContactMergeForm`
 - Tailwind only, Composition API, i18n
 
-### 4.4 Critérios de done
+### 4.4 Visibilidade do botão
+
+Ver diagrama em [improvements-backlog.md § Diagrama](./improvements-backlog.md#diagrama--estados-do-botão-compartilhar-contato).
+
+```javascript
+// FORK: share contact card
+const showShareContactButton = computed(() => {
+  if (isOnPrivateNote.value || isEditorDisabled.value) return false;
+  if (isATelegramChannel.value) return true;
+  if (isAWhatsAppChannel.value) return currentChat.value?.can_reply;
+  return false;
+});
+```
+
+### 4.5 Critérios de done
 
 - [ ] Botão só em WhatsApp/Telegram, oculto em nota privada
+- [ ] WhatsApp: oculto quando `!can_reply`
 - [ ] Atalho contato conversa + ComboBox outro contato
 - [ ] Pending message mostra bubble antes da API
+- [ ] Outgoing sem Save Contact; copy `CONTACT_OUTGOING`
+- [ ] Preview lista = "Shared contact" + ícone
 - [ ] pt_BR + en completos
 
 ---
@@ -273,9 +310,9 @@ Espelhar ou `prepend_mod_with` se overrides existirem.
 
 ---
 
-## Melhoria opcional: meta no Contact.vue
+## Melhorias — referência completa
 
-Normalizar leitura `meta.first_name` / `meta.firstName` no bubble para consistência Telegram inbound — 2 linhas, pode entrar na Fase 4.
+Todas as melhorias MVP, P1 e P2: [improvements-backlog.md](./improvements-backlog.md)
 
 ---
 
@@ -290,6 +327,9 @@ Normalizar leitura `meta.first_name` / `meta.firstName` no bubble para consistê
 5. Telegram — card nativo
 6. Lista de conversas — “Shared contact” / “Contato compartilhado”
 7. Regressão inbound — cliente compartilha contato, agente vê bubble
+8. Outgoing — **sem** botão Save Contact no bubble do agente
+9. WhatsApp fora de 24h — botão compartilhar **ausente**
+10. Telegram Business — envio com `business_connection_id` ativo
 
 ### UI
 
@@ -320,8 +360,11 @@ Normalizar leitura `meta.first_name` / `meta.firstName` no bubble para consistê
 
 - [ ] Share via atalho + via busca
 - [ ] WhatsApp Cloud + 360dialog + Telegram
-- [ ] Bubble outgoing = inbound (`Contact.vue`)
-- [ ] en + pt_BR
+- [ ] Bubble outgoing = inbound (`Contact.vue`) sem Save Contact
+- [ ] Preview lista + ícone contact
+- [ ] Guard `can_reply` WhatsApp
+- [ ] E.164 no attachment
+- [ ] en + pt_BR (incl. `CONTACT_OUTGOING`)
 - [ ] Sem regressão inbound
 - [ ] Lint OK nos arquivos alterados
 - [ ] `FORK: share contact card` em divergências
@@ -335,9 +378,9 @@ Normalizar leitura `meta.first_name` / `meta.firstName` no bubble para consistê
 | 1 — Backend | 2–3 h |
 | 2 — WhatsApp (2 providers) | 3–4 h |
 | 3 — Telegram | 1–2 h |
-| 4 — UI (Dialog + atalho + pending) | 4–5 h |
+| 4 — UI (Dialog + atalho + pending + ajustes bubble/preview) | 5–6 h |
 | QA + sandbox 360dialog | 2 h |
-| **Total MVP** | **~1.5–2 dias** |
+| **Total MVP** | **~2 dias** |
 | 5 — Gateways | +0.5–1 dia/provider |
 
 ---
@@ -353,6 +396,7 @@ Normalizar leitura `meta.first_name` / `meta.firstName` no bubble para consistê
 | Peça | Arquivo |
 |------|---------|
 | UI spec | [ui-design.md](./ui-design.md) |
+| Melhorias | [improvements-backlog.md](./improvements-backlog.md) |
 | Inbound WhatsApp | `app/services/whatsapp/incoming_message_base_service.rb` |
 | Inbound Telegram | `app/services/telegram/incoming_message_service.rb` |
 | Bubble | `components-next/message/bubbles/Contact.vue` |

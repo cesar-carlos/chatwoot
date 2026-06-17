@@ -2,7 +2,7 @@
 
 Fases concretas alinhadas à [sdk-reference.md](./sdk-reference.md), fork strategy (`custom/` + `# FORK:` mínimo) e happy-path MVP.
 
-**Pré-requisitos:** [README.md](./README.md) · [architecture.md](./architecture.md) · feature `channel_voice` na conta.
+**Pré-requisitos:** [README.md](./README.md) · [architecture.md](./architecture.md) · [official-docs.md](./official-docs.md) · feature `channel_voice` na conta.
 
 **Mudança principal vs plano anterior:** saúde do dispositivo (`open`, QR, `wakeUp`) deixa de ser Fase 4 — é **pré-requisito** de qualquer chamada (SDK). Webhook skeleton sobe na Fase 1 junto com o canal.
 
@@ -26,6 +26,8 @@ Fases concretas alinhadas à [sdk-reference.md](./sdk-reference.md), fork strate
 
 **Objetivo:** provar áudio + webhook + comportamento multi-aba antes de modelar canal.
 
+**Docs oficiais:** [official-docs.md § Fase 0](./official-docs.md#por-fase-de-implementação-chatwoot) · [Instalação](https://wavoip.gitbook.io/api/wavoip-api/primeiros-passos/installation.md) · [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md)
+
 | # | Tarefa | Done |
 |---|--------|------|
 | 0.1 | Dispositivo em [app.wavoip.com/devices](https://app.wavoip.com/devices) | Token + status `open` |
@@ -47,6 +49,8 @@ Fases concretas alinhadas à [sdk-reference.md](./sdk-reference.md), fork strate
 ## Fase 1 — Fundação (canal + webhook + dispositivo)
 
 **Objetivo:** inbox criável, webhook recebendo, painel de dispositivo funcional. **Sem chamadas ainda.**
+
+**Docs oficiais:** [Dispositivo](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/device.md) · [Vincule WhatsApp](https://wavoip.gitbook.io/api/vincule-um-whatsapp.md) · [Webhook config](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md)
 
 ### Infra fork (uma vez)
 
@@ -130,6 +134,8 @@ if (key === 'wavoip') return props.enabledFeatures.channel_voice;
 
 **Objetivo:** ligar da conversa com histórico CRM. Depende de dispositivo `open`.
 
+**Docs oficiais:** [Outgoing](https://wavoip.gitbook.io/api/wavoip-api/chamadas/outgoing.md) · [Active](https://wavoip.gitbook.io/api/wavoip-api/chamadas/active.md) · [Mídia](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/media.md)
+
 ### Backend (handlers completos)
 
 | Classe | Entrega |
@@ -184,6 +190,8 @@ Antes de `startCall`:
 
 **Objetivo:** receber chamadas com `FloatingCallWidget` + multi-agente.
 
+**Docs oficiais:** [Incoming](https://wavoip.gitbook.io/api/wavoip-api/chamadas/incoming.md) · [Webhook CALL](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md)
+
 ### Backend
 
 | Classe | Entrega |
@@ -202,7 +210,7 @@ Antes de `startCall`:
 | `custom/.../voiceCallCableRegistry.js` | Handlers Wavoip sem SDP |
 | `actionCable.js` | `# FORK:` uma linha — delega ao registry |
 | `VoiceCall.vue` | `# FORK:` sem join SDP; gravação via `record_url` — [frontend-integration §12](./frontend-integration.md#12-bolha-voicecallvue) |
-| `FloatingCallWidget.vue` | `# FORK:` mínimo — mute via `isBrowserVoiceProvider` |
+| `FloatingCallWidget.vue` | Usar `isBrowserVoiceProvider` — sem FORK dedicado |
 
 ### Fluxo aceitar
 
@@ -210,7 +218,8 @@ Antes de `startCall`:
 2. Webhook `INCOMING_RING` → conversa + bolha + ActionCable.
 3. Agente clica **Aceitar** → `offer.accept()` (gesto obrigatório).
 4. Webhook `ACTIVE` → bolha `in_progress`.
-5. Outros agentes: `acceptedElsewhere` → `dismissCall`.
+5. Outros agentes: `acceptedElsewhere` → `dismissCall`
+6. Assignee: `conversation.update!(assignee: Current.user)` no accept se auto-assign do inbox
 
 ### Done Fase 3
 
@@ -218,27 +227,29 @@ Antes de `startCall`:
 - [ ] Aceitar/rejeitar
 - [ ] `acceptedElsewhere` / `HANDLED_REMOTELY` limpa UI
 - [ ] `unanswered` → bolha `no_answer`
-- [ ] Agente offline: webhook ainda cria conversa missed
+- [ ] Agente offline: webhook cria conversa missed + **push VAPID**
+- [ ] `accepted_by_agent_id` gravado no accept (PATCH call ou webhook ACTIVE)
 
 **Duração:** 1–1,5 semana.
 
 ---
 
-## Fase 4 — Gravação + notificações servidor
+## Fase 4 — Gravação
 
-**Objetivo:** anexos e alerta com aba fechada.
+**Objetivo:** anexar gravações Wavoip. Push offline na Fase 3.
+
+**Docs oficiais:** [Gravação](https://wavoip.gitbook.io/api/wavoip-docs/gravacao.md) · [Webhook RECORD](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md)
 
 | Entrega | Detalhe |
 |---------|---------|
 | `RecordHandler` | Webhook `RECORD` → `record_url` em `Call#meta` + anexo |
-| Fallback gravação | `https://storage.wavoip.com/{whatsapp_call_id}` se URL ausente |
-| Push VAPID | Job no `INCOMING_RING` quando nenhum agente online — reusar `pushHelper` |
+| Fallback gravação | `https://storage.wavoip.com/{whatsapp_call_id}` |
 | `DeviceHandler` completo | Sincronizar webhook `DEVICE` com painel settings |
+| Bolha `VoiceCall.vue` | Player `record_url` / anexo quando `completed` |
 
 ### Done Fase 4
 
 - [ ] Gravação visível na bolha ou anexo
-- [ ] Push em chamada perdida (agente offline)
 - [ ] Status dispositivo consistente webhook ↔ SDK
 
 **Duração:** 3–5 dias.
@@ -246,6 +257,8 @@ Antes de `startCall`:
 ---
 
 ## Fase 5 — Diagnóstico e mídia (opcional)
+
+**Docs oficiais:** [Troubleshooting](https://wavoip.gitbook.io/api/wavoip-api/referencia/troubleshooting.md) · [Tipos](https://wavoip.gitbook.io/api/wavoip-api/referencia/types.md) · [Webphone diagnóstico](https://wavoip.gitbook.io/api/webphone/recursos/diagnostico.md)
 
 | Recurso | Implementação |
 |---------|---------------|
@@ -331,9 +344,10 @@ Sem E2E Wavoip cloud no CI.
 ## Rollout
 
 1. `channel_voice` na conta (existente).
-2. Piloto: 1 inbox, 1 token, 1 agente online.
-3. Validar: dispositivo `open` → outbound → inbound → gravação.
-4. Flag `channel_wavoip` em `custom/` só se precisar esconder tile antes do GA.
+2. Flag fork `channel_wavoip` — ver [feature-flags.md](./feature-flags.md)
+3. Piloto: 1 inbox, 1 token, 1 agente — [operations-runbook.md](./operations-runbook.md).
+4. Validar: dispositivo `open` → outbound → inbound → gravação.
+5. GA: habilitar `channel_wavoip` por padrão ou remover gate do tile.
 
 ---
 
@@ -355,3 +369,4 @@ Sem E2E Wavoip cloud no CI.
 - [ ] `bin/fork-inventory` atualizado
 - [ ] Tile Meta `whatsapp_call` inalterado
 - [ ] Dois mappers de status documentados e implementados separados
+- [ ] [webhook-contract.md](./webhook-contract.md) seguido (auth, idempotência, ActionCable)

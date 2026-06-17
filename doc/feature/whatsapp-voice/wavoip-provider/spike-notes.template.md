@@ -2,6 +2,8 @@
 
 Preencher na Fase 0. Renomear para `spike-notes.md` (gitignored ou interno).
 
+**Doc oficial:** [official-docs.md](./official-docs.md) · [llms.txt](https://wavoip.gitbook.io/api/llms.txt)
+
 **Data:** YYYY-MM-DD  
 **Responsável:**  
 **Token / device:** (mascarar — só últimos 4 chars)
