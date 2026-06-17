@@ -1,0 +1,27 @@
+---
+description: Enterprise Edition overlay rules when editing OSS or enterprise code
+globs: "{app,enterprise,lib,config}/**/*.{rb,yml}"
+alwaysApply: false
+---
+
+# Enterprise Edition
+
+Chatwoot has an Enterprise overlay under `enterprise/` that extends/overrides OSS code.
+
+## Before Editing
+
+Search both trees: `rg -n "FooService|ControllerName|ModelName" app enterprise`
+
+## Checklist
+
+- Enterprise-only behavior → add module via `prepend_mod_with` / `include_mod_with`, not direct OSS edits
+- Enterprise-exclusive features → place code under `enterprise/`
+- New endpoints/services/models → check if Enterprise needs override or extension point
+- Avoid hardcoding plan-specific behavior in OSS; use config, feature flags, or extension points
+- Keep request/response contracts stable across OSS and Enterprise
+- Mirror renames/moves in `enterprise/` to prevent drift
+- Enterprise specs → `spec/enterprise/` mirroring OSS layout
+
+## Reference
+
+https://chatwoot.help/hc/handbook/articles/developing-enterprise-edition-features-38

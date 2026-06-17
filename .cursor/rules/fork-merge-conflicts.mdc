@@ -1,0 +1,127 @@
+---
+description: Fork merge conflict avoidance — techniques for regular upstream sync
+alwaysApply: true
+---
+
+# Fork Merge Conflict Avoidance
+
+This fork merges regularly with `chatwoot/chatwoot`. Every custom change must minimize future merge pain.
+
+**Priority order** (best → worst for merge safety):
+
+1. **Data/config only** — no code diff (`InstallationConfig`, feature flags, Rails console)
+2. **`custom/` overlay** — new files under `custom/`, autoloaded without touching upstream
+3. **Extension points** — `prepend_mod_with`, `include_mod_with`, Enterprise modules
+4. **Minimal upstream edit** — single guard + `# FORK:` marker, early return at method top
+5. **Direct upstream edit** — last resort; every changed line marked `# FORK:` or `// FORK:`
+
+## Techniques by Layer
+
+### Prefer New Files Over Edits
+
+- Add services, policies, or controllers in `custom/` or fork-only paths
+- Wire in via initializers or extension hooks — one small hook beats editing a 200-line method
+- Never copy-paste entire upstream files into the fork
+
+### Extension Points (Chatwoot-native)
+
+```ruby
+# ✅ GOOD — override without editing OSS body
+# enterprise/app/models/enterprise/message.rb
+module Enterprise::Message
+  def custom_fork_behavior
+    # FORK: ...
+  end
+end
+Message.prepend_mod_with('Message')
+```
+
+- Enterprise-only behavior → `enterprise/` + `prepend_mod_with`, not OSS edits
+- OSS behavior change → prefer `custom/` or a new service called from one FORK line
+
+### Minimal Upstream Deltas
+
+When editing upstream files is unavoidable:
+
+```ruby
+def limits
+  # FORK: Self-hosted Enterprise gets unlimited usage
+  return fork_unlimited_limits if ChatwootApp.self_hosted_enterprise?
+
+  # ... original upstream logic unchanged below ...
+end
+```
+
+- Add guards at the **top** of methods — upstream changes below rarely conflict
+- Keep FORK blocks **contiguous** and **self-contained**
+- Do not reformat, reorder imports, or rename upstream symbols
+- Do not mix fork logic into upstream conditionals — extract to a private method
+
+### Avoid High-Churn Files
+
+Minimize edits to files upstream changes frequently:
+
+- `config/routes.rb`, `Gemfile`, `package.json`
+- Large finders, controllers, and model callbacks
+- Shared initializers (`config/initializers/`)
+
+If required, touch the **smallest possible surface** (one route, one line, one require).
+
+### Frontend (Vue/JS)
+
+- Prefer new composables or components over editing upstream components
+- Fork changes in `<script setup>`: wrap in a composable, leave one `// FORK:` import/call in the original file
+- Never restyle upstream components beyond what the feature needs
+
+## Markers & Discoverability
+
+Every divergent line must be grep-able:
+
+```bash
+rg "FORK:" --type ruby --type js --type vue
+rg "FORK:" app enterprise lib config app/javascript
+```
+
+Use consistent tags when helpful: `# FORK: self-hosted enterprise`, `// FORK: groq transcription`
+
+## Merge Workflow
+
+Before merging upstream into `main`:
+
+```bash
+git fetch upstream
+git checkout develop && git reset --hard upstream/develop
+rg "FORK:" > /tmp/fork-markers.txt   # inventory before merge
+git checkout main
+git rebase develop                    # or merge develop
+```
+
+During conflict resolution:
+
+1. **Default to upstream** for unmarked lines
+2. **Preserve all `FORK:` blocks** — reapply if lost during conflict
+3. Never drop a FORK marker silently
+4. After merge: `rg "FORK:"` again and compare count with pre-merge inventory
+
+Simulate before merging (optional):
+
+```bash
+git merge-tree $(git merge-base HEAD develop) HEAD develop
+```
+
+## Commit Discipline
+
+- One logical fork change per commit when possible
+- Commit message scope reflects the feature: `feat(fork): ...` or `fix(fork): ...`
+- Never commit fork changes on `develop`
+- Sync upstream often — small regular merges beat rare large merges
+
+## Anti-patterns (cause merge hell)
+
+- ❌ Editing upstream files without `FORK:` markers
+- ❌ Refactoring upstream code "while you're there"
+- ❌ Interleaving fork and upstream logic in the same block
+- ❌ Duplicating entire upstream classes
+- ❌ Renaming upstream methods, files, or constants
+- ❌ Formatting-only diffs in shared files
+- ❌ Large fork changes without syncing develop first

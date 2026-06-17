@@ -1,0 +1,43 @@
+---
+description: Build, test, lint, and dev environment commands for Chatwoot
+alwaysApply: true
+---
+
+# Dev Commands
+
+## Setup
+
+```bash
+bundle install && pnpm install
+eval "$(rbenv init -)"   # required before any bundle/rspec command
+rbenv install $(cat .ruby-version)  # if needed
+```
+
+## Run
+
+- Dev server: `pnpm dev` or `overmind start -f ./Procfile.dev`
+- Always prefer `bundle exec` for Ruby CLI tasks (rspec, rake, rubocop)
+
+## Seed Data
+
+- Minimal: `bundle exec rails db:seed`
+- Search fixtures: `bundle exec rails search:setup_test_data`
+- Rich account data: Super Admin → Accounts → Seed, or `bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"`
+
+## Lint
+
+- JS/Vue: `pnpm eslint` / `pnpm eslint:fix`
+- Ruby: `bundle exec rubocop -a`
+
+## Test
+
+- JS: `pnpm test` or `pnpm test:watch`
+- Ruby: `bundle exec rspec spec/path/to/file_spec.rb`
+- Single example: `bundle exec rspec spec/path/to/file_spec.rb:LINE_NUMBER`
+
+## Worktree (Codex)
+
+- One git worktree + branch per task
+- Local setup under `.codex/` with `Procfile.worktree`
+- Per-worktree DB/port values to avoid collisions
+- Separate Overmind socket/title per worktree
