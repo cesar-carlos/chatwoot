@@ -1,0 +1,8 @@
+{
+  "type": "DEVICE",
+  "action": "UPDATE",
+  "phone": "+5511999999999",
+  "id_session": 12345,
+  "status": "open",
+  "device_token": "REPLACE"
+}

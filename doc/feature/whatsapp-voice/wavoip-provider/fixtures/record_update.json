@@ -1,0 +1,7 @@
+{
+  "type": "RECORD",
+  "action": "UPDATE",
+  "whatsapp_call_id": "REPLACE_WITH_SPIKE_ID",
+  "record_url": "https://storage.wavoip.com/REPLACE_WITH_SPIKE_ID",
+  "phone": "+5511999999999"
+}
