@@ -1,0 +1,55 @@
+---
+description: Avoid anti-patterns and god classes; apply SOLID, composition, and polymorphism
+alwaysApply: true
+---
+
+# Design Principles
+
+Apply when writing or refactoring code. Balance with MVP scope — extract abstractions when complexity appears, not preemptively.
+
+## Avoid Anti-patterns
+
+- **God class/object** — one class doing persistence, validation, API, notifications, and business rules
+- **Fat controllers/models** — move logic to services, concerns, or composables
+- **Duplicate logic** — extract shared behavior once a pattern repeats
+- **Shotgun surgery** — scattered conditionals for the same rule; centralize with a policy, service, or strategy
+- **Deep inheritance chains** — hard to follow and extend; prefer composition
+
+## SOLID (practical)
+
+- **S** — one reason to change per class/module (e.g. `Messages::AudioTranscriptionService` transcribes; it does not also send webhooks)
+- **O** — extend via new classes/modules, not editing stable code paths (Enterprise `prepend_mod_with` is the project pattern)
+- **L** — subtypes must honor the contract of the base (don't break callers when overriding)
+- **I** — small, focused interfaces; don't force unused methods on consumers
+- **D** — depend on abstractions (services, concerns, composables), not concrete internals of unrelated layers
+
+## Inheritance vs Polymorphism
+
+- **Prefer composition** over inheritance for shared behavior
+- **Use inheritance** when there is a true is-a relationship and shared contract (e.g. STI models, base service with template method)
+- **Use polymorphism** for behavior variants — strategy objects, concerns, `prepend_mod_with`, or Vue composables instead of long `if/else` chains
+
+## Example (Ruby)
+
+```ruby
+# ❌ BAD — god method with branching
+def process_message(message)
+  if message.audio?
+    # 40 lines of transcription...
+  elsif message.email?
+    # 40 lines of email handling...
+  end
+end
+
+# ✅ GOOD — polymorphism via dedicated services
+Messages::AudioTranscriptionService.new(message).perform if message.audio?
+Messages::EmailProcessingService.new(message).perform if message.email?
+```
+
+## Example (Vue)
+
+```javascript
+// ❌ BAD — component handles fetch, transform, render, and side effects
+// ✅ GOOD — composable for logic, thin component for presentation
+const { items, isLoading, fetchItems } = useConversationList(props.inboxId);
+```

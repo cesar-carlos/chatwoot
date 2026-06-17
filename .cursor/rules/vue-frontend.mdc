@@ -1,0 +1,30 @@
+---
+description: Vue 3 and JavaScript frontend conventions for Chatwoot
+globs: "**/*.{vue,js}"
+alwaysApply: false
+---
+
+# Vue / JS Conventions
+
+- Always use Composition API with `<script setup>` at the top
+- Components: PascalCase
+- Events: camelCase
+- No bare strings in templates — use i18n
+- Use PropTypes in Vue components
+- ESLint: Airbnb base + Vue 3 recommended
+
+## Example
+
+```vue
+<script setup>
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+const label = computed(() => t('CONVERSATION.HEADER'));
+</script>
+
+<template>
+  <span>{{ label }}</span>
+</template>
+```

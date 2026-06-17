@@ -1,0 +1,44 @@
+---
+description: Domain and application layer boundaries for Chatwoot (Rails + Vue)
+alwaysApply: true
+---
+
+# Domain and Application Layer
+
+Universal rule. Transport and framework specifics live in `ruby-conventions.mdc`, `vue-frontend.mdc`, and `design-principles.mdc`.
+
+Chatwoot uses pragmatic Rails layering — not a pure DDD folder split. Map concepts like this:
+
+| Layer | Chatwoot location | Responsibility |
+|-------|-------------------|------------------|
+| **Domain** | `app/models`, `lib/` | Business language, invariants, validations, identity |
+| **Application** | `app/services`, `app/finders`, `app/builders` | One business action per class; orchestration across models/ports |
+| **Transport** | `app/controllers`, `app/jobs`, Vue components | HTTP/API/UI wiring — delegate, don't implement rules |
+| **Infrastructure** | `app/services/**/providers`, adapters, integrations | External APIs, channel providers, persistence details |
+
+## Domain (`app/models`, `lib/`)
+
+- Models express business invariants via validations, enums, scopes, and focused instance methods
+- Keep models free of HTTP params, controller context, and channel-specific API calls
+- Prefer rich model behavior when the rule truly belongs to the entity; move cross-entity workflows to services
+- Value-like objects (immutable, compared by value) can live in `lib/` when they don't need persistence
+
+## Application (`app/services`, `app/finders`)
+
+- Each service represents **one business action** with a small public API (`#perform`, `#call`, or `#execute`)
+- Controllers and jobs call services — they do not contain business rules
+- Finders/builders handle query composition and object assembly, not HTTP response shaping
+- Do not access `ENV`, raw HTTP types, or socket payloads inside services — pass explicit inputs
+- Return explicit outcomes: raise custom exceptions from `lib/custom_exceptions/` or return structured data — avoid bare booleans or magic strings
+
+## Transport (controllers, Vue)
+
+- Controllers: strong params → authorize → call service → render JSON
+- Vue components: presentation only; business logic in composables or store actions
+- Map domain/application failures to HTTP status or UI messages at the transport layer
+
+## Boundaries
+
+- Application logic never depends on concrete provider internals — depend on base classes or injected adapters (see `Whatsapp::Providers::BaseService`)
+- New use cases go in `app/services/`, not controllers or models
+- Fork-specific business logic: prefer `custom/` overlay; mark upstream edits with `# FORK:` (see `fork-strategy.mdc`, `fork-merge-conflicts.mdc`)

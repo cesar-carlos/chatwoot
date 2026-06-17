@@ -1,0 +1,37 @@
+---
+description: Core Chatwoot development principles and project conventions
+alwaysApply: true
+---
+
+# Chatwoot Core Guidelines
+
+## Approach
+
+- MVP focus: least code change, happy-path only
+- No unnecessary defensive programming
+- Ship the happy path first; add guards only when production proves they are needed
+- Prefer minimal, readable code over abstractions
+- Break complex tasks into small, testable units
+- Iterate after confirmation
+- Avoid writing specs unless explicitly asked
+- Remove dead/unreachable/unused code
+- Pick one approach — no duplicate versions of the same logic
+
+## Commits
+
+- Use Conventional Commits: `type(scope): subject`
+- Example: `feat(auth): add user authentication`
+- Do not reference Claude in commit messages
+
+## Translations
+
+- Only update `en.yml` (backend) and `en.json` (frontend)
+- Other languages are handled by the community
+
+## Frontend
+
+- Use `components-next/` for message bubbles (the rest is being deprecated)
+
+## Branding
+
+- For user-facing strings containing "Chatwoot", use `replaceInstallationName` from `shared/composables/useBranding` instead of hardcoded brand copy
