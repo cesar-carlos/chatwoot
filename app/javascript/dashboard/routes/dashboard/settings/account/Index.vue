@@ -181,7 +181,6 @@ export default {
             />
           </WithLabel>
           <WithLabel
-            name="site-language"
             name="account-locale"
             :has-error="v$.locale.$error"
             :label="$t('GENERAL_SETTINGS.FORM.LANGUAGE.LABEL')"
@@ -199,7 +198,6 @@ export default {
           </WithLabel>
           <WithLabel
             v-if="featureCustomReplyDomainEnabled"
-            name="custom-domain"
             name="account-domain"
             :label="$t('GENERAL_SETTINGS.FORM.DOMAIN.LABEL')"
           >
@@ -223,7 +221,6 @@ export default {
           </WithLabel>
           <WithLabel
             v-if="featureCustomReplyEmailEnabled"
-            name="support-email"
             name="account-support-email"
             :label="$t('GENERAL_SETTINGS.FORM.SUPPORT_EMAIL.LABEL')"
           >
