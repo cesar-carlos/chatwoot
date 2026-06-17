@@ -82,6 +82,10 @@ en:
       file_too_large: 'File exceeds the maximum allowed size'
       unsupported_content_type: 'File type not supported (only images and videos are allowed)'
       unexpected: 'An unexpected error occurred'
+    user:
+      groq_token:
+        invalid: must be a valid Groq API token starting with gsk_
+        too_short: is too short (minimum 40 characters)
     saml:
       feature_not_enabled: SAML feature not enabled for this account
       sso_not_enabled: SAML SSO is not enabled for this installation

@@ -201,3 +201,5 @@ class Conversations::UnreadCounts::Counter
     ::Conversations::UnreadCounts::Store
   end
 end
+
+Conversations::UnreadCounts::Counter.prepend_mod_with('Conversations::UnreadCounts::Counter') # FORK: custom role team permission normalization

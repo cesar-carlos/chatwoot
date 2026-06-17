@@ -372,22 +372,6 @@ const showEndOfListMessage = computed(() => {
   );
 });
 
-// FORK: reset virtual-scroller size cache when list context changes (tabs/filters),
-// preventing stale item heights from previous views (ex.: unassigned -> all).
-const scrollerContextKey = computed(() => {
-  return [
-    activeAssigneeTab.value,
-    activeStatus.value,
-    activeSortBy.value,
-    props.conversationInbox || 'all_inboxes',
-    props.teamId || 'all_teams',
-    props.label || 'all_labels',
-    props.conversationType || 'all_types',
-    props.foldersId || 'no_folder',
-    hasAppliedFiltersOrActiveFolders.value ? 'filtered' : 'default',
-  ].join('|');
-});
-
 const allConversationsSelected = computed(() => {
   return (
     conversationList.value.length === selectedConversations.value.length &&
@@ -991,80 +975,9 @@ watch(conversationFilters, (newVal, oldVal) => {
       :conversation-type="conversationType"
       :show-assignee="showAssigneeInConversationCard"
       :is-on-expanded-layout="isOnExpandedLayout"
+      :can-assign-to-me="canAssignToMe"
       @load-more="loadMoreConversations"
     />
-    <div
-      ref="conversationListRef"
-      class="overflow-hidden flex-1 conversations-list hover:overflow-y-auto"
-      :class="{ 'overflow-hidden': isContextMenuOpen }"
-    >
-      <DynamicScroller
-        ref="conversationDynamicScroller"
-        :key="scrollerContextKey"
-        :items="conversationList"
-        key-field="id"
-        :min-item-size="24"
-        class="overflow-auto w-full h-full"
-      >
-        <template #default="{ item, index, active }">
-          <!--
-            If we encounter resizing issues, we can set the `watchData` prop to true
-            this will deeply watch the entire object instead of just size dependencies
-            But it can impact performance
-          -->
-          <DynamicScrollerItem
-            :key="item.id"
-            :item="item"
-            :active="active"
-            :data-index="index"
-            :size-dependencies="[
-              item.messages,
-              item.labels,
-              item.labels?.length,
-              item.uuid,
-              item.inbox_id,
-              item.meta?.assignee?.id,
-              item.meta?.assignee?.name,
-              item.priority,
-              item.sla_policy_id,
-              showAssigneeInConversationCard,
-              canAssignToMe,
-              activeInbox?.id,
-              inboxesList?.length,
-              isAssignPending(item.id),
-            ]"
-          >
-            <ConversationItem
-              :source="item"
-              :label="label"
-              :team-id="teamId"
-              :folders-id="foldersId"
-              :conversation-type="conversationType"
-              :can-assign-to-me="canAssignToMe"
-              :show-assignee="showAssigneeInConversationCard"
-              @select-conversation="selectConversation"
-              @de-select-conversation="deSelectConversation"
-            />
-          </DynamicScrollerItem>
-        </template>
-        <template #after>
-          <div v-if="chatListLoading" class="flex justify-center my-4">
-            <Spinner class="text-n-brand" />
-          </div>
-          <p
-            v-else-if="showEndOfListMessage"
-            class="p-4 text-center text-n-slate-11"
-          >
-            {{ $t('CHAT_LIST.EOF') }}
-          </p>
-          <IntersectionObserver
-            v-else
-            :options="intersectionObserverOptions"
-            @observed="loadMoreConversations"
-          />
-        </template>
-      </DynamicScroller>
-    </div>
     <Dialog
       ref="deleteConversationDialogRef"
       type="alert"

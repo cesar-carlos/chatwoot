@@ -81,13 +81,13 @@ class User < ApplicationRecord
   validates :groq_token,
             format: {
               with: /\Agsk_[A-Za-z0-9_-]+\z/,
-              message: 'must be a valid Groq API token starting with gsk_',
+              message: I18n.t('errors.user.groq_token.invalid'),
               allow_blank: true
             },
             length: {
               minimum: 40,
               allow_blank: true,
-              message: 'is too short (minimum 40 characters)'
+              message: I18n.t('errors.user.groq_token.too_short')
             }
 
   serialize :otp_backup_codes, type: Array

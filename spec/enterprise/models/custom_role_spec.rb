@@ -8,5 +8,9 @@ RSpec.describe CustomRole, type: :model do
 
   describe 'validations' do
     it { is_expected.to validate_presence_of(:name) }
+
+    it 'includes conversation_team_unassigned_manage in PERMISSIONS' do
+      expect(described_class::PERMISSIONS).to include('conversation_team_unassigned_manage')
+    end
   end
 end

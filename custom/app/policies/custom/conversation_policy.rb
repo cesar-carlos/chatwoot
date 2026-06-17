@@ -13,13 +13,15 @@ module Custom::ConversationPolicy
     unassigned_conversation? || assigned_to_user?
   end
 
-  def permits_participating?(permissions)
+  def permits_team_unassigned_manage?(permissions)
+    return false unless permissions.include?('conversation_team_unassigned_manage')
     return false unless inbox_access? # FORK: custom role team permission normalization
 
-    if permissions.include?('conversation_team_unassigned_manage')
-      return assigned_to_user? || (unassigned_conversation? && conversation_belongs_to_user_team?)
-    end
+    assigned_to_user? || (unassigned_conversation? && conversation_belongs_to_user_team?)
+  end
 
+  def permits_participating?(permissions)
+    return false unless inbox_access? # FORK: custom role team permission normalization
     return false unless permissions.include?('conversation_participating_manage')
 
     assigned_to_user? || participant?

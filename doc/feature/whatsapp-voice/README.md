@@ -11,6 +11,7 @@ Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp
 | Perfil | Caminho |
 |--------|---------|
 | **Entender o fluxo atual (Meta oficial)** | [architecture-and-flow.md](./architecture-and-flow.md) |
+| **Implementar Wavoip (primeiro provider alternativo)** | [wavoip-provider/README.md](./wavoip-provider/README.md) |
 | **Escolher stack de voz no fork** | Árvore abaixo → [second-provider-strategy.md](./second-provider-strategy.md) |
 | **Avaliar acoplamento / refactor** | [second-provider-strategy.md](./second-provider-strategy.md) |
 | **Twilio vs WhatsApp in-app** | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
@@ -37,6 +38,7 @@ flowchart TD
 | Caminho | Quando usar | Doc principal |
 |---------|-------------|---------------|
 | **Meta Cloud Calling (atual)** | WABA oficial, embedded signup ou keys manuais, EE + `channel_voice` | [architecture-and-flow.md](./architecture-and-flow.md) |
+| **Wavoip (SDK browser + webhook)** | Número no Wavoip, sem Graph Calling API; token de dispositivo | [wavoip-provider/README.md](./wavoip-provider/README.md) |
 | **Segundo CPaaS Meta-like** | Outro gateway que proxy Graph `/calls` (SDP offer/answer) | [second-provider-strategy.md](./second-provider-strategy.md) |
 | **Gateway não oficial** | Evolution/Baileys com API de voz própria (não Graph API) | [second-provider-strategy.md](./second-provider-strategy.md) como checklist de contrato |
 | **Twilio Voice** | Voz telefônica PSTN — **não** substitui WhatsApp in-app | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
@@ -48,6 +50,7 @@ flowchart TD
 | Documento | Conteúdo |
 |-----------|----------|
 | [architecture-and-flow.md](./architecture-and-flow.md) | Fluxo E2E: setup, inbound, outbound, permissões, Meta API, frontend, gates EE |
+| [wavoip-provider/](./wavoip-provider/) | **Wavoip** — estratégia, arquitetura, plano de fases, frontend |
 | [second-provider-strategy.md](./second-provider-strategy.md) | Plano para **segundo provider compatível com Meta Calling API** (CPaaS proxy) |
 | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) | O que se perde ao usar stack Twilio em vez de WhatsApp Cloud Calling |
 
@@ -124,6 +127,7 @@ Detalhes: [architecture-and-flow.md §12](./architecture-and-flow.md) · [second
 
 1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — não editar `enterprise/` sem espelhar em `custom/`.
 2. **Segundo provider Meta-like (CPaaS proxy):** estender stack WebRTC existente — [second-provider-strategy.md](./second-provider-strategy.md).
-3. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; usar [second-provider-strategy.md](./second-provider-strategy.md) como checklist de viabilidade e adaptar o contrato se não houver Graph `/calls`.
-4. **Não usar Twilio Voice** para substituir WhatsApp in-app — [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
-5. **Merge-safety:** preferir `custom/` overlay, `prepend_mod_with`, `# FORK:` grepável — **zero marcadores FORK no código de voz upstream hoje**.
+3. **Wavoip:** seguir [wavoip-provider/](./wavoip-provider/) — SDK `@wavoip/wavoip-api` + webhook; canal `Channel::Wavoip` em `custom/`.
+4. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; usar [second-provider-strategy.md](./second-provider-strategy.md) como checklist de viabilidade e adaptar o contrato se não houver Graph `/calls`.
+5. **Não usar Twilio Voice** para substituir WhatsApp in-app — [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
+6. **Merge-safety:** preferir `custom/` overlay, `prepend_mod_with`, `# FORK:` grepável — **zero marcadores FORK no código de voz upstream hoje**.

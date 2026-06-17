@@ -72,7 +72,12 @@ const copyToken = async () => {
       </a>
     </div>
     <div class="flex items-center gap-2">
-      <NextButton type="submit" blue :disabled="isUpdating" :loading="isUpdating">
+      <NextButton
+        type="submit"
+        blue
+        :disabled="isUpdating"
+        :loading="isUpdating"
+      >
         {{ t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.SAVE_BTN') }}
       </NextButton>
       <NextButton

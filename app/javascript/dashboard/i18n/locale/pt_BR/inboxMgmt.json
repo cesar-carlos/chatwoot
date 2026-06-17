@@ -300,7 +300,9 @@
           "AUTH_PROCESSING": "Autenticando com Meta",
           "WAITING_FOR_BUSINESS_INFO": "Por favor, complete a configuração do negócio na janela da Meta...",
           "PROCESSING": "Configurando sua conta do WhatsApp Business",
+          "ENABLING_CALLING": "Habilitando chamadas WhatsApp no seu número…",
           "LOADING_SDK": "Carregando SDK do Facebook...",
+          "SDK_LOAD_ERROR": "Falha ao carregar o SDK do Facebook. Desative bloqueadores de anúncios e tente novamente em outro navegador.",
           "CANCELLED": "A inscrição no WhatsApp foi cancelada",
           "SUCCESS_TITLE": "Conta do WhatsApp Business conectada!",
           "WAITING_FOR_AUTH": "Aguardando autenticação...",
@@ -309,7 +311,8 @@
           "AUTH_NOT_COMPLETED": "Autenticação não concluída. Por favor, reinicie o processo.",
           "SUCCESS_FALLBACK": "A conta do WhatsApp Business foi configurada com sucesso",
           "MANUAL_FALLBACK": "Se o seu número já estiver conectado à Plataforma WhatsApp Business (API) ou se você for um provedor de tecnologia integrando o seu próprio número, use o fluxo de {link}",
-          "MANUAL_LINK_TEXT": "fluxo de configuração manual"
+          "MANUAL_LINK_TEXT": "fluxo de configuração manual",
+          "CALLING_ENABLE_FAILED": "Sua caixa de entrada WhatsApp está pronta, mas não foi possível ativar as chamadas de voz — este número ainda não está inscrito na API de Chamadas do WhatsApp Business. Entre em contato com a Meta ou seu Provedor de Soluções WhatsApp Business para habilitá-lo e depois ative as chamadas nas configurações de Chamadas da caixa de entrada."
         },
         "API": {
           "ERROR_MESSAGE": "Não foi possível salvar o canal do WhatsApp"
@@ -456,6 +459,10 @@
           "WHATSAPP": {
             "TITLE": "WhatsApp",
             "DESCRIPTION": "Atenda seus clientes no WhatsApp"
+          },
+          "WHATSAPP_CALL": {
+            "TITLE": "Chamada WhatsApp",
+            "DESCRIPTION": "Receba e faça chamadas de voz no seu número WhatsApp"
           },
           "EMAIL": {
             "TITLE": "e-mail",
@@ -626,7 +633,42 @@
       "WIDGET_BUILDER": "Construtor de Widget",
       "BOT_CONFIGURATION": "Configuração do Bot",
       "ACCOUNT_HEALTH": "Saúde da conta",
-      "CSAT": "CSAT"
+      "CSAT": "CSAT",
+      "VOICE": "Voz",
+      "CALLS": "Chamadas"
+    },
+    "VOICE_CONFIGURATION": {
+      "ENABLE_VOICE": {
+        "LABEL": "Habilitar chamadas de voz",
+        "DESCRIPTION": "Habilite chamadas de voz nesta caixa de entrada. Os agentes poderão fazer e receber ligações telefônicas."
+      },
+      "CREDENTIALS": {
+        "DESCRIPTION": "Chamadas de voz exigem credenciais de API Key da Twilio. Elas são usadas para gerar tokens para conexões de voz dos agentes."
+      },
+      "INBOUND": {
+        "LABEL": "Permitir chamadas recebidas",
+        "DESCRIPTION": "Permite que clientes liguem para esta caixa de entrada. Quando desativado, os agentes ainda podem fazer chamadas de saída."
+      }
+    },
+    "WHATSAPP_CALLING": {
+      "ENABLE": {
+        "LABEL": "Habilitar chamadas WhatsApp",
+        "DESCRIPTION": "Permite que os agentes recebam e façam chamadas WhatsApp Cloud nesta caixa de entrada. Os clientes podem ligar diretamente para este número comercial pelo WhatsApp."
+      },
+      "ENABLE_FAILED": "Não foi possível ativar as chamadas de voz para este número — ele ainda não está inscrito na API de Chamadas do WhatsApp Business. Entre em contato com a Meta ou seu Provedor de Soluções WhatsApp Business para habilitá-lo e tente novamente.",
+      "PHONE_NUMBER": {
+        "LABEL": "Número comercial",
+        "HELP_TEXT": "Número WhatsApp que os clientes usarão para ligar."
+      },
+      "HOW_IT_WORKS": {
+        "LABEL": "Como funciona",
+        "DESCRIPTION": "As chamadas são feitas ponto a ponto entre o navegador do agente e a Meta — nenhuma credencial extra é necessária. Certifique-se de que o navegador do agente tenha permissão de microfone para este site."
+      },
+      "PERMISSION_REQUEST_BODY": {
+        "LABEL": "Mensagem de solicitação de permissão de chamada",
+        "HELP_TEXT": "Exibida ao contato quando ele ainda não consentiu em receber chamadas. Deixe em branco para usar o padrão.",
+        "PLACEHOLDER": "Gostaríamos de ligar para você sobre sua conversa."
+      }
     },
     "CHANNEL_PREFERENCES": "Preferências do Canal",
     "ACCOUNT_HEALTH": {
@@ -756,6 +798,10 @@
       "WHATSAPP_TEMPLATES_SYNC_SUBHEADER": "Sincronize manualmente os modelos de mensagens do WhatsApp para atualizar seus modelos disponíveis.",
       "WHATSAPP_TEMPLATES_SYNC_BUTTON": "Sincronizar Modelos",
       "WHATSAPP_TEMPLATES_SYNC_SUCCESS": "Sincronização de modelos iniciada com sucesso. Pode demorar alguns minutos para atualizar.",
+      "WHATSAPP_CALLING_ENABLED": {
+        "LABEL": "Habilitar chamadas de voz",
+        "DESCRIPTION": "Permite que os agentes iniciem e recebam chamadas de voz do WhatsApp nesta caixa de entrada. Disponível apenas em canais WhatsApp Cloud com inscrição incorporada e permissão de chamadas concedida pela Meta."
+      },
       "UPDATE_PRE_CHAT_FORM_SETTINGS": "Atualizar configurações do Formulário Pre Chat"
     },
     "HELP_CENTER": {
