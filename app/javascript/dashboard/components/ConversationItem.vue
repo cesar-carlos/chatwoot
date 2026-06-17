@@ -16,6 +16,7 @@ const props = defineProps({
   foldersId: { type: [String, Number], default: 0 },
   showAssignee: { type: Boolean, default: false },
   showExpanded: { type: Boolean, default: false },
+  canAssignToMe: { type: Boolean, default: false },
 });
 
 const router = useRouter();
@@ -33,6 +34,8 @@ const markAsUnread = inject('markAsUnread');
 const markAsRead = inject('markAsRead');
 const assignPriority = inject('assignPriority');
 const isConversationSelected = inject('isConversationSelected');
+// FORK: assignme - Expose assignment pending state for fast-assign loading.
+const isAssignPending = inject('isAssignPending');
 const deleteConversation = inject('deleteConversation');
 
 // --- Context menu state (shared by both layouts) ---
@@ -175,57 +178,6 @@ const onAssignPriority = priority => {
 const onDeleteConversation = () => {
   deleteConversation(props.source.id);
   closeContextMenu();
-export default {
-  components: {
-    ConversationCard,
-  },
-  inject: [
-    'selectConversation',
-    'deSelectConversation',
-    'assignAgent',
-    'assignTeam',
-    'assignLabels',
-    'removeLabels',
-    'updateConversationStatus',
-    'toggleContextMenu',
-    'markAsUnread',
-    'markAsRead',
-    'assignPriority',
-    'isConversationSelected',
-    // FORK: assignme - Expose assignment pending state for fast-assign loading.
-    'isAssignPending',
-    'deleteConversation',
-  ],
-  props: {
-    source: {
-      type: Object,
-      required: true,
-    },
-    teamId: {
-      type: [String, Number],
-      default: 0,
-    },
-    label: {
-      type: String,
-      default: '',
-    },
-    conversationType: {
-      type: String,
-      default: '',
-    },
-    foldersId: {
-      type: [String, Number],
-      default: 0,
-    },
-    showAssignee: {
-      type: Boolean,
-      default: false,
-    },
-    canAssignToMe: {
-      type: Boolean,
-      default: false,
-    },
-  },
 };
 </script>
 
