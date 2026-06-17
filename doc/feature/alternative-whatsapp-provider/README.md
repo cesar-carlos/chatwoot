@@ -8,6 +8,7 @@ O objetivo é contrastar expectativas ("sem restrições WhatsApp") com **restri
 
 | Documento | Conteúdo |
 |-----------|----------|
+| [generic-whatsapp-call-channel.md](./generic-whatsapp-call-channel.md) | **Canal genérico de chamadas** via API não oficial — UI, 3 opções de arquitetura, reuso, fases, riscos |
 | [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) | Comparação honesta: restrições Meta evitadas vs riscos e limites do gateway não oficial; impacto em voz |
 
 ## Relação com outras áreas
