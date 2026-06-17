@@ -10,7 +10,9 @@ import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import CardMessagePreview from './CardMessagePreview.vue';
 import CardMessagePreviewWithMeta from './CardMessagePreviewWithMeta.vue';
 import CardPriorityIcon from './CardPriorityIcon.vue';
-import UnreadCountBadge from './UnreadCountBadge.vue';
+// FORK: unread badge over avatar
+import { useUnreadCount } from 'dashboard/composables/fork/useUnreadCount';
+import ConversationCardForkAvatarBadge from 'dashboard/components/fork/ConversationCardForkAvatarBadge.vue';
 
 const props = defineProps({
   conversation: {
@@ -65,17 +67,7 @@ const showMessagePreviewWithoutMeta = computed(() => {
   );
 });
 
-// FORK: unread badge over avatar - normalize unread count across payload variants.
-const unreadCount = computed(() => {
-  const rawUnreadCount =
-    props.conversation?.unreadCount ?? props.conversation?.unread_count;
-  const parsedUnreadCount = Number(rawUnreadCount);
-  if (Number.isNaN(parsedUnreadCount) || parsedUnreadCount <= 0) {
-    return 0;
-  }
-
-  return Math.floor(parsedUnreadCount);
-});
+const { unreadCount } = useUnreadCount(computed(() => props.conversation));
 
 const onCardClick = e => {
   const path = frontendURL(
@@ -104,7 +96,6 @@ const onCardClick = e => {
     @click="onCardClick"
   >
     <div class="relative flex-shrink-0">
-      <!-- FORK: unread badge over avatar -->
       <Avatar
         :name="currentContactName"
         :src="currentContactThumbnail"
@@ -112,11 +103,7 @@ const onCardClick = e => {
         :status="currentContactStatus"
         rounded-full
       />
-      <!-- FORK: unread badge over avatar -->
-      <UnreadCountBadge
-        :count="unreadCount"
-        class="absolute z-20 -top-1 ltr:-left-1 rtl:-right-1"
-      />
+      <ConversationCardForkAvatarBadge :count="unreadCount" />
     </div>
     <div class="flex flex-col w-full gap-1 min-w-0">
       <div class="flex items-center justify-between h-6 gap-2">
