@@ -1,0 +1,29 @@
+---
+description: Index of Cursor rules for this Chatwoot fork
+alwaysApply: false
+---
+
+# Cursor Rules Index
+
+Rules live in `.cursor/rules/`. `alwaysApply: true` rules are included in every agent session; others activate via `globs` when matching files are in context.
+
+## Always applied
+
+| Rule | Description |
+|------|-------------|
+| `chatwoot-core.mdc` | Core development principles and project conventions |
+| `chatwoot-dev-commands.mdc` | Build, test, lint, and dev environment commands |
+| `coding-standards.mdc` | Readability, naming, and code hygiene |
+| `design-principles.mdc` | SOLID, composition, anti-patterns |
+| `domain-application-layer.mdc` | Domain vs application vs transport boundaries |
+| `fork-merge-conflicts.mdc` | Merge conflict avoidance for upstream sync |
+| `fork-strategy.mdc` | Branch workflow — develop mirrors upstream, custom work on main |
+
+## File-scoped (globs)
+
+| Rule | Globs | Description |
+|------|-------|-------------|
+| `ruby-conventions.mdc` | `**/*.rb` | Ruby and Rails conventions |
+| `vue-frontend.mdc` | `**/*.{vue,js}` | Vue 3 and JavaScript frontend |
+| `tailwind-styling.mdc` | `**/*.vue` | Tailwind-only styling |
+| `enterprise-edition.mdc` | `{app,enterprise,lib,config}/**/*.{rb,yml}` | Enterprise overlay rules |

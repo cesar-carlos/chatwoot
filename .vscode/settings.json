@@ -1,4 +1,6 @@
 {
+    "editor.formatOnSave": true,
+    "explorer.compactFolders": false,
     "cSpell.words": [
         "chatwoot",
         "dompurify"

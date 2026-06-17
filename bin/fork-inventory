@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+die() {
+  echo "fork-inventory: $*" >&2
+  exit 1
+}
+
+ROOT="$(git rev-parse --show-toplevel)"
+OUTPUT="$ROOT/doc/fork-divergences.txt"
+
+command -v rg >/dev/null 2>&1 || die "ripgrep (rg) is required but not installed"
+
+mkdir -p "$ROOT/doc"
+
+{
+  echo "# Fork divergences inventory"
+  echo "# Generated: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+  echo "# Search: FORK:"
+  echo
+  rg -n "FORK:" app enterprise lib config custom app/javascript \
+    --type ruby --type js --type vue 2>/dev/null \
+    || rg -n "FORK:" app enterprise lib config custom app/javascript 2>/dev/null \
+    || true
+} >"$OUTPUT"
+
+COUNT="$(rg -c "FORK:" "$OUTPUT" 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')"
+echo "Wrote $COUNT FORK marker(s) to doc/fork-divergences.txt"
