@@ -15,7 +15,7 @@ Fases concretas alinhadas à [sdk-reference.md](./sdk-reference.md), fork strate
 | Código novo em `custom/` | Models, services, jobs, composables, controllers, Vue do canal |
 | `prepend_mod_with` | `Call`, `InboxesController` — não editar EE diretamente |
 | `# FORK:` mínimo | Tile, registry, helpers de provider — ver [inventário FORK](#inventário-fork) |
-| Preferir dados a código | Rollout via `channel_voice` existente; flag opcional `channel_wavoip` só se piloto exigir |
+| Preferir dados a código | `channel_voice` + flag opcional `channel_wavoip` em `custom/config/features.yml` |
 | Classes pequenas | Handlers por `type`/`action`; composables &lt; 200 linhas |
 | Não tocar stack Meta | Zero mudança em `WhatsappCallsController`, `useWhatsappCallSession` |
 | Reusar EE onde couber | `Voice::InboundCallBuilder` com `provider: :wavoip`, `Voice::CallMessageBuilder` |
@@ -35,8 +35,10 @@ Fases concretas alinhadas à [sdk-reference.md](./sdk-reference.md), fork strate
 | 0.5 | 2 abas, mesmo token — `acceptedElsewhere` | Comportamento documentado |
 | 0.6 | Registrar `type`: `official` vs `unofficial` + `connectivityIssue` se houver | Impacto UI anotado |
 | 0.7 | Validar campo `type` duplicado no payload webhook (bug doc) | Regra do `PayloadNormalizer` |
+| 0.8 | `rails runner`: `Voice::InboundCallBuilder.perform!(..., provider: :wavoip)` | Enum + bolha OK — ver [spike-notes.template.md](./spike-notes.template.md) |
+| 0.9 | Copiar payloads reais para [fixtures/](./fixtures/) | Templates substituídos |
 
-**Saída:** `spike-notes.md` (interno) com fixtures JSON reais para specs futuras.
+**Saída:** `spike-notes.md` (interno) + fixtures JSON — template em [spike-notes.template.md](./spike-notes.template.md).
 
 **Duração:** 2–4 dias.
 
@@ -62,7 +64,8 @@ Fases concretas alinhadas à [sdk-reference.md](./sdk-reference.md), fork strate
 | `CreateValidator` | `custom/app/services/wavoip/channels/create_validator.rb` |
 | `create_wavoip_channel` | `prepend_mod_with` em `Enterprise::Api::V1::Accounts::InboxesController` |
 | Enum `wavoip` em `Call` | `custom/app/models/custom/call.rb` + `Call.prepend_mod_with('Custom::Call')` |
-| Webhook route + controller fino | `custom/.../webhooks/wavoip_controller.rb` |
+| Webhook route + controller fino | `custom/.../webhooks/wavoip_controller.rb` — ver [webhook-contract.md](./webhook-contract.md) |
+| Rate limit webhook | `Rack::Attack` em `custom/` |
 | Job + dispatcher (log/ack) | `process_webhook_job.rb`, `dispatcher.rb` |
 | `PayloadNormalizer` | Parse defensivo; ignorar payloads inválidos |
 | Policy | `custom/app/policies/channel/wavoip_policy.rb` |
@@ -78,7 +81,7 @@ Webhook Fase 1 pode apenas **logar + 200**; handlers completos na Fase 2.
 | Wizard | `custom/.../channels/Wavoip.vue` + subcomponentes ([inbox-setup.md](./inbox-setup.md)) |
 | `createWavoipChannel` | `custom/.../channelActions.js` ou prepend store |
 | Factory | `ChannelFactory.vue` `# FORK:` |
-| Settings | `WavoipCallingPage.vue` + **`WavoipDevicePanel.vue`** |
+| Settings | `WavoipCallingPage.vue` + **`WavoipDevicePanel.vue`** + **`WavoipOnboardingChecklist.vue`** |
 | Registry vazio | `wavoipClientRegistry.js` (stub) |
 
 ### `WavoipDevicePanel` (crítico — SDK Device)
@@ -116,6 +119,8 @@ if (key === 'wavoip') return props.enabledFeatures.channel_voice;
 - [ ] Webhook retorna 200 e enfileira job
 - [ ] Settings mostram status real do dispositivo (SDK)
 - [ ] Admin vê se token/dispositivo está `open` antes de operar
+- [ ] Checklist onboarding (semáforo 6 passos) — [operations-runbook.md](./operations-runbook.md)
+- [ ] `device_token` mascarado na API list (`••••last4`); completo só em edit/admin
 
 **Duração:** ~1–1,5 semana.
 
@@ -131,7 +136,8 @@ if (key === 'wavoip') return props.enabledFeatures.channel_voice;
 |--------|---------|
 | `CallHandler` + `CallCreateHandler` + `CallUpdateHandler` | Path outbound |
 | `StatusMapper.from_webhook` | Só vocabulário webhook — [sdk-reference §7.1](./sdk-reference.md#71-webhook-callstatus--callstatus-rails) |
-| `CallUpsertService` | `provider: wavoip`, `provider_call_id` = `whatsapp_call_id` |
+| `CallUpsertService` | `find_or_create` idempotente por `provider_call_id` |
+| `CallUpdateHandler` | Ignora `UPDATE` que regride status terminal — [webhook-contract §3](./webhook-contract.md#3-idempotência) |
 | `MessageSyncService` | Bolha `voice_call` outbound |
 | `ConversationLinker` | Contato por `peer.phone` |
 
@@ -141,7 +147,8 @@ Chamar `Voice::InboundCallBuilder.perform!(..., provider: :wavoip)` no CREATE in
 
 | Classe | Entrega |
 |--------|---------|
-| `wavoipClientRegistry.js` | `inboxId → Wavoip` |
+| `lib/voice/browserVoiceProviders.js` | `isBrowserVoiceProvider()` — reduz FORK em Vue |
+| `lib/voice/voiceCallCableRegistry.js` | Handlers ActionCable por provider |
 | `useWavoipConnection.js` | Conecta quando agente **online** no inbox |
 | `lib/wavoip/callStatusUI.js` | Map SDK `CallStatus` → widget — [§7.2](./sdk-reference.md#72-sdk-callstatus--ui-browser) |
 | `useWavoipOutboundCall.js` | `startCall({ to, fromTokens })` + `wakeUp` se `hibernating` |
@@ -159,6 +166,7 @@ Antes de `startCall`:
 2. `await device.wakeUp()` se `hibernating`
 3. Clique do usuário (gesto — [Media doc](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/media.md))
 4. `fromTokens: [inboxDeviceToken]`
+5. Telefone contato normalizado E.164 (`formatPhoneE164`)
 
 ### Done Fase 2
 
@@ -181,8 +189,9 @@ Antes de `startCall`:
 | Classe | Entrega |
 |--------|---------|
 | `CallCreateHandler` (inbound) | Só se `inbound_calls_enabled?` |
-| `Broadcaster` | `voice_call.incoming` com `provider: wavoip` — **sem** `sdp_offer` |
-| `DeviceHandler` | Cache `device_status` em `provider_config` (webhook `DEVICE`) |
+| `Broadcaster` | `voice_call.incoming` sem SDP — [webhook-contract §5](./webhook-contract.md#5-actioncable--contrato-por-provider) |
+| `Wavoip::InboundMissedPushJob` | Push VAPID se nenhum agente online |
+| `DeviceHandler` | Cache `device_status` em `provider_config` |
 
 ### Frontend
 
@@ -190,9 +199,10 @@ Antes de `startCall`:
 |--------|---------|
 | `useWavoipIncomingOffer.js` | `wavoip.on('offer')` → store; `accept`/`reject` no clique |
 | `useWavoipNotifications.js` | OS notification aba em background |
-| `custom/.../voiceCallCableHandlers.js` | Handlers Wavoip sem SDP |
-| `actionCable.js` | `# FORK:` delegar para registry por `provider` |
-| `FloatingCallWidget.vue` | `# FORK:` mínimo — mute Wavoip via `active.setMuted` |
+| `custom/.../voiceCallCableRegistry.js` | Handlers Wavoip sem SDP |
+| `actionCable.js` | `# FORK:` uma linha — delega ao registry |
+| `VoiceCall.vue` | `# FORK:` sem join SDP; gravação via `record_url` — [frontend-integration §12](./frontend-integration.md#12-bolha-voicecallvue) |
+| `FloatingCallWidget.vue` | `# FORK:` mínimo — mute via `isBrowserVoiceProvider` |
 
 ### Fluxo aceitar
 
@@ -252,22 +262,26 @@ Antes de `startCall`:
 
 ## Inventário FORK
 
-Objetivo: **≤ 12 arquivos upstream** com `# FORK:`.
+Objetivo: **≤ 8 arquivos upstream** com `# FORK:` — registry em `custom/` absorve o resto.
 
-| Arquivo | Mudança | Alternativa para reduzir |
-|---------|---------|--------------------------|
-| `vite.shared.ts` | alias `customDashboard` | — |
-| `inbox.js` | `WAVOIP` types + provider | — |
-| `ChannelList.vue` | tile | — |
-| `ChannelItem.vue` | gate | — |
-| `ChannelFactory.vue` | map component | — |
-| `useCallSession.js` | handler registry | extrair `voiceSessionRegistry.js` em `custom/` |
-| `actionCable.js` | delegar voice events | `custom/.../voiceCallCableHandlers.js` |
-| `calls.js` | teardown `wavoip` | helper `isBrowserVoiceProvider()` |
-| `FloatingCallWidget.vue` | mute branch | helper compartilhado |
-| `ConversationCallButton.vue` | provider check | `isVoiceCallEnabled` já cobre |
-| `VoiceCall.vue` | replay/join se aplicável | avaliar na Fase 3 |
-| `VoiceCallButton.vue` | contatos | avaliar na Fase 3 |
+| Arquivo | Mudança |
+|---------|---------|
+| `vite.shared.ts` | alias `customDashboard` |
+| `inbox.js` | `WAVOIP` + reexport `isBrowserVoiceProvider` de `custom/` |
+| `ChannelList.vue` | tile |
+| `ChannelItem.vue` | gate `channel_voice` (+ `channel_wavoip` se piloto) |
+| `ChannelFactory.vue` | map component |
+| `useCallSession.js` | registry `BROWSER_VOICE_HANDLERS` |
+| `actionCable.js` | **uma** delegação ao `voiceCallCableRegistry` |
+| `VoiceCall.vue` | branch bolha sem SDP join |
+
+**Não FORK** (usar `isBrowserVoiceProvider`): `FloatingCallWidget`, `ConversationCallButton`, `CallCard`, `calls.js` — importar helper de `customDashboard`.
+
+| Arquivo `custom/` | Função |
+|-------------------|--------|
+| `lib/voice/browserVoiceProviders.js` | `BROWSER_VOICE_PROVIDERS`, `isBrowserVoiceProvider` |
+| `lib/voice/voiceCallCableRegistry.js` | handlers whatsapp + wavoip |
+| `lib/voice/voiceSessionRegistry.js` | handlers useCallSession |
 
 **Evitar FORK** em: `WhatsappCallsController`, `useWhatsappCallSession`, `WhatsappEventsJob`, `channel_whatsapp.rb`.
 
@@ -302,10 +316,12 @@ Rotas `register_attempt` / `ack_accept` da [architecture.md](./architecture.md) 
 
 | Camada | Foco |
 |--------|------|
-| `PayloadNormalizer` | Fixtures do spike (Fase 0) |
+| `PayloadNormalizer` | [fixtures/](./fixtures/) do spike |
 | `StatusMapper` | Tabela webhook only |
 | `callStatusUI.js` | Tabela SDK only |
+| `CallUpdateHandler` | Idempotência status terminal |
 | `ConversationLinker` | Reuso conversa aberta |
+| `Custom::Call` prepend | `Call.providers` inclui `wavoip` após boot |
 | Composables | Mock `Wavoip` com eventos |
 
 Sem E2E Wavoip cloud no CI.
