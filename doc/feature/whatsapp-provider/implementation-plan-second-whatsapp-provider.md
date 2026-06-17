@@ -1,125 +1,204 @@
 # Plano de implementação — segundo provider WhatsApp
 
-Arquitetura recomendada para adicionar um gateway não oficial no fork, seguindo padrões existentes (360dialog, NotificaMe).
+Plano concreto para adicionar um gateway não oficial no fork, reutilizando o máximo do código existente. Atualizado jun/2026 após reanálise do codebase.
+
+**Pré-requisitos:** [implementation-decision-tree.md](./implementation-decision-tree.md) · [gaps-and-blockers.md](./gaps-and-blockers.md) · [feature-mapping.md](./feature-mapping.md)
 
 ---
 
-## Recomendação: estender `Channel::Whatsapp`, não novo `Channel::*`
+## Recomendação: estender `Channel::Whatsapp`
 
-Segue o padrão 360dialog + plano NotificaMe:
+Segue o padrão **360dialog** (`default`) — segundo provider no mesmo STI — e o plano **NotificaMe**. Não criar `Channel::Evolution`.
 
-```ruby
-# custom/ — exemplo conceitual
-PROVIDERS = %w[default whatsapp_cloud gateway].freeze  # FORK
+360dialog é BSP **oficial** Meta, mas serve de **template mecânico**: REST send + webhook flat + `IncomingMessageService`.
 
-def provider_service
-  case provider
-  when 'whatsapp_cloud' then Whatsapp::Providers::WhatsappCloudService.new(...)
-  when 'gateway'        then Custom::Whatsapp::Providers::GatewayService.new(...)
-  else Whatsapp::Providers::Whatsapp360DialogService.new(...)
+---
+
+## Arquitetura alvo (mensagens)
+
+```mermaid
+flowchart TB
+  subgraph custom_fork["custom/ (fork)"]
+    REG[MessagingProvider::Registry]
+    ES[EvolutionService / ZapiService / NotificameService]
+    NORM[GatewayNormalizer]
+    CONN[ConnectionService]
+    PRE1[prepend Channel::Whatsapp]
+    PRE2[prepend WhatsappEventsJob]
   end
-end
+
+  subgraph upstream["upstream (intocado)"]
+    CH[Channel::Whatsapp]
+    BASE[BaseService]
+    IN[IncomingMessageService]
+    IMB[IncomingMessageBaseService]
+    SO[SendOnWhatsappService]
+  end
+
+  PRE1 --> REG
+  REG --> ES
+  ES --> BASE
+  CH --> SO --> ES
+  PRE2 --> NORM --> IN --> IMB
+  CONN --> CH
 ```
 
 ---
 
-## Componentes sugeridos (fork `custom/`)
+## Fase 0 — Infraestrutura (sem mudar comportamento)
 
-| Classe | Responsabilidade |
-|--------|------------------|
-| `Custom::Whatsapp::Providers::GatewayService` | Envio: adaptar para REST do gateway |
-| `Custom::Whatsapp::Webhooks::GatewayNormalizer` | `params` gateway → formato interno flat |
-| `Custom::Whatsapp::IncomingMessageGatewayService` | Ou reutilizar `IncomingMessageService` se normalizado |
-| `Custom::Whatsapp::ConnectionService` | QR, status sessão, webhook register no gateway |
-| `Custom::Whatsapp::TemplatesAdapter` | Lista local ou noop |
+| Entrega | Local |
+|---------|-------|
+| `# FORK:` em `PROVIDERS` | `app/models/channel/whatsapp.rb` |
+| `MessagingProvider::Registry` | `custom/lib/messaging_provider/registry.rb` |
+| Initializer register | `custom/config/initializers/messaging_provider_registry.rb` |
+| Prepend `Channel::Whatsapp#provider_service` | `custom/app/models/custom/channel/whatsapp.rb` |
+| Prepend `WhatsappEventsJob` | `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` |
+| Capability helper (opcional) | `custom/lib/messaging_provider/capabilities.rb` |
+
+```ruby
+# custom/app/models/custom/channel/whatsapp.rb
+module Custom::Channel::Whatsapp
+  def provider_service
+    MessagingProvider::Registry.fetch(provider, self) || super
+  end
+end
+Channel::Whatsapp.prepend(Custom::Channel::Whatsapp)
+```
+
+**Bloqueio:** `validates :provider, inclusion: { in: PROVIDERS }` usa a constante congelada no load do model. Para novos providers, faça um diff mínimo:
+
+```ruby
+# app/models/channel/whatsapp.rb
+# FORK: allow gateway providers handled by custom adapters.
+PROVIDERS = %w[default whatsapp_cloud evolution zapi notificame].freeze
+```
+
+Depois disso, mantenha o restante em `custom/` e registre cada provider no registry.
 
 ---
 
-## Webhook adapter
+## Fase 1 — MVP texto (piloto: Evolution ou NotificaMe)
 
-Opção A (preferida): normalizer no job **antes** do incoming:
+### Backend
+
+| Classe | Responsabilidade |
+|--------|------------------|
+| `Custom::Whatsapp::Providers::EvolutionService` | `send_message`, `validate_provider_config?`, `error_message`, `process_response` override |
+| `Custom::Whatsapp::Webhooks::EvolutionNormalizer` | `MESSAGES_UPSERT` → `{ contacts:, messages: }` |
+| `Custom::Whatsapp::ConnectionService` | QR, `CONNECTION_UPDATE`, register webhook na instância |
+
+### Webhook flow
 
 ```mermaid
 sequenceDiagram
-  participant GW as Evolution/Baileys Gateway
-  participant WH as Webhooks::WhatsappController
+  participant GW as Gateway
+  participant WH as WhatsappController
   participant J as WhatsappEventsJob
-  participant N as GatewayNormalizer
+  participant N as EvolutionNormalizer
   participant I as IncomingMessageService
 
   GW->>WH: POST /webhooks/whatsapp/:phone
   WH->>J: perform_later(params)
-  J->>N: normalize if provider=gateway
-  N->>I: { contacts, messages, statuses }
-  I->>I: IncomingMessageBaseService logic
+  Note over J,N: prepend: se provider=evolution
+  J->>N: normalize(params)
+  N->>I: flat payload
+  I->>I: IncomingMessageBaseService
 ```
 
-Opção B: rota dedicada `/webhooks/whatsapp_gateway/:instance_id` — mais isolamento, mais surface area.
+**Auth webhook:** prepend controller — validar `apikey` header ou token na URL; não usar HMAC Meta.
+
+### Frontend
+
+- Card "Gateway / Evolution" em `Whatsapp.vue` (`// FORK:` import)
+- Form: inbox name, `base_url`, `api_key`, `instance_name`
+- Step 2: QR via polling `ConnectionService`
+
+### Critério de done
+
+- [ ] Inbox criado com `provider: 'evolution'`
+- [ ] Inbound texto → conversa
+- [ ] Outbound texto → `source_id` persistido
+- [ ] Status mapeado (se gateway enviar)
 
 ---
 
-## Diagrama — adapter architecture completo
+## Fase 2 — Mídia, reply, janela 24h
 
-```mermaid
-flowchart LR
-  subgraph Chatwoot
-    UI[Dashboard Vue<br/>Gateway Setup Wizard]
-    CH[Channel::Whatsapp<br/>provider=gateway]
-    GS[GatewayService<br/>custom/]
-    SO[SendOnWhatsappService]
-    J[WhatsappEventsJob]
-    N[GatewayNormalizer]
-    IN[IncomingMessageService]
-  end
-
-  subgraph External
-    EVO[Evolution / Baileys / WPPConnect]
-    WA[WhatsApp Network]
-  end
-
-  UI -->|create channel| CH
-  SO --> CH --> GS
-  GS -->|REST send| EVO
-  EVO <-->|session| WA
-  EVO -->|webhook| J
-  J --> N --> IN
-```
+| Item | Ação |
+|------|------|
+| Mídia outbound | `send_attachment_message` — URL pública ou upload gateway |
+| Mídia inbound | Override `download_attachment_file` ou URL direta no normalizer |
+| Reply | Mapear `quoted` / `context` no send e inbound |
+| Janela 24h | Prepend `MessageWindowService` — `nil` para providers com `unlimited_session?` |
+| Templates | `sync_templates` noop ou lista local; `send_template` → texto livre |
 
 ---
 
-## Frontend
+## Fase 3 — Interativos e operação
 
-- Novo card em `Whatsapp.vue` (fork): "Gateway / Evolution"
-- Form: nome inbox, URL base, API key/token, instance name
-- Step 2: exibir QR (polling `GET /instance/connectionState` ou equivalente)
-- Sem `WhatsappCall.vue` — chamadas não suportadas via gateway na maioria dos casos
+- Botões/listas: reusar helpers `BaseService#create_button_payload`
+- Health: endpoint status no settings (não `whatsapp_health_management` cloud)
+- Alertas desconexão + fluxo QR
+- `TemplatesSyncSchedulerJob` — noop ou sync gateway
+
+---
+
+## Componentes por provider
+
+| Componente | Evolution | Z-API | NotificaMe |
+|------------|-----------|-------|------------|
+| Service | `EvolutionService` | `ZapiService` | `NotificameService` |
+| Normalizer | `EvolutionNormalizer` | `ZapiNormalizer` (demux por `type`) | conforme plano NotificaMe |
+| Webhooks | 1 URL + evento no body | 4 URLs ou 1 demux | conforme API |
+| Config | `instance_name` | `instance_id`, token | credenciais NotificaMe |
+
+Detalhes: [provider-comparison.md](./provider-comparison.md).
+
+---
+
+## O que NÃO fazer
+
+| Anti-pattern | Motivo |
+|--------------|--------|
+| Editar `WhatsappCloudService` | Alto churn upstream |
+| Forkar `IncomingMessageBaseService` | Duplica dedup, contatos, statuses |
+| Usar `else` branch como 360dialog sem normalizer | Payload gateway é incompatível |
+| Prometer voz no mesmo inbox | Baileys ≠ Calling API |
+| Commit em `develop` | Disciplina do fork |
 
 ---
 
 ## Voz
 
-Ver [provider-coupling-and-extensibility.md](../whatsapp-voice/provider-coupling-and-extensibility.md) e [generic-whatsapp-call-channel.md](./generic-whatsapp-call-channel.md). Chamadas nativas exigem Meta Calling API + WebRTC browser↔Meta. Gateways Baileys **não** expõem equivalente estável. Alternativa: canal **Twilio Voice** (PSTN) — não é chamada WhatsApp in-app.
+Canal **separado**. Não prometer voz como parte do MVP de mensagens. Para decidir stack de voz, ver [whatsapp-voice/README.md](../whatsapp-voice/README.md) e [whatsapp-voice/second-provider-strategy.md](../whatsapp-voice/second-provider-strategy.md).
 
 ---
 
-## Estratégia fork
+## Estratégia fork (prioridade)
 
-| Prioridade | Onde |
-|------------|------|
-| 1 | `custom/app/services/...` — provider + normalizer |
-| 2 | `prepend_mod_with` em `WhatsappEventsJob` se Enterprise não aplicável |
-| 3 | Edição mínima `Channel::Whatsapp#provider_service` com `# FORK:` |
-| 4 | Vue em `custom/` ou componente novo referenciado com `// FORK:` em `Whatsapp.vue` |
-
-Evitar editar `WhatsappCloudService` / `IncomingMessageWhatsappCloudService`.
+| # | Onde |
+|---|------|
+| 1 | `# FORK:` mínimo — `PROVIDERS`, import Vue |
+| 2 | `custom/app/services/...` — provider + normalizer + connection |
+| 3 | Prepend — `Channel::Whatsapp.prepend`, `WhatsappEventsJob.prepend_mod_with`, opcional `MessageWindowService.prepend` |
+| 4 | Evitar editar corpo de serviços cloud |
 
 ---
 
-## Fases (resumo)
+## Fases, esforço e critérios
 
-Ver [effort-estimate-and-phases.md](./effort-estimate-and-phases.md) para estimativas detalhadas.
+| Fase | Escopo |
+|------|--------|
+| 0 | Registry + prepends (1 sem) |
+| 1 | Texto MVP (2–3 sem) |
+| 2 | Mídia + 24h bypass (2–4 sem) |
+| 3 | Interativos + ops (2–3 sem) |
+| 4 | Voz — projeto separado |
 
-1. **MVP mensagens** — envio texto, normalizer webhook, inbox setup
-2. **Mídia + templates** — upload/download, sync ou bypass
-3. **Interativos + operação** — botões/listas, health, reconexão QR
-4. **Chamadas** — não recomendado para não oficial; projeto separado se gateway suportar
+| Fase | Critério de done |
+|------|------------------|
+| 1 | Criar inbox gateway; receber texto; enviar texto; persistir `source_id`; mapear status básico |
+| 2 | Enviar/receber imagem e documento; reply/quote se suportado; templates noop ou bypass documentado |
+| 3 | Botões/listas outbound; alerta de desconexão; fluxo QR/reconnect; health no settings |
+| 4 | Só iniciar com contrato de voz escrito do provider (SDP/events ou equivalente) |

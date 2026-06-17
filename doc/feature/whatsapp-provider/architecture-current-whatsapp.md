@@ -174,6 +174,54 @@ flowchart TB
 
 ---
 
+## Extension points no fork (merge-safe)
+
+O diretório `custom/` já existe no fork (relatórios, CSAT, conversas) mas **ainda não** contém providers WhatsApp. Padrão recomendado:
+
+| Mecanismo | Onde aplicar | Exemplo |
+|-----------|--------------|---------|
+| `custom/` overlay | Services, normalizers, Vue wizards | `Custom::Whatsapp::Providers::EvolutionService` |
+| Prepend direto / `prepend_mod_with` | Model, jobs | `Channel::Whatsapp.prepend`, `Webhooks::WhatsappEventsJob.prepend_mod_with` |
+| `# FORK:` mínimo | Constantes, imports UI | `PROVIDERS`, import card em `Whatsapp.vue` |
+| Registry (novo) | Dispatch provider | `MessagingProvider::Registry` em initializer `custom/` |
+
+Hooks **já presentes** no upstream (usar, não duplicar):
+
+```164:164:app/jobs/webhooks/whatsapp_events_job.rb
+Webhooks::WhatsappEventsJob.prepend_mod_with('Webhooks::WhatsappEventsJob')
+```
+
+```233:233:app/services/whatsapp/providers/whatsapp_cloud_service.rb
+Whatsapp::Providers::WhatsappCloudService.prepend_mod_with('Whatsapp::Providers::WhatsappCloudService')
+```
+
+Enterprise adiciona voz via prepend em `WhatsappCloudService` — referência para `CallProvider` no fork, não para mensagens gateway.
+
+**Inventário de lacunas:** [gaps-and-blockers.md](./gaps-and-blockers.md).
+
+---
+
+## Recursos já implementados reutilizáveis
+
+| Camada | Componente | Reuso para gateway |
+|--------|------------|-------------------|
+| Envio | `Whatsapp::SendOnWhatsappService` | ✅ após provider service |
+| Incoming core | `IncomingMessageBaseService` | ✅ com payload normalizado |
+| Incoming flat | `IncomingMessageService` | ✅ alvo do normalizer |
+| Provider contract | `Whatsapp::Providers::BaseService` | ✅ herdar |
+| Referência 2º provider | `Whatsapp360DialogService` | Padrão REST + flat webhook |
+| Jobs | `SendReplyJob`, `TemplatesSyncSchedulerJob` | Parcial — sync só se gateway tiver templates |
+| Contatos | `ContactInboxBuilder`, `IncomingMessageIdentifierHelper` | ✅ após normalizar phone/JID |
+| Dedup | Redis mutex no job + `lock_message_source_id!` | ✅ |
+
+---
+
 ## Conclusão
 
-O padrão de provider existe para **envio** e validação, mas **recebimento** e features avançadas estão acoplados ao formato de payload (flat vs nested Meta) ou exclusivos do cloud. Um terceiro provider precisa de normalizer de webhook e não deve editar os serviços cloud existentes.
+O padrão de provider existe para **envio** e validação, mas **recebimento** e features avançadas estão acoplados ao formato de payload (flat vs nested Meta) ou exclusivos do cloud. Um terceiro provider precisa de:
+
+1. **Registry** ou prepend em `provider_service` (hoje non-cloud → 360dialog incorretamente)
+2. **Normalizer** de webhook → formato flat
+3. **Bypass opcional** da janela 24h Chatwoot
+
+Não editar `WhatsappCloudService` / `IncomingMessageWhatsappCloudService`. Ver [implementation-decision-tree.md](./implementation-decision-tree.md).
