@@ -82,9 +82,19 @@ Inserir **após** o botão de anexo (`i-ph-paperclip`), antes do microfone:
 
 | Prop | Tipo | Regra |
 |------|------|-------|
-| `showShareContactButton` | Boolean | `showFileUpload && !isOnPrivateNote && !isEditorDisabled && (isAWhatsAppChannel \|\| isATelegramChannel)` |
+| `showShareContactButton` | Boolean | Ver [diagrama de estados](./improvements-backlog.md#diagrama--estados-do-botão-compartilhar-contato) |
 
-`ReplyBox.vue` computa `showShareContactButton` e escuta `@open-share-contact` para abrir o dialog.
+```javascript
+// ReplyBox.vue — // FORK: share contact card
+showShareContactButton =
+  !isOnPrivateNote &&
+  !isEditorDisabled &&
+  (isATelegramChannel || (isAWhatsAppChannel && currentChat.can_reply));
+```
+
+`ReplyBox.vue` computa e passa a prop; escuta `@open-share-contact` para abrir o dialog.
+
+**WhatsApp fora de 24h:** botão **oculto** (mesmo padrão de bloqueio de envio livre). Tooltip reserva: `CONVERSATION.SHARE_CONTACT.DISABLED_SESSION_EXPIRED` se no futuro usar estado desabilitado em vez de oculto.
 
 **Ícone:** `i-ph-address-book` — consistente com barra de ferramentas Phosphor (`i-ph-smiley-sticker`, `i-ph-paperclip`, `i-ph-whatsapp-logo`).
 
@@ -150,7 +160,8 @@ Exibido quando `conversationContact.phoneNumber` existe e inbox suporta share.
 ```
 
 - Separador visual: `text-xs text-n-slate-11` centralizado (padrão merge não tem, mas `text-n-slate-11` é o tom secundário do projeto)
-- Se contato da conversa **não** tem telefone: card desabilitado + `text-n-slate-11` com `MODAL.NO_PHONE_CURRENT`
+- Se contato da conversa **não** tem telefone: card desabilitado + `MODAL.NO_PHONE_CURRENT`
+- **P1:** link `MODAL.EDIT_CONTACT` → `/app/accounts/:id/contacts/:contactId` (nova aba)
 
 ### Bloco 2 — Buscar outro contato
 
@@ -218,6 +229,39 @@ Diferença do compose new conversation: filtrar **somente** `phoneNumber` presen
 
 ---
 
+## Ajustes em componentes existentes (MVP)
+
+### `Contact.vue` — outgoing e meta
+
+| Mudança | Detalhe |
+|---------|---------|
+| Sem Save Contact em outgoing | `variant !== MESSAGE_VARIANTS.AGENT` |
+| Meta snake_case | `first_name` / `last_name` fallback |
+| Copy outgoing | `CONTACT_OUTGOING` em vez de `{sender} shared...` |
+
+```vue
+<!-- action só incoming -->
+:action="showSaveAction ? action : null"
+```
+
+```javascript
+const senderTranslationKey = computed(() =>
+  variant.value === MESSAGE_VARIANTS.AGENT
+    ? 'CONVERSATION.SHARED_ATTACHMENT.CONTACT_OUTGOING'
+    : 'CONVERSATION.SHARED_ATTACHMENT.CONTACT'
+);
+```
+
+### `MessagePreview.vue` — lista de conversas
+
+1. Adicionar `contact: 'i-lucide-contact'` em `attachmentIcons`
+2. Se `file_type === 'contact'`, usar `CHAT_LIST.ATTACHMENTS.contact.CONTENT` **mesmo com** `content` preenchido
+3. Replicar no card legado se `widgets/conversation/MessagePreview.vue` ainda estiver em uso
+
+**Backend alinhado:** outbound **sem** `message.content` — preview depende do attachment.
+
+---
+
 ## Pending message (otimista)
 
 Estender `createPendingMessage` em `helper/commons.js`:
@@ -248,6 +292,7 @@ if (data.sharedContactId) {
 {
   "TOOLTIP": "Share contact",
   "ERROR": "Could not share contact. Try again.",
+  "DISABLED_SESSION_EXPIRED": "Contact cards can only be sent during an active WhatsApp session",
   "MODAL": {
     "TITLE": "Share a contact",
     "DESCRIPTION": "Send a contact card the customer can save on their phone.",
@@ -259,9 +304,19 @@ if (data.sharedContactId) {
     "IS_SEARCHING": "Searching...",
     "NO_PHONE": "Phone number required to share",
     "NO_PHONE_CURRENT": "This contact has no phone number",
+    "EDIT_CONTACT": "Edit contact",
     "QUICK_SHARE": "Share",
     "OR_SEARCH": "Or search for another contact"
   }
+}
+```
+
+`SHARED_ATTACHMENT.CONTACT_OUTGOING` em `en.json`:
+
+```json
+"SHARED_ATTACHMENT": {
+  "CONTACT": "{sender} has shared a contact",
+  "CONTACT_OUTGOING": "You shared a contact"
 }
 ```
 
@@ -289,13 +344,15 @@ Traduções em português na mesma entrega (fork usa pt_BR ativamente; chaves `S
 ## Checklist de conformidade visual
 
 - [ ] Botão `NextButton` slate faded sm com tooltip i18n
+- [ ] Botão oculto em WhatsApp `!can_reply` e em nota privada
 - [ ] `Dialog` components-next com width `md`
 - [ ] `ComboBox` com `use-api-results` e classe `[&>div>button]:bg-n-alpha-black2`
 - [ ] Card de contato `border-n-strong rounded-xl` + `Avatar` size 32
 - [ ] Cores `text-n-slate-12` / `text-n-slate-11` para hierarquia
 - [ ] Footer `flex gap-2 justify-end`
-- [ ] Bubble resultante = `Contact.vue` existente (ícone rosa `bg-[#D6409F]`)
+- [ ] Bubble resultante = `Contact.vue` (sem Save Contact em outgoing)
+- [ ] Preview lista = "Shared contact" + ícone `i-lucide-contact`
 
 ---
 
-*Ver [implementation-plan.md](./implementation-plan.md) para fases backend e decisões de produto.*
+*Ver [implementation-plan.md](./implementation-plan.md) e [improvements-backlog.md](./improvements-backlog.md).*

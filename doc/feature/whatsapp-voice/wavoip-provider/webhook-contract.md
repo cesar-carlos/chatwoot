@@ -2,6 +2,8 @@
 
 Especificação fixa para autenticação, idempotência, resolução de inbox e eventos realtime. Evita ambiguidade na implementação.
 
+**Doc oficial webhook:** https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md · **Índice:** [official-docs.md](./official-docs.md)
+
 **Relacionado:** [architecture.md](./architecture.md) · [fixtures/README.md](./fixtures/README.md)
 
 ---
