@@ -116,3 +116,42 @@ Practical checklist for any change impacting core logic or public APIs
 ## Branding / White-labeling note
 
 - For user-facing strings that currently contain "Chatwoot" but should adapt to branded/self-hosted installs, prefer applying `replaceInstallationName` from `shared/composables/useBranding` in the UI layer (for example tooltip and suggestion labels) instead of adding hardcoded brand-specific copy.
+
+## Fork Strategy
+
+This repository is a fork of [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot). Branch discipline keeps upstream sync predictable:
+
+| Branch | Purpose |
+|--------|---------|
+| `develop` | Exact mirror of `upstream/develop` — **no custom commits** |
+| `main` | All fork-specific changes, features, and fixes |
+
+**Never commit custom work on `develop`.** Sync upstream into `develop`, then rebase `main` onto it.
+
+### Change priority (best → worst for merge safety)
+
+1. **Data/config only** — `InstallationConfig`, feature flags, Rails console (no code diff)
+2. **`custom/` overlay** — new files under `custom/`, autoloaded without touching upstream
+3. **Extension points** — `prepend_mod_with`, `include_mod_with`, Enterprise modules
+4. **Minimal upstream edit** — single guard + `# FORK:` / `// FORK:` marker at method top
+5. **Direct upstream edit** — last resort; every divergent line must be marked
+
+Full workflow and conflict-avoidance techniques:
+
+- `.cursor/rules/fork-strategy.mdc` — branch workflow, sync commands, commit discipline
+- `.cursor/rules/fork-merge-conflicts.mdc` — FORK markers, merge resolution, anti-patterns
+
+### Automation
+
+- **Sync upstream**: `bin/fork-sync-upstream` — fetches upstream, resets `develop`, pushes `origin/develop`, rebases `main`, runs FORK inventory
+- **FORK inventory**: `bin/fork-inventory` — writes all `FORK:` markers to `doc/fork-divergences.txt` (`file:line` format)
+
+### Git hooks
+
+Enable the pre-commit hook that blocks `FORK:` markers on `develop`:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The hook refuses commits on `develop` when staged changes contain `FORK:` markers.

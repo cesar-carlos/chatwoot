@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+die() {
+  echo "fork-sync-upstream: $*" >&2
+  exit 1
+}
+
+require_clean_tree() {
+  if ! git diff-index --quiet HEAD --; then
+    die "working tree has uncommitted changes; commit or stash before syncing"
+  fi
+}
+
+require_remote() {
+  git remote get-url "$1" >/dev/null 2>&1 || die "missing git remote '$1'"
+}
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+require_clean_tree
+require_remote upstream
+require_remote origin
+
+START_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+trap 'git checkout "$START_BRANCH" 2>/dev/null || true' EXIT
+
+echo "==> Fetching upstream"
+git fetch upstream || die "failed to fetch upstream"
+
+echo "==> Resetting develop to upstream/develop"
+git checkout develop || die "failed to checkout develop"
+git reset --hard upstream/develop || die "failed to reset develop to upstream/develop"
+
+echo "==> Pushing origin/develop (force-with-lease)"
+git push origin develop --force-with-lease || die "failed to push origin/develop"
+
+echo "==> Rebasing main onto develop"
+git checkout main || die "failed to checkout main"
+git rebase develop || die "rebase failed; resolve conflicts, then run: git rebase --continue"
+
+echo "==> FORK marker inventory"
+"$ROOT/bin/fork-inventory"
+
+echo "==> Sync complete. Review doc/fork-divergences.txt and push main when ready:"
+echo "    git push origin main"
