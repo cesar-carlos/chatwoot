@@ -158,8 +158,8 @@ export default {
       this.avatarUrl = this.currentUser.avatar_url;
       this.displayName = this.currentUser.display_name;
       this.messageSignature = this.currentUser.message_signature;
-      // FORK: groq_token is not returned on GET; configured state uses has_groq_token
-      this.groqToken = this.currentUser.groq_token || '';
+      // FORK: groq_token value is not returned on GET; masked preview drives configured UI
+      this.groqToken = this.currentUser.groq_token_masked || '';
     },
     async dispatchUpdate(payload, successMessage, errorMessage) {
       let alertMessage = '';
@@ -234,8 +234,8 @@ export default {
         }
 
         if (token) {
-          // FORK: clear input after save; has_groq_token from API drives configured UI
-          this.groqToken = '';
+          // FORK: show masked preview after save; has_groq_token from API drives configured UI
+          this.groqToken = this.currentUser.groq_token_masked || '';
         }
         useAlert(successMessage);
       } catch (error) {

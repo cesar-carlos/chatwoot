@@ -6,6 +6,7 @@ json.confirmed resource.confirmed?
 json.display_name resource.display_name
 json.message_signature resource.message_signature
 json.has_groq_token resource.groq_token.present? # FORK: audio transcription token presence check
+json.groq_token_masked resource.groq_token_masked if resource.groq_token.present? # FORK: masked Groq token for profile UI
 json.email resource.email
 json.hmac_identifier resource.hmac_identifier if GlobalConfig.get('CHATWOOT_INBOX_HMAC_KEY')['CHATWOOT_INBOX_HMAC_KEY'].present?
 json.id resource.id

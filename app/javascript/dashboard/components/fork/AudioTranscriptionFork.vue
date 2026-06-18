@@ -1,5 +1,6 @@
 <!-- FORK: extracted for merge-safe fork integration -->
 <script setup>
+import { computed, toValue } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Icon from 'next/icon/Icon.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -51,6 +52,11 @@ const props = defineProps({
 
 const { t } = useI18n();
 
+// v-bind from composables passes Ref/ComputedRef objects; unwrap to avoid always-truthy props
+const isTranscribingActive = computed(() => Boolean(toValue(props.isTranscribing)));
+const transcriptContent = computed(() => toValue(props.transcriptText) || '');
+const errorMessage = computed(() => toValue(props.displayError) || '');
+
 const setTokenMissingDialogRef = el => {
   props.setTokenMissingDialog?.(el);
 };
@@ -64,38 +70,38 @@ const setTokenInvalidDialogRef = el => {
   <button
     v-if="section === 'button' && showTranscribeButton"
     class="p-0 border-0 size-6 grid place-content-center"
-    :disabled="isTranscribing"
+    :disabled="isTranscribingActive"
     :title="t('AUDIO.TRANSCRIBE')"
     @click="handleTranscribe"
   >
     <Icon
       class="size-3.5"
-      :class="{ 'animate-pulse': isTranscribing }"
+      :class="{ 'animate-pulse': isTranscribingActive }"
       icon="i-lucide-ear"
     />
   </button>
 
   <div
     v-else-if="
-      section === 'transcript' && transcriptText && showTranscribedText
+      section === 'transcript' && transcriptContent && showTranscribedText
     "
     class="text-n-slate-12 p-3 text-sm bg-n-alpha-1 rounded-lg w-full break-words"
   >
-    {{ transcriptText }}
+    {{ transcriptContent }}
   </div>
 
   <p
-    v-else-if="section === 'status' && isTranscribing"
+    v-else-if="section === 'status' && isTranscribingActive"
     class="text-xs text-n-slate-11 px-1"
   >
     {{ t('AUDIO.TRANSCRIPTION.PROCESSING') }}
   </p>
 
   <p
-    v-else-if="section === 'status' && displayError"
+    v-else-if="section === 'status' && errorMessage"
     class="text-xs text-n-ruby-11 px-1"
   >
-    {{ displayError }}
+    {{ errorMessage }}
   </p>
 
   <template v-else-if="section === 'dialogs'">
