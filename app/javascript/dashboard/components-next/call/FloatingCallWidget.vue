@@ -270,4 +270,5 @@ onBeforeUnmount(stopRingtone);
       @go-to-conversation="goToConversation(activeCall || primaryIncomingCall)"
     />
   </div>
+  <template v-else />
 </template>

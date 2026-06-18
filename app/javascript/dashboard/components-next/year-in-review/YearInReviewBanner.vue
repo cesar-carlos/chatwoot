@@ -85,4 +85,5 @@ const closeBanner = event => {
 
     <YearInReviewModal ref="modalRef" :show="showModal" @close="closeModal" />
   </div>
+  <template v-else />
 </template>

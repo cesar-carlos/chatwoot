@@ -27,4 +27,5 @@ const label = computed(() => (safeCount.value > 9 ? '9+' : safeCount.value));
   >
     {{ label }}
   </span>
+  <span v-else />
 </template>

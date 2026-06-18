@@ -20,4 +20,5 @@ defineProps({
     :count="count"
     class="absolute z-20 -top-1 ltr:-left-1 rtl:-right-1"
   />
+  <template v-else />
 </template>
