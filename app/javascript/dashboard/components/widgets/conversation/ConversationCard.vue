@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, inject } from 'vue';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { getLastMessage } from 'dashboard/helper/conversationHelper';
 import Avatar from 'next/avatar/Avatar.vue';
@@ -13,7 +13,9 @@ import VoiceCallStatus from './VoiceCallStatus.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 // FORK: assignme and unread badge fork features
 import { useConversationCardFork } from 'dashboard/composables/fork/useConversationCardFork';
+import { useUnreadCount } from 'dashboard/composables/fork/useUnreadCount';
 import ConversationCardForkAvatarBadge from 'dashboard/components/fork/ConversationCardForkAvatarBadge.vue';
+import UnreadCountBadge from 'dashboard/components/fork/UnreadCountBadge.vue';
 import ConversationCardFastAssignButton from 'dashboard/components/fork/ConversationCardFastAssignButton.vue';
 
 const props = defineProps({
@@ -45,23 +47,28 @@ const currentUser = useMapGetter('getCurrentUser');
 const hovered = ref(false);
 const chatMetadata = computed(() => props.chat.meta || {});
 
+const injectedAssignmeFork = inject('conversationCardAssignmeFork', null);
+const assignmeFork =
+  injectedAssignmeFork ??
+  useConversationCardFork({
+    chat: computed(() => props.chat),
+    chatMetadata,
+    canAssignToMe: computed(() => props.canAssignToMe),
+    currentUser,
+    isAssignPending: computed(() => props.isAssignPending),
+    emit,
+  });
+
 const {
   assignee: metaAssignee,
-  unreadCount,
-  hasUnread,
   showAssignmentButton,
   showAssigneeInMeta,
   messagePreviewPaddingClass,
   contentSectionClass,
   fastAssign,
-} = useConversationCardFork({
-  chat: computed(() => props.chat),
-  chatMetadata,
-  canAssignToMe: computed(() => props.canAssignToMe),
-  currentUser,
-  isAssignPending: computed(() => props.isAssignPending),
-  emit,
-});
+} = assignmeFork;
+
+const { unreadCount, hasUnread } = useUnreadCount(computed(() => props.chat));
 
 const senderId = computed(() => chatMetadata.value.sender?.id);
 
@@ -171,10 +178,7 @@ watch(
           </label>
         </template>
       </Avatar>
-      <ConversationCardForkAvatarBadge
-        :count="unreadCount"
-        :hide-thumbnail="hideThumbnail"
-      />
+      <ConversationCardForkAvatarBadge v-if="!hideThumbnail" :count="unreadCount" />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
       <div :class="contentSectionClass">
@@ -246,10 +250,15 @@ watch(
           </span>
         </p>
         <div
-          class="absolute flex flex-col ltr:right-3 rtl:left-3"
+          class="absolute flex flex-col items-end ltr:right-3 rtl:left-3"
           :class="showMetaSection ? 'top-8' : 'top-4'"
         >
-          <span class="ml-auto font-normal leading-4 text-xxs">
+          <UnreadCountBadge
+            v-if="hideThumbnail && hasUnread"
+            :count="unreadCount"
+            class="mb-1"
+          />
+          <span class="font-normal leading-4 text-xxs">
             <TimeAgo
               :last-activity-timestamp="chat.timestamp"
               :created-at-timestamp="chat.created_at"

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, inject } from 'vue';
+import { computed, ref, watch, inject, provide } from 'vue';
 import { useRouter } from 'vue-router';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
@@ -78,7 +78,7 @@ const emitAssignAgent = (agent, conversationIds) => {
   assignAgent(agent, conversationIds);
 };
 
-const { showAssignmentButton, fastAssign } = useConversationCardFork({
+const assignmeFork = useConversationCardFork({
   chat,
   chatMetadata,
   canAssignToMe,
@@ -86,6 +86,10 @@ const { showAssignmentButton, fastAssign } = useConversationCardFork({
   isAssignPending: isAssignPendingForSource,
   emit: { assignAgent: emitAssignAgent },
 });
+
+provide('conversationCardAssignmeFork', assignmeFork);
+
+const { showAssignmentButton, fastAssign } = assignmeFork;
 
 const currentContact = computed(() =>
   senderId.value ? store.getters['contacts/getContact'](senderId.value) : {}
