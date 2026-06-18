@@ -53,7 +53,9 @@ const props = defineProps({
 const { t } = useI18n();
 
 // v-bind from composables passes Ref/ComputedRef objects; unwrap to avoid always-truthy props
-const isTranscribingActive = computed(() => Boolean(toValue(props.isTranscribing)));
+const isTranscribingActive = computed(() =>
+  Boolean(toValue(props.isTranscribing))
+);
 const transcriptContent = computed(() => toValue(props.transcriptText) || '');
 const errorMessage = computed(() => toValue(props.displayError) || '');
 

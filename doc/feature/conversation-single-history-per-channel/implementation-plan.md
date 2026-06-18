@@ -44,7 +44,7 @@ The `lock_to_single_conversation` flag, the UI toggle, and the backend logic alr
 - Channel support via `Conversations::Resolver` (or equivalent):
   - SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram
   - API/Public flows (`ConversationBuilder`)
-- **Pending:** Enterprise Voice (`Voice::InboundCallBuilder`) still uses inline lookup (non-deterministic `.last`)
+- Enterprise Voice (`Voice::InboundCallBuilder`) migrated to `Conversations::Resolver` (orchestration round 3)
 - Incoming messages can reopen resolved conversations through `Message#reopen_conversation` callback (`after_create_commit`)
 - Conversation status transitions: `open → resolved → open` handled by `Conversation#open!` / `Conversation#resolved!`
 
@@ -123,7 +123,7 @@ Decision: **Completed** — LINE and TikTok use `Conversations::Resolver` (TikTo
 | Twitter Tweet/thread | Thread routing by `tweet_id`/parent tweet | `app/services/twitter/tweet_parser_service.rb` | Explicitly excluded from Phase 1 (channel-native behavior) | Low |
 | Email | Email threading strategy | `app/services/mailbox/conversation_finder_strategies/*` | Keep as-is (out of scope) | — |
 | API/Widget | Respects flag via Resolver | `app/builders/conversation_builder.rb` | Completed (orchestration round 2) | Low |
-| Voice (Enterprise) | Inline lookup (`.last`) | `enterprise/app/services/voice/inbound_call_builder.rb` | Migrate to resolver (pending) | Medium |
+| Voice (Enterprise) | Respects flag via Resolver | `enterprise/app/services/voice/inbound_call_builder.rb` | Completed (orchestration round 3) | Low |
 
 ## Report Impact and Per-Cycle Metrics
 
@@ -433,7 +433,7 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [x] Automation rules warning when enabling single-history toggle (inbox settings)
 - [x] Inbox factory `:single_history` trait for specs
 - [x] Default `lock_to_single_conversation = true` for new inboxes (migration `20260618120000`)
-- [ ] Enterprise Voice inbound calls migrated to resolver
+- [x] Enterprise Voice inbound calls migrated to resolver
 - [ ] Baseline SQL queries executed on pilot inboxes
 
 ## Delivery Checklist
@@ -446,15 +446,15 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [x] Automation warning banner in inbox settings (EN + PT-BR)
 - [x] Inbox factory `:single_history` trait
 - [x] Default ON migration for new inboxes
-- [ ] Enterprise Voice resolver migration
+- [x] Enterprise Voice resolver migration
 - [ ] Pilot rollout completed with monitored metrics
 
 ## Pilot Readiness Snapshot
 
 ### Engineering status (code complete)
 
-- [x] Inbox-level toggle behavior implemented for Phase 1 channels: SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, API/Widget
-- [x] Reopen/create selection centralized via `Conversations::Resolver` (Voice Enterprise pending)
+- [x] Inbox-level toggle behavior implemented for Phase 1 channels: SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, API/Widget, Voice (Enterprise)
+- [x] Reopen/create selection centralized via `Conversations::Resolver` (including Voice Enterprise)
 - [x] Per-cycle reporting behavior implemented when single-history mode is ON
 - [x] Per-cycle CSAT behavior implemented when single-history mode is ON
 - [x] Existing behavior preserved when single-history mode is OFF
@@ -494,7 +494,7 @@ Engineering review to align implementation with project rules (single responsibi
 | Area | Behavior |
 |---|---|
 | TikTok read receipts | `find_conversation` uses resolver `#find`, then falls back to latest thread when all conversations are resolved (read-status only; does not create) |
-| Voice Enterprise | Inline lookup in `Voice::InboundCallBuilder#resolve_conversation!` — **pending** migration to resolver |
+| Voice Enterprise | `Voice::InboundCallBuilder#resolve_conversation!` uses `Conversations::Resolver#perform` |
 | Twitter / Email | Excluded from Phase 1 |
 
 ### Orchestration round 2 (2026-06-18)
@@ -511,7 +511,8 @@ Channel unification, per-cycle bot handoff, UX, and default migration completed 
 | Per-cycle bot handoff | `custom/.../reporting_event_listener.rb` | `bot_handoff_already_recorded?` scoped by `event_start_time` (cycle) when toggle ON |
 | Default ON migration | `db/migrate/20260618120000_fork_default_lock_to_single_conversation_true.rb` | Column default `true` for **new** inboxes only; no `UPDATE` on existing rows |
 | Automation warning | `SingleHistoryAutomationWarning.vue`, `useSingleHistoryAutomationWarning.js` | Non-blocking banner when enabling toggle with `conversation_created` rules |
-| Voice Enterprise | `enterprise/.../inbound_call_builder.rb` | **Still pending** — inline `.last` lookup |
+| Voice Enterprise | `enterprise/.../inbound_call_builder.rb` | Migrated to `Conversations::Resolver#perform` |
+| Per-cycle bot resolutions | `custom/.../bot_metrics_builder.rb` | Count per `conversation_bot_resolved` event for single-history inboxes; DISTINCT preserved for legacy |
 
 ### Validation after orchestration round 2
 
@@ -536,7 +537,8 @@ Channel unification, per-cycle bot handoff, UX, and default migration completed 
 | ConversationBuilder resolver migration | Done | Orchestration round 2 — API/Widget honors inbox toggle |
 | Per-cycle `bot_handoff` metrics | Done | `bot_handoff_already_recorded?` scoped by cycle when toggle ON |
 | Default `lock_to_single_conversation = true` | Done | Migration `20260618120000` (new inboxes only) |
-| Voice Enterprise resolver migration | Pending | `Voice::InboundCallBuilder` still uses inline lookup |
+| Voice Enterprise resolver migration | Done | `Voice::InboundCallBuilder` uses `Conversations::Resolver#perform` |
+| Per-cycle bot resolution metrics | Done | `Custom::V2::Reports::BotMetricsBuilder` overlay + specs |
 | Static i18n-only automation note | Not needed | Dynamic warning implemented via existing store API |
 
 **Phase 2 (deferred):** Per-rule inbox scoping preview in banner (e.g. link to filtered automation list), or backend endpoint if store payload becomes too heavy for settings page.
@@ -557,6 +559,7 @@ Channel unification, per-cycle bot handoff, UX, and default migration completed 
 - 2026-06-18: Engineering audit — fixed LINE/TikTok duplicate resolver logic, reporting `event.timestamp` + `safe_rollup` gaps, extracted `Custom::Conversations::ResolutionCycle`, added resolver `#find` with optional params. Focused validation: `53 examples, 0 failures`.
 - 2026-06-18: Worker 3 — automation warning banner on single-history toggle (uses existing automations store), `:single_history` factory trait, EN/PT-BR ops copy.
 - 2026-06-18: Orchestration round 2 — FB/IG and `ConversationBuilder` migrated to `Conversations::Resolver`; added `#resolve_or_create`; per-cycle `bot_handoff`; default ON migration for new inboxes; `ResolutionCycle` uses `reporting_events` association. Focused validation: `342 examples, 0 failures`.
+- 2026-06-18: Orchestration round 3 — Voice Enterprise migrated to `Conversations::Resolver`; per-cycle `bot_resolutions_count` via `Custom::V2::Reports::BotMetricsBuilder`. Focused validation: `16 examples, 0 failures` (bot metrics + voice inbound).
 
 ## Existing Inbox Backfill Policy
 
