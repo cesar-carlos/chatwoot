@@ -64,7 +64,9 @@ defineExpose({
       <MessagePreview
         :message="lastNonActivityMessage"
         class="flex-1 min-w-0"
-        :class="unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'"
+        :class="
+          unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'
+        "
       />
     </div>
 

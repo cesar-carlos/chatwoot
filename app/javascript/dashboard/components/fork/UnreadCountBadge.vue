@@ -21,4 +21,5 @@ const label = computed(() => formatConversationUnreadBadgeLabel(props.count));
   >
     {{ label }}
   </span>
+  <span v-else class="hidden" />
 </template>

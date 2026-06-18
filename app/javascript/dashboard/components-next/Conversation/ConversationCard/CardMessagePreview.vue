@@ -37,7 +37,9 @@ const assignee = computed(() => {
       :message="lastNonActivityMessage"
       multi-line
       class="w-full"
-      :class="unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'"
+      :class="
+        unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'
+      "
     />
     <div class="flex items-center flex-shrink-0 pb-2">
       <Avatar
