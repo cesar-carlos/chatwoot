@@ -87,6 +87,10 @@ export const useTranscription = () => {
 
       if (status === 401 || status === 403) {
         errorMessage = t('AUDIO.API_ERROR.UNAUTHORIZED');
+      } else if (status === 409) {
+        errorMessage = t('AUDIO.TRANSCRIPTION.IN_PROGRESS');
+      } else if (status === 429) {
+        errorMessage = t('AUDIO.RATE_LIMIT.MESSAGE');
       }
 
       transcriptionError.value = {

@@ -8,15 +8,28 @@ const props = defineProps({
   section: {
     type: String,
     required: true,
-    validator: value => ['button', 'transcript', 'dialogs'].includes(value),
+    validator: value =>
+      ['button', 'transcript', 'status', 'dialogs'].includes(value),
   },
   showTranscribedText: {
+    type: Boolean,
+    default: true,
+  },
+  showTranscribeButton: {
     type: Boolean,
     default: true,
   },
   isTranscribing: {
     type: Boolean,
     default: false,
+  },
+  transcriptState: {
+    type: String,
+    default: null,
+  },
+  displayError: {
+    type: String,
+    default: '',
   },
   transcriptText: {
     type: String,
@@ -53,7 +66,7 @@ const setTokenInvalidDialogRef = el => {
 
 <template>
   <button
-    v-if="section === 'button'"
+    v-if="section === 'button' && showTranscribeButton"
     class="p-0 border-0 size-6 grid place-content-center"
     :disabled="isTranscribing"
     :title="t('AUDIO.TRANSCRIBE')"
@@ -74,6 +87,23 @@ const setTokenInvalidDialogRef = el => {
   >
     {{ transcriptText }}
   </div>
+
+  <p
+    v-else-if="
+      section === 'status' &&
+      (isTranscribing || transcriptState === 'processing')
+    "
+    class="text-xs text-n-slate-11 px-1"
+  >
+    {{ t('AUDIO.TRANSCRIPTION.PROCESSING') }}
+  </p>
+
+  <p
+    v-else-if="section === 'status' && displayError"
+    class="text-xs text-n-ruby-11 px-1"
+  >
+    {{ displayError }}
+  </p>
 
   <template v-else-if="section === 'dialogs'">
     <Dialog

@@ -1,5 +1,6 @@
 require 'English'
-class AudioConverterService
+
+class Custom::AudioConverterService
   AUDIO_MAX_SIZE = 25.megabytes
   FORMATS_REQUIRING_CONVERSION = %w[
     audio/aac audio/x-aac audio/amr audio/x-amr audio/vnd.wave
@@ -37,6 +38,12 @@ class AudioConverterService
     return false unless audio_file
 
     FORMATS_REQUIRING_CONVERSION.include?(detect_content_type)
+  end
+
+  def needs_preprocessing?
+    return false unless audio_file
+
+    needs_conversion? || @preset == :voice
   end
 
   def convert

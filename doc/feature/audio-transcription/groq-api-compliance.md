@@ -32,8 +32,8 @@ Nossa implementação:
 - **Envio direto** (sem conversão): flac, mp3, mp4, mpeg, mpga, m4a, ogg, opus, wav, webm
 - **Normalização MIME**: `audio/oga` e `audio/x-oga` → `audio/ogg` (Groq aceita ogg)
 - **Normalização de filename**: `.oga` → `.ogg` (Groq valida pela extensão do arquivo)
-- **Conversão via FFmpeg** (`AudioConverterService`): aac, amr, vnd.wave → mp3
-- Serviço: `app/services/audio_converter_service.rb`
+- **Conversão via FFmpeg** (`Custom::AudioConverterService`): aac, amr, vnd.wave → mp3
+- Serviço: `custom/app/services/custom/audio_converter_service.rb`
 ✅ Formatos nativos enviados direto; formatos não suportados convertidos para mp3
 
 ### Limites de Arquivo
@@ -120,11 +120,14 @@ Nossa implementação:
 ### Preprocessamento de Áudio
 **Recomendação Groq**: Converter para 16KHz mono antes do upload
 
+Nossa implementação aplica o preset `voice` (16kHz, mono, filtros highpass/lowpass) via FFmpeg **antes de enviar ao Groq**, inclusive para formatos nativamente suportados (mp3, wav, ogg, etc.) — melhora a precisão conforme a documentação Groq.
+
 ```bash
 ffmpeg -i <input> -ar 16000 -ac 1 -map 0:a -c:a flac output.flac
 ```
 
-💡 **Melhoria futura**: Implementar preprocessamento automático no AudioConverterService
+- `Custom::AudioConverterService#needs_preprocessing?` retorna `true` para preset `voice` ou formatos que exigem conversão (aac, amr).
+- Formatos aac/amr são convertidos para mp3; demais formatos suportados passam pelo preset voice quando enviados ao Groq.
 
 ## ✅ Conclusão
 

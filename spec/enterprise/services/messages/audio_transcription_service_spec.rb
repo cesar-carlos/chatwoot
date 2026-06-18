@@ -1,13 +1,14 @@
 require 'rails_helper'
 
 RSpec.describe Messages::AudioTranscriptionService, type: :service do
-  let(:account) { create(:account, audio_transcriptions: true) }
+  let(:account) do
+    create(:account).tap { |a| a.update!(audio_transcriptions: true) }
+  end
   let(:conversation) { create(:conversation, account: account) }
   let(:message) { create(:message, account: account, conversation: conversation) }
   let(:attachment) { message.attachments.create!(account: account, file_type: :audio) }
 
   before do
-    # Create required installation configs
     InstallationConfig.find_or_create_by!(name: 'CAPTAIN_OPEN_AI_API_KEY') { |config| config.value = 'test-api-key' }
     InstallationConfig.find_or_create_by!(name: 'CAPTAIN_OPEN_AI_MODEL') { |config| config.value = 'gpt-4o-mini' }
 
