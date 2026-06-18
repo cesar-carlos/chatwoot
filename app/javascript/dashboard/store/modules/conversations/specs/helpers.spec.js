@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyRoleFilter } from '../helpers';
+import { applyRoleFilter, getRoleFilterContext } from '../helpers';
 
 describe('Conversation Helpers', () => {
   describe('#applyRoleFilter', () => {
@@ -462,6 +462,31 @@ describe('Conversation Helpers', () => {
             []
           )
         ).toBe(false);
+      });
+    });
+  });
+
+  describe('#getRoleFilterContext', () => {
+    it('returns role filter context from root getters', () => {
+      const rootGetters = {
+        getCurrentUser: {
+          id: 7,
+          accounts: [
+            { id: 3, permissions: ['conversation_team_unassigned_manage'] },
+          ],
+        },
+        getCurrentAccountId: 3,
+        'teams/getMyTeams': [{ id: 5 }],
+        'inboxes/getInboxes': [{ id: 10 }, { id: 11 }],
+      };
+
+      expect(getRoleFilterContext(rootGetters)).toEqual({
+        currentUser: rootGetters.getCurrentUser,
+        currentUserId: 7,
+        permissions: ['conversation_team_unassigned_manage'],
+        userRole: 'agent',
+        userTeams: [{ id: 5 }],
+        userInboxIds: [10, 11],
       });
     });
   });

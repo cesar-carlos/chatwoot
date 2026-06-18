@@ -6,6 +6,7 @@ export const customRoleList = [
     permissions: [
       'conversation_participating_manage',
       'conversation_unassigned_manage',
+      'conversation_team_unassigned_manage',
       'conversation_manage',
       'contact_manage',
       'report_manage',
@@ -20,6 +21,7 @@ export const customRoleList = [
     description: 'Role for managing all aspects of conversations',
     permissions: [
       'conversation_unassigned_manage',
+      'conversation_team_unassigned_manage',
       'conversation_participating_manage',
       'conversation_manage',
     ],
@@ -73,5 +75,13 @@ export const customRoleList = [
     permissions: ['conversation_manage'],
     created_at: '2024-09-06T09:55:19.519Z',
     updated_at: '2024-09-06T09:55:19.519Z',
+  },
+  {
+    id: 9,
+    name: 'Team Unassigned Queue Manager Role',
+    description: 'Role for managing unassigned conversations from agent teams',
+    permissions: ['conversation_team_unassigned_manage'],
+    created_at: '2024-09-06T09:56:00.503Z',
+    updated_at: '2024-09-06T09:56:00.503Z',
   },
 ];

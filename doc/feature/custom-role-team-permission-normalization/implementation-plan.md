@@ -43,7 +43,7 @@ Objetivos específicos:
 - Frontend: constantes, filtro local, rota de conversas e i18n
 - Ajustes de UX relacionados ao entendimento do escopo por time (quando estritamente necessários)
 - Teste manual funcional orientado a regras de acesso
-- Traduções apenas em `en` e `pt_BR`
+- Traduções apenas em `en` e `pt_BR` (exceção fork documentada — ver seção Project Rules)
 
 ### Out of Scope (Phase 1)
 
@@ -61,6 +61,7 @@ Objetivos específicos:
 - Onde houver edição inevitável em arquivos upstream, marcar linhas com:
   - Ruby: `# FORK: custom role team permission normalization`
   - TS/Vue: `// FORK: custom role team permission normalization`
+- Traduções: regra global do projeto limita a `en.json`/`en.yml`; **nesta feature** incluímos também `pt_BR/customRole.json` como exceção fork explícita.
 - Foco MVP e happy path primeiro, seguido de hardening.
 - Este documento é a fonte única do plano desta feature.
 
@@ -76,8 +77,8 @@ Estado atual validado no projeto:
   - `conversation_team_unassigned_manage`
   - `conversation_participating_manage`
 - `ConversationPolicy` delega `permits_team_unassigned_manage?` com gate obrigatório de inbox.
-- `conversation.routes.js` inclui a nova permissão na lista local de acesso.
-- Frontend (`permissions.js`, `applyRoleFilter`, i18n en/pt_BR) contempla a regra de time + inbox.
+- `conversation.routes.js` importa `CONVERSATION_PERMISSIONS` de `permissions.js` (fonte única; evita lista duplicada local).
+- Frontend (`permissions.js`, `getRoleFilterContext`, `applyRoleFilter`, i18n en/pt_BR) contempla a regra de time + inbox.
 - `Conversations::UnreadCounts::Counter` aplica `team_unassigned_and_mine` via overlay em `custom/` (gap corrigido).
 - Specs automatizados backend e frontend passando; validação manual operacional (PR4) ainda pendente.
 
@@ -128,12 +129,17 @@ Racional:
 
 ## Backend
 
-Arquivos-alvo:
+Arquivos implementados:
 
-- `custom/app/models/custom/custom_role.rb` (preferred overlay)
-- `custom/app/services/custom/enterprise/conversations/permission_filter_service.rb` (preferred overlay)
-- `custom/app/policies/custom/enterprise/conversation_policy.rb` (preferred overlay)
-- `enterprise/app/...` somente se houver bloqueio técnico para overlay
+| Camada | Arquivo | Papel |
+|--------|---------|-------|
+| Permissão (upstream mínimo) | `enterprise/app/models/custom_role.rb` | `PERMISSIONS` + `FORK:` |
+| Filtro enterprise | `enterprise/app/services/enterprise/conversations/permission_filter_service.rb` | Hierarquia base; delega team ao overlay |
+| Filtro fork | `custom/app/services/custom/conversations/permission_filter_service.rb` | `team_unassigned + mine` |
+| Policy enterprise | `enterprise/app/policies/enterprise/conversation_policy.rb` | `show?` + stub `permits_team_unassigned_manage?` |
+| Policy fork | `custom/app/policies/custom/conversation_policy.rb` | Gate inbox + escopo por time |
+| Unread counts hook | `app/services/conversations/unread_counts/counter.rb` | `prepend_mod_with` (`FORK:`) |
+| Unread counts fork | `custom/app/services/custom/conversations/unread_counts/counter.rb` | Modo `:team_unassigned_and_mine` |
 
 Diretriz:
 
@@ -143,17 +149,19 @@ Diretriz:
 
 ## Frontend
 
-Arquivos-alvo:
+Arquivos implementados:
 
-- `app/javascript/dashboard/constants/permissions.js`
-- `app/javascript/dashboard/store/modules/conversations/helpers.js`
-- `app/javascript/dashboard/routes/dashboard/conversation/conversation.routes.js`
+- `app/javascript/dashboard/constants/permissions.js` — constantes e `ASSIGNEE_TYPE_TAB_PERMISSIONS`
+- `app/javascript/dashboard/store/modules/conversations/helpers.js` — `getRoleFilterContext` + `applyRoleFilter`
+- `app/javascript/dashboard/store/modules/conversations/getters.js` — getters consumindo `getRoleFilterContext`
+- `app/javascript/dashboard/routes/dashboard/conversation/conversation.routes.js` — importa `CONVERSATION_PERMISSIONS`
+- `app/javascript/dashboard/routes/dashboard/settings/customRoles/component/CustomRoleModal.vue`
 - `app/javascript/dashboard/i18n/locale/en/customRole.json`
 - `app/javascript/dashboard/i18n/locale/pt_BR/customRole.json`
 
 Diretriz:
 
-- manter consistência entre constantes globais e listas locais de rota;
+- manter consistência entre constantes globais e guards de rota (via import, não duplicar arrays);
 - evitar loops de redirecionamento por divergência de permissões.
 
 ## Implementation Phases and TODOs
@@ -354,28 +362,29 @@ Deliverables:
 
 ### Deterministic Permission Precedence
 
-- [ ] Consolidar ordem única de precedência em backend e frontend:
-  - [ ] `conversation_manage`
-  - [ ] `conversation_unassigned_manage`
-  - [ ] `conversation_team_unassigned_manage`
-  - [ ] `conversation_participating_manage`
-- [ ] Garantir comportamento idêntico quando múltiplas permissões coexistirem no mesmo role
+- [x] Consolidar ordem única de precedência em backend e frontend:
+  - [x] `conversation_manage`
+  - [x] `conversation_unassigned_manage`
+  - [x] `conversation_team_unassigned_manage`
+  - [x] `conversation_participating_manage`
+- [x] Garantir comportamento idêntico quando múltiplas permissões coexistirem no mesmo role
 
 ### Inbox Access Source of Truth
 
-- [ ] Definir fonte única de inbox acessível no backend (`assigned_inboxes`/equivalente)
-- [ ] Definir fonte equivalente no frontend para `userInboxIds`
-- [ ] Garantir sincronização semântica entre backend e frontend (mesmo critério de acesso)
+- [x] Definir fonte única de inbox acessível no backend (`user.inboxes` / `accessible_conversations`)
+- [x] Definir fonte equivalente no frontend para `userInboxIds` (`inboxes/getInboxes`)
+- [x] Garantir sincronização semântica entre backend e frontend (mesmo critério de acesso)
 
 ### Frontend Loading and Stale State
 
-- [ ] Definir UX esperada para estado sem `userInboxIds` carregado (fail-closed sem confusão de uso)
+- [x] Definir UX esperada para estado sem `userInboxIds` carregado (fail-closed sem confusão de uso)
 - [ ] Evitar flash de conversas indevidas durante hidratação inicial de store
 - [ ] Validar atualização correta após troca de conta/usuário sem estado residual
 
 ### Counts, Filters, and Deep Links
 
-- [x] Validar coerência dos contadores (`mine`, `unassigned`, `all`) com a nova regra — **FIXED**: `UnreadCounts::Counter` overlay em `custom/`
+- [x] Validar coerência dos contadores (`mine`, `unassigned`, `all`) com a nova regra — `UnreadCounts::Counter` overlay em `custom/`
+- [x] Documentar limitação conhecida: badges de **label** em `:team_unassigned_and_mine` contam apenas conversas atribuídas ao agente (não há chave Redis label+team+unassigned; usar `label_inbox_unassigned` over-contaria outros times)
 - [ ] Validar filtros (`q`, `team_id`, `inbox_id`, `assignee_type`) sem bypass de autorização
 - [ ] Validar acesso direto por URL de conversa (deep link) com policy aplicada corretamente
 
@@ -405,7 +414,20 @@ Deliverables:
 - [ ] Checklist manual de negócio executado e aprovado
 - [x] Sem erros novos de lint/check nos arquivos alterados
 - [ ] Sem regressão de permissões existentes em homologação
-- [ ] Plano atualizado com status final da entrega
+- [ ] Plano atualizado com status final da entrega (PR4 manual pendente)
+
+## Known Limitations (Documented)
+
+1. **Label unread badges** — Para `conversation_team_unassigned_manage`, contadores por label incluem apenas conversas atribuídas ao agente. Não há chave composta label+team+unassigned no cache Redis; incluir `label_inbox_unassigned` violaria a regra de negócio (contaria não atribuídas de outros times).
+2. **Participating vs assignee no frontend** — `applyRoleFilter` para `conversation_participating_manage` verifica assignee, não participant (comportamento pré-existente; backend policy aceita participant).
+3. **Fail-closed durante hidratação** — Custom roles com `userInboxIds` vazio veem lista vazia até inboxes carregarem (intencional; validar UX em PR4).
+
+## Code Quality Improvements (Applied)
+
+- [x] `getRoleFilterContext` elimina duplicação nos getters de conversa
+- [x] `getParticipatingChats` aplica filtro de role
+- [x] Fixtures de teste (`customRole`, `permissionsHelper`) incluem `conversation_team_unassigned_manage`
+- [x] Comentário explícito no overlay de unread counts sobre limitação de labels
 
 ## Suggested Execution Order (Practical)
 
@@ -668,7 +690,8 @@ This section tracks what is already implemented/validated in this workspace and 
 - [x] Backend: conversation policy enforces inbox gate and team-scope checks for custom role
 - [x] Backend: `Conversations::UnreadCounts::Counter` supports `team_unassigned_and_mine` via `custom/` overlay
 - [x] Frontend: constants updated with `conversation_team_unassigned_manage`
-- [x] Frontend: `applyRoleFilter` updated with `userTeams + userInboxIds`
+- [x] Frontend: `getRoleFilterContext` centraliza `userTeams + userInboxIds` nos getters
+- [x] Frontend: `getParticipatingChats` aplica `applyRoleFilter` para alinhar com escopo da role
 - [x] Frontend: fail-closed behavior when inbox context is unavailable
 - [x] Frontend: conversation route guards include new permission
 - [x] i18n: new permission label added only in `en` and `pt_BR`
@@ -676,7 +699,7 @@ This section tracks what is already implemented/validated in this workspace and 
 ### Automated validation completed
 
 - [x] Backend specs (enterprise permission filter + policy + unread counter): passing
-- [x] Frontend specs (conversation helpers + getters + settings helper): passing
+- [x] Frontend specs (conversation helpers + getters + settings helper + permissionsHelper): passing
 - [x] Lint diagnostics for modified files: no new issues
 
 ### Pending manual validation before Go/No-Go

@@ -1,11 +1,12 @@
 import { MESSAGE_TYPE } from 'shared/constants/messages';
-import { applyPageFilters, applyRoleFilter, sortComparator } from './helpers';
+import {
+  applyPageFilters,
+  applyRoleFilter,
+  getRoleFilterContext,
+  sortComparator,
+} from './helpers';
 import filterQueryGenerator from 'dashboard/helper/filterQueryGenerator';
 import { matchesFilters } from './helpers/filterHelpers';
-import {
-  getUserPermissions,
-  getUserRole,
-} from '../../../helper/permissionsHelper';
 import camelcaseKeys from 'camelcase-keys';
 
 export const getSelectedChatConversation = ({
@@ -24,17 +25,8 @@ const getters = {
     __,
     rootGetters
   ) => {
-    const currentUser = rootGetters.getCurrentUser;
-    const currentUserId = rootGetters.getCurrentUser.id;
-    const currentAccountId = rootGetters.getCurrentAccountId;
-    // FORK: custom role team permission normalization
-    const userTeams = rootGetters['teams/getMyTeams'] || [];
-    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
-      inbox => inbox.id
-    );
-
-    const permissions = getUserPermissions(currentUser, currentAccountId);
-    const userRole = getUserRole(currentUser, currentAccountId);
+    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
+      getRoleFilterContext(rootGetters);
 
     return allConversations
       .filter(conversation => {
@@ -82,16 +74,13 @@ const getters = {
     return lastEmail;
   },
   getMineChats: (_state, _, __, rootGetters) => activeFilters => {
-    const currentUser = rootGetters.getCurrentUser;
-    const currentUserID = currentUser?.id;
-    const currentAccountId = rootGetters.getCurrentAccountId;
-    // FORK: custom role team permission normalization
-    const userTeams = rootGetters['teams/getMyTeams'] || [];
-    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
-      inbox => inbox.id
-    );
-    const permissions = getUserPermissions(currentUser, currentAccountId);
-    const userRole = getUserRole(currentUser, currentAccountId);
+    const {
+      currentUserId: currentUserID,
+      permissions,
+      userRole,
+      userTeams,
+      userInboxIds,
+    } = getRoleFilterContext(rootGetters);
 
     return _state.allConversations.filter(conversation => {
       const { assignee } = conversation.meta;
@@ -121,16 +110,8 @@ const getters = {
     return hasAppliedFilters ? filterQueryGenerator(_state.appliedFilters) : [];
   },
   getUnAssignedChats: (_state, _, __, rootGetters) => activeFilters => {
-    const currentUser = rootGetters.getCurrentUser;
-    const currentUserId = currentUser?.id;
-    const currentAccountId = rootGetters.getCurrentAccountId;
-    // FORK: custom role team permission normalization
-    const userTeams = rootGetters['teams/getMyTeams'] || [];
-    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
-      inbox => inbox.id
-    );
-    const permissions = getUserPermissions(currentUser, currentAccountId);
-    const userRole = getUserRole(currentUser, currentAccountId);
+    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
+      getRoleFilterContext(rootGetters);
 
     return _state.allConversations.filter(conversation => {
       const isUnAssigned = !conversation.meta.assignee;
@@ -148,7 +129,8 @@ const getters = {
     });
   },
   getParticipatingChats: (_state, _, __, rootGetters) => activeFilters => {
-    const currentUserId = rootGetters.getCurrentUser?.id;
+    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
+      getRoleFilterContext(rootGetters);
     const getWatchers = rootGetters['conversationWatchers/getByConversationId'];
     return _state.allConversations.filter(conversation => {
       const watchers = getWatchers(conversation.id);
@@ -157,21 +139,22 @@ const getters = {
       if (watchers && !watchers.some(w => w.id === currentUserId)) {
         return false;
       }
-      return applyPageFilters(conversation, activeFilters);
+      const shouldFilter = applyPageFilters(conversation, activeFilters);
+      const allowedForRole = applyRoleFilter(
+        conversation,
+        userRole,
+        permissions,
+        currentUserId,
+        userTeams,
+        userInboxIds
+      );
+
+      return shouldFilter && allowedForRole;
     });
   },
   getAllStatusChats: (_state, _, __, rootGetters) => activeFilters => {
-    const currentUser = rootGetters.getCurrentUser;
-    const currentUserId = rootGetters.getCurrentUser.id;
-    const currentAccountId = rootGetters.getCurrentAccountId;
-    // FORK: custom role team permission normalization
-    const userTeams = rootGetters['teams/getMyTeams'] || [];
-    const userInboxIds = (rootGetters['inboxes/getInboxes'] || []).map(
-      inbox => inbox.id
-    );
-
-    const permissions = getUserPermissions(currentUser, currentAccountId);
-    const userRole = getUserRole(currentUser, currentAccountId);
+    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
+      getRoleFilterContext(rootGetters);
 
     return _state.allConversations.filter(conversation => {
       const shouldFilter = applyPageFilters(conversation, activeFilters);
