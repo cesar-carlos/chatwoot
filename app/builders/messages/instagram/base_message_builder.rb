@@ -57,26 +57,16 @@ class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuil
   end
 
   def conversation
-    @conversation ||= set_conversation_based_on_inbox_config
+    # FORK: centralize conversation selection logic across channels
+    @conversation ||= Conversations::Resolver.new(
+      inbox: @inbox,
+      contact_inbox: contact_inbox,
+      conversation_params: conversation_params
+    ).perform
   end
 
-  def set_conversation_based_on_inbox_config
-    if @inbox.lock_to_single_conversation
-      find_conversation_scope.order(created_at: :desc).first || build_conversation
-    else
-      find_or_build_for_multiple_conversations
-    end
-  end
-
-  def find_conversation_scope
-    Conversation.where(conversation_params)
-  end
-
-  def find_or_build_for_multiple_conversations
-    last_conversation = find_conversation_scope.where.not(status: :resolved).order(created_at: :desc).first
-    return build_conversation if last_conversation.nil?
-
-    last_conversation
+  def contact_inbox
+    @contact_inbox ||= @inbox.contact_inboxes.find_by!(source_id: message_source_id)
   end
 
   def message_content
@@ -133,14 +123,6 @@ class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuil
     @message.save!
   end
 
-  def build_conversation
-    @contact_inbox ||= contact.contact_inboxes.find_by!(source_id: message_source_id)
-    Conversation.create!(conversation_params.merge(
-                           contact_inbox_id: @contact_inbox.id,
-                           additional_attributes: additional_conversation_attributes
-                         ))
-  end
-
   def additional_conversation_attributes
     {}
   end
@@ -149,7 +131,9 @@ class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuil
     {
       account_id: @inbox.account_id,
       inbox_id: @inbox.id,
-      contact_id: contact.id
+      contact_id: contact.id,
+      contact_inbox_id: contact_inbox.id,
+      additional_attributes: additional_conversation_attributes
     }
   end
 

@@ -226,9 +226,12 @@ describe Messages::Instagram::MessageBuilder do
 
     it 'will not create a new conversation if last conversation is not resolved' do
       messaging = dm_params[:entry][0]['messaging'][0]
-      contact = create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
+      sender_id = messaging['sender']['id']
+      contact = create_instagram_contact_for_sender(sender_id, instagram_inbox)
+      contact_inbox = instagram_contact_inbox_for(sender_id, instagram_inbox)
       existing_conversation = create(:conversation, account_id: account.id, inbox_id: instagram_inbox.id,
-                                                    contact_id: contact.id, status: :open)
+                                                    contact_id: contact.id, contact_inbox_id: contact_inbox.id,
+                                                    status: :open)
 
       described_class.new(messaging, instagram_inbox).perform
 
@@ -237,9 +240,12 @@ describe Messages::Instagram::MessageBuilder do
 
     it 'creates a new conversation if last conversation is resolved' do
       messaging = dm_params[:entry][0]['messaging'][0]
-      contact = create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
+      sender_id = messaging['sender']['id']
+      contact = create_instagram_contact_for_sender(sender_id, instagram_inbox)
+      contact_inbox = instagram_contact_inbox_for(sender_id, instagram_inbox)
       existing_conversation = create(:conversation, account_id: account.id, inbox_id: instagram_inbox.id,
-                                                    contact_id: contact.id, status: :resolved)
+                                                    contact_id: contact.id, contact_inbox_id: contact_inbox.id,
+                                                    status: :resolved)
 
       initial_count = Conversation.count
 
@@ -268,9 +274,12 @@ describe Messages::Instagram::MessageBuilder do
 
     it 'reopens last conversation if last conversation is resolved' do
       messaging = dm_params[:entry][0]['messaging'][0]
-      contact = create_instagram_contact_for_sender(messaging['sender']['id'], instagram_inbox)
+      sender_id = messaging['sender']['id']
+      contact = create_instagram_contact_for_sender(sender_id, instagram_inbox)
+      contact_inbox = instagram_contact_inbox_for(sender_id, instagram_inbox)
       existing_conversation = create(:conversation, account_id: account.id, inbox_id: instagram_inbox.id,
-                                                    contact_id: contact.id, status: :resolved)
+                                                    contact_id: contact.id, contact_inbox_id: contact_inbox.id,
+                                                    status: :resolved)
 
       initial_count = Conversation.count
       messaging = dm_params[:entry][0]['messaging'][0]

@@ -28,11 +28,32 @@ RSpec.describe Conversations::Resolver do
 
     resolver_call
 
-    expect(contact_inbox).to have_received(:with_lock)
+    expect(contact_inbox).to have_received(:with_lock).once
+  end
+
+  describe '#resolve_or_create' do
+    subject(:resolve_or_create) do
+      described_class.new(inbox: inbox, contact_inbox: contact_inbox).resolve_or_create { conversation_params }
+    end
+
+    it 'uses a single lock for find-or-create' do
+      allow(contact_inbox).to receive(:with_lock).and_yield
+
+      resolve_or_create
+
+      expect(contact_inbox).to have_received(:with_lock).once
+    end
+
+    it 'does not evaluate create params when a conversation exists' do
+      existing = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :open)
+
+      expect { resolve_or_create }.not_to change(Conversation, :count)
+      expect(resolve_or_create).to eq(existing)
+    end
   end
 
   context 'when lock_to_single_conversation is enabled' do
-    let(:lock_to_single_conversation) { true }
+    let(:inbox) { create(:inbox, :single_history, account: account) }
 
     it 'reuses latest conversation even if resolved' do
       older = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved)
@@ -58,6 +79,18 @@ RSpec.describe Conversations::Resolver do
 
       expect { resolver_call }.to change(Conversation, :count).by(1)
       expect(resolver_call).to be_open
+    end
+
+    it 'find returns nil when only resolved conversations exist' do
+      create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox, status: :resolved)
+
+      found = described_class.new(
+        inbox: inbox,
+        contact_inbox: contact_inbox,
+        conversation_params: conversation_params
+      ).find
+
+      expect(found).to be_nil
     end
   end
 end

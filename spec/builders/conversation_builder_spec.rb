@@ -29,6 +29,27 @@ describe ConversationBuilder do
       expect(conversation.contact_inbox_id).to eq(contact_api_inbox.id)
     end
 
+    context 'when lock_to_single_conversation is false' do
+      it 'reuses non-resolved conversation instead of always creating' do
+        existing_conversation = create(:conversation, contact_inbox: contact_sms_inbox, status: :open)
+
+        conversation = described_class.new(
+          contact_inbox: contact_sms_inbox,
+          params: {}
+        ).perform
+
+        expect(conversation.id).to eq(existing_conversation.id)
+      end
+
+      it 'creates a new conversation when only resolved conversations exist' do
+        create(:conversation, contact_inbox: contact_sms_inbox, status: :resolved)
+
+        expect do
+          described_class.new(contact_inbox: contact_sms_inbox, params: {}).perform
+        end.to change(Conversation, :count).by(1)
+      end
+    end
+
     context 'when lock_to_single_conversation is true for sms inbox' do
       before do
         sms_inbox.update!(lock_to_single_conversation: true)

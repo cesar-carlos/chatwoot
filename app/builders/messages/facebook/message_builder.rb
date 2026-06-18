@@ -53,29 +53,12 @@ class Messages::Facebook::MessageBuilder < Messages::Messenger::MessageBuilder
   end
 
   def conversation
-    @conversation ||= set_conversation_based_on_inbox_config
-  end
-
-  def set_conversation_based_on_inbox_config
-    if @inbox.lock_to_single_conversation
-      Conversation.where(conversation_params).order(created_at: :desc).first || build_conversation
-    else
-      find_or_build_for_multiple_conversations
-    end
-  end
-
-  def find_or_build_for_multiple_conversations
-    # If lock to single conversation is disabled, we will create a new conversation if previous conversation is resolved
-    last_conversation = Conversation.where(conversation_params).where.not(status: :resolved).order(created_at: :desc).first
-    return build_conversation if last_conversation.nil?
-
-    last_conversation
-  end
-
-  def build_conversation
-    Conversation.create!(conversation_params.merge(
-                           contact_inbox_id: @contact_inbox.id
-                         ))
+    # FORK: centralize conversation selection logic across channels
+    @conversation ||= Conversations::Resolver.new(
+      inbox: @inbox,
+      contact_inbox: @contact_inbox,
+      conversation_params: conversation_params
+    ).perform
   end
 
   def location_params(attachment)
@@ -110,7 +93,8 @@ class Messages::Facebook::MessageBuilder < Messages::Messenger::MessageBuilder
     {
       account_id: @inbox.account_id,
       inbox_id: @inbox.id,
-      contact_id: @contact_inbox.contact_id
+      contact_id: @contact_inbox.contact_id,
+      contact_inbox_id: @contact_inbox.id
     }
   end
 
