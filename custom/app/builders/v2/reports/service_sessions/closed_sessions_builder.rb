@@ -25,19 +25,14 @@ class V2::Reports::ServiceSessions::ClosedSessionsBuilder < V2::Reports::Service
       assignee: serialize_resource(conversation.assignee),
       inbox: serialize_resource(conversation.inbox),
       team: serialize_resource(conversation.team),
-      session_duration: event.value,
+      session_duration: session_duration_for(event),
       session_duration_business_hours: event.value_in_business_hours,
       resolved_at: event.event_end_time&.to_i,
       session_started_at: event.event_start_time&.to_i
     }
   end
 
-  def serialize_resource(resource)
-    return nil if resource.blank?
-
-    {
-      id: resource.id,
-      name: resource.try(:name) || resource.try(:title)
-    }
+  def session_duration_for(event)
+    use_business_hours? ? event.value_in_business_hours : event.value
   end
 end

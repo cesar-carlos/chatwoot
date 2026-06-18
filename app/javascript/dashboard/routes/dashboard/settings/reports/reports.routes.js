@@ -26,6 +26,7 @@ import LiveReports from './LiveReports.vue';
 import MonitorShow from './monitors/MonitorShow.vue';
 import MonitorsIndex from './monitors/MonitorsIndex.vue';
 import SLAReports from './SLAReports.vue';
+// FORK: service session reports page
 import ServiceSessionReportsIndex from './ServiceSessionReportsIndex.vue';
 
 const meta = {
@@ -175,6 +176,7 @@ export default {
           component: BotReports,
         },
         {
+          // FORK: service session reports route
           path: 'service-sessions',
           name: 'service_session_reports',
           meta,

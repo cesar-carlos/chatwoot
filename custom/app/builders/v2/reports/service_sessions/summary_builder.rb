@@ -9,6 +9,7 @@ class V2::Reports::ServiceSessions::SummaryBuilder < V2::Reports::ServiceSession
     {
       open_sessions_count: open_count,
       closed_sessions_count: closed_count,
+      # Snapshot (open) + period (closed); not a single comparable total.
       total_sessions: open_count + closed_count,
       **duration_metrics(closed_scope, first_response_events),
       **advanced_metrics(closed_count, closed_scope, first_response_events, aging_stats)

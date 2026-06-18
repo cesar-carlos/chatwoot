@@ -35,18 +35,9 @@ class V2::Reports::ServiceSessions::OpenSessionsBuilder < V2::Reports::ServiceSe
   def latest_cycle_start_time_for(conversation_ids)
     return {} if conversation_ids.blank?
 
-    ReportingEvent
-      .where(conversation_id: conversation_ids, name: 'conversation_opened')
-      .group(:conversation_id)
-      .maximum(:event_end_time)
-  end
-
-  def serialize_resource(resource)
-    return nil if resource.blank?
-
-    {
-      id: resource.id,
-      name: resource.try(:name) || resource.try(:title)
-    }
+    account.reporting_events
+           .where(conversation_id: conversation_ids, name: 'conversation_opened')
+           .group(:conversation_id)
+           .maximum(:event_end_time)
   end
 end
