@@ -498,7 +498,10 @@
     "TRANSCRIPTION": {
       "SUCCESS": "Audio transcribed successfully",
       "SUCCESS_CACHED": "Transcription loaded from cache",
-      "ERROR": "Failed to transcribe audio. Please try again"
+      "ERROR": "Failed to transcribe audio. Please try again",
+      "PROCESSING": "Transcribing audio…",
+      "IN_PROGRESS": "Transcription is already in progress. Please wait.",
+      "ERROR_STATE": "Transcription failed: {error}"
     },
     "TOKEN_MISSING": {
       "TITLE": "Groq Token Required",
@@ -526,6 +529,12 @@
     },
     "PRESETS": {
       "ERROR": "Failed to load transcription presets"
+    },
+    "AUTOMATIC_MODE_ACTIVE": {
+      "MESSAGE": "Automatic audio transcription is enabled for this account. Manual Groq transcription is unavailable."
+    },
+    "RATE_LIMIT": {
+      "MESSAGE": "Too many transcription requests. Please wait a minute and try again."
     }
   }
 }

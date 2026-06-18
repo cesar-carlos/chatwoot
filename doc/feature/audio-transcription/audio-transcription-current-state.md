@@ -1,18 +1,25 @@
-# Audio Transcription - Current State Analysis
+# Audio Transcription - Current State
 
-> **Status**: Implementation complete. This document describes the baseline state before changes and the decisions made. See `audio-transcription-groq-plan.md` for full implementation details.
+> **Status**: Implementation complete with mutual exclusion between automatic (OpenAI) and manual (Groq) modes.
 
-## Existing Infrastructure
+## Two Transcription Modes (Mutually Exclusive)
 
-### Automatic Transcription Flow (Enterprise)
+| Mode | Trigger | Provider | Gate |
+|------|---------|----------|------|
+| **Automatic (original)** | On audio upload | OpenAI `gpt-4o-mini-transcribe` | `account.settings.audio_transcriptions == true` |
+| **Manual (fork Groq)** | User clicks transcribe button | Groq `whisper-large-v3-turbo` | `users.groq_token` present AND `audio_transcriptions == false` |
+
+When `account.audio_transcriptions` is enabled, the fork Groq manual path is **disabled** (backend 422 + hidden UI button).
+
+## Automatic Transcription Flow (Enterprise)
 
 **Service**: `enterprise/app/services/messages/audio_transcription_service.rb`
 - Extends `Llm::LegacyBaseOpenAiService`
-- Uses OpenAI Whisper (`whisper-1`)
-- Reads/writes `meta['transcribed_text']` (legacy key)
-- **Issue**: Overwrites entire `meta` object (line 92)
-- Does not require `account.audio_transcriptions` for manual profile-token flow
-- Checks Captain usage limits
+- Model: `gpt-4o-mini-transcribe` (`TRANSCRIPTION_MODEL` constant)
+- Gated by `account.audio_transcriptions` (standalone, not tied to Captain)
+- Safe `meta` merge preserving other keys
+- Writes canonical `meta['transcription']` + legacy `meta['transcribed_text']`
+- Emits `message.send_update_event` and reindexes when advanced search is enabled
 
 **Job**: `enterprise/app/jobs/messages/audio_transcription_job.rb`
 - Queue: `:low`
@@ -23,102 +30,62 @@
 - `after_create_commit :enqueue_audio_transcription`
 - Only for audio attachments
 
-### Data Model
+## Manual Transcription Flow (Fork / Groq)
+
+**Controller**: `custom/app/controllers/api/v1/accounts/transcriptions_controller.rb`
+- Delegates to `Custom::Transcription::GroqProvider`
+- Blocks when `account.audio_transcriptions` is enabled
+- Cache hit only when `transcription.state == 'success'`
+- Sets `processing` before Groq call; `error` with message on failure
+- Redis lock (~120s) per attachment; 409 on concurrent requests
+- Rate limit: 10/min per user (controller + Rack::Attack)
+- Structured lifecycle logs: start, cache_hit, success, error (with duration_ms)
+- After save: `message.reload.send_update_event` + conditional reindex
+
+**Services** (custom overlay):
+- `custom/app/services/custom/transcription/groq_provider.rb` — provider strategy
+- `custom/app/services/custom/transcription_metadata.rb` — unified read/write
+- `custom/app/services/custom/groq/audio_transcription_service.rb` — Groq API calls
+- `custom/app/services/custom/audio_converter_service.rb` — FFmpeg conversion + voice preprocessing
+
+**Frontend**:
+- `app/javascript/dashboard/composables/fork/useAudioTranscription.js` — hides button when automatic mode active
+- `app/javascript/dashboard/components/fork/AudioTranscriptionFork.vue` — button, dialogs
+- `app/javascript/dashboard/components-next/message/chips/Audio.vue` — audio chip integration
+
+## Data Model
 
 **Attachment** (`app/models/attachment.rb`)
-- Has `meta` jsonb column (no GIN index visible in schema comment)
-- `audio_metadata` method exposes `transcribed_text` from meta
-- Includes enterprise concern via `Attachment.include_mod_with('Concerns::Attachment')`
+- `meta` jsonb column
+- `audio_metadata` exposes `transcribedText` from meta
 
-### Current Issues Identified
+### Canonical metadata shape
 
-1. **Metadata overwrite risk** (line 92 in service):
-   ```ruby
-   attachment.update!(meta: { transcribed_text: transcribed_text })
-   ```
-   This replaces the entire `meta` hash, losing other keys.
-
-2. **No idempotency guard**: Multiple transcription requests for same attachment will re-process.
-
-3. **No explicit states**: Can't distinguish `pending` vs `processing` vs `error`.
-
-4. **No manual transcription path**: Only automatic on upload.
-
-5. **OpenAI only**: No Groq support or per-user token configuration.
-
-## Required Changes Summary
-
-> Historical note: the list below reflects the original baseline. Some items are now implemented and should be read as completed deltas.
-
-### Must Add
-- User `groq_token` field (no index)
-- Manual transcription endpoint (`TranscriptionsController`)
-- Frontend UI for token configuration
-- Frontend UI for manual transcribe action
-- Idempotency mechanism per attachment
-- Safe meta merge (preserve existing keys)
-- Explicit transcription states
-
-### Must Preserve
-- Existing automatic flow for backward compatibility
-- `transcribed_text` reading for legacy data
-- Message update events
-- Search reindexing behavior
-- ~~Captain usage limit checks~~ (removed: feature is standalone per scope decision)
-
-### Migration Strategy
-- Add new canonical metadata structure alongside legacy
-- Read from both during transition
-- Write to new structure going forward
-- Keep `transcribed_text` populated for compatibility window
-
-## Metadata Contract (Proposed)
-
-### Legacy (current)
 ```ruby
 meta: {
-  'transcribed_text' => 'text here'
-}
-```
-
-### Canonical (new)
-```ruby
-meta: {
-  'transcribed_text' => 'text here',  # kept for compatibility
+  'transcribed_text' => 'text here',  # legacy compatibility
   'transcription' => {
     'text' => 'text here',
     'state' => 'success',  # pending|processing|success|error
     'provider' => 'groq',  # groq|openai
     'model' => 'whisper-large-v3-turbo',
     'transcribed_at' => 1234567890,
-    'error' => nil,  # error message if state=error
-    'metadata' => {}  # provider-specific metadata
+    'metadata' => {}
   }
 }
 ```
 
-## Files Requiring FORK Markers
+## Security
 
-These core files will need minimal edits with `# FORK:` or `// FORK:` markers:
+- `groq_token` is **not** returned in GET user API responses
+- `has_groq_token` boolean exposed instead
+- `groq_token` encrypted at rest via Active Record Encryption (`encrypts :groq_token`)
+- Profile UI shows "Token configured" placeholder when token exists but value is not returned
+- `groq_token` filtered from logs via `filter_parameter_logging.rb`
 
-- `app/controllers/api/v1/profiles_controller.rb` (permit groq_token)
-- `app/views/api/v1/models/_user.json.jbuilder` (expose groq_token)
-- `app/javascript/dashboard/routes/dashboard/settings/profile/Index.vue` (add token section)
-- `app/javascript/dashboard/components-next/message/chips/Audio.vue` (add transcribe button)
-- `config/routes.rb` (add transcriptions routes)
-- `enterprise/app/services/messages/audio_transcription_service.rb` (safe meta merge)
+## Enabling Modes
 
-## New Files (No Upstream Conflict)
+- **Automatic**: `account.audio_transcriptions = true` (see `doc/scripts/enable-audio-transcription.rb`)
+- **Manual Groq**: Settings → Profile → Groq API Token (per user)
 
-- `db/migrate/*_add_groq_token_to_users.rb`
-- `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
-- `app/controllers/api/v1/accounts/transcriptions_controller.rb`
-
-## Current Effective Rules (implemented)
-
-- Manual transcription access is gated by user token presence (`users.groq_token`).
-- Account-level `audio_transcriptions` is not used as a blocker for manual transcription.
-- Profile payload now carries `groq_token` and profile UI reload shows masked token value.
-- `app/javascript/dashboard/api/transcription.js`
-- `app/javascript/dashboard/composables/useTranscription.js`
-- I18n keys in `config/locales/en.yml` and `app/javascript/dashboard/i18n/locale/en/*.json`
+See `enable-audio-transcriptions.md` for operator instructions.

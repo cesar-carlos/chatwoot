@@ -42,12 +42,12 @@
 ### TODO Checklist
 - [x] Add migration for `users.groq_token` (without index).
 - [x] Permit `groq_token` in profile update params.
-- [x] Expose `groq_token` in user serializer for profile field rehydration on reload.
+- [x] Expose `has_groq_token` in user serializer (token value not returned on GET).
 - [x] Add `GroqToken` UI section in profile settings page.
 - [x] Ensure token field remains masked and is never printed in client logs/errors.
 - [x] Ensure backend filtered parameters include `groq_token` to prevent sensitive logging.
 - [x] Add frontend i18n keys in `en.json`.
-- [ ] Add backend i18n keys in `en.yml` (only if needed by API responses).
+- [x] Add backend i18n keys in `en.yml` (only if needed by API responses).
 
 ## Phase 3 - Manual Transcription API (Account Scoped)
 - Implement account-scoped endpoint for on-demand transcription from audio message UI.
@@ -96,29 +96,32 @@
 - [x] Add safe temporary file handling and cleanup.
 - [x] Add structured logs for transcription lifecycle and failure causes.
 - [x] Add basic observability counters (success/error/cache-hit/latency) if instrumentation hooks exist.
-- [x] Keep manual transcription independent from account-level toggle; user token is the access gate.
+- [x] Keep manual transcription independent from account-level toggle when automatic mode is off; user token is the access gate.
+- [x] Mutual exclusion: when `account.audio_transcriptions` is enabled, manual Groq path is blocked (backend + frontend).
 - [x] Validate no secret/token leakage in logs, traces, and error payloads.
 
 ## Phase 7 - Tests and Validation
 - Validate behavior end-to-end and prevent regressions.
 
 ### TODO Checklist
-- [ ] Backend request specs for transcription endpoint success/failure/cache.
-- [ ] Backend service/controller specs for metadata persistence and error mapping.
+- [x] Backend request specs for transcription endpoint success/failure/cache.
+- [x] Backend controller spec for mutual exclusion when automatic transcription is enabled.
+- [x] Backend service/controller specs for metadata persistence and error mapping.
 - [ ] Job specs for async transcription behavior and retry/discard rules.
 - [ ] Frontend tests for audio-chip transcribe flow and token-missing state.
-- [ ] Add tests for idempotency behavior (parallel requests for same attachment).
+- [x] Add tests for idempotency behavior (parallel requests for same attachment).
 - [ ] Add tests confirming `meta` merge does not remove unrelated keys.
 - [x] Manual smoke test on conversation UI with real audio attachment.
+- [x] Smoke test script: `doc/scripts/smoke-test-audio-transcription.rb`
 - [ ] Confirm no regressions in audio playback and existing message rendering.
-- [ ] Validate format matrix (direct send vs conversion):
-  - [ ] `oga` / `x-oga` -> normalize to `ogg` and send direct
-  - [ ] `opus` / `x-opus` -> send direct
-  - [ ] `wav` / `mp3` / `m4a` / `webm` -> send direct
-  - [ ] `aac` / `amr` -> convert to `mp3` (requires ffmpeg)
-- [ ] Validate ffmpeg behavior:
-  - [ ] conversion path works when ffmpeg is installed
-  - [ ] user-facing error is clear when ffmpeg is missing
+- [x] Validate format matrix (direct send vs conversion):
+  - [x] `oga` / `x-oga` -> normalize to `ogg` and send direct
+  - [x] `opus` / `x-opus` -> send direct
+  - [x] `wav` / `mp3` / `m4a` / `webm` -> voice preset preprocessing before Groq
+  - [x] `aac` / `amr` -> convert to `mp3` (requires ffmpeg)
+- [x] Validate ffmpeg behavior:
+  - [x] conversion path works when ffmpeg is installed (unit spec with mocked ffmpeg)
+  - [x] user-facing error is clear when ffmpeg is missing
 
 ### Session Validation Status (2026-02-25)
 - [x] Profile token UI rendered and accepted token save flow.
@@ -148,15 +151,15 @@
 - `app/javascript/dashboard/routes/dashboard/settings/profile/Index.vue`
 - `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
 - `app/javascript/dashboard/components-next/message/chips/Audio.vue`
-- `app/controllers/api/v1/accounts/transcriptions_controller.rb`
 - `app/javascript/dashboard/api/transcription.js`
 - `app/javascript/dashboard/composables/useTranscription.js`
+- `app/javascript/dashboard/composables/fork/useAudioTranscription.js`
+- `app/javascript/dashboard/components/fork/AudioTranscriptionFork.vue`
 - `config/routes.rb`
-- `db/migrate/*_add_groq_token_to_users.rb`
-- `enterprise/app/services/messages/audio_transcription_service.rb` (only if compatibility updates are required)
-- `enterprise/app/jobs/messages/audio_transcription_job.rb` (only if reliability updates are required)
-- `config/locales/en.yml`
-- `app/javascript/dashboard/i18n/locale/en/*.json`
+- `enterprise/app/services/messages/audio_transcription_service.rb` (WHISPER_MODEL fix, meta merge)
+- `custom/app/controllers/api/v1/accounts/transcriptions_controller.rb`
+- `custom/app/services/custom/groq/audio_transcription_service.rb`
+- `custom/app/services/custom/audio_converter_service.rb`
 
 ## Done Criteria
 - Groq token can be configured in profile and is persisted per user.
@@ -226,7 +229,9 @@
 - All changes marked with FORK comments
 
 **Phase 6: Reliability & Security** ✅
-- Removed account-level guard for manual transcription (`audio_transcriptions`)
+- Mutual exclusion with automatic transcription when `account.audio_transcriptions` is enabled
+- `groq_token` no longer exposed in GET user API responses (`has_groq_token` only)
+- Fork code migrated to `custom/` overlay (controller + services)
 - Added structured logging for lifecycle events
 - Added MIME/content handling strategy aligned with Groq support
 - Improved file size validation with early return
@@ -284,13 +289,22 @@
 ### New Files Created
 - `db/migrate/20260225131709_add_groq_token_to_users.rb`
 - `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
-- `app/controllers/api/v1/accounts/transcriptions_controller.rb`
-- `app/services/audio_converter_service.rb`
+- `custom/app/controllers/api/v1/accounts/transcriptions_controller.rb`
+- `custom/app/services/custom/audio_converter_service.rb`
+- `custom/app/services/custom/groq/audio_transcription_service.rb`
+- `custom/app/services/custom/transcription_metadata.rb`
+- `custom/app/services/custom/transcription/base_provider.rb`
+- `custom/app/services/custom/transcription/groq_provider.rb`
+- `custom/app/services/custom/transcription/rate_limiter.rb`
+- `custom/app/services/custom/transcription/lock_manager.rb`
 - `app/javascript/dashboard/api/transcription.js`
 - `app/javascript/dashboard/composables/useTranscription.js`
-- `doc/feature/audio-transcription/audio-transcription-groq-plan.md`
-- `doc/feature/audio-transcription/audio-transcription-current-state.md`
-- `doc/scripts/setup-native-dev.sh` (ffmpeg dependency)
+- `app/javascript/dashboard/composables/fork/useAudioTranscription.js`
+- `app/javascript/dashboard/composables/fork/useTranscriptText.js`
+- `app/javascript/dashboard/components/fork/AudioTranscriptionFork.vue`
+- `spec/custom/controllers/api/v1/accounts/transcriptions_controller_spec.rb`
+- `spec/custom/services/custom/audio_converter_service_spec.rb`
+- `doc/scripts/smoke-test-audio-transcription.rb`
 
 ### I18n Files Modified
 - `app/javascript/dashboard/i18n/locale/en/settings.json` (GROQ_TOKEN section)

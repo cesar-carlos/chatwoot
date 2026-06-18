@@ -254,6 +254,22 @@ class Rack::Attack
     "#{user_identifier}:#{match_data[:account_id]}" if user_identifier.present?
   end
 
+  ## Prevent abuse of manual audio transcription API
+  # FORK: rate limit Groq transcription endpoint per user
+  throttle('/api/v1/accounts/:account_id/transcriptions',
+           limit: ENV.fetch('RATE_LIMIT_AUDIO_TRANSCRIPTION', '10').to_i, period: 1.minute) do |req|
+    next unless req.post?
+
+    match_data = %r{/api/v1/accounts/(?<account_id>\d+)/transcriptions}.match(req.path)
+    next if match_data.blank?
+
+    user_uid = req.get_header('HTTP_UID')
+    api_access_token = req.get_header('HTTP_API_ACCESS_TOKEN') || req.get_header('api_access_token')
+    user_identifier = user_uid.presence || api_access_token.presence
+
+    "#{user_identifier}:#{match_data[:account_id]}" if user_identifier.present?
+  end
+
   ## ----------------------------------------------- ##
 end
 

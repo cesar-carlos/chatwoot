@@ -19,6 +19,8 @@
 #
 #  index_attachments_on_account_id  (account_id)
 #  index_attachments_on_message_id  (message_id)
+#  index_attachments_on_meta        (meta) USING gin
+#  index_attachments_on_meta_gin    (meta) USING gin
 #
 
 class Attachment < ApplicationRecord
@@ -110,7 +112,10 @@ class Attachment < ApplicationRecord
       {
         # Keep audio playback inline while avoiding the ActiveStorage proxy path.
         data_url: inline_audio_url,
-        transcribed_text: meta&.[]('transcribed_text') || ''
+        transcribed_text: meta&.[]('transcribed_text') || '',
+        # FORK: expose transcription state for manual Groq UX
+        transcription_state: meta&.dig('transcription', 'state'),
+        transcription_error: meta&.dig('transcription', 'error')
       }
     )
   end

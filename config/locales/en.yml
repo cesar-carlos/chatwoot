@@ -86,6 +86,11 @@ en:
       groq_token:
         invalid: must be a valid Groq API token starting with gsk_
         too_short: is too short (minimum 40 characters)
+    audio_transcription:
+      automatic_mode_active: Automatic audio transcription is enabled for this account. Manual Groq transcription is unavailable.
+      token_missing: Groq API token not configured in user profile
+      rate_limit_exceeded: Too many transcription requests. Please wait and try again.
+      in_progress: Transcription is already in progress for this audio message.
     saml:
       feature_not_enabled: SAML feature not enabled for this account
       sso_not_enabled: SAML SSO is not enabled for this installation
