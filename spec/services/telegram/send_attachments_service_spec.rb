@@ -100,6 +100,58 @@ RSpec.describe Telegram::SendAttachmentsService do
       end
     end
 
+    context 'when attachment is a contact' do
+      before do
+        stub_request(:post, "#{telegram_api_url}/sendContact")
+          .to_return(status: 200, body: { ok: true, result: { message_id: 'contact' } }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+      end
+
+      it 'sends contact via sendContact and returns the message ID' do
+        message.attachments.build(
+          account_id: message.account_id,
+          file_type: :contact,
+          fallback_title: '+918660944581',
+          meta: { firstName: 'Jane', lastName: 'Doe' }
+        )
+        message.save!
+
+        result = service.perform
+
+        expect(result).to eq('contact')
+        expect(a_request(:post, "#{telegram_api_url}/sendContact").with(
+                 body: hash_including(
+                   'chat_id' => 'chat123',
+                   'phone_number' => '+918660944581',
+                   'first_name' => 'Jane',
+                   'last_name' => 'Doe'
+                 )
+               )).to have_been_made.once
+      end
+
+      context 'when this is business chat' do
+        before do
+          message.conversation.update!(additional_attributes: { 'business_connection_id' => 'eooW3KF5WB5HxTD7T826' })
+        end
+
+        it 'includes business_connection_id in sendContact request' do
+          message.attachments.build(
+            account_id: message.account_id,
+            file_type: :contact,
+            fallback_title: '+918660944581',
+            meta: { firstName: 'Jane', lastName: 'Doe' }
+          )
+          message.save!
+
+          service.perform
+
+          expect(a_request(:post, "#{telegram_api_url}/sendContact")
+            .with { |req| req.body =~ /business_connection_id.+eooW3KF5WB5HxTD7T826/m })
+            .to have_been_made.once
+        end
+      end
+    end
+
     context 'when an attachment fails to send' do
       before do
         stub_request(:post, "#{telegram_api_url}/sendDocument")

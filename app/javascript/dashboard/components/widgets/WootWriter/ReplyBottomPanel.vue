@@ -92,6 +92,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    // FORK: share contact card
+    showShareContactButton: {
+      type: Boolean,
+      default: false,
+    },
     conversationId: {
       type: Number,
       required: true,
@@ -131,6 +136,7 @@ export default {
     'selectWhatsappTemplate',
     'selectContentTemplate',
     'toggleQuotedReply',
+    'openShareContact',
   ],
   setup(props) {
     const { setSignatureFlagForInbox, fetchSignatureFlagFromUISettings } =
@@ -312,6 +318,16 @@ export default {
           sm
         />
       </FileUpload>
+      <!-- FORK: share contact card -->
+      <NextButton
+        v-if="showShareContactButton"
+        v-tooltip.top-end="$t('CONVERSATION.SHARE_CONTACT.TOOLTIP')"
+        icon="i-ph-address-book"
+        slate
+        faded
+        sm
+        @click="$emit('openShareContact')"
+      />
       <NextButton
         v-if="showAudioRecorderButton"
         v-tooltip.top-end="$t('CONVERSATION.REPLYBOX.TIP_AUDIORECORDER_ICON')"

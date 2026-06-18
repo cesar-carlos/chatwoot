@@ -50,9 +50,31 @@
     "DOWNLOAD": "Download",
     "UNKNOWN_FILE_TYPE": "Unknown File",
     "SAVE_CONTACT": "Save Contact",
+    "SHARE_CONTACT": {
+      "TOOLTIP": "Share contact",
+      "ERROR": "Could not share contact. Try again.",
+      "DISABLED_SESSION_EXPIRED": "Contact cards can only be sent during an active WhatsApp session",
+      "MODAL": {
+        "TITLE": "Share a contact",
+        "DESCRIPTION": "Send a contact card the customer can save on their phone.",
+        "CONFIRM": "Share",
+        "CANCEL": "Cancel",
+        "PLACEHOLDER": "Select a contact",
+        "SEARCH_PLACEHOLDER": "Search by name or phone number",
+        "EMPTY_STATE": "No contacts found",
+        "IS_SEARCHING": "Searching...",
+        "NO_PHONE": "Phone number required to share",
+        "NO_PHONE_CURRENT": "This contact has no phone number",
+        "EDIT_CONTACT": "Edit contact",
+        "QUICK_SHARE": "Share",
+        "OR_SEARCH": "Or search for another contact",
+        "CURRENT_CONTACT_LABEL": "Share contact from this conversation"
+      }
+    },
     "NO_CONTENT": "No content to display",
     "SHARED_ATTACHMENT": {
       "CONTACT": "{sender} has shared a contact",
+      "CONTACT_OUTGOING": "You shared a contact",
       "LOCATION": "{sender} has shared a location",
       "FILE": "{sender} has shared a file",
       "MEETING": "{sender} has started a meeting"

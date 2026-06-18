@@ -1,8 +1,12 @@
 class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseService
+  include Whatsapp::ContactDelivery
+
   def send_message(phone_number, message)
     @message = message
 
-    if message.attachments.present?
+    if contact_attachment?(message)
+      send_contact_message(phone_number, message) # FORK: share contact card
+    elsif message.attachments.present?
       send_attachment_message(phone_number, message)
     elsif message.content_type == 'input_select'
       send_interactive_text_message(phone_number, message)
@@ -132,6 +136,21 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
     )
 
     process_response(response, message)
+  end
+
+  # FORK: share contact card
+  def contact_message_body(phone_number, message, attachment)
+    {
+      messaging_product: 'whatsapp',
+      context: whatsapp_reply_context(message),
+      to: phone_number,
+      type: 'contacts',
+      contacts: [build_contact_entry(attachment)]
+    }
+  end
+
+  def contact_messages_url
+    "#{phone_id_path}/messages"
   end
 
   def error_message(response)
