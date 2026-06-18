@@ -12,8 +12,10 @@ import SLACardLabel from 'dashboard/components-next/Conversation/Sla/SLACardLabe
 import CardStatusIcon from './CardStatusIcon.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
-// FORK: assignme
+// FORK: assignme and unread badge fork features
 import ConversationCardFastAssignButton from 'dashboard/components/fork/ConversationCardFastAssignButton.vue';
+import ConversationCardForkAvatarBadge from 'dashboard/components/fork/ConversationCardForkAvatarBadge.vue';
+import { useUnreadCount } from 'dashboard/composables/fork/useUnreadCount';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -53,7 +55,7 @@ const voiceCallData = computed(() => {
   };
 });
 
-const unreadCount = computed(() => props.chat.unread_count);
+const { unreadCount } = useUnreadCount(computed(() => props.chat));
 
 const slaCardLabel = useTemplateRef('slaCardLabel');
 
@@ -150,12 +152,15 @@ const selectedModel = computed({
         </span>
       </div>
 
-      <CardAvatar
-        :contact="currentContact"
-        :selected="false"
-        :enable-selection="false"
-        :hide-thumbnail="false"
-      />
+      <div class="relative flex-shrink-0">
+        <CardAvatar
+          :contact="currentContact"
+          :selected="false"
+          :enable-selection="false"
+          :hide-thumbnail="false"
+        />
+        <ConversationCardForkAvatarBadge :count="unreadCount" />
+      </div>
 
       <h4
         class="text-heading-3 my-0 capitalize truncate text-n-slate-12 font-medium w-32 flex-shrink-0"

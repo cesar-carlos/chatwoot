@@ -2,7 +2,6 @@
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import MessagePreview from './MessagePreview.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
-import UnreadBadge from './UnreadBadge.vue';
 
 defineProps({
   lastMessage: { type: Object, default: null },
@@ -14,10 +13,7 @@ defineProps({
 </script>
 
 <template>
-  <div
-    class="grid grid-cols-[1fr_auto] gap-1.5"
-    :class="showExpandedPreview ? 'items-end' : 'items-center'"
-  >
+  <div class="min-w-0">
     <VoiceCallStatus
       v-if="voiceCallStatus"
       key="voice-status-row"
@@ -41,7 +37,5 @@ defineProps({
       <Icon icon="i-lucide-info" class="size-3.5" />
       {{ $t(`CHAT_LIST.NO_MESSAGES`) }}
     </span>
-
-    <UnreadBadge :count="unreadCount" :align-bottom="showExpandedPreview" />
   </div>
 </template>

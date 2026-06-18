@@ -8,7 +8,6 @@ import InboxName from '../InboxName.vue';
 import TimeAgo from 'dashboard/components/ui/TimeAgo.vue';
 import CardLabels from './conversationCardComponents/CardLabels.vue';
 import CardPriorityIcon from 'dashboard/components-next/Conversation/ConversationCard/CardPriorityIcon.vue';
-import UnreadBadge from 'dashboard/components-next/Conversation/ConversationCard/UnreadBadge.vue';
 import SLACardLabel from './components/SLACardLabel.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
@@ -257,11 +256,6 @@ watch(
               :conversation-id="chat.id"
             />
           </span>
-          <UnreadBadge
-            v-if="hasUnread"
-            :count="unreadCount"
-            class="ltr:ml-auto rtl:mr-auto mt-1"
-          />
           <ConversationCardFastAssignButton
             :chat-id="chat.id"
             :assignee-id="metaAssignee?.id"
