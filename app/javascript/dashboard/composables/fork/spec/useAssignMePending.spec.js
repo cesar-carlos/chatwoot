@@ -68,6 +68,10 @@ describe('useAssignMePending', () => {
     expect(isAssignPending(42)).toBe(true);
 
     resolveAssignPending(42, 6);
+    expect(isAssignPending(42)).toBe(false);
+
+    markAssignPendingUntilResolved([42], 7);
+    resolveAssignPending(42, null);
     expect(isAssignPending(42)).toBe(true);
 
     resolveAssignPending(42, 7);
@@ -97,6 +101,73 @@ describe('useAssignMePending', () => {
     ];
     await nextTick();
 
+    expect(isAssignPending(99)).toBe(false);
+  });
+
+  it('clears pending when assignee is updated in place', async () => {
+    const conversation = { id: 99, meta: { assignee: null } };
+    const conversations = reactive({
+      allConversations: [conversation],
+    });
+    const store = { state: { conversations } };
+
+    const { isAssignPending, markAssignPendingUntilResolved } =
+      useAssignMePending({ store });
+
+    markAssignPendingUntilResolved([99], 5);
+    conversation.meta.assignee = { id: 5 };
+    await nextTick();
+
+    expect(isAssignPending(99)).toBe(false);
+  });
+
+  it('clears pending when assignee is unassigned after assignment', async () => {
+    const conversation = { id: 99, meta: { assignee: null } };
+    const conversations = reactive({
+      allConversations: [conversation],
+    });
+    const store = { state: { conversations } };
+
+    const { isAssignPending, markAssignPendingUntilResolved } =
+      useAssignMePending({ store });
+
+    markAssignPendingUntilResolved([99], 5);
+    conversation.meta.assignee = { id: 5 };
+    await nextTick();
+    expect(isAssignPending(99)).toBe(false);
+
+    markAssignPendingUntilResolved([99], 5);
+    conversations.allConversations = [{ id: 99, meta: { assignee: null } }];
+    await nextTick();
+    expect(isAssignPending(99)).toBe(false);
+  });
+
+  it('clears pending when another agent is assigned', async () => {
+    const conversation = { id: 99, meta: { assignee: null } };
+    const conversations = reactive({
+      allConversations: [conversation],
+    });
+    const store = { state: { conversations } };
+
+    const { isAssignPending, markAssignPendingUntilResolved } =
+      useAssignMePending({ store });
+
+    markAssignPendingUntilResolved([99], 5);
+    conversation.meta.assignee = { id: 7 };
+    await nextTick();
+
+    expect(isAssignPending(99)).toBe(false);
+  });
+
+  it('normalizes string conversation ids', () => {
+    const { isAssignPending, markAssignPendingUntilResolved, clearAssignPending } =
+      useAssignMePending();
+
+    markAssignPendingUntilResolved(['99'], 5);
+    expect(isAssignPending(99)).toBe(true);
+    expect(isAssignPending('99')).toBe(true);
+
+    clearAssignPending(['99']);
     expect(isAssignPending(99)).toBe(false);
   });
 });

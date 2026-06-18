@@ -7,7 +7,6 @@ import ConversationCard from './widgets/conversation/ConversationCard.vue';
 import ConversationCardExpanded from 'dashboard/components-next/Conversation/ConversationCard/ConversationCardExpanded.vue';
 import ContextMenu from 'dashboard/components/ui/ContextMenu.vue';
 import ConversationContextMenu from './widgets/conversation/contextMenu/Index.vue';
-import { useCanAssignToMe } from 'dashboard/composables/fork/useCanAssignToMe';
 import { useConversationCardFork } from 'dashboard/composables/fork/useConversationCardFork';
 
 const props = defineProps({
@@ -37,6 +36,10 @@ const assignPriority = inject('assignPriority');
 const isConversationSelected = inject('isConversationSelected');
 // FORK: assignme - Expose assignment pending state for fast-assign loading.
 const isAssignPending = inject('isAssignPending');
+const canAssignConversationToMe = inject(
+  'canAssignConversationToMe',
+  () => false
+);
 const deleteConversation = inject('deleteConversation');
 
 // --- Context menu state (shared by both layouts) ---
@@ -65,8 +68,6 @@ const chatMetadata = computed(() => props.source.meta || {});
 const assignee = computed(() => chatMetadata.value.assignee || {});
 const senderId = computed(() => chatMetadata.value.sender?.id);
 
-const { canAssignConversationToMe } = useCanAssignToMe();
-
 const canAssignToMe = computed(() => canAssignConversationToMe(props.source));
 
 const chat = computed(() => props.source);
@@ -80,6 +81,7 @@ const assignmeFork = useConversationCardFork({
   canAssignToMe,
   currentUser,
   isAssignPending: isAssignPendingForSource,
+  // FORK: assignme - Bridge composable emit API to injected assignAgent handler.
   emit: (event, ...args) => {
     if (event === 'assignAgent') assignAgent(...args);
   },

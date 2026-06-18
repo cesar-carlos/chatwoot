@@ -13,9 +13,9 @@
 - Estrategia de i18n: **somente** `en` (fonte) e `pt_BR` para esta feature.
 
 ## Contexto Tecnico do Fluxo
-- `ConversationCard` / `ConversationCardExpanded` emitem `assignAgent` com usuario atual e `chat.id`.
-- `ConversationItem` calcula permissao por conversa (`useCanAssignToMe`) e propaga props/inject.
-- `ChatList` injeta `isAssignPending` e encaminha `assignAgent` para `useBulkActions.onAssignAgent`.
+- `ConversationCard` / `ConversationCardExpanded` disparam `fastAssign` via `useConversationCardFork`.
+- `ConversationItem` monta o fork, faz bridge do `emit('assignAgent')` para o `assignAgent` injetado e repassa props ao card condensado/expandido.
+- `ChatList` instancia `useCanAssignToMe` uma vez, injeta `canAssignConversationToMe` e `isAssignPending`, e encaminha `assignAgent` para `useBulkActions.onAssignAgent`.
 - `useBulkActions` delega pending state para `useAssignMePending` e chama `bulkActions/process`.
 - `bulkActions` chama `BulkActionsAPI.create` em `bulk_actions`.
 - `BulkActionsController` enfileira `BulkActionsJob`, que atualiza a conversa por `display_id`.
@@ -53,6 +53,7 @@
 ### Checklist
 - [x] Adicionar `CONVERSATION.FAST_ASSIGN` em `en`.
 - [x] Adicionar `CONVERSATION.FAST_ASSIGN` em `pt_BR`.
+- [x] Adicionar `CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.PENDING` em `en` e `pt_BR`.
 - [x] Nao adicionar traducoes em outros locales.
 - [x] Validar tooltip, `aria-label` e texto do botao.
 
@@ -77,6 +78,8 @@
 - [x] Botao desaparece apos atribuicao concluida (via ActionCable).
 - [x] Clique no botao nao abre conversa por acidente.
 - [x] Context menu de atribuicao continua funcionando.
+- [x] Desatribuir pela sidebar nao deixa o botao em loading infinito.
+- [x] Tentativa de atribuir pelo context menu durante fast-assign exibe alerta de pending.
 
 ## Fase 6 - Qualidade e Regressao
 - Garantir que a alteracao nao afeta features adjacentes do card.
@@ -108,14 +111,14 @@
 - `app/javascript/dashboard/components/widgets/conversation/ConversationCard.vue` — hook `useConversationCardFork` + componentes fork
 - `app/javascript/dashboard/components/fork/ConversationCardFastAssignButton.vue` — CTA + spinner
 - `app/javascript/dashboard/components/fork/ConversationCardForkAvatarBadge.vue` — badge unread (fork)
-- `app/javascript/dashboard/composables/fork/useConversationCardFork.js` — logica assignme + unread
-- `app/javascript/dashboard/composables/fork/useAssignMePending.js` — pending ate websocket + normalizacao de ids
-- `app/javascript/dashboard/composables/fork/useCanAssignToMe.js` — permissao por conversa via `applyRoleFilter`
+- `app/javascript/dashboard/composables/fork/useConversationCardFork.js` — logica assignme do card (sem unread; ver `useUnreadCount`)
+- `app/javascript/dashboard/composables/fork/useAssignMePending.js` — pending ate websocket, normalizacao de ids, watcher deep e fallback de 15s
+- `app/javascript/dashboard/composables/fork/useCanAssignToMe.js` — permissao por conversa via `applyRoleFilter` (instanciado no `ChatList`)
 - `app/javascript/dashboard/composables/fork/useUnreadCount.js` — contagem unread normalizada
 - `app/javascript/dashboard/composables/chatlist/useBulkActions.js` — integracao assignme + pending ate websocket
-- `app/javascript/dashboard/components/ConversationItem.vue` — permissao por conversa + fast-assign expandido
+- `app/javascript/dashboard/components/ConversationItem.vue` — fork do card, bridge `emit` -> `assignAgent`, fast-assign expandido
 - `app/javascript/dashboard/components-next/Conversation/ConversationCard/ConversationCardExpanded.vue` — fast-assign no layout expandido
-- `app/javascript/dashboard/components/ChatList.vue` — `provide('isAssignPending')`
+- `app/javascript/dashboard/components/ChatList.vue` — `provide('isAssignPending')` e `provide('canAssignConversationToMe')`
 - `app/javascript/dashboard/components/ConversationList.vue` — repassa props de layout
 - `app/javascript/dashboard/i18n/locale/en/conversation.json`
 - `app/javascript/dashboard/i18n/locale/pt_BR/conversation.json`
@@ -143,12 +146,18 @@
 
 ## Melhorias Pos-Review
 - Melhoria de feedback: avaliado update otimista, mas removido por conflito com `DynamicScroller` reconciliation; latencia de ActionCable (200-500ms) e aceitavel para estabilidade.
-- Melhoria de qualidade: testes em `useAssignMePending`, `useConversationCardFork`, `useCanAssignToMe`, `useBulkActions`.
+- Melhoria de qualidade: testes em `useAssignMePending` (12), `useConversationCardFork` (7), `useCanAssignToMe` (5), `useBulkActions` (6).
 - Melhoria de acessibilidade: botao sempre visivel quando aplicavel, com navegacao por teclado funcional.
 - Melhoria de UI: componente `Spinner` dedicado em `ConversationCardFastAssignButton`.
-- Melhoria de arquitetura: pending state extraido para `useAssignMePending`; logica do card para `useConversationCardFork`.
-- Melhoria de confiabilidade: pending ate websocket via `markAssignPendingUntilResolved` + watcher na store.
+- Melhoria de arquitetura: pending state extraido para `useAssignMePending`; logica do card para `useConversationCardFork`; `useCanAssignToMe` hoisted para `ChatList` (evita recomputar permissao por item).
+- Melhoria de confiabilidade: pending ate websocket via `markAssignPendingUntilResolved` + watcher deep na store.
 - Melhoria de permissao: `useCanAssignToMe` alinhado com filtros da lista de conversas.
+
+### Correcoes Pos-Review (bugs encontrados em validacao)
+- [x] `ConversationItem` passava `emit` como objeto `{ assignAgent }` em vez de funcao — causava `TypeError: o is not a function` no clique.
+- [x] Loading infinito apos atribuir e desatribuir pela sidebar — `useAssignMePending` agora limpa pending em transicoes de assignee (match, unassign, outro agente) e tem fallback de 15s.
+- [x] Normalizacao de `conversationId` (`string` vs `number`) no `Map` de pending — evita `isAssignPending` inconsistente.
+- [x] Alerta `AGENT_ASSIGNMENT.PENDING` quando context menu tenta atribuir durante fast-assign em andamento.
 
 ### Checklist
 - [x] Avaliacao de update otimista (decisao: nao implementar por conflito com virtual list).
@@ -159,6 +168,7 @@
 - [x] Testes de integracao para `onAssignAgent` (403, 422, timeout, generico, duplicate guard).
 - [x] Documentacao aprimorada dos comentarios FORK com raciocinio tecnico.
 - [x] Cobertura de testes para pending/double submit (`useAssignMePending`, `useConversationCardFork`, `useCanAssignToMe`).
+- [x] Cobertura de testes para unassign, outro agente, ids string/number e alerta de pending.
 - [ ] Smoke de acessibilidade por teclado (`Tab`/`Shift+Tab`) no botao de atribuicao (validacao manual pelo usuario).
 
 ## Status de Validacao
@@ -173,13 +183,19 @@
   - smoke manual de acessibilidade por teclado (`Tab`/`Shift+Tab`) no botao de atribuicao.
 
 ## Semantica de Loading
-- `isAssignPending` permanece ativo desde o clique ate `meta.assignee.id` na store corresponder ao assignee esperado.
-- O spinner inicia no clique e so para quando ActionCable (ou outra atualizacao de store) confirma o assignee.
+- `isAssignPending` permanece ativo desde o clique ate o assignee na store refletir o estado esperado ou uma transicao que encerre a operacao.
+- O spinner inicia no clique e para quando:
+  - `meta.assignee.id` corresponde ao assignee esperado (sucesso via ActionCable/store);
+  - assignee volta para `null` apos ter estado atribuido (ex.: desatribuir pela sidebar);
+  - conversa e atribuida a outro agente (diferente do esperado);
+  - fallback de 15s expira (rede/websocket lento).
 - Em caso de erro HTTP, pending e limpo imediatamente no `catch` de `onAssignAgent`.
 - O botao some quando ActionCable atualiza `meta.assignee` na store (conversa deixa de ser unassigned).
-- Double-click entre HTTP 200 e websocket e bloqueado: `isAssignPending` permanece true ate assignee confirmar.
+- Double-click entre HTTP 200 e websocket e bloqueado: `isAssignPending` permanece true ate uma das condicoes acima.
+- Tentativa de atribuir pelo context menu durante pending exibe `CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.PENDING` (somente atribuicao de conversa unica).
 
 ## Logica de Permissao (`useCanAssignToMe`)
+- Instanciado uma vez em `ChatList` e exposto via `provide('canAssignConversationToMe')`; `ConversationItem` apenas injeta e avalia por conversa.
 - Reutiliza `applyRoleFilter` de `store/modules/conversations/helpers.js` com os mesmos inputs da lista (`getUserRole`, `getUserPermissions`, `teams/getMyTeams`, `inboxes/getInboxes`).
 - Fast-assign so aparece em conversas **sem assignee**.
 - Permissoes que permitem fast-assign em conversa unassigned:
@@ -196,6 +212,8 @@
   - Mitigacao: reuso estrito de `assignAgent` ja usado no context menu.
 - Risco: conflito de layout no card (espacamento curto em nomes longos).
   - Mitigacao: ajuste controlado de classes de espacamento e validacao manual.
+- Risco: pending preso apos desatribuir por caminho paralelo (sidebar).
+  - Mitigacao: watcher deep em `allConversations` + regras de transicao em `useAssignMePending` + timeout de 15s.
 
 ## Fora de Escopo
 - Criacao de novos endpoints para atribuicao (melhoria D adiada).
