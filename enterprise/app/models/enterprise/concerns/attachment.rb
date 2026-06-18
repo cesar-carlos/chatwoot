@@ -13,14 +13,8 @@ module Enterprise::Concerns::Attachment
   private
 
   def enqueue_audio_transcription
-    # FORK: skip automatic transcription when account flag is disabled
-    return unless ActiveModel::Type::Boolean.new.cast(account.audio_transcriptions)
-    return unless file_type.to_sym == :audio
-
-    # No file.attached? guard: the social-media ingest path saves the
-    # Attachment before attaching the blob. AudioTranscriptionJob retries
-    # on ActiveStorage::FileNotFoundError to ride out that race.
-    Messages::AudioTranscriptionJob.perform_later(id)
+    # FORK: manual-only transcription — users click the ear button; never auto-enqueue.
+    # Upstream: enqueues Messages::AudioTranscriptionJob when account.audio_transcriptions is true.
   end
 
   def broadcast_message_update_for_audio

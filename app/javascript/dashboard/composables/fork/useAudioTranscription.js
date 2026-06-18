@@ -2,27 +2,16 @@
 import { computed, ref, unref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { useAccount } from 'dashboard/composables/useAccount';
 import { useTranscription } from 'dashboard/composables/useTranscription';
 import {
   readTranscriptText,
   readTranscriptState,
   readTranscriptError,
-  readTranscriptionStartedAt,
 } from 'dashboard/composables/fork/useTranscriptText';
-
-const STALE_PROCESSING_MS = 120 * 1000;
-
-const isStaleProcessing = startedAt => {
-  if (!startedAt) return true;
-
-  return Date.now() - startedAt * 1000 > STALE_PROCESSING_MS;
-};
 
 export const useAudioTranscription = attachmentSource => {
   const router = useRouter();
   const { t } = useI18n();
-  const { currentAccount } = useAccount();
   const {
     isTranscribing,
     transcription,
@@ -34,31 +23,9 @@ export const useAudioTranscription = attachmentSource => {
   const tokenMissingDialogRef = ref(null);
   const tokenInvalidDialogRef = ref(null);
 
-  const isAutomaticTranscriptionEnabled = computed(() => {
-    return !!currentAccount.value?.settings?.audio_transcriptions;
-  });
-
-  const showTranscribeButton = computed(() => {
-    return !isAutomaticTranscriptionEnabled.value;
-  });
-
   const attachmentState = computed(() =>
     readTranscriptState(unref(attachmentSource))
   );
-
-  const transcriptionStartedAt = computed(() =>
-    readTranscriptionStartedAt(unref(attachmentSource))
-  );
-
-  const isAttachmentProcessingActive = computed(() => {
-    if (attachmentState.value !== 'processing') return false;
-
-    return !isStaleProcessing(transcriptionStartedAt.value);
-  });
-
-  const isProcessing = computed(() => {
-    return isTranscribing.value || isAttachmentProcessingActive.value;
-  });
 
   const persistedError = computed(() =>
     readTranscriptError(unref(attachmentSource))
@@ -83,7 +50,7 @@ export const useAudioTranscription = attachmentSource => {
   });
 
   const handleTranscribe = async () => {
-    if (isAutomaticTranscriptionEnabled.value || isProcessing.value) return;
+    if (isTranscribing.value) return;
 
     const attachment = unref(attachmentSource);
     if (!hasGroqToken()) {
@@ -109,11 +76,11 @@ export const useAudioTranscription = attachmentSource => {
   };
 
   return {
-    isTranscribing: isProcessing,
+    isTranscribing,
     transcriptText,
     transcriptState: attachmentState,
     displayError,
-    showTranscribeButton,
+    showTranscribeButton: true,
     setTokenMissingDialog: el => {
       tokenMissingDialogRef.value = el;
     },
