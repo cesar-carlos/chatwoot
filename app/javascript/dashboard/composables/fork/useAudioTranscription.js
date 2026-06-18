@@ -13,12 +13,13 @@ export const useAudioTranscription = attachmentSource => {
   const router = useRouter();
   const { t } = useI18n();
   const {
-    isTranscribing,
     transcription,
     transcriptionError,
     hasGroqToken,
     transcribe,
   } = useTranscription();
+
+  const localIsTranscribing = ref(false);
 
   const tokenMissingDialogRef = ref(null);
   const tokenInvalidDialogRef = ref(null);
@@ -50,7 +51,7 @@ export const useAudioTranscription = attachmentSource => {
   });
 
   const handleTranscribe = async () => {
-    if (isTranscribing.value) return;
+    if (localIsTranscribing.value) return;
 
     const attachment = unref(attachmentSource);
     if (!hasGroqToken()) {
@@ -58,14 +59,19 @@ export const useAudioTranscription = attachmentSource => {
       return;
     }
 
-    const result = await transcribe(attachment);
+    localIsTranscribing.value = true;
+    try {
+      const result = await transcribe(attachment);
 
-    if (
-      !result.success &&
-      result.error?.status &&
-      (result.error.status === 401 || result.error.status === 403)
-    ) {
-      tokenInvalidDialogRef.value?.open();
+      if (
+        !result.success &&
+        result.error?.status &&
+        (result.error.status === 401 || result.error.status === 403)
+      ) {
+        tokenInvalidDialogRef.value?.open();
+      }
+    } finally {
+      localIsTranscribing.value = false;
     }
   };
 
@@ -76,7 +82,7 @@ export const useAudioTranscription = attachmentSource => {
   };
 
   return {
-    isTranscribing,
+    isTranscribing: localIsTranscribing,
     transcriptText,
     transcriptState: attachmentState,
     displayError,
