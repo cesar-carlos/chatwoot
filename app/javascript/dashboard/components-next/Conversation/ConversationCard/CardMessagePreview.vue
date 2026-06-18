@@ -43,7 +43,9 @@ const assignee = computed(() => {
   <div class="flex items-end w-full gap-2 pb-1">
     <p
       class="w-full mb-0 text-sm leading-7 line-clamp-2"
-      :class="unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'"
+      :class="
+        unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'
+      "
     >
       {{ lastNonActivityMessageContent }}
     </p>

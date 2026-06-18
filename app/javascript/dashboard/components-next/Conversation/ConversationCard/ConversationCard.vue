@@ -67,7 +67,9 @@ const showMessagePreviewWithoutMeta = computed(() => {
   );
 });
 
-const { unreadCount, hasUnread } = useUnreadCount(computed(() => props.conversation));
+const { unreadCount, hasUnread } = useUnreadCount(
+  computed(() => props.conversation)
+);
 
 const onCardClick = e => {
   const path = frontendURL(
