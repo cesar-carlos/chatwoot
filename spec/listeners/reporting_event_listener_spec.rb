@@ -27,7 +27,7 @@ describe ReportingEventListener do
       end
 
       it 'creates conversation_resolved event with business hour value' do
-        event = Events::Base.new('conversation.resolved', Time.zone.now, conversation: new_conversation)
+        event = Events::Base.new('conversation.resolved', updated_at, conversation: new_conversation)
         listener.conversation_resolved(event)
         expect(account.reporting_events.where(name: 'conversation_resolved')[0]['value_in_business_hours']).to be 144_000.0
       end
@@ -57,11 +57,12 @@ describe ReportingEventListener do
       end
 
       it 'uses the latest conversation_opened event as resolution cycle start' do
-        event = Events::Base.new('conversation.resolved', Time.zone.now, conversation: single_history_conversation)
+        event = Events::Base.new('conversation.resolved', resolved_at, conversation: single_history_conversation)
         listener.conversation_resolved(event)
 
         reporting_event = account.reporting_events.where(name: 'conversation_resolved').last
         expect(reporting_event.event_start_time).to be_within(1.second).of(opened_at)
+        expect(reporting_event.event_end_time).to be_within(1.second).of(resolved_at)
         expect(reporting_event.value).to be_within(1).of(resolved_at.to_i - opened_at.to_i)
       end
     end
@@ -79,11 +80,12 @@ describe ReportingEventListener do
       end
 
       it 'keeps using conversation creation time as baseline' do
-        event = Events::Base.new('conversation.resolved', Time.zone.now, conversation: regular_conversation)
+        event = Events::Base.new('conversation.resolved', resolved_at, conversation: regular_conversation)
         listener.conversation_resolved(event)
 
         reporting_event = account.reporting_events.where(name: 'conversation_resolved').last
         expect(reporting_event.event_start_time).to be_within(1.second).of(created_at)
+        expect(reporting_event.event_end_time).to be_within(1.second).of(resolved_at)
         expect(reporting_event.value).to be_within(1).of(resolved_at.to_i - created_at.to_i)
       end
     end
@@ -316,7 +318,7 @@ describe ReportingEventListener do
       end
 
       it 'creates conversation_bot_handoff event with business hour value' do
-        event = Events::Base.new('conversation.bot_handoff', Time.zone.now, conversation: new_conversation)
+        event = Events::Base.new('conversation.bot_handoff', updated_at, conversation: new_conversation)
         listener.conversation_bot_handoff(event)
         expect(account.reporting_events.where(name: 'conversation_bot_handoff')[0]['value_in_business_hours']).to be 144_000.0
       end

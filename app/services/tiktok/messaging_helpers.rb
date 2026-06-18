@@ -30,16 +30,13 @@ module Tiktok::MessagingHelpers
     contact_inbox = channel.inbox.contact_inboxes.find_by(source_id: tt_conversation_id)
     return if contact_inbox.blank?
 
-    if channel.inbox.lock_to_single_conversation
-      contact_inbox.conversations.order(created_at: :desc).first
-    else
-      contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first ||
-        contact_inbox.conversations.order(created_at: :desc).first
-    end
-  end
+    found = Conversations::Resolver.new(
+      inbox: channel.inbox,
+      contact_inbox: contact_inbox
+    ).find
 
-  def create_conversation(channel, contact_inbox, tt_conversation_id)
-    ::Conversation.create!(conversation_params(channel, contact_inbox, tt_conversation_id))
+    # Read receipts may still target the latest thread when no active conversation exists.
+    found || contact_inbox.conversations.order(created_at: :desc).first
   end
 
   def conversation_params(channel, contact_inbox, tt_conversation_id)

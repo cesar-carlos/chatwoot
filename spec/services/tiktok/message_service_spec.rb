@@ -7,6 +7,12 @@ RSpec.describe Tiktok::MessageService do
   let(:contact) { create(:contact, account: account) }
   let(:contact_inbox) { create(:contact_inbox, inbox: inbox, contact: contact, source_id: 'tt-conv-1') }
 
+  let(:tiktok_client) { instance_double(Tiktok::Client, image_send_capable?: false) }
+
+  before do
+    allow(Tiktok::Client).to receive(:new).and_return(tiktok_client)
+  end
+
   describe '#perform' do
     def incoming_text_content(message_id: 'tt-msg-1')
       {

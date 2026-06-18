@@ -622,7 +622,9 @@
         "ENABLED": "Reopen same conversation",
         "DISABLED": "Create new conversations",
         "ENABLED_DESCRIPTION": "When a contact messages again, the previous conversation will be reopened.",
-        "DISABLED_DESCRIPTION": "A new conversation will be created each time after the previous one is resolved."
+        "DISABLED_DESCRIPTION": "A new conversation will be created each time after the previous one is resolved.",
+        "AUTOMATION_WARNING": "This inbox has {count} active automation rule(s) triggered on conversation creation ({ruleNames}). With single-history mode, returning contacts reopen existing conversations instead of creating new ones, so these rules may run less often. Review your automations before saving.",
+        "AUTOMATION_WARNING_ACTION": "Review automations"
       },
       "ENABLE_HMAC": {
         "LABEL": "Enable"
