@@ -98,7 +98,7 @@
       },
       "AUDIO_TRANSCRIPTION": {
         "TITLE": "Transcribe Audio Messages",
-        "NOTE": "Automatically transcribe audio messages in conversations. Generate a text transcript whenever an audio message is sent or received, and display it alongside the message.",
+        "NOTE": "Choose how audio messages are transcribed. ON enables automatic OpenAI transcription on upload. OFF enables manual Groq transcription — each agent must add a Groq API token in Profile settings.",
         "API": {
           "SUCCESS": "Audio transcription setting updated successfully",
           "ERROR": "Failed to update audio transcription setting"

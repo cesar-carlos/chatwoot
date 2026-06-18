@@ -121,7 +121,9 @@
         "COPY_SUCCESS": "Token copied to clipboard",
         "COPY_ERROR": "Failed to copy token",
         "API_SUCCESS": "Groq token updated successfully",
-        "API_ERROR": "Failed to update Groq token. Please try again"
+        "API_ERROR": "Failed to update Groq token. Please try again",
+        "CONFIGURED_PLACEHOLDER": "Token configured",
+        "CONFIGURED_HELP_TEXT": "A Groq token is already configured. Enter a new token to replace it."
       },
       "AUDIO_NOTIFICATIONS_SECTION": {
         "TITLE": "Audio Alerts",

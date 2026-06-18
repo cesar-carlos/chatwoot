@@ -139,7 +139,7 @@ export default {
       this.avatarUrl = this.currentUser.avatar_url;
       this.displayName = this.currentUser.display_name;
       this.messageSignature = this.currentUser.message_signature;
-      this.groqToken = this.currentUser.groq_token || ''; // FORK: audio transcription token
+      this.groqToken = this.currentUser.groq_token || ''; // FORK: token not returned on GET when configured
     },
     async dispatchUpdate(payload, successMessage, errorMessage) {
       let alertMessage = '';
@@ -193,8 +193,11 @@ export default {
     },
     // FORK: audio transcription token update
     async updateGroqToken(token) {
+      if (!token && this.currentUser.has_groq_token) {
+        return;
+      }
+
       this.isUpdatingGroqToken = true;
-      this.groqToken = token;
       const payload = { groq_token: token };
       let successMessage = this.$t(
         'PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_SUCCESS'
@@ -203,6 +206,7 @@ export default {
 
       try {
         await this.dispatchUpdate(payload, successMessage, errorMessage);
+        this.groqToken = token;
       } finally {
         this.isUpdatingGroqToken = false;
       }
@@ -398,6 +402,7 @@ export default {
     >
       <GroqToken
         :groq-token="groqToken"
+        :has-groq-token="!!currentUser.has_groq_token"
         :is-updating="isUpdatingGroqToken"
         @update-groq-token="updateGroqToken"
       />

@@ -38,14 +38,6 @@ const timeStampURL = computed(() => {
 
 const TRANSCRIPT_PREVIEW_LENGTH = 200;
 const isTranscriptExpanded = ref(false);
-const isTranscriptLong = computed(
-  () => (attachment.transcribedText?.length || 0) > TRANSCRIPT_PREVIEW_LENGTH
-);
-const displayedTranscript = computed(() => {
-  const text = attachment.transcribedText || '';
-  if (!isTranscriptLong.value || isTranscriptExpanded.value) return text;
-  return `${text.slice(0, TRANSCRIPT_PREVIEW_LENGTH).trimEnd()}…`;
-});
 
 const audioPlayer = useTemplateRef('audioPlayer');
 
@@ -60,6 +52,18 @@ const { uid } = getCurrentInstance();
 const audioTranscription = useAudioTranscription(
   computed(() => props.attachment)
 );
+
+const { transcriptText } = audioTranscription;
+
+const isTranscriptLong = computed(
+  () => (transcriptText.value?.length || 0) > TRANSCRIPT_PREVIEW_LENGTH
+);
+
+const displayedTranscript = computed(() => {
+  const text = transcriptText.value || '';
+  if (!isTranscriptLong.value || isTranscriptExpanded.value) return text;
+  return `${text.slice(0, TRANSCRIPT_PREVIEW_LENGTH).trimEnd()}…`;
+});
 
 // MediaRecorder-produced WebM/Opus blobs lack a Duration header → <audio>.duration
 // resolves to Infinity until we seek past the end, which forces the engine to
@@ -232,9 +236,8 @@ const downloadAudio = async () => {
       </button>
     </div>
 
-    <!-- FORK: audio transcription display with priority -->
     <div
-      v-if="transcriptText && props.showTranscribedText"
+      v-if="transcriptText && showTranscribedText"
       class="text-n-slate-12 p-3 text-sm bg-n-alpha-1 rounded-lg w-full break-words"
     >
       {{ displayedTranscript }}
@@ -249,13 +252,8 @@ const downloadAudio = async () => {
             : $t('CONVERSATION.VOICE_CALL.TRANSCRIPT_SHOW_MORE')
         }}
       </button>
-      {{ transcriptText }}
     </div>
-    <AudioTranscriptionFork
-      section="transcript"
-      :show-transcribed-text="showTranscribedText"
-      v-bind="audioTranscription"
-    />
+    <AudioTranscriptionFork section="status" v-bind="audioTranscription" />
   </div>
 
   <AudioTranscriptionFork section="dialogs" v-bind="audioTranscription" />
