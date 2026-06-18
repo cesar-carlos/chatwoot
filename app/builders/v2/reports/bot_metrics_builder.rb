@@ -63,3 +63,5 @@ class V2::Reports::BotMetricsBuilder
     bot_handoffs_count.to_f / bot_conversations.count * 100
   end
 end
+
+V2::Reports::BotMetricsBuilder.prepend_mod_with('V2::Reports::BotMetricsBuilder') # FORK: per-cycle bot resolution metrics

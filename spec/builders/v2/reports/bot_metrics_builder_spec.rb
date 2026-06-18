@@ -104,5 +104,49 @@ RSpec.describe V2::Reports::BotMetricsBuilder do
         expect { bot_metrics_builder.metrics }.not_to raise_error
       end
     end
+
+    context 'when lock_to_single_conversation is enabled' do
+      let!(:single_history_inbox) { create(:inbox, account: inbox.account, lock_to_single_conversation: true) }
+      let!(:multi_cycle_conversation) do
+        create(:conversation, account: inbox.account, inbox: single_history_inbox, created_at: 2.days.ago)
+      end
+
+      before do
+        create(:agent_bot_inbox, inbox: single_history_inbox)
+        create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_resolved',
+                                 conversation_id: multi_cycle_conversation.id, created_at: 2.days.ago)
+        create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_resolved',
+                                 conversation_id: multi_cycle_conversation.id, created_at: 1.day.ago)
+      end
+
+      it 'counts each bot resolution cycle for the same conversation' do
+        metrics = bot_metrics_builder.metrics
+
+        expect(metrics[:conversation_count]).to eq(1)
+        expect(metrics[:resolution_rate]).to eq(200)
+      end
+    end
+
+    context 'when lock_to_single_conversation is disabled' do
+      let!(:regular_inbox) { create(:inbox, account: inbox.account, lock_to_single_conversation: false) }
+      let!(:multi_event_conversation) do
+        create(:conversation, account: inbox.account, inbox: regular_inbox, created_at: 2.days.ago)
+      end
+
+      before do
+        create(:agent_bot_inbox, inbox: regular_inbox)
+        create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_resolved',
+                                 conversation_id: multi_event_conversation.id, created_at: 2.days.ago)
+        create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_resolved',
+                                 conversation_id: multi_event_conversation.id, created_at: 1.day.ago)
+      end
+
+      it 'keeps distinct conversation counting for legacy inboxes' do
+        metrics = bot_metrics_builder.metrics
+
+        expect(metrics[:conversation_count]).to eq(1)
+        expect(metrics[:resolution_rate]).to eq(100)
+      end
+    end
   end
 end

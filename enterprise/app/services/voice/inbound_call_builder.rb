@@ -60,27 +60,23 @@ class Voice::InboundCallBuilder
     ).perform
   end
 
-  def resolve_conversation!(contact, contact_inbox)
-    reusable = reusable_conversation(contact_inbox)
-    return reusable if reusable
-
-    account.conversations.create!(
-      contact_inbox_id: contact_inbox.id,
-      inbox_id: inbox.id,
-      contact_id: contact.id,
-      status: :open
-    )
-  end
-
   # Scoped to the resolved ContactInbox, never to the contact. A dashboard merge leaves unrelated
   # WhatsApp identities on the same contact, and a contact-wide lookup cannot tell them apart: it
   # would answer a call through another identity's source_id. The conversation opened under a
   # previous identity stays where it is, reachable under previous conversations.
-  def reusable_conversation(contact_inbox)
-    conversations = contact_inbox.conversations
-    return conversations.last if inbox.lock_to_single_conversation
-
-    conversations.where.not(status: :resolved).last
+  def resolve_conversation!(contact, contact_inbox)
+    # FORK: centralized resolver for consistent per-inbox conversation selection
+    Conversations::Resolver.new(
+      inbox: inbox,
+      contact_inbox: contact_inbox,
+      conversation_params: {
+        account_id: account.id,
+        inbox_id: inbox.id,
+        contact_id: contact.id,
+        contact_inbox_id: contact_inbox.id,
+        status: :open
+      }
+    ).perform
   end
 
   def whatsapp_provider?

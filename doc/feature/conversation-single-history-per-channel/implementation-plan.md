@@ -5,7 +5,8 @@
 Chatwoot already supports conversation reuse behavior per inbox via `lock_to_single_conversation`.
 
 - `true`: reuse last conversation for the contact/inbox, including resolved ones (new incoming message reopens it)
-- `false` (default): reuse only non-resolved conversation; if last is resolved, create a new conversation
+- `false`: reuse only non-resolved conversation; if last is resolved, create a new conversation
+- **Default for new inboxes:** `true` (fork migration `20260618120000`). **Existing inboxes** keep their stored value (`false` until toggled in settings).
 
 Goal: formalize and expand this behavior consistently across channels, keeping configuration at channel/inbox level.
 
@@ -21,7 +22,7 @@ Allow users to choose, per channel/inbox, between:
 - Configuration scope: **Inbox/Channel**
 - **Default for new inboxes:** `lock_to_single_conversation = true` (fork migration `20260618120000`)
 - No global account-level setting in this phase
-- Keep backward compatibility
+- Keep backward compatibility: existing inboxes unchanged until manually toggled or ops SQL applied (see **Existing Inbox Backfill Policy**)
 - **Report behavior is conditional on the toggle:**
   - Toggle OFF → zero change in reports (existing behavior preserved)
   - Toggle ON → per-cycle metrics (resolution time, first response, CSAT adapt to reopen cycles)
@@ -30,19 +31,20 @@ Allow users to choose, per channel/inbox, between:
 
 ### Key Discovery: The Feature Already Works
 
-The `lock_to_single_conversation` flag, the UI toggle, and the backend logic already exist and are functional for 6 channels. This implementation focuses on:
+The `lock_to_single_conversation` flag, the UI toggle, and the backend logic already exist and are functional across Phase 1 channels. This implementation focuses on:
 
-1. Centralizing duplicated code into a resolver service
-2. Extending support to gap channels (LINE)
+1. Centralizing duplicated code into `Conversations::Resolver`
+2. Extending support to gap channels (LINE, TikTok)
 3. Adding per-cycle metrics so reports are not distorted
-4. Improving toggle UX text
+4. Improving toggle UX text and ops guidance
 
 ### Backend
 
-- Existing field: `inboxes.lock_to_single_conversation` (default `false`)
-- Existing channel support (already using this behavior):
-  - SMS, Twilio, WhatsApp, Telegram, Facebook, Instagram
-  - API/Public flows (via `ConversationBuilder` in specific paths)
+- Existing field: `inboxes.lock_to_single_conversation` (schema default `true` since fork migration `20260618120000`; **existing rows are not mass-updated**)
+- Channel support via `Conversations::Resolver` (or equivalent):
+  - SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram
+  - API/Public flows (`ConversationBuilder`)
+- **Pending:** Enterprise Voice (`Voice::InboundCallBuilder`) still uses inline lookup (non-deterministic `.last`)
 - Incoming messages can reopen resolved conversations through `Message#reopen_conversation` callback (`after_create_commit`)
 - Conversation status transitions: `open → resolved → open` handled by `Conversation#open!` / `Conversation#resolved!`
 
@@ -83,25 +85,11 @@ end
 
 Lookup scoped by `@contact_inbox.conversations` (via `contact_inbox_id` FK).
 
-### Pattern B — Facebook/Instagram Builders
+### Pattern B — Facebook/Instagram (migrated June 2026)
 
-Same logic but different query style:
+Previously used inline lookup scoped by `{account_id, inbox_id, contact_id}`. **Migrated to `Conversations::Resolver`** in orchestration round 2 — same contract as Pattern A (`contact_inbox_id` + `with_lock`).
 
-```ruby
-def set_conversation_based_on_inbox_config
-  if @inbox.lock_to_single_conversation
-    Conversation.where(conversation_params).order(created_at: :desc).first || build_conversation
-  else
-    find_or_build_for_multiple_conversations
-  end
-end
-```
-
-Lookup scoped by `{account_id, inbox_id, contact_id}` instead of `contact_inbox_id`.
-
-Decision: **Keep as-is in Phase 1.** Different query pattern, same functional behavior. Risk of breaking with no functional gain.
-
-### Pattern C — Hardcoded Single-Thread (LINE, TikTok)
+### Pattern C — Hardcoded Single-Thread (LINE, TikTok — historical)
 
 Always reuse first conversation, ignoring the flag entirely:
 
@@ -113,13 +101,11 @@ Always reuse first conversation, ignoring the flag entirely:
 @conversation ||= contact_inbox.conversations.first || create_conversation(...)
 ```
 
-Decision: **Migrate LINE and TikTok to resolver in Phase 1** so inbox-level conversation mode is consistent.
+Decision: **Completed** — LINE and TikTok use `Conversations::Resolver` (TikTok via `#resolve_or_create` for lazy create params).
 
 ### ConversationBuilder (API/Widget)
 
-When `lock_to_single_conversation = false`, always creates new conversation — doesn't look for non-resolved conversations.
-
-Decision: **Keep as-is.** Intentionally different behavior for API paths.
+**Migrated to `Conversations::Resolver` (June 2026).** API/Widget paths now honor the inbox toggle the same way as channel services (non-resolved lookup when OFF; reuse resolved when ON).
 
 ## Channel Matrix
 
@@ -129,14 +115,15 @@ Decision: **Keep as-is.** Intentionally different behavior for API paths.
 | Twilio | Respects flag (Pattern A) | `app/services/twilio/incoming_message_service.rb` | Migrate to resolver | Low |
 | WhatsApp | Respects flag (Pattern A) | `app/services/whatsapp/incoming_message_base_service.rb` | Migrate to resolver | Low |
 | Telegram | Respects flag (Pattern A) | `app/services/telegram/incoming_message_service.rb` | Migrate to resolver | Low |
-| Facebook | Respects flag (Pattern B) | `app/builders/messages/facebook/message_builder.rb` | Migrate to resolver (Worker 1 — planned) | Medium |
-| Instagram | Respects flag (Pattern B) | `app/builders/messages/instagram/base_message_builder.rb` | Migrate to resolver (Worker 1 — planned) | Medium |
+| Facebook | Respects flag via Resolver | `app/builders/messages/facebook/message_builder.rb` | Completed (orchestration round 2) | Low |
+| Instagram | Respects flag via Resolver | `app/builders/messages/instagram/base_message_builder.rb` | Completed (orchestration round 2) | Low |
 | LINE | Hardcoded single-thread | `app/services/line/incoming_message_service.rb` | Migrate to resolver (gains flag support) | Medium |
 | TikTok | Uses inbox-configurable resolver (implemented) | `app/services/tiktok/message_service.rb` | Completed in current phase | Low |
 | Twitter DM | Channel-specific type filter (`direct_message`) | `app/services/twitter/direct_message_parser_service.rb` | Explicitly excluded from Phase 1 (channel-native behavior) | Low |
 | Twitter Tweet/thread | Thread routing by `tweet_id`/parent tweet | `app/services/twitter/tweet_parser_service.rb` | Explicitly excluded from Phase 1 (channel-native behavior) | Low |
 | Email | Email threading strategy | `app/services/mailbox/conversation_finder_strategies/*` | Keep as-is (out of scope) | — |
-| API/Widget | ConversationBuilder | `app/builders/conversation_builder.rb` | Keep as-is | — |
+| API/Widget | Respects flag via Resolver | `app/builders/conversation_builder.rb` | Completed (orchestration round 2) | Low |
+| Voice (Enterprise) | Inline lookup (`.last`) | `enterprise/app/services/voice/inbound_call_builder.rb` | Migrate to resolver (pending) | Medium |
 
 ## Report Impact and Per-Cycle Metrics
 
@@ -149,7 +136,8 @@ When `lock_to_single_conversation = true`, a conversation can be resolved and re
 | `avg_resolution_time` | `conversation.updated_at - conversation.created_at` | Second resolution of a 30-day conversation shows 30 days instead of hours | Use cycle start (last reopen) instead of `created_at` |
 | `avg_first_response_time` | One `first_response` event per conversation lifetime | Cycles 2+ never generate a first response event | Reset `first_reply_created_at` on reopen |
 | CSAT survey | `conversation.messages.where(content_type: :input_csat).present?` | Cycle 2+ never sends CSAT because previous cycle's CSAT already exists | Filter CSAT check to current cycle only |
-| `bot_handoff` time | `conversation.updated_at - conversation.created_at` | Same inflation as resolution time | Use cycle start |
+| `bot_handoff` time | `conversation.updated_at - conversation.created_at` | Same inflation as resolution time | Use cycle start (implemented) |
+| `bot_handoffs_count` | One event per conversation lifetime | Cycle 2+ blocked by duplicate guard | Per-cycle guard when toggle ON (one per cycle) |
 | `resolutions_count` | Each resolve creates event | More events per conversation — this is correct behavior | No fix needed |
 | `reply_time` | Uses `waiting_since` timestamp | Already per-cycle (correct) | No fix needed |
 | `conversations_count` | Uses `conversations.created_at` | Lower count — expected behavior | No fix needed |
@@ -228,7 +216,7 @@ Same builders and metrics as Agentes, grouped by label/inbox/team. Same fixes ap
 | Metric | Impact |
 |---|---|
 | `bot_resolutions_count` | Uses `.distinct.count` on `conversation_id` — multiple resolutions count as one |
-| `bot_handoffs_count` | Prevents duplicates (checks existing event) — no impact |
+| `bot_handoffs_count` | Prevents duplicates (checks existing event) | Cycle 2+ blocked when toggle ON | Per-cycle duplicate guard (one per cycle) |
 | Resolution rate | Denominator (conversations) drops more than numerator (unique resolutions) |
 
 ## Implementation Plan
@@ -238,7 +226,7 @@ Same builders and metrics as Agentes, grouped by label/inbox/team. Same fixes ap
 | # | What | Where | Change type |
 |---|---|---|---|
 | 1 | Setup `custom/` overlay + autoloading | `config/application.rb` + `custom/` dir | FORK (1 line) |
-| 2 | `Conversations::Resolver` service (`#perform` + `#find`) | `app/services/conversations/resolver.rb` | New file |
+| 2 | `Conversations::Resolver` service (`#find`, `#perform`, `#resolve_or_create`) | `app/services/conversations/resolver.rb` | New file |
 | 3 | Shared resolution cycle helper | `custom/app/services/custom/conversations/resolution_cycle.rb` | Custom overlay |
 | 4 | Migrate SMS to resolver | `app/services/sms/incoming_message_service.rb` | FORK marker |
 | 5 | Migrate Twilio to resolver | `app/services/twilio/incoming_message_service.rb` | FORK marker |
@@ -246,6 +234,9 @@ Same builders and metrics as Agentes, grouped by label/inbox/team. Same fixes ap
 | 7 | Migrate Telegram to resolver | `app/services/telegram/incoming_message_service.rb` | FORK marker |
 | 8 | Migrate LINE to resolver | `app/services/line/incoming_message_service.rb` | FORK marker |
 | 9 | Migrate TikTok to resolver | `app/services/tiktok/message_service.rb` + `messaging_helpers.rb` | FORK marker |
+| 9a | Migrate Facebook/Instagram to resolver | `app/builders/messages/facebook/message_builder.rb`, `app/builders/messages/instagram/base_message_builder.rb` | FORK marker |
+| 9b | Migrate ConversationBuilder to resolver | `app/builders/conversation_builder.rb` | FORK marker |
+| 9c | Default new inboxes to single-history ON | `db/migrate/20260618120000_fork_default_lock_to_single_conversation_true.rb` | FORK migration (default only) |
 | 10 | `prepend_mod_with` hook on ReportingEventListener | `app/listeners/reporting_event_listener.rb` | FORK (1 line) |
 | 11 | `prepend_mod_with` hook on CsatSurveyService | `app/services/csat_survey_service.rb` | FORK (1 line) |
 | 12 | Cycle-aware resolution time | `custom/app/listeners/custom/reporting_event_listener.rb` | Custom overlay |
@@ -259,12 +250,13 @@ Same builders and metrics as Agentes, grouped by label/inbox/team. Same fixes ap
 
 1. Create `Conversations::Resolver` service with the standard contract:
    - `#find` — lookup only (no create); `conversation_params` optional
-   - `#perform` — find or create; `conversation_params` required when creating
+   - `#perform` — find or create; delegates to `#resolve_or_create`
+   - `#resolve_or_create` — find or create under `contact_inbox.with_lock`; create params via block (lazy for TikTok)
    - `lock_to_single_conversation = true` → newest conversation (including resolved)
    - `lock_to_single_conversation = false` → newest non-resolved conversation
-   - Lookup/create serialized via `contact_inbox.with_lock`
 2. Replace `set_conversation` in SMS, Twilio, WhatsApp, Telegram, LINE with resolver `#perform`
-3. Replace TikTok conversation selection with resolver (`#find` then `#perform` on create to avoid eager TikTok API params on lookup)
+3. Replace TikTok conversation selection with resolver `#resolve_or_create` (lazy create params)
+4. Migrate Facebook, Instagram, and `ConversationBuilder` to resolver `#perform` (orchestration round 2)
 
 ### Phase 2 — Per-Cycle Metrics (Conditional on Toggle)
 
@@ -430,7 +422,8 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 
 ## Definition of Done
 
-- [x] `Conversations::Resolver` implemented (`#find` + `#perform`) and used by SMS, Twilio, WhatsApp, Telegram, LINE, TikTok
+- [x] `Conversations::Resolver` implemented (`#find`, `#perform`, `#resolve_or_create`) and used by SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, `ConversationBuilder`
+- [x] Per-cycle `conversation_bot_handoff` metrics when single-history mode is ON
 - [x] `Custom::Conversations::ResolutionCycle` centralizes cycle boundary logic
 - [x] Per-cycle resolution time implemented via custom overlay
 - [x] Per-cycle first response implemented (reset `first_reply_created_at` on reopen)
@@ -439,7 +432,8 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [x] UI toggle text improved
 - [x] Automation rules warning when enabling single-history toggle (inbox settings)
 - [x] Inbox factory `:single_history` trait for specs
-- [x] All test scenarios passing
+- [x] Default `lock_to_single_conversation = true` for new inboxes (migration `20260618120000`)
+- [ ] Enterprise Voice inbound calls migrated to resolver
 - [ ] Baseline SQL queries executed on pilot inboxes
 
 ## Delivery Checklist
@@ -451,14 +445,16 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [x] i18n text updated with FORK marker
 - [x] Automation warning banner in inbox settings (EN + PT-BR)
 - [x] Inbox factory `:single_history` trait
+- [x] Default ON migration for new inboxes
+- [ ] Enterprise Voice resolver migration
 - [ ] Pilot rollout completed with monitored metrics
 
 ## Pilot Readiness Snapshot
 
 ### Engineering status (code complete)
 
-- [x] Inbox-level toggle behavior implemented for Phase 1 channels: SMS, Twilio, WhatsApp, Telegram, LINE, TikTok
-- [x] Reopen/create selection centralized via `Conversations::Resolver`
+- [x] Inbox-level toggle behavior implemented for Phase 1 channels: SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, API/Widget
+- [x] Reopen/create selection centralized via `Conversations::Resolver` (Voice Enterprise pending)
 - [x] Per-cycle reporting behavior implemented when single-history mode is ON
 - [x] Per-cycle CSAT behavior implemented when single-history mode is ON
 - [x] Existing behavior preserved when single-history mode is OFF
@@ -470,7 +466,7 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [x] Focused specs for reporting/CSAT cycle behavior passing
 - [x] Focused regression spec for Twitter webhook path passing
 - [x] Lint checks clean on changed files
-- [x] Post-lint-fix validation rerun completed (`rubocop` on changed feature files + focused `rspec`: `53 examples, 0 failures`)
+- [x] Post-lint-fix validation rerun completed (`rubocop` on changed feature files + focused `rspec`: `342 examples, 0 failures`)
 
 ## Audit (2026-06-18)
 
@@ -498,14 +494,29 @@ Engineering review to align implementation with project rules (single responsibi
 | Area | Behavior |
 |---|---|
 | TikTok read receipts | `find_conversation` uses resolver `#find`, then falls back to latest thread when all conversations are resolved (read-status only; does not create) |
-| Facebook/Instagram | Pattern B unchanged (pre-existing inbox flag support) |
-| API/Widget `ConversationBuilder` | Unchanged (intentionally different) |
+| Voice Enterprise | Inline lookup in `Voice::InboundCallBuilder#resolve_conversation!` — **pending** migration to resolver |
 | Twitter / Email | Excluded from Phase 1 |
 
-### Validation after audit
+### Orchestration round 2 (2026-06-18)
+
+Channel unification, per-cycle bot handoff, UX, and default migration completed in a second orchestration pass.
+
+| Item | Location | Change |
+|---|---|---|
+| Facebook/Instagram → Resolver | `app/builders/messages/facebook/message_builder.rb`, `app/builders/messages/instagram/base_message_builder.rb` | Replaced Pattern B inline lookup with `Conversations::Resolver#perform` |
+| ConversationBuilder → Resolver | `app/builders/conversation_builder.rb` | API/Widget paths honor inbox toggle via resolver |
+| `#resolve_or_create` | `app/services/conversations/resolver.rb` | Single `with_lock` + lazy create params (block form) |
+| TikTok lazy create | `app/services/tiktok/message_service.rb` | Uses `#resolve_or_create` to defer TikTok API params |
+| ResolutionCycle association | `custom/.../resolution_cycle.rb` | Uses `conversation.reporting_events` instead of global `ReportingEvent.where` |
+| Per-cycle bot handoff | `custom/.../reporting_event_listener.rb` | `bot_handoff_already_recorded?` scoped by `event_start_time` (cycle) when toggle ON |
+| Default ON migration | `db/migrate/20260618120000_fork_default_lock_to_single_conversation_true.rb` | Column default `true` for **new** inboxes only; no `UPDATE` on existing rows |
+| Automation warning | `SingleHistoryAutomationWarning.vue`, `useSingleHistoryAutomationWarning.js` | Non-blocking banner when enabling toggle with `conversation_created` rules |
+| Voice Enterprise | `enterprise/.../inbound_call_builder.rb` | **Still pending** — inline `.last` lookup |
+
+### Validation after orchestration round 2
 
 - `rubocop` clean on all touched files
-- Focused `rspec`: **53 examples, 0 failures** (resolver, LINE, TikTok, reporting, CSAT cycle, conversation reopen reset)
+- Focused `rspec`: **342 examples, 0 failures** (resolver, all channel migrations, FB/IG, ConversationBuilder, reporting, CSAT cycle, bot handoff per cycle, conversation reopen reset)
 
 ### Operational status (pending to execute pilot)
 
@@ -521,7 +532,11 @@ Engineering review to align implementation with project rules (single responsibi
 |---|---|---|
 | Automation warning on toggle ON | Done | `SingleHistoryAutomationWarning.vue` + `useSingleHistoryAutomationWarning.js`; queries `automations/get` store; EN + PT-BR i18n |
 | Inbox factory `:single_history` trait | Done | `spec/factories/inboxes.rb`; used in `resolver_spec` |
-| FB/IG resolver migration | Planned (Worker 1) | Pattern B builders still use inline lookup; intended to migrate to `Conversations::Resolver` for consistency |
+| FB/IG resolver migration | Done | Orchestration round 2 — `Conversations::Resolver#perform` in both builders |
+| ConversationBuilder resolver migration | Done | Orchestration round 2 — API/Widget honors inbox toggle |
+| Per-cycle `bot_handoff` metrics | Done | `bot_handoff_already_recorded?` scoped by cycle when toggle ON |
+| Default `lock_to_single_conversation = true` | Done | Migration `20260618120000` (new inboxes only) |
+| Voice Enterprise resolver migration | Pending | `Voice::InboundCallBuilder` still uses inline lookup |
 | Static i18n-only automation note | Not needed | Dynamic warning implemented via existing store API |
 
 **Phase 2 (deferred):** Per-rule inbox scoping preview in banner (e.g. link to filtered automation list), or backend endpoint if store payload becomes too heavy for settings page.
@@ -541,6 +556,32 @@ Engineering review to align implementation with project rules (single responsibi
 - 2026-02-25: Manual validation in channel settings confirmed expected runtime behavior with toggle ON (`lock_to_single_conversation`): resolved conversation reopens on new inbound message.
 - 2026-06-18: Engineering audit — fixed LINE/TikTok duplicate resolver logic, reporting `event.timestamp` + `safe_rollup` gaps, extracted `Custom::Conversations::ResolutionCycle`, added resolver `#find` with optional params. Focused validation: `53 examples, 0 failures`.
 - 2026-06-18: Worker 3 — automation warning banner on single-history toggle (uses existing automations store), `:single_history` factory trait, EN/PT-BR ops copy.
+- 2026-06-18: Orchestration round 2 — FB/IG and `ConversationBuilder` migrated to `Conversations::Resolver`; added `#resolve_or_create`; per-cycle `bot_handoff`; default ON migration for new inboxes; `ResolutionCycle` uses `reporting_events` association. Focused validation: `342 examples, 0 failures`.
+
+## Existing Inbox Backfill Policy
+
+**No mass backfill migration.** Product intent:
+
+- **New inboxes** (created after migration `20260618120000`): default `lock_to_single_conversation = true`.
+- **Existing inboxes**: retain stored value (`false` unless previously toggled). Operators must opt in per inbox via Inbox Settings or scoped SQL.
+
+Rationale: mass-enabling single-history on all existing inboxes would change conversation routing and report semantics account-wide without explicit consent.
+
+### Manual opt-in (per inbox)
+
+Inbox Settings → Channel Preferences → enable "Reuse and reopen previous conversation".
+
+### Optional ops SQL (account-scoped, run only with product approval)
+
+```sql
+-- Example: enable single-history for specific pilot inboxes only
+UPDATE inboxes
+SET lock_to_single_conversation = true, updated_at = NOW()
+WHERE account_id = :account_id
+  AND id IN (:pilot_inbox_ids);
+```
+
+Do **not** run unscoped `UPDATE inboxes SET lock_to_single_conversation = true` in production without explicit rollout approval.
 
 ## Open Questions
 
@@ -554,7 +595,7 @@ Engineering review to align implementation with project rules (single responsibi
 To move from "plan complete" to "pilot execution", use the following defaults unless product/ops explicitly override.
 
 1. **Phase 1 channel scope**
-   - Decision: keep scope as **SMS, Twilio, WhatsApp, Telegram, LINE, TikTok**.
+   - Decision: keep scope as **SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, API/Widget**.
    - Rationale: implementation + tests already completed for this set with lowest additional rollout risk.
 
 2. **Configuration level**
@@ -982,12 +1023,14 @@ Execution tracking source of truth: use the checklist in `Pilot Activation Check
 
 ### Scope and Activation Order
 
-1. Start only with low-risk channels that already use standard selection behavior:
+1. Start with low-risk channels on the resolver path:
    - SMS
    - Twilio
    - WhatsApp
    - Telegram
    - LINE
+   - Facebook / Instagram (after validating Meta webhook flows)
+   - API/Widget (if pilot includes widget/API inboxes)
 2. Select 2-3 pilot inboxes with moderate volume (not peak-volume inboxes).
 3. Enable `lock_to_single_conversation` one inbox at a time, with at least 24h observation between each activation.
 
