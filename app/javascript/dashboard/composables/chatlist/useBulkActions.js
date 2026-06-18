@@ -78,7 +78,15 @@ export function useBulkActions() {
     const assigneeName =
       agent?.name || t('CONVERSATION_SIDEBAR.SELECT.PLACEHOLDER');
 
-    if (conversationIds.some(id => isAssignPending(id))) return;
+    if (conversationIds.some(id => isAssignPending(id))) {
+      // FORK: assignme - Surface in-flight fast-assign when context menu tries again.
+      if (conversationId) {
+        useAlert(
+          t('CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.PENDING')
+        );
+      }
+      return;
+    }
 
     markAssignPendingUntilResolved(conversationIds, assigneeId);
 
