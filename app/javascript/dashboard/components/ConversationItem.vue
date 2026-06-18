@@ -74,17 +74,15 @@ const isAssignPendingForSource = computed(() =>
   isAssignPending(props.source.id)
 );
 
-const emitAssignAgent = (agent, conversationIds) => {
-  assignAgent(agent, conversationIds);
-};
-
 const assignmeFork = useConversationCardFork({
   chat,
   chatMetadata,
   canAssignToMe,
   currentUser,
   isAssignPending: isAssignPendingForSource,
-  emit: { assignAgent: emitAssignAgent },
+  emit: (event, ...args) => {
+    if (event === 'assignAgent') assignAgent(...args);
+  },
 });
 
 provide('conversationCardAssignmeFork', assignmeFork);

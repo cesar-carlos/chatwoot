@@ -1,4 +1,8 @@
 import { CONVERSATION_PRIORITY_ORDER } from 'shared/constants/messages';
+import {
+  getUserPermissions,
+  getUserRole,
+} from '../../../helper/permissionsHelper';
 
 export const findPendingMessageIndex = (chat, message) => {
   const { echo_id: tempMessageId } = message;
@@ -60,6 +64,23 @@ export const applyPageFilters = (conversation, filters) => {
   );
 
   return shouldFilter;
+};
+
+// FORK: custom role team permission normalization
+export const getRoleFilterContext = rootGetters => {
+  const currentUser = rootGetters?.getCurrentUser;
+  const currentAccountId = rootGetters?.getCurrentAccountId;
+
+  return {
+    currentUser,
+    currentUserId: currentUser?.id,
+    permissions: getUserPermissions(currentUser, currentAccountId),
+    userRole: getUserRole(currentUser, currentAccountId),
+    userTeams: rootGetters?.['teams/getMyTeams'] || [],
+    userInboxIds: (rootGetters?.['inboxes/getInboxes'] || []).map(
+      inbox => inbox.id
+    ),
+  };
 };
 
 /**
