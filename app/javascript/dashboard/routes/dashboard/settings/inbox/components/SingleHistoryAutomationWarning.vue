@@ -43,7 +43,7 @@ const goToAutomations = () => {
 </script>
 
 <template>
-  <div v-if="isVisible" class="mt-3 w-full">
+  <div v-show="isVisible" class="mt-3 w-full">
     <Banner
       color="amber"
       :action-label="
