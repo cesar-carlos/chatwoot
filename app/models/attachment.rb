@@ -115,7 +115,8 @@ class Attachment < ApplicationRecord
         transcribed_text: meta&.[]('transcribed_text') || '',
         # FORK: expose transcription state for manual Groq UX
         transcription_state: meta&.dig('transcription', 'state'),
-        transcription_error: meta&.dig('transcription', 'error')
+        transcription_error: meta&.dig('transcription', 'error'),
+        transcription_started_at: meta&.dig('transcription', 'started_at')
       }
     )
   end

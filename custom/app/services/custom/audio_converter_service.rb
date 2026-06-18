@@ -5,6 +5,10 @@ class Custom::AudioConverterService
   FORMATS_REQUIRING_CONVERSION = %w[
     audio/aac audio/x-aac audio/amr audio/x-amr audio/vnd.wave
   ].freeze
+  GROQ_NATIVE_CONTENT_TYPES = %w[
+    audio/mpeg audio/mp3 audio/ogg audio/opus audio/wav audio/webm
+    audio/mp4 audio/x-m4a audio/flac audio/x-flac
+  ].freeze
 
   QUALITY_PRESETS = {
     voice: {
@@ -43,7 +47,7 @@ class Custom::AudioConverterService
   def needs_preprocessing?
     return false unless audio_file
 
-    needs_conversion? || @preset == :voice
+    needs_conversion?
   end
 
   def convert

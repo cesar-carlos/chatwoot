@@ -1,3 +1,4 @@
+// FORK: manual Groq audio transcription composable
 import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
@@ -85,7 +86,9 @@ export const useTranscription = () => {
       const status = error.response?.status;
       let errorMessage = errorData.message || t('AUDIO.TRANSCRIPTION.ERROR');
 
-      if (status === 401 || status === 403) {
+      if (status === 403 && errorData.error_type === 'forbidden') {
+        errorMessage = t('AUDIO.TRANSCRIPTION.FORBIDDEN');
+      } else if (status === 401 || status === 403) {
         errorMessage = t('AUDIO.API_ERROR.UNAUTHORIZED');
       } else if (status === 409) {
         errorMessage = t('AUDIO.TRANSCRIPTION.IN_PROGRESS');

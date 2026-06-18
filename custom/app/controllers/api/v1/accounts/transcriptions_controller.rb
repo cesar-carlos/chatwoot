@@ -1,4 +1,3 @@
-# rubocop:disable Metrics/ClassLength
 class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseController
   AUDIO_MAX_SIZE = 25.megabytes
 
@@ -11,7 +10,11 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     log_lifecycle(:start, attachment_id: params[:attachment_id], provider: 'groq')
 
-    check_cache_and_transcribe(started_at)
+    result = orchestrator.perform
+    duration_ms = elapsed_ms(started_at)
+    log_lifecycle(:success, attachment_id: params[:attachment_id], provider: 'groq', duration_ms: duration_ms) if result.status == :ok
+
+    render json: result.body, status: result.status
   rescue StandardError => e
     log_lifecycle(:error, attachment_id: params[:attachment_id], provider: 'groq', error: e.message)
     handle_error(e)
@@ -25,6 +28,14 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
   end
 
   private
+
+  def orchestrator
+    Custom::Transcription::Orchestrator.new(
+      user_context: pundit_user,
+      account: Current.account,
+      params: params
+    )
+  end
 
   def validate_automatic_transcription_not_enabled
     return unless automatic_transcription_enabled?
@@ -50,149 +61,6 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     }, status: :too_many_requests
   end
 
-  def check_cache_and_transcribe(started_at)
-    attachment = find_attachment
-    return if performed?
-
-    if attachment && Custom::TranscriptionMetadata.success_cache?(attachment) && !force_refresh?
-      log_lifecycle(:cache_hit, attachment_id: attachment.id, provider: 'groq')
-      return render json: Custom::TranscriptionMetadata.format_cached_response(attachment.meta['transcription'])
-    end
-
-    transcribe_with_lock(attachment, started_at)
-  end
-
-  def transcribe_with_lock(attachment, started_at)
-    return transcribe_without_attachment(started_at) unless attachment
-
-    lock_manager = Custom::Transcription::LockManager.new(attachment_id: attachment.id)
-    return render_processing_conflict(attachment) unless lock_manager.acquire
-
-    response_data = nil
-    begin
-      attachment.with_lock do
-        attachment.reload
-        response_data = locked_transcription_response(attachment, started_at)
-      end
-    rescue StandardError => e
-      save_error(attachment, e.message)
-      raise e
-    ensure
-      lock_manager.release
-    end
-
-    render_transcription_response(attachment, response_data)
-  end
-
-  def locked_transcription_response(attachment, started_at)
-    if Custom::TranscriptionMetadata.success_cache?(attachment) && !force_refresh?
-      log_lifecycle(:cache_hit, attachment_id: attachment.id, provider: 'groq')
-      return Custom::TranscriptionMetadata.format_cached_response(attachment.meta['transcription'])
-    end
-
-    return :processing if Custom::TranscriptionMetadata.read_state(attachment) == 'processing'
-
-    mark_processing(attachment)
-    result = perform_transcription(attachment)
-    save_success(attachment, result)
-    duration_ms = elapsed_ms(started_at)
-    log_lifecycle(:success, attachment_id: attachment.id, provider: 'groq', duration_ms: duration_ms)
-    result.merge(cached: false)
-  end
-
-  def render_transcription_response(attachment, response_data)
-    return render_processing_conflict(attachment) if response_data == :processing
-
-    render json: response_data
-  end
-
-  def transcribe_without_attachment(started_at)
-    result = perform_transcription(nil)
-    duration_ms = elapsed_ms(started_at)
-    log_lifecycle(:success, attachment_id: nil, provider: 'groq', duration_ms: duration_ms)
-    render json: result.merge(cached: false)
-  end
-
-  def render_processing_conflict(attachment)
-    render json: {
-      error_type: 'transcription_in_progress',
-      translation_key: 'AUDIO.TRANSCRIPTION.IN_PROGRESS',
-      message: I18n.t('errors.audio_transcription.in_progress'),
-      state: Custom::TranscriptionMetadata.read_state(attachment)
-    }, status: :conflict
-  end
-
-  def mark_processing(attachment)
-    Custom::TranscriptionMetadata.write_transcription(attachment, {
-                                                        state: 'processing',
-                                                        provider: 'groq',
-                                                        started_at: Time.current.to_i
-                                                      })
-    notify_message_update(attachment)
-  end
-
-  def save_success(attachment, transcription_data)
-    Custom::TranscriptionMetadata.write_transcription(attachment, transcription_data)
-    notify_message_update(attachment)
-  end
-
-  def save_error(attachment, error_message)
-    Custom::TranscriptionMetadata.write_transcription(attachment, {
-                                                        state: 'error',
-                                                        provider: 'groq',
-                                                        error: error_message,
-                                                        failed_at: Time.current.to_i
-                                                      })
-    notify_message_update(attachment)
-  end
-
-  def notify_message_update(attachment)
-    message = attachment.message
-    return unless message
-
-    message.reload.send_update_event
-    message.reindex if ChatwootApp.advanced_search_allowed?
-  end
-
-  def find_attachment
-    return nil if params[:attachment_id].blank?
-
-    attachment = Attachment.find_by(id: params[:attachment_id], account_id: Current.account.id)
-
-    if params[:attachment_id].present? && attachment.nil?
-      render json: {
-        error_type: 'attachment_not_found',
-        message: "Attachment with id #{params[:attachment_id]} not found or does not belong to this account"
-      }, status: :not_found
-      return nil
-    end
-
-    attachment
-  end
-
-  def force_refresh?
-    params[:force_refresh].to_s == 'true'
-  end
-
-  def perform_transcription(attachment)
-    transcription_provider.transcribe(
-      attachment,
-      file: params[:file]
-    )
-  end
-
-  def transcription_provider
-    Custom::Transcription::GroqProvider.new(
-      user: current_user,
-      params: {
-        model: params[:model],
-        language: params[:language],
-        prompt: params[:prompt],
-        quality_preset: params[:quality_preset]
-      }
-    )
-  end
-
   def validate_groq_token
     return if current_user&.groq_token.present?
 
@@ -212,19 +80,36 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
       return
     end
 
-    return if params[:file].blank?
+    if params[:file].present?
+      validate_upload_file_size(params[:file].size)
+      return if performed?
 
-    file_size = params[:file].size
-    if file_size > AUDIO_MAX_SIZE
-      render json: {
-        error_type: 'validation_error',
-        translation_key: 'AUDIO.FILE_TOO_LARGE',
-        message: "File size #{(file_size / 1.megabyte).round(1)}MB exceeds maximum of 25MB"
-      }, status: :unprocessable_content
       return
     end
 
-    true
+    validate_attachment_file_size
+  end
+
+  def validate_upload_file_size(file_size)
+    return if file_size <= AUDIO_MAX_SIZE
+
+    render_file_too_large(file_size)
+  end
+
+  def validate_attachment_file_size
+    attachment = Attachment.find_by(id: params[:attachment_id], account_id: Current.account.id)
+    return unless attachment&.file&.attached?
+
+    file_size = attachment.file.blob.byte_size
+    validate_upload_file_size(file_size)
+  end
+
+  def render_file_too_large(file_size)
+    render json: {
+      error_type: 'validation_error',
+      translation_key: 'AUDIO.FILE_TOO_LARGE',
+      message: "File size #{(file_size / 1.megabyte).round(1)}MB exceeds maximum of 25MB"
+    }, status: :unprocessable_content
   end
 
   def handle_error(error)
@@ -319,4 +204,3 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
     ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at) * 1000).round
   end
 end
-# rubocop:enable Metrics/ClassLength

@@ -1,16 +1,27 @@
 // FORK: extracted for merge-safe fork integration
 import { computed, ref, unref } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAccount } from 'dashboard/composables/useAccount';
 import { useTranscription } from 'dashboard/composables/useTranscription';
 import {
   readTranscriptText,
   readTranscriptState,
   readTranscriptError,
+  readTranscriptionStartedAt,
 } from 'dashboard/composables/fork/useTranscriptText';
+
+const STALE_PROCESSING_MS = 120 * 1000;
+
+const isStaleProcessing = startedAt => {
+  if (!startedAt) return true;
+
+  return Date.now() - startedAt * 1000 > STALE_PROCESSING_MS;
+};
 
 export const useAudioTranscription = attachmentSource => {
   const router = useRouter();
+  const { t } = useI18n();
   const { currentAccount } = useAccount();
   const {
     isTranscribing,
@@ -35,8 +46,18 @@ export const useAudioTranscription = attachmentSource => {
     readTranscriptState(unref(attachmentSource))
   );
 
+  const transcriptionStartedAt = computed(() =>
+    readTranscriptionStartedAt(unref(attachmentSource))
+  );
+
+  const isAttachmentProcessingActive = computed(() => {
+    if (attachmentState.value !== 'processing') return false;
+
+    return !isStaleProcessing(transcriptionStartedAt.value);
+  });
+
   const isProcessing = computed(() => {
-    return isTranscribing.value || attachmentState.value === 'processing';
+    return isTranscribing.value || isAttachmentProcessingActive.value;
   });
 
   const persistedError = computed(() =>
@@ -48,7 +69,17 @@ export const useAudioTranscription = attachmentSource => {
   });
 
   const displayError = computed(() => {
-    return transcriptionError.value?.message || persistedError.value;
+    if (transcriptionError.value?.message) {
+      return transcriptionError.value.message;
+    }
+
+    if (attachmentState.value === 'error' && persistedError.value) {
+      return t('AUDIO.TRANSCRIPTION.ERROR_STATE', {
+        error: persistedError.value,
+      });
+    }
+
+    return persistedError.value;
   });
 
   const handleTranscribe = async () => {

@@ -1,5 +1,6 @@
 class Custom::TranscriptionMetadata
   STATES = %w[pending processing success error].freeze
+  PROCESSING_STALE_TTL = Custom::Transcription::LockManager::LOCK_TTL
 
   class << self
     def read_text(attachment)
@@ -25,6 +26,42 @@ class Custom::TranscriptionMetadata
       return nil unless attachment&.meta.is_a?(Hash)
 
       attachment.meta.dig('transcription', 'error')
+    end
+
+    def read_started_at(attachment)
+      return nil unless attachment&.meta.is_a?(Hash)
+
+      transcription = attachment.meta['transcription']
+      return nil unless transcription.is_a?(Hash)
+
+      transcription['started_at'] || transcription['transcribed_at']
+    end
+
+    def stale_processing?(attachment)
+      return false unless read_state(attachment) == 'processing'
+
+      started_at = read_started_at(attachment)
+      return true if started_at.blank?
+
+      Time.current.to_i - started_at.to_i > PROCESSING_STALE_TTL.to_i
+    end
+
+    def clear_processing_state!(attachment)
+      current_meta = attachment.meta.to_h
+      transcription = current_meta['transcription']
+      return unless transcription.is_a?(Hash)
+      return unless %w[processing error].include?(transcription['state'])
+
+      current_meta.delete('transcription')
+      attachment.update!(meta: current_meta)
+    end
+
+    def actively_processing?(attachment, lock_manager:, force_refresh: false)
+      return false if force_refresh
+      return false unless read_state(attachment) == 'processing'
+      return false if stale_processing?(attachment)
+
+      lock_manager.locked?
     end
 
     def success_cache?(attachment)

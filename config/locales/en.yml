@@ -91,6 +91,7 @@ en:
       token_missing: Groq API token not configured in user profile
       rate_limit_exceeded: Too many transcription requests. Please wait and try again.
       in_progress: Transcription is already in progress for this audio message.
+      forbidden: You do not have access to transcribe this audio message.
     saml:
       feature_not_enabled: SAML feature not enabled for this account
       sso_not_enabled: SAML SSO is not enabled for this installation

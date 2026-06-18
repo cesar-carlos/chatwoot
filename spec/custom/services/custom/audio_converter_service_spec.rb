@@ -41,9 +41,9 @@ RSpec.describe Custom::AudioConverterService do
   end
 
   describe '#needs_preprocessing?' do
-    it 'returns true for voice preset even when mp3 does not need conversion' do
+    it 'returns false for voice preset when mp3 does not need conversion' do
       service = described_class.new(build_upload('sample.mp3', 'audio/mpeg'), 'voice')
-      expect(service.needs_preprocessing?).to be(true)
+      expect(service.needs_preprocessing?).to be(false)
     end
 
     it 'returns true for unsupported formats regardless of preset' do

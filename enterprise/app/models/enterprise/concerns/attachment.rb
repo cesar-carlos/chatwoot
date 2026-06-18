@@ -13,6 +13,8 @@ module Enterprise::Concerns::Attachment
   private
 
   def enqueue_audio_transcription
+    # FORK: skip automatic transcription when account flag is disabled
+    return unless ActiveModel::Type::Boolean.new.cast(account.audio_transcriptions)
     return unless file_type.to_sym == :audio
 
     # No file.attached? guard: the social-media ingest path saves the

@@ -36,6 +36,17 @@ export const readTranscriptError = attachment => {
   );
 };
 
+export const readTranscriptionStartedAt = attachment => {
+  if (!attachment) return null;
+
+  return (
+    attachment.transcriptionStartedAt ||
+    attachment.transcription?.started_at ||
+    attachment.transcription_started_at ||
+    null
+  );
+};
+
 export const useTranscriptText = attachmentSource => {
   const transcriptText = computed(() =>
     readTranscriptText(unref(attachmentSource))

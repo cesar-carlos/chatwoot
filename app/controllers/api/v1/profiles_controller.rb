@@ -58,7 +58,7 @@ class Api::V1::ProfilesController < Api::BaseController
   end
 
   def profile_params
-    params.require(:profile).permit(
+    permitted = params.require(:profile).permit(
       :email,
       :name,
       :display_name,
@@ -68,6 +68,9 @@ class Api::V1::ProfilesController < Api::BaseController
       :groq_token, # FORK: audio transcription with Groq per-user token
       ui_settings: {}
     )
+    # FORK: omit blank groq_token so partial profile updates do not clear saved token
+    permitted.delete(:groq_token) if permitted[:groq_token].blank?
+    permitted
   end
 
   def custom_attributes_params
