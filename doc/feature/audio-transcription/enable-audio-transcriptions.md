@@ -45,8 +45,15 @@ Somente transcrições com `state=success` são retornadas como cache.
 ## Idempotência e lock
 
 - Lock Redis por `attachment_id` (TTL ~120s) evita requisições paralelas.
-- Requisição concorrente retorna **409 Conflict** com chave `AUDIO.TRANSCRIPTION.IN_PROGRESS`.
+- Requisição concorrente com lock ativo e `started_at` recente retorna **409 Conflict** com chave `AUDIO.TRANSCRIPTION.IN_PROGRESS`.
+- Estado `processing` **obsoleto** (`started_at` ausente ou mais antigo que o TTL de 120s) é recuperado automaticamente e a transcrição pode ser reexecutada.
+- `force_refresh=true` ignora cache de sucesso e estados `processing`/`error`.
 - Cache de sucesso é respeitado salvo `force_refresh=true`.
+
+## FFmpeg
+
+- **Não é necessário** para formatos aceitos nativamente pelo Groq: mp3, ogg, opus, wav, webm, m4a, flac.
+- FFmpeg é exigido apenas para conversão de formatos não suportados (ex.: aac, amr).
 
 ## Rate limiting
 
@@ -77,7 +84,8 @@ bundle exec rails runner doc/scripts/smoke-test-audio-transcription.rb
 
 - **Botão de transcrição não aparece**: toggle automático está ON.
 - **422 automatic_transcription_enabled**: conta tem modo automático; desabilite o toggle para usar Groq manual.
-- **409 transcription_in_progress**: aguarde a transcrição em andamento ou tente novamente após ~2 min.
+- **409 transcription_in_progress**: outra transcrição está em andamento (lock ativo + `started_at` recente). Aguarde ou tente novamente.
+- **Processing preso**: estados `processing` com mais de ~120s são tratados como obsoletos e reprocessados automaticamente.
 - **429 rate_limit_exceeded**: aguarde 1 minuto.
 - **Token missing**: configure token Groq no perfil do usuário.
 - Valide no banco: `users.groq_token` preenchido (valor criptografado) para modo manual.

@@ -8,13 +8,10 @@ class Custom::Transcription::RateLimiter
 
   def within_limit?
     key = "audio_transcription:user:#{@user_id}"
-    count = Redis::Alfred.get(key).to_i
+    count = Redis::Alfred.incr(key)
+    Redis::Alfred.expire(key, PERIOD.to_i) if count == 1
 
-    return false if count >= limit
-
-    Redis::Alfred.incr(key)
-    Redis::Alfred.expire(key, PERIOD.to_i) if count.zero?
-    true
+    count <= limit
   end
 
   private

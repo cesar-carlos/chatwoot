@@ -117,7 +117,7 @@
 - [x] Validate format matrix (direct send vs conversion):
   - [x] `oga` / `x-oga` -> normalize to `ogg` and send direct
   - [x] `opus` / `x-opus` -> send direct
-  - [x] `wav` / `mp3` / `m4a` / `webm` -> voice preset preprocessing before Groq
+  - [x] `wav` / `mp3` / `m4a` / `webm` / `ogg` / `opus` / `flac` -> send direct to Groq (no FFmpeg)
   - [x] `aac` / `amr` -> convert to `mp3` (requires ffmpeg)
 - [x] Validate ffmpeg behavior:
   - [x] conversion path works when ffmpeg is installed (unit spec with mocked ffmpeg)
@@ -192,7 +192,7 @@
 **Phase 2: User Token Configuration** ✅
 - Added `groq_token` column to users table (no index for security)
 - Updated ProfilesController to permit token (with FORK marker)
-- Exposed `groq_token` in user serializer to keep profile field populated after reload
+- Exposed `has_groq_token` in user serializer; token value never returned on GET
 - Created GroqToken.vue component for token management
 - Integrated token section in profile settings UI
 - Added i18n strings for all token-related UI
@@ -241,7 +241,7 @@
 - Added MIME normalization (`audio/oga`/`audio/x-oga` -> `audio/ogg`) to avoid unnecessary conversion
 
 **Hardening Pass (2026-02)** ✅
-- UX: Profile screen now rehydrates token input from `groq_token` on reload
+- UX: Profile screen shows "Token configured" when `has_groq_token` is true (token value not rehydrated from API)
 - Backend: `.oga` filename extension normalized to `.ogg` in `fetch_audio_from_attachment` (Groq validates by extension)
 - Backend: Explicit `attachment_id` validation with 404 response when not found
 - Backend: HTTP status mapping (401, 408, 429, 502, 503) per error type; `:unprocessable_content` where appropriate
@@ -277,7 +277,7 @@
 
 ### Files Modified (with FORK markers)
 - `app/controllers/api/v1/profiles_controller.rb`
-- `app/views/api/v1/models/_user.json.jbuilder` (exposes `groq_token`)
+- `app/views/api/v1/models/_user.json.jbuilder` (exposes `has_groq_token` only)
 - `app/javascript/dashboard/routes/dashboard/settings/profile/Index.vue`
 - `app/javascript/dashboard/routes/dashboard/settings/profile/GroqToken.vue`
 - `app/javascript/dashboard/components-next/message/chips/Audio.vue`

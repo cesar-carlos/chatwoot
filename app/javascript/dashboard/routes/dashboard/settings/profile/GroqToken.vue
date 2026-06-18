@@ -27,8 +27,10 @@ const emit = defineEmits(['updateGroqToken']);
 const { t } = useI18n();
 const tokenValue = ref(props.groqToken);
 
+const isConfigured = computed(() => props.hasGroqToken && !tokenValue.value);
+
 const inputPlaceholder = computed(() => {
-  if (props.hasGroqToken && !tokenValue.value) {
+  if (isConfigured.value) {
     return t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.CONFIGURED_PLACEHOLDER');
   }
 
@@ -39,6 +41,15 @@ watch(
   () => props.groqToken,
   newVal => {
     tokenValue.value = newVal;
+  }
+);
+
+watch(
+  () => props.hasGroqToken,
+  hasToken => {
+    if (hasToken && !props.groqToken) {
+      tokenValue.value = '';
+    }
   }
 );
 
@@ -61,10 +72,17 @@ const copyToken = async () => {
 
 <template>
   <form class="flex flex-col gap-4" @submit.prevent="updateToken">
+    <div
+      v-if="isConfigured"
+      class="flex items-center gap-2 text-sm text-n-teal-11"
+    >
+      <span class="i-lucide-circle-check size-4 shrink-0" />
+      <span>{{ t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.CONFIGURED_STATUS') }}</span>
+    </div>
     <WithLabel
       :label="t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.LABEL')"
       :help-text="
-        hasGroqToken && !tokenValue
+        isConfigured
           ? t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.CONFIGURED_HELP_TEXT')
           : t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.HELP_TEXT')
       "
