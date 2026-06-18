@@ -596,13 +596,15 @@
   },
   "SERVICE_SESSION_REPORTS": {
     "HEADER": "Relatórios de Atendimentos",
-    "DESCRIPTION": "Acompanhe cada ciclo de atendimento, da abertura/reabertura até a resolução, como uma sessão individual.",
+    "DESCRIPTION": "Acompanhe cada ciclo de atendimento, da abertura/reabertura até a resolução, como uma sessão individual. As métricas por ciclo dependem da configuração lock-to-single-conversation da caixa e dos eventos de relatório.",
     "LOADING": "Carregando relatórios de atendimentos...",
     "ERRORS": {
       "FETCH_FAILED": "Falha ao carregar relatórios de atendimentos"
     },
+    "DOWNLOAD": "Baixar CSV",
     "COMMON": {
-      "NOT_AVAILABLE": "N/D"
+      "NOT_AVAILABLE": "N/D",
+      "UNASSIGNED_TEAM": "Sem time"
     },
     "EMPTY_STATE": {
       "NO_DATA": "Não há dados para os filtros selecionados"
@@ -620,6 +622,7 @@
       "OPEN_SESSIONS": "Atendimentos Abertos",
       "CLOSED_SESSIONS": "Atendimentos Concluídos",
       "TOTAL_SESSIONS": "Total de Atendimentos",
+      "TOTAL_SESSIONS_HINT": "Snapshot de abertos mais atendimentos concluídos no período selecionado. Não é um total estritamente comparável.",
       "AVG_SESSION_DURATION": "Duração Média",
       "AVG_FIRST_RESPONSE_TIME": "Tempo Médio de Primeira Resposta",
       "REOPEN_RATE": "Taxa de Reabertura",

@@ -55,10 +55,12 @@ Entregar relatórios de atendimentos por sessão/ciclo com:
 
 ## Current State (Relevant)
 
-- Não existe implementação de `service_session_reports` neste workspace.
-- Já existe base de eventos e ajustes por ciclo no plano de conversation single history.
-- `reporting_events` já possui eventos necessários (`conversation_opened`, `conversation_resolved`, `first_response`).
-- `custom/` já está carregado no app (`custom/lib` e `custom/app/**`).
+- Implementação completa em `custom/` (builders + controller) e frontend em `app/javascript/dashboard/`.
+- Base de eventos e ajustes por ciclo do plano `conversation-single-history-per-channel` alimentam os `reporting_events`.
+- `reporting_events` possui eventos necessários (`conversation_opened`, `conversation_resolved`, `first_response`).
+- Semântica de ciclo para inboxes com `lock_to_single_conversation = true` vem de `Custom::ReportingEventListener` e `Custom::Conversations::ResolutionCycle`.
+- Índices de período em `reporting_events` via migration `20260226124500_add_period_indexes_to_reporting_events_for_service_sessions.rb`.
+- i18n principal em `en/report.json` e `pt_BR/report.json`; label do sidebar em `settings.json`.
 
 ## Product/Behavior Decisions
 
@@ -71,7 +73,7 @@ Entregar relatórios de atendimentos por sessão/ciclo com:
    - Exibir conversas `open` e `pending`.
 4. **Date filter**
    - Sessões fechadas: usar `reporting_events.event_end_time`.
-   - Sessões abertas: usar `last_activity_at`/`created_at` (ou `session_started_at` se adotado).
+   - Sessões abertas: usar início do ciclo (`conversation_opened.event_end_time` ou `created_at`).
 5. **I18n**
    - Somente `en` e `pt_BR`.
 
@@ -79,16 +81,18 @@ Entregar relatórios de atendimentos por sessão/ciclo com:
 
 ### Backend
 
-- Controller de API em `app/controllers/api/v2/accounts/service_session_reports_controller.rb` (upstream edit mínima com `# FORK:`) **ou** inclusão via mecanismo já usado no projeto para rotas/namespace.
+- Controller de API em `custom/app/controllers/api/v2/accounts/service_session_reports_controller.rb`.
 - Builders de relatório em `custom/app/builders/v2/reports/service_sessions/`:
   - `base_builder.rb`
+  - `metrics_helper.rb` (percentis e aging de backlog)
   - `summary_builder.rb`
   - `open_sessions_builder.rb`
   - `closed_sessions_builder.rb`
   - `agent_builder.rb`
   - `inbox_builder.rb`
-  - `team_builder.rb`
+  - `team_builder.rb` (inclui linha para sessões sem time, `id: 0`)
   - `label_builder.rb`
+- Rotas em `config/routes.rb` com `# FORK:`.
 
 Decisão técnica:
 - manter cálculos baseados em `reporting_events` para sessões fechadas;
@@ -98,11 +102,14 @@ Decisão técnica:
 
 - API client: `app/javascript/dashboard/api/serviceSessionReports.js`
 - Página: `app/javascript/dashboard/routes/dashboard/settings/reports/ServiceSessionReportsIndex.vue`
-- Rota de frontend em `reports.routes.js`
-- Item no menu de Reports (se autorizado pelo produto nesta fase)
+- Filtros de entidade: `components/ServiceSessionEntityFilter.vue` (inbox, team, agent, label + query params)
+- Rota de frontend em `reports.routes.js` (`// FORK:`)
+- Item no menu de Reports em `Sidebar.vue` (`// FORK:`)
+- Paginação nas abas Open/Closed via `PaginationFooter`
 - i18n:
-  - `app/javascript/dashboard/i18n/locale/en/settings.json`
-  - `app/javascript/dashboard/i18n/locale/pt_BR/settings.json`
+  - `app/javascript/dashboard/i18n/locale/en/report.json`
+  - `app/javascript/dashboard/i18n/locale/pt_BR/report.json`
+  - sidebar: `en/settings.json` e `pt_BR/settings.json`
 
 ## Data Model Decision: `current_session_opened_at`
 
@@ -129,7 +136,7 @@ Tasks:
 - [x] confirmar payload/shape de cada endpoint
 - [x] confirmar defaults (`since`, `until`, `business_hours`)
 - [x] confirmar política de acesso/autorização
-- [x] confirmar se menu entra nesta entrega ou feature flag de UI
+- [x] confirmar se menu entra nesta entrega ou feature flag de UI (usa `FEATURE_FLAGS.REPORTS` na rota; sem flag dedicada)
 
 Deliverables:
 
@@ -201,7 +208,8 @@ Tasks:
   - [x] By Inbox
   - [x] By Team
   - [x] By Label
-- [x] adicionar filtros e sincronização de query params
+- [x] adicionar filtros e sincronização de query params (datas via `ReportFilters`; entidades via `ServiceSessionEntityFilter`)
+- [x] adicionar paginação na UI (Open/Closed)
 - [x] adicionar rota em `reports.routes.js`
 - [x] adicionar item de menu (se aprovado para release)
 
@@ -215,8 +223,8 @@ Goal: garantir textos completos nos dois idiomas-alvo.
 
 Tasks:
 
-- [x] adicionar chaves `SERVICE_SESSION_REPORTS.*` em `en/settings.json`
-- [x] adicionar chaves equivalentes em `pt_BR/settings.json`
+- [x] adicionar chaves `SERVICE_SESSION_REPORTS.*` em `en/report.json`
+- [x] adicionar chaves equivalentes em `pt_BR/report.json`
 - [x] remover strings hardcoded na UI
 - [x] revisar mensagens de erro/estado vazio/loading
 
@@ -252,10 +260,12 @@ Tasks:
   - [x] `open` com `page/per_page` (default e limite máximo)
   - [x] `closed` com `page/per_page` (default e limite máximo)
   - [x] incluir metadados de paginação no payload (`page`, `per_page`, `total_count`)
-- [ ] otimizar índices de `reporting_events` para consultas de relatório por período:
+- [x] otimizar índices de `reporting_events` para consultas de relatório por período:
   - [x] avaliar `[:account_id, :name, :event_end_time]`
   - [x] avaliar `[:account_id, :inbox_id, :name, :event_end_time]`
-  - [ ] validar plano de execução das queries principais após índice
+  - [x] migration aplicada (`20260226124500_add_period_indexes_to_reporting_events_for_service_sessions.rb`)
+  - [ ] validar plano de execução das queries principais após índice em staging
+- [x] escopar subquery de aging por `account_id` em `metrics_helper.rb`
 - [x] eliminar risco de N+1 no agrupamento por agente:
   - [x] aplicar eager loading (`includes(:user)`) para `account_users`
 - [x] impor limite de janela de datas no controller:
@@ -271,6 +281,28 @@ Deliverables:
 - consultas de relatório com melhor plano de execução
 - redução de risco de timeout/N+1 em contas grandes
 - contrato de datas e `session_started_at` explicitamente estável
+
+### Phase 8 - Quality and UX Hardening
+
+Goal: specs mínimos, clarificações de UI, export e polish.
+
+Tasks:
+
+- [x] specs mínimos:
+  - [x] `spec/custom/builders/v2/reports/service_sessions/summary_builder_spec.rb`
+  - [x] `spec/custom/controllers/api/v2/accounts/service_session_reports_controller_spec.rb`
+- [x] hint de `total_sessions` no Summary (en + pt_BR)
+- [x] alinhar filtro de data de sessões abertas com início do ciclo (`apply_open_date_filter` + `open_cycle_join_sql`)
+- [x] sync de `page` na URL para abas Open/Closed (`reportFilterHelper.js` + `ServiceSessionReportsIndex.vue`)
+- [x] export CSV client-side para abas de lista e agrupamento (MVP: dados carregados na aba atual)
+- [x] fix ESLint i18n em `ServiceSessionEntityFilter.vue` (mapping estático de placeholders)
+- [ ] feature flag dedicada para sidebar (skipped: rota já gated por `FEATURE_FLAGS.REPORTS`)
+- [ ] AgentBuilder filter rows > 0 (skipped: mantém paridade com `AgentSummaryBuilder`; ver Notes)
+
+Deliverables:
+
+- cobertura de teste smoke para summary builder e controller
+- UX de paginação, export e métricas mais claras
 
 ### Phase 7 - Advanced Operational Metrics
 
@@ -369,25 +401,31 @@ Implementation breakdown (Phase 7):
 
 ### Backend
 
-- `custom/app/builders/v2/reports/service_sessions/base_builder.rb` (new)
-- `custom/app/builders/v2/reports/service_sessions/summary_builder.rb` (new)
-- `custom/app/builders/v2/reports/service_sessions/open_sessions_builder.rb` (new)
-- `custom/app/builders/v2/reports/service_sessions/closed_sessions_builder.rb` (new)
-- `custom/app/builders/v2/reports/service_sessions/agent_builder.rb` (new)
-- `custom/app/builders/v2/reports/service_sessions/inbox_builder.rb` (new)
-- `custom/app/builders/v2/reports/service_sessions/team_builder.rb` (new)
-- `custom/app/builders/v2/reports/service_sessions/label_builder.rb` (new)
-- `app/controllers/api/v2/accounts/service_session_reports_controller.rb` (FORK if unavoidable)
-- `config/routes.rb` (FORK if unavoidable)
+- `custom/app/builders/v2/reports/service_sessions/base_builder.rb`
+- `custom/app/builders/v2/reports/service_sessions/metrics_helper.rb`
+- `custom/app/builders/v2/reports/service_sessions/summary_builder.rb`
+- `custom/app/builders/v2/reports/service_sessions/open_sessions_builder.rb`
+- `custom/app/builders/v2/reports/service_sessions/closed_sessions_builder.rb`
+- `custom/app/builders/v2/reports/service_sessions/agent_builder.rb`
+- `custom/app/builders/v2/reports/service_sessions/inbox_builder.rb`
+- `custom/app/builders/v2/reports/service_sessions/team_builder.rb`
+- `custom/app/builders/v2/reports/service_sessions/label_builder.rb`
+- `custom/app/controllers/api/v2/accounts/service_session_reports_controller.rb`
+- `config/routes.rb` (`# FORK:`)
+- `db/migrate/20260226124500_add_period_indexes_to_reporting_events_for_service_sessions.rb`
 
 ### Frontend
 
-- `app/javascript/dashboard/api/serviceSessionReports.js` (new)
-- `app/javascript/dashboard/routes/dashboard/settings/reports/ServiceSessionReportsIndex.vue` (new)
-- `app/javascript/dashboard/routes/dashboard/settings/reports/reports.routes.js` (FORK)
-- `app/javascript/dashboard/components-next/sidebar/Sidebar.vue` (FORK, if menu in scope)
-- `app/javascript/dashboard/i18n/locale/en/settings.json` (FORK)
-- `app/javascript/dashboard/i18n/locale/pt_BR/settings.json` (FORK)
+- `app/javascript/dashboard/api/serviceSessionReports.js`
+- `app/javascript/dashboard/routes/dashboard/settings/reports/ServiceSessionReportsIndex.vue`
+- `app/javascript/dashboard/routes/dashboard/settings/reports/components/ServiceSessionEntityFilter.vue`
+- `app/javascript/dashboard/routes/dashboard/settings/reports/helpers/reportFilterHelper.js` (`// FORK:` entity URL helpers)
+- `app/javascript/dashboard/routes/dashboard/settings/reports/reports.routes.js` (`// FORK:`)
+- `app/javascript/dashboard/components-next/sidebar/Sidebar.vue` (`// FORK:`)
+- `app/javascript/dashboard/i18n/locale/en/report.json`
+- `app/javascript/dashboard/i18n/locale/pt_BR/report.json`
+- `app/javascript/dashboard/i18n/locale/en/settings.json` (sidebar label)
+- `app/javascript/dashboard/i18n/locale/pt_BR/settings.json` (sidebar label)
 
 ## API Contract Draft
 
@@ -435,10 +473,16 @@ Query params:
 - [x] i18n completo apenas em `en` e `pt_BR`
 - [ ] comportamento com toggle ON/OFF validado
 - [x] `open/closed` retornam paginação consistente sem degradação
+- [x] paginação exposta na UI (Open/Closed)
+- [x] endpoint rejeita ranges fora do limite com erro esperado (6 meses, alinhado a `summary_reports`)
+- [x] specs mínimos (summary builder + controller smoke)
+- [x] hint de `total_sessions` na UI
+- [x] export CSV client-side (open/closed/grouped)
+- [x] paginação Open/Closed sincronizada com query param `page`
+- [x] sem N+1 no agrupamento por agente (`includes(:user)`)
+- [x] filtros de entidade (inbox/team/agent/label) na UI e API
 - [ ] queries principais de relatório usam índices adequados em staging
-- [ ] endpoint rejeita ranges fora do limite com erro esperado
-- [ ] sem N+1 no agrupamento por agente
-- [ ] métricas avançadas (reopen rate, p95, backlog aging) validadas
+- [ ] métricas avançadas (reopen rate, p95, backlog aging) validadas em staging
 
 ## Definition of Done
 
@@ -633,10 +677,16 @@ Então atualizar:
 5. Phase 5 (validação e rollout)
 6. Phase 6 (hardening de performance/confiabilidade)
 7. Phase 7 (métricas operacionais avançadas)
+8. Phase 8 (specs, UX polish, export CSV)
 
 ---
 
 ## Notes
 
 - Este plano é deliberadamente incremental para reduzir risco.
+- `total_sessions` no summary soma snapshot de abertos + fechados no período; não é um total estritamente comparável.
+- Sessões abertas: filtro de data usa início do ciclo (`conversation_opened` ou `created_at`); `session_started_at` e aging usam a mesma regra.
+- Menu/rota gated por `FEATURE_FLAGS.REPORTS` (sem flag dedicada de service sessions).
+- `AgentBuilder` lista todos os agentes da conta (paridade com `AgentSummaryBuilder`); filtrar zeros exigiria decisão de produto.
+- Comportamento por ciclo depende de `lock_to_single_conversation` nos listeners custom; a API não bifurca por toggle — use filtro de inbox para comparar ON/OFF.
 - Se performance de sessões abertas ficar limitada sem `current_session_opened_at`, abrir fase adicional específica para migração de schema, separada desta entrega principal.
