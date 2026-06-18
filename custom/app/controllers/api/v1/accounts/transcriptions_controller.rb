@@ -1,7 +1,6 @@
 class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseController
   AUDIO_MAX_SIZE = 25.megabytes
 
-  before_action :validate_automatic_transcription_not_enabled
   before_action :validate_groq_token
   before_action :validate_rate_limit, only: [:create]
   before_action :validate_audio_file, only: [:create]
@@ -35,20 +34,6 @@ class Api::V1::Accounts::TranscriptionsController < Api::V1::Accounts::BaseContr
       account: Current.account,
       params: params
     )
-  end
-
-  def validate_automatic_transcription_not_enabled
-    return unless automatic_transcription_enabled?
-
-    render json: {
-      error_type: 'automatic_transcription_enabled',
-      translation_key: 'AUDIO.AUTOMATIC_MODE_ACTIVE.MESSAGE',
-      message: I18n.t('errors.audio_transcription.automatic_mode_active')
-    }, status: :unprocessable_content
-  end
-
-  def automatic_transcription_enabled?
-    ActiveModel::Type::Boolean.new.cast(Current.account&.audio_transcriptions)
   end
 
   def validate_rate_limit

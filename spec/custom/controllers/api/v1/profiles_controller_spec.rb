@@ -50,4 +50,24 @@ RSpec.describe 'Profile API (fork: groq_token)', type: :request do
       expect(json_response).not_to have_key('groq_token')
     end
   end
+
+  describe 'session reload flow' do
+    it 'exposes has_groq_token on validate_token after saving via profile API' do
+      put '/api/v1/profile',
+          params: { profile: { groq_token: valid_groq_token } },
+          headers: agent.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:success)
+
+      get '/auth/validate_token',
+          headers: agent.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:success)
+      user_data = response.parsed_body.dig('payload', 'data')
+      expect(user_data['has_groq_token']).to be(true)
+      expect(user_data).not_to have_key('groq_token')
+    end
+  end
 end

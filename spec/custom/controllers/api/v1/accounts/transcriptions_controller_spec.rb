@@ -134,11 +134,11 @@ RSpec.describe Api::V1::Accounts::TranscriptionsController, type: :request do
     context 'when automatic audio transcription is enabled for the account' do
       before { account.update!(audio_transcriptions: true) }
 
-      it 'returns unprocessable content and blocks manual Groq transcription' do
+      it 'still allows manual Groq transcription' do
         post endpoint, params: { attachment_id: attachment.id }, headers: headers, as: :json
 
-        expect(response).to have_http_status(:unprocessable_content)
-        expect(response.parsed_body['error_type']).to eq('automatic_transcription_enabled')
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['text']).to eq('Hello world transcription')
       end
     end
 

@@ -20,10 +20,10 @@ unless account && user
   exit 1
 end
 
-puts "\n1. Mutual exclusion check"
+puts "\n1. Manual-only mode check"
 automatic_enabled = ActiveModel::Type::Boolean.new.cast(account.audio_transcriptions)
-manual_allowed = user.groq_token.present? && !automatic_enabled
-puts "   account.audio_transcriptions=#{automatic_enabled}"
+manual_allowed = user.groq_token.present?
+puts "   account.audio_transcriptions=#{automatic_enabled} (ignored — auto disabled in fork)"
 puts "   user.has_groq_token=#{user.groq_token.present?}"
 puts "   manual Groq allowed=#{manual_allowed}"
 

@@ -60,9 +60,9 @@ export default {
       uiFlags: 'accounts/getUIFlags',
       isOnChatwootCloud: 'globalConfig/isOnChatwootCloud',
     }),
-    // FORK: audio transcription is independent, not tied to Captain
+    // FORK: automatic transcription disabled — manual Groq only via profile token
     showAudioTranscriptionConfig() {
-      return true;
+      return false;
     },
     languagesSortedByCode() {
       const enabledLanguages = [...this.enabledLanguages];

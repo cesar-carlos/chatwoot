@@ -137,10 +137,19 @@ export default {
       deep: true,
     },
   },
-  mounted() {
-    if (this.currentUserId) {
-      this.initializeUser();
+  async mounted() {
+    if (!this.currentUserId) {
+      return;
     }
+
+    // FORK: refresh profile so has_groq_token survives page reload
+    try {
+      await this.$store.dispatch('fetchProfile');
+    } catch (error) {
+      // Fall back to validate_token payload from router bootstrap
+    }
+
+    this.initializeUser();
   },
   methods: {
     initializeUser() {
@@ -218,15 +227,19 @@ export default {
       );
 
       try {
-        const success = await this.dispatchUpdate(
-          payload,
-          successMessage,
-          errorMessage
-        );
-        if (success) {
+        await this.$store.dispatch('updateProfile', payload);
+        if (token && !this.currentUser.has_groq_token) {
+          useAlert(errorMessage);
+          return;
+        }
+
+        if (token) {
           // FORK: clear input after save; has_groq_token from API drives configured UI
           this.groqToken = '';
         }
+        useAlert(successMessage);
+      } catch (error) {
+        useAlert(parseAPIErrorResponse(error) || errorMessage);
       } finally {
         this.isUpdatingGroqToken = false;
       }

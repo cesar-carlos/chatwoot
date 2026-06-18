@@ -12,6 +12,9 @@ export default {
     const urlData = endPoints('validityCheck');
     return axios.get(urlData.url);
   },
+  profileShow() {
+    return axios.get(endPoints('profileUpdate').url);
+  },
   logout() {
     const urlData = endPoints('logout');
     const fetchPromise = new Promise((resolve, reject) => {

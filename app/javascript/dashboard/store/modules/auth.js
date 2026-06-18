@@ -121,6 +121,10 @@ export const actions = {
     }
     commit(types.SET_CURRENT_USER_UI_FLAGS, { isFetching: false });
   },
+  fetchProfile: async ({ commit }) => {
+    const response = await authAPI.profileShow();
+    commit(types.SET_CURRENT_USER, response.data);
+  },
   logout({ commit }) {
     commit(types.CLEAR_USER);
   },

@@ -23,10 +23,6 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  transcriptState: {
-    type: String,
-    default: null,
-  },
   displayError: {
     type: String,
     default: '',
@@ -89,10 +85,7 @@ const setTokenInvalidDialogRef = el => {
   </div>
 
   <p
-    v-else-if="
-      section === 'status' &&
-      (isTranscribing || transcriptState === 'processing')
-    "
+    v-else-if="section === 'status' && isTranscribing"
     class="text-xs text-n-slate-11 px-1"
   >
     {{ t('AUDIO.TRANSCRIPTION.PROCESSING') }}
