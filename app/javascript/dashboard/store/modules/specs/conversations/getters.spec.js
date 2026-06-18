@@ -129,6 +129,13 @@ describe('#getters', () => {
     });
   });
   describe('#getUnAssignedChats', () => {
+    const agentRootGetters = {
+      getCurrentUser: { id: 1, accounts: [{ id: 1, role: 'agent' }] },
+      getCurrentAccountId: 1,
+      'teams/getMyTeams': [],
+      'inboxes/getInboxes': [{ id: 2 }, { id: 3 }, { id: 4 }],
+    };
+
     it('order returns only chats assigned to user', () => {
       const conversationList = [
         {
@@ -162,7 +169,12 @@ describe('#getters', () => {
       ];
 
       expect(
-        getters.getUnAssignedChats({ allConversations: conversationList })({
+        getters.getUnAssignedChats(
+          { allConversations: conversationList },
+          {},
+          {},
+          agentRootGetters
+        )({
           status: 1,
         })
       ).toEqual([
@@ -189,6 +201,12 @@ describe('#getters', () => {
       { id: 2, inbox_id: 2, status: 1, meta: {} },
       { id: 3, inbox_id: 3, status: 1, meta: { assignee: { id: 2 } } },
     ];
+    const agentRootGetters = {
+      getCurrentUser: { id: 1, accounts: [{ id: 1, role: 'agent' }] },
+      getCurrentAccountId: 1,
+      'teams/getMyTeams': [],
+      'inboxes/getInboxes': [{ id: 2 }, { id: 3 }],
+    };
 
     it('returns all conversations when watchers are not loaded', () => {
       const state = {
@@ -196,7 +214,7 @@ describe('#getters', () => {
         participatingConversationIds: {},
       };
       const rootGetters = {
-        getCurrentUser: { id: 1 },
+        ...agentRootGetters,
         'conversationWatchers/getByConversationId': () => undefined,
       };
       const result = getters.getParticipatingChats(
@@ -214,7 +232,7 @@ describe('#getters', () => {
         participatingConversationIds: {},
       };
       const rootGetters = {
-        getCurrentUser: { id: 1 },
+        ...agentRootGetters,
         'conversationWatchers/getByConversationId': id => {
           if (id === 2) return [{ id: 3 }];
           return undefined;
@@ -235,7 +253,7 @@ describe('#getters', () => {
         participatingConversationIds: {},
       };
       const rootGetters = {
-        getCurrentUser: { id: 1 },
+        ...agentRootGetters,
         'conversationWatchers/getByConversationId': id => {
           if (id === 1) return [{ id: 1 }, { id: 2 }];
           return undefined;

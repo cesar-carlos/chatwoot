@@ -36,6 +36,8 @@ module Custom::Conversations::UnreadCounts::Counter
 
   def label_inbox_keys_for_mode(label_id, inbox_id)
     if permission_mode == :team_unassigned_and_mine
+      # Store has no label+team+unassigned composite key; assignee keys only avoid
+      # over-counting unassigned conversations from other teams via label_inbox_unassigned.
       [store.label_inbox_assignee_key(account.id, label_id, inbox_id, user.id)]
     else
       super

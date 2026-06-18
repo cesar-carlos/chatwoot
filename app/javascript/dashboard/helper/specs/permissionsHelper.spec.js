@@ -50,6 +50,7 @@ describe('filterItemsByPermission', () => {
       permissions: [
         'conversation_manage',
         'conversation_unassigned_manage',
+        'conversation_team_unassigned_manage',
         'conversation_participating_manage',
       ],
     },
@@ -63,6 +64,7 @@ describe('filterItemsByPermission', () => {
         'administrator',
         'conversation_manage',
         'conversation_unassigned_manage',
+        'conversation_team_unassigned_manage',
         'conversation_participating_manage',
         'contact_manage',
         'report_manage',
@@ -131,6 +133,26 @@ describe('filterItemsByPermission', () => {
     const result = filterItemsByPermission({}, ['agent'], getPermissions);
 
     expect(result).toHaveLength(0);
+  });
+
+  it('includes items requiring conversation_team_unassigned_manage permission', () => {
+    const teamPermissionItems = {
+      unassignedTab: {
+        name: 'Unassigned Tab',
+        permissions: ['conversation_team_unassigned_manage'],
+      },
+    };
+
+    const result = filterItemsByPermission(
+      teamPermissionItems,
+      ['conversation_team_unassigned_manage'],
+      getPermissions
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result).toContainEqual(
+      expect.objectContaining({ key: 'unassignedTab', name: 'Unassigned Tab' })
+    );
   });
 
   it('handles custom getPermissions function', () => {
