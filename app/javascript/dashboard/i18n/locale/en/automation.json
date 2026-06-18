@@ -136,7 +136,9 @@
       "CONVERSATION_UPDATED": "Conversation Updated",
       "MESSAGE_CREATED": "Message Created",
       "CONVERSATION_RESOLVED": "Conversation Resolved",
-      "CONVERSATION_OPENED": "Conversation Opened"
+      "CONVERSATION_OPENED": "Conversation Opened",
+      "CONVERSATION_INACTIVITY_THRESHOLD": "Conversation Inactivity Threshold",
+      "CONVERSATION_AGENT_NO_REPLY": "Agent No Reply Threshold"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Assign to Agent",

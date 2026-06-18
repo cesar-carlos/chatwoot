@@ -684,6 +684,76 @@ export const AUTOMATIONS = {
       },
     ],
   },
+  // FORK: workflow synthetic automation events
+  conversation_inactivity_threshold: {
+    conditions: [
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'team_id',
+        name: 'TEAM_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'priority',
+        name: 'PRIORITY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      { key: 'assign_agent', name: 'ASSIGN_AGENT' },
+      { key: 'assign_team', name: 'ASSIGN_TEAM' },
+      { key: 'add_label', name: 'ADD_LABEL' },
+      { key: 'send_message', name: 'SEND_MESSAGE' },
+      { key: 'resolve_conversation', name: 'RESOLVE_CONVERSATION' },
+    ],
+  },
+  conversation_agent_no_reply: {
+    conditions: [
+      {
+        key: 'assignee_id',
+        name: 'ASSIGNEE_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'team_id',
+        name: 'TEAM_NAME',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      {
+        key: 'inbox_id',
+        name: 'INBOX',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+      {
+        key: 'priority',
+        name: 'PRIORITY',
+        inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_1,
+      },
+    ],
+    actions: [
+      { key: 'assign_agent', name: 'ASSIGN_AGENT' },
+      { key: 'assign_team', name: 'ASSIGN_TEAM' },
+      { key: 'add_label', name: 'ADD_LABEL' },
+      { key: 'send_message', name: 'SEND_MESSAGE' },
+    ],
+  },
 };
 
 export const AUTOMATION_RULE_EVENTS = [
@@ -706,6 +776,15 @@ export const AUTOMATION_RULE_EVENTS = [
   {
     key: 'conversation_opened',
     value: 'CONVERSATION_OPENED',
+  },
+  // FORK: synthetic workflow threshold events
+  {
+    key: 'conversation_inactivity_threshold',
+    value: 'CONVERSATION_INACTIVITY_THRESHOLD',
+  },
+  {
+    key: 'conversation_agent_no_reply',
+    value: 'CONVERSATION_AGENT_NO_REPLY',
   },
 ];
 

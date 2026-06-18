@@ -653,6 +653,87 @@
         "UPGRADE_PROMPT": "Upgrade to a paid plan to enforce required attributes before conversation resolution.",
         "ASK_ADMIN": "Please reach out to your administrator for the upgrade."
       }
+    },
+    "RULES": {
+      "TITLE": "Workflow rules",
+      "DESCRIPTION": "Configure time-based rules for inactivity and agent no-reply scenarios.",
+      "ADD": "Add rule",
+      "EDIT": "Edit rule",
+      "EMPTY": "No workflow rules yet.",
+      "MINUTES": "min",
+      "POSITION": "#{position}",
+      "SEPARATOR": "·",
+      "LOADING": "Loading workflow rules...",
+      "SAVE_SUCCESS": "Workflow rule saved",
+      "SAVE_ERROR": "Could not save workflow rule. Please try again.",
+      "DELETE_SUCCESS": "Workflow rule deleted",
+      "DELETE_ERROR": "Could not delete workflow rule. Please try again.",
+      "FETCH_ERROR": "Could not load workflow rules. Please try again.",
+      "REORDER_ERROR": "Could not reorder workflow rules. Please try again.",
+      "TOGGLE_ERROR": "Could not update workflow rule. Please try again.",
+      "DELETE_CONFIRM_TITLE": "Delete workflow rule",
+      "DELETE_CONFIRM": "Delete rule",
+      "DELETE_CONFIRM_YES": "Yes, delete",
+      "DELETE_CONFIRM_NO": "No, keep",
+      "MIGRATED_BANNER": "Legacy auto-resolve was migrated to workflow rules.",
+      "LEGACY_BANNER": "Legacy auto-resolve is still active for this account. Migrate to avoid duplicate scheduling.",
+      "MIGRATE_NOW": "Migrate now",
+      "MIGRATE_SUCCESS": "Legacy auto-resolve migrated to workflow rules.",
+      "MIGRATE_ERROR": "Could not migrate legacy auto-resolve. Please try again.",
+      "FEATURE_DISABLED": "Enable auto-resolve or agent no-reply rules to configure workflow rules.",
+      "TOGGLE": {
+        "ACTIVATE_TITLE": "Activate workflow rule",
+        "ACTIVATE_DESCRIPTION": "Activate \"{ruleName}\"?",
+        "DEACTIVATE_TITLE": "Deactivate workflow rule",
+        "DEACTIVATE_DESCRIPTION": "Deactivate \"{ruleName}\"?",
+        "ACTIVATED": "Workflow rule activated",
+        "DEACTIVATED": "Workflow rule deactivated"
+      },
+      "TRIGGERS": {
+        "conversation_inactivity": "Conversation inactivity",
+        "agent_no_reply": "Agent no reply"
+      },
+      "STATUS": {
+        "open": "Open",
+        "pending": "Pending"
+      },
+      "VALIDATION": {
+        "NAME_REQUIRED": "Rule name is required",
+        "DURATION_MIN": "Duration must be at least 10 minutes",
+        "DURATION_MAX": "Duration cannot exceed 999 days",
+        "AGENT_NO_REPLY_ACTIONS": "Add at least one action for agent no-reply rules",
+        "INACTIVITY_OUTCOME": "Add actions, enable resolve on match, or set a customer message"
+      },
+      "FORM": {
+        "NAME": "Name",
+        "DESCRIPTION": "Description",
+        "TRIGGER": "Trigger",
+        "DURATION": "Duration",
+        "INBOXES": "Inboxes",
+        "ALL_INBOXES": "All inboxes",
+        "IGNORE_WAITING": "Ignore conversations waiting for agent reply",
+        "RESOLVE_ON_MATCH": "Resolve conversation when rule matches",
+        "MESSAGE": "Customer message before resolve",
+        "UNATTENDED_LINK": "View unattended queue",
+        "UNATTENDED_PREVIEW": "{count} conversations in unattended queue",
+        "STATUSES": "Conversation statuses",
+        "REQUIRE_NO_FIRST_REPLY": "Only conversations never attended",
+        "RESPECT_BUSINESS_HOURS": "Count only business hours",
+        "TIERED_SLA_TITLE": "Tiered SLA example",
+        "TIERED_SLA_EXAMPLE": [
+          "15 min → add label",
+          "120 min → assign team",
+          "1440 min → resolve conversation"
+        ],
+        "CONDITIONS": "Conditions",
+        "ADD_CONDITION": "Add condition",
+        "ACTIONS": "Actions",
+        "ADD_ACTION": "Add action",
+        "REMOVE_ACTION": "Remove action",
+        "COUNTS_AS_AGENT_REPLY": "Counts as agent reply (clears waiting)",
+        "CANCEL": "Cancel",
+        "SAVE": "Save rule"
+      }
     }
   },
   "CREATE_ACCOUNT": {

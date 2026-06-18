@@ -135,7 +135,9 @@
       "CONVERSATION_UPDATED": "Conversa Atualizada",
       "MESSAGE_CREATED": "Mensagem Criada",
       "CONVERSATION_RESOLVED": "Conversa Resolvida",
-      "CONVERSATION_OPENED": "Conversa Aberta"
+      "CONVERSATION_OPENED": "Conversa Aberta",
+      "CONVERSATION_INACTIVITY_THRESHOLD": "Limite de inatividade da conversa",
+      "CONVERSATION_AGENT_NO_REPLY": "Limite de agente sem resposta"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Atribuir ao Agente",

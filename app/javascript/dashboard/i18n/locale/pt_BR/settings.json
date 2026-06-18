@@ -501,6 +501,87 @@
         "UPGRADE_PROMPT": "Faça upgrade para um plano pago para exigir atributos obrigatórios antes da resolução da conversa.",
         "ASK_ADMIN": "Entre em contato com seu administrador para fazer o upgrade."
       }
+    },
+    "RULES": {
+      "TITLE": "Regras de fluxo",
+      "DESCRIPTION": "Configure regras temporais para inatividade e agente sem resposta.",
+      "ADD": "Adicionar regra",
+      "EDIT": "Editar regra",
+      "EMPTY": "Nenhuma regra de fluxo ainda.",
+      "MINUTES": "min",
+      "POSITION": "#{position}",
+      "SEPARATOR": "·",
+      "LOADING": "Carregando regras de fluxo...",
+      "SAVE_SUCCESS": "Regra de fluxo salva",
+      "SAVE_ERROR": "Não foi possível salvar a regra. Tente novamente.",
+      "DELETE_SUCCESS": "Regra de fluxo excluída",
+      "DELETE_ERROR": "Não foi possível excluir a regra. Tente novamente.",
+      "FETCH_ERROR": "Não foi possível carregar as regras. Tente novamente.",
+      "REORDER_ERROR": "Não foi possível reordenar as regras. Tente novamente.",
+      "TOGGLE_ERROR": "Não foi possível atualizar a regra. Tente novamente.",
+      "DELETE_CONFIRM_TITLE": "Excluir regra de fluxo",
+      "DELETE_CONFIRM": "Excluir regra",
+      "DELETE_CONFIRM_YES": "Sim, excluir",
+      "DELETE_CONFIRM_NO": "Não, manter",
+      "MIGRATED_BANNER": "O auto-resolve legado foi migrado para regras de fluxo.",
+      "LEGACY_BANNER": "O auto-resolve legado ainda está ativo nesta conta. Migre para evitar agendamento duplicado.",
+      "MIGRATE_NOW": "Migrar agora",
+      "MIGRATE_SUCCESS": "Auto-resolve legado migrado para regras de fluxo.",
+      "MIGRATE_ERROR": "Não foi possível migrar o auto-resolve legado. Tente novamente.",
+      "FEATURE_DISABLED": "Ative auto-resolve ou regras de agente sem resposta para configurar regras de fluxo.",
+      "TOGGLE": {
+        "ACTIVATE_TITLE": "Ativar regra de fluxo",
+        "ACTIVATE_DESCRIPTION": "Ativar \"{ruleName}\"?",
+        "DEACTIVATE_TITLE": "Desativar regra de fluxo",
+        "DEACTIVATE_DESCRIPTION": "Desativar \"{ruleName}\"?",
+        "ACTIVATED": "Regra de fluxo ativada",
+        "DEACTIVATED": "Regra de fluxo desativada"
+      },
+      "TRIGGERS": {
+        "conversation_inactivity": "Inatividade da conversa",
+        "agent_no_reply": "Agente sem resposta"
+      },
+      "STATUS": {
+        "open": "Aberta",
+        "pending": "Pendente"
+      },
+      "VALIDATION": {
+        "NAME_REQUIRED": "Nome da regra é obrigatório",
+        "DURATION_MIN": "Duração mínima de 10 minutos",
+        "DURATION_MAX": "Duração não pode exceder 999 dias",
+        "AGENT_NO_REPLY_ACTIONS": "Adicione pelo menos uma ação para regras de agente sem resposta",
+        "INACTIVITY_OUTCOME": "Adicione ações, ative resolver ao corresponder ou defina uma mensagem ao cliente"
+      },
+      "FORM": {
+        "NAME": "Nome",
+        "DESCRIPTION": "Descrição",
+        "TRIGGER": "Gatilho",
+        "DURATION": "Duração",
+        "INBOXES": "Caixas de entrada",
+        "ALL_INBOXES": "Todas as caixas",
+        "IGNORE_WAITING": "Ignorar conversas aguardando resposta",
+        "RESOLVE_ON_MATCH": "Resolver conversa quando a regra corresponder",
+        "MESSAGE": "Mensagem ao cliente antes de resolver",
+        "UNATTENDED_LINK": "Ver fila não atendidas",
+        "UNATTENDED_PREVIEW": "{count} conversas na fila não atendidas",
+        "STATUSES": "Status da conversa",
+        "REQUIRE_NO_FIRST_REPLY": "Apenas conversas nunca atendidas",
+        "RESPECT_BUSINESS_HOURS": "Contar apenas horário comercial",
+        "TIERED_SLA_TITLE": "Exemplo de SLA em níveis",
+        "TIERED_SLA_EXAMPLE": [
+          "15 min → adicionar etiqueta",
+          "120 min → atribuir equipe",
+          "1440 min → resolver conversa"
+        ],
+        "CONDITIONS": "Condições",
+        "ADD_CONDITION": "Adicionar condição",
+        "ACTIONS": "Ações",
+        "ADD_ACTION": "Adicionar ação",
+        "REMOVE_ACTION": "Remover ação",
+        "COUNTS_AS_AGENT_REPLY": "Conta como resposta do agente (zera aguardando)",
+        "CANCEL": "Cancelar",
+        "SAVE": "Salvar regra"
+      }
     }
   },
   "SECURITY_SETTINGS": {
