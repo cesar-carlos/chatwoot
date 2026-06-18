@@ -2,6 +2,9 @@ class Conversations::ResolutionJob < ApplicationJob
   queue_as :low
 
   def perform(account:)
+    # FORK: skip legacy auto-resolve when workflow rules migration completed
+    return if account.workflow_rules_migrated?
+
     # limiting the number of conversations to be resolved to avoid any performance issues
     resolvable_conversations = conversation_scope(account).limit(Limits::BULK_ACTIONS_LIMIT)
     resolvable_conversations.each do |conversation|

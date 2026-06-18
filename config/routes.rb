@@ -127,6 +127,13 @@ Rails.application.routes.draw do
           resources :automation_rules, only: [:index, :create, :show, :update, :destroy] do
             post :clone
           end
+          # FORK: conversation workflow rules CRUD
+          resources :conversation_workflow_rules, only: [:index, :create, :show, :update, :destroy] do
+            collection do
+              post :reorder
+              post :migrate_legacy
+            end
+          end
           resources :macros, only: [:index, :create, :show, :update, :destroy] do
             post :execute, on: :member
           end

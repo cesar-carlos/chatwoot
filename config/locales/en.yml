@@ -328,6 +328,10 @@ en:
         auto_resolved_hours: 'Conversation was marked resolved by system due to %{count} hours of inactivity'
         auto_resolved_minutes: 'Conversation was marked resolved by system due to %{count} minutes of inactivity'
         system_auto_open: System reopened the conversation due to a new incoming message.
+      workflow_rule:
+        system_name: Workflow rule
+        status_change: 'Conversation was updated by workflow rule "%{rule_name}"'
+        executed: 'Workflow rule "%{rule_name}" was applied'
       priority:
         added: '%{user_name} set the priority to %{new_priority}'
         updated: '%{user_name} changed the priority from %{old_priority} to %{new_priority}'

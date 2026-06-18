@@ -120,7 +120,7 @@ export const validateConditions = conditions => {
  * @param {Object} action - The action to validate.
  * @returns {string|null} An error message if validation fails, or null if validation passes.
  */
-const validateSingleAction = action => {
+export const validateSingleAction = action => {
   const noParamActions = [
     'mute_conversation',
     'snooze_conversation',

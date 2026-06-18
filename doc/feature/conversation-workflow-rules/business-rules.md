@@ -184,7 +184,7 @@ Usar **`ConversationWorkflow::ActionService`** (não `ActionService` direto):
 | Automação `conversation_resolved` | Dispara após resolve automático |
 | Required attributes | Fase 4: backend via `ResolveService`; sistema usa `skip_required_attributes` |
 | Captain pending job | Escopo separado — não alterar Fase 1–3 |
-| SLA Enterprise | **Distinto** — SLA = compromisso; workflow = automação operacional |
+| SLA Enterprise | **Distinto** — SLA = compromisso contratual (prazos, métricas, políticas Enterprise); workflow = automação operacional por regra de conta. Não compartilham tabela nem scheduler. |
 | Business hours | Fase 4 — pausar contagem via `inbox.working_hours` |
 
 ---

@@ -788,6 +788,42 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
     t.index ["user_id"], name: "index_conversation_participants_on_user_id"
   end
 
+  create_table "conversation_workflow_rule_executions", force: :cascade do |t|
+    t.bigint "conversation_workflow_rule_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "waiting_since_epoch"
+    t.bigint "last_activity_epoch"
+    t.datetime "executed_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["conversation_id"], name: "index_cwre_on_conversation_id"
+    t.index ["conversation_workflow_rule_id", "conversation_id", "last_activity_epoch"], name: "index_cwre_dedup_last_activity", unique: true, where: "(last_activity_epoch IS NOT NULL)"
+    t.index ["conversation_workflow_rule_id", "conversation_id", "waiting_since_epoch"], name: "index_cwre_dedup_waiting_since", unique: true, where: "(waiting_since_epoch IS NOT NULL)"
+    t.index ["conversation_workflow_rule_id"], name: "index_cwre_on_rule_id"
+  end
+
+  create_table "conversation_workflow_rules", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.boolean "active", default: true, null: false
+    t.integer "position", default: 0, null: false
+    t.integer "trigger_type", default: 0, null: false
+    t.integer "duration_minutes", null: false
+    t.jsonb "inbox_ids"
+    t.boolean "ignore_waiting", default: false, null: false
+    t.boolean "resolve_on_match", default: false, null: false
+    t.text "message"
+    t.jsonb "conditions", default: [], null: false
+    t.jsonb "actions", default: [], null: false
+    t.jsonb "options", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "active", "position"], name: "index_cwr_on_account_active_position"
+    t.index ["account_id", "trigger_type"], name: "index_cwr_on_account_trigger_type"
+    t.index ["account_id"], name: "index_conversation_workflow_rules_on_account_id"
+  end
+
   create_table "conversations", id: :serial, force: :cascade do |t|
     t.integer "account_id", null: false
     t.integer "inbox_id", null: false
@@ -819,6 +855,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
     t.index ["account_id", "display_id"], name: "index_conversations_on_account_id_and_display_id", unique: true
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
+    t.index ["account_id", "last_activity_at"], name: "index_conv_workflow_inactivity", where: "(status = 0)"
+    t.index ["account_id", "waiting_since"], name: "index_conv_workflow_waiting", where: "((status = 0) AND (waiting_since IS NOT NULL))"
     t.index ["account_id"], name: "index_conversations_on_account_id"
     t.index ["assignee_id", "account_id"], name: "index_conversations_on_assignee_id_and_account_id"
     t.index ["campaign_id"], name: "index_conversations_on_campaign_id"
@@ -1536,6 +1574,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "conversation_workflow_rule_executions", "conversation_workflow_rules"
+  add_foreign_key "conversation_workflow_rule_executions", "conversations"
+  add_foreign_key "conversation_workflow_rules", "accounts"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).

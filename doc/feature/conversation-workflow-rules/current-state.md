@@ -1,6 +1,6 @@
 # Conversation Workflow — Estado atual
 
-Referência do código em jun/2026 antes da evolução para regras configuráveis.
+Referência do código em jun/2026 após implementação das regras configuráveis.
 
 ---
 
@@ -10,69 +10,58 @@ Referência do código em jun/2026 antes da evolução para regras configurávei
 |------|---------|
 | Rota | `/accounts/:accountId/settings/conversation-workflow` |
 | Página | `app/javascript/dashboard/routes/dashboard/settings/conversationWorkflow/index.vue` |
-| Auto-resolve | `app/javascript/dashboard/routes/dashboard/settings/account/components/AutoResolve.vue` |
+| Rules list + form | `app/javascript/dashboard/components-next/ConversationWorkflow/ConversationWorkflowRulesList.vue`, `ConversationWorkflowRuleForm.vue` |
+| Auto-resolve (legacy) | `app/javascript/dashboard/routes/dashboard/settings/account/components/AutoResolve.vue` (oculto após migração) |
 | Required attrs | `app/javascript/dashboard/components-next/ConversationWorkflow/ConversationRequiredAttributes.vue` |
 | Sidebar | `app/javascript/dashboard/components-next/sidebar/Sidebar.vue` |
 | Permissão | `administrator` |
 
-A página monta dois blocos condicionais por feature flag:
+A página monta:
 
-- `auto_resolve_conversations` → `AutoResolve`
+- `ConversationWorkflowRulesList` (quando `auto_resolve_conversations` ou `conversation_agent_no_reply_rules`)
+- `auto_resolve_conversations` → `AutoResolve` (até `workflow_rules_migrated_at`)
 - `conversation_required_attributes` → `ConversationRequiredAttributes`
 
 ---
 
-## Auto-resolve (backend)
+## Workflow rules (backend)
 
-| Campo | Storage | Uso |
-|-------|---------|-----|
-| `auto_resolve_after` | `accounts.settings` | Minutos de inatividade |
-| `auto_resolve_message` | idem | Template ao cliente antes de resolver |
-| `auto_resolve_ignore_waiting` | idem | Exclui conversas com `waiting_since` |
-| `auto_resolve_label` | idem | Uma etiqueta antes de resolver |
+| Item | Caminho |
+|------|---------|
+| Model | `custom/app/models/conversation_workflow_rule.rb` |
+| Executions (dedup) | `custom/app/models/conversation_workflow_rule_execution.rb` |
+| Scheduler | `custom/app/jobs/custom/conversation_workflow/scheduler_job.rb` |
+| Per-message | `custom/app/jobs/custom/conversation_workflow/schedule_on_message_job.rb` |
+| Executor | `custom/app/services/custom/conversation_workflow/rule_executor.rb` |
+| Action wrapper | `custom/app/services/custom/conversation_workflow/action_service.rb` |
+| Scopes | `scopes/inactivity_scope.rb`, `scopes/agent_no_reply_scope.rb` |
+| Conditions | `conditions_filter.rb` → `AutomationRules::ConditionsFilterService` |
+| Business hours | `business_hours_elapsed_calculator.rb` |
+| Resolve | `custom/app/services/custom/conversations/resolve_service.rb` |
+| Automation events | `automation_event_dispatcher.rb` |
+| API | `custom/app/controllers/api/v1/accounts/conversation_workflow_rules_controller.rb` |
+| Policy | `custom/app/policies/conversation_workflow_rule_policy.rb` |
+| Rake migrate | `lib/tasks/conversation_workflow.rake` (`conversation_workflow:migrate_legacy`) |
 
-**Validação:** `AccountSettingsSchema` — mín. 10 min, máx. ~999 dias.
+**Scheduler:** `TriggerScheduledItemsJob` (cron `*/5 * * * *`) → `Custom::ConversationWorkflow::SchedulerJob` + legacy `Account::ConversationsResolutionSchedulerJob` (skip se migrado).
 
-**Scheduler:** `TriggerScheduledItemsJob` (cron `*/5 * * * *`) → `Account::ConversationsResolutionSchedulerJob` → `Conversations::ResolutionJob`.
-
-**Escopo atual:**
-
-```ruby
-# conversation_inactivity — scopes em Conversation
-resolvable_not_waiting: open + last_activity_at old + waiting_since IS NULL
-resolvable_all:         open + last_activity_at old
-```
-
-- Apenas status **`open`** (não `pending`, não `snoozed`)
-- Exclui `contact_id: nil`
-- Limite por execução: `Limits::BULK_ACTIONS_LIMIT`
-
-**Pipeline fixo no job:**
-
-1. `MessageTemplates::Template::AutoResolve` (se mensagem configurada)
-2. `conversation.add_labels(auto_resolve_label)` (se configurada)
-3. `conversation.toggle_status` → `resolved`
-
-**Sem filtro por inbox.**
+**Feature flags:** `auto_resolve_conversations`, `conversation_agent_no_reply_rules`.
 
 ---
 
-## `waiting_since` (existente, não usado em regras)
+## Auto-resolve (legacy)
 
-Campo em `conversations.waiting_since` (indexado).
+Continua em `accounts.settings` (`auto_resolve_*`). Após `rake conversation_workflow:migrate_legacy`, `workflow_rules_migrated_at` desliga `Conversations::ResolutionJob` para a conta.
 
-| Evento | Efeito |
-|--------|--------|
-| Primeira mensagem incoming enquanto `waiting_since` blank | Define `waiting_since = created_at` |
-| Cliente manda outra mensagem antes de resposta | **Não reinicia** — mantém timestamp original |
-| Agente humano responde (`User` ou `external_echo`) | Zera (`nil`) |
-| Bot / Captain responde | Zera (exceto `preserve_waiting_since: true`) |
-| Nota privada | **Não zera** |
-| Mensagem de automação (`automation_rule_id`) | **Não** conta como resposta humana |
+---
 
-**UI relacionada:** fila “Não atendidas” — `filterByUnattended` usa `!firstReplyOn || !!waitingSince`.
+## `waiting_since`
 
-**Relatórios:** `ReportingEventListener#reply.created` usa `waiting_since` para reply time.
+Campo em `conversations.waiting_since`. Usado por:
+
+- Fila “Não atendidas” (UI)
+- Scope `agent_no_reply` em workflow rules
+- Dedup por `waiting_since_epoch`
 
 ---
 
@@ -81,55 +70,51 @@ Campo em `conversations.waiting_since` (indexado).
 | Item | Detalhe |
 |------|---------|
 | Storage | `accounts.settings.conversation_required_attributes[]` (Enterprise) |
-| Config UI | `ConversationRequiredAttributes.vue` |
-| Runtime | `useConversationRequiredAttributes.js` |
-| Enforcement | **Somente frontend** — `ResolveAction.vue`, `ChatList.vue`, bulk parcial |
-
-**Bypass (sem validação):** auto-resolve job, automação, macros, API, widget, Captain.
+| Runtime humano | Frontend — `ResolveAction.vue`, `ChatList.vue` |
+| Runtime sistema | `Custom::Conversations::ResolveService` com `skip_required_attributes: true` |
 
 ---
 
-## Automação (referência para reuso)
+## Automação (integração Fase 4)
 
-| Item | Detalhe |
-|------|---------|
-| Modelo | `AutomationRule` — `conditions` + `actions` + `event_name` |
-| Eventos | `conversation_created`, `conversation_updated`, `conversation_opened`, `conversation_resolved`, `message_created` |
-| **Sem** evento temporal | Não cobre inatividade nem `waiting_since` |
-| Condições | `AutomationRules::ConditionsFilterService` — inclui `inbox_id`, labels, assignee, etc. |
-| Ações | `AutomationRules::ActionService` → `ActionService` |
-| UI | `AutomationRuleForm.vue`, `ConditionRow.vue`, `AutomationActionInput.vue` |
-| Constantes | `app/javascript/dashboard/routes/dashboard/settings/automation/constants.js` |
+Eventos sintéticos disparados após match de workflow rule:
 
-**Workaround parcial hoje:** regra em `conversation_resolved` dispara **após** auto-resolve, com filtro por inbox — não cobre “agente não respondeu” nem ações **antes** de resolver.
+- `conversation_inactivity_threshold`
+- `conversation_agent_no_reply`
+
+Constantes em `app/javascript/dashboard/routes/dashboard/settings/automation/constants.js` (`// FORK:`).
 
 ---
 
-## Captain auto-resolve (Enterprise, escopo separado)
+## FORK upstream
 
-- Job: `Captain::InboxPendingConversationsResolutionJob`
-- Alvo: conversas **`pending`** em inboxes Captain (não email)
-- Cutoff: **1 hora fixa** (independente de `auto_resolve_after` da UI)
-- Modos: `captain_auto_resolve_mode` — `evaluated`, `legacy`, `disabled`
-
-Não confundir com regras de Fluxos de Conversa para agentes humanos.
-
----
-
-## Lacunas vs objetivo
-
-| Necessidade | Gap atual | Planejado |
-|-------------|-----------|-----------|
-| Regra por inbox | Não filtra | Fase 2 — `inbox_ids` |
-| Múltiplas ações | Só `auto_resolve_label` | Fase 1–2 — `actions[]` + wrapper |
-| Agente não respondeu | `waiting_since` não usado em jobs | Fase 1–2 — `agent_no_reply` |
-| Múltiplas regras | 1 config global | Fase 1 — tabela dedicada |
-| Condições | Não existem | Fase 2 — ConditionsFilterService |
-| Legacy duplo job | Risco na transição | Fase 1 — `workflow_rules_migrated_at` |
-| Feature flag agent_no_reply | Não existe | Fase 2 — nova flag |
-
-Ver [implementation-plan.md](./implementation-plan.md) para estado alvo.
+| Arquivo | Alteração |
+|---------|-----------|
+| `app/jobs/trigger_scheduled_items_job.rb` | `Custom::ConversationWorkflow::SchedulerJob.perform_later` |
+| `app/jobs/account/conversations_resolution_scheduler_job.rb` | skip se `workflow_rules_migrated_at` |
+| `app/jobs/conversations/resolution_job.rb` | early return se migrado |
+| `config/routes.rb` | `conversation_workflow_rules` CRUD |
+| `config/features.yml` | `conversation_agent_no_reply_rules` |
+| `conversationWorkflow/index.vue` | mount rules list (feature-flag gated) |
+| `app/services/message_templates/template/auto_resolve.rb` | optional `message:` for workflow template reuse |
 
 ---
 
-*Última atualização: jun/2026*
+## Pós-correções (sprints 1–3)
+
+| Área | Correção |
+|------|----------|
+| `Current.executed_by` | `RuleExecutor#execute_pipeline` owns lifecycle; workflow `ActionService` does not reset |
+| Resolve | `ResolveService` uses `update!(status: :resolved)` — pending resolves correctly |
+| Actions | `ActionService < AutomationRules::ActionService`; webhook prefix `workflow_rule.*` |
+| Per-message scope | `ScopeMatcher` applied in `perform_for_conversation` |
+| Dedup | insert-first via `claim_execution!` + `RecordNotUnique` |
+| UI conditions | `ConditionRow` bindings + `workflowFilterTypes` mirror automation form |
+| UX | reorder (vuedraggable), delete/toggle modals, validation, feature flags, unattended route/count |
+| Legacy guard | `legacy_auto_resolve_active` on create + `POST migrate_legacy` + banner |
+| Template | `TemplateMessageSender` delegates to `MessageTemplates::Template::AutoResolve` |
+| Specs | `spec/custom/**` + extended legacy job specs |
+
+---
+
+*Última atualização: jun/2026 — pós-correções sprint 1–3*

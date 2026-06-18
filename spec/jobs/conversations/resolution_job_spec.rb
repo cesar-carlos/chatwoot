@@ -80,4 +80,16 @@ RSpec.describe Conversations::ResolutionJob do
     described_class.perform_now(account: account)
     expect(account.conversations.resolved.count).to eq(Limits::BULK_ACTIONS_LIMIT)
   end
+
+  it 'skips when workflow rules were migrated' do
+    account.update!(
+      auto_resolve_after: 14_400,
+      settings: { 'workflow_rules_migrated_at' => Time.current.iso8601 }
+    )
+    conversation.update!(last_activity_at: 13.days.ago)
+
+    described_class.perform_now(account: account)
+
+    expect(conversation.reload.status).to eq('open')
+  end
 end

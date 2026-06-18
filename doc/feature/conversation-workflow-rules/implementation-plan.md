@@ -254,51 +254,51 @@ Manter leitura `auto_resolve_*` 1 release com log deprecation.
 
 | # | Tarefa | Done |
 |---|--------|------|
-| 1.1 | Migrations: rules, executions, índices conversations | |
-| 1.2 | Models + validations | |
-| 1.3 | `ActionService` wrapper + activity i18n keys | |
-| 1.4 | Scopes inactivity + agent_no_reply | |
-| 1.5 | RuleExecutor + dedup | |
-| 1.6 | SchedulerJob | |
-| 1.7 | `# FORK:` trigger + legacy skip | |
-| 1.8 | Rake migrate_legacy | |
+| 1.1 | Migrations: rules, executions, índices conversations | Done |
+| 1.2 | Models + validations | Done |
+| 1.3 | `ActionService` wrapper + activity i18n keys | Done |
+| 1.4 | Scopes inactivity + agent_no_reply | Done |
+| 1.5 | RuleExecutor + dedup | Done |
+| 1.6 | SchedulerJob | Done |
+| 1.7 | `# FORK:` trigger + legacy skip | Done |
+| 1.8 | Rake migrate_legacy | Done |
 
 ### Fase 2 — API + UI + condições (4–6 dias)
 
 | # | Tarefa | Done |
 |---|--------|------|
-| 2.1 | CRUD API + policies | |
-| 2.2 | RulesList + RuleForm | |
-| 2.3 | Conditions (assignee, team, labels, priority) | |
-| 2.4 | Feature flag `conversation_agent_no_reply_rules` | |
-| 2.5 | UI unattended link + count | |
-| 2.6 | `counts_as_agent_reply` no form send_message | |
-| 2.7 | i18n en + pt_BR | |
-| 2.8 | Documentar padrão tiered SLA (3 regras exemplo) | |
+| 2.1 | CRUD API + policies | Done |
+| 2.2 | RulesList + RuleForm | Done |
+| 2.3 | Conditions (assignee, team, labels, priority) | Done |
+| 2.4 | Feature flag `conversation_agent_no_reply_rules` | Done |
+| 2.5 | UI unattended link + count | Done |
+| 2.6 | `counts_as_agent_reply` no form send_message | Done |
+| 2.7 | i18n en + pt_BR | Done |
+| 2.8 | Documentar padrão tiered SLA (3 regras exemplo) | Done |
 
 ### Fase 2.1 — Refinamentos waiting (2–3 dias)
 
-| # | Tarefa |
-|---|--------|
-| 2.1.1 | Incluir `pending` em agent_no_reply (config `options.statuses`) |
-| 2.1.2 | Opção `require_no_first_reply` |
-| 2.1.3 | Fechar D4 com produto |
+| # | Tarefa | Done |
+|---|--------|------|
+| 2.1.1 | Incluir `pending` em agent_no_reply (config `options.statuses`) | Done |
+| 2.1.2 | Opção `require_no_first_reply` | Done |
+| 2.1.3 | Fechar D4 com produto | Done |
 
 ### Fase 3 — Precisão e horário (opcional)
 
-| # | Tarefa |
-|---|--------|
-| 3.1 | Business hours — pausar elapsed time |
-| 3.2 | Job per-message: schedule on incoming, cancel on reply |
+| # | Tarefa | Done |
+|---|--------|------|
+| 3.1 | Business hours — pausar elapsed time | Done |
+| 3.2 | Job per-message: schedule on incoming, cancel on reply | Done |
 
 ### Fase 4 — Integrações profundas (opcional)
 
-| # | Tarefa |
-|---|--------|
-| 4.1 | `Conversations::ResolveService` + required attrs backend |
-| 4.2 | `skip_required_attributes: true` para workflow system resolve |
-| 4.3 | Eventos Automação: `conversation_inactivity_threshold`, `conversation_agent_no_reply` |
-| 4.4 | Doc fronteira SLA vs workflow |
+| # | Tarefa | Done |
+|---|--------|------|
+| 4.1 | `Conversations::ResolveService` + required attrs backend | Done |
+| 4.2 | `skip_required_attributes: true` para workflow system resolve | Done |
+| 4.3 | Eventos Automação: `conversation_inactivity_threshold`, `conversation_agent_no_reply` | Done |
+| 4.4 | Doc fronteira SLA vs workflow | Done |
 
 ---
 

@@ -244,6 +244,9 @@
   display_name: Required Conversation Attributes
   enabled: false
   premium: true
+- name: conversation_agent_no_reply_rules
+  display_name: Agent No Reply Workflow Rules
+  enabled: true
 - name: advanced_assignment
   display_name: Advanced Assignment
   enabled: false
