@@ -1,21 +1,42 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { formatTime } from '@chatwoot/utils';
 import { useAlert } from 'dashboard/composables';
 import ReportHeader from './components/ReportHeader.vue';
 import ReportFilters from './components/ReportFilters.vue';
+import ServiceSessionEntityFilter from './components/ServiceSessionEntityFilter.vue';
+import PaginationFooter from 'dashboard/components-next/pagination/PaginationFooter.vue';
+import V4Button from 'dashboard/components-next/button/Button.vue';
 import ServiceSessionReportsAPI from 'dashboard/api/serviceSessionReports';
+import {
+  downloadCsvFile,
+  generateFileName,
+} from 'dashboard/helper/downloadHelper';
+import {
+  generateServiceSessionListURLParams,
+  parseServiceSessionListURLParams,
+} from './helpers/reportFilterHelper';
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+
+const LIST_PER_PAGE = 25;
 
 const isLoading = ref(false);
 const summary = ref(null);
 const tabData = ref({});
+const listPage = ref(parseServiceSessionListURLParams(route.query).page);
 const filters = ref({
   since: null,
   until: null,
   businessHours: false,
+  inboxId: null,
+  teamId: null,
+  userIds: null,
+  labelIds: null,
 });
 const activeTab = ref('summary');
 
@@ -39,6 +60,8 @@ const tabFetchers = {
   byLabel: 'byLabel',
 };
 
+const isListTab = tabId => tabId === 'open' || tabId === 'closed';
+
 const formatCount = value =>
   Number.isFinite(value)
     ? Number(value).toLocaleString()
@@ -53,6 +76,17 @@ const formatPercent = value =>
     : t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE');
 
 const activeData = computed(() => tabData.value[activeTab.value] || null);
+const listPagination = computed(() => {
+  const data = activeData.value;
+  if (!data || !isListTab(activeTab.value)) return null;
+
+  return {
+    currentPage: data.page || listPage.value,
+    totalItems: data.total_count || 0,
+    itemsPerPage: data.per_page || LIST_PER_PAGE,
+  };
+});
+
 const summaryCards = computed(() => {
   const value = summary.value || {};
   return [
@@ -69,6 +103,7 @@ const summaryCards = computed(() => {
     {
       key: 'total',
       label: t('SERVICE_SESSION_REPORTS.METRICS.TOTAL_SESSIONS'),
+      hint: t('SERVICE_SESSION_REPORTS.METRICS.TOTAL_SESSIONS_HINT'),
       value: formatCount(value.total_sessions),
     },
     {
@@ -130,6 +165,33 @@ const groupedRows = computed(() =>
   Array.isArray(activeData.value) ? activeData.value : []
 );
 
+const updateListPageURL = page => {
+  const pageParams = generateServiceSessionListURLParams({ page });
+  const nextQuery = { ...route.query };
+
+  if (pageParams.page) {
+    nextQuery.page = pageParams.page;
+  } else {
+    delete nextQuery.page;
+  }
+
+  router.replace({ query: nextQuery });
+};
+
+const resetListPage = () => {
+  listPage.value = 1;
+  updateListPageURL(1);
+};
+
+function buildRequestParams(tabId) {
+  const params = { ...filters.value };
+  if (isListTab(tabId)) {
+    params.page = listPage.value;
+    params.perPage = LIST_PER_PAGE;
+  }
+  return params;
+}
+
 async function fetchDataForTab(tabId, force = false) {
   const method = tabFetchers[tabId];
   if (!method) return;
@@ -137,7 +199,9 @@ async function fetchDataForTab(tabId, force = false) {
 
   isLoading.value = true;
   try {
-    const { data } = await ServiceSessionReportsAPI[method](filters.value);
+    const { data } = await ServiceSessionReportsAPI[method](
+      buildRequestParams(tabId)
+    );
     if (tabId === 'summary') {
       summary.value = data;
     } else {
@@ -152,31 +216,174 @@ async function fetchDataForTab(tabId, force = false) {
 
 async function onFilterChange({ from, to, businessHours }) {
   filters.value = {
+    ...filters.value,
     since: from,
     until: to,
     businessHours,
   };
+  resetListPage();
+  tabData.value = {};
+  await fetchDataForTab(activeTab.value, true);
+}
+
+async function onEntityFilterChange(entityFilters) {
+  filters.value = {
+    ...filters.value,
+    inboxId: entityFilters.inbox_id,
+    teamId: entityFilters.team_id,
+    userIds: entityFilters.user_ids,
+    labelIds: entityFilters.label_ids,
+  };
+  resetListPage();
+  tabData.value = {};
   await fetchDataForTab(activeTab.value, true);
 }
 
 async function setTab(tabId) {
   activeTab.value = tabId;
-  await fetchDataForTab(tabId, false);
+  if (isListTab(tabId)) {
+    listPage.value = parseServiceSessionListURLParams(route.query).page;
+  } else {
+    updateListPageURL(1);
+  }
+  await fetchDataForTab(tabId, isListTab(tabId));
 }
 
-const formatName = row =>
-  row?.name || row?.title || t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE');
+async function onListPageChange(page) {
+  listPage.value = page;
+  updateListPageURL(page);
+  await fetchDataForTab(activeTab.value, true);
+}
+
+const formatName = row => {
+  if (row?.id === 0) {
+    return t('SERVICE_SESSION_REPORTS.COMMON.UNASSIGNED_TEAM');
+  }
+
+  return (
+    row?.name || row?.title || t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE')
+  );
+};
+
 const formatUnixTime = value =>
   Number.isFinite(value)
     ? new Date(value * 1000).toLocaleString()
     : t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE');
+
+const formatSessionDuration = row => formatSeconds(row.session_duration);
+
+const escapeCsvValue = value => {
+  const stringValue = value == null ? '' : String(value);
+  if (/[",\n]/.test(stringValue)) {
+    return `"${stringValue.replace(/"/g, '""')}"`;
+  }
+  return stringValue;
+};
+
+const csvRowsForActiveTab = () => {
+  if (activeTab.value === 'open') {
+    return openRows.value.map(row => [
+      formatName(row.contact),
+      formatName(row.assignee),
+      formatName(row.inbox),
+      row.status || t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE'),
+      formatUnixTime(row.session_started_at),
+    ]);
+  }
+
+  if (activeTab.value === 'closed') {
+    return closedRows.value.map(row => [
+      formatName(row.contact),
+      formatName(row.assignee),
+      formatName(row.inbox),
+      formatSessionDuration(row),
+      formatUnixTime(row.resolved_at),
+    ]);
+  }
+
+  if (groupedRows.value.length) {
+    return groupedRows.value.map(row => [
+      formatName(row),
+      formatCount(row.open_sessions_count),
+      formatCount(row.closed_sessions_count),
+      formatSeconds(row.avg_session_duration),
+    ]);
+  }
+
+  return [];
+};
+
+const csvHeadersForActiveTab = () => {
+  if (activeTab.value === 'open') {
+    return [
+      t('SERVICE_SESSION_REPORTS.TABLE.CONTACT'),
+      t('SERVICE_SESSION_REPORTS.TABLE.AGENT'),
+      t('SERVICE_SESSION_REPORTS.TABLE.INBOX'),
+      t('SERVICE_SESSION_REPORTS.TABLE.STATUS'),
+      t('SERVICE_SESSION_REPORTS.TABLE.SESSION_STARTED_AT'),
+    ];
+  }
+
+  if (activeTab.value === 'closed') {
+    return [
+      t('SERVICE_SESSION_REPORTS.TABLE.CONTACT'),
+      t('SERVICE_SESSION_REPORTS.TABLE.AGENT'),
+      t('SERVICE_SESSION_REPORTS.TABLE.INBOX'),
+      t('SERVICE_SESSION_REPORTS.TABLE.SESSION_DURATION'),
+      t('SERVICE_SESSION_REPORTS.TABLE.RESOLVED_AT'),
+    ];
+  }
+
+  return [
+    t('SERVICE_SESSION_REPORTS.TABLE.NAME'),
+    t('SERVICE_SESSION_REPORTS.TABLE.OPEN_SESSIONS'),
+    t('SERVICE_SESSION_REPORTS.TABLE.CLOSED_SESSIONS'),
+    t('SERVICE_SESSION_REPORTS.TABLE.AVG_SESSION_DURATION'),
+  ];
+};
+
+const canDownloadCsv = computed(
+  () => activeTab.value !== 'summary' && csvRowsForActiveTab().length > 0
+);
+
+const downloadReports = () => {
+  const rows = csvRowsForActiveTab();
+  if (!rows.length) return;
+
+  const csvContent = [csvHeadersForActiveTab(), ...rows]
+    .map(row => row.map(escapeCsvValue).join(','))
+    .join('\n');
+  const tabTypeMap = {
+    open: 'service-sessions-open',
+    closed: 'service-sessions-closed',
+    byAgent: 'service-sessions-agent',
+    byInbox: 'service-sessions-inbox',
+    byTeam: 'service-sessions-team',
+    byLabel: 'service-sessions-label',
+  };
+  const fileName = generateFileName({
+    type: tabTypeMap[activeTab.value] || 'service-sessions',
+    to: filters.value.until || Math.floor(Date.now() / 1000),
+    businessHours: filters.value.businessHours,
+  });
+
+  downloadCsvFile(fileName, csvContent);
+};
 </script>
 
 <template>
   <ReportHeader
     :header-title="$t('SERVICE_SESSION_REPORTS.HEADER')"
     :header-description="$t('SERVICE_SESSION_REPORTS.DESCRIPTION')"
-  />
+  >
+    <V4Button
+      v-if="canDownloadCsv"
+      :label="$t('SERVICE_SESSION_REPORTS.DOWNLOAD')"
+      icon="i-ph-download-simple"
+      size="sm"
+      @click="downloadReports"
+    />
+  </ReportHeader>
 
   <div class="flex flex-col gap-4">
     <ReportFilters
@@ -185,6 +392,8 @@ const formatUnixTime = value =>
       show-business-hours
       @filter-change="onFilterChange"
     />
+
+    <ServiceSessionEntityFilter @filter-change="onEntityFilterChange" />
 
     <div class="flex flex-wrap gap-2">
       <button
@@ -218,6 +427,12 @@ const formatUnixTime = value =>
       >
         <p class="text-xs text-n-slate-11 mb-1">
           {{ card.label }}
+        </p>
+        <p
+          v-if="card.hint"
+          class="text-[10px] text-n-slate-10 mb-1 leading-tight"
+        >
+          {{ card.hint }}
         </p>
         <p class="text-xl font-semibold text-n-slate-12">
           {{ card.value }}
@@ -272,6 +487,13 @@ const formatUnixTime = value =>
           </tr>
         </tbody>
       </table>
+      <PaginationFooter
+        v-if="listPagination?.totalItems"
+        :current-page="listPagination.currentPage"
+        :total-items="listPagination.totalItems"
+        :items-per-page="listPagination.itemsPerPage"
+        @update:current-page="onListPageChange"
+      />
     </div>
 
     <div
@@ -312,11 +534,18 @@ const formatUnixTime = value =>
             <td class="p-3">{{ formatName(row.contact) }}</td>
             <td class="p-3">{{ formatName(row.assignee) }}</td>
             <td class="p-3">{{ formatName(row.inbox) }}</td>
-            <td class="p-3">{{ formatSeconds(row.session_duration) }}</td>
+            <td class="p-3">{{ formatSessionDuration(row) }}</td>
             <td class="p-3">{{ formatUnixTime(row.resolved_at) }}</td>
           </tr>
         </tbody>
       </table>
+      <PaginationFooter
+        v-if="listPagination?.totalItems"
+        :current-page="listPagination.currentPage"
+        :total-items="listPagination.totalItems"
+        :items-per-page="listPagination.itemsPerPage"
+        @update:current-page="onListPageChange"
+      />
     </div>
 
     <div

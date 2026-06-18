@@ -36,7 +36,17 @@ class ServiceSessionReportsAPI extends ApiClient {
 
   fetchData(
     path,
-    { since, until, businessHours, inboxId, teamId, userIds, labelIds } = {}
+    {
+      since,
+      until,
+      businessHours,
+      inboxId,
+      teamId,
+      userIds,
+      labelIds,
+      page,
+      perPage,
+    } = {}
   ) {
     return axios.get(`${this.url}/${path}`, {
       params: {
@@ -47,6 +57,8 @@ class ServiceSessionReportsAPI extends ApiClient {
         team_id: teamId,
         user_ids: userIds,
         label_ids: labelIds,
+        page,
+        per_page: perPage,
       },
     });
   }

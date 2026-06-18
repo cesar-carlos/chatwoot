@@ -67,3 +67,31 @@ export const generateCompleteURLParams = ({
   const filterParams = generateFilterURLParams(filters);
   return { ...dateParams, ...filterParams };
 };
+
+// FORK: service session report entity filter URL params
+export const parseServiceSessionEntityURLParams = query => ({
+  inbox_id: query.inbox_id ? Number(query.inbox_id) : null,
+  team_id: query.team_id ? Number(query.team_id) : null,
+  user_ids: query.user_ids ? Number(query.user_ids) : null,
+  label_ids: query.label_ids ? Number(query.label_ids) : null,
+});
+
+export const generateServiceSessionEntityURLParams = filters => {
+  const params = {};
+  if (filters.inbox_id) params.inbox_id = filters.inbox_id;
+  if (filters.team_id) params.team_id = filters.team_id;
+  if (filters.user_ids) params.user_ids = filters.user_ids;
+  if (filters.label_ids) params.label_ids = filters.label_ids;
+  return params;
+};
+
+// FORK: service session open/closed list pagination URL param
+export const parseServiceSessionListURLParams = query => ({
+  page: query.page ? Number(query.page) : 1,
+});
+
+export const generateServiceSessionListURLParams = ({ page } = {}) => {
+  const params = {};
+  if (page && page > 1) params.page = page;
+  return params;
+};

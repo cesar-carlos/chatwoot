@@ -356,6 +356,7 @@ const newReportRoutes = () => [
     activeOn: ['team_reports_show'],
   },
   {
+    // FORK: service session reports sidebar entry
     name: 'Reports Service Sessions',
     label: t('SIDEBAR.REPORTS_SERVICE_SESSIONS'),
     to: accountScopedRoute('service_session_reports'),

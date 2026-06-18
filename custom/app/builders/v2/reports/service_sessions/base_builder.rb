@@ -94,7 +94,9 @@ class V2::Reports::ServiceSessions::BaseBuilder
   def apply_open_date_filter(scope)
     return scope if since_time.blank? && until_time.blank?
 
-    session_time_sql = 'COALESCE(conversations.last_activity_at, conversations.created_at)'
+    # FORK: align open-session date filter with cycle start (conversation_opened), not last activity.
+    scope = scope.joins(open_cycle_join_sql)
+    session_time_sql = open_session_started_at_sql
 
     if since_time.present? && until_time.present?
       scope.where("#{session_time_sql} >= ? AND #{session_time_sql} <= ?", since_time, until_time)
@@ -178,6 +180,15 @@ class V2::Reports::ServiceSessions::BaseBuilder
       per_page: per_page,
       total_count: total_count,
       total_pages: total_count.zero? ? 0 : (total_count.to_f / per_page).ceil
+    }
+  end
+
+  def serialize_resource(resource)
+    return nil if resource.blank?
+
+    {
+      id: resource.id,
+      name: resource.try(:name) || resource.try(:title)
     }
   end
 end
