@@ -16,6 +16,7 @@ RSpec.describe 'Profile API (fork: groq_token)', type: :request do
       json_response = response.parsed_body
       expect(json_response['has_groq_token']).to be(true)
       expect(json_response).not_to have_key('groq_token')
+      expect(json_response['groq_token_masked']).to eq('•' * 40)
 
       agent.reload
       expect(agent.groq_token).to eq(valid_groq_token)
@@ -48,6 +49,7 @@ RSpec.describe 'Profile API (fork: groq_token)', type: :request do
       json_response = response.parsed_body
       expect(json_response['has_groq_token']).to be(true)
       expect(json_response).not_to have_key('groq_token')
+      expect(json_response['groq_token_masked']).to eq('•' * 40)
     end
   end
 
@@ -68,6 +70,7 @@ RSpec.describe 'Profile API (fork: groq_token)', type: :request do
       user_data = response.parsed_body.dig('payload', 'data')
       expect(user_data['has_groq_token']).to be(true)
       expect(user_data).not_to have_key('groq_token')
+      expect(user_data['groq_token_masked']).to eq('•' * 40)
     end
   end
 end

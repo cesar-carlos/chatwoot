@@ -27,13 +27,18 @@ const emit = defineEmits(['updateGroqToken']);
 const { t } = useI18n();
 const tokenValue = ref(props.groqToken);
 
-const isConfigured = computed(() => props.hasGroqToken && !tokenValue.value);
+const isConfigured = computed(
+  () => props.hasGroqToken && tokenValue.value === props.groqToken
+);
+
+const canSave = computed(() => {
+  const value = tokenValue.value?.trim();
+  if (!value) return false;
+  if (props.hasGroqToken && value === props.groqToken) return false;
+  return true;
+});
 
 const inputPlaceholder = computed(() => {
-  if (isConfigured.value) {
-    return t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.CONFIGURED_PLACEHOLDER');
-  }
-
   return t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.PLACEHOLDER');
 });
 
@@ -44,25 +49,21 @@ watch(
   }
 );
 
-watch(
-  () => props.hasGroqToken,
-  hasToken => {
-    if (hasToken && !props.groqToken) {
-      tokenValue.value = '';
-    }
-  }
-);
-
 const updateToken = () => {
-  emit('updateGroqToken', tokenValue.value);
+  if (!canSave.value) {
+    return;
+  }
+
+  emit('updateGroqToken', tokenValue.value.trim());
 };
 
 const copyToken = async () => {
-  if (!tokenValue.value) {
+  if (!canSave.value) {
     return;
   }
+
   try {
-    await copyTextToClipboard(tokenValue.value);
+    await copyTextToClipboard(tokenValue.value.trim());
     useAlert(t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.COPY_SUCCESS'));
   } catch (error) {
     useAlert(t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.COPY_ERROR'));
@@ -109,7 +110,7 @@ const copyToken = async () => {
       <NextButton
         type="submit"
         blue
-        :disabled="isUpdating"
+        :disabled="isUpdating || !canSave"
         :loading="isUpdating"
       >
         {{ t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.SAVE_BTN') }}
@@ -119,7 +120,7 @@ const copyToken = async () => {
         slate
         outline
         icon="i-lucide-copy"
-        :disabled="!tokenValue || isUpdating"
+        :disabled="!canSave || isUpdating"
         @click="copyToken"
       >
         {{ t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.COPY') }}

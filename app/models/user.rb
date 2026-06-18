@@ -163,6 +163,13 @@ class User < ApplicationRecord
     administrator? ? Current.account.inboxes : inboxes.where(account_id: Current.account.id)
   end
 
+  # FORK: masked preview for profile UI without exposing the Groq API token
+  def groq_token_masked
+    return if groq_token.blank?
+
+    '•' * 40
+  end
+
   def serializable_hash(options = nil)
     super(options).merge(confirmed: confirmed?)
   end
