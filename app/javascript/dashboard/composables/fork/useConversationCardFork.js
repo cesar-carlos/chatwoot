@@ -14,6 +14,7 @@ export const useConversationCardFork = ({
 
   const assignee = computed(() => unref(chatMetadata).assignee || {});
 
+  // FORK: assignme - Robust check for unassigned state - treat null, undefined, empty object, or missing id as unassigned
   const isAssigned = computed(() => {
     if (!assignee.value) return false;
     const assigneeId = assignee.value.id;
@@ -26,6 +27,7 @@ export const useConversationCardFork = ({
   });
 
   const showAssignmentButton = computed(() => {
+    // FORK: assignme - Show button if conversation is unassigned AND user is logged in AND has permission
     const hasPermission = unref(canAssignToMe);
     const userExists = !!unref(currentUser)?.id;
     const notAssigned = !isAssigned.value;
@@ -44,13 +46,16 @@ export const useConversationCardFork = ({
     showAssignee && assignee.value?.name;
 
   const messagePreviewPaddingClass = computed(() =>
+    // FORK: assignme - Reserve width so message preview doesn't overlap fast-assign action.
     showAssignmentButton.value ? 'ltr:pr-24 rtl:pl-24' : ''
   );
 
+  // FORK: assignme - Keep card height stable across lists after assignment changes.
   const contentSectionClass =
     'px-0 py-3 border-b group-hover:border-transparent flex-1 border-n-slate-3 min-w-0';
 
   const fastAssign = e => {
+    // FORK: assignme - Prevent card navigation on button click and guard against concurrent requests.
     e.stopPropagation();
     if (unref(isAssignPending)) return;
 

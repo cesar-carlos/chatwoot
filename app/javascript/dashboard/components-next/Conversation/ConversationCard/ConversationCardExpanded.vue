@@ -12,6 +12,8 @@ import SLACardLabel from 'dashboard/components-next/Conversation/Sla/SLACardLabe
 import CardStatusIcon from './CardStatusIcon.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+// FORK: assignme
+import ConversationCardFastAssignButton from 'dashboard/components/fork/ConversationCardFastAssignButton.vue';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -23,6 +25,9 @@ const props = defineProps({
   showAssignee: { type: Boolean, default: false },
   showInboxName: { type: Boolean, default: false },
   isInboxView: { type: Boolean, default: false },
+  // FORK: assignme
+  showFastAssign: { type: Boolean, default: false },
+  isAssignPending: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -30,6 +35,8 @@ const emit = defineEmits([
   'deSelectConversation',
   'click',
   'contextmenu',
+  // FORK: assignme
+  'fastAssign',
 ]);
 
 const lastMessageInChat = computed(() => getLastMessage(props.chat));
@@ -167,6 +174,16 @@ const selectedModel = computed({
 
     <!-- RIGHT SECTION -->
     <div class="flex items-center justify-end gap-1.5 flex-shrink-0">
+      <!-- FORK: assignme -->
+      <ConversationCardFastAssignButton
+        :chat-id="chat.id"
+        :assignee-id="assignee?.id"
+        :show="showFastAssign"
+        :is-assign-pending="isAssignPending"
+        class="!mt-0"
+        @fast-assign="$emit('fastAssign', $event)"
+      />
+
       <div v-if="showLabelsSection" class="min-w-0 w-full">
         <CardLabels
           :labels="chat.labels"

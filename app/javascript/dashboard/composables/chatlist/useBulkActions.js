@@ -4,6 +4,10 @@ import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import { useMapGetter } from 'dashboard/composables/store.js';
 import { useConversationRequiredAttributes } from 'dashboard/composables/useConversationRequiredAttributes';
+import {
+  normalizeAssignConversationIds,
+  useAssignMePending,
+} from 'dashboard/composables/fork/useAssignMePending';
 import wootConstants from 'dashboard/constants/globals';
 
 export function useBulkActions() {
@@ -15,9 +19,12 @@ export function useBulkActions() {
     'bulkActions/getSelectedConversationIds'
   );
   const selectedInboxes = ref([]);
-  // FORK: assignme - Tracks pending conversation IDs to prevent concurrent assignment requests.
-  // Uses Set for O(1) lookup performance during rapid user interactions.
-  const pendingAssignConversationIds = ref(new Set());
+  // FORK: assignme
+  const {
+    isAssignPending,
+    markAssignPendingUntilResolved,
+    clearAssignPending,
+  } = useAssignMePending({ store });
 
   function selectConversation(conversationId, inboxId) {
     store.dispatch('bulkActions/setSelectedConversationIds', conversationId);
@@ -59,36 +66,12 @@ export function useBulkActions() {
     return selectedConversations.value.includes(id);
   }
 
-  // FORK: assignme - Keep a consistent payload shape for single and multiple assignment paths.
-  function normalizeConversationIds(conversationId) {
-    if (conversationId) {
-      return Array.isArray(conversationId) ? conversationId : [conversationId];
-    }
-
-    return selectedConversations.value;
-  }
-
-  // FORK: assignme - Used by conversation cards to render loading from real request state.
-  function isAssignPending(conversationId) {
-    return pendingAssignConversationIds.value.has(conversationId);
-  }
-
-  function markAssignPending(conversationIds) {
-    pendingAssignConversationIds.value = new Set([
-      ...pendingAssignConversationIds.value,
-      ...conversationIds,
-    ]);
-  }
-
-  function clearAssignPending(conversationIds) {
-    const nextPending = new Set(pendingAssignConversationIds.value);
-    conversationIds.forEach(id => nextPending.delete(id));
-    pendingAssignConversationIds.value = nextPending;
-  }
-
   // Same method used in context menu, conversationId being passed from there.
   async function onAssignAgent(agent, conversationId = null) {
-    const conversationIds = normalizeConversationIds(conversationId);
+    const conversationIds = normalizeAssignConversationIds(
+      conversationId,
+      selectedConversations.value
+    );
     if (!conversationIds.length) return;
 
     const assigneeId = agent?.id ?? null;
@@ -97,7 +80,7 @@ export function useBulkActions() {
 
     if (conversationIds.some(id => isAssignPending(id))) return;
 
-    markAssignPending(conversationIds);
+    markAssignPendingUntilResolved(conversationIds, assigneeId);
 
     try {
       await store.dispatch('bulkActions/process', {
@@ -110,8 +93,8 @@ export function useBulkActions() {
 
       // FORK: assignme - Intentionally NOT doing optimistic UI update here.
       // Optimistic assignee mutation conflicts with DynamicScroller reconciliation when item
-      // changes lists (unassigned -> assigned), causing null vnode errors. We rely on ActionCable
-      // to broadcast the change (200-500ms latency is acceptable for stability).
+      // changes lists (unassigned -> assigned), causing null vnode errors. Pending state stays
+      // active until ActionCable updates meta.assignee; the button hides when assignee matches.
 
       store.dispatch('bulkActions/clearSelectedConversationIds');
       if (conversationId) {
@@ -125,6 +108,8 @@ export function useBulkActions() {
         useAlert(t('BULK_ACTION.ASSIGN_SUCCESFUL'));
       }
     } catch (err) {
+      clearAssignPending(conversationIds);
+
       const status = err?.response?.status;
       if (status === 403) {
         useAlert(
@@ -147,8 +132,6 @@ export function useBulkActions() {
           t('CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.FAILED')
         );
       }
-    } finally {
-      clearAssignPending(conversationIds);
     }
   }
 
