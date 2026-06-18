@@ -15,4 +15,14 @@ RSpec.describe Account::ConversationsResolutionSchedulerJob do
     expect(Conversations::ResolutionJob).to receive(:perform_later).with(account: account).once
     described_class.perform_now
   end
+
+  it 'skips migrated accounts' do
+    account.update!(
+      auto_resolve_after: 10 * 60 * 24,
+      settings: { 'workflow_rules_migrated_at' => Time.current.iso8601 }
+    )
+
+    expect(Conversations::ResolutionJob).not_to receive(:perform_later)
+    described_class.perform_now
+  end
 end

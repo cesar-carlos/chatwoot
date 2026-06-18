@@ -1,8 +1,9 @@
 class MessageTemplates::Template::AutoResolve
-  pattr_initialize [:conversation!]
+  pattr_initialize [:conversation!, { message: nil }]
 
   def perform
-    return if conversation.account.auto_resolve_message.blank?
+    # FORK: optional message override for conversation workflow rules
+    return if resolve_message_content.blank?
 
     if within_messaging_window?
       conversation.messages.create!(auto_resolve_message_params)
@@ -36,7 +37,11 @@ class MessageTemplates::Template::AutoResolve
       account_id: @conversation.account_id,
       inbox_id: @conversation.inbox_id,
       message_type: :template,
-      content: account.auto_resolve_message
+      content: resolve_message_content
     }
+  end
+
+  def resolve_message_content
+    @message.presence || account.auto_resolve_message
   end
 end

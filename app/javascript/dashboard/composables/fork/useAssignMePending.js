@@ -155,10 +155,7 @@ export function useAssignMePending({ store } = {}) {
         return;
       }
 
-      if (
-        previousAssigneeId !== undefined ||
-        currentAssigneeId !== null
-      ) {
+      if (previousAssigneeId !== undefined || currentAssigneeId !== null) {
         nextObserved.set(id, currentAssigneeId);
       }
     });
@@ -189,10 +186,7 @@ export function useAssignMePending({ store } = {}) {
       return;
     }
 
-    if (
-      previousAssigneeId !== undefined ||
-      currentAssigneeId !== null
-    ) {
+    if (previousAssigneeId !== undefined || currentAssigneeId !== null) {
       observedAssigneeIds.value = new Map(observedAssigneeIds.value).set(
         normalizedId,
         currentAssigneeId ?? null

@@ -3,6 +3,9 @@ class Account::ConversationsResolutionSchedulerJob < ApplicationJob
 
   def perform
     Account.with_auto_resolve.find_each(batch_size: 100) do |account|
+      # FORK: skip legacy auto-resolve when workflow rules migration completed
+      next if account.workflow_rules_migrated?
+
       Conversations::ResolutionJob.perform_later(account: account)
     end
   end

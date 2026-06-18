@@ -2,16 +2,18 @@
 
 Evolução de **Fluxos de Conversa**: regras configuráveis de resolução automática e escalonamento quando o agente não responde, com filtro por caixa de entrada, condições e ações no estilo Automação.
 
-**Estado:** documentado (melhorias incorporadas) · implementação pendente
+**Estado:** implementado (Fases 1–4)
 
 | Área | Status |
 |------|--------|
-| Auto-resolve por inatividade (`last_activity_at`) | ✅ Existe (settings globais) → migrar para regras |
-| Atributos obrigatórios na resolução | ✅ Existe (Enterprise, frontend-only) — integração Fase 4 |
-| Filtro por inbox + condições | 📋 Planejado Fase 2 |
-| Múltiplas ações | 📋 Planejado Fase 1–2 |
-| Gatilho “agente não respondeu” (`waiting_since`) | 📋 Planejado Fase 1–2 |
-| Eventos sintéticos na Automação | 📋 Planejado Fase 4 (opcional) |
+| Auto-resolve por inatividade (`last_activity_at`) | ✅ Regras `conversation_inactivity` + migração legacy |
+| Atributos obrigatórios na resolução | ✅ `Custom::Conversations::ResolveService` (Fase 4) |
+| Filtro por inbox + condições | ✅ Fase 2 |
+| Múltiplas ações | ✅ `Custom::ConversationWorkflow::ActionService` |
+| Gatilho “agente não respondeu” (`waiting_since`) | ✅ `agent_no_reply` + flag `conversation_agent_no_reply_rules` |
+| Eventos sintéticos na Automação | ✅ Fase 4 |
+| Business hours | ✅ `BusinessHoursElapsedCalculator` (opt-in por regra) |
+| Job per-message | ✅ `ScheduleOnMessageJob` em incoming |
 
 ---
 
@@ -19,7 +21,7 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 | Perfil | Documento |
 |--------|-----------|
-| **Implementar** | [implementation-plan.md](./implementation-plan.md) |
+| **Implementar / manter** | [implementation-plan.md](./implementation-plan.md) |
 | **Por que esta abordagem** | [implementation-decision-tree.md](./implementation-decision-tree.md) |
 | **Regras de negócio** | [business-rules.md](./business-rules.md) |
 | **Estado atual do código** | [current-state.md](./current-state.md) |
@@ -34,7 +36,7 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
    - **Inatividade geral** (`last_activity_at`)
    - **Agente não respondeu** (`waiting_since`)
 3. Filtro por **inbox** + **condições** (assignee, team, labels, priority).
-4. **Múltiplas ações** via `ConversationWorkflow::ActionService` (wrapper sobre `ActionService`).
+4. **Múltiplas ações** via `Custom::ConversationWorkflow::ActionService` (wrapper sobre `ActionService`).
 5. **Escalonamento em níveis** = múltiplas regras com durações distintas.
 6. Migração segura de `auto_resolve_*` legacy com guard anti-duplo job.
 7. Fork: `custom/` + `# FORK:` mínimo upstream.
@@ -48,7 +50,7 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 | # | Decisão | Valor |
 |---|---------|-------|
 | T1 | Modelo | Opção A — tabela `conversation_workflow_rules` em `custom/` |
-| T2 | Executor | `ConversationWorkflow::ActionService` (wrapper, não `ActionService` cru) |
+| T2 | Executor | `Custom::ConversationWorkflow::ActionService` (wrapper, não `ActionService` cru) |
 | T3 | Multi-regra | **Todas** as regras matching executam (não first-match), salvo dedup |
 | T4 | Legacy job | Skip `ResolutionJob` quando `workflow_rules_migrated_at` presente |
 | T5 | Condições | Fase 2 — `assignee_id`, `team_id`, `labels`, `priority` |
@@ -58,24 +60,17 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 | Tópico | Decisão |
 |--------|---------|
-| Scheduler | Cron 5 min; Fase 4 opcional: job per-message |
+| Scheduler | Cron 5 min; job per-message em incoming (Fase 3) |
 | Dedup `agent_no_reply` | `(rule_id, conversation_id, waiting_since_epoch)` |
-| Dedup inatividade | Conversa sai do scope após resolve; ou chave por `last_activity_at_epoch` |
+| Dedup inatividade | Chave por `last_activity_at_epoch` |
 | Tiered SLA | **Múltiplas regras** (ex.: 15 min / 2h / 24h), uma por tier |
 | Feature flags | `auto_resolve_conversations` → inatividade; **`conversation_agent_no_reply_rules`** → agente não respondeu |
 | `send_message` | Default **não** zera `waiting_since`; opt-in `counts_as_agent_reply` por ação |
 | Activity audit | `Current.executed_by = ConversationWorkflowRule` + i18n |
 | i18n | en + pt_BR |
-| Required attrs | Fase 4 — `Conversations::ResolveService` + `skip_required_attributes` para sistema |
+| Required attrs | Fase 4 — `Custom::Conversations::ResolveService` + `skip_required_attributes` para sistema |
 | SLA Enterprise | Escopo distinto — SLA = contrato; workflow = automação operacional |
-| Automação UI (Opção D) | Fase 4 — eventos sintéticos após MVP estável |
-
-### Decisões ainda em aberto
-
-| # | Pergunta | Default recomendado |
-|---|----------|---------------------|
-| D4 | Filtro extra `first_reply_created_at IS NULL` em `agent_no_reply`? | Opcional por regra (Fase 2.1) |
-| D1 | Expor eventos na UI Automação? | Sim, Fase 4 |
+| Automação UI (Opção D) | Fase 4 — eventos sintéticos `conversation_inactivity_threshold`, `conversation_agent_no_reply` |
 
 ---
 
@@ -83,7 +78,7 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [current-state.md](./current-state.md) | Baseline do código |
+| [current-state.md](./current-state.md) | Baseline + código implementado |
 | [business-rules.md](./business-rules.md) | Regras normativas completas |
 | [implementation-plan.md](./implementation-plan.md) | Fases 0–4, arquivos, migração, testes |
 | [implementation-decision-tree.md](./implementation-decision-tree.md) | Opções A–D |
@@ -91,4 +86,4 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 ---
 
-*Última atualização: jun/2026 — melhorias P0–P2 incorporadas*
+*Última atualização: jun/2026 — implementação Fases 1–4 concluída*

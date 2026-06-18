@@ -160,8 +160,11 @@ describe('useAssignMePending', () => {
   });
 
   it('normalizes string conversation ids', () => {
-    const { isAssignPending, markAssignPendingUntilResolved, clearAssignPending } =
-      useAssignMePending();
+    const {
+      isAssignPending,
+      markAssignPendingUntilResolved,
+      clearAssignPending,
+    } = useAssignMePending();
 
     markAssignPendingUntilResolved(['99'], 5);
     expect(isAssignPending(99)).toBe(true);
