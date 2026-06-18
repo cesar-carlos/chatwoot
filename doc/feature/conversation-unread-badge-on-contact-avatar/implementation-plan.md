@@ -4,7 +4,7 @@
 
 Exibir o total de mensagens não lidas como badge sobre o avatar do contato nos cards de conversa, de forma consistente entre layouts.
 
-Antes da implementação, o contador aparecia em locais diferentes (coluna direita no card legado, preview/meta no components-next). Agora o indicador visual único fica sobre o avatar do contato.
+Antes da implementação, o contador aparecia em locais diferentes (coluna direita no card legado, preview/meta no components-next). Agora o indicador visual único fica sobre o avatar do contato quando há thumbnail.
 
 ## Objective
 
@@ -13,6 +13,7 @@ Antes da implementação, o contador aparecia em locais diferentes (coluna direi
 3. Exibir `9+` para valores acima de 9
 4. Evitar duplicidade de contador no mesmo card
 5. Manter comportamento atual de hover/seleção/checkbox
+6. Fallback compacto quando o avatar está oculto (`hideThumbnail`)
 
 ## Scope
 
@@ -21,7 +22,7 @@ Antes da implementação, o contador aparecia em locais diferentes (coluna direi
 - Lista principal condensada (`widgets/conversation/ConversationCard.vue`)
 - Lista principal expanded (`ConversationCardExpanded.vue`)
 - Histórico de contato/empresa (`components-next/Conversation/ConversationCard/ConversationCard.vue`)
-- Componente visual reutilizável + overlay fork para merge-safe integration
+- Componentes e composables fork para integração merge-safe
 
 ### Out of Scope
 
@@ -29,72 +30,93 @@ Antes da implementação, o contador aparecia em locais diferentes (coluna direi
 - Mudar APIs de conversas
 - Feature flag global
 - Rework completo de layout dos cards
+- Badge na sidebar (`SidebarUnreadBadge` mantém cap `99+` — contexto distinto)
+
+### Fora do escopo com fallback
+
+| View | Comportamento |
+|------|---------------|
+| `ContactConversations.vue` | Usa card legado com `hide-thumbnail` — badge aparece na coluna de timestamp (fallback compacto), não no avatar |
 
 ## As-Built Architecture
 
 ```
-useUnreadCount (composable fork)
-  └── normaliza unreadCount / unread_count → number seguro
+normalizeUnreadCount.js (helper fork)
+  └── normalizeUnreadCount(raw) → integer ≥ 0
+  └── formatConversationUnreadBadgeLabel(count) → "9+" cap
+  └── CONVERSATION_UNREAD_BADGE_CAP = 9
 
-UnreadCountBadge (componente visual puro)
-  └── safeCount, label 9+, pointer-events-none
+useUnreadCount (composable fork)
+  └── lê unreadCount / unread_count → normalizeUnreadCount
+
+UnreadCountBadge (componente visual fork)
+  └── render + label 9+; espera count já normalizado
 
 ConversationCardForkAvatarBadge (wrapper fork)
-  └── posicionamento absolute + integração merge-safe
+  └── posicionamento absolute sobre avatar
 
 Cards consumidores:
-  ├── ConversationCard.vue (legado condensado) via useConversationCardFork
-  ├── ConversationCardExpanded.vue via useUnreadCount
-  └── ConversationCard.vue (components-next histórico) via useUnreadCount
+  ├── ConversationCard.vue (legado) via useUnreadCount + fork badge
+  ├── ConversationCardExpanded.vue via useUnreadCount + fork badge
+  └── ConversationCard.vue (components-next histórico) via useUnreadCount + fork badge
 ```
 
 ### Arquivos principais
 
 | Arquivo | Responsabilidade |
 |---------|------------------|
-| `UnreadCountBadge.vue` | Badge visual fail-safe (sem store, sem i18n) |
-| `ConversationCardForkAvatarBadge.vue` | Posicionamento sobre avatar; evita edits upstream |
-| `useUnreadCount.js` | Normalização centralizada de count |
-| `useConversationCardFork.js` | Integração fork no card legado (unread + assignme) |
-| `UnreadCountBadge.spec.js` | Testes de normalização e render |
+| `composables/fork/normalizeUnreadCount.js` | Normalização única + cap `9+` para cards |
+| `composables/fork/useUnreadCount.js` | Lê payload da conversa e expõe `unreadCount` / `hasUnread` |
+| `components/fork/UnreadCountBadge.vue` | Badge visual puro (sem store, sem i18n) |
+| `components/fork/ConversationCardForkAvatarBadge.vue` | Posicionamento absolute sobre avatar |
+| `composables/fork/useConversationCardFork.js` | Apenas assignme — **sem** lógica de unread |
+| `components/fork/specs/UnreadCountBadge.spec.js` | Testes de render do badge |
+| `composables/fork/spec/normalizeUnreadCount.spec.js` | Testes de normalização e label |
+| `composables/fork/spec/useUnreadCount.spec.js` | Testes do composable |
 
 ### Integração por layout
 
-| Layout | Arquivo | Badge no avatar | Contador duplicado removido |
-|--------|---------|-----------------|-----------------------------|
-| Lista condensada | `widgets/conversation/ConversationCard.vue` | ✅ via `ConversationCardForkAvatarBadge` | ✅ removido `UnreadBadge` da coluna direita |
-| Lista expanded | `ConversationCardExpanded.vue` | ✅ wrapper `relative` + fork badge | ✅ removido de `CardContent.vue` |
-| Histórico contato | `components-next/.../ConversationCard.vue` | ✅ via fork badge | ✅ removido de previews |
+| Layout | Arquivo | Badge no avatar | Fallback sem avatar | Contador duplicado removido |
+|--------|---------|-----------------|---------------------|----------------------------|
+| Lista condensada | `widgets/conversation/ConversationCard.vue` | ✅ `ConversationCardForkAvatarBadge` | ✅ `UnreadCountBadge` junto ao `TimeAgo` quando `hideThumbnail` | ✅ |
+| Lista expanded | `ConversationCardExpanded.vue` | ✅ fork badge | — | ✅ (só estilo em `CardContent`) |
+| Histórico contato/empresa | `components-next/.../ConversationCard.vue` | ✅ fork badge | — | ✅ |
+| Painel contato (`ContactConversations`) | card legado + `hide-thumbnail` | — | ✅ badge no timestamp | ✅ |
 
 ## Project Rules Applied
 
-- Overlay fork em `custom/` (`ConversationCardForkAvatarBadge`, `useUnreadCount`) para minimizar conflitos upstream
-- Marcadores `// FORK:` nos pontos de integração upstream inevitáveis
+- Overlay fork em `components/fork/` e `composables/fork/` — sem arquivos novos em `components-next/`
+- Marcadores `// FORK:` / `<!-- FORK: -->` nos pontos de integração
+- `useConversationCardFork` restrito ao assignme (SRP)
+- `ConversationItem` faz `provide('conversationCardAssignmeFork')` para evitar double-call no card legado
 - Tailwind only (sem CSS custom novo)
 - MVP, happy path primeiro
-- Componente visual puro sem lógica de negócio (SOLID: uma responsabilidade)
+- Normalização centralizada em `normalizeUnreadCount.js` (sem duplicar em badge + composable)
 
 ## UX and Visual Behavior
 
 - Badge no canto **superior esquerdo** do avatar (`-top-1 ltr:-left-1 rtl:-right-1`)
 - Offset negativo para sobrepor borda do avatar sem cobrir o centro
 - `bg-n-brand`, `text-xxs`, `shadow-lg`, compatível com avatares 24px e 40px
-- Limite visual: **`9+`** (hardcoded no componente, sem i18n)
+- Limite visual nos **cards de conversa**: **`9+`** (`CONVERSATION_UNREAD_BADGE_CAP`)
+- Sidebar mantém **`99+`** (`SidebarUnreadBadge`) — densidade e escala diferentes
 - `pointer-events-none` para não bloquear clique/hover/checkbox
+- Com `hideThumbnail`: badge inline acima do timestamp (ex.: `ContactConversations`)
 
 ## Data and Contracts
 
 Sem mudanças de backend. Campos consumidos:
 
 - legado/expanded: `chat.unread_count`
-- components-next: `conversation.unreadCount` (fallback para `unread_count`)
+- components-next: `conversation.unreadCount` (preferido; fallback `unread_count`)
 
-Normalização em `useUnreadCount`: `null`, `undefined`, string não numérica, negativo → `0`.
+Normalização em `normalizeUnreadCount`: `null`, `undefined`, string não numérica, negativo → `0`; frações → `Math.floor`.
 
 ## Reliability
 
-- `UnreadCountBadge.vue`: `safeCount` com `Number()` + clamp ≥ 0
-- Testes: `0`, `1`, `9`, `10`, `null`, `undefined`, `-1`, `'3'`
+- Normalização única em `normalizeUnreadCount.js`
+- `UnreadCountBadge` confia em count pré-normalizado do composable
+- Testes: normalização (`0`, `1`, `9`, `10`, `null`, `undefined`, `-1`, `'3'`, `3.7`) + render do badge
 - Atualização reativa via props/store existentes (sem watchers extras)
 
 ## Decisions (closed)
@@ -102,29 +124,34 @@ Normalização em `useUnreadCount`: `null`, `undefined`, string não numérica, 
 | Questão | Decisão |
 |---------|---------|
 | Posição no avatar | Superior esquerdo (offset negativo) |
-| Limite visual | `9+` |
-| Contador na coluna direita | Removido — badge único no avatar |
-| Estratégia fork | Wrapper + composable em `custom/`, não edit direto em upstream quando possível |
+| Limite visual nos cards | `9+` via `CONVERSATION_UNREAD_BADGE_CAP` |
+| Limite na sidebar | `99+` — componente separado, fora deste escopo |
+| Contador na coluna direita | Removido — badge único por card |
+| Sem avatar (`hideThumbnail`) | Badge compacto junto ao timestamp |
+| Estratégia fork | `components/fork/` + `composables/fork/`, edits mínimos upstream com `FORK:` |
+| assignme vs unread | Composables separados (`useConversationCardFork` / `useUnreadCount`) |
 
 ## Acceptance Criteria
 
-- [x] Badge sobre avatar em todos os layouts do escopo
+- [x] Badge sobre avatar em todos os layouts do escopo com thumbnail
+- [x] Fallback compacto quando avatar oculto
 - [x] Sem badge quando unread = 0
-- [x] Exibição `9+` para contagens altas
+- [x] Exibição `9+` para contagens altas nos cards
 - [x] Sem duplicidade de contador no mesmo card
 - [x] Sem regressão de clique/hover/seleção
 - [x] Fallback seguro para valores inválidos
-- [x] Testes de componente passando
-- [x] Lint sem novos erros nos arquivos alterados
+- [x] Testes passando
+- [x] Arquivos fork fora de `components-next/`
 
 ## Manual Test Plan
 
 1. Lista condensada: unread 0 / 1–9 / 10+ → badge correto ou ausente
 2. Lista expanded (wide + setting): mesmo comportamento no avatar do contato
-3. Histórico de contato (sidebar): badge no avatar, sem badge no preview
-4. Checkbox/overlay no avatar legado: interação intacta
-5. Mark-as-read/unread em tempo real: badge atualiza
-6. Tema light/dark
+3. Histórico de contato (sidebar): badge no avatar, preview/nome com estilo unread
+4. Painel contato (`hideThumbnail`): badge na coluna direita, sem avatar
+5. Checkbox/overlay no avatar legado: interação intacta
+6. Mark-as-read/unread em tempo real: badge atualiza
+7. Tema light/dark
 
 ## Rollout
 

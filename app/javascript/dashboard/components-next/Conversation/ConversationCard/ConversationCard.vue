@@ -67,7 +67,7 @@ const showMessagePreviewWithoutMeta = computed(() => {
   );
 });
 
-const { unreadCount } = useUnreadCount(computed(() => props.conversation));
+const { unreadCount, hasUnread } = useUnreadCount(computed(() => props.conversation));
 
 const onCardClick = e => {
   const path = frontendURL(
@@ -107,7 +107,10 @@ const onCardClick = e => {
     </div>
     <div class="flex flex-col w-full gap-1 min-w-0">
       <div class="flex items-center justify-between h-6 gap-2">
-        <h4 class="text-base font-medium truncate text-n-slate-12">
+        <h4
+          class="text-base truncate text-n-slate-12"
+          :class="hasUnread ? 'font-semibold' : 'font-medium'"
+        >
           {{ currentContactName }}
         </h4>
         <div class="flex items-center gap-2">
@@ -129,6 +132,7 @@ const onCardClick = e => {
       <CardMessagePreview
         v-show="showMessagePreviewWithoutMeta"
         :conversation="conversation"
+        :unread-count="unreadCount"
       />
       <CardMessagePreviewWithMeta
         v-show="!showMessagePreviewWithoutMeta"
@@ -136,6 +140,7 @@ const onCardClick = e => {
         :conversation="conversation"
         :contact="contact"
         :account-labels="accountLabels"
+        :unread-count="unreadCount"
       />
     </div>
   </div>
