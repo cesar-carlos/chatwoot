@@ -24,6 +24,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  unreadCount: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const slaCardLabelRef = ref(null);
@@ -39,11 +43,6 @@ const assignee = computed(() => {
     thumbnail: agent.thumbnail,
     status: agent.availabilityStatus,
   };
-});
-
-const unreadMessagesCount = computed(() => {
-  const { unreadCount } = props.conversation;
-  return unreadCount;
 });
 
 const hasSlaThreshold = computed(() => {
@@ -65,7 +64,7 @@ defineExpose({
       <MessagePreview
         :message="lastNonActivityMessage"
         class="flex-1 min-w-0"
-        :class="unreadMessagesCount > 0 ? 'text-n-slate-12' : 'text-n-slate-11'"
+        :class="unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'"
       />
     </div>
 

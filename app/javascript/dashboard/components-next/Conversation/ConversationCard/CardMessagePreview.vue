@@ -10,6 +10,10 @@ const props = defineProps({
     type: Object,
     required: true,
   },
+  unreadCount: {
+    type: Number,
+    default: 0,
+  },
 });
 
 const lastNonActivityMessage = computed(() =>
@@ -25,10 +29,6 @@ const assignee = computed(() => {
   };
 });
 
-const unreadMessagesCount = computed(() => {
-  const { unreadCount } = props.conversation;
-  return unreadCount;
-});
 </script>
 
 <template>
@@ -37,7 +37,7 @@ const unreadMessagesCount = computed(() => {
       :message="lastNonActivityMessage"
       multi-line
       class="w-full"
-      :class="unreadMessagesCount > 0 ? 'text-n-slate-12' : 'text-n-slate-11'"
+      :class="unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'"
     />
     <div class="flex items-center flex-shrink-0 pb-2">
       <Avatar

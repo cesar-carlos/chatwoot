@@ -1,6 +1,5 @@
 // FORK: extracted for merge-safe fork integration
 import { computed, unref } from 'vue';
-import { useUnreadCount } from './useUnreadCount';
 
 export const useConversationCardFork = ({
   chat,
@@ -10,8 +9,6 @@ export const useConversationCardFork = ({
   isAssignPending,
   emit,
 }) => {
-  const { unreadCount, hasUnread } = useUnreadCount(chat);
-
   const assignee = computed(() => unref(chatMetadata).assignee || {});
 
   // FORK: assignme - Robust check for unassigned state - treat null, undefined, empty object, or missing id as unassigned
@@ -64,8 +61,6 @@ export const useConversationCardFork = ({
 
   return {
     assignee,
-    unreadCount,
-    hasUnread,
     showAssignmentButton,
     showAssigneeInMeta,
     messagePreviewPaddingClass,

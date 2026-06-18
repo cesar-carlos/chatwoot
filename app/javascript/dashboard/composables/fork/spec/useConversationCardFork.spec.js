@@ -7,10 +7,9 @@ describe('useConversationCardFork', () => {
     canAssignToMe = true,
     currentUser = { id: 1, name: 'Agent', email: 'a@b.com' },
     isAssignPending = false,
-    unreadCount = 0,
   } = {}) => {
     const emit = vi.fn();
-    const chat = ref({ id: 99, unread_count: unreadCount });
+    const chat = ref({ id: 99, unread_count: 0 });
     const chatMetadata = ref({ assignee });
 
     const fork = useConversationCardFork({
@@ -76,11 +75,5 @@ describe('useConversationCardFork', () => {
     fastAssign(event);
 
     expect(emit).not.toHaveBeenCalled();
-  });
-
-  it('normalizes unread counts from the chat payload', () => {
-    const { unreadCount, hasUnread } = buildFork({ unreadCount: 3 });
-    expect(unreadCount.value).toBe(3);
-    expect(hasUnread.value).toBe(true);
   });
 });
