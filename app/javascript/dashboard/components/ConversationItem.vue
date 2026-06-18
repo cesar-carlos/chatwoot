@@ -7,6 +7,8 @@ import ConversationCard from './widgets/conversation/ConversationCard.vue';
 import ConversationCardExpanded from 'dashboard/components-next/Conversation/ConversationCard/ConversationCardExpanded.vue';
 import ContextMenu from 'dashboard/components/ui/ContextMenu.vue';
 import ConversationContextMenu from './widgets/conversation/contextMenu/Index.vue';
+import { useCanAssignToMe } from 'dashboard/composables/fork/useCanAssignToMe';
+import { useConversationCardFork } from 'dashboard/composables/fork/useConversationCardFork';
 
 const props = defineProps({
   source: { type: Object, required: true },
@@ -16,7 +18,6 @@ const props = defineProps({
   foldersId: { type: [String, Number], default: 0 },
   showAssignee: { type: Boolean, default: false },
   showExpanded: { type: Boolean, default: false },
-  canAssignToMe: { type: Boolean, default: false },
 });
 
 const router = useRouter();
@@ -54,6 +55,7 @@ watch(
   }
 );
 
+const currentUser = useMapGetter('getCurrentUser');
 const currentChat = useMapGetter('getSelectedChat');
 const inboxesList = useMapGetter('inboxes/getInboxes');
 const activeInbox = useMapGetter('getSelectedInbox');
@@ -62,6 +64,28 @@ const accountId = useMapGetter('getCurrentAccountId');
 const chatMetadata = computed(() => props.source.meta || {});
 const assignee = computed(() => chatMetadata.value.assignee || {});
 const senderId = computed(() => chatMetadata.value.sender?.id);
+
+const { canAssignConversationToMe } = useCanAssignToMe();
+
+const canAssignToMe = computed(() => canAssignConversationToMe(props.source));
+
+const chat = computed(() => props.source);
+const isAssignPendingForSource = computed(() =>
+  isAssignPending(props.source.id)
+);
+
+const emitAssignAgent = (agent, conversationIds) => {
+  assignAgent(agent, conversationIds);
+};
+
+const { showAssignmentButton, fastAssign } = useConversationCardFork({
+  chat,
+  chatMetadata,
+  canAssignToMe,
+  currentUser,
+  isAssignPending: isAssignPendingForSource,
+  emit: { assignAgent: emitAssignAgent },
+});
 
 const currentContact = computed(() =>
   senderId.value ? store.getters['contacts/getContact'](senderId.value) : {}
@@ -194,10 +218,13 @@ const onDeleteConversation = () => {
     :show-assignee="showAssigneeForExpandedCard"
     :show-inbox-name="showInboxName"
     :is-inbox-view="isInboxView"
+    :show-fast-assign="showAssignmentButton"
+    :is-assign-pending="isAssignPendingForSource"
     @select-conversation="onExpandedSelect"
     @de-select-conversation="onExpandedSelect"
     @click="onCardClick"
     @contextmenu="openContextMenu"
+    @fast-assign="fastAssign"
   />
 
   <!-- Default (condensed) layout -->
@@ -209,7 +236,7 @@ const onDeleteConversation = () => {
     :inbox="inbox"
     :selected="isConversationSelected(source.id)"
     :is-active-chat="isActiveChat"
-    :is-assign-pending="isAssignPending(source.id)"
+    :is-assign-pending="isAssignPendingForSource"
     :can-assign-to-me="canAssignToMe"
     :show-assignee="showAssignee"
     :show-inbox-name="showInboxName"

@@ -13,8 +13,10 @@ import UnreadBadge from 'dashboard/components-next/Conversation/ConversationCard
 import SLACardLabel from './components/SLACardLabel.vue';
 import VoiceCallStatus from './VoiceCallStatus.vue';
 import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
-import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
-import UnreadCountBadge from 'dashboard/components-next/Conversation/ConversationCard/UnreadCountBadge.vue';
+// FORK: assignme and unread badge fork features
+import { useConversationCardFork } from 'dashboard/composables/fork/useConversationCardFork';
+import ConversationCardForkAvatarBadge from 'dashboard/components/fork/ConversationCardForkAvatarBadge.vue';
+import ConversationCardFastAssignButton from 'dashboard/components/fork/ConversationCardFastAssignButton.vue';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -43,37 +45,25 @@ const store = useStore();
 const currentUser = useMapGetter('getCurrentUser');
 
 const hovered = ref(false);
-
 const chatMetadata = computed(() => props.chat.meta || {});
 
-// FORK: guard against null/undefined assignee payloads in conversation meta.
-const metaAssignee = computed(() => chatMetadata.value.assignee || {});
-// FORK: assignme - Robust check for unassigned state - treat null, undefined, empty object, or missing id as unassigned
-const isAssigned = computed(() => {
-  if (!metaAssignee.value) return false;
-  const assigneeId = metaAssignee.value.id;
-  return (
-    assigneeId !== null &&
-    assigneeId !== undefined &&
-    assigneeId !== '' &&
-    assigneeId !== 0
-  );
+const {
+  assignee: metaAssignee,
+  unreadCount,
+  hasUnread,
+  showAssignmentButton,
+  showAssigneeInMeta,
+  messagePreviewPaddingClass,
+  contentSectionClass,
+  fastAssign,
+} = useConversationCardFork({
+  chat: computed(() => props.chat),
+  chatMetadata,
+  canAssignToMe: computed(() => props.canAssignToMe),
+  currentUser,
+  isAssignPending: computed(() => props.isAssignPending),
+  emit,
 });
-const showAssignmentButton = computed(() => {
-  // FORK: assignme - Show button if conversation is unassigned AND user is logged in AND has permission
-  const hasPermission = props.canAssignToMe;
-  const userExists = !!currentUser.value?.id;
-  const notAssigned = !isAssigned.value;
-
-  return notAssigned && userExists && hasPermission;
-});
-
-const currentUserAgentInfo = computed(() => ({
-  id: currentUser.value.id,
-  name: currentUser.value.name,
-  email: currentUser.value.email,
-  avatar_url: currentUser.value.avatar_url,
-}));
 
 const senderId = computed(() => chatMetadata.value.sender?.id);
 
@@ -83,17 +73,6 @@ const resolvedContact = computed(() => {
     : props.currentContact;
 });
 
-// FORK: unread badge over avatar - normalize unread count to keep badge rendering safe.
-const unreadCount = computed(() => {
-  const parsedUnreadCount = Number(props.chat.unread_count);
-  if (Number.isNaN(parsedUnreadCount) || parsedUnreadCount <= 0) {
-    return 0;
-  }
-
-  return Math.floor(parsedUnreadCount);
-});
-
-const hasUnread = computed(() => unreadCount.value > 0);
 const lastMessageInChat = computed(() => getLastMessage(props.chat));
 
 const voiceCallData = computed(() => {
@@ -111,8 +90,7 @@ const showMetaSection = computed(() => {
   return (
     props.showInboxName ||
     (props.showAssignee && props.assignee.name) ||
-    // FORK: avoid runtime TypeError when assignee is absent.
-    (props.showAssignee && metaAssignee.value?.name) ||
+    showAssigneeInMeta(props.showAssignee) ||
     props.chat.priority
   );
 });
@@ -129,18 +107,10 @@ const showLabelsSection = computed(() => {
   return props.chat.labels?.length > 0 || hasSlaPolicyId.value;
 });
 
-const messagePreviewClass = computed(() => {
-  let previewPaddingClass = '';
-  if (showAssignmentButton.value) {
-    previewPaddingClass = 'ltr:pr-24 rtl:pl-24';
-  }
-
-  return [
-    hasUnread.value ? 'font-medium text-n-slate-12' : 'text-n-slate-11',
-    // FORK: assignme - Reserve width so message preview doesn't overlap fast-assign action.
-    previewPaddingClass,
-  ];
-});
+const messagePreviewClass = computed(() => [
+  hasUnread.value ? 'font-medium text-n-slate-12' : 'text-n-slate-11',
+  messagePreviewPaddingClass.value,
+]);
 
 const onThumbnailHover = () => {
   hovered.value = !props.hideThumbnail;
@@ -169,14 +139,6 @@ watch(
     hovered.value = false;
   }
 );
-
-const fastAssign = e => {
-  // FORK: assignme - Prevent card navigation on button click and guard against concurrent requests.
-  e.stopPropagation();
-  if (props.isAssignPending) return;
-
-  emit('assignAgent', currentUserAgentInfo.value, [props.chat.id]);
-};
 </script>
 
 <template>
@@ -217,18 +179,13 @@ const fastAssign = e => {
           </label>
         </template>
       </Avatar>
-      <!-- FORK: unread badge over avatar -->
-      <UnreadCountBadge
-        v-if="!hideThumbnail"
+      <ConversationCardForkAvatarBadge
         :count="unreadCount"
-        class="absolute z-20 -top-1 ltr:-left-1 rtl:-right-1"
+        :hide-thumbnail="hideThumbnail"
       />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
-      <!-- FORK: assignme - Keep card height stable across lists after assignment changes. -->
-      <div
-        class="px-0 py-3 border-b group-hover:border-transparent flex-1 border-n-slate-3 min-w-0"
-      >
+      <div :class="contentSectionClass">
         <div
           v-if="showMetaSection"
           class="flex items-center min-w-0 gap-1"
@@ -375,25 +332,13 @@ const fastAssign = e => {
             :count="unreadCount"
             class="ltr:ml-auto rtl:mr-auto mt-1"
           />
-          <button
-            v-show="showAssignmentButton"
-            :key="`assign-btn-${chat.id}-${metaAssignee?.id || 'unassigned'}`"
-            v-tooltip.bottom="$t('CONVERSATION.FAST_ASSIGN')"
-            type="button"
-            class="mt-1 ltr:ml-auto rtl:mr-auto bg-n-slate-5 dark:bg-n-slate-7 text-n-slate-12 text-xxs px-1.5 py-0.5 rounded font-medium transition-all duration-200 hover:bg-n-slate-6 dark:hover:bg-n-slate-8"
-            :class="{ 'opacity-70 pointer-events-none': isAssignPending }"
-            :disabled="isAssignPending"
-            :aria-label="$t('CONVERSATION.FAST_ASSIGN')"
-            @click="fastAssign($event)"
-          >
-            <template v-if="isAssignPending">
-              <Spinner
-                :size="10"
-                class="text-n-slate-12 ltr:mr-1 rtl:ml-1 inline-block"
-              />
-            </template>
-            {{ $t('CONVERSATION.FAST_ASSIGN') }}
-          </button>
+          <ConversationCardFastAssignButton
+            :chat-id="chat.id"
+            :assignee-id="metaAssignee?.id"
+            :show="showAssignmentButton"
+            :is-assign-pending="isAssignPending"
+            @fast-assign="fastAssign"
+          />
         </div>
         <CardLabels
           v-if="showLabelsSection"

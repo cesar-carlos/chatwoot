@@ -66,6 +66,52 @@ const props = defineProps({
 const emit = defineEmits(['conversationLoad']);
 const { uiSettings } = useUISettings();
 const { t } = useI18n();
+const filterAttributeName = attributeI18nKey => {
+  switch (attributeI18nKey) {
+    case 'STATUS':
+      return t('FILTER.ATTRIBUTES.STATUS');
+    case 'ASSIGNEE_NAME':
+      return t('FILTER.ATTRIBUTES.ASSIGNEE_NAME');
+    case 'PRIORITY':
+      return t('FILTER.ATTRIBUTES.PRIORITY');
+    case 'INBOX_NAME':
+      return t('FILTER.ATTRIBUTES.INBOX_NAME');
+    case 'TEAM_NAME':
+      return t('FILTER.ATTRIBUTES.TEAM_NAME');
+    case 'CONTACT':
+      return t('FILTER.ATTRIBUTES.CONTACT');
+    case 'CONVERSATION_IDENTIFIER':
+      return t('FILTER.ATTRIBUTES.CONVERSATION_IDENTIFIER');
+    case 'CAMPAIGN_NAME':
+      return t('FILTER.ATTRIBUTES.CAMPAIGN_NAME');
+    case 'LABELS':
+      return t('FILTER.ATTRIBUTES.LABELS');
+    case 'BROWSER_LANGUAGE':
+      return t('FILTER.ATTRIBUTES.BROWSER_LANGUAGE');
+    case 'REFERER_LINK':
+      return t('FILTER.ATTRIBUTES.REFERER_LINK');
+    case 'CREATED_AT':
+      return t('FILTER.ATTRIBUTES.CREATED_AT');
+    case 'LAST_ACTIVITY':
+      return t('FILTER.ATTRIBUTES.LAST_ACTIVITY');
+    default:
+      return attributeI18nKey;
+  }
+};
+
+const assigneeTabName = key => {
+  switch (key) {
+    case 'me':
+      return t('CHAT_LIST.ASSIGNEE_TYPE_TABS.me');
+    case 'unassigned':
+      return t('CHAT_LIST.ASSIGNEE_TYPE_TABS.unassigned');
+    case 'all':
+      return t('CHAT_LIST.ASSIGNEE_TYPE_TABS.all');
+    default:
+      return key;
+  }
+};
+
 const router = useRouter();
 const route = useRoute();
 const store = useStore();
@@ -86,7 +132,7 @@ const appliedFilter = ref([]);
 const advancedFilterTypes = ref(
   advancedFilterOptions.map(filter => ({
     ...filter,
-    attributeName: t(`FILTER.ATTRIBUTES.${filter.attributeI18nKey}`),
+    attributeName: filterAttributeName(filter.attributeI18nKey),
   }))
 );
 
@@ -183,7 +229,7 @@ const assigneeTabItems = computed(() => {
     item => item.permissions
   ).map(({ key, count: countKey }) => ({
     key,
-    name: t(`CHAT_LIST.ASSIGNEE_TYPE_TABS.${key}`),
+    name: assigneeTabName(key),
     count: conversationStats.value[countKey] || 0,
   }));
 });
@@ -193,13 +239,6 @@ const showAssigneeInConversationCard = computed(() => {
     hasAppliedFiltersOrActiveFolders.value ||
     activeAssigneeTab.value === wootConstants.ASSIGNEE_TYPE.ALL
   );
-});
-
-const canAssignToMe = computed(() => {
-  // FORK: assignme - If user can view unassigned conversations, they can assign to themselves.
-  // This is implied by their access to the conversation list.
-  // Only hide for users with no conversation access at all.
-  return !!(currentUser.value && currentUser.value.id);
 });
 
 const currentPageFilterKey = computed(() => {
@@ -975,7 +1014,6 @@ watch(conversationFilters, (newVal, oldVal) => {
       :conversation-type="conversationType"
       :show-assignee="showAssigneeInConversationCard"
       :is-on-expanded-layout="isOnExpandedLayout"
-      :can-assign-to-me="canAssignToMe"
       @load-more="loadMoreConversations"
     />
     <Dialog
