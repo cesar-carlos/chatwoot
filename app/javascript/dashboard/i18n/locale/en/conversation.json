@@ -211,7 +211,8 @@
           "FAILED": "Couldn't assign agent. Please try again.",
           "PERMISSION_DENIED": "You don't have permission to assign this conversation.",
           "VALIDATION_FAILED": "Couldn't assign conversation. Please review the data and try again.",
-          "TIMEOUT": "Assignment request timed out. Please try again."
+          "TIMEOUT": "Assignment request timed out. Please try again.",
+          "PENDING": "Assignment is already in progress. Please wait."
         },
         "LABEL_ASSIGNMENT": {
           "SUCCESFUL": "Assigned label #{labelName} to conversation id {conversationId}",

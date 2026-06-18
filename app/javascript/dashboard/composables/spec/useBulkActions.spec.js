@@ -165,6 +165,9 @@ describe('useBulkActions onAssignAgent', () => {
     await onAssignAgent(agent, 42);
 
     expect(store.dispatch).toHaveBeenCalledTimes(1);
+    expect(useAlert).toHaveBeenCalledWith(
+      'CONVERSATION.CARD_CONTEXT_MENU.API.AGENT_ASSIGNMENT.PENDING'
+    );
 
     resolveDispatch();
     await firstRequest;

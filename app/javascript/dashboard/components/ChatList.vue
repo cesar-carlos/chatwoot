@@ -21,6 +21,8 @@ import ConversationResolveAttributesModal from 'dashboard/components-next/Conver
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useAlert } from 'dashboard/composables';
 import { useBulkActions } from 'dashboard/composables/chatlist/useBulkActions';
+// FORK: assignme - shared permission check for fast-assign across conversation cards.
+import { useCanAssignToMe } from 'dashboard/composables/fork/useCanAssignToMe';
 import { useFilter } from 'shared/composables/useFilter';
 import { useTrack } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
@@ -170,6 +172,8 @@ const {
   onAssignLabels,
   onRemoveLabels,
 } = useBulkActions();
+
+const { canAssignConversationToMe } = useCanAssignToMe();
 
 const {
   initializeStatusAndAssigneeFilterToModal,
@@ -900,6 +904,8 @@ provide('assignPriority', assignPriority);
 provide('isConversationSelected', isConversationSelected);
 // FORK: assignme - Lets conversation cards render assign loading from request state.
 provide('isAssignPending', isAssignPending);
+// FORK: assignme - Single permission evaluator for all conversation cards in the list.
+provide('canAssignConversationToMe', canAssignConversationToMe);
 provide('deleteConversation', handleDelete);
 
 watch(activeTeam, () => resetAndFetchData());

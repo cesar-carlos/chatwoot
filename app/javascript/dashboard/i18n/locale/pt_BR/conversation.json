@@ -180,7 +180,8 @@
           "FAILED": "Não foi possível atribuir agente. Por favor, tente novamente.",
           "PERMISSION_DENIED": "Você não tem permissão para atribuir esta conversa.",
           "VALIDATION_FAILED": "Não foi possível atribuir a conversa. Revise os dados e tente novamente.",
-          "TIMEOUT": "A solicitação de atribuição expirou. Tente novamente."
+          "TIMEOUT": "A solicitação de atribuição expirou. Tente novamente.",
+          "PENDING": "Atribuição em andamento. Aguarde um momento."
         },
         "LABEL_ASSIGNMENT": {
           "SUCCESFUL": "Etiqueta #{labelName} atribuída para a conversa {conversationId}",
