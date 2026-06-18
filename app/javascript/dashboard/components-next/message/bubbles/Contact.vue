@@ -1,9 +1,11 @@
 <script setup>
+// FORK: share contact card
 import { computed } from 'vue';
 import { useAlert } from 'dashboard/composables';
 import { useStore } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
 import { useMessageContext } from '../provider.js';
+import { MESSAGE_VARIANTS } from '../constants.js';
 import BaseAttachmentBubble from './BaseAttachment.vue';
 
 import {
@@ -11,7 +13,7 @@ import {
   ExceptionWithMessage,
 } from 'shared/helpers/CustomErrors';
 
-const { attachments } = useMessageContext();
+const { attachments, variant } = useMessageContext();
 
 const $store = useStore();
 const { t } = useI18n();
@@ -26,8 +28,9 @@ const phoneNumber = computed(() => {
 
 const contactName = computed(() => {
   const { meta } = attachment.value ?? {};
-  const { firstName, lastName } = meta ?? {};
-  return `${firstName ?? ''} ${lastName ?? ''}`.trim();
+  const firstName = meta?.firstName ?? meta?.first_name ?? '';
+  const lastName = meta?.lastName ?? meta?.last_name ?? '';
+  return `${firstName} ${lastName}`.trim();
 });
 
 const formattedPhoneNumber = computed(() => {
@@ -41,6 +44,19 @@ const rawPhoneNumber = computed(() => {
 const isContactInfoResponse = computed(() => {
   return attachment.value?.meta?.isContactInfoResponse;
 });
+
+const showSaveAction = computed(
+  () =>
+    variant.value !== MESSAGE_VARIANTS.AGENT &&
+    !!formattedPhoneNumber.value &&
+    !isContactInfoResponse.value
+);
+
+const senderTranslationKey = computed(() =>
+  variant.value === MESSAGE_VARIANTS.AGENT
+    ? ''
+    : 'CONVERSATION.SHARED_ATTACHMENT.CONTACT'
+);
 
 function getContactObject() {
   const contactItem = {
@@ -104,9 +120,9 @@ const action = computed(() => ({
   <BaseAttachmentBubble
     icon="i-teenyicons-user-circle-solid"
     icon-bg-color="bg-[#D6409F]"
-    sender-translation-key="CONVERSATION.SHARED_ATTACHMENT.CONTACT"
+    :sender-translation-key="senderTranslationKey"
     :title="contactName"
     :content="phoneNumber"
-    :action="formattedPhoneNumber && !isContactInfoResponse ? action : null"
+    :action="showSaveAction ? action : null"
   />
 </template>

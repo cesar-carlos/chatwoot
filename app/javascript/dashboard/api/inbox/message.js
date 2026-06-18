@@ -13,6 +13,7 @@ export const buildCreatePayload = ({
   toEmails = '',
   templateParams,
   isVoiceMessage = false,
+  sharedContactId,
 }) => {
   let payload;
   if (files && files.length !== 0) {
@@ -48,6 +49,10 @@ export const buildCreatePayload = ({
       to_emails: toEmails,
       template_params: templateParams,
     };
+    if (sharedContactId) {
+      // FORK: share contact card
+      payload.shared_contact_id = sharedContactId;
+    }
   }
   return payload;
 };
@@ -69,6 +74,7 @@ class MessageApi extends ApiClient {
     toEmails = '',
     templateParams,
     isVoiceMessage = false,
+    sharedContactId,
   }) {
     return axios({
       method: 'post',
@@ -84,6 +90,7 @@ class MessageApi extends ApiClient {
         toEmails,
         templateParams,
         isVoiceMessage,
+        sharedContactId,
       }),
     });
   }

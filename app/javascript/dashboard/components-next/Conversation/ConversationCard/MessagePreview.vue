@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { MESSAGE_TYPE } from 'widget/helpers/constants';
 import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
@@ -24,6 +25,7 @@ const props = defineProps({
 });
 
 const { getPlainText } = useMessageFormatter();
+const { t } = useI18n();
 
 const attachmentIcons = {
   image: 'i-lucide-image',
@@ -31,6 +33,7 @@ const attachmentIcons = {
   video: 'i-lucide-video',
   file: 'i-lucide-file',
   location: 'i-lucide-map-pin',
+  contact: 'i-lucide-contact',
   fallback: 'i-lucide-link-2',
 };
 
@@ -64,8 +67,30 @@ const attachmentIcon = computed(() => {
   return attachmentIcons[lastMessageFileType.value];
 });
 
-const attachmentMessageContent = computed(() => {
-  return `CHAT_LIST.ATTACHMENTS.${lastMessageFileType.value}.CONTENT`;
+const attachmentMessageText = computed(() => {
+  switch (lastMessageFileType.value) {
+    case 'image':
+      return t('CHAT_LIST.ATTACHMENTS.image.CONTENT');
+    case 'audio':
+      return t('CHAT_LIST.ATTACHMENTS.audio.CONTENT');
+    case 'video':
+      return t('CHAT_LIST.ATTACHMENTS.video.CONTENT');
+    case 'file':
+      return t('CHAT_LIST.ATTACHMENTS.file.CONTENT');
+    case 'location':
+      return t('CHAT_LIST.ATTACHMENTS.location.CONTENT');
+    case 'contact':
+      return t('CHAT_LIST.ATTACHMENTS.contact.CONTENT');
+    default:
+      return '';
+  }
+});
+
+const showAttachmentPreview = computed(() => {
+  if (!props.message.attachments?.length) return false;
+  // FORK: share contact card
+  if (lastMessageFileType.value === 'contact') return true;
+  return !props.message.content;
 });
 
 const isMessageSticker = computed(() => {
@@ -130,12 +155,14 @@ const isMessageSticker = computed(() => {
         {{ $t('CHAT_LIST.ATTACHMENTS.image.CONTENT') }}
       </span>
 
-      <template v-else-if="message.content">
+      <template
+        v-else-if="message.content && lastMessageFileType !== 'contact'"
+      >
         {{ parsedLastMessage }}
       </template>
 
       <span
-        v-else-if="message.attachments"
+        v-else-if="showAttachmentPreview"
         class="inline-block align-middle truncate"
       >
         <Icon
@@ -144,7 +171,7 @@ const isMessageSticker = computed(() => {
           class="inline-block align-middle size-3.5 ltr:mr-1 rtl:ml-1"
         />
         <span class="inline-block align-middle">
-          {{ $t(attachmentMessageContent) }}
+          {{ attachmentMessageText }}
         </span>
       </span>
 

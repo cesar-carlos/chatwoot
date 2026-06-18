@@ -2,14 +2,14 @@
 
 Plano para **envio de contact card pelo agente**, reutilizando inbound + UI existentes.
 
-**Estado:** documentado · implementação pendente · **decisões fechadas (jun/2026)**
+**Estado:** implementado (MVP) · jun/2026
 
 | Área | Status |
 |------|--------|
 | Inbound WhatsApp/Telegram | ✅ Existe |
 | Exibição `Contact.vue` | ✅ Existe |
-| Outbound (agente → cliente) | 📋 Planejado |
-| UI ReplyBox | 📋 [ui-design.md](./ui-design.md) |
+| Outbound (agente → cliente) | ✅ Implementado |
+| UI ReplyBox | ✅ `ShareContact/` + `ReplyBottomPanel` |
 
 ---
 

@@ -39,7 +39,9 @@ class Telegram::SendAttachmentsService
   end
 
   def send_attachments(type, attachments)
-    if [:media, :audio].include?(type)
+    if type == :contact
+      send_contact_attachments(attachments)
+    elsif [:media, :audio].include?(type)
       media_group_request(channel.chat_id(message), attachments, channel.reply_to_message_id(message))
     else
       send_individual_attachments(attachments)
@@ -47,7 +49,7 @@ class Telegram::SendAttachmentsService
   end
 
   def group_attachments_by_type
-    attachments_by_type = { media: [], audio: [], document: [] }
+    attachments_by_type = { media: [], audio: [], document: [], contact: [] }
 
     message.attachments.each do |attachment|
       type = attachment_type(attachment[:file_type])
@@ -59,6 +61,8 @@ class Telegram::SendAttachmentsService
         attachments_by_type[:audio] << attachment_data
       when 'photo', 'video'
         attachments_by_type[:media] << attachment_data
+      when 'contact'
+        attachments_by_type[:contact] << attachment_data
       end
     end
 
@@ -66,7 +70,43 @@ class Telegram::SendAttachmentsService
   end
 
   def attachment_type(file_type)
-    { 'audio' => 'audio', 'image' => 'photo', 'file' => 'document', 'video' => 'video' }[file_type] || 'document'
+    {
+      'audio' => 'audio',
+      'image' => 'photo',
+      'file' => 'document',
+      'video' => 'video',
+      'contact' => 'contact'
+    }[file_type] || 'document'
+  end
+
+  # FORK: share contact card
+  def send_contact_attachments(attachments)
+    response = nil
+    attachments.each do |attachment_data|
+      response = send_contact(
+        channel.chat_id(message),
+        attachment_data[:attachment],
+        channel.reply_to_message_id(message)
+      )
+      break unless handle_response(response)
+    end
+    response
+  end
+
+  def send_contact(chat_id, attachment, reply_to_message_id)
+    meta = attachment.meta || {}
+    first_name = meta['firstName'] || meta['first_name'].presence || attachment.fallback_title
+    last_name = meta['lastName'] || meta['last_name']
+    body = {
+      chat_id: chat_id,
+      phone_number: attachment.fallback_title,
+      first_name: first_name,
+      last_name: last_name
+    }.compact
+    body[:reply_to_message_id] = reply_to_message_id if reply_to_message_id
+    body.merge!(business_connection_body)
+
+    HTTParty.post("#{channel.telegram_api_url}/sendContact", body: body)
   end
 
   def media_group_request(chat_id, attachments, reply_to_message_id)
