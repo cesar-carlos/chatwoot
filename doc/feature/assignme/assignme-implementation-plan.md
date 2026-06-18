@@ -6,19 +6,20 @@
 - Entregar com minimo delta de codigo e com seguranca de merge com upstream.
 
 ## Escopo e Decisoes
-- Escopo principal: adicionar CTA no `ConversationCard` para conversas sem agente.
+- Escopo principal: adicionar CTA no `ConversationCard` (layout condensado) e `ConversationCardExpanded` (layout expandido) para conversas sem agente.
 - Escopo tecnico: frontend + i18n + validacao manual; sem novo endpoint backend.
 - Estrategia de backend: manter `POST /bulk_actions` + `BulkActionsJob` como caminho oficial.
-- Estrategia de fork: alterar apenas o necessario e marcar divergencias com `// FORK: ...`.
+- Estrategia de fork: logica extraida para `composables/fork/` e `components/fork/`; hook minimo no card upstream.
 - Estrategia de i18n: **somente** `en` (fonte) e `pt_BR` para esta feature.
 
 ## Contexto Tecnico do Fluxo
-- `ConversationCard` emite `assignAgent` com usuario atual e `chat.id`.
-- `ConversationItem` apenas propaga evento.
-- `ChatList` injeta e encaminha para `useBulkActions.onAssignAgent`.
-- `useBulkActions` chama `bulkActions/process` com `fields.assignee_id`.
+- `ConversationCard` / `ConversationCardExpanded` emitem `assignAgent` com usuario atual e `chat.id`.
+- `ConversationItem` calcula permissao por conversa (`useCanAssignToMe`) e propaga props/inject.
+- `ChatList` injeta `isAssignPending` e encaminha `assignAgent` para `useBulkActions.onAssignAgent`.
+- `useBulkActions` delega pending state para `useAssignMePending` e chama `bulkActions/process`.
 - `bulkActions` chama `BulkActionsAPI.create` em `bulk_actions`.
 - `BulkActionsController` enfileira `BulkActionsJob`, que atualiza a conversa por `display_id`.
+- O botao some quando ActionCable atualiza o assignee na store (nao quando o spinner para).
 
 ## Fase 1 - Preparacao e Alinhamento
 - Confirmar se a feature vai existir apenas na lista de conversas (nao no header/sidebar).
@@ -31,18 +32,19 @@
 - [x] Confirmar se havera tracking de evento de uso.
 
 ## Fase 2 - Implementacao de UI no ConversationCard
-- Adicionar estado de loading (`isAssigning`) para evitar clique duplo.
+- Adicionar estado de loading (`isAssigning`) para evitar clique duplo durante o HTTP e ate websocket.
 - Exibir botao apenas quando a conversa estiver sem assignee.
 - Disparar `assignAgent` com dados do agente atual e o `chat.id`.
 - Preservar comportamento atual do card (navegacao, contexto, unread, labels, voice status).
 
 ### Checklist
-- [x] Adicionar computed de exibicao do botao para conversa sem assignee.
+- [x] Adicionar computed de exibicao do botao para conversa sem assignee (`useConversationCardFork`).
 - [x] Adicionar payload do agente atual (`id`, `name`, `email`, `avatar_url`).
 - [x] Implementar handler `fastAssign` com `stopPropagation`.
-- [x] Adicionar loading visual e `disabled` durante requisicao.
+- [x] Adicionar loading visual e `disabled` durante requisicao (`ConversationCardFastAssignButton`).
 - [x] Ajustar espaco de layout do preview para nao colidir com o botao.
 - [x] Marcar alteracoes divergentes com `// FORK: assignme`.
+- [x] Adicionar fast-assign no layout expandido (`ConversationCardExpanded`).
 
 ## Fase 3 - I18n e Textos
 - Adicionar chave de traducao dedicada para o CTA no namespace de conversa.
@@ -71,8 +73,8 @@
 ### Checklist
 - [x] Conversa sem assignee mostra botao.
 - [x] Clique em "Atribuir para mim" atribui para usuario logado.
-- [x] Botao fica em loading e impede double submit.
-- [x] Botao desaparece apos atribuicao concluida.
+- [x] Botao fica em loading e impede double submit ate websocket confirmar assignee.
+- [x] Botao desaparece apos atribuicao concluida (via ActionCable).
 - [x] Clique no botao nao abre conversa por acidente.
 - [x] Context menu de atribuicao continua funcionando.
 
@@ -91,81 +93,118 @@
 - Revisar pontos de resiliencia no caminho `useBulkActions` -> `BulkActionsJob`.
 
 ### Checklist
-- [x] Vincular o fim do loading do `AssignMe` ao resultado real da atribuicao (evitar timeout fixo isolado).
-- [x] Implementar bloqueio por conversa em andamento (`pendingConversationIds`) para impedir double submit em re-render.
+- [x] Vincular loading ao enqueue HTTP de `bulk_actions` e manter ate websocket.
+- [x] Implementar bloqueio por conversa em andamento (`useAssignMePending`) ate `meta.assignee` atualizar.
 - [x] Melhorar feedback de erro para atribuicao (mapear ao menos 403, 422 e timeout para mensagens mais claras).
 - [x] Corrigir comparacao de chave em `BulkActionsJob#available_params` para `key.to_s == 'status'`.
+- [x] Alinhar `canAssignToMe` com `applyRoleFilter` via `useCanAssignToMe`.
+- [x] Testes de integracao para `onAssignAgent` em `useBulkActions.spec.js`.
 - [x] Avaliar estrategia hibrida de performance:
   - atribuicao unica via endpoint direto de assignments;
   - atribuicao em lote via `bulk_actions`.
+  - **Decisao:** adiada; manter `bulk_actions` por consistencia.
 
-## Arquivos Esperados para Alteracao
-- `app/javascript/dashboard/components/widgets/conversation/ConversationCard.vue`
-- `app/javascript/dashboard/composables/chatlist/useBulkActions.js`
+## Arquivos Alterados
+- `app/javascript/dashboard/components/widgets/conversation/ConversationCard.vue` — hook `useConversationCardFork` + componentes fork
+- `app/javascript/dashboard/components/fork/ConversationCardFastAssignButton.vue` — CTA + spinner
+- `app/javascript/dashboard/components/fork/ConversationCardForkAvatarBadge.vue` — badge unread (fork)
+- `app/javascript/dashboard/composables/fork/useConversationCardFork.js` — logica assignme + unread
+- `app/javascript/dashboard/composables/fork/useAssignMePending.js` — pending ate websocket + normalizacao de ids
+- `app/javascript/dashboard/composables/fork/useCanAssignToMe.js` — permissao por conversa via `applyRoleFilter`
+- `app/javascript/dashboard/composables/fork/useUnreadCount.js` — contagem unread normalizada
+- `app/javascript/dashboard/composables/chatlist/useBulkActions.js` — integracao assignme + pending ate websocket
+- `app/javascript/dashboard/components/ConversationItem.vue` — permissao por conversa + fast-assign expandido
+- `app/javascript/dashboard/components-next/Conversation/ConversationCard/ConversationCardExpanded.vue` — fast-assign no layout expandido
+- `app/javascript/dashboard/components/ChatList.vue` — `provide('isAssignPending')`
+- `app/javascript/dashboard/components/ConversationList.vue` — repassa props de layout
 - `app/javascript/dashboard/i18n/locale/en/conversation.json`
 - `app/javascript/dashboard/i18n/locale/pt_BR/conversation.json`
 - `app/jobs/bulk_actions_job.rb`
+- `app/javascript/dashboard/composables/fork/spec/useAssignMePending.spec.js`
+- `app/javascript/dashboard/composables/fork/spec/useConversationCardFork.spec.js`
+- `app/javascript/dashboard/composables/fork/spec/useCanAssignToMe.spec.js`
+- `app/javascript/dashboard/composables/spec/useBulkActions.spec.js`
 
 ## Criterios de Conclusao
-- CTA de atribuicao rapida visivel apenas quando aplicavel.
+- CTA de atribuicao rapida visivel apenas quando aplicavel (condensado e expandido).
 - Atribuicao para usuario atual funcionando pelo fluxo oficial de `bulk_actions`.
 - Nenhuma regressao visivel no card de conversa.
 - Alteracoes de fork devidamente marcadas com `FORK:`.
-- Fluxo de loading/erro consistente com resposta real do backend.
+- Loading consistente ate websocket confirmar assignee; botao some via ActionCable.
 
 ## Decisoes Finais de Implementacao
-- Escopo de exibicao: apenas lista de conversas (sem incluir header/sidebar).
+- Escopo de exibicao: lista de conversas nos layouts condensado (`ConversationCard`) e expandido (`ConversationCardExpanded`).
 - Copy final: `CONVERSATION.FAST_ASSIGN` com tooltip e `aria-label`.
-- Permissao de exibicao do botao: usuario precisa ter permissao para atuar em nao atribuidas (`agent`/`administrator` ou permissoes `conversation_manage`/`conversation_unassigned_manage`).
-- Visibilidade do botao: oculto por padrao e exibido no hover do card; mantido acessivel via `focus-within` e visivel durante loading.
+- Permissao de exibicao do botao: `useCanAssignToMe` reutiliza `applyRoleFilter` — usuario precisa de `conversation_manage`, `conversation_unassigned_manage`, ou `conversation_team_unassigned_manage` (com time correspondente) para conversas sem assignee; agentes/administradores sempre podem.
+- Visibilidade do botao: **sempre visivel** quando conversa sem assignee e usuario tem permissao (decisao de acessibilidade).
 - Tracking: sem evento adicional nesta iteracao (mantido fora de escopo para minimizar delta).
 - Estrategia hibrida: avaliada e adiada; mantido `bulk_actions` para atribuicao unica e em lote por consistencia de fluxo e menor risco.
+- Arquitetura fork: logica em `composables/fork/` e `components/fork/`; card upstream com import minimo.
 
 ## Melhorias Pos-Review
 - Melhoria de feedback: avaliado update otimista, mas removido por conflito com `DynamicScroller` reconciliation; latencia de ActionCable (200-500ms) e aceitavel para estabilidade.
-- Melhoria de qualidade futura: adicionar testes focados em pending state, double submit e mapeamento de erro.
-- Melhoria de acessibilidade: botao sempre visivel, com `focus-within` e navegacao por teclado funcional.
-- Melhoria de UI: substituido `fluent-icon` com `arrow-clockwise` por componente `Spinner` dedicado semanticamente correto.
-- Melhoria de seguranca: refinada logica de permissao `canAssignToMe` - removido `ROLES`, mantendo apenas permissoes explicitas de gerenciamento de conversas.
+- Melhoria de qualidade: testes em `useAssignMePending`, `useConversationCardFork`, `useCanAssignToMe`, `useBulkActions`.
+- Melhoria de acessibilidade: botao sempre visivel quando aplicavel, com navegacao por teclado funcional.
+- Melhoria de UI: componente `Spinner` dedicado em `ConversationCardFastAssignButton`.
+- Melhoria de arquitetura: pending state extraido para `useAssignMePending`; logica do card para `useConversationCardFork`.
+- Melhoria de confiabilidade: pending ate websocket via `markAssignPendingUntilResolved` + watcher na store.
+- Melhoria de permissao: `useCanAssignToMe` alinhado com filtros da lista de conversas.
 
 ### Checklist
 - [x] Avaliacao de update otimista (decisao: nao implementar por conflito com virtual list).
 - [x] Substituicao de icone de loading por componente `Spinner` dedicado.
-- [x] Refinamento de logica de permissao para ser mais restritiva.
+- [x] Logica de permissao alinhada com `applyRoleFilter` (`useCanAssignToMe`).
+- [x] Pending ate websocket confirmar assignee.
+- [x] Fast-assign no layout expandido.
+- [x] Testes de integracao para `onAssignAgent` (403, 422, timeout, generico, duplicate guard).
 - [x] Documentacao aprimorada dos comentarios FORK com raciocinio tecnico.
-- [ ] Cobertura de testes para pending/double submit/erros (adiado; validacao manual nesta etapa).
+- [x] Cobertura de testes para pending/double submit (`useAssignMePending`, `useConversationCardFork`, `useCanAssignToMe`).
 - [ ] Smoke de acessibilidade por teclado (`Tab`/`Shift+Tab`) no botao de atribuicao (validacao manual pelo usuario).
 
 ## Status de Validacao
 - Validacao tecnica concluida:
-  - eslint nos arquivos alterados sem erros.
+  - eslint nos arquivos alterados.
   - rubocop no `BulkActionsJob` sem ofensas.
   - verificacao de fluxo de atualizacao via ActionCable (`assignee.changed` e `conversation.updated` -> `updateConversation` + refresh de stats).
-  - correcoes criticas aplicadas: spinner semantico + logica de permissao refinada.
+  - refactor para composables fork (`useConversationCardFork`, `useAssignMePending`, `useCanAssignToMe`).
+  - testes unitarios e de integracao para pending state, permissao e error mapping.
 - Validacao funcional principal concluida com base na implementacao e checagens de fluxo do codigo.
-- Melhorias aplicadas pos-analise:
-  - componente `Spinner` dedicado substituindo icone `arrow-clockwise`.
-  - logica de permissao `canAssignToMe` refinada (removido `...ROLES`).
-  - documentacao aprimorada com raciocinio tecnico em comentarios FORK.
-  - decisao documentada: nao implementar update otimista por conflito com `DynamicScroller`.
 - Pendencias de validacao nesta etapa:
   - smoke manual de acessibilidade por teclado (`Tab`/`Shift+Tab`) no botao de atribuicao.
-  - cobertura de testes automatizados para pending/double submit/mapeamento de erros (adiada).
+
+## Semantica de Loading
+- `isAssignPending` permanece ativo desde o clique ate `meta.assignee.id` na store corresponder ao assignee esperado.
+- O spinner inicia no clique e so para quando ActionCable (ou outra atualizacao de store) confirma o assignee.
+- Em caso de erro HTTP, pending e limpo imediatamente no `catch` de `onAssignAgent`.
+- O botao some quando ActionCable atualiza `meta.assignee` na store (conversa deixa de ser unassigned).
+- Double-click entre HTTP 200 e websocket e bloqueado: `isAssignPending` permanece true ate assignee confirmar.
+
+## Logica de Permissao (`useCanAssignToMe`)
+- Reutiliza `applyRoleFilter` de `store/modules/conversations/helpers.js` com os mesmos inputs da lista (`getUserRole`, `getUserPermissions`, `teams/getMyTeams`, `inboxes/getInboxes`).
+- Fast-assign so aparece em conversas **sem assignee**.
+- Permissoes que permitem fast-assign em conversa unassigned:
+  - `administrator` / `agent` (role padrao)
+  - `conversation_manage`
+  - `conversation_unassigned_manage`
+  - `conversation_team_unassigned_manage` (somente se conversa pertence a um time do usuario)
+- `conversation_participating_manage` **nao** permite fast-assign em conversas unassigned.
 
 ## Riscos e Mitigacoes
 - Risco: colidir com evolucoes upstream do `ConversationCard`.
-  - Mitigacao: delta minimo, pontos localizados, e marcacao `FORK:`.
+  - Mitigacao: logica em `composables/fork/`, delta minimo no card, marcacao `FORK:`.
 - Risco: diferenca de payload entre caminhos de atribuicao.
   - Mitigacao: reuso estrito de `assignAgent` ja usado no context menu.
 - Risco: conflito de layout no card (espacamento curto em nomes longos).
   - Mitigacao: ajuste controlado de classes de espacamento e validacao manual.
 
 ## Fora de Escopo
-- Criacao de novos endpoints para atribuicao.
+- Criacao de novos endpoints para atribuicao (melhoria D adiada).
 - Alteracoes no backend de politicas/permissoes.
-- Refactor amplo de `ChatList` ou `useBulkActions`.
+- Refactor amplo de `ChatList` ou `useBulkActions` alem do hook assignme.
+- Smoke manual de teclado (pendente validacao pelo usuario).
 
 ## Proximos Passos
 - Revisao final do diff com o time.
 - Aprovacao funcional.
+- Smoke manual de acessibilidade por teclado.
 - Commit e abertura de PR interno da branch `feat/assignme-fast-assign`.
