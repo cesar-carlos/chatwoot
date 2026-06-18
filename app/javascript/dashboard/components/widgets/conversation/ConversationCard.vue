@@ -178,7 +178,10 @@ watch(
           </label>
         </template>
       </Avatar>
-      <ConversationCardForkAvatarBadge v-if="!hideThumbnail" :count="unreadCount" />
+      <ConversationCardForkAvatarBadge
+        v-if="!hideThumbnail"
+        :count="unreadCount"
+      />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
       <div :class="contentSectionClass">
