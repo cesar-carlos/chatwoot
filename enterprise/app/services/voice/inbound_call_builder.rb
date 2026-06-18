@@ -57,19 +57,18 @@ class Voice::InboundCallBuilder
 
   # Mirror Whatsapp::IncomingMessageBaseService#set_conversation: reuse this row's open conversation (or last when locked), else create.
   def resolve_conversation!(contact, contact_inbox)
-    reusable = if inbox.lock_to_single_conversation
-                 contact_inbox.conversations.last
-               else
-                 contact_inbox.conversations.where.not(status: :resolved).last
-               end
-    return reusable if reusable
-
-    account.conversations.create!(
-      contact_inbox_id: contact_inbox.id,
-      inbox_id: inbox.id,
-      contact_id: contact.id,
-      status: :open
-    )
+    # FORK: centralized resolver for consistent per-inbox conversation selection
+    Conversations::Resolver.new(
+      inbox: inbox,
+      contact_inbox: contact_inbox,
+      conversation_params: {
+        account_id: account.id,
+        inbox_id: inbox.id,
+        contact_id: contact.id,
+        contact_inbox_id: contact_inbox.id,
+        status: :open
+      }
+    ).perform
   end
 
   def create_call!(contact, conversation)
