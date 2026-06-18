@@ -13,6 +13,7 @@ class Api::V1::ProfilesController < Api::BaseController
     @user.assign_attributes(profile_params)
     @user.custom_attributes.merge!(custom_attributes_params)
     @user.save!
+    @user.reload # FORK: ensure profile JSON reflects persisted state (e.g. groq_token)
   end
 
   def avatar
