@@ -159,6 +159,7 @@ export const ATTACHMENT_ICONS = {
   video: 'video',
   file: 'document',
   location: 'location',
+  contact: 'contact',
   fallback: 'link',
 };
 

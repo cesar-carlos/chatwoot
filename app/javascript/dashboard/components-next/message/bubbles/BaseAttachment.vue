@@ -5,16 +5,17 @@ import BaseBubble from './Base.vue';
 import Icon from 'next/icon/Icon.vue';
 import { useMessageContext } from '../provider.js';
 
-defineProps({
+const props = defineProps({
   icon: { type: [String, Object], required: true },
   iconBgColor: { type: String, default: 'bg-n-alpha-3' },
-  senderTranslationKey: { type: String, required: true },
+  senderTranslationKey: { type: String, default: '' }, // FORK: share contact card
   content: { type: String, required: true },
   title: { type: String, default: '' }, // Title can be any name, description, etc
   action: {
     type: Object,
-    required: true,
+    default: null,
     validator: action => {
+      if (!action) return true;
       return action.label && (action.href || action.onClick);
     },
   },
@@ -25,6 +26,31 @@ const { t } = useI18n();
 
 const senderName = computed(() => {
   return sender?.value?.name || '';
+});
+
+const senderLabel = computed(() => {
+  if (!props.senderTranslationKey || !senderName.value) return '';
+
+  switch (props.senderTranslationKey) {
+    case 'CONVERSATION.SHARED_ATTACHMENT.CONTACT':
+      return t('CONVERSATION.SHARED_ATTACHMENT.CONTACT', {
+        sender: senderName.value,
+      });
+    case 'CONVERSATION.SHARED_ATTACHMENT.FILE':
+      return t('CONVERSATION.SHARED_ATTACHMENT.FILE', {
+        sender: senderName.value,
+      });
+    case 'CONVERSATION.SHARED_ATTACHMENT.LOCATION':
+      return t('CONVERSATION.SHARED_ATTACHMENT.LOCATION', {
+        sender: senderName.value,
+      });
+    case 'CONVERSATION.SHARED_ATTACHMENT.MEETING':
+      return t('CONVERSATION.SHARED_ATTACHMENT.MEETING', {
+        sender: senderName.value,
+      });
+    default:
+      return '';
+  }
 });
 </script>
 
@@ -41,12 +67,8 @@ const senderName = computed(() => {
           </slot>
         </div>
         <div class="space-y-1 overflow-hidden">
-          <div v-if="senderName" class="text-n-slate-12 text-sm truncate">
-            {{
-              t(senderTranslationKey, {
-                sender: senderName,
-              })
-            }}
+          <div v-if="senderLabel" class="text-n-slate-12 text-sm truncate">
+            {{ senderLabel }}
           </div>
           <slot>
             <div v-if="title" class="truncate text-sm text-n-slate-12">

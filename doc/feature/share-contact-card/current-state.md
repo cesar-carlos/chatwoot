@@ -1,6 +1,6 @@
 # Share Contact Card — Estado Atual
 
-Inventário do que já existe no codebase para **contact card compartilhado** e o que falta para **envio pelo agente**.
+Inventário do que já existe no codebase para **contact card compartilhado** (inbound + outbound MVP).
 
 ---
 
@@ -64,7 +64,7 @@ end
 
 | Componente | Função |
 |------------|--------|
-| `components-next/message/bubbles/Contact.vue` | Card visual + botão “Save Contact” |
+| `components-next/message/bubbles/Contact.vue` | Card visual; Save Contact só em incoming |
 | `components-next/message/Message.vue` | Roteia `ATTACHMENT_TYPES.CONTACT` → `ContactBubble` |
 | `components-next/message/constants.js` | `CONTACT` em `ATTACHMENT_TYPES` e `NON_FILE_TYPES` |
 | `ConversationCard/MessagePreview.vue` | Preview “Shared contact” na lista |
@@ -82,15 +82,15 @@ Isso **não** envia o card — apenas persiste no CRM um contato recebido do cli
 
 ---
 
-## O que não existe (outbound)
+## Outbound (implementado)
 
-### Envio por canal
+### Outbound por canal
 
 | Canal | Inbound contact | Outbound contact | Observação |
 |-------|-----------------|------------------|------------|
-| WhatsApp Cloud | ✅ | ❌ | `send_attachment_message` só image/audio/video/document |
-| WhatsApp 360dialog | ✅ | ❌ | Mesmo padrão |
-| Telegram | ✅ | ❌ | `SendAttachmentsService` não trata `contact` |
+| WhatsApp Cloud | ✅ | ✅ | `type: contacts` via `Whatsapp::ContactDelivery` |
+| WhatsApp 360dialog | ✅ | ✅ | Mesmo payload contacts |
+| Telegram | ✅ | ✅ | `sendContact` + `business_connection_id` |
 | LINE | ❌ | ❌ | — |
 | Facebook / Instagram | ❌ | ❌ | — |
 | SMS / Twilio | ❌ | ❌ | — |
@@ -98,13 +98,20 @@ Isso **não** envia o card — apenas persiste no CRM um contato recebido do cli
 
 ### API / MessageBuilder
 
-- `Messages::MessageBuilder#process_attachments` só aceita uploads (`file` / `signed_id`).
-- Não há parâmetro `shared_contact_id` nem criação programática de attachment `contact`.
-- `ReplyBox` não oferece ação “compartilhar contato do CRM”.
+- `shared_contact_id` na API de mensagens (`POST .../messages`)
+- `Custom::Messages::SharedContactHandler` cria attachment `contact` (via prepend em `MessageBuilder`)
+- `ChannelCapabilities::ShareContact` valida WhatsApp + Telegram
+
+### UI ReplyBox
+
+- `widgets/conversation/ShareContact/ShareContactDialog.vue` + `ShareContactForm.vue`
+- Botão `i-ph-address-book` em `ReplyBottomPanel` (guard `can_reply` no WhatsApp)
 
 ### Fork `custom/`
 
-- Nenhuma implementação adicional para contact card em `custom/`.
+- `custom/lib/channel_capabilities/share_contact.rb`
+- `custom/app/services/custom/messages/shared_contact_handler.rb`
+- `custom/app/builders/custom/messages/message_builder.rb` (prepend `perform`)
 
 ---
 
@@ -147,14 +154,11 @@ Ref: [Telegram sendContact](https://core.telegram.org/bots/api#sendcontact)
 
 ---
 
-## Lacunas que bloqueiam MVP outbound
+## Lacunas restantes (pós-MVP)
 
-1. **MessageBuilder** — criar attachment `contact` sem upload de arquivo
-2. **Send services** — ramo `contact` em WhatsApp providers e Telegram
-3. **Frontend** — picker de contato + fluxo de envio no `ReplyBox`
-4. **Validação** — contato compartilhado precisa ter `phone_number` (obrigatório nos canais)
-5. **Normalização de meta** — padronizar camelCase no outbound para consistência com bubble
-6. **Gateway providers** (Evolution etc.) — adapter em `custom/` se o fork usar providers não oficiais
+1. **Gateways** Evolution/Z-API — Fase 5 em `custom/`
+2. **Echo dedup** — follow-up se duplicar `source_id`
+3. **Specs automatizados** — P1 no backlog
 
 ---
 

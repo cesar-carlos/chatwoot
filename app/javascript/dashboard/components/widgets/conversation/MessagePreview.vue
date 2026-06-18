@@ -50,8 +50,29 @@ export default {
     attachmentIcon() {
       return ATTACHMENT_ICONS[this.lastMessageFileType];
     },
-    attachmentMessageContent() {
-      return `CHAT_LIST.ATTACHMENTS.${this.lastMessageFileType}.CONTENT`;
+    attachmentMessageText() {
+      switch (this.lastMessageFileType) {
+        case 'image':
+          return this.$t('CHAT_LIST.ATTACHMENTS.image.CONTENT');
+        case 'audio':
+          return this.$t('CHAT_LIST.ATTACHMENTS.audio.CONTENT');
+        case 'video':
+          return this.$t('CHAT_LIST.ATTACHMENTS.video.CONTENT');
+        case 'file':
+          return this.$t('CHAT_LIST.ATTACHMENTS.file.CONTENT');
+        case 'location':
+          return this.$t('CHAT_LIST.ATTACHMENTS.location.CONTENT');
+        case 'contact':
+          return this.$t('CHAT_LIST.ATTACHMENTS.contact.CONTENT');
+        default:
+          return '';
+      }
+    },
+    showAttachmentPreview() {
+      if (!this.message.attachments?.length) return false;
+      // FORK: share contact card
+      if (this.lastMessageFileType === 'contact') return true;
+      return !this.message.content;
     },
     isMessageSticker() {
       return this.message && this.message.content_type === 'sticker';
@@ -90,17 +111,17 @@ export default {
       />
       {{ $t('CHAT_LIST.ATTACHMENTS.image.CONTENT') }}
     </span>
-    <span v-else-if="message.content">
+    <span v-else-if="message.content && lastMessageFileType !== 'contact'">
       {{ parsedLastMessage }}
     </span>
-    <span v-else-if="message.attachments">
+    <span v-else-if="showAttachmentPreview">
       <fluent-icon
         v-if="attachmentIcon && showMessageType"
         size="16"
         class="-mt-0.5 align-middle inline-block text-n-slate-11"
         :icon="attachmentIcon"
       />
-      {{ $t(`${attachmentMessageContent}`) }}
+      {{ attachmentMessageText }}
     </span>
     <span v-else>
       {{ defaultEmptyMessage || $t('CHAT_LIST.NO_CONTENT') }}

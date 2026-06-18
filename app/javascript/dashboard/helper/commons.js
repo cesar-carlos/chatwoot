@@ -46,7 +46,13 @@ export const getTypingUsersText = (users = []) => {
 export const createPendingMessage = data => {
   const timestamp = Math.floor(new Date().getTime() / 1000);
   const tempMessageId = getUuid();
-  const { message, file } = data;
+  const {
+    message,
+    file,
+    sharedContactId,
+    sharedContactPhone,
+    sharedContactMeta,
+  } = data;
   const tempAttachments = [{ id: tempMessageId }];
   const pendingMessage = {
     ...data,
@@ -59,6 +65,18 @@ export const createPendingMessage = data => {
     conversation_id: data.conversationId,
     attachments: file ? tempAttachments : null,
   };
+
+  // FORK: share contact card
+  if (sharedContactId) {
+    pendingMessage.attachments = [
+      {
+        id: tempMessageId,
+        file_type: 'contact',
+        fallback_title: sharedContactPhone || '',
+        meta: sharedContactMeta || {},
+      },
+    ];
+  }
 
   return pendingMessage;
 };

@@ -29,6 +29,7 @@ import {
 } from '@chatwoot/utils';
 import WhatsappTemplates from './WhatsappTemplates/Modal.vue';
 import ContentTemplates from './ContentTemplates/ContentTemplatesModal.vue';
+import ShareContactDialog from './ShareContact/ShareContactDialog.vue';
 import { MESSAGE_MAX_LENGTH } from 'shared/helpers/MessageTypeHelper';
 import inboxMixin, { INBOX_FEATURES } from 'shared/mixins/inboxMixin';
 import { trimContent, debounce, getRecipients } from '@chatwoot/utils';
@@ -43,6 +44,11 @@ import {
   CONVERSATION_EVENTS,
   CAPTAIN_EVENTS,
 } from '../../../helper/AnalyticsHelper/events';
+import { ROLES, CONTACT_PERMISSIONS } from 'dashboard/constants/permissions';
+import {
+  hasPermissions,
+  getUserPermissions,
+} from 'dashboard/helper/permissionsHelper';
 import fileUploadMixin from 'dashboard/mixins/fileUploadMixin';
 import {
   appendSignature,
@@ -77,6 +83,7 @@ export default {
     ReplyTopPanel,
     ContentTemplates,
     WhatsappTemplates,
+    ShareContactDialog,
     WootMessageEditor,
     QuotedEmailPreview,
     CopilotEditorSection,
@@ -144,6 +151,7 @@ export default {
       currentChat: 'getSelectedChat',
       messageSignature: 'getMessageSignature',
       currentUser: 'getCurrentUser',
+      getCurrentAccountId: 'getCurrentAccountId',
       lastEmail: 'getLastEmailInSelectedChat',
       globalConfig: 'globalConfig/get',
     }),
@@ -466,6 +474,22 @@ export default {
         !this.isOnPrivateNote &&
         !this.currentChat.can_reply
       );
+    },
+    // FORK: share contact card
+    showShareContactButton() {
+      if (this.isOnPrivateNote || this.isEditorDisabled) return false;
+      const userPermissions = getUserPermissions(
+        this.currentUser,
+        this.getCurrentAccountId
+      );
+      if (!hasPermissions([...ROLES, CONTACT_PERMISSIONS], userPermissions)) {
+        return false;
+      }
+      if (this.isATelegramChannel) return true;
+      if (this.isAWhatsAppCloudChannel || this.is360DialogWhatsAppChannel) {
+        return this.currentChat?.can_reply;
+      }
+      return false;
     },
   },
   watch: {
@@ -795,6 +819,32 @@ export default {
     },
     hideContentTemplatesModal() {
       this.showContentTemplatesModal = false;
+    },
+    // FORK: share contact card
+    openShareContactDialog() {
+      this.$refs.shareContactDialog?.open();
+    },
+    async onShareContact(contact) {
+      const phoneNumber = contact.phone_number || contact.phoneNumber;
+      const nameParts = (contact.name || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      try {
+        await this.sendMessage({
+          conversationId: this.currentChat.id,
+          message: '',
+          private: false,
+          sharedContactId: contact.id,
+          sharedContactName: contact.name,
+          sharedContactPhone: phoneNumber,
+          sharedContactMeta: { firstName, lastName },
+        });
+        useTrack(CONVERSATION_EVENTS.SHARED_CONTACT);
+        this.$refs.shareContactDialog?.close();
+      } catch {
+        // sendMessage already surfaces API errors
+      }
     },
     confirmOnSendReply() {
       if (this.isReplyButtonDisabled) {
@@ -1433,6 +1483,7 @@ export default {
         :enable-multiple-file-upload="enableMultipleFileUpload"
         :enable-whats-app-templates="showWhatsappTemplates"
         :enable-content-templates="showContentTemplates"
+        :show-share-contact-button="showShareContactButton"
         :inbox="inbox"
         :is-on-private-note="isOnPrivateNote"
         :is-recording-audio="isRecordingAudio"
@@ -1458,6 +1509,7 @@ export default {
         :new-conversation-modal-active="newConversationModalActive"
         @select-whatsapp-template="openWhatsappTemplateModal"
         @select-content-template="openContentTemplateModal"
+        @open-share-contact="openShareContactDialog"
         @toggle-insert-article="toggleInsertArticle"
         @toggle-quoted-reply="toggleQuotedReply"
       />
@@ -1477,6 +1529,13 @@ export default {
       @close="hideContentTemplatesModal"
       @on-send="onSendContentTemplateReply"
       @cancel="hideContentTemplatesModal"
+    />
+
+    <!-- FORK: share contact card -->
+    <ShareContactDialog
+      ref="shareContactDialog"
+      :conversation-contact="currentContact"
+      @share="onShareContact"
     />
 
     <woot-confirm-modal
