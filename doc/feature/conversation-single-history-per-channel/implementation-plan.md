@@ -19,6 +19,7 @@ Allow users to choose, per channel/inbox, between:
 ## Product Decision
 
 - Configuration scope: **Inbox/Channel**
+- **Default for new inboxes:** `lock_to_single_conversation = true` (fork migration `20260618120000`)
 - No global account-level setting in this phase
 - Keep backward compatibility
 - **Report behavior is conditional on the toggle:**
@@ -128,8 +129,8 @@ Decision: **Keep as-is.** Intentionally different behavior for API paths.
 | Twilio | Respects flag (Pattern A) | `app/services/twilio/incoming_message_service.rb` | Migrate to resolver | Low |
 | WhatsApp | Respects flag (Pattern A) | `app/services/whatsapp/incoming_message_base_service.rb` | Migrate to resolver | Low |
 | Telegram | Respects flag (Pattern A) | `app/services/telegram/incoming_message_service.rb` | Migrate to resolver | Low |
-| Facebook | Respects flag (Pattern B) | `app/builders/messages/facebook/message_builder.rb` | Keep as-is | — |
-| Instagram | Respects flag (Pattern B) | `app/builders/messages/instagram/base_message_builder.rb` | Keep as-is | — |
+| Facebook | Respects flag (Pattern B) | `app/builders/messages/facebook/message_builder.rb` | Migrate to resolver (Worker 1 — planned) | Medium |
+| Instagram | Respects flag (Pattern B) | `app/builders/messages/instagram/base_message_builder.rb` | Migrate to resolver (Worker 1 — planned) | Medium |
 | LINE | Hardcoded single-thread | `app/services/line/incoming_message_service.rb` | Migrate to resolver (gains flag support) | Medium |
 | TikTok | Uses inbox-configurable resolver (implemented) | `app/services/tiktok/message_service.rb` | Completed in current phase | Low |
 | Twitter DM | Channel-specific type filter (`direct_message`) | `app/services/twitter/direct_message_parser_service.rb` | Explicitly excluded from Phase 1 (channel-native behavior) | Low |
@@ -165,12 +166,10 @@ This ensures accounts that did not opt in to single-history mode experience no r
 Implementation pattern used in all custom overlays:
 
 ```ruby
-cycle_start = if conversation.inbox.lock_to_single_conversation?
-                find_cycle_start(conversation)
-              else
-                conversation.created_at
-              end
+cycle_start = Custom::Conversations::ResolutionCycle.start_time(conversation)
 ```
+
+`Custom::Conversations::ResolutionCycle` is the single source of truth for cycle boundaries (reporting + CSAT).
 
 ### Per-Cycle Metrics: How It Works
 
@@ -239,29 +238,33 @@ Same builders and metrics as Agentes, grouped by label/inbox/team. Same fixes ap
 | # | What | Where | Change type |
 |---|---|---|---|
 | 1 | Setup `custom/` overlay + autoloading | `config/application.rb` + `custom/` dir | FORK (1 line) |
-| 2 | `Conversations::Resolver` service | `app/services/conversations/resolver.rb` | New file |
-| 3 | Migrate SMS to resolver | `app/services/sms/incoming_message_service.rb` | FORK marker |
-| 4 | Migrate Twilio to resolver | `app/services/twilio/incoming_message_service.rb` | FORK marker |
-| 5 | Migrate WhatsApp to resolver | `app/services/whatsapp/incoming_message_base_service.rb` | FORK marker |
-| 6 | Migrate Telegram to resolver | `app/services/telegram/incoming_message_service.rb` | FORK marker |
-| 7 | Migrate LINE to resolver | `app/services/line/incoming_message_service.rb` | FORK marker |
-| 8 | `prepend_mod_with` hook on ReportingEventListener | `app/listeners/reporting_event_listener.rb` | FORK (1 line) |
-| 9 | `prepend_mod_with` hook on CsatSurveyService | `app/services/csat_survey_service.rb` | FORK (1 line) |
-| 10 | Cycle-aware resolution time | `custom/app/listeners/custom/reporting_event_listener.rb` | Custom overlay |
-| 11 | Reset `first_reply_created_at` on reopen | `custom/app/models/custom/conversation.rb` | Custom overlay |
-| 12 | Cycle-aware CSAT check | `custom/app/services/custom/csat_survey_service.rb` | Custom overlay |
-| 13 | Improve UI toggle text | `app/javascript/dashboard/i18n/locale/en/inboxMgmt.json` | FORK marker |
+| 2 | `Conversations::Resolver` service (`#perform` + `#find`) | `app/services/conversations/resolver.rb` | New file |
+| 3 | Shared resolution cycle helper | `custom/app/services/custom/conversations/resolution_cycle.rb` | Custom overlay |
+| 4 | Migrate SMS to resolver | `app/services/sms/incoming_message_service.rb` | FORK marker |
+| 5 | Migrate Twilio to resolver | `app/services/twilio/incoming_message_service.rb` | FORK marker |
+| 6 | Migrate WhatsApp to resolver | `app/services/whatsapp/incoming_message_base_service.rb` | FORK marker |
+| 7 | Migrate Telegram to resolver | `app/services/telegram/incoming_message_service.rb` | FORK marker |
+| 8 | Migrate LINE to resolver | `app/services/line/incoming_message_service.rb` | FORK marker |
+| 9 | Migrate TikTok to resolver | `app/services/tiktok/message_service.rb` + `messaging_helpers.rb` | FORK marker |
+| 10 | `prepend_mod_with` hook on ReportingEventListener | `app/listeners/reporting_event_listener.rb` | FORK (1 line) |
+| 11 | `prepend_mod_with` hook on CsatSurveyService | `app/services/csat_survey_service.rb` | FORK (1 line) |
+| 12 | Cycle-aware resolution time | `custom/app/listeners/custom/reporting_event_listener.rb` | Custom overlay |
+| 13 | Reset `first_reply_created_at` on reopen | `custom/app/models/custom/conversation.rb` | Custom overlay |
+| 14 | Cycle-aware CSAT check | `custom/app/services/custom/csat_survey_service.rb` | Custom overlay |
+| 15 | Improve UI toggle text | `app/javascript/dashboard/i18n/locale/en/inboxMgmt.json` | FORK marker |
 
 ### Phase 1 — Resolver + Channel Unification
 
 **Goal:** Eliminate duplicated conversation lookup logic. Zero functional change for Pattern A channels. LINE gains flag support.
 
 1. Create `Conversations::Resolver` service with the standard contract:
-   - `lock_to_single_conversation = true` → `contact_inbox.conversations.last`
-   - `lock_to_single_conversation = false` → `contact_inbox.conversations.where.not(status: :resolved).last`
-   - If no conversation found → `Conversation.create!(conversation_params)`
-2. Replace `set_conversation` in SMS, Twilio, WhatsApp, Telegram with resolver call
-3. Replace `set_conversation` in LINE with resolver call (functional change: gains flag support)
+   - `#find` — lookup only (no create); `conversation_params` optional
+   - `#perform` — find or create; `conversation_params` required when creating
+   - `lock_to_single_conversation = true` → newest conversation (including resolved)
+   - `lock_to_single_conversation = false` → newest non-resolved conversation
+   - Lookup/create serialized via `contact_inbox.with_lock`
+2. Replace `set_conversation` in SMS, Twilio, WhatsApp, Telegram, LINE with resolver `#perform`
+3. Replace TikTok conversation selection with resolver (`#find` then `#perform` on create to avoid eager TikTok API params on lookup)
 
 ### Phase 2 — Per-Cycle Metrics (Conditional on Toggle)
 
@@ -326,6 +329,7 @@ end
 1. Improve toggle description text in `inboxMgmt.json`:
    - Current: "Enable or disable multiple conversations for the same contact in this inbox"
    - New: "When enabled, new messages from the same contact will reopen the previous conversation instead of creating a new one. Metrics are tracked per resolution cycle."
+2. Show non-blocking amber banner when user selects single-history mode and active `conversation_created` automation rules apply to the inbox (or all inboxes). Uses existing `automations/get` store action — no new backend endpoint.
 
 ### Phase 4 — Validation and Rollout
 
@@ -344,12 +348,14 @@ custom/
 ├── app/
 │   ├── listeners/
 │   │   └── custom/
-│   │       └── reporting_event_listener.rb    # cycle-aware resolution time
+│   │       └── reporting_event_listener.rb    # cycle-aware resolution time + bot handoff
 │   ├── models/
 │   │   └── custom/
 │   │       └── conversation.rb                # reset first_reply_created_at on reopen
 │   └── services/
 │       └── custom/
+│           ├── conversations/
+│           │   └── resolution_cycle.rb        # shared cycle start helper (reporting + CSAT)
 │           └── csat_survey_service.rb          # cycle-aware CSAT check
 ```
 
@@ -424,12 +430,15 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 
 ## Definition of Done
 
-- [x] `Conversations::Resolver` implemented and used by SMS, Twilio, WhatsApp, Telegram, LINE
+- [x] `Conversations::Resolver` implemented (`#find` + `#perform`) and used by SMS, Twilio, WhatsApp, Telegram, LINE, TikTok
+- [x] `Custom::Conversations::ResolutionCycle` centralizes cycle boundary logic
 - [x] Per-cycle resolution time implemented via custom overlay
 - [x] Per-cycle first response implemented (reset `first_reply_created_at` on reopen)
 - [x] Per-cycle CSAT implemented via custom overlay
 - [x] `custom/` overlay autoloading configured
 - [x] UI toggle text improved
+- [x] Automation rules warning when enabling single-history toggle (inbox settings)
+- [x] Inbox factory `:single_history` trait for specs
 - [x] All test scenarios passing
 - [ ] Baseline SQL queries executed on pilot inboxes
 
@@ -440,6 +449,8 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [x] Custom overlay modules created (ReportingEventListener, Conversation, CsatSurveyService)
 - [x] `prepend_mod_with` hooks added with FORK markers
 - [x] i18n text updated with FORK marker
+- [x] Automation warning banner in inbox settings (EN + PT-BR)
+- [x] Inbox factory `:single_history` trait
 - [ ] Pilot rollout completed with monitored metrics
 
 ## Pilot Readiness Snapshot
@@ -459,7 +470,42 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [x] Focused specs for reporting/CSAT cycle behavior passing
 - [x] Focused regression spec for Twitter webhook path passing
 - [x] Lint checks clean on changed files
-- [x] Post-lint-fix validation rerun completed (`rubocop` on changed feature files + focused `rspec`: `52 examples, 0 failures`)
+- [x] Post-lint-fix validation rerun completed (`rubocop` on changed feature files + focused `rspec`: `53 examples, 0 failures`)
+
+## Audit (2026-06-18)
+
+Engineering review to align implementation with project rules (single responsibility, no duplicate logic, fork-safe overlays).
+
+### Bugs fixed
+
+| Issue | Location | Fix |
+|---|---|---|
+| LINE kept legacy `set_conversation` inline logic **and** called resolver (dead code, non-deterministic `.last`) | `app/services/line/incoming_message_service.rb` | Use resolver `#perform` only (same as SMS/Twilio/etc.) |
+| TikTok duplicated resolver logic in `MessageService` + `MessagingHelpers`; create path could race | `app/services/tiktok/*` | `#find` then `#perform` on create; read-status lookup delegates to resolver `#find` |
+| Reporting override used `conversation.updated_at` instead of `event.timestamp` | `custom/.../reporting_event_listener.rb` | Align with upstream listener contract |
+| Reporting override omitted `safe_rollup` | `custom/.../reporting_event_listener.rb` | Call `safe_rollup` after save (resolved + bot handoff) |
+| Cycle start logic duplicated in reporting + CSAT overlays | custom overlays | Extract `Custom::Conversations::ResolutionCycle` |
+| Resolver required `conversation_params` on lookup-only paths (TikTok API side effect) | `Conversations::Resolver` | `conversation_params` optional for `#find`; required only on create via `#perform` |
+
+### Anti-patterns removed
+
+- **Duplicate logic** — TikTok/LINE no longer maintain parallel conversation-selection branches
+- **Shotgun surgery** — cycle boundary rule lives in one module consumed by reporting and CSAT
+- **Dead code** — removed unused `create_conversation` helper from TikTok messaging helpers
+
+### Intentional differences preserved
+
+| Area | Behavior |
+|---|---|
+| TikTok read receipts | `find_conversation` uses resolver `#find`, then falls back to latest thread when all conversations are resolved (read-status only; does not create) |
+| Facebook/Instagram | Pattern B unchanged (pre-existing inbox flag support) |
+| API/Widget `ConversationBuilder` | Unchanged (intentionally different) |
+| Twitter / Email | Excluded from Phase 1 |
+
+### Validation after audit
+
+- `rubocop` clean on all touched files
+- Focused `rspec`: **53 examples, 0 failures** (resolver, LINE, TikTok, reporting, CSAT cycle, conversation reopen reset)
 
 ### Operational status (pending to execute pilot)
 
@@ -468,6 +514,17 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - [ ] Run post window SQL and compare pre/post
 - [ ] Confirm go/no-go criteria and thresholds
 - [ ] Complete pilot closeout sign-off
+
+### Follow-up (2026-06-18 orchestration — Worker 3)
+
+| Item | Status | Notes |
+|---|---|---|
+| Automation warning on toggle ON | Done | `SingleHistoryAutomationWarning.vue` + `useSingleHistoryAutomationWarning.js`; queries `automations/get` store; EN + PT-BR i18n |
+| Inbox factory `:single_history` trait | Done | `spec/factories/inboxes.rb`; used in `resolver_spec` |
+| FB/IG resolver migration | Planned (Worker 1) | Pattern B builders still use inline lookup; intended to migrate to `Conversations::Resolver` for consistency |
+| Static i18n-only automation note | Not needed | Dynamic warning implemented via existing store API |
+
+**Phase 2 (deferred):** Per-rule inbox scoping preview in banner (e.g. link to filtered automation list), or backend endpoint if store payload becomes too heavy for settings page.
 
 ## Implementation Progress Log
 
@@ -482,6 +539,8 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 - 2026-02-25: Added concurrency mitigation in `Conversations::Resolver` using `contact_inbox.with_lock` to serialize lookup/create and reduce duplicate thread races.
 - 2026-02-25: Fixed RuboCop offenses in feature-touched files and reran focused validation (`rubocop` clean + `rspec` clean with `52 examples, 0 failures`).
 - 2026-02-25: Manual validation in channel settings confirmed expected runtime behavior with toggle ON (`lock_to_single_conversation`): resolved conversation reopens on new inbound message.
+- 2026-06-18: Engineering audit — fixed LINE/TikTok duplicate resolver logic, reporting `event.timestamp` + `safe_rollup` gaps, extracted `Custom::Conversations::ResolutionCycle`, added resolver `#find` with optional params. Focused validation: `53 examples, 0 failures`.
+- 2026-06-18: Worker 3 — automation warning banner on single-history toggle (uses existing automations store), `:single_history` factory trait, EN/PT-BR ops copy.
 
 ## Open Questions
 

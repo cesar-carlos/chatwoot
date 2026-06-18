@@ -8,6 +8,10 @@ module InstagramSpecHelpers
     contact
   end
 
+  def instagram_contact_inbox_for(sender_id, inbox)
+    inbox.contact_inboxes.find_by!(source_id: sender_id)
+  end
+
   def instagram_user_response_object_for(sender_id, account_id)
     {
       name: 'Jane',

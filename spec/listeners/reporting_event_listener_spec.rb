@@ -27,7 +27,7 @@ describe ReportingEventListener do
       end
 
       it 'creates conversation_resolved event with business hour value' do
-        event = Events::Base.new('conversation.resolved', Time.zone.now, conversation: new_conversation)
+        event = Events::Base.new('conversation.resolved', updated_at, conversation: new_conversation)
         listener.conversation_resolved(event)
         expect(account.reporting_events.where(name: 'conversation_resolved')[0]['value_in_business_hours']).to be 144_000.0
       end
@@ -57,11 +57,12 @@ describe ReportingEventListener do
       end
 
       it 'uses the latest conversation_opened event as resolution cycle start' do
-        event = Events::Base.new('conversation.resolved', Time.zone.now, conversation: single_history_conversation)
+        event = Events::Base.new('conversation.resolved', resolved_at, conversation: single_history_conversation)
         listener.conversation_resolved(event)
 
         reporting_event = account.reporting_events.where(name: 'conversation_resolved').last
         expect(reporting_event.event_start_time).to be_within(1.second).of(opened_at)
+        expect(reporting_event.event_end_time).to be_within(1.second).of(resolved_at)
         expect(reporting_event.value).to be_within(1).of(resolved_at.to_i - opened_at.to_i)
       end
     end
@@ -79,11 +80,12 @@ describe ReportingEventListener do
       end
 
       it 'keeps using conversation creation time as baseline' do
-        event = Events::Base.new('conversation.resolved', Time.zone.now, conversation: regular_conversation)
+        event = Events::Base.new('conversation.resolved', resolved_at, conversation: regular_conversation)
         listener.conversation_resolved(event)
 
         reporting_event = account.reporting_events.where(name: 'conversation_resolved').last
         expect(reporting_event.event_start_time).to be_within(1.second).of(created_at)
+        expect(reporting_event.event_end_time).to be_within(1.second).of(resolved_at)
         expect(reporting_event.value).to be_within(1).of(resolved_at.to_i - created_at.to_i)
       end
     end
@@ -316,9 +318,72 @@ describe ReportingEventListener do
       end
 
       it 'creates conversation_bot_handoff event with business hour value' do
-        event = Events::Base.new('conversation.bot_handoff', Time.zone.now, conversation: new_conversation)
+        event = Events::Base.new('conversation.bot_handoff', updated_at, conversation: new_conversation)
         listener.conversation_bot_handoff(event)
         expect(account.reporting_events.where(name: 'conversation_bot_handoff')[0]['value_in_business_hours']).to be 144_000.0
+      end
+    end
+
+    context 'when lock_to_single_conversation is enabled' do
+      let(:created_at) { 3.days.ago.change(usec: 0) }
+      let(:first_handoff_at) { 2.days.ago.change(usec: 0) }
+      let(:opened_at) { 3.hours.ago.change(usec: 0) }
+      let(:second_handoff_at) { 1.hour.ago.change(usec: 0) }
+      let!(:single_history_inbox) { create(:inbox, account: account, lock_to_single_conversation: true) }
+      let!(:single_history_conversation) do
+        create(:conversation, created_at: created_at, account: account, inbox: single_history_inbox, assignee: user)
+      end
+
+      it 'allows one bot_handoff per resolution cycle' do
+        first_cycle_event = Events::Base.new('conversation.bot_handoff', first_handoff_at, conversation: single_history_conversation)
+        listener.conversation_bot_handoff(first_cycle_event)
+        expect(account.reporting_events.where(name: 'conversation_bot_handoff').count).to be 1
+
+        duplicate_first_cycle_event = Events::Base.new('conversation.bot_handoff', first_handoff_at + 5.minutes,
+                                                       conversation: single_history_conversation)
+        listener.conversation_bot_handoff(duplicate_first_cycle_event)
+        expect(account.reporting_events.where(name: 'conversation_bot_handoff').count).to be 1
+
+        create(
+          :reporting_event,
+          account: account,
+          inbox: single_history_inbox,
+          conversation: single_history_conversation,
+          name: 'conversation_opened',
+          value: 0,
+          event_start_time: first_handoff_at,
+          event_end_time: opened_at
+        )
+
+        second_cycle_event = Events::Base.new('conversation.bot_handoff', second_handoff_at, conversation: single_history_conversation)
+        listener.conversation_bot_handoff(second_cycle_event)
+        expect(account.reporting_events.where(name: 'conversation_bot_handoff').count).to be 2
+      end
+
+      it 'uses cycle start time for each bot_handoff event' do
+        first_cycle_event = Events::Base.new('conversation.bot_handoff', first_handoff_at, conversation: single_history_conversation)
+        listener.conversation_bot_handoff(first_cycle_event)
+
+        create(
+          :reporting_event,
+          account: account,
+          inbox: single_history_inbox,
+          conversation: single_history_conversation,
+          name: 'conversation_opened',
+          value: 0,
+          event_start_time: first_handoff_at,
+          event_end_time: opened_at
+        )
+
+        second_cycle_event = Events::Base.new('conversation.bot_handoff', second_handoff_at, conversation: single_history_conversation)
+        listener.conversation_bot_handoff(second_cycle_event)
+
+        handoff_events = account.reporting_events.where(name: 'conversation_bot_handoff').order(:event_end_time)
+        expect(handoff_events.first.event_start_time).to be_within(1.second).of(created_at)
+        expect(handoff_events.first.event_end_time).to be_within(1.second).of(first_handoff_at)
+        expect(handoff_events.second.event_start_time).to be_within(1.second).of(opened_at)
+        expect(handoff_events.second.event_end_time).to be_within(1.second).of(second_handoff_at)
+        expect(handoff_events.second.value).to be_within(1).of(second_handoff_at.to_i - opened_at.to_i)
       end
     end
   end

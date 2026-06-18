@@ -90,7 +90,7 @@ export default {
       emailCollectEnabled: false,
       senderNameType: 'friendly',
       businessName: '',
-      locktoSingleConversation: false,
+      locktoSingleConversation: true, // FORK: default single conversation history for new inboxes
       allowMessagesAfterResolved: true,
       continuityViaEmail: true,
       selectedInboxName: '',
@@ -456,6 +456,7 @@ export default {
       this.$store.dispatch('teams/get');
       this.$store.dispatch('labels/get');
       this.$store.dispatch('portals/index');
+      this.$store.dispatch('automations/get'); // FORK: single-history automation warning
     },
     syncInboxData() {
       if (!this.inbox || !this.inbox.id) return;
@@ -869,6 +870,7 @@ export default {
             >
               <template #extra>
                 <LockToSingleConversationPreview
+                  :inbox-id="inbox.id"
                   :lock-to-single-conversation="locktoSingleConversation"
                   @update="toggleLockToSingleConversation"
                 />

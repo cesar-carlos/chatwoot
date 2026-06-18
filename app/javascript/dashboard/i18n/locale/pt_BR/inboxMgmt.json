@@ -610,7 +610,9 @@
         "ENABLED": "Reabrir mesma conversa",
         "DISABLED": "Criar novas conversas",
         "ENABLED_DESCRIPTION": "Quando um contato enviar mensagem novamente, a conversa anterior será reaberta.",
-        "DISABLED_DESCRIPTION": "Uma nova conversa será criada toda vez após a anterior ser resolvida."
+        "DISABLED_DESCRIPTION": "Uma nova conversa será criada toda vez após a anterior ser resolvida.",
+        "AUTOMATION_WARNING": "Esta caixa de entrada tem {count} regra(s) de automação ativa(s) acionada(s) na criação de conversa ({ruleNames}). Com o modo de histórico único, contatos que retornam reabrem conversas existentes em vez de criar novas, então essas regras podem ser acionadas com menos frequência. Revise suas automações antes de salvar.",
+        "AUTOMATION_WARNING_ACTION": "Revisar automações"
       },
       "ENABLE_HMAC": {
         "LABEL": "Ativar"
@@ -764,8 +766,8 @@
       "SENDER_NAME_SECTION_TEXT": "Ativar/Desativar exibição do nome do agente no e-mail, se estiver desativado, exibirá o nome da empresa",
       "ENABLE_CONTINUITY_VIA_EMAIL": "Habilitar continuidade das conversas por e-mail",
       "ENABLE_CONTINUITY_VIA_EMAIL_SUB_TEXT": "As conversas continuarão sobre o e-mail se o endereço de e-mail de contato estiver disponível.",
-      "LOCK_TO_SINGLE_CONVERSATION": "Bloquear para conversa única",
-      "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Ativar ou desativar várias conversas para o mesmo contato nesta caixa de entrada",
+      "LOCK_TO_SINGLE_CONVERSATION": "Reutilizar e reabrir a conversa anterior",
+      "LOCK_TO_SINGLE_CONVERSATION_SUB_TEXT": "Quando ativado, novas mensagens do mesmo contato reabrem a conversa anterior em vez de criar uma nova. Os relatórios seguem este modo para esta caixa de entrada.",
       "INBOX_UPDATE_TITLE": "Configurações da Caixa de Entrada",
       "INBOX_UPDATE_SUB_TEXT": "Atualize suas configurações de caixa de entrada",
       "AUTO_ASSIGNMENT_SUB_TEXT": "Ativar ou desativar a atribuição automática de novas conversas aos agentes adicionados a essa caixa de entrada.",
@@ -955,8 +957,8 @@
         },
         "SELECT_PLACEHOLDER": "selecionar etiquetas"
       },
-      "NOTE": "Nota: pesquisas de CSAT são enviadas apenas uma vez por conversa",
-      "WHATSAPP_NOTE": "Nota: Vamos criar um modelo e enviá-lo para aprovação do WhatsApp. Após a aprovação, as pesquisas serão enviadas apenas uma vez por conversa, conforme a regra da pesquisa.",
+      "NOTE": "Nota: por padrão, as pesquisas de CSAT são enviadas uma vez por conversa. Se o modo de conversa única estiver ativado na caixa de entrada, as pesquisas são enviadas uma vez por ciclo de resolução.",
+      "WHATSAPP_NOTE": "Nota: ao salvar, o sistema cria um modelo de CSAT dedicado no WhatsApp (usado para capturar avaliação e feedback nos relatórios) e o envia como Utilidade para aprovação. A Meta ainda pode classificá-lo como Marketing com base no conteúdo. Por padrão, as pesquisas são enviadas uma vez por conversa. Se o modo de conversa única estiver ativado na caixa de entrada, as pesquisas são enviadas uma vez por ciclo de resolução, conforme a regra da pesquisa.",
       "API": {
         "SUCCESS_MESSAGE": "Configurações de CSAT atualizadas com sucesso",
         "ERROR_MESSAGE": "Não foi possível atualizar as configurações do CSAT. Por favor, tente novamente mais tarde."

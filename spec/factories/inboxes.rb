@@ -5,6 +5,7 @@ FactoryBot.define do
     account
     channel { FactoryBot.build(:channel_widget, account: account) }
     name { 'Inbox' }
+    lock_to_single_conversation { false }
 
     after(:create) do |inbox|
       inbox.channel.save!
@@ -13,6 +14,10 @@ FactoryBot.define do
     trait :with_email do
       channel { FactoryBot.build(:channel_email, account: account) }
       name { 'Email Inbox' }
+    end
+
+    trait :single_history do
+      lock_to_single_conversation { true }
     end
   end
 end

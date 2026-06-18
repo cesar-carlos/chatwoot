@@ -1,15 +1,30 @@
 class Conversations::Resolver
   # FORK: centralized resolver to keep per-inbox conversation selection consistent
-  pattr_initialize [:inbox!, :contact_inbox!, :conversation_params!]
+  pattr_initialize [:inbox!, :contact_inbox!, { conversation_params: nil }]
 
   def perform
-    # FORK: serialize lookup/create per contact_inbox to avoid duplicate conversations under concurrent webhooks
+    # FORK: lazy create params so lookup-only callers avoid eager side effects (e.g. TikTok capabilities API)
+    resolve_or_create { conversation_params! }
+  end
+
+  def resolve_or_create
+    # FORK: single lock for find-or-create; create params evaluated only when needed
     contact_inbox.with_lock do
-      find_conversation || ::Conversation.create!(conversation_params)
+      find_conversation || ::Conversation.create!(block_given? ? yield : conversation_params!)
+    end
+  end
+
+  def find
+    contact_inbox.with_lock do
+      find_conversation
     end
   end
 
   private
+
+  def conversation_params!
+    conversation_params.presence || raise(ArgumentError, 'conversation_params is required to create a conversation')
+  end
 
   def find_conversation
     # FORK: ensure deterministic newest-conversation selection
