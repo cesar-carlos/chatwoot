@@ -127,6 +127,16 @@ export default {
       return parseBoolean(window.chatwootConfig?.isMfaEnabled);
     },
   },
+  watch: {
+    currentUser: {
+      handler() {
+        if (this.currentUserId) {
+          this.initializeUser();
+        }
+      },
+      deep: true,
+    },
+  },
   mounted() {
     if (this.currentUserId) {
       this.initializeUser();
@@ -139,7 +149,8 @@ export default {
       this.avatarUrl = this.currentUser.avatar_url;
       this.displayName = this.currentUser.display_name;
       this.messageSignature = this.currentUser.message_signature;
-      this.groqToken = this.currentUser.groq_token || ''; // FORK: token not returned on GET when configured
+      // FORK: groq_token is not returned on GET; configured state uses has_groq_token
+      this.groqToken = this.currentUser.groq_token || '';
     },
     async dispatchUpdate(payload, successMessage, errorMessage) {
       let alertMessage = '';
@@ -199,14 +210,23 @@ export default {
 
       this.isUpdatingGroqToken = true;
       const payload = { groq_token: token };
-      let successMessage = this.$t(
+      const successMessage = this.$t(
         'PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_SUCCESS'
       );
-      let errorMessage = this.$t('PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_ERROR');
+      const errorMessage = this.$t(
+        'PROFILE_SETTINGS.FORM.GROQ_TOKEN.API_ERROR'
+      );
 
       try {
-        await this.dispatchUpdate(payload, successMessage, errorMessage);
-        this.groqToken = token;
+        const success = await this.dispatchUpdate(
+          payload,
+          successMessage,
+          errorMessage
+        );
+        if (success) {
+          // FORK: clear input after save; has_groq_token from API drives configured UI
+          this.groqToken = '';
+        }
       } finally {
         this.isUpdatingGroqToken = false;
       }

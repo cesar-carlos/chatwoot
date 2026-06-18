@@ -39,6 +39,16 @@ export default {
     return false;
   },
   profileUpdate({ displayName, avatar, ...profileAttributes }) {
+    // FORK: use JSON for scalar profile fields (e.g. groq_token); FormData PUT is
+    // unreliable for non-file updates and can drop nested profile params.
+    if (!avatar) {
+      const profile = { ...profileAttributes };
+      if (displayName !== undefined) {
+        profile.display_name = displayName || '';
+      }
+      return axios.put(endPoints('profileUpdate').url, { profile });
+    }
+
     const formData = new FormData();
     Object.keys(profileAttributes).forEach(key => {
       const hasValue = profileAttributes[key] !== undefined;
@@ -51,9 +61,7 @@ export default {
     if (displayName !== undefined) {
       formData.append('profile[display_name]', displayName || '');
     }
-    if (avatar) {
-      formData.append('profile[avatar]', avatar);
-    }
+    formData.append('profile[avatar]', avatar);
     return axios.put(endPoints('profileUpdate').url, formData);
   },
 

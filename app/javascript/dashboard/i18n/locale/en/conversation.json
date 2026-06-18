@@ -538,8 +538,9 @@
       "SUCCESS_CACHED": "Transcription loaded from cache",
       "ERROR": "Failed to transcribe audio. Please try again",
       "PROCESSING": "Transcribing audio…",
-      "IN_PROGRESS": "Transcription is already in progress. Please wait.",
-      "ERROR_STATE": "Transcription failed: {error}"
+      "IN_PROGRESS": "Transcription is already in progress. Please wait a moment and try again.",
+      "ERROR_STATE": "Transcription failed: {error}",
+      "FORBIDDEN": "You do not have access to transcribe this audio message"
     },
     "TOKEN_MISSING": {
       "TITLE": "Groq Token Required",
