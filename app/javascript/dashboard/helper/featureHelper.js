@@ -24,6 +24,8 @@ const FEATURE_HELP_URLS = {
   captain: 'https://chwt.app/captain-docs',
   captain_billing: 'https://chwt.app/hc/captain_billing',
   shopify: 'https://chwt.app/hc/shopify',
+  // FORK: doc/feature/conversation-workflow-rules/README.md (no public help URL yet)
+  conversation_rules: '',
 };
 
 export function getHelpUrlForFeature(featureName) {

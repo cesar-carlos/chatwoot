@@ -2,7 +2,7 @@
 
 Evolução de **Fluxos de Conversa**: regras configuráveis de resolução automática e escalonamento quando o agente não responde, com filtro por caixa de entrada, condições e ações no estilo Automação.
 
-**Estado:** implementado (Fases 1–4)
+**Estado:** implementado (Fases 1–4) — regras CRUD em menu independente **Regras de conversa** (`/settings/conversation-rules`); legacy **Fluxo de Conversa** mantém auto-resolve + atributos obrigatórios.
 
 | Área | Status |
 |------|--------|
@@ -11,9 +11,20 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 | Filtro por inbox + condições | ✅ Fase 2 |
 | Múltiplas ações | ✅ `Custom::ConversationWorkflow::ActionService` |
 | Gatilho “agente não respondeu” (`waiting_since`) | ✅ `agent_no_reply` + flag `conversation_agent_no_reply_rules` |
+| Gatilhos estendidos (jun/2026) | ✅ `first_response_overdue`, `unassigned_too_long`, `pending_stale`, `customer_no_reply` |
 | Eventos sintéticos na Automação | ✅ Fase 4 |
 | Business hours | ✅ `BusinessHoursElapsedCalculator` (opt-in por regra) |
-| Job per-message | ✅ `ScheduleOnMessageJob` em incoming |
+| Job per-message | ✅ `ScheduleOnMessageJob` + `ScheduleOnMessageScheduler` (delay desde `waiting_since`, dedup Redis) |
+
+---
+
+## Go-live checklist
+
+1. Habilitar feature flags na conta: `auto_resolve_conversations` e/ou `conversation_agent_no_reply_rules`
+2. Rodar migrations em produção (`conversation_workflow_rules`, `conversation_workflow_rule_executions`)
+3. Migrar legacy (UI banner **Migrar agora** ou `rake conversation_workflow:migrate_legacy`) se `auto_resolve_after > 0`
+4. `assets:precompile` + restart web/worker (PM2)
+5. Smoke test: `/settings/conversation-rules` — listar, criar, editar, clonar, reordenar; legacy em `/settings/conversation-workflow` inalterado
 
 ---
 
@@ -86,4 +97,4 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 ---
 
-*Última atualização: jun/2026 — implementação Fases 1–4 concluída*
+*Última atualização: jun/2026 — menu **Regras de conversa**, go-live checklist*

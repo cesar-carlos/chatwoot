@@ -39,7 +39,7 @@ Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloq
 | Voz WhatsApp oficial (Meta Calling API) | [whatsapp-voice/README.md](../whatsapp-voice/README.md) |
 | Segundo provider de **chamadas** (se SDP disponível) | [whatsapp-voice/second-provider-strategy.md](../whatsapp-voice/second-provider-strategy.md) |
 | Twilio PSTN vs WhatsApp nativo | [whatsapp-voice/twilio-vs-whatsapp-native.md](../whatsapp-voice/twilio-vs-whatsapp-native.md) |
-| Disciplina de branch e merge (fork) | [fork-strategy.mdc](../../../.cursor/rules/fork-strategy.mdc) · [fork-merge-conflicts.mdc](../../../.cursor/rules/fork-merge-conflicts.mdc) |
+| Disciplina de branch e merge (fork) | [fork-workflow.mdc](../../../.cursor/rules/fork-workflow.mdc) |
 | Inventário de divergências FORK | `bin/fork-inventory` → `doc/fork-divergences.txt` |
 
 ---

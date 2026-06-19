@@ -9,7 +9,7 @@ fi
 
 if git diff --cached -G'FORK:' --name-only | grep -q .; then
   echo "pre-commit: refusing commit on develop — staged changes contain FORK: markers." >&2
-  echo "pre-commit: custom fork work belongs on main. See AGENTS.md (Fork Strategy)." >&2
+  echo "pre-commit: custom fork work belongs on main. See .cursor/rules/fork-workflow.mdc." >&2
   exit 1
 fi
 

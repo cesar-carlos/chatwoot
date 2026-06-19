@@ -44,6 +44,14 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
     render json: { migrated: Current.account.reload.workflow_rules_migrated? }
   end
 
+  def preview_count
+    count = Custom::ConversationWorkflow::PreviewCountService.new(
+      account: Current.account,
+      attributes: preview_params
+    ).perform
+    render json: { count: count }
+  end
+
   private
 
   def fetch_rule
@@ -81,5 +89,9 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
 
   def legacy_auto_resolve_active?
     Current.account.auto_resolve_after.present? && !Current.account.workflow_rules_migrated?
+  end
+
+  def preview_params
+    rule_params.to_h
   end
 end

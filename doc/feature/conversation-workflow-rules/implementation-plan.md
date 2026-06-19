@@ -1,5 +1,7 @@
 # Conversation Workflow Rules — Plano de implementação (Fork)
 
+> Menu independente **Regras de conversa** (`/settings/conversation-rules`) — ver [current-state.md](./current-state.md).
+
 Plano revisado com melhorias P0–P2 incorporadas.
 
 **Pré-requisitos:** [README.md](./README.md) · [business-rules.md](./business-rules.md) · [implementation-decision-tree.md](./implementation-decision-tree.md)

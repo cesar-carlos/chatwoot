@@ -1,7 +1,11 @@
 class Custom::ConversationWorkflow::AutomationEventDispatcher
   EVENT_BY_TRIGGER = {
     'conversation_inactivity' => 'conversation_inactivity_threshold',
-    'agent_no_reply' => 'conversation_agent_no_reply'
+    'agent_no_reply' => 'conversation_agent_no_reply',
+    'first_response_overdue' => 'conversation_first_response_overdue',
+    'unassigned_too_long' => 'conversation_unassigned_too_long',
+    'pending_stale' => 'conversation_pending_stale',
+    'customer_no_reply' => 'conversation_customer_no_reply'
   }.freeze
 
   def initialize(rule:, conversation:)

@@ -5,7 +5,7 @@
 
 ## Regras do Fork aplicadas
 
-Conforme `.cursor/rules/fork-strategy.mdc`, todas as mudanças devem:
+Conforme `.cursor/rules/fork-workflow.mdc`, todas as mudanças devem:
 
 1. ✅ **Minimizar edições em arquivos upstream**
 2. ✅ **Usar `custom/` overlay quando possível**

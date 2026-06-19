@@ -28,11 +28,7 @@ class Custom::ConversationWorkflow::ThresholdMatcher
   end
 
   def reference_timestamp
-    if @rule.agent_no_reply?
-      @conversation.waiting_since
-    else
-      @conversation.last_activity_at
-    end
+    Custom::ConversationWorkflow::ReferenceTimestamp.new(rule: @rule, conversation: @conversation).value
   end
 
   def business_hours_max_calendar_days

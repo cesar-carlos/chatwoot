@@ -1,17 +1,28 @@
 ---
-description: Vue 3 and JavaScript frontend conventions for Chatwoot
-globs: "**/*.{vue,js}"
+description: Vue 3, JavaScript/TypeScript, and Tailwind UI conventions
+globs: "**/*.{vue,js,ts}"
 alwaysApply: false
 ---
 
-# Vue / JS Conventions
+# Vue / JS / UI
 
-- Always use Composition API with `<script setup>` at the top
-- Components: PascalCase
-- Events: camelCase
-- No bare strings in templates — use i18n
-- Use PropTypes in Vue components
-- ESLint: Airbnb base + Vue 3 recommended
+## Components
+
+- Composition API with `<script setup>` at the top
+- PascalCase components, camelCase events
+- PropTypes for props; ESLint (Airbnb + Vue 3 recommended)
+- No bare strings in templates — use i18n (`useI18n`); locale paths in `chatwoot-core.mdc`
+- Business logic in composables or store actions — thin components for presentation
+
+## Styling — Tailwind only
+
+- No custom CSS, scoped CSS, or inline styles
+- Use Tailwind utilities; colors from `tailwind.config.js`
+
+```vue
+<!-- ❌ --><div style="color: red" class="my-custom-class">
+<!-- ✅ --><div class="text-red-500 bg-n-background p-4 rounded-lg">
+```
 
 ## Example
 

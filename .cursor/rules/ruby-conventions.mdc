@@ -1,32 +1,17 @@
 ---
-description: Ruby and Rails coding conventions for Chatwoot
+description: Ruby and Rails conventions for Chatwoot
 globs: "**/*.rb"
 alwaysApply: false
 ---
 
 # Ruby Conventions
 
-- Follow RuboCop (150 character max line length)
-- Use compact `module/class` definitions; avoid nested styles
-- Error handling: use custom exceptions in `lib/custom_exceptions/`
-- Models: validate presence/uniqueness, add proper indexes
-- Controllers: use strong params
+- RuboCop (150 char max line length)
+- Compact `module/class` definitions — `class Foo::Bar`, not nested `module Foo; class Bar`
+- Models: validate presence/uniqueness, add indexes
+- Controllers: strong params
 
 ## Specs
 
-- Prefer `with_modified_env` over stubbing `ENV` directly
-- In parallel/reloading environments, compare `error.class.name` instead of constant class equality
-
-## Example
-
-```ruby
-# ❌ BAD
-module Foo
-  class Bar
-  end
-end
-
-# ✅ GOOD
-class Foo::Bar
-end
-```
+- Prefer `with_modified_env` over stubbing `ENV`
+- Parallel/reloading envs: compare `error.class.name`, not constant class equality

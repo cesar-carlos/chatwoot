@@ -22,7 +22,10 @@ rbenv install $(cat .ruby-version)  # if needed
 
 - Minimal: `bundle exec rails db:seed`
 - Search fixtures: `bundle exec rails search:setup_test_data`
-- Rich account data: Super Admin → Accounts → Seed, or `bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"`
+- Rich account data:
+  - UI: Super Admin → Accounts → Seed (enqueues `Internal::SeedAccountJob`)
+  - CLI: `bundle exec rails runner "Internal::SeedAccountJob.perform_now(Account.find(<id>))"`
+  - Direct: `bundle exec rails runner "Seeders::AccountSeeder.new(account: Account.find(<id>)).perform!"`
 
 ## Lint
 
@@ -39,5 +42,5 @@ rbenv install $(cat .ruby-version)  # if needed
 
 - One git worktree + branch per task
 - Local setup under `.codex/` with `Procfile.worktree`
-- Per-worktree DB/port values to avoid collisions
+- `.codex/environments/environment.toml` generates per-worktree DB name, Rails port, Vite port, and Redis DB index to avoid collisions
 - Separate Overmind socket/title per worktree

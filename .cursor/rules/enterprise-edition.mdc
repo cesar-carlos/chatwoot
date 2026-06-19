@@ -1,27 +1,21 @@
 ---
-description: Enterprise Edition overlay rules when editing OSS or enterprise code
+description: Enterprise Edition overlay when editing OSS or enterprise code
 globs: "{app,enterprise,lib,config}/**/*.{rb,yml}"
 alwaysApply: false
 ---
 
 # Enterprise Edition
 
-Chatwoot has an Enterprise overlay under `enterprise/` that extends/overrides OSS code.
+Overlay under `enterprise/` extends OSS via `prepend_mod_with` / `include_mod_with`. Fork features (non-SaaS) → `custom/` per `fork-workflow.mdc`.
 
-## Before Editing
-
-Search both trees: `rg -n "FooService|ControllerName|ModelName" app enterprise`
+Before editing: `rg -n "FooService|ControllerName|ModelName" app enterprise`
 
 ## Checklist
 
-- Enterprise-only behavior → add module via `prepend_mod_with` / `include_mod_with`, not direct OSS edits
-- Enterprise-exclusive features → place code under `enterprise/`
-- New endpoints/services/models → check if Enterprise needs override or extension point
-- Avoid hardcoding plan-specific behavior in OSS; use config, feature flags, or extension points
-- Keep request/response contracts stable across OSS and Enterprise
-- Mirror renames/moves in `enterprise/` to prevent drift
-- Enterprise specs → `spec/enterprise/` mirroring OSS layout
+- Enterprise-only behavior → module via `prepend_mod_with`, not direct OSS edits
+- Enterprise-exclusive features → code under `enterprise/`
+- New endpoints/services/models → check Enterprise override or extension point
+- No plan-specific behavior hardcoded in OSS — use config or feature flags
+- Mirror renames/moves in `enterprise/`; specs in `spec/enterprise/`
 
-## Reference
-
-https://chatwoot.help/hc/handbook/articles/developing-enterprise-edition-features-38
+Reference: https://chatwoot.help/hc/handbook/articles/developing-enterprise-edition-features-38

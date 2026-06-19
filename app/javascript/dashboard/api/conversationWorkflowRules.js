@@ -10,6 +10,10 @@ class ConversationWorkflowRulesAPI extends ApiClient {
     return axios.post(`${this.url}/migrate_legacy`);
   }
 
+  previewCount(payload) {
+    return axios.post(`${this.url}/preview_count`, payload);
+  }
+
   reorder(rules) {
     return axios.post(`${this.url}/reorder`, { rules });
   }

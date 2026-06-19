@@ -23,6 +23,9 @@
 | ResolveService + required attrs | P2 | business-rules §7 · implementation-plan Fase 4.1 |
 | Fronteira SLA Enterprise | P2 | business-rules §7 · implementation-plan Fase 4.4 |
 | Opção D Automação | P2 | implementation-plan Fase 4.3 · decision-tree |
+| UX refactor + menu split | — | jun/2026 — `conversationRules/` components, sidebar independente, `tm()` tiered SLA fix |
+| ScheduleOnMessageScheduler | — | jun/2026 — delay desde `waiting_since`, dedup Redis, specs |
+| Gatilhos estendidos + UX | — | jun/2026 — 4 novos triggers, cards, presets, preview, abas lista |
 
 ---
 
@@ -37,4 +40,4 @@
 
 ---
 
-*Última atualização: jun/2026 — incorporado nos docs principais*
+*Última atualização: jun/2026 — UX refactor + menu split incorporados*

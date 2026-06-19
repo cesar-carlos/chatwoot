@@ -1,7 +1,11 @@
 class Custom::ConversationWorkflow::AccountProcessor
   FEATURE_FLAG_BY_TRIGGER = {
     'conversation_inactivity' => 'auto_resolve_conversations',
-    'agent_no_reply' => 'conversation_agent_no_reply_rules'
+    'agent_no_reply' => 'conversation_agent_no_reply_rules',
+    'first_response_overdue' => 'conversation_agent_no_reply_rules',
+    'unassigned_too_long' => 'conversation_agent_no_reply_rules',
+    'pending_stale' => 'conversation_agent_no_reply_rules',
+    'customer_no_reply' => 'auto_resolve_conversations'
   }.freeze
 
   def initialize(account)

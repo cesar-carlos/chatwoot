@@ -1,6 +1,5 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useAlert } from 'dashboard/composables';
 import useAutomationValues from 'dashboard/composables/useAutomationValues';
 import {
   validateSingleFilter,
@@ -9,7 +8,8 @@ import {
 import {
   DEFAULT_WORKFLOW_RULE,
   WORKFLOW_CONDITIONS,
-} from 'dashboard/routes/dashboard/settings/conversationWorkflow/constants';
+} from 'dashboard/routes/dashboard/settings/conversationRules/constants';
+import { isInactivityTrigger } from 'dashboard/routes/dashboard/settings/conversationRules/helpers/triggerHelper';
 
 const MAX_DURATION_MINUTES = 1_439_856;
 
@@ -38,6 +38,8 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
       : structuredClone(DEFAULT_WORKFLOW_RULE)
   );
 
+  const fieldErrors = ref({});
+
   if (!startValue?.id) {
     const maxPosition = existingRules.reduce(
       (max, item) => Math.max(max, item.position ?? 0),
@@ -46,24 +48,76 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
     rule.value.position = maxPosition + 1;
   }
 
+  const clearFieldError = field => {
+    if (fieldErrors.value[field]) {
+      const next = { ...fieldErrors.value };
+      delete next[field];
+      fieldErrors.value = next;
+    }
+  };
+
   watch(
     () => rule.value.trigger_type,
     (triggerType, previousType) => {
       if (!previousType || triggerType === previousType) return;
 
-      if (triggerType === 'agent_no_reply') {
-        rule.value.ignore_waiting = false;
-        rule.value.resolve_on_match = false;
-        rule.value.message = '';
-      } else {
+      if (isInactivityTrigger(triggerType)) {
         rule.value.options = {
           statuses: ['open'],
           require_no_first_reply: false,
           respect_business_hours:
             rule.value.options?.respect_business_hours || false,
         };
+        if (triggerType !== 'conversation_inactivity') {
+          rule.value.ignore_waiting = false;
+          rule.value.resolve_on_match = false;
+          rule.value.message = '';
+        }
+      } else {
+        rule.value.ignore_waiting = false;
+        rule.value.resolve_on_match = false;
+        rule.value.message = '';
+        if (triggerType === 'first_response_overdue') {
+          rule.value.options = {
+            statuses: rule.value.options?.statuses || ['open'],
+            require_no_first_reply: true,
+            respect_business_hours:
+              rule.value.options?.respect_business_hours || false,
+          };
+        } else if (triggerType === 'agent_no_reply') {
+          rule.value.options = {
+            statuses: rule.value.options?.statuses || ['open'],
+            require_no_first_reply:
+              rule.value.options?.require_no_first_reply || false,
+            respect_business_hours:
+              rule.value.options?.respect_business_hours || false,
+          };
+        } else {
+          rule.value.options = {
+            statuses: ['open'],
+            require_no_first_reply: false,
+            respect_business_hours:
+              rule.value.options?.respect_business_hours || false,
+          };
+        }
       }
     }
+  );
+
+  watch(
+    () => rule.value.name,
+    () => clearFieldError('name')
+  );
+
+  watch(
+    () => rule.value.duration_minutes,
+    () => clearFieldError('duration')
+  );
+
+  watch(
+    () => rule.value.actions,
+    () => clearFieldError('actions'),
+    { deep: true }
   );
 
   const appendNewCondition = () => {
@@ -95,17 +149,16 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
   };
 
   const validateRule = () => {
+    const errors = {};
+
     if (!rule.value.name?.trim()) {
-      useAlert(t('CONVERSATION_WORKFLOW.RULES.VALIDATION.NAME_REQUIRED'));
-      return false;
+      errors.name = t('CONVERSATION_RULES.VALIDATION.NAME_REQUIRED');
     }
+
     if (!rule.value.duration_minutes || rule.value.duration_minutes < 10) {
-      useAlert(t('CONVERSATION_WORKFLOW.RULES.VALIDATION.DURATION_MIN'));
-      return false;
-    }
-    if (rule.value.duration_minutes > MAX_DURATION_MINUTES) {
-      useAlert(t('CONVERSATION_WORKFLOW.RULES.VALIDATION.DURATION_MAX'));
-      return false;
+      errors.duration = t('CONVERSATION_RULES.VALIDATION.DURATION_MIN');
+    } else if (rule.value.duration_minutes > MAX_DURATION_MINUTES) {
+      errors.duration = t('CONVERSATION_RULES.VALIDATION.DURATION_MAX');
     }
 
     const conditions = rule.value.conditions || [];
@@ -113,8 +166,7 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
       .map(condition => validateSingleFilter(condition))
       .find(Boolean);
     if (conditionError) {
-      useAlert(t(`AUTOMATION.ERRORS.${conditionError}`));
-      return false;
+      errors.conditions = t(`AUTOMATION.ERRORS.${conditionError}`);
     }
 
     const actions = rule.value.actions || [];
@@ -122,36 +174,30 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
       .map(action => validateSingleAction(action))
       .find(Boolean);
     if (actionError) {
-      useAlert(t(`AUTOMATION.ERRORS.${actionError}`));
-      return false;
+      errors.actions = t(`AUTOMATION.ERRORS.${actionError}`);
     }
 
-    if (rule.value.trigger_type === 'agent_no_reply') {
+    if (isInactivityTrigger(rule.value.trigger_type)) {
+      const hasOutcome =
+        actions.length > 0 ||
+        (rule.value.trigger_type === 'conversation_inactivity' &&
+          (rule.value.resolve_on_match || rule.value.message?.trim()));
+      if (!hasOutcome) {
+        errors.actions = t('CONVERSATION_RULES.VALIDATION.INACTIVITY_OUTCOME');
+      }
+    } else {
       const hasResolve = actions.some(
         action => action.action_name === 'resolve_conversation'
       );
       if (!actions.length && !hasResolve) {
-        useAlert(
-          t('CONVERSATION_WORKFLOW.RULES.VALIDATION.AGENT_NO_REPLY_ACTIONS')
+        errors.actions = t(
+          'CONVERSATION_RULES.VALIDATION.AGENT_NO_REPLY_ACTIONS'
         );
-        return false;
       }
     }
 
-    if (rule.value.trigger_type === 'conversation_inactivity') {
-      const hasOutcome =
-        actions.length > 0 ||
-        rule.value.resolve_on_match ||
-        rule.value.message?.trim();
-      if (!hasOutcome) {
-        useAlert(
-          t('CONVERSATION_WORKFLOW.RULES.VALIDATION.INACTIVITY_OUTCOME')
-        );
-        return false;
-      }
-    }
-
-    return true;
+    fieldErrors.value = errors;
+    return Object.keys(errors).length === 0;
   };
 
   const buildPayload = () => {
@@ -183,10 +229,21 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
       payload.resolve_on_match = rule.value.resolve_on_match;
       payload.message = rule.value.message;
       payload.options.require_no_first_reply = false;
+    } else if (payload.trigger_type === 'agent_no_reply') {
+      payload.ignore_waiting = false;
+      payload.resolve_on_match = false;
+      payload.message = null;
+    } else if (payload.trigger_type === 'first_response_overdue') {
+      payload.ignore_waiting = false;
+      payload.resolve_on_match = false;
+      payload.message = null;
+      payload.options.require_no_first_reply = true;
     } else {
       payload.ignore_waiting = false;
       payload.resolve_on_match = false;
       payload.message = null;
+      payload.options.require_no_first_reply = false;
+      payload.options.statuses = ['open'];
     }
 
     return payload;
@@ -194,6 +251,7 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
 
   return {
     rule,
+    fieldErrors,
     appendNewCondition,
     appendNewAction,
     removeCondition,
