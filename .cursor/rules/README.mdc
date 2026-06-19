@@ -5,25 +5,31 @@ alwaysApply: false
 
 # Cursor Rules Index
 
-Rules live in `.cursor/rules/`. `alwaysApply: true` rules are included in every agent session; others activate via `globs` when matching files are in context.
+Rules live in `.cursor/rules/`. `alwaysApply: true` → every session; `globs` → when matching files are in context.
 
-## Always applied
+## Always applied (4)
 
-| Rule | Description |
-|------|-------------|
-| `chatwoot-core.mdc` | Core development principles and project conventions |
-| `chatwoot-dev-commands.mdc` | Build, test, lint, and dev environment commands |
-| `coding-standards.mdc` | Readability, naming, and code hygiene |
-| `design-principles.mdc` | SOLID, composition, anti-patterns |
-| `domain-application-layer.mdc` | Domain vs application vs transport boundaries |
-| `fork-merge-conflicts.mdc` | Merge conflict avoidance for upstream sync |
-| `fork-strategy.mdc` | Branch workflow — develop mirrors upstream, custom work on main |
+| Rule | Scope |
+|------|-------|
+| `chatwoot-core.mdc` | MVP approach, naming, errors, commits, i18n, branding |
+| `chatwoot-dev-commands.mdc` | Setup, run, seed, lint, test, worktrees |
+| `architecture.mdc` | Layers, anti-patterns, composition, examples |
+| `fork-workflow.mdc` | Branches, `custom/`, FORK markers, merge workflow |
 
-## File-scoped (globs)
+## File-scoped (3)
 
-| Rule | Globs | Description |
-|------|-------|-------------|
-| `ruby-conventions.mdc` | `**/*.rb` | Ruby and Rails conventions |
-| `vue-frontend.mdc` | `**/*.{vue,js}` | Vue 3 and JavaScript frontend |
-| `tailwind-styling.mdc` | `**/*.vue` | Tailwind-only styling |
-| `enterprise-edition.mdc` | `{app,enterprise,lib,config}/**/*.{rb,yml}` | Enterprise overlay rules |
+| Rule | Globs |
+|------|-------|
+| `ruby-conventions.mdc` | `**/*.rb` |
+| `vue-frontend.mdc` | `**/*.{vue,js,ts}` |
+| `enterprise-edition.mdc` | `{app,enterprise,lib,config}/**/*.{rb,yml}` |
+
+## On demand (1)
+
+| Rule | When |
+|------|------|
+| `pull-requests.mdc` | Opening or drafting a PR |
+
+## Entry points
+
+`AGENTS.md`, `CLAUDE.md`, `.windsurf/rules/chatwoot.md` — short indexes only; **edit rules here**.

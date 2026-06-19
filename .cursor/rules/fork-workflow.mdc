@@ -1,0 +1,78 @@
+---
+description: Fork branches, custom overlay, FORK markers, and upstream merge workflow
+alwaysApply: true
+---
+
+# Fork Workflow
+
+Fork of [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot). All custom work on **`main`**; **`develop`** mirrors `upstream/develop` — never commit fork changes there.
+
+| Branch | Purpose |
+|--------|---------|
+| `develop` | Exact upstream mirror |
+| `main` | All fork-specific changes |
+
+## Sync & automation
+
+```bash
+bin/fork-sync-upstream   # reset develop, push, rebase main, run inventory
+bin/fork-inventory       # FORK: markers → doc/fork-divergences.txt
+git config core.hooksPath .githooks   # blocks FORK: commits on develop
+```
+
+Manual sync: `git fetch upstream` → reset `develop` → `git rebase develop` on `main`.
+
+## Change priority (best → worst merge safety)
+
+| # | Approach | When |
+|---|----------|------|
+| 1 | Data/config only | `InstallationConfig`, feature flags, Rails console |
+| 2 | **`custom/` new files** | Services, models, controllers, jobs, builders |
+| 3 | **`prepend_mod_with`** | Override OSS/Enterprise without editing upstream body |
+| 4 | One-line `# FORK:` hook | Call `custom/` from upstream entry point (routes, scheduler) |
+| 5 | Direct upstream edit | Last resort — every changed line marked `# FORK:` / `// FORK:` |
+
+Enterprise SaaS behavior → `enterprise/`; fork features → `custom/`.
+
+## Custom overlay (`custom/`)
+
+Autoloaded via `config/application.rb` (`custom/lib`, `custom/app/**`). `ChatwootApp.extensions` → `%w[enterprise custom]` for `prepend_mod_with`.
+
+```
+custom/app/{models/custom,services/custom,controllers,jobs,builders,policies,listeners}/
+spec/custom/   # mirror layout; run with bundle exec rspec spec/custom/…
+```
+
+OSS classes already call `SomeModel.prepend_mod_with('SomeModel')` — add `Custom::SomeModel` under `custom/app/models/custom/` with no upstream edit. Code in `custom/` usually needs no `# FORK:` markers.
+
+When upstream has no hook, add the smallest FORK entry point (one route, one scheduler line). Never copy entire upstream files.
+
+## FORK markers & upstream edits
+
+```ruby
+def limits
+  # FORK: self-hosted enterprise unlimited usage
+  return fork_unlimited_limits if ChatwootApp.self_hosted_enterprise?
+  # …original logic below unchanged…
+end
+```
+
+- Guards at method **top**; FORK blocks contiguous and self-contained
+- Do not reformat, reorder imports, or refactor upstream "while you're there"
+- Avoid high-churn files: `routes.rb`, `Gemfile`, `package.json`, large finders/callbacks, shared initializers
+- Frontend: new composables/components; one `// FORK:` import/call in upstream when unavoidable
+
+Discover: `rg "FORK:" app enterprise lib config custom app/javascript`
+
+## Merge & conflicts
+
+Before merge: `rg "FORK:" > /tmp/fork-markers.txt` for inventory. Optional dry-run: `git merge-tree $(git merge-base HEAD develop) HEAD develop`.
+
+On conflict: default to upstream for unmarked lines; preserve all `FORK:` blocks; compare marker count after merge.
+
+## Anti-patterns
+
+- Upstream edits without `FORK:` markers · duplicating entire upstream classes · renaming upstream symbols
+- Interleaving fork and upstream logic · formatting-only diffs in shared files · large fork changes without syncing first
+
+Commit scope for fork work: `feat(fork): …` or `fix(fork): …`. One logical change per commit.

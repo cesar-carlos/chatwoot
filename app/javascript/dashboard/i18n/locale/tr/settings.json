@@ -558,58 +558,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Konuşma İş Akışları",
-        "DESCRIPTION": "Konuşma çözümlemesi için kuralları ve zorunlu alanları yapılandırın."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Attributes required on resolution",
-      "DESCRIPTION": "Bir konuşma sonuçlandırılırken, temsilcilerden henüz doldurmamışlarsa bu alanları doldurmaları istenecektir.",
-      "NO_ATTRIBUTES": "No attributes added yet",
-      "ADD": {
-        "TITLE": "Add Attributes",
-        "SEARCH_PLACEHOLDER": "Öznitelik ara"
-      },
-      "SAVE": {
-        "SUCCESS": "Required attributes updated",
-        "ERROR": "Could not update required attributes, please try again"
-      },
-      "MODAL": {
-        "TITLE": "Görüşmeyi Çöz",
-        "DESCRIPTION": "Bu konuşmayı kapatmadan önce lütfen aşağıdaki özel özellikleri doldurun",
-        "ACTIONS": {
-          "RESOLVE": "Görüşmeyi Çöz",
-          "CANCEL": "İptal Et"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Bir not yaz...",
-          "NUMBER": "Bir sayı girin",
-          "LINK": "Bağlantı ekle",
-          "DATE": "Bir tarih seçin",
-          "LIST": "Bir seçenek seçin"
-        },
-        "CHECKBOX": {
-          "YES": "Evet",
-          "NO": "Hayır"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Upgrade to use required attributes",
-        "AVAILABLE_ON": "The required conversation attributes feature is available on the Business and Enterprise plans.",
-        "UPGRADE_PROMPT": "Planınızı yükseltin ve temsilcilerin görüşme sonuçlandırılmadan önce gerekli alanları doldurmasını sağlayın.",
-        "UPGRADE_NOW": "Şimdi yükselt",
-        "CANCEL_ANYTIME": "You can change or cancel your plan anytime"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "The required conversation attributes feature is available on the paid plans.",
-        "UPGRADE_PROMPT": "Upgrade to a paid plan to enforce required attributes before conversation resolution.",
-        "ASK_ADMIN": "Please reach out to your administrator for the upgrade."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Eyvah! Hiçbir Chatwoot hesabı bulunamadı. Devam etmek için yeni bir hesap oluşturun.",
     "NEW_ACCOUNT": "Yeni hesap",

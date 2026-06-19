@@ -2,7 +2,20 @@ class ConversationWorkflowRule < ApplicationRecord
   belongs_to :account
   has_many :conversation_workflow_rule_executions, dependent: :destroy_async
 
-  enum trigger_type: { conversation_inactivity: 0, agent_no_reply: 1 }
+  enum trigger_type: {
+    conversation_inactivity: 0,
+    agent_no_reply: 1,
+    first_response_overdue: 2,
+    unassigned_too_long: 3,
+    pending_stale: 4,
+    customer_no_reply: 5
+  }
+
+  SCHEDULABLE_ON_INCOMING = %w[agent_no_reply first_response_overdue].freeze
+
+  def self.schedulable_on_incoming?(trigger_type)
+    SCHEDULABLE_ON_INCOMING.include?(trigger_type)
+  end
 
   validates :account_id, :name, :duration_minutes, presence: true
   validates :name, length: { maximum: 255 }
@@ -24,10 +37,9 @@ class ConversationWorkflowRule < ApplicationRecord
     base = %w[
       add_label remove_label add_private_note send_message assign_agent assign_team
       remove_assigned_agent remove_assigned_team send_webhook_event send_email_to_team
-      send_email_transcript change_priority send_attachment
+      send_email_transcript change_priority
     ]
-    base += %w[resolve_conversation] if conversation_inactivity?
-    base += %w[resolve_conversation] if agent_no_reply?
+    base += %w[resolve_conversation] unless conversation_inactivity?
     base.uniq
   end
 
@@ -49,7 +61,7 @@ class ConversationWorkflowRule < ApplicationRecord
   def json_conditions_format
     return if conditions.blank?
 
-    attributes = conditions.map { |obj| obj['attribute_key'] }
+    attributes = conditions.pluck('attribute_key')
     invalid = attributes - conditions_attributes
     errors.add(:conditions, "Workflow conditions #{invalid.join(',')} not supported.") if invalid.any?
   end
@@ -57,7 +69,7 @@ class ConversationWorkflowRule < ApplicationRecord
   def json_actions_format
     return if actions.blank?
 
-    attributes = actions.map { |obj| obj['action_name'] }
+    attributes = actions.pluck('action_name')
     invalid = attributes - actions_attributes
     errors.add(:actions, "Workflow actions #{invalid.join(',')} not supported.") if invalid.any?
   end

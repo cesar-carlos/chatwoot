@@ -24,7 +24,10 @@ import teams from './teams/teams.routes';
 import customRoles from './customRoles/customRole.routes';
 import profile from './profile/profile.routes';
 import security from './security/security.routes';
+// FORK: conversation workflow rules settings routes
 import conversationWorkflow from './conversationWorkflow/conversationWorkflow.routes';
+// FORK: conversation rules settings routes
+import conversationRules from './conversationRules/conversationRules.routes';
 import captain from './captain/captain.routes';
 
 export default {
@@ -65,7 +68,8 @@ export default {
     ...customRoles.routes,
     ...profile.routes,
     ...security.routes,
-    ...conversationWorkflow.routes,
+    ...conversationWorkflow.routes, // FORK: conversation workflow settings routes
+    ...conversationRules.routes, // FORK: conversation rules settings routes
     ...captain.routes,
   ],
 };

@@ -558,58 +558,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "對話工作流程",
-        "DESCRIPTION": "設定對話解決的規則和必填欄位。"
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "解決時必填的屬性",
-      "DESCRIPTION": "解決對話時，系統會提示客服人員填寫尚未完成的屬性。",
-      "NO_ATTRIBUTES": "尚未新增任何屬性",
-      "ADD": {
-        "TITLE": "新增屬性",
-        "SEARCH_PLACEHOLDER": "搜尋屬性"
-      },
-      "SAVE": {
-        "SUCCESS": "必填屬性已更新",
-        "ERROR": "無法更新必填屬性，請再試一次"
-      },
-      "MODAL": {
-        "TITLE": "解決對話",
-        "DESCRIPTION": "請在解決此對話前填寫以下自訂屬性",
-        "ACTIONS": {
-          "RESOLVE": "解決對話",
-          "CANCEL": "取消"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "輸入備註...",
-          "NUMBER": "輸入數字",
-          "LINK": "新增連結",
-          "DATE": "選擇日期",
-          "LIST": "選擇選項"
-        },
-        "CHECKBOX": {
-          "YES": "是",
-          "NO": "否"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "升級以使用必填屬性功能",
-        "AVAILABLE_ON": "對話必填屬性功能在商務版和企業版方案中提供。",
-        "UPGRADE_PROMPT": "升級您的方案，以在對話解決前提示客服人員填寫必填屬性。",
-        "UPGRADE_NOW": "立即升級",
-        "CANCEL_ANYTIME": "您可以隨時變更或取消您的方案"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "對話必填屬性功能在付費方案中提供。",
-        "UPGRADE_PROMPT": "升級至付費方案，以在對話解決前強制要求填寫必填屬性。",
-        "ASK_ADMIN": "請聯繫您的管理員進行升級。"
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "糟糕！找不到任何 Chatwoot 帳戶。請建立新帳戶以繼續。",
     "NEW_ACCOUNT": "新帳戶",

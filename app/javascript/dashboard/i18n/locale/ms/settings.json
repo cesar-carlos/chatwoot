@@ -558,58 +558,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Aliran Kerja Perbualan",
-        "DESCRIPTION": "Konfigurasikan peraturan dan medan yang diperlukan untuk penyelesaian perbualan."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Atribut yang diperlukan semasa penyelesaian",
-      "DESCRIPTION": "Apabila menyelesaikan perbualan, ejen akan diminta untuk mengisi atribut ini jika belum diisi.",
-      "NO_ATTRIBUTES": "Tiada atribut ditambah lagi",
-      "ADD": {
-        "TITLE": "Tambah Atribut",
-        "SEARCH_PLACEHOLDER": "Cari atribut"
-      },
-      "SAVE": {
-        "SUCCESS": "Atribut yang diperlukan telah dikemas kini",
-        "ERROR": "Tidak dapat mengemas kini atribut yang diperlukan, sila cuba lagi"
-      },
-      "MODAL": {
-        "TITLE": "Selesaikan perbualan",
-        "DESCRIPTION": "Sila isi atribut tersuai berikut sebelum menyelesaikan perbualan ini",
-        "ACTIONS": {
-          "RESOLVE": "Selesaikan perbualan",
-          "CANCEL": "Batalkan"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Tulis nota...",
-          "NUMBER": "Masukkan nombor",
-          "LINK": "Tambah pautan",
-          "DATE": "Pilih tarikh",
-          "LIST": "Pilih pilihan"
-        },
-        "CHECKBOX": {
-          "YES": "Ya",
-          "NO": "Tidak"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Tingkatkan untuk menggunakan atribut wajib",
-        "AVAILABLE_ON": "Ciri atribut perbualan wajib tersedia pada pelan Perniagaan dan Perusahaan.",
-        "UPGRADE_PROMPT": "Tingkatkan pelan anda untuk menggesa ejen mengisi atribut wajib sebelum penyelesaian perbualan.",
-        "UPGRADE_NOW": "Tingkatkan sekarang",
-        "CANCEL_ANYTIME": "Anda boleh menukar atau membatalkan pelan anda bila-bila masa"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "Ciri atribut perbualan wajib tersedia pada pelan berbayar.",
-        "UPGRADE_PROMPT": "Tingkatkan ke pelan berbayar untuk menguatkuasakan atribut wajib sebelum penyelesaian perbualan.",
-        "ASK_ADMIN": "Sila hubungi pentadbir anda untuk peningkatan."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Uh oh! Kami tidak dapat menemui sebarang akaun Chatwoot. Sila buat akaun baru untuk meneruskan.",
     "NEW_ACCOUNT": "Akaun Baru",

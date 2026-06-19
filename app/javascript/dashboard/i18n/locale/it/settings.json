@@ -558,58 +558,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Workflow Conversazione",
-        "DESCRIPTION": "Configura regole e campi obbligatori per la risoluzione delle conversazioni."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Attributi richiesti per la risoluzione",
-      "DESCRIPTION": "Quando si risolve una conversazione, agli operatori verrà chiesto di compilare questi attributi se non sono ancora stati compilati.",
-      "NO_ATTRIBUTES": "Nessun attributo aggiunto",
-      "ADD": {
-        "TITLE": "Aggiungi Attributi",
-        "SEARCH_PLACEHOLDER": "Cerca attributi"
-      },
-      "SAVE": {
-        "SUCCESS": "Attributi richiesti aggiornati",
-        "ERROR": "Impossibile aggiornare gli attributi richiesti, riprova"
-      },
-      "MODAL": {
-        "TITLE": "Risolvi la conversazione",
-        "DESCRIPTION": "Inserisci i seguenti attributi personalizzati prima di risolvere questa conversazione",
-        "ACTIONS": {
-          "RESOLVE": "Risolvi la conversazione",
-          "CANCEL": "Annulla"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Scrivi una nota...",
-          "NUMBER": "Inserisci un numero",
-          "LINK": "Aggiungi un link",
-          "DATE": "Scegli una data",
-          "LIST": "Seleziona un'opzione"
-        },
-        "CHECKBOX": {
-          "YES": "Sì",
-          "NO": "No"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Aggiorna per utilizzare gli attributi richiesti",
-        "AVAILABLE_ON": "La funzionalità Attributi di Conversazione Richiesti è disponibile solo nei piani Business e Enterprise.",
-        "UPGRADE_PROMPT": "Aggiorna il tuo piano per chiedere agli operatori di compilare gli attributi richiesti prima della risoluzione della conversazione.",
-        "UPGRADE_NOW": "Aggiorna ora",
-        "CANCEL_ANYTIME": "Puoi modificare o annullare il tuo piano in qualsiasi momento"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "La funzionalità Attributi di Conversazione Richiesti è disponibile solo nei piani a pagamento.",
-        "UPGRADE_PROMPT": "Passa a un piano a pagamento per imporre gli attributi richiesti prima della risoluzione della conversazione.",
-        "ASK_ADMIN": "Contatta il tuo amministratore per l'aggiornamento."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Uh oh! Non abbiamo trovato alcun account Chatwoot. Si prega di creare un nuovo account per continuare.",
     "NEW_ACCOUNT": "Nuovo account",

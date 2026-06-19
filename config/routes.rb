@@ -122,6 +122,7 @@ Rails.application.routes.draw do
             collection do
               post :reorder
               post :migrate_legacy
+              post :preview_count
             end
           end
           resources :macros, only: [:index, :create, :show, :update, :destroy] do

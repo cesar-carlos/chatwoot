@@ -558,58 +558,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Proceset e Bisedave",
-        "DESCRIPTION": "Konfiguroni rregullat dhe fushat e kërkuara për zgjidhjen e bisedave."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Atributet e kërkuara në zgjidhje",
-      "DESCRIPTION": "Kur zgjidhet një bisedë, agjentët do të kërkohen të plotësojnë këto atribute nëse nuk e kanë bërë ende.",
-      "NO_ATTRIBUTES": "Nuk janë shtuar ende atribute",
-      "ADD": {
-        "TITLE": "Shto Atribute",
-        "SEARCH_PLACEHOLDER": "Kërko atribute"
-      },
-      "SAVE": {
-        "SUCCESS": "Atributet e kërkuara u përditësuan",
-        "ERROR": "Nuk mund të përditësoheshin atributet e kërkuara, ju lutemi provoni përsëri"
-      },
-      "MODAL": {
-        "TITLE": "Zgjidh bisedën",
-        "DESCRIPTION": "Ju lutemi plotësoni atributet e mëposhtme të personalizuara para se të zgjidhni këtë bisedë",
-        "ACTIONS": {
-          "RESOLVE": "Zgjidh bisedën",
-          "CANCEL": "Anulo"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Shkruani një shënim...",
-          "NUMBER": "Futni një numër",
-          "LINK": "Shto një lidhje",
-          "DATE": "Zgjidh një datë",
-          "LIST": "Zgjidh një opsion"
-        },
-        "CHECKBOX": {
-          "YES": "Po",
-          "NO": "Jo"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Përmirëso për të përdorur atributet e kërkuara",
-        "AVAILABLE_ON": "Veçoria e atributeve të kërkuara të bisedave është në dispozicion në planet Business dhe Enterprise.",
-        "UPGRADE_PROMPT": "Përmirësoni planin tuaj për të kërkuar nga agjentët të plotësojnë atributet e kërkuara para zgjidhjes së bisedës.",
-        "UPGRADE_NOW": "Përmirëso tani",
-        "CANCEL_ANYTIME": "Mund të ndryshoni ose anuloni planin tuaj në çdo kohë"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "Veçoria e atributeve të kërkuara të bisedave është në dispozicion në planet me pagesë.",
-        "UPGRADE_PROMPT": "Përmirësoni në një plan me pagesë për të zbatuar atributet e kërkuara para zgjidhjes së bisedës.",
-        "ASK_ADMIN": "Ju lutemi kontaktoni administratorin tuaj për përmirësimin."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Uh oh! Nuk gjetëm asnjë llogari Chatwoot. Ju lutem krijoni një llogari të re për të vazhduar.",
     "NEW_ACCOUNT": "Llogari e Re",

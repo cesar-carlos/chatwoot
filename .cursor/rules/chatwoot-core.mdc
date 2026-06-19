@@ -1,37 +1,50 @@
 ---
-description: Core Chatwoot development principles and project conventions
+description: Core principles, coding hygiene, commits, i18n, and project conventions
 alwaysApply: true
 ---
 
-# Chatwoot Core Guidelines
+# Chatwoot Core
 
 ## Approach
 
 - MVP focus: least code change, happy-path only
-- No unnecessary defensive programming
-- Ship the happy path first; add guards only when production proves they are needed
-- Prefer minimal, readable code over abstractions
-- Break complex tasks into small, testable units
-- Iterate after confirmation
+- Ship the happy path first; add guards only when production proves they need them
+- Prefer minimal, readable code over clever abstractions — extract when a pattern repeats, not preemptively
+- Break complex tasks into small, testable units; iterate after confirmation
 - Avoid writing specs unless explicitly asked
-- Remove dead/unreachable/unused code
 - Pick one approach — no duplicate versions of the same logic
+
+## Structure & naming
+
+- One responsibility per file — split large controllers, services, or components before they become hard to scan
+- Use descriptive domain names: `ConversationFinder`, `Messages::AudioTranscriptionService`
+- PascalCase components, camelCase events, Ruby snake_case
+- Replace business-significant literals with named constants
+
+## Comments, cleanup & docs
+
+- Comments explain non-obvious intent or trade-offs — write in English
+- Remove dead code, commented-out code, empty `rescue`/`catch` blocks, unused exports
+- Never generate standalone docs (README, changelogs, wiki) unless explicitly requested
+
+## Errors
+
+- Handle failures explicitly — use `lib/custom_exceptions/`; do not swallow errors
 
 ## Commits
 
-- Use Conventional Commits: `type(scope): subject`
-- Example: `feat(auth): add user authentication`
+- Conventional Commits: `type(scope): subject` — e.g. `feat(auth): add user authentication`
 - Do not reference Claude in commit messages
 
 ## Translations
 
-- Only update `en.yml` (backend) and `en.json` (frontend)
-- Other languages are handled by the community
+- Only update English — other languages are community-maintained
+- Backend → `config/locales/en.yml`
+- Dashboard → `app/javascript/dashboard/i18n/locale/en/*.json`
+- Widget / survey → `app/javascript/{widget,survey}/i18n/locale/en.json`
 
-## Frontend
+## Frontend & branding
 
-- Use `components-next/` for message bubbles (the rest is being deprecated)
-
-## Branding
-
-- For user-facing strings containing "Chatwoot", use `replaceInstallationName` from `shared/composables/useBranding` instead of hardcoded brand copy
+- Message bubbles: use `components-next/` (legacy bubbles are deprecated)
+- Vue/JS conventions and Tailwind styling → `vue-frontend.mdc`
+- User-facing "Chatwoot" strings → `replaceInstallationName` from `shared/composables/useBranding`

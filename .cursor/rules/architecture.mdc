@@ -1,0 +1,51 @@
+---
+description: Layer boundaries, SOLID, composition, and anti-patterns for Rails + Vue
+alwaysApply: true
+---
+
+# Architecture
+
+Pragmatic Rails layering — not a pure DDD split:
+
+| Layer | Location | Responsibility |
+|-------|----------|----------------|
+| **Domain** | `app/models`, `lib/` | Invariants, validations, identity |
+| **Application** | `app/services`, `app/finders`, `app/builders` | One business action per class; orchestration |
+| **Transport** | `app/controllers`, `app/jobs`, Vue components | HTTP/API/UI wiring — delegate, don't implement rules |
+| **Infrastructure** | `app/services/**/providers`, adapters | External APIs, channel providers |
+
+## Rules by layer
+
+**Domain** — validations, enums, scopes; no HTTP params or channel API calls. Cross-entity workflows → services.
+
+**Application** — small public API (`#perform`, `#call`, `#execute`); no `ENV` or raw HTTP inside; raise custom exceptions or return structured data.
+
+**Transport** — controllers: strong params → authorize → service → JSON; Vue: presentation only, logic in composables or store actions.
+
+**Boundaries** — depend on provider base classes (e.g. `Whatsapp::Providers::BaseService`); new use cases → `app/services/`.
+
+## Anti-patterns
+
+- God class/object mixing persistence, validation, API, and business rules
+- Fat controllers/models — move logic to services, concerns, or composables
+- Shotgun surgery — centralize scattered conditionals in a policy, service, or strategy
+- Deep inheritance — prefer composition; use inheritance only for true is-a (STI, template-method bases)
+
+## Extension
+
+- Behavior variants → strategy objects, concerns, `prepend_mod_with`, or Vue composables — not long `if/else` chains
+- Extend stable code via new modules (`prepend_mod_with`); see `fork-workflow.mdc` for fork/Enterprise patterns
+
+## Examples
+
+```ruby
+# ❌ branching god method  →  ✅ dedicated services
+Messages::AudioTranscriptionService.new(message).perform if message.audio?
+Messages::EmailProcessingService.new(message).perform if message.email?
+```
+
+```javascript
+// ❌ component owns fetch + transform + side effects
+// ✅ composable for logic, thin component for presentation
+const { items, isLoading, fetchItems } = useConversationList(props.inboxId);
+```

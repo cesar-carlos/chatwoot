@@ -75,6 +75,20 @@ const hasConversationUnreadCounts = computed(() => {
   );
 });
 
+// FORK: hide conversation rules sidebar entry when no related feature flags
+const showConversationRules = computed(() => {
+  return (
+    isFeatureEnabledonAccount.value(
+      accountId.value,
+      FEATURE_FLAGS.AUTO_RESOLVE_CONVERSATIONS
+    ) ||
+    isFeatureEnabledonAccount.value(
+      accountId.value,
+      FEATURE_FLAGS.CONVERSATION_AGENT_NO_REPLY_RULES
+    )
+  );
+});
+
 const fetchConversationUnreadCounts = ([currentAccountId, isEnabled]) => {
   if (!currentAccountId) return;
 
@@ -830,11 +844,23 @@ const menuItems = computed(() => {
           to: accountScopedRoute('sla_list'),
         },
         {
+          // FORK: conversation workflow legacy settings sidebar entry
           name: 'Conversation Workflow',
           label: t('SIDEBAR.CONVERSATION_WORKFLOW'),
           icon: 'i-lucide-workflow',
           to: accountScopedRoute('conversation_workflow_index'),
         },
+        ...(showConversationRules.value
+          ? [
+              {
+                // FORK: conversation rules settings sidebar entry
+                name: 'Conversation Rules',
+                label: t('SIDEBAR.CONVERSATION_RULES'),
+                icon: 'i-lucide-list-checks',
+                to: accountScopedRoute('conversation_rules_index'),
+              },
+            ]
+          : []),
         {
           name: 'Settings Security',
           label: t('SIDEBAR.SECURITY'),

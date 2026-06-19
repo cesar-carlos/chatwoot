@@ -30,11 +30,39 @@ AND waiting_since IS NOT NULL
 AND waiting_since < now - duration_minutes
 ```
 
-**Feature flag:** `conversation_agent_no_reply_rules` (nova)
+**Feature flag:** `conversation_agent_no_reply_rules`
 
 **Ação típica:** escalar — **não** resolver por default.
 
-### 1.3 Semântica de `waiting_since` (importante)
+### 1.3 `first_response_overdue`
+
+**Definição:** conversa **nunca atendida** (`first_reply_created_at IS NULL`) há X minutos desde `waiting_since`.
+
+**Feature flag:** `conversation_agent_no_reply_rules`
+
+**Ação típica:** atribuir equipe, label “não atendida”.
+
+### 1.4 `unassigned_too_long`
+
+**Definição:** conversa aberta **sem assignee** há X minutos desde `created_at`.
+
+**Feature flag:** `conversation_agent_no_reply_rules`
+
+### 1.5 `pending_stale`
+
+**Definição:** conversa em **pending** sem atividade (`last_activity_at`) há X minutos.
+
+**Feature flag:** `conversation_agent_no_reply_rules`
+
+### 1.6 `customer_no_reply`
+
+**Definição:** última mensagem é **outgoing** (agente/bot) e o cliente não respondeu há X minutos.
+
+**Feature flag:** `auto_resolve_conversations`
+
+**Job per-message:** agenda ao enviar mensagem outgoing (`ScheduleOnMessageScheduler#perform_for_outgoing_message`).
+
+### 1.7 Semântica de `waiting_since` (importante)
 
 | Fato | Implicação |
 |------|------------|
@@ -48,7 +76,7 @@ AND waiting_since < now - duration_minutes
 - `require_no_first_reply: true` → `first_reply_created_at IS NULL` (“nunca atendida”)
 - `statuses: ['open', 'pending']` → incluir pending pós-handoff bot
 
-### 1.4 Matriz comparativa
+### 1.8 Matriz comparativa
 
 | Cenário | Inatividade | Agente não respondeu |
 |---------|-------------|----------------------|

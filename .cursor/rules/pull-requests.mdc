@@ -1,0 +1,39 @@
+---
+description: Pull request description format for Chatwoot fork
+alwaysApply: false
+---
+
+# Pull Request Format
+
+Use when opening or drafting a PR for this repository.
+
+## Structure
+
+1. **Summary** — short, user-facing paragraph describing the product change
+2. **Closes** — links to GitHub issues, Linear tickets, etc.
+3. **How to test** (features) — product/UX steps a reviewer can follow
+4. **How to reproduce** (bugfixes) — steps that showed the bug before the fix
+5. **What changed** (optional) — brief implementation highlights for reviewers
+
+## Do not include
+
+- A `How this was tested` section listing specs, commands, or CI output
+
+## Example skeleton
+
+```markdown
+## Summary
+Agents can export service session reports as CSV from the reports page.
+
+## Closes
+- https://github.com/org/repo/issues/123
+
+## How to test
+1. Log in as admin
+2. Open Reports → Service Sessions
+3. Click Export CSV and verify columns match the table
+
+## What changed
+- Added `ServiceSessionReportsController#export`
+- CSV builder under `custom/app/builders/…`
+```

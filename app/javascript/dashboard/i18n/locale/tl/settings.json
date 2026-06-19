@@ -558,58 +558,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Mga Daloy ng Usapan",
-        "DESCRIPTION": "I-configure ang mga patakaran at kinakailangang mga patlang para sa resolusyon ng usapan."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Mga katangiang kinakailangan sa resolusyon",
-      "DESCRIPTION": "Kapag nireresolba ang isang pag-uusap, hihilingin sa mga ahente na punan ang mga katangiang ito kung hindi pa nila nagagawa.",
-      "NO_ATTRIBUTES": "Walang idinagdag na mga katangian",
-      "ADD": {
-        "TITLE": "Magdagdag ng Mga Katangian",
-        "SEARCH_PLACEHOLDER": "Maghanap ng mga katangian"
-      },
-      "SAVE": {
-        "SUCCESS": "Na-update ang mga kinakailangang katangian",
-        "ERROR": "Hindi ma-update ang mga kinakailangang katangian, pakisubukang muli"
-      },
-      "MODAL": {
-        "TITLE": "Ayusin ang pag-uusap",
-        "DESCRIPTION": "Pakiusap punan ang mga sumusunod na pasadyang katangian bago ayusin ang pag-uusap na ito",
-        "ACTIONS": {
-          "RESOLVE": "Ayusin ang pag-uusap",
-          "CANCEL": "Kanselahin"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Magsulat ng tala...",
-          "NUMBER": "Maglagay ng numero",
-          "LINK": "Magdagdag ng link",
-          "DATE": "Pumili ng petsa",
-          "LIST": "Pumili ng opsyon"
-        },
-        "CHECKBOX": {
-          "YES": "Oo",
-          "NO": "Hindi"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Mag-upgrade upang magamit ang mga kinakailangang attribute",
-        "AVAILABLE_ON": "Ang tampok na kinakailangang mga attribute ng pag-uusap ay available sa mga Business at Enterprise na plano.",
-        "UPGRADE_PROMPT": "I-upgrade ang iyong plano upang hikayatin ang mga ahente na punan ang mga kinakailangang attribute bago matapos ang pag-uusap.",
-        "UPGRADE_NOW": "Mag-upgrade na",
-        "CANCEL_ANYTIME": "Maaari mong baguhin o kanselahin ang iyong plano anumang oras"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "Ang tampok na kinakailangang mga katangian ng pag-uusap ay available sa mga bayad na plano.",
-        "UPGRADE_PROMPT": "Mag-upgrade sa isang bayad na plano upang ipatupad ang kinakailangang mga katangian bago matapos ang pag-uusap.",
-        "ASK_ADMIN": "Mangyaring makipag-ugnayan sa iyong administrador para sa pag-upgrade."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Naku! Hindi kami makakita ng anumang Chatwoot account. Mangyaring gumawa ng bagong account upang magpatuloy.",
     "NEW_ACCOUNT": "Bagong Account",
