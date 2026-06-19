@@ -699,58 +699,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Vestluse töövood",
-        "DESCRIPTION": "Seadista reeglid ja vajalikud väljad vestluse lahendamiseks."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Lahendamisel nõutavad atribuudid",
-      "DESCRIPTION": "Vestlust lahendades palutakse agendil täita need atribuudid, kui need pole veel täidetud.",
-      "NO_ATTRIBUTES": "Atribuute pole veel lisatud",
-      "ADD": {
-        "TITLE": "Lisa atribuute",
-        "SEARCH_PLACEHOLDER": "Otsi atribuute"
-      },
-      "SAVE": {
-        "SUCCESS": "Nõutavad atribuudid uuendatud",
-        "ERROR": "Nõutavate atribuutide uuendamine ebaõnnestus, palun proovi uuesti"
-      },
-      "MODAL": {
-        "TITLE": "Lahenda vestlus",
-        "DESCRIPTION": "Palun täida enne selle vestluse lahendamist järgmised kohandatud atribuudid",
-        "ACTIONS": {
-          "RESOLVE": "Lahenda vestlus",
-          "CANCEL": "Tühista"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Kirjuta märkus...",
-          "NUMBER": "Sisesta number",
-          "LINK": "Lisa link",
-          "DATE": "Vali kuupäev",
-          "LIST": "Vali valik"
-        },
-        "CHECKBOX": {
-          "YES": "Jah",
-          "NO": "Ei"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Uuenda, et kasutada nõutavaid atribuute",
-        "AVAILABLE_ON": "The required conversation attributes feature is available on the Business and Enterprise plans.",
-        "UPGRADE_PROMPT": "Uuenda oma plaani, et paluda agentidel täita nõutavad atribuudid enne vestluse lahendamist.",
-        "UPGRADE_NOW": "Uuenda kohe",
-        "CANCEL_ANYTIME": "Saad oma plaani igal ajal muuta või tühistada"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "Nõutavate vestluse atribuutide funktsioon on saadaval tasulistes plaanides.",
-        "UPGRADE_PROMPT": "Uuenda tasulisele plaanile, et nõuda atribuutide täitmist enne vestluse lõpetamist.",
-        "ASK_ADMIN": "Palun pöördu uuenduse saamiseks oma administraatori poole."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Oih! Ühtegi Chatwoot kontot ei leitud. Jätkamiseks loo uus konto.",
     "NEW_ACCOUNT": "Uus konto",

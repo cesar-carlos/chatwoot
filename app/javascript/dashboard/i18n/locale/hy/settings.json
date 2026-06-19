@@ -699,58 +699,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Զրույցների աշխատանքային հոսքեր",
-        "DESCRIPTION": "Կարգավորեք կանոնները և պահանջվող դաշտերը զրույցի լուծման համար։"
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Լուծման ժամանակ պահանջվող հատկություններ",
-      "DESCRIPTION": "Զրույցը լուծելիս գործակալներին կհայտնվի այս հատկությունները լրացնելու հրահանգ, եթե նրանք դեռ չեն լրացրել դրանք։",
-      "NO_ATTRIBUTES": "Հատկություններ դեռ չեն ավելացվել",
-      "ADD": {
-        "TITLE": "Ավելացնել հատկություններ",
-        "SEARCH_PLACEHOLDER": "Որոնել հատկություններ"
-      },
-      "SAVE": {
-        "SUCCESS": "Պահանջվող հատկությունները թարմացվել են",
-        "ERROR": "Չհաջողվեց թարմացնել պահանջվող հատկությունները, խնդրում ենք փորձել կրկին"
-      },
-      "MODAL": {
-        "TITLE": "Լուծել զրույցը",
-        "DESCRIPTION": "Խնդրում ենք լրացնել հետևյալ հարմարեցված հատկությունները նախքան այս զրույցը լուծելը",
-        "ACTIONS": {
-          "RESOLVE": "Լուծել զրույցը",
-          "CANCEL": "Չեղարկել"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Գրեք նշում...",
-          "NUMBER": "Մուտքագրեք թիվ",
-          "LINK": "Ավելացնել հղում",
-          "DATE": "Ընտրել ամսաթիվ",
-          "LIST": "Ընտրել տարբերակ"
-        },
-        "CHECKBOX": {
-          "YES": "Այո",
-          "NO": "Ոչ"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Արդիականացրեք՝ օգտագործելու համար պահանջվող հատկությունները",
-        "AVAILABLE_ON": "Պահանջվող զրույցի հատկությունների ֆունկցիոնալությունը հասանելի է Business և Enterprise պլաններում։",
-        "UPGRADE_PROMPT": "Արդիականացրեք ձեր պլանը՝ գործակալներին զրույցի լուծումից առաջ պահանջվող հատկությունները լրացնելու հրահանգ տալու համար։",
-        "UPGRADE_NOW": "Upgrade now",
-        "CANCEL_ANYTIME": "You can change or cancel your plan anytime"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "The required conversation attributes feature is available on the paid plans.",
-        "UPGRADE_PROMPT": "Upgrade to a paid plan to enforce required attributes before conversation resolution.",
-        "ASK_ADMIN": "Please reach out to your administrator for the upgrade."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Օհ, մենք չգտանք Chatwoot հաշիվներ: Խնդրում ենք ստեղծել նոր հաշիվ շարունակելու համար",
     "NEW_ACCOUNT": "Նոր հաշիվ",

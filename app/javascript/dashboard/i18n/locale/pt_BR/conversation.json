@@ -52,9 +52,31 @@
     "DOWNLOAD": "Baixar",
     "UNKNOWN_FILE_TYPE": "Arquivo desconhecido",
     "SAVE_CONTACT": "Salvar contato",
+    "SHARE_CONTACT": {
+      "TOOLTIP": "Compartilhar contato",
+      "ERROR": "Não foi possível compartilhar o contato. Tente novamente.",
+      "DISABLED_SESSION_EXPIRED": "Cartões de contato só podem ser enviados durante uma sessão ativa do WhatsApp",
+      "MODAL": {
+        "TITLE": "Compartilhar um contato",
+        "DESCRIPTION": "Envie um cartão de contato que o cliente pode salvar no telefone.",
+        "CONFIRM": "Compartilhar",
+        "CANCEL": "Cancelar",
+        "PLACEHOLDER": "Selecione um contato",
+        "SEARCH_PLACEHOLDER": "Buscar por nome ou telefone",
+        "EMPTY_STATE": "Nenhum contato encontrado",
+        "IS_SEARCHING": "Buscando...",
+        "NO_PHONE": "Telefone obrigatório para compartilhar",
+        "NO_PHONE_CURRENT": "Este contato não tem telefone",
+        "EDIT_CONTACT": "Editar contato",
+        "QUICK_SHARE": "Compartilhar",
+        "OR_SEARCH": "Ou buscar outro contato",
+        "CURRENT_CONTACT_LABEL": "Compartilhar contato desta conversa"
+      }
+    },
     "NO_CONTENT": "Nenhum conteúdo a ser exibido",
     "SHARED_ATTACHMENT": {
       "CONTACT": "{sender} compartilhou um contato",
+      "CONTACT_OUTGOING": "Você compartilhou um contato",
       "LOCATION": "{sender} compartilhou uma localização",
       "FILE": "{sender} compartilhou um arquivo",
       "MEETING": "{sender} começou a reunião"

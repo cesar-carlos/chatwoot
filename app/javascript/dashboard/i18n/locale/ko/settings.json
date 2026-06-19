@@ -699,58 +699,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "대화 워크플로",
-        "DESCRIPTION": "대화 해결에 대한 규칙과 필수 항목을 구성합니다."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "해결 시 필수 속성",
-      "DESCRIPTION": "대화를 해결할 때, 에이전트가 아직 채우지 않은 이 속성들을 입력하도록 안내됩니다.",
-      "NO_ATTRIBUTES": "아직 추가된 속성이 없습니다",
-      "ADD": {
-        "TITLE": "속성 추가",
-        "SEARCH_PLACEHOLDER": "속성 검색"
-      },
-      "SAVE": {
-        "SUCCESS": "필수 속성이 업데이트되었습니다",
-        "ERROR": "필수 속성을 업데이트할 수 없습니다. 다시 시도하십시오"
-      },
-      "MODAL": {
-        "TITLE": "대화 해결",
-        "DESCRIPTION": "이 대화를 해결하기 전에 다음 사용자 정의 속성을 입력하십시오",
-        "ACTIONS": {
-          "RESOLVE": "대화 해결",
-          "CANCEL": "취소"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "메모를 작성하십시오...",
-          "NUMBER": "숫자를 입력하십시오",
-          "LINK": "링크를 추가하십시오",
-          "DATE": "날짜를 선택하십시오",
-          "LIST": "옵션을 선택하십시오"
-        },
-        "CHECKBOX": {
-          "YES": "예",
-          "NO": "아니오"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "필수 속성을 사용하려면 업그레이드하십시오",
-        "AVAILABLE_ON": "필수 대화 속성 기능은 Business 및 Enterprise 플랜에서 사용할 수 있습니다.",
-        "UPGRADE_PROMPT": "대화 해결 전에 에이전트에게 필수 속성 입력을 요구하려면 플랜을 업그레이드하십시오.",
-        "UPGRADE_NOW": "지금 업그레이드",
-        "CANCEL_ANYTIME": "언제든지 플랜을 변경하거나 취소할 수 있습니다"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "필수 대화 속성 기능은 유료 플랜에서 사용할 수 있습니다.",
-        "UPGRADE_PROMPT": "대화 해결 전에 필수 속성을 적용하려면 유료 플랜으로 업그레이드하십시오.",
-        "ASK_ADMIN": "업그레이드를 위해 관리자에게 문의하십시오."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Chatwoot 계정을 찾을 수 없습니다. 계속하려면 새 계정을 만드십시오.",
     "NEW_ACCOUNT": "새 계정",

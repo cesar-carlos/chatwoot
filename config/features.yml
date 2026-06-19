@@ -244,6 +244,7 @@
   display_name: Required Conversation Attributes
   enabled: false
   premium: true
+# FORK: agent no reply workflow rules feature flag
 - name: conversation_agent_no_reply_rules
   display_name: Agent No Reply Workflow Rules
   enabled: true

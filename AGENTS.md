@@ -1,6 +1,6 @@
 # Chatwoot Development Guidelines
 
-## Build / Test / Lint
+**Source of truth:** `.cursor/rules/` — edit rules there; this file is a Windsurf index.
 
 - **Setup**: `bundle install && pnpm install`
 - **Run Dev**: `pnpm dev` or `overmind start -f ./Procfile.dev`
@@ -151,7 +151,18 @@ Full workflow and conflict-avoidance techniques:
 Enable the pre-commit hook that blocks `FORK:` markers on `develop`:
 
 ```bash
-git config core.hooksPath .githooks
+bundle install && pnpm install
+eval "$(rbenv init -)"
+pnpm dev
 ```
 
-The hook refuses commits on `develop` when staged changes contain `FORK:` markers.
+## Rules
+
+| Always applied | File-scoped | On demand |
+|----------------|-------------|-----------|
+| `chatwoot-core.mdc` | `ruby-conventions.mdc` | `pull-requests.mdc` |
+| `chatwoot-dev-commands.mdc` | `vue-frontend.mdc` | `README.mdc` |
+| `architecture.mdc` | `enterprise-edition.mdc` | |
+| `fork-workflow.mdc` | | |
+
+Fork: `bin/fork-sync-upstream` · details in `.cursor/rules/fork-workflow.mdc`

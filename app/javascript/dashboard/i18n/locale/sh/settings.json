@@ -699,58 +699,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Tokovi razgovora",
-        "DESCRIPTION": "Configure rules and required fields for conversation resolution."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Atributi potrebni za rješavanje",
-      "DESCRIPTION": "Prilikom rješavanja razgovora, agenti će biti upitani da ispune ove atribute ako to još nisu učinili.",
-      "NO_ATTRIBUTES": "Još nisu dodani atributi",
-      "ADD": {
-        "TITLE": "Dodaj atribute",
-        "SEARCH_PLACEHOLDER": "Pretraži atribute"
-      },
-      "SAVE": {
-        "SUCCESS": "Obavezni atributi su ažurirani",
-        "ERROR": "Nije moguće ažurirati obavezne atribute, molimo pokušajte ponovo"
-      },
-      "MODAL": {
-        "TITLE": "Riješi razgovor",
-        "DESCRIPTION": "Molimo ispunite sljedeće prilagođene atribute prije nego što riješite ovaj razgovor",
-        "ACTIONS": {
-          "RESOLVE": "Riješi razgovor",
-          "CANCEL": "Otkaži"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Napiši bilješku...",
-          "NUMBER": "Unesi broj",
-          "LINK": "Dodaj poveznicu",
-          "DATE": "Odaberi datum",
-          "LIST": "Odaberi opciju"
-        },
-        "CHECKBOX": {
-          "YES": "Da",
-          "NO": "Ne"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Nadogradi za korištenje obaveznih atributa",
-        "AVAILABLE_ON": "Značajka potrebnih atributa razgovora dostupna je na Business i Enterprise planovima.",
-        "UPGRADE_PROMPT": "Nadogradi svoj plan kako bi agenti bili potaknuti da ispune obavezne atribute prije zatvaranja razgovora.",
-        "UPGRADE_NOW": "Nadogradi sada",
-        "CANCEL_ANYTIME": "Plan možete promijeniti ili otkazati u bilo kojem trenutku"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "Značajka obaveznih atributa razgovora dostupna je na plaćenim planovima.",
-        "UPGRADE_PROMPT": "Nadogradite na plaćeni plan kako biste primjenjivali obavezne atribute prije završetka razgovora.",
-        "ASK_ADMIN": "Molimo obratite se svom administratoru za nadogradnju."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Uh oh! We could not find any Chatwoot accounts. Please create a new account to continue.",
     "NEW_ACCOUNT": "Novi račun",

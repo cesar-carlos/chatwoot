@@ -699,58 +699,6 @@
       }
     }
   },
-  "CONVERSATION_WORKFLOW": {
-    "INDEX": {
-      "HEADER": {
-        "TITLE": "Söhbət İş Axınları",
-        "DESCRIPTION": "Söhbətin həlli üçün qaydaları və tələb olunan sahələri tənzimləyin."
-      }
-    },
-    "REQUIRED_ATTRIBUTES": {
-      "TITLE": "Həll zamanı tələb olunan atributlar",
-      "DESCRIPTION": "Söhbət həll edilərkən, agentlərdən bu atributları doldurmaları tələb olunacaq, əgər hələ doldurmayıblarsa.",
-      "NO_ATTRIBUTES": "Hələ atribut əlavə edilməyib",
-      "ADD": {
-        "TITLE": "Atribut əlavə et",
-        "SEARCH_PLACEHOLDER": "Atributlarda axtar"
-      },
-      "SAVE": {
-        "SUCCESS": "Tələb olunan atributlar yeniləndi",
-        "ERROR": "Tələb olunan atributlar yenilənə bilmədi, zəhmət olmasa yenidən cəhd edin"
-      },
-      "MODAL": {
-        "TITLE": "Söhbəti həll et",
-        "DESCRIPTION": "Zəhmət olmasa bu söhbəti həll etməzdən əvvəl aşağıdakı xüsusi atributları doldurun",
-        "ACTIONS": {
-          "RESOLVE": "Söhbəti həll et",
-          "CANCEL": "Ləğv et"
-        },
-        "PLACEHOLDERS": {
-          "TEXT": "Qeyd yazın...",
-          "NUMBER": "Rəqəm daxil edin",
-          "LINK": "Link əlavə edin",
-          "DATE": "Tarix seçin",
-          "LIST": "Seçim seçin"
-        },
-        "CHECKBOX": {
-          "YES": "Bəli",
-          "NO": "Xeyr"
-        }
-      },
-      "PAYWALL": {
-        "TITLE": "Tələb olunan atributlardan istifadə etmək üçün yüksəldin",
-        "AVAILABLE_ON": "Tələb olunan söhbət atributları xüsusiyyəti Biznes və Enterprise planlarında mövcuddur.",
-        "UPGRADE_PROMPT": "Söhbətin həllindən əvvəl agentlərin tələb olunan atributları doldurmasını təmin etmək üçün planınızı yüksəldin.",
-        "UPGRADE_NOW": "İndi yüksəlt",
-        "CANCEL_ANYTIME": "Planınızı istənilən vaxt dəyişə və ya ləğv edə bilərsiniz"
-      },
-      "ENTERPRISE_PAYWALL": {
-        "AVAILABLE_ON": "Lazımi söhbət atributları funksiyası ödənişli planlarda mövcuddur.",
-        "UPGRADE_PROMPT": "Söhbətin həlli öncəsi tələb olunan atributların tətbiqi üçün ödənişli plana yüksəldin.",
-        "ASK_ADMIN": "Yeniləmə üçün administratorunuzla əlaqə saxlayın."
-      }
-    }
-  },
   "CREATE_ACCOUNT": {
     "NO_ACCOUNT_WARNING": "Uh oh! Heç bir Chatwoot hesabı tapılmadı. Davam etmək üçün yeni hesab yaradın.",
     "NEW_ACCOUNT": "Yeni Hesab",

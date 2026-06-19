@@ -2,6 +2,7 @@
 import { h, ref, watch, computed } from 'vue';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import { useAccount } from 'dashboard/composables/useAccount';
 import { useAlert } from 'dashboard/composables';
 import WithLabel from 'v3/components/Form/WithLabel.vue';
@@ -13,6 +14,7 @@ import SingleSelect from 'dashboard/components-next/filter/inputs/SingleSelect.v
 import { DURATION_UNITS } from 'dashboard/components-next/input/constants';
 
 const { t } = useI18n();
+const router = useRouter();
 const duration = ref(0);
 const unit = ref(DURATION_UNITS.MINUTES);
 const message = ref('');
@@ -21,7 +23,7 @@ const ignoreWaiting = ref(false);
 const isEnabled = ref(false);
 const isSubmitting = ref(false);
 
-const { currentAccount, updateAccount } = useAccount();
+const { currentAccount, updateAccount, accountId } = useAccount();
 
 const labels = useMapGetter('labels/getLabels');
 
@@ -121,6 +123,13 @@ const handleDisable = async () => {
 const toggleAutoResolve = async () => {
   if (!isEnabled.value) handleDisable();
 };
+
+const goToConversationRules = () => {
+  router.push({
+    name: 'conversation_rules_index',
+    params: { accountId: accountId.value },
+  });
+};
 </script>
 
 <template>
@@ -139,6 +148,19 @@ const toggleAutoResolve = async () => {
       <p class="mb-0 text-body-para text-n-slate-11">
         {{ t('GENERAL_SETTINGS.FORM.AUTO_RESOLVE.NOTE') }}
       </p>
+      <!-- FORK: point legacy auto-resolve users to conversation rules -->
+      <div
+        class="flex flex-wrap items-center gap-2 mt-2 p-3 rounded-lg border border-n-weak bg-n-solid-1 text-sm text-n-slate-11"
+      >
+        <span>{{
+          t('CONVERSATION_RULES.CROSS_LINK.AUTO_RESOLVE_BANNER')
+        }}</span>
+        <NextButton
+          link
+          :label="t('CONVERSATION_RULES.CROSS_LINK.AUTO_RESOLVE_LINK')"
+          @click="goToConversationRules"
+        />
+      </div>
     </div>
 
     <div v-if="isEnabled" class="px-5 py-4">

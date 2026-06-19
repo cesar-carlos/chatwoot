@@ -754,6 +754,38 @@ export const AUTOMATIONS = {
       { key: 'send_message', name: 'SEND_MESSAGE' },
     ],
   },
+  // FORK: extended workflow synthetic automation events
+  conversation_first_response_overdue: {
+    conditions: [],
+    actions: [
+      { key: 'assign_agent', name: 'ASSIGN_AGENT' },
+      { key: 'assign_team', name: 'ASSIGN_TEAM' },
+      { key: 'add_label', name: 'ADD_LABEL' },
+    ],
+  },
+  conversation_unassigned_too_long: {
+    conditions: [],
+    actions: [
+      { key: 'assign_agent', name: 'ASSIGN_AGENT' },
+      { key: 'assign_team', name: 'ASSIGN_TEAM' },
+      { key: 'add_label', name: 'ADD_LABEL' },
+    ],
+  },
+  conversation_pending_stale: {
+    conditions: [],
+    actions: [
+      { key: 'assign_agent', name: 'ASSIGN_AGENT' },
+      { key: 'add_label', name: 'ADD_LABEL' },
+    ],
+  },
+  conversation_customer_no_reply: {
+    conditions: [],
+    actions: [
+      { key: 'send_message', name: 'SEND_MESSAGE' },
+      { key: 'resolve_conversation', name: 'RESOLVE_CONVERSATION' },
+      { key: 'add_label', name: 'ADD_LABEL' },
+    ],
+  },
 };
 
 export const AUTOMATION_RULE_EVENTS = [
@@ -785,6 +817,22 @@ export const AUTOMATION_RULE_EVENTS = [
   {
     key: 'conversation_agent_no_reply',
     value: 'CONVERSATION_AGENT_NO_REPLY',
+  },
+  {
+    key: 'conversation_first_response_overdue',
+    value: 'CONVERSATION_FIRST_RESPONSE_OVERDUE',
+  },
+  {
+    key: 'conversation_unassigned_too_long',
+    value: 'CONVERSATION_UNASSIGNED_TOO_LONG',
+  },
+  {
+    key: 'conversation_pending_stale',
+    value: 'CONVERSATION_PENDING_STALE',
+  },
+  {
+    key: 'conversation_customer_no_reply',
+    value: 'CONVERSATION_CUSTOMER_NO_REPLY',
   },
 ];
 
