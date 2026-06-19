@@ -2,6 +2,8 @@
 
 Especificação fixa para autenticação, idempotência, resolução de inbox e eventos realtime. Evita ambiguidade na implementação.
 
+**Portas backend e DTO:** [contracts-and-ports.md §4](./contracts-and-ports.md#4-contratos-backend-ruby) · **Fontes da verdade:** [§3](./contracts-and-ports.md#3-fontes-da-verdade-evitar-duplicidade-conflitante)
+
 **Doc oficial webhook:** https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md · **Índice:** [official-docs.md](./official-docs.md)
 
 **Relacionado:** [architecture.md](./architecture.md) · [fixtures/README.md](./fixtures/README.md)
@@ -76,11 +78,32 @@ return if call.terminal? && !terminal_transition?(new_status)
 
 | Momento | Fonte |
 |---------|-------|
-| Preferencial | Após `offer.accept()` no browser → `PATCH /api/v1/accounts/:id/calls/:id` com `accepted_by_agent_id: Current.user.id` (rota EE existente se disponível) |
+| Preferencial | Após `offer.accept()` no browser → API para persistir agente |
 | Fallback | Webhook `ACTIVE` sem agente → campo `nil`; atribuição manual depois |
 | Assignee conversa | Na Fase 3: ao aceitar, `conversation.update!(assignee: Current.user)` se inbox com auto-assign habilitado |
 
 **Não** criar `register_attempt` / `ack_accept` no MVP.
+
+### 4.1 Rota API (pendente — implementar em `custom/`)
+
+**Verificado no código (jun/2026):** não existe `PATCH /api/v1/accounts/:id/calls/:id` no EE. `WhatsappCallsController` cobre só Meta (`accept` com SDP). Twilio usa `ConferenceController`.
+
+Contrato mínimo sugerido para Wavoip (Fase 3):
+
+```ruby
+# custom/app/controllers/api/v1/accounts/calls_controller.rb
+# PATCH body: { accepted_by_agent_id: Current.user.id } — só se call.ringing? && provider wavoip
+```
+
+Alternativas (pior):
+
+| Opção | Prós | Contras |
+|-------|------|---------|
+| Nova rota `custom/` `PATCH calls/:id` | Merge-safe, autorização explícita | Rota nova |
+| Meta `WhatsappCallsController#accept` | Reuso | Exige SDP — incompatível |
+| Só webhook `ACTIVE` | Zero API | `accepted_by_agent` frequentemente `nil` |
+
+Recomendação: **rota fina em `custom/`** + policy `CallPolicy#update?` via `conversation.show?`.
 
 ---
 

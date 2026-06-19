@@ -1,5 +1,7 @@
 # Estado atual — Pesquisa global vs. pesquisa in-conversation
 
+> **Atualização jun/2026:** a feature in-conversation **não está implementada**. Este doc descreve o estado do código **existente** que será reutilizado. Plano: [implementation-plan.md](./implementation-plan.md). Reavaliação: [rules-compliance-review.md](./rules-compliance-review.md) §9.
+
 ## Contexto do pedido
 
 O usuário quer uma opção de pesquisa **dentro da conversa aberta**, no menu de ações do header (captura: "Bloquear contato", "Enviar transcrição"). O objetivo é localizar mensagens no histórico daquela conversa e saltar para o trecho encontrado.

@@ -2,7 +2,11 @@
 
 Desenho técnico com **responsabilidades explícitas** e classes pequenas. Evita god class concentrando lógica em services nomeados por evento/ação.
 
-**Relacionado:** [wavoip-vs-meta.md](./wavoip-vs-meta.md) · [implementation-plan.md](./implementation-plan.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [official-docs.md](./official-docs.md)
+**Relacionado:** [contracts-and-ports.md](./contracts-and-ports.md) · [wavoip-vs-meta.md](./wavoip-vs-meta.md) · [implementation-plan.md](./implementation-plan.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [official-docs.md](./official-docs.md) · [../architecture-and-flow.md §13](../architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas)
+
+**Contratos e DI:** toda implementação deve seguir [contracts-and-ports.md](./contracts-and-ports.md) — handlers dependem de portas, não do SDK Wavoip no core.
+
+**Pré-requisito FE:** Fase 0 global em [second-provider-strategy.md §Fase 0](../second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado) antes de registrar `useWavoipCallSession` no `useCallSession`.
 
 ---
 
@@ -96,6 +100,8 @@ end
 
 ## 3. Backend — camada webhook
 
+> **Contratos:** DTO `WebhookCallEvent`, portas `StatusMapper`, `CallBroadcaster`, `ConversationLinker` — ver [contracts-and-ports.md §4](./contracts-and-ports.md#4-contratos-backend-ruby).
+
 ### 3.1 Entrada fina
 
 `Custom::Webhooks::WavoipController` — só autentica, enfileira job, retorna 200.
@@ -133,7 +139,7 @@ HANDLERS = {
 | `Webhooks::Handlers::CallUpdateHandler` | Transições de status | Aceitar chamada |
 | `Webhooks::Handlers::RecordHandler` | Anexar `record_url` à mensagem | Gravar áudio |
 | `Webhooks::Handlers::DeviceHandler` | Atualizar status dispositivo no inbox (`open`/`close`/`hibernating` via SDK em settings) | — |
-| `Webhooks::PayloadNormalizer` | Hash simbólico a partir do JSON Wavoip | Side effects |
+| `Webhooks::PayloadNormalizer` | Hash simbólico → `Voice::Dto::WebhookCallEvent` | Side effects |
 | `Calls::StatusMapper` | `INCOMING_RING` → `ringing`, `ACTIVE` → `in_progress`, etc. | DB |
 | `Calls::ConversationLinker` | Contato + conversa (reusa regras WhatsApp) | Call API |
 | `Calls::CallUpsertService` | find_or_create `Call` por `provider_call_id`; idempotente | Webhook parse |
@@ -213,6 +219,8 @@ Meta Wavoip em `Call#meta`:
 
 ## 5. Frontend — composables (sem god composable)
 
+> **Contratos:** `BrowserVoiceSession`, `voiceSessionRegistry`, `wavoipSdkPort` — ver [contracts-and-ports.md §5](./contracts-and-ports.md#5-contratos-frontend-javascript).
+
 ### 5.1 Facade
 
 `useWavoipCallSession.js` — **somente** orquestra e exporta API estável para `useCallSession`:
@@ -240,9 +248,12 @@ export function useWavoipCallSession() {
 
 | Módulo | Linhas alvo | Faz |
 |--------|-------------|-----|
-| `lib/wavoip/wavoipClientRegistry.js` | ~80 | Map `inboxId → Wavoip` instance; dedupe tokens |
+| `lib/wavoip/wavoipSdkPort.js` | ~40 | Infrastructure — único import `@wavoip/wavoip-api` |
+| `lib/wavoip/wavoipClientRegistry.js` | ~80 | Map `inboxId → Wavoip`; usa `wavoipSdkPort` |
 | `lib/voice/browserVoiceProviders.js` | ~40 | `isBrowserVoiceProvider()` — evita FORK em 4+ Vue |
-| `lib/voice/voiceCallCableRegistry.js` | ~80 | ActionCable handlers whatsapp + wavoip |
+| `lib/voice/voiceCallCableRegistry.js` | ~80 | Port `VoiceCallCableHandlers` |
+| `lib/voice/callStoreMappers.js` | ~80 | `mapCableToStoreEntry` / `mapWavoipOfferToStoreEntry` |
+| `lib/voice/voiceSessionRegistry.js` | ~60 | Port factory `BrowserVoiceSession` |
 | `composables/wavoip/useWavoipConnection.js` | ~120 | `new Wavoip({ tokens, platform: 'chatwoot' })`; connect on online |
 | `composables/wavoip/useWavoipIncomingOffer.js` | ~150 | `on('offer')` → `calls` store; `accept`/`reject` |
 | `composables/wavoip/useWavoipOutboundCall.js` | ~100 | `startCall`; eventos `peerAccept`/`peerReject` |
@@ -349,6 +360,8 @@ sequenceDiagram
 
 ## 9. Anti-padrões (god class)
 
+Ver também matriz completa em [contracts-and-ports.md §6](./contracts-and-ports.md#6-matriz-de-responsabilidades-anti-god-class).
+
 | Anti-padrão | Substituto |
 |-------------|------------|
 | `WavoipService` com 800 linhas | Handlers por `type` + `action` |
@@ -379,8 +392,10 @@ custom/
       browserVoiceProviders.js
       voiceCallCableRegistry.js
       voiceSessionRegistry.js
+      callStoreMappers.js
     lib/wavoip/
-      ...
+      wavoipSdkPort.js
+      wavoipClientRegistry.js
 ```
 
 **Migration `channel_wavoip`:** em `db/migrate/` do fork — não existe em `upstream/develop`.

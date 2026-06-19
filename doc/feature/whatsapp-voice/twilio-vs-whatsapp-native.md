@@ -151,6 +151,19 @@ Ver também: [official-vs-unofficial-restrictions.md](../whatsapp-provider/offic
 
 ---
 
+## Assimetria de código (não confundir com produto)
+
+No código atual, Twilio segue padrões mais modulares que WhatsApp Meta:
+
+| Padrão | Twilio | WhatsApp Meta |
+|--------|--------|---------------|
+| Adapter | `Voice::Provider::Twilio::Adapter` | Lógica no prepend `WhatsappCloudService` |
+| Outbound | `Voice::OutboundCallBuilder` | Inline em `WhatsappCallsController` |
+
+Isso **não** significa que Twilio poderia fazer WA in-app — são produtos diferentes. Significa que, ao estender voz WhatsApp, o fork deve alinhar WhatsApp ao padrão adapter/builder. Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
+
+---
+
 ## Resumo em uma frase
 
 **Twilio no Chatwoot = voz telefônica PSTN; WhatsApp Cloud Calling = voz in-app via Meta + WebRTC.** Usar Twilio elimina SDP, permissões Meta, webhooks `calls` e experiência in-app no WhatsApp.

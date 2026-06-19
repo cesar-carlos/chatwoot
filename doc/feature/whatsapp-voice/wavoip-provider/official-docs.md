@@ -2,7 +2,7 @@
 
 Índice curado da documentação **[Wavoip GitBook](https://wavoip.gitbook.io/api)** para consulta durante o desenvolvimento no Chatwoot. Em caso de dúvida, **consulte aqui antes** de inferir comportamento.
 
-**Doc interna relacionada:** [sdk-reference.md](./sdk-reference.md) (mapeamento Chatwoot) · [webhook-contract.md](./webhook-contract.md) (contrato fork)
+**Doc interna relacionada:** [contracts-and-ports.md](./contracts-and-ports.md) (portas, DI, DTOs) · [sdk-reference.md](./sdk-reference.md) (mapeamento Chatwoot) · [webhook-contract.md](./webhook-contract.md) (HTTP/ActionCable)
 
 ---
 

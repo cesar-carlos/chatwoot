@@ -65,9 +65,25 @@ flowchart TD
 |---------|------------------|
 | `ConversationMessageSearchDialog.vue` | Shell Dialog; estados; orquestra composables; `open`/`close` |
 | `ConversationMessageSearchForm.vue` | Input, hint, debounce emit `search`, Esc |
-| `ConversationMessageSearchResultItem.vue` | Linha: autor, snippet, hora, badge private/**mic** |
+| `ConversationMessageSearchResultItem.vue` | Linha: autor, snippet texto **ou** transcrição (`readTranscriptText`), hora, badge private/mic |
 | `useConversationMessageSearch.js` | API, paginação, loading, erros |
 | `useScrollToConversationMessage.js` | Merge + scroll + highlight + toast falha |
+
+---
+
+## Armadilha: MessageContent e attachments camelCase
+
+`SearchView` aplica `useCamelCase(..., { deep: true })`. `MessageContent` lê `attachment.file_type` e `transcribed_text` (snake_case).
+
+Na pesquisa global, áudio transcrito é renderizado em `SearchResultMessageItem` via `attachment.transcribedText` + `TranscribedText.vue` — **não** via `MessageContent`.
+
+**Regra para ResultItem in-conversation:**
+
+1. Texto com `content` → `MessageContent` normal
+2. Áudio / transcrição → `readTranscriptText(audio)` como snippet; badge mic; opcional `TranscribedText`
+3. Não assumir que `MessageContent` resolve transcrição após camelCase
+
+Ver [implementation-plan.md](./implementation-plan.md) § Fase 3 e [audio-transcription-search.md](./audio-transcription-search.md) §5.1.
 
 ---
 

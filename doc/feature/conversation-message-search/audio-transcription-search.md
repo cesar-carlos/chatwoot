@@ -174,20 +174,34 @@ Evita N+1 na serialização JSON.
 
 | Peça | Mudança |
 |------|---------|
-| `ConversationMessageSearchResultItem.vue` | Reutilizar `MessageContent` (já lê `transcribed_text`) + `TranscribedText` se áudio |
-| `useTranscriptText.js` | Ler snippet — `transcription.text` \|\| `transcribed_text` |
+| `ConversationMessageSearchResultItem.vue` | Espelhar `SearchResultMessageItem` para áudio; `readTranscriptText` + `TranscribedText` |
+| `MessageContent.vue` | ⚠️ Só para texto com `content` preenchido; **não** confiar para áudio após camelCase |
+| `SearchResultMessageItem.vue` | ✅ **Referência obrigatória** para bloco áudio + `TranscribedText` |
+| `useTranscriptText.js` | Snippet, highlight e `isTranscriptionMatch` |
 | Badge `i-lucide-mic` | Quando match é só transcrição (UX-M33) |
 | API client | **Sem mudança** — mesmo endpoint `q` |
 
-`MessageContent.vue` (upstream):
+Garantir camelCase na resposta (`useCamelCase` no composable de busca).
+
+### 5.1 Workaround snippet (até P1.15 corrigir upstream)
+
+Passar `content` sintético para `MessageContent`:
 
 ```javascript
-// Se content vazio → usa transcribed_text do attachment áudio
+const displayMessage = computed(() => {
+  if (message.content?.trim()) return message;
+  const text = readTranscriptText(audioAttachment.value);
+  return { ...message, content: text };
+});
+```
+
+**Nota:** `MessageContent.vue` (upstream) usa snake_case em attachments — incompatível com camelCase após transformação:
+
+```javascript
+// upstream — não funciona após useCamelCase deep
 const audioAttachment = props.message.attachments?.find(a => a.file_type === 'audio');
 return audioAttachment?.transcribed_text || '';
 ```
-
-Garantir camelCase na resposta (`useCamelCase` no composable de busca).
 
 ---
 
@@ -201,7 +215,7 @@ flowchart TD
   C -->|sim| M[Message na lista]
   T -->|sim| M
   M --> API[JSON com attachments + transcribed_text]
-  API --> UI[MessageContent highlight]
+  API --> UI[readTranscriptText + MessageContent highlight]
   UI --> Click[Scroll para messageId]
 ```
 
@@ -249,11 +263,12 @@ Não fazer no MVP — YAGNI até segunda necessidade.
 
 | Fase | Alteração |
 |------|-----------|
-| **Fase 1 Backend** | Finder com join + OR transcrição (não só `content`) |
-| **Fase 2 Frontend** | `includes` documentado; camelCase attachments |
-| **Fase 3 UI** | Result item com mic badge + `TranscribedText` |
+| **Fase A Backend** | Finder só `content` ILIKE |
+| **Fase B Frontend** | `INSERT_MESSAGES_AROUND` + scroll robusto |
+| **Fase C Backend** | Finder com join + OR transcrição |
+| **Fase C UI** | Result item com mic badge + `TranscribedText` |
 | **Test plan** | +4 casos áudio (secção 7) |
-| **Backlog** | Transcrição **removida** de P1 — agora P0/MVP |
+| **Backlog** | Transcrição na Fase C (P0-C) |
 
 ---
 
@@ -262,8 +277,8 @@ Não fazer no MVP — YAGNI até segunda necessidade.
 | Pergunta | Resposta |
 |----------|----------|
 | Mudar backend? | **Sim** — só o finder (uma query unificada) |
-| Novo endpoint? | **Não** |
+| Novo endpoint? | **Não** — ver [api-endpoints.md](./api-endpoints.md) |
 | Novo campo na BD? | **Não** — dados já em `attachments.meta` |
 | Mesclar Groq + OpenAI? | **Sim** — mesma leitura JSON |
-| Frontend novo? | Mínimo — reuso `MessageContent` + badge mic |
+| Frontend novo? | Mínimo — `readTranscriptText` + bloco como `SearchResultMessageItem` |
 | Mais completo que global SQL? | **Sim** — no fork sem OpenSearch |
