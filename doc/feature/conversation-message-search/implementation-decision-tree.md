@@ -1,5 +1,7 @@
 # Árvore de decisões — Pesquisa in-conversation
 
+> Registro das alternativas avaliadas. As decisões vigentes estão no [plano consolidado](./implementation-plan.md).
+
 Decisões de produto e arquitetura para a busca de mensagens dentro da conversa aberta.
 
 ---

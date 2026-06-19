@@ -4,6 +4,9 @@ Mapeamento da documentação oficial do pacote npm para implementação no Chatw
 
 **Índice completo doc oficial:** [official-docs.md](./official-docs.md)
 
+**Versão verificada em 19 jun. 2026:** `2.5.0`. O spike deve usar versão exata;
+atualizações exigem repetir os testes de contrato.
+
 **Fontes primárias (SDK):**
 
 - [Dispositivo](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/device.md)
@@ -90,7 +93,9 @@ Fonte: [Mídia](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/
 | `wavoip.multimedia` | Dispositivo ativo atual |
 | Troca de microfone | `FloatingCallWidget` mute já cobre mic da call; seletor global = Fase 5 |
 
-**Regra do navegador:** `offer.accept()` e `startCall()` devem ser chamados em **gesto do usuário** (clique) — o `FloatingCallWidget` já atende.
+**Regra do navegador:** `offer.accept()` deve ocorrer em gesto do usuário, conforme a
+documentação oficial. Por consistência com políticas de mídia/autoplay, iniciar outbound
+também deve partir do clique do agente.
 
 `AudioContext` é suspenso até a primeira chamada; retoma no accept/start.
 
@@ -285,6 +290,6 @@ Checklist runtime (antes de `startCall` / aceitar `offer`):
 2. Se `hibernating` → `await device.wakeUp()`
 3. Agente **online** no Chatwoot
 4. `inbound_calls_enabled` (inbound) no `provider_config`
-5. Gestão do usuário no clique (accept/start)
+5. Gesto do usuário no clique (accept/start)
 
 Se `WAITING_PAYMENT` ou `EXTERNAL_INTEGRATION_ERROR` → desabilitar botão ligar + banner no inbox settings.

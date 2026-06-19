@@ -438,7 +438,9 @@ Comentário no código convida novos providers — sem registry formal.
 
 **Sem marcadores `FORK:`** no código de voz upstream (jun/2026), exceto `Voice::InboundCallBuilder` → `Conversations::Resolver`.
 
-**Antes de segundo provider:** executar roadmap [§13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) e [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado).
+**Antes de provider SDP/Meta-like:** executar o roadmap §13. Para Wavoip, executar
+primeiro o [spike e os gates próprios](./wavoip-provider/implementation-plan.md);
+apenas o registry compartilhado entra no caminho crítico.
 
 ### Prioridade recomendada
 
@@ -455,7 +457,8 @@ Ver também: [second-provider-strategy.md](./second-provider-strategy.md) · [tw
 | [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) | Portas, DTOs, DI, backlog §12 |
 | [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) | Fases 0–5 |
 
-Pré-requisito: Fase 0 FE (registry) antes de codar composables Wavoip.
+Pré-requisito: spike Wavoip antes de alterar o frontend compartilhado; registry de
+sessão/eventos antes da integração final com widget/store.
 
 ### Arquivos de alto valor
 
@@ -517,7 +520,9 @@ Mensagens gateway ≠ voz gateway. Gates em [gaps-and-blockers.md §5](../whatsa
 
 ## 13. Roadmap de refatoração (melhorias sugeridas)
 
-Melhorias identificadas na reanálise jun/2026. **Não bloqueiam** o happy path Meta oficial; **bloqueiam** extensão limpa para Wavoip/CPaaS sem duplicação.
+Melhorias identificadas na reanálise jun/2026. **Não bloqueiam** o happy path Meta
+oficial. A extração WebRTC bloqueia somente providers SDP/Meta-like; Wavoip precisa
+do dispatch por provider, mas não compartilha o core SDP.
 
 ### 13.1 Backend
 
@@ -639,7 +644,7 @@ onVoiceCallIncoming = data => {
 
 | Melhoria | Detalhe |
 |----------|---------|
-| Enum `Call.provider` | Novo valor via `Custom::Call` prepend no fork — não editar EE diretamente |
+| Enum `Call.provider` | Novo valor exige edição mínima `# FORK:` em `Call`; o model não chama `prepend_mod_with` |
 | `VOICE_CALL_STUN_URLS` | Aceitar lista STUN+TURN: `stun:...,turn:...` com credenciais se necessário |
 | `disable_voice_calling!` | Opcional: chamar Meta `DISABLED` (hoje só flag local) |
 

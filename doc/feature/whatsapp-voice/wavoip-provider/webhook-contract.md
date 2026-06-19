@@ -4,7 +4,7 @@ Especificação fixa para autenticação, idempotência, resolução de inbox e 
 
 **Portas backend e DTO:** [contracts-and-ports.md §4](./contracts-and-ports.md#4-contratos-backend-ruby) · **Fontes da verdade:** [§3](./contracts-and-ports.md#3-fontes-da-verdade-evitar-duplicidade-conflitante)
 
-**Doc oficial webhook:** https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md · **Índice:** [official-docs.md](./official-docs.md)
+**Doc oficial webhook:** https://wavoip.gitbook.io/api/webhook-beta.md · **Índice:** [official-docs.md](./official-docs.md)
 
 **Relacionado:** [architecture.md](./architecture.md) · [fixtures/README.md](./fixtures/README.md)
 
@@ -12,30 +12,33 @@ Especificação fixa para autenticação, idempotência, resolução de inbox e 
 
 ## 1. Autenticação HTTP
 
-Wavoip não documenta assinatura HMAC. Contrato **do fork**:
+Wavoip documenta a configuração de uma URL, mas não assinatura HMAC nem header
+customizado. Contrato **do fork**:
 
 | Item | Valor |
 |------|-------|
 | **Método** | `POST` |
-| **Rota** | `/webhooks/wavoip/:phone_number` |
-| **Secret** | Query `?secret={webhook_secret}` **ou** header `X-Chatwoot-Wavoip-Secret` |
-| **Comparação** | `ActiveSupport::SecurityUtils.secure_compare` (timing-safe) |
+| **Rota** | `/webhooks/wavoip/:webhook_key` |
+| **Chave** | Token opaco por canal, gerado e rotacionado pelo backend |
+| **Lookup** | `Channel::Wavoip.find_by(webhook_key:)` |
 | **Falha auth** | `401` sem body; log mínimo (sem payload) |
-| **Sucesso** | `200` imediato; processamento assíncrono via job |
+| **Sucesso** | `202` imediato; processamento assíncrono via job |
 
-URL exibida ao admin (uma forma só — query):
+URL exibida ao admin:
 
 ```
-{FRONTEND_URL}/webhooks/wavoip/+5511999999999?secret=abc123...
+{FRONTEND_URL}/webhooks/wavoip/opaque-random-key
 ```
 
-**Rotação do secret:** Settings → regenerar → admin atualiza URL no painel Wavoip. Documentar em [operations-runbook.md](./operations-runbook.md).
+Não usar telefone no path nem secret em query: ambos aparecem com frequência em logs,
+proxies e analytics. **Rotação:** Settings → regenerar → atualizar URL no painel
+Wavoip.
 
 ### Rate limiting
 
 | Limite | Valor sugerido |
 |--------|----------------|
-| Por `phone_number` | 120 req/min |
+| Por `webhook_key` + IP | 120 req/min |
 | Resposta | `429` |
 
 Implementar em `Rack::Attack` ou middleware em `custom/` — não no controller.
@@ -44,13 +47,9 @@ Implementar em `Rack::Attack` ou middleware em `custom/` — não no controller.
 
 ## 2. Resolução de inbox
 
-Ordem de lookup no `WavoipController`:
-
-1. `Channel::Wavoip.find_by(phone_number: normalized_e164)` — path param
-2. Fallback: `provider_config['id_session']` no payload `DEVICE` / `CALL` se `phone` ausente
-3. Não encontrado → `404` + log (sem enfileirar job)
-
-Normalizar phone: sempre E.164 (`+` + dígitos).
+O controller resolve o canal exclusivamente por `webhook_key`. `phone_number` e
+`id_session` do payload são dados de validação/correlação, não credenciais nem lookup
+primário. Chave inexistente retorna `401` sem revelar se um inbox existe.
 
 ---
 
@@ -66,6 +65,7 @@ Wavoip pode reenviar o mesmo evento. Regras em `CallUpsertService` / `CallUpdate
 | `UPDATE` `ACTIVE` após terminal | Ignorar (log warn) |
 | `HANDLED_REMOTELY` | Fechar ring; não reabrir widget |
 | `RECORD` duplicado | Sobrescrever `record_url` se URL mudou; idempotente se igual |
+| Status/duração sem mudança | Não rebroadcastar nem atualizar timestamps |
 
 ```ruby
 # Pseudocódigo CallUpdateHandler
@@ -92,7 +92,7 @@ Contrato mínimo sugerido para Wavoip (Fase 3):
 
 ```ruby
 # custom/app/controllers/api/v1/accounts/calls_controller.rb
-# PATCH body: { accepted_by_agent_id: Current.user.id } — só se call.ringing? && provider wavoip
+# PATCH sem user id no body — o backend usa Current.user
 ```
 
 Alternativas (pior):
@@ -118,7 +118,7 @@ Recomendação: **rota fina em `custom/`** + policy `CallPolicy#update?` via `co
 | `call_id` | Meta call id | `whatsapp_call_id` |
 | `conversation_id` | sim | sim |
 | `inbox_id` | sim | sim |
-| `caller` | `{ phone, name }` | `{ phone, name, profile_picture? }` |
+| `caller` | `{ phone, name }` | `{ phone, name? }` |
 | `sdp_offer` | **obrigatório** | **ausente** |
 | `ice_servers` | sim | **ausente** |
 
@@ -159,15 +159,14 @@ if (handler) handler.onIncoming(data);
 
 ---
 
-## 6. Push offline (Fase 3)
+## 6. Push com aba fechada (pós-MVP)
 
-Job enfileirado no `CallCreateHandler` inbound quando:
+Web Push pode avisar sobre uma chamada, mas não mantém a conexão SDK nem a oferta viva.
+Portanto é best-effort e não faz parte do critério de atendimento inbound.
 
-- `inbound_calls_enabled?`
-- Nenhum agente **online** no inbox (mesma query do ring Meta)
-- Enviar via push VAPID existente — payload deep-link para conversa
-
-Não depende do SDK (aba fechada).
+Se implementado, usar o pipeline de `Notification`/VAPID existente, respeitar
+preferências do usuário e enviar apenas deep-link para a conversa. Não prometer botão
+“aceitar” nem entrega antes da expiração da oferta.
 
 ---
 
@@ -176,6 +175,6 @@ Não depende do SDK (aba fechada).
 | Dado | Log produção |
 |------|--------------|
 | `device_token` | nunca |
-| `webhook_secret` | nunca |
+| `webhook_key` | nunca |
 | Payload completo | só `development` / spike |
 | Produção | `type`, `action`, `whatsapp_call_id`, `status`, `inbox_id` |

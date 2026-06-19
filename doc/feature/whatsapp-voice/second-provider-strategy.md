@@ -24,7 +24,9 @@ flowchart TD
   style STOP fill:#fdd
 ```
 
-> **Primeiro provider alternativo no fork:** Wavoip — seguir [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) (portas + DI), não este documento (focado em CPaaS Meta-like).
+> **Primeiro provider alternativo no fork:** Wavoip — seguir o
+> [plano consolidado Wavoip](./wavoip-provider/implementation-plan.md), não este
+> documento (focado em CPaaS Meta-like).
 
 | Tipo de provider | Exemplos | Estratégia | Doc |
 |------------------|----------|------------|-----|
@@ -66,15 +68,19 @@ Não misturar os eixos: Twilio/PSTN usa `Voice::Provider::Twilio::*` + conferên
 | Outbound builder | `Voice::OutboundCallBuilder` ✅ | Lógica inline em `WhatsappCallsController` |
 | Permission flow | N/A | ~70 linhas no controller — **extrair service** |
 
-Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) e **Trilha A** em [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md).
+Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas). O plano Wavoip é independente desta trilha SDP.
 
 ---
 
-## Fase 0 — Refactor pré-requisito (recomendado)
+## Fase 0 — Refactor pré-requisito para provider SDP/Meta-like
 
-**Plano mestre detalhado:** [wavoip-provider/implementation-plan.md § Trilha A](./wavoip-provider/implementation-plan.md#trilha-a--pré-fase-0-global-bloqueante).
+**Escopo:** esta fase é exclusiva de providers SDP/Meta-like. Para Wavoip, ver
+[implementation-plan.md](./wavoip-provider/implementation-plan.md).
 
-**Executar antes** de Wavoip, CPaaS ou qualquer segundo provider WebRTC. Sem isso, o fork duplica ~456 linhas de `useWhatsappCallSession` e perpetua shotgun surgery em `useCallSession`.
+**Executar antes** de CPaaS ou qualquer segundo provider que exponha SDP compatível
+com a stack Meta. Wavoip não compartilha esse core: o SDK encapsula mídia e
+sinalização. Para Wavoip, apenas o registry de sessão/eventos compartilhados é
+necessário depois do spike.
 
 ### 0.1 Frontend (P0 — ~1 semana)
 
@@ -105,7 +111,9 @@ Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-ref
 - [ ] `rg isWhatsappCall` — branching reduzido a registry
 - [ ] Novo provider WebRTC = novo wrapper + entrada no registry (sem copiar WebRTC core)
 
-**Wavoip:** pode pular 0.2 (backend Meta) se usar canal `Channel::Wavoip` separado — mas **0.1 é obrigatório** para registry cable/session.
+**Wavoip:** não depende de 0.1.1–0.1.2 nem de 0.2. Depende somente de um dispatch
+provider-agnostic em `useCallSession`, `actionCable.js` e consumidores de chamada,
+conforme o [plano consolidado](./wavoip-provider/implementation-plan.md).
 
 ---
 
@@ -335,7 +343,7 @@ Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpa
 
 ## Ordem de implementação
 
-0. **Fase 0 refactor** — `useWebRtcCallSession` + registry (obrigatório para qualquer 2º provider WebRTC)
+0. **Fase 0 refactor** — `useWebRtcCallSession` + registry (para provider SDP/Meta-like)
 1. **Adapter + webhook inbound** — connect SDP → ring widget
 2. **Accept/terminate** — loop WebRTC fechado
 3. **Outbound initiate** — offer + answer via cable
@@ -361,12 +369,12 @@ Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpa
 
 1. Forçar payload diverso no `WhatsappEventsJob` sem normalizer
 2. Reusar `Channel::TwilioSms` para WA Calling
-3. Duplicar 456 linhas de `useWhatsappCallSession` sem extrair core (**Fase 0 existe para evitar isso**)
+3. Duplicar 456 linhas de `useWhatsappCallSession` em outro provider SDP sem extrair core
 4. Editar `enterprise/` upstream sem espelhar em `custom/`
 5. Novo canal STI se ainda for `Channel::Whatsapp` com outro `provider` string
 6. Deixar lógica de permissão outbound no controller — extrair `CallPermissionRequestService`
-7. Implementar Wavoip/CPaaS antes do registry FE — `actionCable.js` e `useCallSession` quebram
-8. Inflar model `Call` upstream com campos de um só provider — usar `meta` jsonb ou prepend
+7. Integrar um provider ao widget sem antes definir dispatch por provider
+8. Inflar model `Call` upstream com campos de um só provider — usar `meta` jsonb; novos valores de enum exigem alteração explícita e estável
 9. God module FE — misturar WebRTC core com API específica de provider no mesmo arquivo
 10. Ignorar TURN em deploy corporativo — documentar `VOICE_CALL_STUN_URLS` com TURN
 

@@ -1,5 +1,7 @@
 # API — Pesquisa in-conversation
 
+> Documento de apoio. O contrato vigente está no [plano consolidado](./implementation-plan.md); detalhes divergentes abaixo são históricos.
+
 Matriz de endpoints: o que é novo, o que reutiliza, e o que muda por fase (A → B → C → P1/P2).
 
 **Relacionado:** [implementation-decision-tree.md](./implementation-decision-tree.md) D3 · [implementation-plan.md](./implementation-plan.md) · [audio-transcription-search.md](./audio-transcription-search.md)

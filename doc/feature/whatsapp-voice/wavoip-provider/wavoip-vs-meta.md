@@ -2,7 +2,7 @@
 
 Comparação para decisão de produto e para **não** tentar encaixar Wavoip no plano [second-provider-strategy.md](../second-provider-strategy.md) (adapter Graph API).
 
-**Docs Wavoip:** [official-docs.md](./official-docs.md) · [Inicialização API](https://wavoip.gitbook.io/api/wavoip-api/primeiros-passos/initialization.md) · [Webhook](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md)
+**Docs Wavoip:** [official-docs.md](./official-docs.md) · [Inicialização API](https://wavoip.gitbook.io/api/wavoip-api/primeiros-passos/initialization.md) · [Webhook](https://wavoip.gitbook.io/api/webhook-beta.md)
 
 ---
 

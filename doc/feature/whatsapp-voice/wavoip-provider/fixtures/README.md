@@ -4,7 +4,7 @@ JSON de referência para specs e `PayloadNormalizer`. **Substituir** pelos paylo
 
 **DTO esperado:** [contracts-and-ports.md §4.1](../contracts-and-ports.md#41-dto-normalizado-saída-do-parser--entrada-dos-handlers) (`Voice::Dto::WebhookCallEvent`).
 
-**Schema oficial:** [Webhook (Beta)](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md) · [official-docs.md](../official-docs.md)
+**Schema oficial:** [Webhook (Beta)](https://wavoip.gitbook.io/api/webhook-beta.md) · [official-docs.md](../official-docs.md)
 
 | Arquivo | Evento |
 |---------|--------|

@@ -6,7 +6,9 @@ Desenho técnico com **responsabilidades explícitas** e classes pequenas. Evita
 
 **Contratos e DI:** toda implementação deve seguir [contracts-and-ports.md](./contracts-and-ports.md) — handlers dependem de portas, não do SDK Wavoip no core.
 
-**Pré-requisito FE:** Fase 0 global em [second-provider-strategy.md §Fase 0](../second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado) antes de registrar `useWavoipCallSession` no `useCallSession`.
+**Pré-requisito:** concluir o spike e os gates do
+[plano consolidado](./implementation-plan.md). O registry compartilhado vem depois;
+extrair o WebRTC/SDP Meta não é necessário para Wavoip.
 
 ---
 
@@ -63,15 +65,17 @@ flowchart TB
 
 ## 2. Modelo de canal
 
-### `Channel::Wavoip` (novo STI em `custom/`)
+### `Channel::Wavoip` (novo channel model em `custom/`)
 
 Tabela sugerida: `channel_wavoip` (espelha padrão `channel_*`).
 
 | Campo | Uso |
 |-------|-----|
-| `phone_number` | Número E.164 (unique global, como WhatsApp) |
+| `phone_number` | Número E.164, único em `channel_wavoip` |
 | `account_id` | Conta |
-| `provider_config` (jsonb) | `device_token`, `display_name`, `webhook_secret`, `inbound_calls_enabled`, `id_session` (cache opcional) |
+| `device_token` | Credencial dedicada; criptografar quando configurado |
+| `webhook_key` | Chave opaca rotacionável para resolver o canal |
+| `provider_config` (jsonb) | Preferências não secretas: `inbound_calls_enabled`, `id_session` |
 
 Métodos no model (apenas delegação — sem lógica pesada):
 
@@ -81,19 +85,16 @@ def voice_enabled?
   device_token.present? && account.feature_enabled?('channel_voice')
 end
 
-def device_token
-  provider_config['device_token']
-end
-
 def inbound_calls_enabled?
   provider_config['inbound_calls_enabled'] != false
 end
 ```
 
-**Por que STI separado e não `Channel::Whatsapp` + provider string?**
+**Por que channel model separado e não `Channel::Whatsapp` + provider string?**
 
 - Voz Wavoip e mensagens Meta/gateway são **produtos distintos** com lifecycle diferente.
-- Evita inflar `Channel::Whatsapp` e conflito de `phone_number` unique entre inbox de mensagens e de voz.
+- Evita inflar `Channel::Whatsapp` e permite que o mesmo número tenha inbox de
+  mensagens em outra tabela e inbox de voz Wavoip.
 - Merge upstream mais seguro — zero mudança em `channel_whatsapp.rb` para Wavoip.
 
 ---
@@ -110,9 +111,8 @@ Contrato completo: [webhook-contract.md](./webhook-contract.md).
 
 ```ruby
 # Responsabilidades: HTTP apenas
-# - validar secret (query ?secret= ou header X-Chatwoot-Wavoip-Secret)
+# - resolver e autenticar por webhook_key opaca no path
 # - rate limit (Rack::Attack)
-# - resolver inbox por phone_number (E.164) ou id_session fallback
 # - Wavoip::ProcessWebhookJob.perform_later(inbox_id, payload)
 # - log produção: type, action, whatsapp_call_id, status — sem token/secret
 ```
@@ -149,7 +149,7 @@ HANDLERS = {
 
 ### 3.4 Mapeamento status Wavoip → Chatwoot
 
-Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md) — ver também [official-docs.md](./official-docs.md).
+Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/webhook-beta.md) — ver também [official-docs.md](./official-docs.md).
 
 **Importante:** o webhook usa vocabulário diferente do SDK (`CALLING`, `RINGING`, `ACTIVE`…). Ver tabela dual em [sdk-reference.md §7](./sdk-reference.md#7-dois-vocabulários-de-status-crítico). O `StatusMapper` Rails trata **só webhook**; o browser usa `lib/wavoip/callStatusUI.js` para o widget.
 
@@ -177,28 +177,22 @@ Contrato por provider documentado em [webhook-contract §5](./webhook-contract.m
 | Campo | Exposição |
 |-------|-----------|
 | `device_token` | Somente admin inbox; listagem mascarada `••••{last4}` |
-| `webhook_secret` | Nunca na API; só URL com secret na criação/rotação |
+| `webhook_key` | Nunca em listagens/logs; aparece somente na URL de configuração |
 | `webhook_url` | Read-only derivado de `phone_number` |
 
 ---
 
 ## 4. Backend — model `Call`
 
-Reutilizar `enterprise/app/models/call.rb` com extensão em `custom/`:
+Reutilizar `enterprise/app/models/call.rb` com uma alteração mínima explícita:
 
 ```ruby
-# custom/app/models/custom/call.rb
-module Custom::Call
-  def self.prepended(base)
-    base.enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
-  end
-end
-
-# config/initializers em custom/
-Call.prepend_mod_with('Custom::Call') if defined?(Call)
+# FORK: persist Wavoip voice calls in the shared call timeline
+enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
 ```
 
-**Verificação obrigatória:** spec ou smoke que `Call.providers.keys` inclui `%w[twilio whatsapp wavoip]` após boot.
+`Call` não chama `prepend_mod_with`, e redefinir um enum após o boot pode colidir com
+métodos já gerados. Preservar os valores `twilio: 0` e `whatsapp: 1`.
 
 Enum prepend em Rails exige ordem estável — não reordenar valores existentes.
 
@@ -210,7 +204,6 @@ Meta Wavoip em `Call#meta`:
 {
   "wavoip_session_id": 123,
   "wavoip_call_type": "official",
-  "device_token": "…",
   "record_url": "https://…"
 }
 ```
@@ -351,9 +344,9 @@ sequenceDiagram
 
 | Item | Abordagem |
 |------|-----------|
-| `device_token` | `provider_config`; API mascarada; completo só admin edit |
-| Webhook | Secret por inbox; `secure_compare`; ver [webhook-contract](./webhook-contract.md) |
-| Token no FE | Via API inbox autorizada — nunca `window.chatwootConfig` nem `localStorage` Wavoip |
+| `device_token` | Coluna criptografada; nunca serializar em listagens |
+| Webhook | Chave opaca por inbox; ver [webhook-contract](./webhook-contract.md) |
+| Token no FE | Endpoint de bootstrap somente para agentes do inbox — nunca config global/localStorage |
 | Logs | Sem payload completo em produção |
 
 ---
@@ -380,7 +373,6 @@ custom/
     features.yml          # channel_wavoip (piloto)
   app/
     models/channel/wavoip.rb
-    models/custom/call.rb
     controllers/webhooks/wavoip_controller.rb
     jobs/wavoip/
       process_webhook_job.rb
@@ -398,12 +390,14 @@ custom/
       wavoipClientRegistry.js
 ```
 
-**Migration `channel_wavoip`:** em `db/migrate/` do fork — não existe em `upstream/develop`.
+**Migration `channel_wavoip`:** em `db/migrate/` do fork — não existe em
+`upstream/develop`. A alteração do enum fica marcada em `enterprise/app/models/call.rb`.
 
-### Edições `# FORK:` upstream (≤ 8)
+### Edições `# FORK:` upstream
 
 | Arquivo | Mudança |
 |---------|---------|
+| `enterprise/app/models/call.rb` | enum `wavoip: 2` |
 | `vite.shared.ts` | alias `customDashboard` |
 | `app/javascript/dashboard/helper/inbox.js` | `Channel::Wavoip` + `VOICE_CALL_PROVIDERS.WAVOIP` |
 | `ChannelList.vue` | tile `wavoip` |
@@ -412,3 +406,6 @@ custom/
 | `useCallSession.js` | import registry |
 | `actionCable.js` | delegação única ao `voiceCallCableRegistry` |
 | `VoiceCall.vue` | bolha sem SDP join para Wavoip |
+
+O diff final deve minimizar esse inventário, mas o número é uma meta de merge-safety,
+não um teto que autorize branches espalhados ou documentação incompleta.
