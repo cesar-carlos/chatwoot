@@ -2,6 +2,8 @@
 
 Como usar `@wavoip/wavoip-api` no Chatwoot **sem** `@wavoip/wavoip-webphone`, mapeando recursos do webphone para componentes existentes.
 
+**Contratos e inversão de dependência:** [contracts-and-ports.md](./contracts-and-ports.md) — `BrowserVoiceSession`, `wavoipSdkPort`, `voiceSessionRegistry`.
+
 **Índice doc oficial Wavoip:** [official-docs.md](./official-docs.md)
 
 **Refs internas:** [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [operations-runbook.md](./operations-runbook.md)
@@ -28,7 +30,7 @@ Usar apenas [`@wavoip/wavoip-api`](https://wavoip.gitbook.io/api/wavoip-api/prim
 
 ## 2. Registry de providers (reduzir FORK)
 
-Centralizar em `custom/` para evitar `# FORK:` em cada componente Vue:
+Centralizar em `custom/` para evitar `# FORK:` em cada componente Vue. Implementação completa: [contracts-and-ports.md §5.2–5.3](./contracts-and-ports.md#52-porta-voicecallcablehandlers).
 
 ```javascript
 // custom/.../lib/voice/browserVoiceProviders.js
@@ -232,9 +234,9 @@ Não duplicar timer — reusar `globalDurationTimer` em `useCallSession.js`.
 
 ## 10. i18n
 
-Chaves novas apenas em `en.json` e `pt_BR` (regra do projeto):
+Chaves novas — seguir rule `chatwoot-core`: **somente `en`** em arquivos upstream; traduções `pt_BR` etc. só em `custom/` se o fork mantiver:
 
-- `INBOX_MGMT.WAVOIP_CALL.*` — tile e settings
+- `INBOX_MGMT.WAVOIP_CALL.*` — tile e settings (`en/inboxMgmt.json`)
 - `CONVERSATION.WAVOIP_CALL_*` — erros outbound
 - `WAVOIP_CONNECTIVITY.*` — issues de rede
 - `WAVOIP_ONBOARDING.*` — checklist semáforo

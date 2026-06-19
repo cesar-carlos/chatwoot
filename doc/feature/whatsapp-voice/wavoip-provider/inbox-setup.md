@@ -4,7 +4,7 @@ Especificação do fluxo **Configurações → Caixas de Entrada → novo tile �
 
 **UI de referência:** slot vazio na grade de canais (ao lado de “Chamada WhatsApp” Meta).
 
-**Relacionado:** [implementation-plan.md](./implementation-plan.md) · [architecture.md](./architecture.md) · [frontend-integration.md](./frontend-integration.md) · [sdk-reference.md](./sdk-reference.md) · [official-docs.md](./official-docs.md)
+**Relacionado:** [contracts-and-ports.md](./contracts-and-ports.md) · [implementation-plan.md](./implementation-plan.md) · [architecture.md](./architecture.md) · [frontend-integration.md](./frontend-integration.md) · [sdk-reference.md](./sdk-reference.md) · [official-docs.md](./official-docs.md)
 
 ---
 

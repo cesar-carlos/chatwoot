@@ -40,11 +40,13 @@ Wavoip cai no eixo **gateway com SDK browser + webhook proprietário**, não no 
 
 ## O que NÃO fazer
 
-1. **Não** estender `WhatsappCallsController` com branch Wavoip — contratos incompatíveis (SDP vs SDK).
+1. **Não** estender `WhatsappCallsController` com branch Wavoip — contratos incompatíveis (SDP vs SDK). Ver [contracts-and-ports.md](./contracts-and-ports.md).
 2. **Não** prepend `WhatsappEventsJob` com payload Wavoip — formatos diferentes; rota webhook dedicada.
-3. **Não** reutilizar `useWhatsappCallSession` — encapsula RTCPeerConnection Meta; Wavoip gerencia WebRTC internamente.
-4. **Não** usar `@wavoip/wavoip-webphone` no dashboard Vue — React 18 + Shadow DOM competindo com `FloatingCallWidget`.
-5. **Não** unificar tiles `whatsapp_call` e `wavoip` — gates e setup distintos.
+3. **Não** reutilizar `useWhatsappCallSession` — usar porta `BrowserVoiceSession` + `useWavoipCallSession`.
+4. **Não** importar `@wavoip/wavoip-api` fora de `wavoipSdkPort.js` — quebra testabilidade e DI.
+5. **Não** usar `@wavoip/wavoip-webphone` no dashboard Vue — React 18 + Shadow DOM competindo com `FloatingCallWidget`.
+6. **Não** unificar tiles `whatsapp_call` e `wavoip` — gates e setup distintos.
+7. **Não** misturar mappers de status webhook (Rails) e SDK (browser) no mesmo arquivo.
 
 ---
 
