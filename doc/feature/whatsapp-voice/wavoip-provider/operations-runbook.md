@@ -2,7 +2,7 @@
 
 Guia para admins e suporte quando a integração não funciona como esperado.
 
-**Relacionado:** [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md) · [official-docs.md](./official-docs.md)
+**Relacionado:** [contracts-and-ports.md](./contracts-and-ports.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md) · [official-docs.md](./official-docs.md)
 
 ---
 

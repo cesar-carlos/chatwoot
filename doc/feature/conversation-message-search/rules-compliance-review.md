@@ -68,9 +68,11 @@ Evita service crescer quando entrarem GIN, transcrição e filtro de `message_ty
 
 #### 1.3 God class no backend
 
-Risco baixo se o service tiver ~15 linhas e delegar ao finder. Risco alto se Fase 5 copiar `SearchService` inteiro para dentro de um único arquivo.
+Risco baixo se o service tiver ~15 linhas e delegar ao finder. Risco alto se copiar `SearchService` inteiro para dentro de um único arquivo.
 
 **Regra:** extrair `MessageSearchStrategy` (LIKE / GIN) só quando a segunda estratégia for implementada — não preemptivamente (`chatwoot-core`).
+
+**Entrega fatiada:** Fase A (content) → Fase C (transcrição) → P1/P2 (GIN/OpenSearch) — ver [implementation-plan.md](./implementation-plan.md).
 
 ---
 
@@ -306,7 +308,54 @@ Duplica `SearchService`. Aceitável no MVP; **P2** extrair para `Search::DEFAULT
 - [x] Criar [improvements-backlog.md](./improvements-backlog.md)
 - [x] Criar [ux-improvements.md](./ux-improvements.md) — catálogo completo UI/UX
 - [x] Integrar melhorias UX no MVP ([implementation-plan.md](./implementation-plan.md), P0 UX-M*)
-- [ ] Implementar código
+- [x] Confirmar feature **não implementada** no repo
+- [x] Documentar fatiamento MVP (Fases A/B/C)
+- [x] Documentar mutation fork `INSERT_MESSAGES_AROUND`
+- [x] Documentar armadilha camelCase + `MessageContent` para áudio
+- [x] Documentar decisões D17–D19 (privadas, deletadas, OpenSearch)
+- [ ] Implementar código (Fase A)
+- [ ] Implementar Fase B (scroll robusto)
+- [ ] Implementar Fase C (polish UX)
+
+---
+
+## 9. Reavaliação pós-investigação no código (jun/2026)
+
+**Data:** jun/2026 · **Escopo:** verificação no repo + alinhamento com rules
+
+### 9.1 Estado real
+
+Nenhum artefato da feature foi encontrado no código. Apenas documentação e infraestrutura **relacionada mas distinta** (pesquisa global, transcrição Groq).
+
+| Artefato planejado | Encontrado |
+|--------------------|------------|
+| `Custom::ConversationMessageSearchFinder` | ❌ |
+| `Custom::Messages::ConversationSearchService` | ❌ |
+| `MessagesController#search` + rota | ❌ |
+| `ConversationMessageSearch/*` (Vue) | ❌ |
+| Item em `MoreActions.vue` | ❌ |
+| `conversationSearch.js` (store) | ✅ — **pesquisa global**, não in-conversation |
+
+### 9.2 Veredito pós-reavaliação
+
+O plano revisado (secções 1–8) permanece **válido e conforme** às rules. Riscos principais na implementação:
+
+| # | Risco | Mitigação documentada |
+|---|-------|----------------------|
+| R1 | `MessagesView#onScrollToMessage` faz `scrollToBottom()` se mensagem não está no DOM | Fase B: `useScrollToConversationMessage` + mutation fork |
+| R2 | `SET_MISSING_MESSAGES` **replace** o array; `SET_PREVIOUS_CONVERSATIONS` só `unshift` | Nova mutation `INSERT_MESSAGES_AROUND` — ver [implementation-plan.md](./implementation-plan.md) §2.2 |
+| R3 | `MessageContent.vue` usa `file_type` / `transcribed_text` (snake); API com `useCamelCase` não exibe áudio | ResultItem espelha `SearchResultMessageItem` + `readTranscriptText` |
+| R4 | Escopo UX (19 P0 + 32 UX-M) vs `chatwoot-core` MVP | Fases A/B/C — não entregar tudo de uma vez |
+| R5 | Contas Enterprise com OpenSearch: in-conversation ILIKE &lt; global OpenSearch | Documentado D19; P2.1 backlog |
+
+### 9.3 Path do prepend controller
+
+Seguir padrão Enterprise (não confundir com controllers standalone em `custom/app/controllers/api/`):
+
+| Peça | Path |
+|------|------|
+| Módulo prepend | `custom/app/controllers/custom/api/v1/accounts/conversations/messages_controller.rb` |
+| Hook upstream | `Api::V1::Accounts::Conversations::MessagesController.prepend_mod_with(...)` |
 
 ---
 
@@ -318,4 +367,5 @@ Duplica `SearchService`. Aceitável no MVP; **P2** extrair para `Search::DEFAULT
 | [conversation-unread-badge](../conversation-unread-badge-on-contact-avatar/implementation-plan.md) | `composables/fork` + `components/fork` |
 | [ux-improvements.md](./ux-improvements.md) | Catálogo UX MVP + roadmap P1–P3 |
 | Pesquisa global | `MessageContent`, debounce 500ms, paginação 15 |
+| `api-endpoints.md` | Matriz de rotas — 1 endpoint novo |
 | `ShareContactDialog` | `defineExpose({ open, close })` acionado pelo pai |

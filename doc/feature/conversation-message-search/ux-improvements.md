@@ -16,12 +16,20 @@ Consolidação de todas as sugestões de experiência do usuário, organizadas p
 
 ---
 
+## Nota sobre escopo MVP
+
+O catálogo UX-M* descreve o **estado desejado completo**. A implementação deve seguir [implementation-plan.md](./implementation-plan.md) **Fases A → B → C**, não entregar os 32 itens num único PR.
+
+---
+
 ## Mapa de prioridades
 
 | Fase | Escopo UX | Doc de referência |
 |------|-----------|-------------------|
-| **MVP** | Dialog, estados, teclado básico, highlight, loading no salto | [ui-design.md](./ui-design.md) § MVP |
-| **P1** | Atalhos, contador, badges, loading na thread, filtro remetente | Este doc § P1 |
+| **MVP-A** | Menu, dialog, busca, lista, clique (mensagem no DOM) | [implementation-plan.md](./implementation-plan.md) Fase A |
+| **MVP-B** | Scroll robusto, toast falha, loading thread | Fase B |
+| **MVP-C** | Áudio, badges, estados polish | Fase C |
+| **P1** | Atalhos, contador, filtros remetente | Este doc § P1 |
 | **P2** | Navegação ↑↓, buscas recentes, cache query, scroll infinito | Este doc § P2 |
 | **P3** | Painel lateral, analytics, polish a11y avançado | Este doc § P3 |
 

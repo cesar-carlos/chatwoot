@@ -43,6 +43,8 @@ Decisões de produto e arquitetura para a busca de mensagens dentro da conversa 
 
 **Decisão:** **B** — serviço dedicado `Custom::Messages::ConversationSearchService` em `custom/`, rota collection no resource `messages` com `# FORK:` em `routes.rb`.
 
+**Contrato API:** [api-endpoints.md](./api-endpoints.md) — único endpoint novo; Fases B/C/P1 evoluem finder e params na mesma rota.
+
 **Motivo:** conversa pode ter anos de histórico; `message_base_query` corta em 3 meses. Escopo e permissão ficam explícitos.
 
 ---
@@ -86,7 +88,7 @@ Decisões de produto e arquitetura para a busca de mensagens dentro da conversa 
 1. Se `document.getElementById('message' + id)` existe → scroll + highlight
 2. Senão → `MessageApi.getPreviousMessages({ before: id+100, after: id-100 })` → merge no store → scroll
 
-Extrair lógica para composable `useScrollToConversationMessage` (fork em `custom/` ou `composables/`).
+Extrair lógica para `useScrollToConversationMessage` em `app/javascript/dashboard/composables/fork/` (não em `custom/`).
 
 ---
 
@@ -98,7 +100,7 @@ Extrair lógica para composable `useScrollToConversationMessage` (fork em `custo
 | Service | `custom/app/services/custom/messages/conversation_search_service.rb` | — |
 | Controller | `prepend_mod_with` em `MessagesController` | módulo em `custom/app/controllers/custom/...` |
 | Rota | `config/routes.rb` | `# FORK:` 1 linha |
-| Dialog / Form / Item | `app/javascript/dashboard/widgets/conversation/ConversationMessageSearch/` | — |
+| Dialog / Form / Item | `app/javascript/dashboard/components/widgets/conversation/ConversationMessageSearch/` | — |
 | Composables | `app/javascript/dashboard/composables/fork/` | — |
 | API client | `app/javascript/dashboard/api/fork/` | — |
 | Hook menu | `MoreActions.vue` | `# FORK:` bloco autocontido |
@@ -203,13 +205,40 @@ Extrair lógica para composable `useScrollToConversationMessage` (fork em `custo
 | C | Copiar transcrição para `messages.content` | Busca trivial | Duplica dado; altera bolhas |
 | D | Endpoint separado `/search/transcriptions` | Separação | Duas UIs; pior UX |
 
-**Decisão:** **B** no MVP — query unificada em `ConversationMessageSearchFinder`.
+**Decisão:** **B** — query unificada em `ConversationMessageSearchFinder`.
+
+**Entrega:** Fase C do [implementation-plan.md](./implementation-plan.md) (Fase A usa só `content` ILIKE para happy path mais rápido).
 
 **Chaves JSON:** `meta->>'transcribed_text'` OR `meta->'transcription'->>'text'`, só `file_type = audio`.
 
 **Não** alterar `SearchService` global no MVP. Alinhamento opcional P1 via módulo SQL partilhado.
 
 Detalhe: [audio-transcription-search.md](./audio-transcription-search.md).
+
+---
+
+## D17 — Notas privadas na busca
+
+| Opção | Decisão |
+|-------|---------|
+| A. Incluir todas (agente com `show?` na conversa) | ✅ MVP |
+| B. Excluir `private: true` para não-admins | P1 — alinhar a `MessageFinder#filter_internal_messages` |
+
+**MVP:** sem filtro extra — permissão de conversa já garante acesso. **P1:** reavaliar com policy de inbox (ver P1.16 no backlog).
+
+---
+
+## D18 — Mensagens deletadas
+
+**MVP:** podem aparecer (content vira string i18n "deleted").  
+**P1:** excluir `content_attributes->>'deleted' = 'true'` no finder (P1.3).
+
+---
+
+## D19 — Paridade OpenSearch (Enterprise)
+
+**MVP:** ILIKE scoped — contas com OpenSearch terão busca in-conversation **menos** abrangente que global até P2.  
+**P2:** strategy OpenSearch com `conversation_id` no `where` (P2.1).
 
 ---
 

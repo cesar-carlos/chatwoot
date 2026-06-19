@@ -23,4 +23,4 @@ Adicionar em `custom/config/features.yml` (overlay fork — não editar `config/
 account.enable_features!('channel_voice', 'channel_wavoip')
 ```
 
-Ver [operations-runbook.md](./operations-runbook.md) · [official-docs.md](./official-docs.md).
+Ver [operations-runbook.md](./operations-runbook.md) · [official-docs.md](./official-docs.md) · [contracts-and-ports.md §12-W-O4](./contracts-and-ports.md#124-produto--ops-documentar-na-ui).
