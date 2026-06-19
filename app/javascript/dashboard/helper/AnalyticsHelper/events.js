@@ -167,3 +167,9 @@ export const ONBOARDING_EVENTS = Object.freeze({
   INBOX_SETUP_COMPLETED: 'Onboarding: Inbox setup completed',
   INBOX_SETUP_SKIPPED: 'Onboarding: Inbox setup skipped',
 });
+
+export const MESSAGE_SEARCH_EVENTS = Object.freeze({
+  OPENED: 'Search in conversation: Opened',
+  SEARCHED: 'Search in conversation: Searched',
+  RESULT_CLICKED: 'Search in conversation: Result clicked',
+});

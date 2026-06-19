@@ -2,6 +2,8 @@
 import Button from 'dashboard/components-next/button/Button.vue';
 import ButtonGroup from 'dashboard/components-next/buttonGroup/ButtonGroup.vue';
 import { useUISettings } from 'dashboard/composables/useUISettings';
+// FORK: in-conversation message search
+import { useConversationMessageSearchPanel } from 'dashboard/composables/fork/useConversationMessageSearchPanel';
 import { computed } from 'vue';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { useMapGetter } from 'dashboard/composables/store';
@@ -25,11 +27,16 @@ const isContactSidebarOpen = computed(
 const isCopilotPanelOpen = computed(
   () => uiSettings.value.is_copilot_panel_open
 );
+// FORK: in-conversation message search
+const isMessageSearchPanelOpen = computed(
+  () => uiSettings.value.is_message_search_panel_open
+);
 
 const toggleConversationSidebarToggle = () => {
   updateUISettings({
     is_contact_sidebar_open: !isContactSidebarOpen.value,
     is_copilot_panel_open: false,
+    is_message_search_panel_open: false,
   });
 };
 
@@ -37,6 +44,7 @@ const handleConversationSidebarToggle = () => {
   updateUISettings({
     is_contact_sidebar_open: true,
     is_copilot_panel_open: false,
+    is_message_search_panel_open: false,
   });
 };
 
@@ -44,7 +52,15 @@ const handleCopilotSidebarToggle = () => {
   updateUISettings({
     is_contact_sidebar_open: false,
     is_copilot_panel_open: true,
+    is_message_search_panel_open: false,
   });
+};
+
+// FORK: in-conversation message search
+const { open: openMessageSearchPanel } = useConversationMessageSearchPanel();
+
+const handleMessageSearchToggle = () => {
+  openMessageSearchPanel();
 };
 
 const keyboardEvents = {
@@ -84,6 +100,19 @@ useKeyboardEvents(keyboardEvents);
       }"
       icon="i-woot-captain"
       @click="handleCopilotSidebarToggle"
+    />
+    <!-- FORK: in-conversation message search -->
+    <Button
+      v-tooltip.bottom="$t('CONVERSATION.MESSAGE_SEARCH.PANEL_TOGGLE')"
+      ghost
+      slate
+      sm
+      class="!rounded-full transition-all duration-[250ms] ease-out active:!scale-95 active:duration-75"
+      :class="{
+        'bg-n-alpha-2 active:shadow-sm': isMessageSearchPanelOpen,
+      }"
+      icon="i-lucide-search"
+      @click="handleMessageSearchToggle"
     />
   </ButtonGroup>
 </template>

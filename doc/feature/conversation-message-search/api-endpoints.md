@@ -30,20 +30,13 @@ Matriz de endpoints: o que é novo, o que reutiliza, e o que muda por fase (A �
 | **Auth** | Mesma sessão/API token do dashboard |
 | **Autorização** | `Conversations::BaseController#conversation` → Pundit `show?` |
 | **Implementação** | `MessagesController#search` via `prepend_mod_with` + `# FORK:` em `routes.rb` |
-| **Estado** | ❌ Não implementado |
-
-#### Query params (MVP)
+| **Estado** | ✅ Implementado (ver [implementation-plan.md](./implementation-plan.md)) |
 
 | Param | Tipo | Obrigatório | Descrição |
 |-------|------|-------------|-----------|
 | `q` | string | sim | Termo de busca (mín. 2 chars — `422` se inválido) |
 | `page` | integer | não | Paginação (default `1`, 15 por página) |
-
-#### Query params futuros (P1 — mesma rota)
-
-| Param | Tipo | Fase | Descrição |
-|-------|------|------|-----------|
-| `from` | string | P1 | Filtro remetente: `contact:N` ou `agent:N` (espelhar pesquisa global) |
+| `from` | string | não | Filtro: `contact`, `agent`, `private`, `contact:N`, `agent:N` |
 
 #### Respostas
 
@@ -52,11 +45,12 @@ Matriz de endpoints: o que é novo, o que reutiliza, e o que muda por fase (A �
 | `200` | Busca ok (lista vazia é válida) |
 | `401` / `403` | Sem auth ou sem acesso à conversa |
 | `404` | `conversation_id` inexistente |
-| `422` | `q` blank ou &lt; 2 caracteres |
+| `422` | `q` blank, &lt; 2 caracteres ou `page` inválido |
+| `429` | Rate limit (30 req/min por user+conversa) |
 
-#### Corpo de resposta (sugestão)
+#### Corpo de resposta
 
-Reutilizar partial existente `api/v1/models/_message.json.jbuilder` — mesmo shape de `messages#index`:
+Reutilizar partial `api/v1/models/_message.json.jbuilder` + campo opcional `matched_on`:
 
 ```json
 {
@@ -64,35 +58,31 @@ Reutilizar partial existente `api/v1/models/_message.json.jbuilder` — mesmo sh
     {
       "id": 123,
       "content": "texto da mensagem",
+      "matched_on": "content",
       "message_type": 0,
       "created_at": 1710000000,
       "private": false,
       "sender": { "id": 1, "name": "Maria", "type": "contact" },
-      "attachments": [
-        {
-          "id": 456,
-          "file_type": "audio",
-          "transcribed_text": "...",
-          "transcription_state": "success"
-        }
-      ]
+      "attachments": []
     }
   ],
   "meta": {
     "current_page": 1,
-    "total_pages": 3,
-    "total_count": 42
+    "has_more": true,
+    "max_results": 100,
+    "search_engine": "ilike_unaccent"
   }
 }
 ```
 
-**Fase C:** mesmo JSON — transcrição já vem em `attachments` via `push_event_data` / `audio_metadata`.
-
-**P1.4:** campo opcional `matched_on: "content" | "transcription"` no item — sem rota nova.
+**Notas:**
+- Sem `total_count` / `total_pages` — paginação via `has_more` apenas.
+- `search_engine`: `ilike` | `ilike_unaccent` | `gin` | `opensearch`.
+- Com `unaccent` + flag `search_with_gin`, o finder usa ILIKE unaccent (índice trigram) e reporta `ilike_unaccent`.
 
 #### Cliente frontend
 
-**Arquivo:** `app/javascript/dashboard/api/fork/conversationMessageSearch.js`
+**Arquivo:** `app/javascript/dashboard/api/conversationMessageSearch.js`
 
 ```javascript
 // GET ${accountScoped}/conversations/${conversationId}/messages/search
@@ -154,7 +144,7 @@ A busca **não** dispara transcrição. Áudio sem transcrição não aparece no
 
 | Fase | Funcionalidade | Endpoint | Novo? |
 |------|----------------|----------|-------|
-| **A** | Busca texto no dialog | `GET .../messages/search` | ✅ |
+| **A** | Busca texto no painel lateral | `GET .../messages/search` | ✅ |
 | **A** | Paginação “carregar mais” | `GET .../messages/search?page=N` | ❌ (mesmo) |
 | **A** | Validação `q` inválido | `422` no `search` | ❌ |
 | **B** | Scroll mensagem antiga | `GET .../messages?before=&after=` | ❌ |
@@ -199,23 +189,16 @@ collection { get :search }
 
 ```ruby
 # custom/app/controllers/custom/api/v1/accounts/conversations/messages_controller.rb
-module Custom::Api::V1::Accounts::Conversations::MessagesController
-  def search
-    return render json: { error: '...' }, status: :unprocessable_entity if invalid_query?
-
-    @messages = Custom::Messages::ConversationSearchService.new(
-      conversation: @conversation,
-      params: search_params
-    ).perform
-  end
-end
+# → finder direto (sem service intermediário)
+finder = Custom::ConversationMessageSearchFinder.new(...)
+@messages = finder.perform
 ```
 
 ### View
 
 **Arquivo:** `app/views/api/v1/accounts/conversations/messages/search.json.jbuilder`
 
-Espelhar `index.json.jbuilder` — `payload` + `meta` de paginação (Kaminari).
+`payload` + `meta` (`current_page`, `has_more`, `max_results`, `search_engine`).
 
 ---
 
@@ -236,7 +219,7 @@ flowchart LR
     G[GET search/messages global]
   end
 
-  Dialog[ConversationMessageSearchDialog] --> S
+  Panel[ConversationMessageSearchPanel] --> S
   Scroll[useScrollToConversationMessage] --> M
   Groq[Transcrição manual] --> T
   T -.->|meta em attachments| S
