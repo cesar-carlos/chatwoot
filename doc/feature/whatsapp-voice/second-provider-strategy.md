@@ -371,7 +371,7 @@ Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpa
 2. Reusar `Channel::TwilioSms` para WA Calling
 3. Duplicar 456 linhas de `useWhatsappCallSession` em outro provider SDP sem extrair core
 4. Editar `enterprise/` upstream sem espelhar em `custom/`
-5. Novo canal STI se ainda for `Channel::Whatsapp` com outro `provider` string
+5. Novo channel model se o contrato ainda for apenas outra variante de `Channel::Whatsapp`
 6. Deixar lógica de permissão outbound no controller — extrair `CallPermissionRequestService`
 7. Integrar um provider ao widget sem antes definir dispatch por provider
 8. Inflar model `Call` upstream com campos de um só provider — usar `meta` jsonb; novos valores de enum exigem alteração explícita e estável
