@@ -615,7 +615,7 @@ pré-requisito Wavoip.
 | W-B6 | `PATCH /api/v1/accounts/:id/calls/:id` | **Rota EE não existe hoje** — registrar `accepted_by_agent_id` após `offer.accept()`; implementar em `custom/` (Fase 3) |
 | W-B7 | `Calls::AssigneeOnAcceptService` | Opcional: `conversation.assignee` ao aceitar inbound |
 | W-B8 | `RecordingAttacher` | Fase 4: `record_url` → meta ou download ActiveStorage |
-| W-B9 | `Channel::WavoipPolicy` | Autorização create/update/settings |
+| W-B9 | Autorização account/inbox | Admin cria/configura; agente associado recebe bootstrap SDK |
 | W-B10 | Auth + throttle webhook | Chave opaca por canal; limite por chave/IP |
 
 ### 12.3 Frontend Wavoip

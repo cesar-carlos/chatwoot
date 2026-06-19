@@ -373,6 +373,7 @@ custom/
     features.yml          # channel_wavoip (piloto)
   app/
     models/channel/wavoip.rb
+    models/custom/account.rb
     controllers/webhooks/wavoip_controller.rb
     jobs/wavoip/
       process_webhook_job.rb

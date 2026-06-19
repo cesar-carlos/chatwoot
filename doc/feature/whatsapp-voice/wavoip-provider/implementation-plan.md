@@ -106,6 +106,8 @@ autorização, inbox, contato, conversa, `Call`, mensagem e broadcasts auxiliare
   - `provider_config` apenas para preferências não secretas;
   - timestamps e índices de lookup necessários.
 - [ ] `Channel::Wavoip` com `self.table_name = 'channel_wavoip'`.
+- [ ] `Custom::Account` adiciona `has_many :wavoip_channels` e o controller cria o
+  canal por essa associação.
 - [ ] `encrypts :device_token if Chatwoot.encryption_configured?`.
 - [ ] `has_secure_token :webhook_key`.
 - [ ] Uma edição em `enterprise/app/models/call.rb`:
@@ -123,7 +125,7 @@ enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
 - [ ] `PayloadNormalizer` baseado nos payloads do spike.
 - [ ] Idempotência por índice `(provider, provider_call_id)`, lock da linha e
   transições no-op quando o estado não mudou.
-- [ ] Policy e endpoint de configuração restritos a administradores.
+- [ ] Endpoints de criação/configuração usam autorização de account/inbox e exigem admin.
 - [ ] Endpoint de bootstrap SDK restrito a agentes associados ao inbox; nunca expor
   o token na listagem geral de inboxes.
 

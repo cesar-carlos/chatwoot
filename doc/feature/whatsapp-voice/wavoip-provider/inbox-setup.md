@@ -213,7 +213,7 @@ def create_wavoip_channel
   config['platform'] = 'chatwoot'
   config['inbound_calls_enabled'] = config.fetch('inbound_calls_enabled', true)
 
-  Current.account.channel_wavoip.create!(
+  Current.account.wavoip_channels.create!(
     phone_number: wavoip_params[:phone_number],
     device_token: wavoip_params[:device_token],
     provider_config: config
