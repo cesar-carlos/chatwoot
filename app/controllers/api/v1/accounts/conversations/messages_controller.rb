@@ -101,4 +101,7 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   end
 end
 
-Api::V1::Accounts::Conversations::MessagesController.prepend_mod_with('Api::V1::Accounts::Conversations::MessagesController')
+# FORK: load in-conversation message search action
+Api::V1::Accounts::Conversations::MessagesController.prepend_mod_with(
+  'Api::V1::Accounts::Conversations::MessagesController'
+)

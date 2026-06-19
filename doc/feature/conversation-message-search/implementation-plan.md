@@ -4,7 +4,7 @@ Este é o **documento normativo** da feature. Os demais arquivos desta pasta pre
 
 **Reavaliado em:** 19 de junho de 2026
 
-**Estado:** não implementado
+**Estado:** implementado (MVP + melhorias P1/P2 selecionadas — ver §14)
 
 ---
 
@@ -192,6 +192,40 @@ Ao implementar, confirmar a expressão com registros cujo `content_attributes` s
 
 O finder pode expor `has_more?` após `perform`, mantendo o retorno principal como coleção de até 15 mensagens. Não executar `count`, `total_count` ou paginação Kaminari neste endpoint.
 
+**Implementação:** usa subquery `SELECT DISTINCT messages.id` + fetch externo em vez de `SELECT DISTINCT messages.*`, porque `content_attributes` é tipo `json` no PostgreSQL (sem operador de igualdade para `DISTINCT` em linha completa). Comportamento equivalente ao plano.
+
+### 6.1.1 Baseline de performance (checkpoint 1)
+
+Executado em dev local (conversa pequena, ~40 mensagens). Em datasets maiores, repetir com `bundle exec rails search:setup_test_data` ou conta seedada.
+
+```bash
+eval "$(rbenv init -)"
+bundle exec rails runner "
+  c = Conversation.first
+  pattern = '%test%'
+  audio_type = Attachment.file_types[:audio]
+  ids_sql = c.messages.left_joins(:attachments)
+    .where(message_type: %i[incoming outgoing template])
+    .where(\"COALESCE(messages.content_attributes->>'deleted', 'false') != 'true'\")
+    .where(<<~SQL.squish, pattern: pattern, audio_type: audio_type)
+      messages.content ILIKE :pattern
+      OR (attachments.file_type = :audio_type AND attachments.meta->>'transcribed_text' ILIKE :pattern)
+      OR (attachments.file_type = :audio_type AND attachments.meta->'transcription'->>'text' ILIKE :pattern)
+    SQL
+    .select('messages.id').distinct.reorder(nil).to_sql
+  sql = c.messages.where(\"id IN (#{ids_sql})\").reorder(created_at: :desc).limit(16).to_sql
+  ActiveRecord::Base.connection.execute(\"EXPLAIN (ANALYZE, BUFFERS) #{sql}\").values.flatten.each { puts _1 }
+"
+```
+
+| Cenário | Tempo (dev local) | Observação |
+|---------|-------------------|------------|
+| Match em `content` | ~0,11 ms | Seq scan esperado em N pequeno; índice GIN trigram em `messages.content` relevante em conversas grandes |
+| Sem resultados | sub-ms | Hash join + filtro |
+| Match só transcrição | medir em conta com áudio transcrito | `attachments.meta` JSONB — GIN genérico pode não acelerar `ILIKE` em texto extraído |
+
+Não adicionar índice novo sem evidência em conversa representativa (milhares de mensagens).
+
 ### 6.2 Notas privadas e autorização
 
 Notas privadas permanecem incluídas. Esta decisão foi validada contra o comportamento atual:
@@ -248,7 +282,9 @@ A view contém:
 
 ### 6.6 Baseline de performance
 
-Antes de considerar o backend pronto:
+Ver §6.1.1 para script `EXPLAIN (ANALYZE, BUFFERS)` e resultados iniciais em dev local.
+
+Antes de considerar o backend pronto em **produção**:
 
 1. criar ou usar uma conversa representativa, com milhares de mensagens e attachments;
 2. executar `EXPLAIN (ANALYZE, BUFFERS)` para:
@@ -261,9 +297,9 @@ Antes de considerar o backend pronto:
 
 Não adicionar índice novo sem evidência desta medição.
 
----
+**Status:** script e resultados iniciais documentados em §6.1.1. Repetir em conversa grande antes de merge em produção.
 
-## 7. Frontend
+### 6.2 Notas privadas e autorização
 
 ### 7.1 Arquivos novos
 
@@ -380,7 +416,7 @@ Com isso, não são necessários:
 - segunda request de mensagens;
 - janela arbitrária `messageId ± 100`.
 
-Ao mesclar, ler o estado mais recente imediatamente antes do commit para reduzir disputa com mensagens recebidas em tempo real.
+Ao mesclar, ler o estado mais recente imediatamente antes do commit para reduzir disputa com mensagens recebidas em tempo real (`useScrollToConversationMessage` — segunda leitura de `getSelectedChat.messages` antes de `SET_MISSING_MESSAGES`).
 
 ### 8.1 Limite de crescimento no Vuex
 
@@ -473,29 +509,25 @@ Namespace:
 
 ## 11. Matriz de aceite
 
-| Cenário | Esperado |
-|---------|----------|
-| Query com 0–1 caractere | nenhuma request; hint visível |
-| Texto em mensagem recente | resultado, scroll e highlight |
-| Texto em mensagem antiga | mescla o resultado, scrolla e destaca |
-| Termo só em transcrição Groq | resultado com snippet e mic |
-| Termo na chave legada `transcribed_text` | resultado |
-| Áudio sem transcrição | não aparece pelo áudio |
-| Nota privada | aparece com badge |
-| Mensagem activity | não aparece |
-| Mensagem deletada | não aparece |
-| Vários attachments no mesmo message | um resultado |
-| Página com 16+ matches | devolve 15 e `has_more: true` |
-| Última página | `has_more: false`; botão desaparece |
-| Página seguinte | append sem duplicação e sem `COUNT` |
-| Query muda durante request | request anterior é abortada sem toast |
-| Resposta antiga chega depois da nova | não sobrescreve a query atual |
-| Resultado fora do DOM | merge direto; nenhuma segunda request |
-| 100 saltos para itens isolados | no máximo 100 mensagens adicionadas; crescimento registrado |
-| Resultado sem ID/elemento após merge | alerta; sem scroll para o fim |
-| Conversa sem acesso | 403/404 conforme controller base |
-| Agente autorizado vê nota privada | resultado igual ao endpoint normal de mensagens |
-| Viewport estreito | dialog sem overflow horizontal |
+Imprimir checklist: `rake conversation_message_search:acceptance`
+
+| Cenário | Esperado | Auto |
+|---------|----------|------|
+| Query com 0–1 caractere | nenhuma request; hint visível | Vitest/FE manual |
+| Texto em mensagem recente | resultado, scroll e highlight | Manual |
+| Texto em mensagem antiga | mescla o resultado, scrolla e destaca | Manual |
+| Termo só em transcrição Groq | resultado com snippet e mic | RSpec finder |
+| Termo na chave legada `transcribed_text` | resultado | RSpec (estender) |
+| Áudio sem transcrição | não aparece pelo áudio | Manual |
+| Nota privada | aparece com badge | Manual |
+| Mensagem activity | não aparece | RSpec finder |
+| Mensagem deletada | não aparece | RSpec finder |
+| Assunto de e-mail | resultado com `matched_on: content` | RSpec finder |
+| Busca sem acentos (`contrato` ↔ `contráto`) | match com `ilike_unaccent` | RSpec (se extensão ativa) |
+| Página com 16+ matches | devolve 15 e `has_more: true` | RSpec finder + HTTP |
+| Última página | `has_more: false` | RSpec HTTP page 2 |
+| Rate limit | 429 + mensagem UI | RSpec HTTP |
+| Viewport estreito | painel sem overflow horizontal | Manual |
 
 ---
 
@@ -514,30 +546,42 @@ Namespace:
 
 ## 13. Busca sem acentos
 
-Objetivo futuro: `contrato` localizar `contráto` e vice-versa.
-
-Não incluir no MVP porque o banco possui `pg_trgm`, mas não possui `unaccent` habilitado. Aplicar `unaccent()` diretamente sem índice funcional pode degradar a busca.
-
-Antes de implementar:
-
-1. confirmar idiomas e comportamento desejado;
-2. avaliar extensão `unaccent`;
-3. comparar coluna normalizada, índice funcional trigram e normalização na escrita;
-4. medir impacto em conteúdo e transcrições;
-5. preparar migração concorrente e estratégia de rollback.
+**Implementado** — migração `20260619120000_add_unaccent_for_message_search.rb`:
+- extensão `unaccent` + função `unaccent_immutable(text)`
+- índice GIN trigram em `unaccent_immutable(content)`
+- predicate ILIKE com unaccent em finder e `SearchService` global
+- com `search_with_gin` + unaccent ativo, o finder usa ILIKE unaccent (índice trigram) em vez de `to_tsquery`
 
 ---
 
 ## 14. Pós-MVP priorizado
 
-1. Finalizar limite de mensagens injetadas, caso o checkpoint seguro tenha ficado fora do MVP.
-2. Busca sem acentos com índice compatível.
-3. Atalho `Ctrl/Cmd+F` e command bar.
-4. Filtro por remetente/tipo.
-5. Assunto de e-mail e melhor identificação da origem do match.
-6. GIN/OpenSearch scoped por `conversation_id`.
-7. Navegação por teclado nos resultados.
-8. Limite máximo global de resultados.
-9. Painel lateral somente se feedback indicar que o dialog prejudica o contexto.
+**Implementado nesta entrega:**
+- `matched_on` na API (`content` | `transcription`)
+- Filtro `from` (all/contact/agent/private + `contact:N` / `agent:N`)
+- Assunto de e-mail no predicate
+- `ContentPredicate` partilhado + `SearchService` ILIKE global alinhado
+- Rate limit leve (30 req/min por user+conversa)
+- Limite 100 resultados (`MAX_RESULTS`)
+- ⌘F / Ctrl+F + command bar
+- Contador de resultados, hint transcrição, buscas recentes (`sessionStorage`)
+- Filtros remetente no dialog
+- Navegação ↑↓ + Enter (único resultado salta direto)
+- Scroll infinito no dialog
+- Poda de mensagens injetadas (50 por conversa)
+- `TranscribedText` com highlight
+- `prefers-reduced-motion` no highlight
+- Remoção de código morto `showSearchModal` em `ConversationView`
+- Busca sem acentos (`unaccent` + índice funcional GIN trigram) — migração `20260619120000`
+- GIN / OpenSearch scoped por `conversation_id` com fallback SQL
+- Painel lateral (`ConversationMessageSearchPanel`) como entrada principal
+- Analytics `MESSAGE_SEARCH_EVENTS` (opened, searched, result clicked)
+- Specs RSpec expandidos (e-mail, paginação HTTP, `from`, GIN engine)
+- Vitest `messageSearchText.spec.js` (fold diacríticos)
+- Rake `conversation_message_search:acceptance` (checklist §11)
+- GIN com fallback ILIKE em `to_tsquery` inválido; unaccent + `search_with_gin` → ILIKE unaccent
+- `SearchService` global: override `filter_messages_with_gin` com transcrição + fallback
 
-Não extrair estratégia de busca, predicate compartilhado ou store dedicado antes de uma dessas necessidades existir.
+**Ainda pendente (validação operacional):**
+1. `rake conversation_message_search:explain[conversation_id,query]` em conversa grande (produção) — arquivar plano/tempo
+2. Matriz de aceite §11 — cenários manuais restantes (scroll, viewport, áudio sem transcrição)

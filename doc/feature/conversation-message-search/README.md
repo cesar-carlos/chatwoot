@@ -26,7 +26,7 @@ Planejamento para busca no contexto da conversa aberta, incluindo **texto e tran
 | Onde está o texto? | `attachments.meta` (`transcribed_text` + `transcription.text`) — Groq e OpenAI |
 | Mudança no backend? | **1 endpoint novo** — `GET .../messages/search` ([api-endpoints.md](./api-endpoints.md)) |
 | Mais completo que global SQL? | **Sim** (global ILIKE não busca transcrição; OpenSearch sim) |
-| Entrada UI | Menu ⋮ → Pesquisar nesta conversa |
+| Entrada UI | Menu ⋮ / painel lateral / ⌘F — Pesquisar nesta conversa |
 | Scroll antigo | Mescla diretamente o resultado já retornado pela busca |
 | Paginação | 15 resultados + `has_more`, sem `COUNT DISTINCT` |
 | Requests | Debounce + cancelamento via `AbortController` |
@@ -36,9 +36,12 @@ Planejamento para busca no contexto da conversa aberta, incluindo **texto e tran
 
 | Camada | Estado (jun/2026) |
 |--------|-------------------|
-| Backend (`custom/` finder, service, controller, rota) | ❌ Não implementado |
-| Frontend (Dialog, composables, API fork) | ❌ Não implementado |
-| Documentação / plano | ✅ Revisado — ver [rules-compliance-review.md](./rules-compliance-review.md) §9 |
+| Backend (`custom/` finder, controller, rota) | ✅ Implementado |
+| Frontend (painel lateral, composables, API) | ✅ Implementado |
+| Specs RSpec + Vitest (`messageSearchText`) | ✅ Implementado |
+| Baseline `EXPLAIN ANALYZE` (dev local) | ✅ Documentado em `implementation-plan.md` §6.1.1 |
+| `EXPLAIN` em conversa grande (produção) | ⏳ `rake conversation_message_search:explain` |
+| Matriz de aceite §11 | ⏳ `rake conversation_message_search:acceptance` + teste manual |
 
 **Nota:** o store `conversationSearch.js` é da **pesquisa global** (`/search`), não desta feature.
 
@@ -47,7 +50,7 @@ Planejamento para busca no contexto da conversa aberta, incluindo **texto e tran
 Uma entrega vertical pronta para uso, implementada em quatro checkpoints internos:
 
 1. backend verificável;
-2. busca no dialog;
+2. busca no painel lateral;
 3. navegação confiável;
 4. lint e matriz de aceite.
 

@@ -34,6 +34,8 @@ import {
   SNOOZE_CONVERSATION_ACTIONS,
   RESOLVED_CONVERSATION_ACTIONS,
   SEND_TRANSCRIPT_ACTION,
+  // FORK: in-conversation message search
+  SEARCH_IN_CONVERSATION_ACTION,
   UNMUTE_ACTION,
   MUTE_ACTION,
 } from 'dashboard/helper/commandbar/actions';
@@ -45,7 +47,10 @@ import {
 const prepareActions = (actions, t) => {
   return actions.map(action => ({
     ...action,
+    // Command actions store i18n keys; translation happens here at runtime.
+    // eslint-disable-next-line @intlify/vue-i18n/no-dynamic-keys -- keys are static in commandbar/actions.js
     title: t(action.title),
+    // eslint-disable-next-line @intlify/vue-i18n/no-dynamic-keys -- keys are static in commandbar/actions.js
     section: t(action.section),
   }));
 };
@@ -330,6 +335,8 @@ export function useConversationHotKeys() {
   const conversationAdditionalActions = computed(() => {
     return prepareActions(
       [
+        // FORK: in-conversation message search — before send transcript
+        SEARCH_IN_CONVERSATION_ACTION,
         currentChat.value.muted ? UNMUTE_ACTION : MUTE_ACTION,
         SEND_TRANSCRIPT_ACTION,
       ],

@@ -8,6 +8,8 @@ import {
   CMD_SEND_TRANSCRIPT,
   CMD_SNOOZE_CONVERSATION,
   CMD_UNMUTE_CONVERSATION,
+  // FORK: in-conversation message search
+  CMD_SEARCH_IN_CONVERSATION,
 } from 'dashboard/helper/commandbar/events';
 
 import {
@@ -17,6 +19,8 @@ import {
   ICON_SEND_TRANSCRIPT,
   ICON_SNOOZE_CONVERSATION,
   ICON_UNMUTE_CONVERSATION,
+  // FORK: in-conversation message search
+  ICON_SEARCH_IN_CONVERSATION,
 } from 'dashboard/helper/commandbar/icons';
 
 const SNOOZE_OPTIONS = wootConstants.SNOOZE_OPTIONS;
@@ -73,6 +77,15 @@ export const SEND_TRANSCRIPT_ACTION = {
   section: 'COMMAND_BAR.SECTIONS.CONVERSATION',
   icon: ICON_SEND_TRANSCRIPT,
   handler: () => emitter.emit(CMD_SEND_TRANSCRIPT),
+};
+
+// FORK: in-conversation message search
+export const SEARCH_IN_CONVERSATION_ACTION = {
+  id: 'search_in_conversation',
+  title: 'COMMAND_BAR.COMMANDS.SEARCH_IN_CONVERSATION',
+  section: 'COMMAND_BAR.SECTIONS.CONVERSATION',
+  icon: ICON_SEARCH_IN_CONVERSATION,
+  handler: () => emitter.emit(CMD_SEARCH_IN_CONVERSATION),
 };
 
 export const UNMUTE_ACTION = {

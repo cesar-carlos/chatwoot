@@ -15,6 +15,8 @@ import CmdBarConversationSnooze from 'dashboard/routes/dashboard/commands/CmdBar
 import { emitter } from 'shared/helpers/mitt';
 import SidepanelSwitch from 'dashboard/components-next/Conversation/SidepanelSwitch.vue';
 import ConversationSidebar from 'dashboard/components/widgets/conversation/ConversationSidebar.vue';
+// FORK: in-conversation message search
+import ConversationMessageSearchPanel from 'dashboard/components/widgets/conversation/ConversationMessageSearch/ConversationMessageSearchPanel.vue';
 
 export default {
   components: {
@@ -23,6 +25,8 @@ export default {
     CmdBarConversationSnooze,
     SidepanelSwitch,
     ConversationSidebar,
+    // FORK: in-conversation message search
+    ConversationMessageSearchPanel,
   },
   beforeRouteLeave(to, from, next) {
     // Clear selected state if navigating away from a conversation to a route without a conversationId to prevent stale data issues
@@ -75,9 +79,7 @@ export default {
     };
   },
   data() {
-    return {
-      showSearchModal: false,
-    };
+    return {};
   },
   computed: {
     ...mapGetters({
@@ -97,6 +99,16 @@ export default {
 
       const { is_contact_sidebar_open: isContactSidebarOpen } = this.uiSettings;
       return isContactSidebarOpen;
+    },
+    // FORK: in-conversation message search
+    shouldShowSearchPanel() {
+      if (!this.currentChat.id) {
+        return false;
+      }
+
+      const { is_message_search_panel_open: isMessageSearchPanelOpen } =
+        this.uiSettings;
+      return isMessageSearchPanelOpen;
     },
   },
   watch: {
@@ -186,12 +198,6 @@ export default {
         this.$store.dispatch('clearSelectedState');
       }
     },
-    onSearch() {
-      this.showSearchModal = true;
-    },
-    closeSearch() {
-      this.showSearchModal = false;
-    },
   },
 };
 </script>
@@ -216,6 +222,11 @@ export default {
       <SidepanelSwitch v-if="currentChat.id" />
     </ConversationBox>
     <ConversationSidebar v-if="shouldShowSidebar" :current-chat="currentChat" />
+    <!-- FORK: in-conversation message search -->
+    <ConversationMessageSearchPanel
+      v-if="shouldShowSearchPanel"
+      :current-chat="currentChat"
+    />
     <CmdBarConversationSnooze />
   </section>
 </template>
