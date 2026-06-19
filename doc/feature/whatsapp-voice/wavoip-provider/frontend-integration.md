@@ -56,18 +56,16 @@ export const isBrowserVoiceProvider = provider =>
 Equivalente ao [bootstrap com configuração](https://wavoip.gitbook.io/api/webphone/primeiros-passos/inicializacao.md), mas sem `render()`:
 
 ```javascript
-// useWavoipConnection.js
-import { Wavoip } from '@wavoip/wavoip-api';
-
-const wavoip = new Wavoip({
-  tokens: [inbox.deviceToken],
-  platform: 'chatwoot',
-});
+// wavoipSdkPort.js — único import do pacote
+export async function createWavoipClient(options) {
+  const { Wavoip } = await import('@wavoip/wavoip-api');
+  return new Wavoip(options);
+}
 ```
 
 | `WebphoneSettings` | Onde no Chatwoot |
 |--------------------|------------------|
-| `callSettings.displayName` | `Channel::Wavoip#provider_config['display_name']` |
+| `callSettings.displayName` | Recurso do webphone; não está no contrato `startCall` da API 2.5.0 |
 | `platform` | `'chatwoot'` fixo |
 | `theme` / `widget.*` | N/A — UI Chatwoot |
 | Tokens `localStorage` | **Evitar** — token vem do servidor por inbox |
@@ -89,9 +87,9 @@ stateDiagram-v2
 
 | Evento Chatwoot | Ação SDK |
 |-----------------|----------|
-| Agente marca **online** | `wavoipClientRegistry.connect(inboxId, token)` |
-| Agente **offline** | `disconnect(inboxId)` — manter ou não conforme política |
-| Troca de conta / logout | `destroyAll()` |
+| Agente marca **online** | Construir `Wavoip({ tokens, platform })`; a conexão inicia no construtor |
+| Agente **offline** | `removeDevices([token])` e remover listeners |
+| Troca de conta / logout | Remover devices/listeners de todas as instâncias |
 | Navega para inbox não-Wavoip | Manter conexão se agente atende múltiplos inboxes Wavoip |
 
 Implementar em `useWavoipConnection.js` — **não** misturar com lógica de offer/outbound.

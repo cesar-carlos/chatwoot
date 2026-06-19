@@ -55,11 +55,23 @@ Preencher na Fase 0. Renomear para `spike-notes.md` (gitignored ou interno).
 | `RECORD` | | |
 | `DEVICE` | | |
 
+### Correlação SDK ↔ webhook
+
+| Fluxo | ID SDK | `whatsapp_call_id` | Iguais? | Regra determinística alternativa |
+|-------|--------|--------------------|---------|----------------------------------|
+| Outbound | | | | |
+| Inbound | | | | |
+
+Registrar também a ordem e o atraso entre offer/call do SDK e `CALL CREATE`.
+
 ### Anomalias do payload
 
+- [ ] Salvar os **bytes brutos** recebidos antes de `JSON.parse`
 - [ ] Campo `type` duplicado no JSON?
+- [ ] Após parse, `type` representa o evento (`CALL`) ou o modo (`HUMANIZED`/`ROBOTIC`)?
 - [ ] `whatsapp_call_id` sempre string?
 - [ ] `phone` formato E.164?
+- [ ] `direction` chega como `OUTCOMING`, `OUTGOING` ou ambos?
 
 **Copiar fixtures reais para:** [fixtures/](./fixtures/) (substituir templates).
 
@@ -94,5 +106,7 @@ Call.providers.keys # deve incluir 'wavoip'
 | Decisão | Escolha |
 |---------|---------|
 | Seguir para Fase 1 | go / no-go |
+| Estratégia de correlação SDK/webhook | |
 | Ajustes no `PayloadNormalizer` | |
+| Restrições multiagente | |
 | Bloqueadores | |

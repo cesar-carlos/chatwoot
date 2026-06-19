@@ -1,6 +1,8 @@
 # Caixa de entrada Wavoip — setup na criação
 
-Especificação do fluxo **Configurações → Caixas de Entrada → novo tile → Criar caixa de entrada**, coletando **todos os dados necessários** em um único formulário (padrão `Voice.vue` / `Telegram.vue`), antes do passo **Adicionar agentes**.
+Especificação do fluxo **Configurações → Caixas de Entrada → novo tile → Criar caixa
+de entrada**. A criação coleta identidade e token; a ativação do webhook ocorre depois
+que o backend gerar a URL.
 
 **UI de referência:** slot vazio na grade de canais (ao lado de “Chamada WhatsApp” Meta).
 
@@ -8,24 +10,26 @@ Especificação do fluxo **Configurações → Caixas de Entrada → novo tile �
 
 ---
 
-## 1. Fluxo do wizard (4 passos Chatwoot)
+## 1. Fluxo do wizard
 
 ```mermaid
 flowchart LR
   S1["1. Escolha o canal<br/>tile Wavoip"]
   S2["2. Criar caixa de entrada<br/>formulário completo"]
-  S3["3. Adicionar agentes"]
-  S4["4. Pronto"]
+  S3["3. Ativar webhook<br/>copiar URL e validar"]
+  S4["4. Adicionar agentes"]
+  S5["5. Pronto"]
 
-  S1 --> S2 --> S3 --> S4
+  S1 --> S2 --> S3 --> S4 --> S5
 ```
 
 | Passo | Componente | Responsabilidade |
 |-------|------------|------------------|
 | 1 | `ChannelList.vue` + `ChannelItem.vue` | Tile `wavoip` (Beta), gate `channel_voice` |
 | 2 | `custom/.../channels/Wavoip.vue` | Formulário com todos os campos abaixo |
-| 3 | Rota `settings_inboxes_add_agents` | Igual aos demais canais |
-| 4 | Dashboard | Inbox operacional após agentes adicionados |
+| 3 | `WavoipWebhookInstructions.vue` | Configurar URL e aguardar primeiro evento |
+| 4 | Rota `settings_inboxes_add_agents` | Igual aos demais canais |
+| 5 | Dashboard | Inbox operacional após agentes adicionados |
 
 **Não** usar `@wavoip/wavoip-webphone` no passo 2 — apenas formulário Vue + API Rails.
 
@@ -52,23 +56,27 @@ wavoip: Wavoip, // import from custom/
 
 ## 3. Campos do formulário (passo 2)
 
-Todos os campos abaixo são apresentados **na criação**. Pareamento do dispositivo (QR / código) fica em **Settings → Chamadas** após criar o inbox — ver [sdk-reference.md §2](./sdk-reference.md#2-dispositivo-device). O dispositivo precisa estar em status `open` antes de receber ou originar chamadas.
+O setup tem duas etapas: criar o inbox e depois ativar o webhook. A URL contém uma
+chave gerada pelo backend e só existe após a criação. Pareamento completo por QR/código
+fica pós-MVP; inicialmente o admin pode operar o dispositivo no painel Wavoip.
 
 ### 3.1 Seção — Identidade da caixa
 
 | Campo | API / storage | Obrigatório | Validação | Notas |
 |-------|---------------|-------------|-----------|-------|
 | **Nome da caixa de entrada** | `inbox.name` | Não | max 255 | Default: `Wavoip ({phone_number})` se vazio |
-| **Número WhatsApp** | `channel.phone_number` | Sim | E.164 (`isPhoneE164`) | Mesmo número vinculado ao dispositivo Wavoip; unique global |
+| **Número WhatsApp** | `channel.phone_number` | Sim | E.164 (`isPhoneE164`) | Único entre canais Wavoip; pode coexistir com inbox de mensagens |
 
 ### 3.2 Seção — Dispositivo Wavoip
 
-Dados obtidos em [app.wavoip.com/devices](https://app.wavoip.com/devices) — ver [Vincule um Whatsapp](https://wavoip.gitbook.io/api/vincule-um-whatsapp.md) e [official-docs.md](./official-docs.md).
+Dados obtidos em [app.wavoip.com/devices](https://app.wavoip.com/devices) — ver
+[Vincule um Whatsapp](https://wavoip.gitbook.io/api/dispositivo/vincule-um-whatsapp.md)
+e [official-docs.md](./official-docs.md).
 
-| Campo | `provider_config` key | Obrigatório | Validação | Notas |
+| Campo | Storage | Obrigatório | Validação | Notas |
 |-------|----------------------|-------------|-----------|-------|
-| **Token do dispositivo** | `device_token` | Sim | present, min length | `type="password"`; API lista mascarada `••••last4`; nunca logar |
-| **ID da sessão** | `id_session` | Não | integer opcional | **Somente cache/fallback** — webhook `DEVICE` preenche; resolução de inbox prioriza `phone_number` ([webhook-contract](./webhook-contract.md)) |
+| **Token do dispositivo** | coluna `device_token` | Sim | present, min length | `type="password"`; criptografado quando disponível; nunca entra em listagens |
+| **ID da sessão** | `provider_config.id_session` | Não | integer opcional | Cache de validação/correlação; não resolve autenticação do webhook |
 
 Referência SDK: [`new Wavoip({ tokens: [...] })`](https://wavoip.gitbook.io/api/wavoip-api/primeiros-passos/initialization.md).
 
@@ -76,25 +84,23 @@ Referência SDK: [`new Wavoip({ tokens: [...] })`](https://wavoip.gitbook.io/api
 
 | Campo | `provider_config` key | Obrigatório | Default | Mapeamento Wavoip |
 |-------|----------------------|-------------|---------|-------------------|
-| **Nome exibido ao ligar** | `display_name` | Não | nome da conta ou vazio | `callSettings.displayName` / `startCall({ displayName })` |
 | **Aceitar chamadas recebidas** | `inbound_calls_enabled` | Não | `true` | Se `false`, SDK ignora offers + webhook registra missed |
 | **Identificador da plataforma** | `platform` | — | `'chatwoot'` | Fixo no backend; repassado ao `new Wavoip({ platform })` |
 
-### 3.4 Seção — Webhook (servidor Chatwoot)
+### 3.4 Ativação — webhook do servidor
 
-Gerado pelo Chatwoot na criação; admin configura no painel Wavoip (**Integrações → Webhook**).
+Exibida **após** o inbox ser criado. O admin configura a URL no painel Wavoip
+(**Integrações → Webhook**) e o Chatwoot marca a integração como validada ao receber o
+primeiro evento autenticado.
 
-| Campo | Storage | Obrigatório | Quem gera |
-|-------|---------|-------------|-----------|
-| **URL do webhook** | derivado | — | Read-only: `{FRONTEND_URL}/webhooks/wavoip/{phone_e164}?secret={webhook_secret}` |
-| **Segredo do webhook** | `provider_config.webhook_secret` | Sim | Backend: `SecureRandom.hex(32)` se admin não informar |
-| **Segredo customizado** | mesmo key | Não | Campo opcional “avançado”; senão auto-gerado |
+| Campo | Storage | Comportamento |
+|-------|---------|---------------|
+| **URL do webhook** | derivada de `webhook_key` | `{FRONTEND_URL}/webhooks/wavoip/{opaque_key}` |
+| **Rotacionar URL** | gera nova chave | Invalida a anterior e exige atualizar o painel |
+| **Status** | `pending` / `verified` | `verified` após primeiro webhook válido |
 
-| Campo UI (checkbox) | Obrigatório para submit |
-|---------------------|-------------------------|
-| **Confirmo que configurei o webhook no painel Wavoip** | Sim (acknowledgment) |
-
-Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/wavoip-docs/webhook-beta.md) · contrato auth [webhook-contract.md](./webhook-contract.md).
+Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/webhook-beta.md) ·
+contrato auth [webhook-contract.md](./webhook-contract.md).
 
 ### 3.5 Seção — Notificações do agente (opcional, colapsada)
 
@@ -126,14 +132,11 @@ Permissão `Notification` continua sendo pedida no gesto “ficar online” (nã
 │   ℹ️ Crie o dispositivo em app.wavoip.com/devices         │
 ├─────────────────────────────────────────────────────────┤
 │ Chamadas                                                  │
-│   [ Nome exibido ao ligar           ]                     │
 │   [x] Aceitar chamadas recebidas                          │
 ├─────────────────────────────────────────────────────────┤
 │ Webhook                                                   │
-│   URL (somente leitura): https://…/webhooks/wavoip/+55…   │
-│   [ Copiar URL ] [ Copiar segredo ]                       │
-│   [ Segredo customizado (avançado)  ]                     │
-│   [x] Configurei o webhook no painel Wavoip *             │
+│   URL disponível após criar o inbox.                      │
+│   O próximo passo orientará a configuração no Wavoip.     │
 ├─────────────────────────────────────────────────────────┤
 │ ▼ Notificações (opcional)                                 │
 │   [x] Notificar agente com aba em segundo plano           │
@@ -149,8 +152,8 @@ Componentes Vue sugeridos (evitar god component):
 | `Wavoip.vue` | Orquestra submit + navegação |
 | `WavoipInboxIdentityFields.vue` | Nome + telefone |
 | `WavoipDeviceFields.vue` | Token + id_session |
-| `WavoipCallBehaviorFields.vue` | display_name + inbound toggle |
-| `WavoipWebhookInstructions.vue` | URL read-only, copy, acknowledgment |
+| `WavoipCallBehaviorFields.vue` | inbound toggle |
+| `WavoipWebhookInstructions.vue` | URL pós-criação, copy, rotação e status de verificação |
 | `WavoipNotificationFields.vue` | Campos opcionais colapsados |
 
 ---
@@ -164,12 +167,10 @@ await store.dispatch('inboxes/createWavoipChannel', {
   name: state.inboxName || `Wavoip (${state.phoneNumber})`,
   wavoip: {
     phone_number: state.phoneNumber,
+    device_token: state.deviceToken,
     provider_config: {
-      device_token: state.deviceToken,
       id_session: state.idSession || null,
-      display_name: state.displayName || null,
       inbound_calls_enabled: state.inboundCallsEnabled,
-      webhook_secret: state.webhookSecret || undefined, // backend gera se omitido
       offer_notification_enabled: state.offerNotificationEnabled,
       offer_notification_icon: state.offerNotificationIcon || null,
       platform: 'chatwoot',
@@ -199,24 +200,22 @@ def create_wavoip_channel
 
   wavoip_params = params.require(:channel).permit(
     :phone_number,
+    :device_token,
     provider_config: [
-      :device_token,
       :id_session,
-      :display_name,
       :inbound_calls_enabled,
-      :webhook_secret,
       :offer_notification_enabled,
       :offer_notification_icon
     ]
   )
 
   config = wavoip_params[:provider_config] || {}
-  config['webhook_secret'] ||= SecureRandom.hex(32)
   config['platform'] = 'chatwoot'
   config['inbound_calls_enabled'] = config.fetch('inbound_calls_enabled', true)
 
   Current.account.channel_wavoip.create!(
     phone_number: wavoip_params[:phone_number],
+    device_token: wavoip_params[:device_token],
     provider_config: config
   )
 end
@@ -227,13 +226,13 @@ Validação em service dedicado (não no model):
 ```ruby
 # custom/app/services/wavoip/channels/create_validator.rb
 class Wavoip::Channels::CreateValidator
-  def initialize(phone_number:, provider_config:)
+  def initialize(phone_number:, device_token:)
     @phone_number = phone_number
-    @provider_config = provider_config
+    @device_token = device_token
   end
 
   def validate!
-    raise ArgumentError, 'device_token required' if @provider_config['device_token'].blank?
+    raise ArgumentError, 'device_token required' if @device_token.blank?
     raise ArgumentError, 'invalid phone' unless phone_e164?(@phone_number)
   end
 end
@@ -250,7 +249,7 @@ Incluir na serialização do inbox (somente para admins da conta):
 }
 ```
 
-`webhook_url` também visível no formulário **antes** do submit (preview calculado no FE com `phone_number` digitado).
+`webhook_url` só é exibida após o backend criar o canal e gerar `webhook_key`.
 
 ---
 
@@ -259,7 +258,7 @@ Incluir na serialização do inbox (somente para admins da conta):
 Após `POST /inboxes` bem-sucedido:
 
 1. `router.replace({ name: 'settings_inboxes_add_agents', params: { inbox_id } })` — igual `Voice.vue`.
-2. Toast opcional: “Configure o webhook no Wavoip se ainda não marcou a confirmação.”
+2. Exibir a etapa de ativação com URL, botão copiar e status `pending`.
 3. **Não** conectar SDK Wavoip neste passo — conexão só quando agente ficar **online** (ver [frontend-integration.md](./frontend-integration.md)).
 
 ---
@@ -286,13 +285,16 @@ Campos editáveis:
 |-------|----------------------|
 | `phone_number` | Não (recreate inbox) |
 | `device_token` | Sim (rotacionar token) |
-| `display_name`, toggles, notification | Sim |
-| `webhook_secret` | Sim (rotacionar — exige atualizar Wavoip) |
-| `webhook_url` | Read-only (derivado do phone) |
+| toggles e notification | Sim |
+| `webhook_key` | Rotação por ação dedicada; nunca aceitar valor escolhido pelo cliente |
+| `webhook_url` | Read-only (derivada da chave) |
 
 ---
 
-## 8. i18n (somente `en.json` + `pt_BR`)
+## 8. i18n
+
+Seguir a regra do projeto: atualizar somente inglês nos arquivos upstream. Traduções
+adicionais pertencem ao overlay do fork, se ele optar por mantê-las.
 
 Chaves sugeridas:
 
@@ -320,11 +322,10 @@ Chaves sugeridas:
         "WEBHOOK": {
           "TITLE": "Webhook",
           "URL_LABEL": "Webhook URL",
-          "SECRET_LABEL": "Webhook secret",
           "COPY_URL": "Copy URL",
-          "COPY_SECRET": "Copy secret",
           "HELP": "Paste the URL in Wavoip → Device → Integrations → Webhook",
-          "ACK_LABEL": "I configured the webhook in the Wavoip dashboard"
+          "PENDING": "Waiting for the first webhook event",
+          "VERIFIED": "Webhook verified"
         },
         "NOTIFICATIONS": {
           "TITLE": "Agent notifications",
@@ -347,7 +348,7 @@ Chaves sugeridas:
 | Gate UI | `channel_voice` + `whatsappAppId` | `channel_voice` apenas |
 | Passo 2 | Embedded signup Meta | Formulário manual (este doc) |
 | Credencial | WABA / Cloud API | Token dispositivo Wavoip |
-| Webhook | Meta → `/webhooks/whatsapp` | Wavoip → `/webhooks/wavoip/:phone` |
+| Webhook | Meta → `/webhooks/whatsapp` | Wavoip → `/webhooks/wavoip/:webhook_key` |
 
 Os dois tiles podem aparecer na mesma grade; são produtos paralelos.
 
@@ -356,9 +357,10 @@ Os dois tiles podem aparecer na mesma grade; são produtos paralelos.
 ## 10. Critérios de done (setup inbox)
 
 - [ ] Tile `wavoip` visível com `channel_voice` habilitada
-- [ ] Formulário valida E.164 + token obrigatório + acknowledgment webhook
+- [ ] Formulário valida E.164 + token obrigatório
 - [ ] `Channel::Wavoip` criado com `provider_config` completo
-- [ ] `webhook_secret` gerado e persistido
+- [ ] `webhook_key` opaca gerada pelo backend
+- [ ] Pós-criação mostra URL e status de verificação
 - [ ] Redirect para adicionar agentes
-- [ ] Settings permitem editar token, display_name e toggles
+- [ ] Settings permitem editar token e toggles
 - [ ] Nenhum dado sensível em `window.chatwootConfig` global

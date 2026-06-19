@@ -1,630 +1,543 @@
-# Plano de implementação — Pesquisa de mensagens na conversa (completo)
+# Plano consolidado — Pesquisa de mensagens na conversa
 
-Plano mestre com **todas** as melhorias: Releases 1–6 (Fases A/B/C + P1/P2/P3).
+Este é o **documento normativo** da feature. Os demais arquivos desta pasta preservam investigação, alternativas e referências visuais, mas não substituem as decisões abaixo.
 
-Alinhado a [rules-compliance-review.md](./rules-compliance-review.md), [ui-design.md](./ui-design.md), [ux-improvements.md](./ux-improvements.md), [improvements-backlog.md](./improvements-backlog.md), [audio-transcription-search.md](./audio-transcription-search.md) e [api-endpoints.md](./api-endpoints.md).
+**Reavaliado em:** 19 de junho de 2026
 
-**Pré-requisitos:** [current-state.md](./current-state.md) · [implementation-decision-tree.md](./implementation-decision-tree.md) · [api-endpoints.md](./api-endpoints.md)
-
----
-
-## Objetivo
-
-1. Agente abre menu ⋮ → **"Pesquisar nesta conversa"**
-2. `Dialog` com busca em **texto da mensagem e transcrições de áudio**
-3. Clique no resultado: scroll + highlight 1s (com loading na thread se necessário)
-4. Paginação 15/página; fork merge-safe; i18n en + pt_BR
+**Estado:** não implementado
 
 ---
 
-## Fases de entrega (pós-reavaliação)
+## 1. Resultado esperado
 
-Evitar “big bang” com 32 itens UX-M de uma vez. Alinhado a `chatwoot-core.mdc` (happy path primeiro).
+O agente abre o menu ⋮ da conversa, seleciona **Pesquisar nesta conversa**, digita pelo menos 2 caracteres e recebe resultados de todo o histórico acessível da conversa.
 
-### Fase A — Happy path (entregar primeiro)
+A busca cobre:
 
-- Backend: finder (só `content` ILIKE) + service + `prepend_mod_with` + rota + jbuilder
-- `conversationMessageSearch.js` + `useConversationMessageSearch.js`
-- Dialog + Form + ResultItem (texto; highlight em `MessageContent`)
-- Item no `MoreActions` + i18n mínimo (`MENU_LABEL`, `PLACEHOLDER`, `EMPTY`)
-- Clique → `SCROLL_TO_MESSAGE` (mensagem já no DOM)
+- conteúdo de mensagens;
+- notas privadas;
+- templates;
+- transcrições de áudio já persistidas em `attachments.meta`.
 
-### Fase B — Robustez (obrigatório antes de produção)
-
-- `useScrollToConversationMessage.js`
-- Mutation fork `INSERT_MESSAGES_AROUND` (ver §2.2)
-- Toast `MESSAGE_NOT_FOUND` (não `scrollToBottom`)
-- Loading discreto na thread (`isJumpingToMessage`)
-- Validação `422` para `q` blank ou &lt; 2 chars
-- Remover código morto `ConversationView#showSearchModal`
-
-### Fase C — Polish UX + áudio
-
-- Finder: OR transcrição em `attachments.meta`
-- ResultItem: badge mic + bloco áudio (`readTranscriptText` + `TranscribedText`)
-- Demais UX-M* (privada, responsivo, empty com `{query}`, etc.)
-
-Ver [improvements-backlog.md](./improvements-backlog.md) para mapeamento P0 → fase.
+Ao selecionar um resultado, a aplicação garante que a mensagem esteja carregada, fecha o dialog, faz scroll e aplica o highlight existente.
 
 ---
 
-## Escopo MVP
+## 2. Escopo da primeira entrega
 
-### In scope — técnico
+A primeira entrega deve ser um único corte vertical pronto para uso. As etapas abaixo são checkpoints de implementação, não releases parciais.
 
-- `GET .../conversations/:id/messages/search?q=&page=` — ver [api-endpoints.md](./api-endpoints.md)
-- `Custom::ConversationMessageSearchFinder` — **query unificada** (ver secção Fase 1)
-- `Custom::Messages::ConversationSearchService` + `includes(:attachments, :sender)`
-- `MessagesController.prepend_mod_with` + rota `# FORK:`
-- Pesquisa em:
-  - `messages.content` (incoming, outgoing, template)
-  - `attachments.meta` — `transcribed_text` e `transcription.text` (só `file_type: audio`)
-- Merge scroll (`INSERT_MESSAGES_AROUND`)
-- Limpeza `ConversationView` código morto
+### Incluído
 
-### In scope — UI/UX
+- um endpoint: `GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search`;
+- autorização herdada de `Conversations::BaseController`;
+- busca em texto e transcrição;
+- paginação de 15 resultados com `has_more`, sem `COUNT DISTINCT`;
+- dialog aberto pelo `MoreActions`;
+- estados idle, loading, vazio e erro;
+- inserção direta do resultado no histórico quando ele não estiver no DOM;
+- scroll e highlight;
+- indicador de nota privada e de match em transcrição;
+- cancelamento de requests obsoletas com `AbortController`;
+- validação de performance com uma conversa grande;
+- i18n em inglês, conforme `chatwoot-core.mdc`.
 
-- Itens UX-M* distribuídos pelas Fases A/B/C — ver [ux-improvements.md](./ux-improvements.md)
-- **Fase C — UX-M33:** badge `i-lucide-mic` quando resultado é match em transcrição
-- Snippet áudio via `readTranscriptText` + bloco como `SearchResultMessageItem` (não só `MessageContent`)
+### Não incluído
 
-### Out of scope (apenas Fase A)
-
-- Assunto e-mail, GIN, OpenSearch, transcrição no finder — entram nas fases C / P1 / P2
-- `matched_on` explícito na API — P1.4
-- ⌘F, filtros remetente, specs — P1 / P3
-
-**Roadmap completo:** Fases A → B → C (MVP) · P1 · P2 · P3 — ver § "Roadmap completo".
+- OpenSearch ou GIN;
+- filtros por remetente/data;
+- atalhos globais;
+- buscas recentes;
+- painel lateral;
+- analytics;
+- mudanças na pesquisa global;
+- specs automatizadas, salvo solicitação explícita.
 
 ---
 
-## Arquitetura
+## 3. Decisões consolidadas
 
+| Tema | Decisão |
+|------|---------|
+| Entrada | Item no menu ⋮, antes de “Enviar transcrição” |
+| UI | `components-next/Dialog`, `position="top"`, `width="lg"` |
+| Estado | Local no composable; não reutilizar `conversationSearch` |
+| API | Endpoint scoped à conversa; não estender `/search/messages` |
+| Busca | `ILIKE` em conteúdo e metadados de transcrição |
+| Histórico | Sem corte de 3 meses |
+| Paginação | 15 por página; buscar 16 e responder `has_more` |
+| Scroll | Mesclar diretamente o resultado já retornado pela busca |
+| Store | Reutilizar `SET_MISSING_MESSAGES` com array previamente mesclado |
+| Highlight | Aplicar temporariamente a classe visual já usada pela bolha |
+| Concorrência | Cancelar a request anterior com `AbortController` |
+| Notas privadas | Mesma fronteira do endpoint normal de mensagens |
+| Memória | Medir crescimento; implementar limite seguro sem poda cega |
+| Acentos | Avaliar `unaccent` somente após medição e desenho de índice |
+| Fork | Ruby novo em `custom/`; hooks upstream mínimos com `FORK:` |
+| Frontend | Arquivos novos na árvore existente do dashboard |
+| Traduções | Somente `en/conversation.json` |
+
+---
+
+## 4. Arquitetura mínima
+
+```text
+MoreActions
+  └── ConversationMessageSearchDialog
+        ├── useConversationMessageSearch
+        │     └── ConversationMessageSearchAPI
+        ├── ConversationMessageSearchResultItem
+        └── useScrollToConversationMessage
+              ├── SET_MISSING_MESSAGES
+              └── SCROLL_TO_MESSAGE
+
+GET messages/search
+  └── MessagesController#search (prepend)
+        └── Custom::ConversationMessageSearchFinder
 ```
-GET .../messages/search?q=
-  └── MessagesController#search
-        └── ConversationSearchService#perform
-              └── ConversationMessageSearchFinder#perform
-                    ├── messages.content ILIKE
-                    └── attachments.meta (audio) ILIKE  ← transcrição Groq/OpenAI
 
-JSON message + attachments.transcribed_text
-  └── ConversationMessageSearchResultItem
-        ├── MessageContent (highlight)
-        └── mic badge se match transcrição
-```
+O service intermediário foi removido do plano. No MVP ele apenas repassaria argumentos ao finder, sem orquestrar outra ação. Se GIN/OpenSearch forem implementados, extrair estratégias nessa ocasião.
 
 ---
 
-## Fase 1 — Backend
+## 5. Contrato da API
 
-### 1.1 Finder (query unificada)
+### Request
+
+```http
+GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search?q=contrato&page=1
+```
+
+`conversation_id` é o `display_id`, como nas demais rotas de mensagens.
+
+| Parâmetro | Regra |
+|-----------|-------|
+| `q` | obrigatório; trim; 2 a 200 caracteres |
+| `page` | opcional; inteiro positivo; default 1 |
+
+### Response
+
+```json
+{
+  "payload": [
+    {
+      "id": 123,
+      "content": "Texto da mensagem",
+      "message_type": 0,
+      "created_at": 1781800000,
+      "private": false,
+      "sender": {},
+      "attachments": []
+    }
+  ],
+  "meta": {
+    "current_page": 1,
+    "has_more": true
+  }
+}
+```
+
+| Status | Uso |
+|--------|-----|
+| `200` | busca concluída, inclusive sem resultados |
+| `401/403` | autenticação ou autorização |
+| `404` | conversa inexistente |
+| `422` | query ou página inválida |
+
+O payload reutiliza `api/v1/models/_message.json.jbuilder`.
+
+---
+
+## 6. Backend
+
+### 6.1 Finder único
 
 **Arquivo:** `custom/app/finders/custom/conversation_message_search_finder.rb`
 
-Responsabilidade única: montar scope com texto **e** transcrição.
+Responsabilidades:
+
+- partir de `conversation.messages`;
+- validar/normalizar apenas valores já aceitos pelo controller;
+- excluir `activity`;
+- excluir mensagens marcadas como deletadas;
+- pesquisar `messages.content`;
+- pesquisar somente attachments de áudio em:
+  - `meta->>'transcribed_text'`;
+  - `meta->'transcription'->>'text'`;
+- aplicar `distinct`;
+- ordenar por `messages.created_at DESC`;
+- eager load de `attachments` e `sender`;
+- aplicar offset da página;
+- buscar `PER_PAGE + 1`;
+- remover o item excedente e expor `has_more`.
+
+Usar `ActiveRecord::Base.sanitize_sql_like(query.strip)`, não um escape manual.
+
+Forma esperada da query:
 
 ```ruby
-module Custom
-  class ConversationMessageSearchFinder
-    SEARCHABLE_TYPES = %w[incoming outgoing template].freeze
-    AUDIO_FILE_TYPE = Attachment.file_types[:audio].freeze
-
-    pattr_initialize [:conversation!, :query!]
-
-    def perform
-      return Message.none if sanitized_query.blank?
-
-      pattern = "%#{sanitized_query}%"
-
-      conversation.messages
-                  .left_joins(:attachments)
-                  .where(message_type: SEARCHABLE_TYPES)
-                  .where(search_predicate, pattern: pattern, audio_type: AUDIO_FILE_TYPE)
-                  .distinct
-                  .reorder('messages.created_at DESC')
-    end
-
-    private
-
-    def sanitized_query
-      query.to_s.strip.gsub(/[%_\\]/) { |m| "\\#{m}" }
-    end
-
-    def search_predicate
-      <<~SQL.squish
-        messages.content ILIKE :pattern
-        OR (
-          attachments.file_type = :audio_type
-          AND attachments.meta->>'transcribed_text' ILIKE :pattern
-        )
-        OR (
-          attachments.file_type = :audio_type
-          AND attachments.meta->'transcription'->>'text' ILIKE :pattern
-        )
-      SQL
-    end
-  end
-end
+conversation.messages
+            .left_joins(:attachments)
+            .where(message_type: %i[incoming outgoing template])
+            .where("COALESCE(messages.content_attributes->>'deleted', 'false') != 'true'")
+            .where(search_predicate, pattern: "%#{escaped_query}%", audio_type: Attachment.file_types[:audio])
+            .distinct
+            .reorder(created_at: :desc)
+            .includes(:attachments, :sender)
+            .offset((page - 1) * PER_PAGE)
+            .limit(PER_PAGE + 1)
 ```
 
-**Alinhamento com transcrição fork:**
+Ao implementar, confirmar a expressão com registros cujo `content_attributes` seja `NULL`, `{}` e `{ "deleted": true }`.
 
-| Origem | Chave em `meta` | Coberta |
-|--------|-----------------|---------|
-| Groq manual | `transcription.text` + `transcribed_text` | ✅ |
-| OpenAI Enterprise | idem via `TranscriptionMetadata.write_transcription` | ✅ |
-| Áudio sem transcrição | `meta` vazio | Excluído (OR falso) |
-| `state: processing` sem text | sem texto | Excluído |
+O finder pode expor `has_more?` após `perform`, mantendo o retorno principal como coleção de até 15 mensagens. Não executar `count`, `total_count` ou paginação Kaminari neste endpoint.
 
-Detalhes: [audio-transcription-search.md](./audio-transcription-search.md).
+### 6.2 Notas privadas e autorização
 
-### 1.2 Service
+Notas privadas permanecem incluídas. Esta decisão foi validada contra o comportamento atual:
 
-**Arquivo:** `custom/app/services/custom/messages/conversation_search_service.rb`
+- `Conversations::BaseController` autoriza `show?` para a conversa;
+- `MessageFinder` inclui mensagens privadas por padrão;
+- a exclusão só ocorre quando `filter_internal_messages` é explicitamente enviado.
+
+A busca deve espelhar o endpoint normal de mensagens. Não criar uma regra administrativa paralela no finder. Se a política upstream mudar, ambos os endpoints devem ser ajustados juntos.
+
+### 6.3 Controller por prepend
+
+**Novo:** `custom/app/controllers/custom/api/v1/accounts/conversations/messages_controller.rb`
+
+O módulo adiciona somente:
+
+- `search`;
+- `search_params`;
+- validação explícita de `q` e `page`.
+
+O controller recebe valores primitivos e delega ao finder. A autorização não é duplicada: `Conversations::BaseController#conversation` já localiza a conversa no account e executa `authorize @conversation, :show?`.
+
+**Hook upstream mínimo:**
 
 ```ruby
-def perform
-  return Message.none if query.blank?
-
-  Custom::ConversationMessageSearchFinder
-    .new(conversation: conversation, query: query)
-    .perform
-    .includes(:attachments, :sender)
-    .page(page)
-    .per(PER_PAGE)
-end
+# FORK: load in-conversation message search action
+Api::V1::Accounts::Conversations::MessagesController.prepend_mod_with(
+  'Api::V1::Accounts::Conversations::MessagesController'
+)
 ```
 
-### 1.3 Controller prepend
+### 6.4 Rota
 
-- `invalid_query?` → 422
-- `params.permit(:q, :page)`
-- View: partial `_message.json.jbuilder` (attachments com `transcribed_text`)
-
-### 1.4 Rota
+Dentro de `resources :messages`:
 
 ```ruby
 # FORK: in-conversation message search
 collection { get :search }
 ```
 
+### 6.5 View
+
+**Novo:** `app/views/api/v1/accounts/conversations/messages/search.json.jbuilder`
+
+Este é uma exceção consciente ao overlay: `custom/app/views` não está no view path atual. Não alterar `config/application.rb` apenas para um template.
+
+A view contém:
+
+- `payload` usando o partial de mensagem existente;
+- `meta.current_page`;
+- `meta.has_more`.
+
+`has_more` elimina o `COUNT DISTINCT` que seria necessário para `total_pages` e `total_count`. O produto só precisa saber se deve mostrar **Carregar mais**.
+
+### 6.6 Baseline de performance
+
+Antes de considerar o backend pronto:
+
+1. criar ou usar uma conversa representativa, com milhares de mensagens e attachments;
+2. executar `EXPLAIN (ANALYZE, BUFFERS)` para:
+   - match em `messages.content`;
+   - match somente em transcrição;
+   - query sem resultados;
+3. registrar tempo, plano e quantidade de buffers no PR ou nota de implementação;
+4. confirmar que o índice trigram existente em `messages.content` é utilizado quando aplicável;
+5. observar que o GIN genérico de `attachments.meta` pode não acelerar `ILIKE` sobre texto extraído.
+
+Não adicionar índice novo sem evidência desta medição.
+
 ---
 
-## Fase 2 — Frontend infra
+## 7. Frontend
 
-### 2.1 `useConversationMessageSearch.js`
+### 7.1 Arquivos novos
 
-- Debounce 500ms; mínimo 2 caracteres
-- `useCamelCase` nos resultados (attachments: `transcribedText`, `fileType`)
-- Helper `isTranscriptionMatch(message, query)`:
+```text
+app/javascript/dashboard/api/conversationMessageSearch.js
+app/javascript/dashboard/composables/fork/useConversationMessageSearch.js
+app/javascript/dashboard/composables/fork/useScrollToConversationMessage.js
+app/javascript/dashboard/components/widgets/conversation/ConversationMessageSearch/
+├── ConversationMessageSearchDialog.vue
+└── ConversationMessageSearchResultItem.vue
+```
+
+Não criar um componente `Form` que apenas encapsule um `Input`; isso seria abstração prematura. O dialog orquestra UI e os composables concentram a lógica.
+
+### 7.2 API e busca
+
+`conversationMessageSearch.js` segue o padrão de `ApiClient` existente. O método recebe `signal` e o encaminha ao Axios:
 
 ```javascript
-import { readTranscriptText } from 'dashboard/composables/fork/useTranscriptText';
-
-export const isTranscriptionMatch = (message, query) => {
-  if (message.content?.trim()) return false;
-  const audio = message.attachments?.find(a => a.fileType === 'audio');
-  const text = readTranscriptText(audio);
-  return text.toLowerCase().includes(query.toLowerCase());
-};
+search({ conversationId, query, page = 1, signal })
 ```
 
-### 2.2 `useScrollToConversationMessage.js`
+`useConversationMessageSearch` mantém:
 
-**Problema atual:** `MessagesView#onScrollToMessage` chama `scrollToBottom()` se `#message{id}` não existe — UX incorreta.
+- `query`;
+- `results`;
+- `currentPage`;
+- `hasMore`;
+- `isSearching`;
+- `error`;
+- debounce de 500 ms;
+- um `AbortController` para a request atual;
+- cancelamento físico da request anterior ao mudar query, conversa ou fechar o dialog;
+- proteção lógica adicional contra respostas antigas;
+- reset ao trocar de conversa ou query;
+- append ao carregar mais, sem duplicar IDs.
 
-**Fluxo:**
+Não fazer request com menos de 2 caracteres.
 
-1. Fechar dialog
-2. Se elemento no DOM → `emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE, { messageId })`
-3. Senão → `MessageApi.getPreviousMessages({ conversationId, before, after })` com janela em torno do ID
-4. Commit mutation fork `INSERT_MESSAGES_AROUND` (merge + sort por `created_at`, sem duplicatas)
-5. `$nextTick` → emit scroll
-6. Se ainda falhar → `useAlert` com `CONVERSATION.MESSAGE_SEARCH.MESSAGE_NOT_FOUND`
+Cancelamento por `AbortController` não é erro de UI: não mostrar toast quando Axios indicar request cancelada.
 
-**Não usar:**
+O composable preserva o payload original em snake_case para eventual merge no Vuex. O `ResultItem` cria apenas uma visão camelCase para renderização; não substituir o objeto bruto que veio da API.
 
-| Mutation | Motivo |
-|----------|--------|
-| `SET_MISSING_MESSAGES` | **Replace** `chat.messages = data` — perde mensagens já carregadas |
-| `SET_PREVIOUS_CONVERSATIONS` | Só `unshift` — inadequado para janela centrada num ID |
+### 7.3 Dialog
 
-**Nova mutation fork** em `app/javascript/dashboard/store/modules/conversations/index.js`:
+O dialog:
 
-```javascript
-// FORK: merge message window around search target without replacing loaded history
-[types.INSERT_MESSAGES_AROUND](_state, { id, data }) {
-  const chat = _state.allConversations.find(c => c.id === id);
-  if (!chat || !data?.length) return;
-  const existingIds = new Set(chat.messages.map(m => m.id));
-  const merged = [...chat.messages, ...data.filter(m => !existingIds.has(m.id))];
-  chat.messages = merged.sort(
-    (a, b) => new Date(a.created_at) - new Date(b.created_at)
-  );
-},
-```
+- expõe `open()` e `close()`;
+- recebe foco no input ao abrir;
+- fecha com Esc/click outside pelo comportamento do `Dialog`;
+- mostra hint para query curta;
+- apresenta loading, vazio e erro;
+- mantém resultados em uma área com scroll;
+- desabilita nova seleção enquanto estiver localizando uma mensagem;
+- usa somente Tailwind e strings i18n.
 
-Registrar `INSERT_MESSAGES_AROUND` em `mutation-types.js`.
+Não é necessário alterar `MessagesView` para mostrar loading. O item selecionado mantém estado de carregamento no dialog enquanto a mensagem é inserida; o dialog fecha assim que o salto pode ser executado.
 
----
+### 7.4 Resultado
 
-## Fase 3 — UI
+O item mostra:
 
-### ConversationMessageSearchResultItem.vue
+- autor;
+- timestamp;
+- snippet com highlight;
+- badge de nota privada;
+- badge de microfone quando a query corresponde à transcrição.
 
-**Texto normal:** `MessageContent` com `search-term` e `author`.
+Para áudio, usar `readTranscriptText`. Não depender da leitura snake_case de attachments em `MessageContent` depois de `useCamelCase`.
 
-**Áudio transcrito — não confiar só em `MessageContent`:** após `useCamelCase`, attachments ficam em camelCase (`fileType`, `transcribedText`), mas `MessageContent` lê `file_type` / `transcribed_text`. A pesquisa global contorna isso com bloco separado em `SearchResultMessageItem`.
+Inferência do match:
 
-**Padrão obrigatório** (espelhar global):
+1. verificar se `message.content` contém a query;
+2. verificar transcrição dos attachments de áudio;
+3. mostrar badge de transcrição quando houver match na transcrição, mesmo que também exista conteúdo.
 
-```vue
-<MessageContent
-  v-if="message.content?.trim()"
-  :message="message"
-  :search-term="query"
-  :author="authorName"
-/>
+Não é necessário adicionar `matched_on` ao contrato MVP.
 
-<template v-else-if="audioAttachment">
-  <MessageContent
-    :message="{ ...message, content: transcriptSnippet }"
-    :search-term="query"
-    :author="authorName"
-  />
-  <div v-if="isTranscriptionMatch(message, query)" class="flex items-center gap-1.5 mt-1 text-n-slate-11">
-    <Icon icon="i-lucide-mic" class="size-3.5" />
-    <span class="text-xs">{{ t('CONVERSATION.MESSAGE_SEARCH.MATCH_TRANSCRIPTION') }}</span>
-  </div>
-  <TranscribedText v-if="showTranscriptLabel" :text="transcriptSnippet" />
-</template>
-```
+### 7.5 Integração no menu
 
-```javascript
-import { readTranscriptText } from 'dashboard/composables/fork/useTranscriptText';
+Alterar `MoreActions.vue` com blocos `// FORK:` autocontidos:
 
-const audioAttachment = computed(() =>
-  message.attachments?.find(a => a.fileType === 'audio' || a.file_type === 'audio')
-);
-const transcriptSnippet = computed(() => readTranscriptText(audioAttachment.value));
-```
+- import do dialog;
+- `ref`;
+- item `search_in_conversation`;
+- branch no `handleActionClick`;
+- instância do dialog no template.
 
-Alternativa mínima: passar `content` pré-preenchido com `readTranscriptText(audio)` para `MessageContent` quando `!message.content?.trim()`.
-
-### Demais componentes
-
-Ver [ui-design.md](./ui-design.md) e [ux-improvements.md](./ux-improvements.md).
+Não remover a prop ignorada de `ConversationHeader` nem limpar `ConversationView` nesta entrega: são débitos independentes e aumentariam a superfície de conflito.
 
 ---
 
-## Fase 4 — i18n
+## 8. Salto robusto para a mensagem
 
-Namespace completo em **Fase C** (§ Fase C — i18n). Fase A entrega apenas chaves mínimas (`MENU_LABEL`, `PLACEHOLDER`, `EMPTY`, `TITLE`).
+O resultado da busca já usa o mesmo partial de mensagem do histórico, portanto uma segunda request é desnecessária no caminho normal.
 
----
+`useScrollToConversationMessage` recebe a **mensagem bruta selecionada** e executa:
 
-## Matriz de reutilização
+1. Se `#message{id}` existe, seguir ao passo 5.
+2. Mesclar a mensagem selecionada com as mensagens atuais por ID e ordenar por `created_at`.
+3. Commitar o array completo com a mutation existente `SET_MISSING_MESSAGES`.
+4. Aguardar render (`nextTick`) e confirmar novamente que o elemento existe.
+5. Fechar o dialog e emitir `BUS_EVENTS.SCROLL_TO_MESSAGE`.
+6. Adicionar `bg-n-alpha-1` ao elemento e removê-la após 1 segundo. Essa é a mesma classe usada pelo highlight atual da bolha e evita alterar a URL ou o componente upstream.
+7. Se o alvo não existir após o merge, manter/fechar o dialog de forma consistente e exibir `MESSAGE_NOT_FOUND`; nunca emitir o evento que cairia em `scrollToBottom()`.
 
-| Peça | Reuso na pesquisa + áudio |
-|------|---------------------------|
-| `TranscriptionMetadata.read_text` | Lógica espelhada no SQL do finder |
-| `MessageContent.vue` | Highlight em **texto**; para áudio usar `readTranscriptText` + bloco como `SearchResultMessageItem` |
-| `useTranscriptText.js` | Deteção match transcrição no FE |
-| `TranscribedText.vue` | Label opcional nos resultados |
-| `SearchResultMessageItem.vue` | **Referência obrigatória** para bloco áudio + `TranscribedText` |
+Com isso, não são necessários:
 
----
+- `INSERT_MESSAGES_AROUND`;
+- novo mutation type;
+- alteração em `MessagesView`;
+- alteração em `Message.vue`;
+- `route.query.messageId`;
+- segunda request de mensagens;
+- janela arbitrária `messageId ± 100`.
 
-## Test plan — áudio transcrito (Fase C)
+Ao mesclar, ler o estado mais recente imediatamente antes do commit para reduzir disputa com mensagens recebidas em tempo real.
 
-1. Transcrever áudio manualmente (orelha) com termo único
-2. Pesquisar termo → aparece com badge mic
-3. Pesquisar termo que só existe noutra mensagem texto → não mistura
-4. Áudio não transcrito → não aparece para nenhum termo do áudio
-5. Clique no resultado áudio → scroll + highlight na bolha correta
+### 8.1 Limite de crescimento no Vuex
 
----
+Saltos repetidos não devem fazer o histórico crescer sem limite.
 
-## Roadmap completo
+No MVP:
 
-Plano incremental com **todas** as melhorias documentadas em [improvements-backlog.md](./improvements-backlog.md) e [ux-improvements.md](./ux-improvements.md).
+- medir o tamanho de `chat.messages` após uma sequência manual de pelo menos 100 saltos;
+- confirmar que cada salto adiciona no máximo uma mensagem;
+- não implementar poda cega por tamanho do array.
 
-| Release | Fase | Escopo | Ref backlog |
-|---------|------|--------|-------------|
-| **1** | A | Happy path — busca texto, dialog, menu | P0-A |
-| **2** | B | Scroll robusto, merge Vuex, toasts | P0-B |
-| **3** | C | Áudio transcrito + polish UX-M* | P0-C |
-| **4** | P1 | Atalhos, filtros, backend avançado | P1.* |
-| **5** | P2 | OpenSearch, navegação teclado, cache | P2.* |
-| **6** | P3 | Painel lateral, analytics, specs, a11y | P3.* |
+Pós-MVP, antes de adicionar atalhos que aumentem muito o uso:
 
-```mermaid
-flowchart LR
-  A[Fase A] --> B[Fase B]
-  B --> C[Fase C]
-  C --> P1[P1]
-  P1 --> P2[P2]
-  P2 --> P3[P3]
-```
+- manter um registro por conversa dos IDs que **não estavam no store** e foram inseridos pela busca;
+- limitar esse registro, inicialmente, a 50 mensagens;
+- ao ultrapassar o limite, remover primeiro os IDs de busca mais antigos, protegendo alvo atual e mensagens visíveis;
+- retirar um ID do registro quando ele passar a fazer parte de uma página normal carregada;
+- limpar o registro ao trocar/limpar a conversa selecionada.
+
+Essa melhoria exige integração com o carregamento normal de páginas para distinguir proveniência. Não ampliar hooks upstream no MVP apenas para implementar a poda.
 
 ---
 
-## Fase A — Happy path (Release 1)
+## 9. i18n
 
-### Backend
+Alterar apenas:
 
-| # | Tarefa | Arquivo / nota |
-|---|--------|----------------|
-| A-B1 | Rota `collection { get :search }` | `config/routes.rb` `# FORK:` |
-| A-B2 | `prepend_mod_with` + action `#search` | `custom/.../messages_controller.rb` |
-| A-B3 | `ConversationSearchService` | `custom/app/services/custom/messages/` |
-| A-B4 | Finder **só `content` ILIKE** (sem join attachments ainda) | `custom/app/finders/custom/conversation_message_search_finder.rb` |
-| A-B5 | `includes(:attachments, :sender)` | service |
-| A-B6 | Escape wildcards `%`/`_` | finder `sanitized_query` |
-| A-B7 | View `search.json.jbuilder` | espelhar `index.json.jbuilder` |
-| A-B8 | Validação `422` se `q` blank ou &lt; 2 | controller |
+`app/javascript/dashboard/i18n/locale/en/conversation.json`
 
-### Frontend
-
-| # | Tarefa | Arquivo / nota |
-|---|--------|----------------|
-| A-F1 | API client | `api/fork/conversationMessageSearch.js` |
-| A-F2 | Composable busca (debounce 500ms, page) | `composables/fork/useConversationMessageSearch.js` |
-| A-F3 | `ConversationMessageSearchDialog.vue` | shell Dialog + estados |
-| A-F4 | `ConversationMessageSearchForm.vue` | Input + emit search |
-| A-F5 | `ConversationMessageSearchResultItem.vue` | texto + `MessageContent` |
-| A-F6 | Hook `MoreActions` — item antes de transcrição | `# FORK:` |
-| A-F7 | i18n mínimo | `MENU_LABEL`, `PLACEHOLDER`, `EMPTY`, `TITLE` |
-| A-F8 | Clique → `SCROLL_TO_MESSAGE` (mensagem no DOM) | sem composable de carga ainda |
-
-### UX (Fase A)
-
-| ID | Item |
-|----|------|
-| UX-M1 | Item menu ⋮ + ícone `i-lucide-search` |
-| UX-M3 | `defineExpose({ open, close })` |
-| UX-M16–M18 | Autor, snippet highlight, timestamp |
-| UX-M20–M21 | Hover, `@click` sem `router-link` |
-| UX-M22–M23 | Fechar dialog + scroll |
-
-### Critérios de aceite — Fase A
-
-- [ ] Menu abre dialog; busca texto em `messages.content`
-- [ ] Paginação 15/página; "carregar mais" append
-- [ ] `422` para query inválida
-- [ ] Clique scrolla se mensagem já carregada na thread
-
----
-
-## Fase B — Robustez (Release 2)
-
-### Backend
-
-Sem endpoint novo — reutiliza `GET .../messages?before=&after=` ([api-endpoints.md](./api-endpoints.md)).
-
-### Frontend
-
-| # | Tarefa | Arquivo / nota |
-|---|--------|----------------|
-| B-F1 | `useScrollToConversationMessage.js` | composable fork |
-| B-F2 | Mutation `INSERT_MESSAGES_AROUND` | `conversations/index.js` + `mutation-types.js` |
-| B-F3 | Flag `isJumpingToMessage` | `MessagesView.vue` `# FORK:` barra loading |
-| B-F4 | Toast `MESSAGE_NOT_FOUND` | `useAlert` + i18n |
-| B-F5 | Remover `showSearchModal` / `onSearch` | `ConversationView.vue` |
-| B-F6 | Limpar prop `conversation-id` ignorada | `ConversationHeader` / `MoreActions` (se aplicável) |
-
-### UX (Fase B)
-
-| ID | Item |
-|----|------|
-| UX-M14–M15 | Erro API + query curta (422) |
-| UX-M24 | Highlight ~1s (`route.query.messageId`) |
-| UX-M25–M27 | Carga histórico, loading thread, toast falha |
-| UX-M28–M29 | Carregar mais; manter query no dialog |
-
-### Critérios de aceite — Fase B
-
-- [ ] Mensagem fora do DOM → carrega janela → scroll (nunca `scrollToBottom` silencioso)
-- [ ] Falha após carga → toast `MESSAGE_NOT_FOUND`
-- [ ] Loading visível na thread durante salto
-- [ ] Código morto `ConversationView` removido
-
----
-
-## Fase C — Polish + áudio (Release 3)
-
-### Backend
-
-| # | Tarefa | Nota |
-|---|--------|------|
-| C-B1 | Finder: `left_joins(:attachments)` + OR transcrição | SQL completo §1.1 |
-| C-B2 | `distinct` + tipos `incoming`/`outgoing`/`template` | excluir `activity` |
-| C-B3 | Notas privadas incluídas (sem filtro extra MVP) | D17 |
-
-### Frontend
-
-| # | Tarefa | Nota |
-|---|--------|------|
-| C-F1 | `isTranscriptionMatch` + badge mic | `readTranscriptText` |
-| C-F2 | Bloco áudio no ResultItem | espelhar `SearchResultMessageItem` |
-| C-F3 | `TranscribedText` opcional | label transcrição |
-| C-F4 | UX-M4–M13, M19, M30–M32 | ver checklist abaixo |
-
-### UX (Fase C) — checklist completo MVP
-
-| ID | Item | Implementação |
-|----|------|---------------|
-| UX-M4 | Foco automático no input | `@open` / `onMounted` |
-| UX-M5 | Esc fecha dialog | Dialog handler |
-| UX-M6 | Hint "2+ caracteres" | abaixo do input |
-| UX-M8 | `position="top"` + `width="lg"` | Dialog props |
-| UX-M9 | Responsivo `max-w-[calc(100vw-2rem)]` | classes |
-| UX-M10–M13 | Idle, loading lista, empty `{query}`, erro | estados no Dialog |
-| UX-M19 | Badge nota privada | `i-lucide-lock-keyhole` |
-| UX-M30–M32 | aria-label, foco pós-fechar, contraste highlight | a11y mínimo |
-| UX-M33–M35 | Badge mic, snippet transcrição, highlight termo | Fase C |
-| UX-M36 | `AudioChip` mini no resultado (opcional) | como pesquisa global |
-
-### i18n — namespace completo MVP
+Namespace:
 
 ```json
 "MESSAGE_SEARCH": {
-  "MENU_LABEL": "...",
-  "TITLE": "...",
-  "DESCRIPTION": "...",
-  "PLACEHOLDER": "...",
-  "HINT": "Type 2 or more characters to search",
-  "EMPTY": "No messages found for '{query}'",
-  "LOAD_MORE": "...",
-  "MESSAGE_NOT_FOUND": "Could not locate this message in the conversation history",
+  "MENU_LABEL": "Search this conversation",
+  "TITLE": "Search this conversation",
+  "DESCRIPTION": "Find messages in the current conversation history",
+  "PLACEHOLDER": "Search messages...",
+  "HINT": "Enter at least 2 characters",
+  "EMPTY": "No messages found for “{query}”",
+  "LOAD_MORE": "Load more",
   "SEARCHING": "Searching messages...",
   "ERROR": "Search failed. Please try again.",
-  "QUERY_TOO_SHORT": "Enter at least 2 characters to search",
-  "JUMPING": "Loading message...",
+  "MESSAGE_NOT_FOUND": "This message could not be loaded",
   "MATCH_TRANSCRIPTION": "Match in audio transcription",
+  "PRIVATE_NOTE": "Private note",
   "OPEN_RESULT": "Open message from {author}, {time}"
 }
 ```
 
-`en` + `pt_BR` em `conversation.json`.
+---
 
-### Critérios de aceite — Fase C (+ test plan áudio)
+## 10. Ordem de implementação
 
-- [ ] Termo só em `messages.content` → highlight no texto
-- [ ] Termo só em transcrição Groq → snippet + badge mic
-- [ ] Áudio sem transcrição → não aparece
-- [ ] `distinct` — sem duplicata com múltiplos attachments
-- [ ] Transcrição OpenAI legada → mesmo comportamento
-- [ ] Todos os critérios UX-MVP em [ux-improvements.md](./ux-improvements.md#critérios-de-aceite-ux-mvp)
-- [ ] Test plan áudio abaixo + [audio-transcription-search.md](./audio-transcription-search.md) §7
+### Checkpoint 1 — Backend verificável
+
+- rota;
+- prepend do controller;
+- finder;
+- Jbuilder;
+- validação 422;
+- paginação `PER_PAGE + 1` / `has_more`;
+- `EXPLAIN (ANALYZE, BUFFERS)` em dataset representativo;
+- smoke test manual via request.
+
+### Checkpoint 2 — Busca no dialog
+
+- API client;
+- composable;
+- dialog;
+- result item;
+- menu;
+- paginação e estados;
+- cancelamento real com `AbortController`.
+
+### Checkpoint 3 — Navegação confiável
+
+- composable de scroll;
+- merge direto do resultado com mutation existente;
+- highlight temporário no elemento;
+- erro explícito.
+
+### Checkpoint 4 — Verificação e acabamento
+
+- RuboCop nos arquivos Ruby alterados;
+- ESLint nos arquivos Vue/JS alterados;
+- teste manual da matriz abaixo;
+- inventário de `FORK:` e revisão do diff.
 
 ---
 
-## Fase P1 — Pós-MVP (Release 4)
+## 11. Matriz de aceite
 
-### Backend (mesma rota `messages/search`)
-
-| # | Tarefa | Ref |
-|---|--------|-----|
-| P1-B1 | GIN / `search_with_gin` no finder | P1.1 |
-| P1-B2 | Assunto e-mail no predicate | P1.2 / UX-P1.7 |
-| P1-B3 | Excluir `content_attributes.deleted` | P1.3 / UX-P1.8 |
-| P1-B4 | Campo `matched_on: content \| transcription` | P1.4 |
-| P1-B5 | Módulo SQL partilhado + `SearchService` prepend | P1.5 |
-| P1-B6 | Query param `from=contact:N \| agent:N` | P1.13 / UX-P1.9 |
-| P1-B7 | Filtro privadas alinhado a `MessageFinder` | P1.16 / D17 |
-| P1-B8 | Rate limit leve no `search` | P1.17 |
-
-### Frontend
-
-| # | Tarefa | Ref |
-|---|--------|-----|
-| P1-F1 | ⌘F / Ctrl+F na conversa | UX-P1.1 |
-| P1-F2 | `CMD_SEARCH_IN_CONVERSATION` | UX-P1.2 |
-| P1-F3 | Tooltip menu com atalho | UX-P1.3 |
-| P1-F4 | Ícone 🔍 opcional no header | UX-P1.4 |
-| P1-F5 | Contador "N mensagens encontradas" | UX-P1.5 |
-| P1-F6 | Filtro remetente no Form | UX-P1.9–P1.10 |
-| P1-F7 | Enter com único resultado | UX-P1.11 |
-| P1-F8 | Highlight via emitter `HIGHLIGHT_MESSAGE` | P1.6 / UX-P1.12 |
-| P1-F9 | Limpar `messageId` da URL pós-highlight | P1.7 / UX-P1.13 |
-| P1-F10 | Hint "inclui áudios transcritos" | UX-M34 / P1.18 |
-| P1-F11 | Corrigir `MessageContent` upstream (opcional) | P1.15 |
-
-### Critérios de aceite — P1
-
-- [ ] ⌘F abre dialog sem conflito com browser find (testado)
-- [ ] Filtro remetente reduz resultados corretamente
-- [ ] GIN ativo quando flag `search_with_gin`
-- [ ] Mensagens deletadas não aparecem
-- [ ] `matched_on` correto quando API expõe campo
+| Cenário | Esperado |
+|---------|----------|
+| Query com 0–1 caractere | nenhuma request; hint visível |
+| Texto em mensagem recente | resultado, scroll e highlight |
+| Texto em mensagem antiga | mescla o resultado, scrolla e destaca |
+| Termo só em transcrição Groq | resultado com snippet e mic |
+| Termo na chave legada `transcribed_text` | resultado |
+| Áudio sem transcrição | não aparece pelo áudio |
+| Nota privada | aparece com badge |
+| Mensagem activity | não aparece |
+| Mensagem deletada | não aparece |
+| Vários attachments no mesmo message | um resultado |
+| Página com 16+ matches | devolve 15 e `has_more: true` |
+| Última página | `has_more: false`; botão desaparece |
+| Página seguinte | append sem duplicação e sem `COUNT` |
+| Query muda durante request | request anterior é abortada sem toast |
+| Resposta antiga chega depois da nova | não sobrescreve a query atual |
+| Resultado fora do DOM | merge direto; nenhuma segunda request |
+| 100 saltos para itens isolados | no máximo 100 mensagens adicionadas; crescimento registrado |
+| Resultado sem ID/elemento após merge | alerta; sem scroll para o fim |
+| Conversa sem acesso | 403/404 conforme controller base |
+| Agente autorizado vê nota privada | resultado igual ao endpoint normal de mensagens |
+| Viewport estreito | dialog sem overflow horizontal |
 
 ---
 
-## Fase P2 — Médio prazo (Release 5)
+## 12. Riscos restantes
 
-### Backend
-
-| # | Tarefa | Ref |
-|---|--------|-----|
-| P2-B1 | OpenSearch scoped `conversation_id` | P2.1 / D19 |
-| P2-B2 | Limite 100 resultados + meta | P2.8 |
-| P2-B3 | Constante `Search::DEFAULT_PER_PAGE` | P2.10 |
-
-### Frontend
-
-| # | Tarefa | Ref |
-|---|--------|-----|
-| P2-F1 | Navegação ↑↓ entre resultados | UX-P2.1–P2.2 |
-| P2-F2 | `role="listbox"` / `aria-activedescendant` | UX-P2.3 |
-| P2-F3 | Buscas recentes por conversa (3–5) | UX-P2.4 |
-| P2-F4 | Cache query `sessionStorage` por `conversationId` | UX-P2.5 |
-| P2-F5 | Scroll infinito no dialog | UX-P2.6 |
-| P2-F6 | Modo busca só ao Enter (toggle) | UX-P2.7 |
-
-### Critérios de aceite — P2
-
-- [ ] Enterprise com OpenSearch: paridade qualidade com pesquisa global
-- [ ] Teclado ↑↓ + Enter funciona nos resultados
-- [ ] Buscas recentes persistem por conversa na sessão
+| Risco | Tratamento |
+|-------|------------|
+| `ILIKE '%term%'` lento em conversas enormes | medir com `EXPLAIN ANALYZE`; GIN/OpenSearch se necessário |
+| Join JSONB de transcrição não usa índice adequado | medir separadamente e desenhar índice funcional/trigram só com evidência |
+| Highlight manipula uma classe no elemento | manter a classe já presente no bundle e remover no `finally`/timer |
+| Merge concorre com mensagens em tempo real | reler store imediatamente antes do commit e deduplicar |
+| Poda remove mensagem útil | rastrear somente IDs inseridos pela busca; proteger alvo, viewport e páginas normais |
+| Partial de mensagem acessa associações adicionais | validar N+1 no log; ampliar `includes` somente se observado |
 
 ---
 
-## Fase P3 — Polish (Release 6)
+## 13. Busca sem acentos
 
-| # | Tarefa | Ref |
-|---|--------|-----|
-| P3-1 | Painel lateral slide ~320px (experimento) | UX-P3.1 |
-| P3-2 | Analytics `SEARCH_IN_CONVERSATION` | UX-P3.3 |
-| P3-3 | Empty state ilustrado + dicas | UX-P3.4 |
-| P3-4 | Specs RSpec (finder, service, controller) + Vitest (composables, Dialog) | P3.4 |
-| P3-5 | `prefers-reduced-motion` no dialog | P3.5 / UX-P3.2 |
+Objetivo futuro: `contrato` localizar `contráto` e vice-versa.
 
----
+Não incluir no MVP porque o banco possui `pg_trgm`, mas não possui `unaccent` habilitado. Aplicar `unaccent()` diretamente sem índice funcional pode degradar a busca.
 
-## Débitos upstream (limpar quando possível)
+Antes de implementar:
 
-| Item | Fase sugerida |
-|------|---------------|
-| `MessagesView#onScrollToMessage` → `scrollToBottom` | B |
-| `MessageContent` snake/camel attachments | P1.15 |
-| `SearchInput` placeholder "3" vs validação 2 | não replicar no fork |
-| `EmailTranscriptModal` legado | não usar |
-| `ConversationView` código morto | B |
+1. confirmar idiomas e comportamento desejado;
+2. avaliar extensão `unaccent`;
+3. comparar coluna normalizada, índice funcional trigram e normalização na escrita;
+4. medir impacto em conteúdo e transcrições;
+5. preparar migração concorrente e estratégia de rollback.
 
 ---
 
-## Ordem de entrega (completa)
+## 14. Pós-MVP priorizado
 
-| # | Release | Entrega |
-|---|---------|---------|
-| 1 | A | Backend texto + API + Dialog + menu + scroll (DOM) |
-| 2 | B | `INSERT_MESSAGES_AROUND` + scroll composable + toasts + cleanup |
-| 3 | C | Finder transcrição + UX-M completo + i18n + testes áudio |
-| 4 | P1 | Atalhos + filtros + GIN + deleted + `matched_on` |
-| 5 | P2 | OpenSearch + teclado + cache + scroll infinito |
-| 6 | P3 | Painel lateral + analytics + specs + a11y polish |
+1. Finalizar limite de mensagens injetadas, caso o checkpoint seguro tenha ficado fora do MVP.
+2. Busca sem acentos com índice compatível.
+3. Atalho `Ctrl/Cmd+F` e command bar.
+4. Filtro por remetente/tipo.
+5. Assunto de e-mail e melhor identificação da origem do match.
+6. GIN/OpenSearch scoped por `conversation_id`.
+7. Navegação por teclado nos resultados.
+8. Limite máximo global de resultados.
+9. Painel lateral somente se feedback indicar que o dialog prejudica o contexto.
 
----
-
-## Critérios de aceite globais
-
-### Funcional
-
-- [ ] Busca texto + transcrição (Fase C+)
-- [ ] Paginação e merge scroll sem perda de mensagens (Fase B+)
-- [ ] Autorização via conversa — sem endpoint paralelo inseguro
-- [ ] Um endpoint novo apenas (`messages/search`)
-
-### UX
-
-- [ ] [ux-improvements.md](./ux-improvements.md) — critérios MVP (Fase C)
-- [ ] [ui-design.md](./ui-design.md) — anti-padrões respeitados
-- [ ] [rules-compliance-review.md](./rules-compliance-review.md) — camadas e fork workflow
-
-### Performance
-
-- [ ] `includes(:attachments, :sender)` — sem N+1
-- [ ] ILIKE aceitável no MVP; GIN/OpenSearch em P1/P2 se necessário
-- [ ] Escape wildcards ILIKE
+Não extrair estratégia de busca, predicate compartilhado ou store dedicado antes de uma dessas necessidades existir.

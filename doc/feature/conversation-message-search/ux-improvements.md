@@ -1,5 +1,7 @@
 # Melhorias de UI/UX — Pesquisa in-conversation
 
+> Catálogo de possibilidades. O MVP vigente está no [plano consolidado](./implementation-plan.md).
+
 Consolidação de todas as sugestões de experiência do usuário, organizadas por fase de entrega.
 
 **Relacionado:** [ui-design.md](./ui-design.md) · [implementation-plan.md](./implementation-plan.md) · [improvements-backlog.md](./improvements-backlog.md)

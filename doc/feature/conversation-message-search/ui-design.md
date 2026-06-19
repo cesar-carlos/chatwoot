@@ -1,5 +1,7 @@
 # UI Design — Pesquisa de mensagens na conversa
 
+> Referência visual. Escopo e estrutura vigentes estão no [plano consolidado](./implementation-plan.md).
+
 Especificação visual e de interação alinhada ao dashboard Chatwoot, `vue-frontend.mdc` e [ux-improvements.md](./ux-improvements.md).
 
 **Relacionado:** [rules-compliance-review.md](./rules-compliance-review.md) · [implementation-plan.md](./implementation-plan.md)

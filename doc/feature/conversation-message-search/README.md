@@ -1,6 +1,8 @@
 # Pesquisa de mensagens dentro da conversa
 
-Levantamento e plano para busca no contexto da conversa aberta, incluindo **texto e transcrições de áudio**.
+Planejamento para busca no contexto da conversa aberta, incluindo **texto e transcrições de áudio**.
+
+> **Fonte normativa:** [implementation-plan.md](./implementation-plan.md), consolidado e reavaliado contra o código em 19 de junho de 2026. Os outros documentos preservam a investigação e servem como referência, mas podem conter alternativas superadas.
 
 ## Documentos
 
@@ -12,19 +14,23 @@ Levantamento e plano para busca no contexto da conversa aberta, incluindo **text
 | [ux-improvements.md](./ux-improvements.md) | Melhorias UI/UX (UX-M*, P1–P3) |
 | [ui-design.md](./ui-design.md) | Especificação visual MVP |
 | [implementation-decision-tree.md](./implementation-decision-tree.md) | Decisões D1–D19 |
-| [implementation-plan.md](./implementation-plan.md) | Plano de implementação |
+| [implementation-plan.md](./implementation-plan.md) | **Plano consolidado e fonte de verdade** |
 | [api-endpoints.md](./api-endpoints.md) | **Matriz de endpoints** — 1 rota nova, reutilização por fase |
 | [improvements-backlog.md](./improvements-backlog.md) | Backlog pós-MVP |
 
-## Resumo executivo
+## Resumo executivo consolidado
 
 | Pergunta | Resposta |
 |----------|----------|
-| Pesquisa em áudio transcrito? | **Sim** — join `attachments.meta` no finder (Fase C) |
+| Pesquisa em áudio transcrito? | **Sim, na primeira entrega** — join `attachments.meta` |
 | Onde está o texto? | `attachments.meta` (`transcribed_text` + `transcription.text`) — Groq e OpenAI |
 | Mudança no backend? | **1 endpoint novo** — `GET .../messages/search` ([api-endpoints.md](./api-endpoints.md)) |
 | Mais completo que global SQL? | **Sim** (global ILIKE não busca transcrição; OpenSearch sim) |
-| Entrada UI (MVP) | Menu ⋮ → Pesquisar nesta conversa |
+| Entrada UI | Menu ⋮ → Pesquisar nesta conversa |
+| Scroll antigo | Mescla diretamente o resultado já retornado pela busca |
+| Paginação | 15 resultados + `has_more`, sem `COUNT DISTINCT` |
+| Requests | Debounce + cancelamento via `AbortController` |
+| Alterações upstream | Rota, hook do controller e integração em `MoreActions` |
 
 ## Status da implementação
 
@@ -36,21 +42,13 @@ Levantamento e plano para busca no contexto da conversa aberta, incluindo **text
 
 **Nota:** o store `conversationSearch.js` é da **pesquisa global** (`/search`), não desta feature.
 
-## Entrega em fases (recomendação pós-reavaliação)
+## Forma de entrega
 
-| Fase | Escopo | Objetivo |
-|------|--------|----------|
-| **A — Happy path** | Backend + dialog + busca + lista + clique | Funciona end-to-end |
-| **B — Robustez** | Merge Vuex, toast falha, loading thread, 422 | Corrige bugs reais do scroll |
-| **C — Polish** | Badge mic, nota privada, transcrição no finder, estados UX restantes | Paridade com catálogo UX-M* |
+Uma entrega vertical pronta para uso, implementada em quatro checkpoints internos:
 
-Detalhe: [implementation-plan.md](./implementation-plan.md) § "Fases de entrega".
+1. backend verificável;
+2. busca no dialog;
+3. navegação confiável;
+4. lint e matriz de aceite.
 
-## Próximo passo
-
-1. **Release 1** — Fase A ([implementation-plan.md](./implementation-plan.md) § Fase A)
-2. **Release 2** — Fase B (scroll robusto)
-3. **Release 3** — Fase C (MVP completo + áudio)
-4. **Releases 4–6** — P1 → P2 → P3 (roadmap completo no plano)
-
-Roadmap: [implementation-plan.md](./implementation-plan.md) § "Roadmap completo".
+Texto, transcrição e salto para mensagens antigas fazem parte da mesma entrega.

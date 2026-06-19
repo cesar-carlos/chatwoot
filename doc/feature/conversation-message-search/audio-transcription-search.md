@@ -1,5 +1,7 @@
 # Pesquisa em áudios transcritos — análise e integração no plano
 
+> Documento de apoio. A decisão consolidada inclui transcrição já na primeira entrega; veja o [plano consolidado](./implementation-plan.md).
+
 Como incluir transcrições de áudio na pesquisa in-conversation, alinhado ao modelo de dados existente (Groq manual + OpenAI Enterprise).
 
 **Relacionado:** [audio-transcription-current-state.md](../audio-transcription/audio-transcription-current-state.md) · [implementation-plan.md](./implementation-plan.md)

@@ -16,7 +16,7 @@
 | Application — uma ação por classe | Handlers por `type`/`action`; sem `WavoipService` monolítico |
 | Transport — delegar | `WavoipController` → job → dispatcher → handler |
 | Infrastructure — APIs externas | `@wavoip/wavoip-api` **só** em composables `custom/`; webhook parse em `PayloadNormalizer` |
-| Fork merge-safe | Portas estáveis em `custom/`; upstream recebe **registry** fino (`# FORK:` ≤ 8 arquivos) |
+| Fork merge-safe | Portas estáveis em `custom/`; upstream recebe hooks pequenos e inventariados |
 
 **Regra de ouro (repetida porque é contrato):**
 
@@ -250,8 +250,8 @@ O model **só expõe** config e predicates — zero webhook/SDK:
 ```ruby
 def voice_enabled?       # token + channel_voice
 def inbound_calls_enabled?
-def device_token         # leitura provider_config
-def webhook_secret       # nunca serializar na API pública
+def device_token         # coluna dedicada e protegida
+def webhook_key          # nunca serializar em listagens ou logs
 ```
 
 Serviços recebem `channel` injetado; não fazem `Channel::Wavoip.find` espalhado (resolver centralizado).
@@ -516,7 +516,8 @@ sequenceDiagram
 | `BrowserVoiceSession` | Vitest | mock `wavoipSdkPort` |
 | `voiceCallCableRegistry` | Vitest | payloads §5 webhook-contract |
 
-**Contrato de boot:** `Call.providers` inclui `wavoip` após `Custom::Call` prepend.
+**Contrato de boot:** `Call.providers` inclui `wavoip` após a edição mínima e marcada
+do enum em `enterprise/app/models/call.rb`.
 
 ---
 
@@ -584,16 +585,21 @@ sequenceDiagram
 
 ## 12. Melhorias pendentes (backlog)
 
-Itens levantados na revisão profunda (jun/2026). **Plano executável com tarefas por fase:** [implementation-plan.md](./implementation-plan.md) (Trilhas A–C + master checklist). Este §12 mantém o catálogo por ID.
+Itens levantados na revisão profunda (jun/2026). A ordem executável e os gates estão
+em [implementation-plan.md](./implementation-plan.md). Este §12 mantém o catálogo de
+contratos por ID.
 
-### 12.1 Pré-requisitos globais (bloqueiam Wavoip)
+### 12.1 Integração compartilhada (após o spike)
 
 | ID | Melhoria | Por quê | Onde implementar |
 |----|----------|---------|------------------|
-| W-P0.1 | `useWebRtcCallSession(callsAPI)` | Evita duplicar ~456 linhas Meta | FE — [second-provider-strategy §Fase 0](../second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado) |
-| W-P0.2 | `voiceSessionRegistry` + `voiceCallCableRegistry` | `useCallSession` não pode importar Wavoip direto | `custom/.../lib/voice/` + `# FORK:` mínimo |
+| W-P0.1 | Spike SDK/webhook/IDs | Confirma viabilidade antes de abstrações | [implementation-plan.md](./implementation-plan.md) Fase 0 |
+| W-P0.2 | `voiceSessionRegistry` + `voiceCallCableRegistry` | `useCallSession` não deve conter branches de implementação | `custom/.../lib/voice/` + hooks mínimos |
 | W-P0.3 | `isBrowserVoiceProvider()` | Evita FORK em `FloatingCallWidget`, `calls.js` | `custom/.../lib/voice/browserVoiceProviders.js` |
-| W-P0.4 | Alias Vite `customDashboard` | Autoload composables `custom/` | `vite.shared.ts` `# FORK:` |
+| W-P0.4 | Resolver imports do overlay | Adicionar alias Vite somente se a configuração atual não resolver `custom/` | Validar antes de editar `vite.shared.ts` |
+
+`useWebRtcCallSession(callsAPI)` permanece melhoria para Meta/CPaaS com SDP e não é
+pré-requisito Wavoip.
 
 ### 12.2 Backend Wavoip (Fase 1–4)
 
@@ -601,14 +607,14 @@ Itens levantados na revisão profunda (jun/2026). **Plano executável com tarefa
 |----|----------|---------|
 | W-B1 | DTO `Voice::Dto::WebhookCallEvent` | Ruby `Data.define` — contrato §4.1 |
 | W-B2 | `PayloadNormalizer` + specs com [fixtures](./fixtures/) | Campo `type` duplicado no payload Wavoip — regra defensiva aqui |
-| W-B3 | `Channel::Wavoip` + migration `channel_wavoip` | STI separado; `phone_number` unique global |
-| W-B4 | `Custom::Call` prepend enum `wavoip: 2` | Smoke boot: `Call.providers.keys` |
+| W-B3 | `Channel::Wavoip` + migration `channel_wavoip` | Canal separado; `phone_number` único na tabela Wavoip |
+| W-B4 | Enum `wavoip: 2` em `enterprise/app/models/call.rb` | Edição mínima `# FORK:`; `Call` não possui hook `prepend_mod_with` |
 | W-B5 | `Voice::Adapters::ActionCableCallBroadcaster` | Porta compartilhada Meta+Wavoip (payload `provider:`) |
 | W-B6 | `PATCH /api/v1/accounts/:id/calls/:id` | **Rota EE não existe hoje** — registrar `accepted_by_agent_id` após `offer.accept()`; implementar em `custom/` (Fase 3) |
 | W-B7 | `Calls::AssigneeOnAcceptService` | Opcional: `conversation.assignee` ao aceitar inbound |
 | W-B8 | `RecordingAttacher` | Fase 4: `record_url` → meta ou download ActiveStorage |
 | W-B9 | `Channel::WavoipPolicy` | Autorização create/update/settings |
-| W-B10 | `Rack::Attack` throttle webhook | 120 req/min por `phone_number` |
+| W-B10 | Auth + throttle webhook | Chave opaca por canal; limite por chave/IP |
 
 ### 12.3 Frontend Wavoip
 
@@ -647,5 +653,6 @@ Ver [../README.md §Roadmap](../README.md#roadmap-de-melhorias-ordem-recomendada
 - [ ] Payloads reais no spike substituem [fixtures](./fixtures/) templates
 - [ ] Código `custom/` espelha mapa §11
 
-**Nenhuma sugestão arquitetural crítica em aberto** — seguir [implementation-plan.md](./implementation-plan.md) na ordem Trilha A → B → (C paralelo).
-
+As decisões de fase e go/no-go ficam em
+[implementation-plan.md](./implementation-plan.md). Este documento descreve
+contratos; não substitui evidência do spike.

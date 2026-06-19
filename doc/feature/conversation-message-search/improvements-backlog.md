@@ -1,5 +1,7 @@
 # Backlog de melhorias — Pesquisa in-conversation
 
+> Catálogo histórico. A priorização vigente está no [plano consolidado](./implementation-plan.md) §13.
+
 Itens técnicos e de UX fora do MVP ou refinamentos pós-entrega.
 
 **Documento mestre de UX:** [ux-improvements.md](./ux-improvements.md) — IDs `UX-M*`, `UX-P1.*`, `UX-P2.*`, `UX-P3.*`
