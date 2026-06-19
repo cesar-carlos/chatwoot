@@ -1,0 +1,60 @@
+module Custom::Api::V1::Accounts::Conversations::MessagesController
+  SEARCH_RATE_LIMIT = 30
+  SEARCH_RATE_WINDOW = 1.minute
+
+  def search
+    return render_search_error('Too many search requests. Please try again shortly.', :too_many_requests) if search_rate_limited?
+
+    query = normalized_query
+    return render_search_error('Search query is required') if query.blank?
+    return render_search_error('Search query must be between 2 and 200 characters') unless query.length.between?(2, 200)
+
+    page = parsed_page
+    return render_search_error('Page must be a positive integer') if page.nil?
+
+    finder = Custom::ConversationMessageSearchFinder.new(
+      conversation: @conversation,
+      query: query,
+      page: page,
+      from: search_params[:from]
+    )
+    @messages = finder.perform
+    @has_more = finder.has_more?
+    @current_page = page
+    @matched_on_by_id = finder.matched_on_by_id
+    @search_engine = finder.search_engine
+  end
+
+  private
+
+  def normalized_query
+    search_params[:q].to_s.strip
+  end
+
+  def parsed_page
+    page_param = search_params[:page]
+    return 1 if page_param.blank?
+
+    page = Integer(page_param)
+    page.positive? ? page : nil
+  rescue ArgumentError, TypeError
+    nil
+  end
+
+  def search_params
+    params.permit(:q, :page, :from)
+  end
+
+  def render_search_error(message, status = :unprocessable_entity)
+    render json: { error: message }, status: status
+  end
+
+  def search_rate_limited?
+    key = "conversation_message_search:#{Current.user.id}:#{@conversation.id}"
+    count = Rails.cache.read(key).to_i
+    return true if count >= SEARCH_RATE_LIMIT
+
+    Rails.cache.write(key, count + 1, expires_in: SEARCH_RATE_WINDOW)
+    false
+  end
+end

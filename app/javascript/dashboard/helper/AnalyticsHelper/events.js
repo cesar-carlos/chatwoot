@@ -164,3 +164,9 @@ export const ONBOARDING_EVENTS = Object.freeze({
   ACCOUNT_DETAILS_VISITED: 'Onboarding: Account details visited',
   ACCOUNT_DETAILS_COMPLETED: 'Onboarding: Account details completed',
 });
+
+export const MESSAGE_SEARCH_EVENTS = Object.freeze({
+  OPENED: 'Search in conversation: Opened',
+  SEARCHED: 'Search in conversation: Searched',
+  RESULT_CLICKED: 'Search in conversation: Result clicked',
+});

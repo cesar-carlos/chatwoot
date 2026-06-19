@@ -150,6 +150,9 @@ Rails.application.routes.draw do
             end
             scope module: :conversations do
               resources :messages, only: [:index, :create, :destroy, :update] do
+                # FORK: in-conversation message search
+                collection { get :search }
+
                 member do
                   post :translate
                   post :retry

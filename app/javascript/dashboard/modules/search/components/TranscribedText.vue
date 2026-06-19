@@ -1,15 +1,42 @@
 <script setup>
+import { computed } from 'vue';
+import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
 import { useExpandableContent } from 'shared/composables/useExpandableContent';
 
-defineProps({
+const props = defineProps({
   text: {
+    type: String,
+    default: '',
+  },
+  searchTerm: {
     type: String,
     default: '',
   },
 });
 
+const { highlightContent } = useMessageFormatter();
+
 const { contentElement, showReadMore, showReadLess, toggleExpanded } =
   useExpandableContent({ useResizeObserverForCheck: true });
+
+const escapeHtml = html => {
+  const wrapper = document.createElement('p');
+  wrapper.textContent = html;
+  return wrapper.textContent;
+};
+
+const displayText = computed(() => {
+  const content = props.text || '';
+  if (!props.searchTerm?.trim()) return content;
+
+  return highlightContent(
+    escapeHtml(content),
+    props.searchTerm,
+    'searchkey--highlight'
+  );
+});
+
+const isHighlighted = computed(() => Boolean(props.searchTerm?.trim()));
 </script>
 
 <template>
@@ -25,7 +52,12 @@ const { contentElement, showReadMore, showReadLess, toggleExpanded } =
       class="min-w-0"
       :class="{ 'overflow-hidden line-clamp-1': showReadMore }"
     >
-      {{ text }}
+      <span
+        v-if="isHighlighted"
+        v-dompurify-html="displayText"
+        class="[&_.searchkey--highlight]:text-n-slate-12 [&_.searchkey--highlight]:font-semibold"
+      />
+      <template v-else>{{ text }}</template>
       <button
         v-if="showReadLess"
         class="text-sm text-n-slate-11 underline cursor-pointer bg-transparent border-0 p-0 hover:text-n-slate-12 font-medium ltr:ml-0.5 rtl:mr-0.5"

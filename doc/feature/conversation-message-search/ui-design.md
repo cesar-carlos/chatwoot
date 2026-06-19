@@ -46,29 +46,26 @@ Backend transcrição: [audio-transcription-search.md](./audio-transcription-sea
 ```mermaid
 flowchart TD
   MA[MoreActions.vue]
-  Dlg[ConversationMessageSearchDialog.vue]
-  D[Dialog.vue]
-  Form[ConversationMessageSearchForm.vue]
-  List[Result list]
+  SS[SidepanelSwitch.vue]
+  Panel[ConversationMessageSearchPanel.vue]
+  View[ConversationMessageSearchView.vue]
   Item[ConversationMessageSearchResultItem.vue]
-  MC[MessageContent.vue]
   Scroll[useScrollToConversationMessage]
 
-  MA -->|open| Dlg
-  Dlg --> D
-  Dlg --> Form
-  Dlg --> List
-  List --> Item
-  Item --> MC
-  Dlg -->|select| Scroll
+  MA -->|open| Panel
+  SS -->|toggle| Panel
+  Panel --> View
+  View --> Item
+  View -->|select| Scroll
 ```
 
 | Arquivo | Responsabilidade |
 |---------|------------------|
-| `ConversationMessageSearchDialog.vue` | Shell Dialog; estados; orquestra composables; `open`/`close` |
-| `ConversationMessageSearchForm.vue` | Input, hint, debounce emit `search`, Esc |
-| `ConversationMessageSearchResultItem.vue` | Linha: autor, snippet texto **ou** transcrição (`readTranscriptText`), hora, badge private/mic |
-| `useConversationMessageSearch.js` | API, paginação, loading, erros |
+| `ConversationMessageSearchPanel.vue` | Shell painel lateral; `open`/`close` via `useConversationMessageSearchPanel` |
+| `ConversationMessageSearchView.vue` | Input, filtros, resultados, infinite scroll, analytics |
+| `ConversationMessageSearchResultItem.vue` | Linha: autor, snippet texto **ou** transcrição, hora, badge private/mic |
+| `useConversationMessageSearch.js` | API, paginação, loading, erros, rate limit |
+| `useConversationMessageSearchPanel.js` | Estado `is_message_search_panel_open` em `useUISettings` |
 | `useScrollToConversationMessage.js` | Merge + scroll + highlight + toast falha |
 
 ---
