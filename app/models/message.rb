@@ -36,6 +36,7 @@
 #  index_messages_on_inbox_id                           (inbox_id)
 #  index_messages_on_sender_type_and_sender_id          (sender_type,sender_id)
 #  index_messages_on_source_id                          (source_id)
+#  index_messages_on_unaccent_content_trgm              (unaccent_immutable(content) gin_trgm_ops) USING gin
 #
 
 class Message < ApplicationRecord

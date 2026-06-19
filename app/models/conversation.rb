@@ -34,6 +34,8 @@
 # Indexes
 #
 #  conv_acid_inbid_stat_asgnid_idx                    (account_id,inbox_id,status,assignee_id)
+#  index_conv_workflow_inactivity                     (account_id,last_activity_at) WHERE (status = 0)
+#  index_conv_workflow_waiting                        (account_id,waiting_since) WHERE ((status = 0) AND (waiting_since IS NOT NULL))
 #  index_conversations_on_account_id                  (account_id)
 #  index_conversations_on_account_id_and_display_id   (account_id,display_id) UNIQUE
 #  index_conversations_on_assignee_id_and_account_id  (assignee_id,account_id)
