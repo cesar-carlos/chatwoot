@@ -409,7 +409,9 @@ export function mapWavoipOfferToStoreEntry(offer, { inboxId, conversationId }) {
 | SDK `on('offer')` | `mapWavoipOfferToStoreEntry(offer, { inboxId, conversationId })` |
 | `message.created` voice_call | `handleVoiceCallCreated` (existente) |
 
-**Reconciliação:** `addCall` faz merge por `callSid`; race offer-before-webhook — ver [§3](./contracts-and-ports.md#3-fontes-da-verdade-evitar-duplicidade-conflitante) e backlog W-F3.
+**Reconciliação:** a chave de merge depende do gate de correlação do spike. Só usar
+`callSid` diretamente se `Offer.id`/`CallOutgoing.id` corresponder de forma
+determinística a `whatsapp_call_id`.
 
 ### 5.5 Porta `WavoipSdkPort` (isolar npm)
 
@@ -484,7 +486,7 @@ sequenceDiagram
     WH->>Core: ConversationLinker.link!
   WH->>Cable: broadcast_incoming (sem SDP)
   Cable->>Store: mapCableToStoreEntry
-  Note over Store: merge por callSid
+  Note over Store: merge pela correlação validada no spike
 ```
 
 ### 7.2 Accept (só browser)
@@ -622,7 +624,7 @@ pré-requisito Wavoip.
 |----|----------|---------|
 | W-F1 | `wavoipSdkPort.js` | Único import `@wavoip/wavoip-api` |
 | W-F2 | `mapWavoipOfferToStoreEntry` / `mapCableToStoreEntry` | Reconciliação dual-path inbound (§3) |
-| W-F3 | Race **offer antes do webhook** | `addCall` merge por `callSid`; UI ring se só SDK; bolha quando webhook chegar |
+| W-F3 | Race **offer antes do webhook** | Merge pela correlação validada no spike; UI ring local e histórico quando webhook chegar |
 | W-F4 | `acceptedElsewhere` / `rejectedElsewhere` | Toast + `dismissCall` |
 | W-F5 | Gate `Device.status === 'open'` | Desabilitar ligar/aceitar + banner settings |
 | W-F6 | `useWavoipNotifications` | OS Notification quando aba sem foco |

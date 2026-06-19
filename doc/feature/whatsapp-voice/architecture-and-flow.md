@@ -444,7 +444,7 @@ apenas o registry compartilhado entra no caminho crítico.
 
 ### Prioridade recomendada
 
-1. **`custom/` overlay** — services, controllers, models STI gateway
+1. **`custom/` overlay** — services, controllers e channel models de gateway
 2. **Prepend** — `WhatsappCloudService`/`WhatsappEventsJob` via `prepend_mod_with`; `Channel::Whatsapp` via prepend direto
 3. **Edições OSS mínimas com `# FORK:`** — `inbox.js`, `useCallSession.js`, `actionCable.js`, `ChannelList.vue`
 

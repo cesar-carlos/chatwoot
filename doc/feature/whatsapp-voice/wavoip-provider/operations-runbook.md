@@ -36,7 +36,7 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 | Causa | Ação |
 |-------|------|
-| Device não `open` | Settings → parear QR ou `pairingCode` |
+| Device não `open` | No MVP, parear/reativar em app.wavoip.com; painel completo é pós-MVP |
 | `hibernating` | Clicar **Acordar** (`wakeUp`) |
 | `WAITING_PAYMENT` | Regularizar conta em app.wavoip.com |
 | `EXTERNAL_INTEGRATION_ERROR` | Verificar integração Evolution/gateway no Wavoip |

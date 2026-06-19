@@ -154,7 +154,7 @@ Detalhes e plano de correção: [architecture-and-flow.md §13](./architecture-a
 
 | # | Lacuna | Impacto | Mitigação |
 |---|--------|---------|-----------|
-| 1 | Sem `Voice::Provider::WhatsappCalling::Base` (só Twilio tem adapter) | Cada provider = controller/job/composable novos | `Voice::Provider::MetaCloud::Adapter` + registry — [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado) |
+| 1 | Sem `Voice::Provider::WhatsappCalling::Base` (só Twilio tem adapter) | Cada provider = controller/job/composable novos | `Voice::Provider::MetaCloud::Adapter` + registry — [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-para-provider-sdpmeta-like) |
 | 2 | `useWhatsappCallSession` acoplado a `/whatsapp_calls` | CPaaS Meta-like tende a duplicar WebRTC | Extrair `useWebRtcCallSession(callsAPI)` antes de provider **SDP/Meta-like**; Wavoip usa SDK próprio |
 | 3 | `actionCable.js` filtra `provider === 'whatsapp'` | Segundo provider WebRTC não recebe eventos | `WEBRTC_PROVIDERS` + registry (`// FORK:` mínimo) |
 | 4 | `voice_call.permission_granted` sem handler FE | Opt-in confirmado só via activity message | Handler em `actionCable.js` + banner/toast no composable |

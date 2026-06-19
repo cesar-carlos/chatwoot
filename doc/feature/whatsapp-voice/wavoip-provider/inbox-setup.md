@@ -15,7 +15,7 @@ que o backend gerar a URL.
 ```mermaid
 flowchart LR
   S1["1. Escolha o canal<br/>tile Wavoip"]
-  S2["2. Criar caixa de entrada<br/>formulário completo"]
+  S2["2. Criar caixa de entrada<br/>identidade + token"]
   S3["3. Ativar webhook<br/>copiar URL e validar"]
   S4["4. Adicionar agentes"]
   S5["5. Pronto"]
@@ -244,7 +244,7 @@ Incluir na serialização do inbox (somente para admins da conta):
 
 ```json
 {
-  "webhook_url": "https://app.example.com/webhooks/wavoip/%2B5511999999999",
+  "webhook_url": "https://app.example.com/webhooks/wavoip/opaque-random-key",
   "webhook_configured": false
 }
 ```
@@ -257,15 +257,17 @@ Incluir na serialização do inbox (somente para admins da conta):
 
 Após `POST /inboxes` bem-sucedido:
 
-1. `router.replace({ name: 'settings_inboxes_add_agents', params: { inbox_id } })` — igual `Voice.vue`.
-2. Exibir a etapa de ativação com URL, botão copiar e status `pending`.
-3. **Não** conectar SDK Wavoip neste passo — conexão só quando agente ficar **online** (ver [frontend-integration.md](./frontend-integration.md)).
+1. Exibir a etapa de ativação com URL, botão copiar e status `pending`.
+2. Após confirmação do admin, navegar para `settings_inboxes_add_agents`.
+3. **Não** conectar o SDK neste passo — conexão só quando agente autorizado ficar
+   **online** (ver [frontend-integration.md](./frontend-integration.md)).
 
 ---
 
 ## 7. Settings (edição posterior)
 
-Tab **Chamadas** no inbox (`WavoipCallingPage.vue`) expõe os **mesmos campos** editáveis, mais **`WavoipDevicePanel`**:
+No MVP, a tab **Chamadas** expõe token, toggles, URL/status do webhook e estado básico
+do device. Pareamento e ações administrativas completas ficam pós-MVP:
 
 | Painel | SDK | Quando mostrar |
 |--------|-----|----------------|
@@ -317,7 +319,6 @@ Chaves sugeridas:
         "PHONE_NUMBER": { "LABEL": "WhatsApp number", "PLACEHOLDER": "+5511999999999", "ERROR": "..." },
         "DEVICE_TOKEN": { "LABEL": "Device token", "PLACEHOLDER": "...", "HELP": "From app.wavoip.com/devices" },
         "ID_SESSION": { "LABEL": "Session ID (optional)", "PLACEHOLDER": "12345" },
-        "DISPLAY_NAME": { "LABEL": "Outbound display name", "PLACEHOLDER": "Support" },
         "INBOUND_ENABLED": { "LABEL": "Accept incoming calls" },
         "WEBHOOK": {
           "TITLE": "Webhook",
