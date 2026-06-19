@@ -1,5 +1,7 @@
 # Revisão de conformidade — Rules, arquitetura e design
 
+> Documento de apoio à reavaliação. O resultado normativo está no [plano consolidado](./implementation-plan.md).
+
 Reavaliação do levantamento em [current-state.md](./current-state.md) e do plano em [implementation-plan.md](./implementation-plan.md) contra:
 
 - `.cursor/rules/architecture.mdc`

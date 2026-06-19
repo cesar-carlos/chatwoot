@@ -13,7 +13,7 @@ Exibir em **Settings → Chamadas** (`WavoipOnboardingChecklist.vue`):
 | # | Passo | Como verificar |
 |---|-------|----------------|
 | 1 | Token configurado | `device_token` presente |
-| 2 | Webhook no painel Wavoip | Admin marcou ack + último webhook &lt; 24h (opcional) |
+| 2 | Webhook no painel Wavoip | Status `verified` após primeiro evento válido |
 | 3 | Dispositivo `open` | `WavoipDevicePanel` badge verde |
 | 4 | Número confere | `contact.phone` do device = `phone_number` do inbox |
 | 5 | Agente online | Availability = online no dashboard |
@@ -47,7 +47,7 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 | Causa | Ação |
 |-------|------|
-| Agente offline | Ficar online; push só na Fase 3+ |
+| Agente offline / aba fechada | Ficar online e manter o dashboard aberto; push pós-MVP apenas avisa |
 | `inbound_calls_enabled: false` | Settings inbox → habilitar inbound |
 | Token errado / outro inbox | Conferir token no device panel |
 | Aba sem foco, sem permissão Notification | Permitir notificações no browser |
@@ -57,7 +57,7 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 | Causa | Ação |
 |-------|------|
-| URL errada no Wavoip | Copiar de Settings; incluir `?secret=` |
+| URL errada no Wavoip | Copiar novamente de Settings; a chave opaca faz parte do path |
 | `FRONTEND_URL` incorreto | `.env` / Installation Config |
 | Firewall | Liberar POST para `/webhooks/wavoip/*` |
 | Secret rotacionado | Atualizar URL no painel Wavoip |
@@ -97,12 +97,12 @@ Comportamento esperado com **um token por inbox**. Primeiro `accept()` ganha. De
 2. Settings inbox → colar novo token → salvar
 3. Agente recarrega dashboard (reconecta SDK)
 
-### `webhook_secret`
+### `webhook_key`
 
-1. Settings → **Regenerar secret**
-2. Copiar nova URL completa
+1. Settings → **Regenerar URL**
+2. Copiar a nova URL completa
 3. Atualizar no painel Wavoip → Webhook
-4. Secret antigo invalida imediatamente
+4. A chave anterior invalida imediatamente
 
 ---
 

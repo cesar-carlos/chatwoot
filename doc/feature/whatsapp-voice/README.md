@@ -2,7 +2,7 @@
 
 Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp** no Chatwoot Enterprise (WhatsApp Cloud Calling API + WebRTC browser↔Meta). O objetivo é orientar implementação, extensão com providers alternativos e decisões de arquitetura no fork.
 
-**Última reanálise:** jun/2026 (reavaliação arquitetural completa) — código em `main` (Enterprise + OSS hooks).
+**Última reanálise:** 19 jun. 2026 — código em `main` (Enterprise + OSS hooks).
 
 ---
 
@@ -11,7 +11,7 @@ Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp
 | Perfil | Caminho |
 |--------|---------|
 | **Entender o fluxo atual (Meta oficial)** | [architecture-and-flow.md](./architecture-and-flow.md) |
-| **Implementar Wavoip (primeiro provider alternativo)** | [wavoip-provider/README.md](./wavoip-provider/README.md) → [contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) |
+| **Implementar Wavoip (primeiro provider alternativo)** | [wavoip-provider/README.md](./wavoip-provider/README.md) → [implementation-plan.md](./wavoip-provider/implementation-plan.md) |
 | **Escolher stack de voz no fork** | Árvore abaixo → [second-provider-strategy.md](./second-provider-strategy.md) |
 | **Avaliar acoplamento / refactor** | [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) · [second-provider-strategy.md](./second-provider-strategy.md) |
 | **Twilio vs WhatsApp in-app** | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
@@ -27,7 +27,7 @@ flowchart TD
   Q1 -->|Não — telefone PSTN| T["Stack Twilio<br/>Channel::TwilioSms + voice_enabled<br/>tile UI: voice"]
   Q1 -->|Sim — chamada in-app| Q2{"Provider expõe<br/>Meta Calling API<br/>ou SDP compatível?"}
   Q2 -->|Sim — Cloud / CPaaS proxy Meta| M["Stack atual<br/>Channel::Whatsapp whatsapp_cloud<br/>useWhatsappCallSession + /whatsapp_calls"]
-  Q2 -->|Não — SDK browser + webhook| W["Wavoip<br/>Channel::Wavoip custom/<br/>contracts-and-ports.md"]
+  Q2 -->|Não — SDK browser + webhook| W["Wavoip<br/>Channel::Wavoip custom/<br/>implementation-plan.md"]
   Q2 -->|Não — gateway sem SDK| G["Canal gateway em custom/<br/>validar contrato de voz antes"]
   Q2 -->|Incerto| V["Fase 0: validar API de voz<br/>do provider antes de codar"]
 
@@ -40,7 +40,7 @@ flowchart TD
 | Caminho | Quando usar | Doc principal |
 |---------|-------------|---------------|
 | **Meta Cloud Calling (atual)** | WABA oficial, embedded signup ou keys manuais, EE + `channel_voice` | [architecture-and-flow.md](./architecture-and-flow.md) |
-| **Wavoip (SDK browser + webhook)** | Número no Wavoip, sem Graph Calling API; token de dispositivo | [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) |
+| **Wavoip (SDK browser + webhook)** | Número no Wavoip, sem Graph Calling API; token de dispositivo | [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) |
 | **Segundo CPaaS Meta-like** | Outro gateway que proxy Graph `/calls` (SDP offer/answer) | [second-provider-strategy.md](./second-provider-strategy.md) |
 | **Gateway não oficial** | Evolution/Baileys com API de voz própria (não Graph API) | [second-provider-strategy.md](./second-provider-strategy.md) como checklist de contrato |
 | **Twilio Voice** | Voz telefônica PSTN — **não** substitui WhatsApp in-app | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
@@ -52,12 +52,12 @@ flowchart TD
 | Documento | Conteúdo |
 |-----------|----------|
 | [architecture-and-flow.md](./architecture-and-flow.md) | Fluxo E2E, gaps §12, **roadmap refactor §13**, boas práticas Meta §14 |
-| [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) | **Wavoip** — portas, DTOs, DI, fontes da verdade, backlog §12 |
-| [wavoip-provider/](./wavoip-provider/) | Índice Wavoip — estratégia, fases, frontend, ops |
+| [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) | **Wavoip** — fonte única de execução, gates e fases |
+| [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) | Wavoip — contratos, DTOs e DI |
+| [wavoip-provider/](./wavoip-provider/) | Índice Wavoip — estratégia, referências e operação |
 | [wavoip-provider/official-docs.md](./wavoip-provider/official-docs.md) | **Índice documentação oficial Wavoip** (consulta na implementação) |
 | [wavoip-provider/webhook-contract.md](./wavoip-provider/webhook-contract.md) | Auth webhook, idempotência, ActionCable |
 | [wavoip-provider/operations-runbook.md](./wavoip-provider/operations-runbook.md) | Troubleshooting e onboarding admin |
-| [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) | **Plano mestre** Wavoip + melhorias globais (Trilhas A–C, IDs G/W/M) |
 | [wavoip-provider/fixtures/](./wavoip-provider/fixtures/) | JSON de referência para specs |
 | [wavoip-provider/inbox-setup.md](./wavoip-provider/inbox-setup.md) | Wizard caixa de entrada Wavoip |
 | [second-provider-strategy.md](./second-provider-strategy.md) | **Fase 0 refactor** + plano segundo provider Meta-like (CPaaS) |
@@ -143,7 +143,7 @@ Se o fork **não** usar `whatsapp_cloud`, restrições da Meta na API oficial de
 | 1 | Assimetria Twilio vs WhatsApp no backend | Média | Twilio tem `Voice::Provider::Twilio::Adapter` + `OutboundCallBuilder`; WhatsApp monta outbound inline no controller |
 | 2 | `useWhatsappCallSession.js` quase god module | Média | WebRTC + recorder + API + auth cookie + beacon num arquivo |
 | 3 | `useCallSession.js` com branching `isWhatsappCall` | Média | Shotgun surgery ao adicionar 3º provider |
-| 4 | Model `Call` mistura concerns Twilio + WhatsApp | Baixa | Pragmático no EE; enum extra via `prepend_mod_with` no fork |
+| 4 | Model `Call` mistura concerns Twilio + WhatsApp | Baixa | Pragmático no EE; novo enum exige edição `# FORK:` porque `Call` não expõe hook |
 | 5 | Permissão outbound no controller (~70 linhas) | Baixa | Extrair para `Whatsapp::CallPermissionRequestService` |
 
 Detalhes e plano de correção: [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
@@ -155,7 +155,7 @@ Detalhes e plano de correção: [architecture-and-flow.md §13](./architecture-a
 | # | Lacuna | Impacto | Mitigação |
 |---|--------|---------|-----------|
 | 1 | Sem `Voice::Provider::WhatsappCalling::Base` (só Twilio tem adapter) | Cada provider = controller/job/composable novos | `Voice::Provider::MetaCloud::Adapter` + registry — [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado) |
-| 2 | `useWhatsappCallSession` acoplado a `/whatsapp_calls` | Gateway duplica ~456 linhas | Extrair `useWebRtcCallSession(callsAPI)` **antes** de Wavoip/CPaaS |
+| 2 | `useWhatsappCallSession` acoplado a `/whatsapp_calls` | CPaaS Meta-like tende a duplicar WebRTC | Extrair `useWebRtcCallSession(callsAPI)` antes de provider **SDP/Meta-like**; Wavoip usa SDK próprio |
 | 3 | `actionCable.js` filtra `provider === 'whatsapp'` | Segundo provider WebRTC não recebe eventos | `WEBRTC_PROVIDERS` + registry (`// FORK:` mínimo) |
 | 4 | `voice_call.permission_granted` sem handler FE | Opt-in confirmado só via activity message | Handler em `actionCable.js` + banner/toast no composable |
 | 5 | `voice_call.accepted` sem handler FE | Inbound pickup confirmado só server-side | Opcional — widget já transiciona no accept local |
@@ -173,8 +173,8 @@ Detalhes: [architecture-and-flow.md §12–14](./architecture-and-flow.md) · [s
 
 | Prioridade | Melhoria | Onde | Esforço |
 |------------|----------|------|---------|
-| **P0** | Extrair `useWebRtcCallSession(callsAPI)` | `custom/` ou upstream FE | ~1 semana |
-| **P0** | Registry `WEBRTC_PROVIDERS` em `useCallSession` + `actionCable.js` | `# FORK:` mínimo | 2–3 dias |
+| **P0** | Registry de sessões/eventos por provider em `useCallSession` + `actionCable.js` | `# FORK:` mínimo | 2–3 dias |
+| **P1** | Extrair `useWebRtcCallSession(callsAPI)` para um segundo provider SDP/Meta-like | `custom/` ou upstream FE | ~1 semana |
 | **P1** | `Voice::Provider::MetaCloud::Adapter` (delegar de `WhatsappCloudService`) | `enterprise/` ou `custom/` | 3–5 dias |
 | **P1** | `Voice::OutboundWhatsappCallBuilder` (paridade com Twilio) | `enterprise/` | 2–3 dias |
 | **P1** | `Whatsapp::CallPermissionRequestService` (sair do controller) | `enterprise/` | 1–2 dias |
@@ -183,14 +183,14 @@ Detalhes: [architecture-and-flow.md §12–14](./architecture-and-flow.md) · [s
 | **P2** | Suporte TURN em `VOICE_CALL_STUN_URLS` (doc + validação admin) | config + settings UI | 1–2 dias |
 | **P3** | Renomear rotas `/voice_calls` (opcional) | refactor amplo | só se valer o diff |
 
-Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) · [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado) · [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) (Trilha C).
+Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) · [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-para-provider-sdpmeta-like) · [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md).
 
 ---
 
 ## Recomendação resumida (fork)
 
-1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — não editar `enterprise/` sem espelhar em `custom/`.
-2. **Antes de segundo provider:** executar **P0** do roadmap (extrair WebRTC core + registry) — evita duplicar 456 linhas.
+1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — edições inevitáveis em `enterprise/` devem ser mínimas e marcadas `# FORK:`.
+2. **Antes de Wavoip:** executar o spike; depois criar registry de sessão/eventos. Não extrair o WebRTC Meta, pois o SDK Wavoip encapsula mídia e sinalização.
 3. **Segundo provider Meta-like (CPaaS proxy):** estender stack com adapters — [second-provider-strategy.md](./second-provider-strategy.md).
 4. **Wavoip:** seguir [wavoip-provider/](./wavoip-provider/) — canal `Channel::Wavoip` em `custom/`; **não** inflar `WhatsappEventsJob`.
 5. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; validar contrato SDP/events antes de UI.
@@ -201,13 +201,13 @@ Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-r
 
 ## Wavoip — primeiro provider alternativo
 
-Implementação **separada** da stack Meta. Ordem obrigatória:
+Implementação **separada** da stack Meta. Ordem:
 
-1. [second-provider-strategy.md §Fase 0 FE](./second-provider-strategy.md#fase-0--refactor-pré-requisito-recomendado) — registry + `useWebRtcCallSession`
-2. [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) — portas e DTOs (**ler antes de codar**)
-3. [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) — **plano mestre** Trilhas A–C + master checklist
+1. [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) — spike e gates de go/no-go
+2. [wavoip-provider/spike-notes.template.md](./wavoip-provider/spike-notes.template.md) — registrar payloads, IDs e multiagente
+3. [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) — contratos para a implementação aprovada
 
-Melhorias catalogadas: [contracts-and-ports.md §12](./wavoip-provider/contracts-and-ports.md#12-melhorias-pendentes-backlog) · execução: [implementation-plan.md](./wavoip-provider/implementation-plan.md) master checklist.
+O plano consolidado prevalece quando documentos auxiliares ainda mencionarem fases antigas.
 
 ---
 
@@ -217,13 +217,14 @@ Itens levantados na reanálise que **ainda não existem no código** — servem 
 
 | # | Item | Escopo | Doc |
 |---|------|--------|-----|
-| G1 | Extrair `useWebRtcCallSession` + registry FE | Meta + Wavoip | [§13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) P0 |
+| G1 | Registry de sessão/eventos por provider | Meta + Wavoip | [plano Wavoip](./wavoip-provider/implementation-plan.md) Fase 3 |
+| G1b | Extrair `useWebRtcCallSession` | Meta + provider SDP/CPaaS | [§13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) |
 | G2 | `Voice::Provider::MetaCloud::Adapter` | Só Meta | §13 P1 |
 | G3 | `Voice::OutboundWhatsappCallBuilder` | Só Meta | §13 P1 |
 | G4 | `Whatsapp::CallPermissionRequestService` | Só Meta | §13 P1 |
 | G5 | Handler `voice_call.permission_granted` | Só Meta | §13 P2 |
 | G6 | Specs Vitest WebRTC race/beacon | Meta | §13 P2 |
-| G7 | Canal `Channel::Wavoip` + webhook + composables | Fork `custom/` | [contracts §12](./wavoip-provider/contracts-and-ports.md#12-melhorias-pendentes-backlog) |
+| G7 | Canal `Channel::Wavoip` + webhook + composables | Fork `custom/` | [plano consolidado](./wavoip-provider/implementation-plan.md) |
 | G8 | `PATCH` `accepted_by_agent_id` pós-accept Wavoip | Fork `custom/` | [webhook-contract §4](./wavoip-provider/webhook-contract.md#4-accepted_by_agent_id-sem-rest-mvp) |
 
-**Status código (jun/2026):** stack Meta implementada; itens abaixo rastreados em [implementation-plan.md](./wavoip-provider/implementation-plan.md) master checklist.
+**Status código (19 jun. 2026):** stack Meta implementada; Wavoip ainda somente planejado.

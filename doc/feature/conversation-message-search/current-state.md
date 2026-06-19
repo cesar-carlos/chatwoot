@@ -1,5 +1,7 @@
 # Estado atual — Pesquisa global vs. pesquisa in-conversation
 
+> Documento de apoio. Decisões normativas e ordem de execução estão no [plano consolidado](./implementation-plan.md).
+
 > **Atualização jun/2026:** a feature in-conversation **não está implementada**. Este doc descreve o estado do código **existente** que será reutilizado. Plano: [implementation-plan.md](./implementation-plan.md). Reavaliação: [rules-compliance-review.md](./rules-compliance-review.md) §9.
 
 ## Contexto do pedido
