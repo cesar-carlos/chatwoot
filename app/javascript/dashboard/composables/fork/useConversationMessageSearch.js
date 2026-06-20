@@ -56,12 +56,14 @@ const pushRecentSearch = (conversationId, query) => {
 };
 
 export const useConversationMessageSearch = conversationIdSource => {
+  const { t } = useI18n();
   const query = ref('');
   const results = ref([]);
   const currentPage = ref(1);
   const hasMore = ref(false);
   const isSearching = ref(false);
   const error = ref(null);
+  const errorMessage = ref('');
   const isRateLimited = ref(false);
   const fromFilter = ref('');
   const hitMaxResults = ref(false);
@@ -87,6 +89,7 @@ export const useConversationMessageSearch = conversationIdSource => {
     hasMore.value = false;
     hitMaxResults.value = false;
     error.value = null;
+    errorMessage.value = '';
     isRateLimited.value = false;
   };
 
@@ -109,6 +112,7 @@ export const useConversationMessageSearch = conversationIdSource => {
     isSearching.value = true;
     if (!append) {
       error.value = null;
+      errorMessage.value = '';
     }
 
     try {
@@ -143,6 +147,7 @@ export const useConversationMessageSearch = conversationIdSource => {
         Boolean(meta.max_results) && results.value.length >= meta.max_results;
       searchEngine.value = meta.search_engine || null;
       error.value = null;
+      errorMessage.value = '';
       isRateLimited.value = false;
 
       if (!append) {
@@ -156,6 +161,7 @@ export const useConversationMessageSearch = conversationIdSource => {
 
       error.value = err;
       isRateLimited.value = err?.response?.status === 429;
+      errorMessage.value = resolveConversationMessageSearchError(err, t);
       if (!append) {
         results.value = [];
       }
@@ -245,6 +251,7 @@ export const useConversationMessageSearch = conversationIdSource => {
     hasMore,
     isSearching,
     error,
+    errorMessage,
     isRateLimited,
     fromFilter,
     hitMaxResults,
