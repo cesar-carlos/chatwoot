@@ -44,6 +44,7 @@ const {
   hasMore,
   isSearching,
   error,
+  errorMessage,
   isRateLimited,
   fromFilter,
   hitMaxResults,
@@ -94,12 +95,7 @@ const showEmpty = computed(
     !results.value.length &&
     !error.value
 );
-const showError = computed(() => Boolean(error.value));
-const errorMessage = computed(() =>
-  isRateLimited.value
-    ? t('CONVERSATION.MESSAGE_SEARCH.ERROR_RATE_LIMIT')
-    : t('CONVERSATION.MESSAGE_SEARCH.ERROR')
-);
+const showError = computed(() => Boolean(errorMessage.value));
 const resultsCountLabel = computed(() =>
   t('CONVERSATION.MESSAGE_SEARCH.RESULTS_COUNT', {
     count: results.value.length,
