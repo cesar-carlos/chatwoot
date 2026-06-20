@@ -94,7 +94,7 @@ correlação SDK/webhook e da extensão dos acoplamentos frontend.
 | **Wavoip backend** | ✅ Code complete — `custom/app/models/channel/wavoip.rb`, webhook pipeline, `CallUpsertService`, `ConversationLinker`, `Broadcaster`, `CallsController#update` |
 | **Wavoip frontend** | ✅ 18 arquivos em `custom/app/javascript/` — registry, composables SDK, `Wavoip.vue`, `WavoipCallingPage.vue` |
 | **Enum `Call.provider`** | ✅ `wavoip: 2` em `enterprise/app/models/call.rb` (`# FORK:`) |
-| **Testes** | ✅ 55 RSpec + 10 Vitest (com DB) |
+| **Testes** | ✅ 76 RSpec + 21 Vitest (com DB) |
 | **E2E live** | ⚠️ Outbound SDK RINGING → ACTIVE comprovado; webhooks CALL do painel **não recebidos** |
 | **Produção piloto** | Account 2, inbox 42, device `556697193168` (`open`) |
 | Pacote npm | `@wavoip/wavoip-api@2.5.0` |

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Wavoip::Webhooks::Dispatcher do
+  include ActiveJob::TestHelper
+
   let(:account) { create(:account) }
   let(:channel) { create(:channel_wavoip, account: account) }
   let(:inbox) { channel.inbox }
@@ -31,6 +33,28 @@ RSpec.describe Wavoip::Webhooks::Dispatcher do
       end.not_to change(Call, :count)
 
       expect(channel.reload.provider_config['device_status']).to eq('open')
+    end
+
+    it 'routes RECORD payloads to record handler' do
+      call = create(
+        :call,
+        account: account,
+        inbox: inbox,
+        conversation: create(:conversation, account: account, inbox: inbox),
+        contact: create(:contact, account: account),
+        provider: :wavoip,
+        provider_call_id: 'record_dispatch_001',
+        direction: :incoming,
+        status: 'completed'
+      )
+      record_payload = JSON.parse(file_fixture('wavoip/record_update.json').read)
+      record_payload['whatsapp_call_id'] = call.provider_call_id
+
+      expect do
+        described_class.new(inbox: inbox, payload: record_payload).dispatch
+      end.to have_enqueued_job(Wavoip::AttachRecordingJob).with(call.id, record_payload['record_url'])
+
+      expect(call.reload.meta['record_url']).to eq(record_payload['record_url'])
     end
   end
 end

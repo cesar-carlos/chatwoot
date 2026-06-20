@@ -60,4 +60,38 @@ RSpec.describe 'Wavoip Inboxes API extensions', type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
   end
+
+  describe 'POST /api/v1/accounts/:account_id/inboxes/:id/set_inbound_calls' do
+    it 'disables inbound calls for administrator on a Wavoip inbox' do
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_inbound_calls",
+           headers: admin.create_new_auth_token,
+           params: { inbound_calls_enabled: false },
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(channel.reload.inbound_calls_enabled?).to be false
+    end
+
+    it 'enables inbound calls for administrator on a Wavoip inbox' do
+      channel.update!(provider_config: channel.provider_config.merge('inbound_calls_enabled' => false))
+
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_inbound_calls",
+           headers: admin.create_new_auth_token,
+           params: { inbound_calls_enabled: true },
+           as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(channel.reload.inbound_calls_enabled?).to be true
+    end
+
+    it 'returns unauthorized for non-admin agent' do
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_inbound_calls",
+           headers: agent.create_new_auth_token,
+           params: { inbound_calls_enabled: false },
+           as: :json
+
+      expect(response).to have_http_status(:unauthorized)
+      expect(channel.reload.inbound_calls_enabled?).to be true
+    end
+  end
 end
