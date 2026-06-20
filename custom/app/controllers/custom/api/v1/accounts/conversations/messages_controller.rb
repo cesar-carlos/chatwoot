@@ -51,10 +51,17 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
 
   def search_rate_limited?
     key = "conversation_message_search:#{Current.user.id}:#{@conversation.id}"
-    count = Rails.cache.read(key).to_i
-    return true if count >= SEARCH_RATE_LIMIT
+    increment_search_count(key) > SEARCH_RATE_LIMIT
+  end
 
-    Rails.cache.write(key, count + 1, expires_in: SEARCH_RATE_WINDOW)
-    false
+  def increment_search_count(key)
+    if Rails.cache.respond_to?(:increment)
+      count = Rails.cache.increment(key, 1, expires_in: SEARCH_RATE_WINDOW)
+      return count if count
+    end
+
+    count = Rails.cache.read(key).to_i + 1
+    Rails.cache.write(key, count, expires_in: SEARCH_RATE_WINDOW)
+    count
   end
 end

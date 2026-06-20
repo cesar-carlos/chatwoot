@@ -66,6 +66,8 @@
       "ERROR_QUERY_REQUIRED": "Digite um termo para pesquisar",
       "ERROR_QUERY_LENGTH": "O termo de pesquisa deve ter entre 2 e 200 caracteres",
       "ERROR_PAGE": "A página deve ser um número inteiro positivo",
+      "ERROR_NOT_FOUND": "A pesquisa não está disponível para esta conversa",
+      "ERROR_LOAD_MORE": "Não foi possível carregar mais resultados. Tente novamente.",
       "MESSAGE_NOT_FOUND": "Não foi possível carregar esta mensagem",
       "MATCH_TRANSCRIPTION": "Correspondência na transcrição de áudio",
       "PRIVATE_NOTE": "Nota privada",

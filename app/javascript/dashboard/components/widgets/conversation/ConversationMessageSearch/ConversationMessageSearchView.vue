@@ -32,6 +32,7 @@ const props = defineProps({
 const { t } = useI18n();
 
 const searchInputRef = ref(null);
+const panelRef = ref(null);
 const resultsContainerRef = ref(null);
 const loadMoreSentinelRef = ref(null);
 const activeResultIndex = ref(-1);
@@ -43,9 +44,7 @@ const {
   results,
   hasMore,
   isSearching,
-  error,
   errorMessage,
-  isRateLimited,
   fromFilter,
   hitMaxResults,
   recentSearches,
@@ -78,7 +77,7 @@ const close = () => {
 };
 
 const { scrollToMessage, isLocating } = useScrollToConversationMessage({
-  conversationId: props.conversationId,
+  conversationId: conversationIdRef,
   onClose: close,
 });
 
@@ -93,7 +92,7 @@ const showEmpty = computed(
     !isSearching.value &&
     trimmedQuery.value.length >= 2 &&
     !results.value.length &&
-    !error.value
+    !errorMessage.value
 );
 const showError = computed(() => Boolean(errorMessage.value));
 const resultsCountLabel = computed(() =>
@@ -129,13 +128,29 @@ const isSearchInputFocused = () => {
   return input && document.activeElement === input;
 };
 
+const isInsideSearchPanel = () => {
+  const activeElement = document.activeElement;
+  return panelRef.value?.contains(activeElement);
+};
+
 const onResultsKeydown = event => {
+  if (!isInsideSearchPanel()) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    close();
+    return;
+  }
+
   if (!showResults.value || isLocating.value) return;
 
-  if (
-    isSearchInputFocused() &&
-    (event.key === 'ArrowDown' || event.key === 'ArrowUp')
-  ) {
+  if (isSearchInputFocused() && event.key === 'ArrowDown') {
+    event.preventDefault();
+    activeResultIndex.value = 0;
+    return;
+  }
+
+  if (isSearchInputFocused() && event.key === 'ArrowUp') {
     return;
   }
 
@@ -180,6 +195,15 @@ watch([showResults, hasMore], () => {
   nextTick(() => setupInfiniteScroll());
 });
 
+watch(activeResultIndex, () => {
+  nextTick(() => {
+    const activeElement = resultsContainerRef.value?.querySelector(
+      '[aria-selected="true"]'
+    );
+    activeElement?.scrollIntoView({ block: 'nearest' });
+  });
+});
+
 watch(results, () => {
   if (activeResultIndex.value >= results.value.length) {
     activeResultIndex.value = results.value.length ? 0 : -1;
@@ -199,8 +223,16 @@ defineExpose({ prepareOpen, close, focusSearchInput });
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div
+    ref="panelRef"
+    data-message-search-panel
+    class="flex flex-col gap-4 w-full"
+  >
+    <label class="sr-only" for="conversation-message-search-input">
+      {{ t('CONVERSATION.MESSAGE_SEARCH.PLACEHOLDER') }}
+    </label>
     <Input
+      id="conversation-message-search-input"
       ref="searchInputRef"
       v-model="query"
       :placeholder="t('CONVERSATION.MESSAGE_SEARCH.PLACEHOLDER')"
@@ -215,7 +247,11 @@ defineExpose({ prepareOpen, close, focusSearchInput });
       }}</span>
     </p>
 
-    <div class="flex flex-wrap gap-2">
+    <div
+      class="flex flex-wrap gap-2"
+      role="group"
+      :aria-label="t('CONVERSATION.MESSAGE_SEARCH.FILTER_ALL')"
+    >
       <button
         v-for="option in FILTER_OPTIONS"
         :key="option.value"
@@ -226,6 +262,7 @@ defineExpose({ prepareOpen, close, focusSearchInput });
             ? 'border-n-brand bg-n-brand/10 text-n-brand'
             : 'border-n-weak text-n-slate-11 hover:bg-n-slate-2'
         "
+        :aria-pressed="fromFilter === option.value"
         @click="fromFilter = option.value"
       >
         {{ option.label() }}
@@ -285,10 +322,12 @@ defineExpose({ prepareOpen, close, focusSearchInput });
         ref="resultsContainerRef"
         class="flex flex-col gap-2 max-h-[min(50vh,24rem)] overflow-y-auto"
         role="listbox"
+        :aria-label="t('CONVERSATION.MESSAGE_SEARCH.PANEL_TITLE')"
       >
         <ConversationMessageSearchResultItem
           v-for="(message, index) in results"
           :key="message.id"
+          :id="`conversation-message-search-result-${message.id}`"
           :message="message"
           :search-query="query"
           :disabled="isLocating"

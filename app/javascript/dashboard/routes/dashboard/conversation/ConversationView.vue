@@ -110,7 +110,10 @@ export default {
     },
   },
   watch: {
-    conversationId() {
+    conversationId(newId, oldId) {
+      if (oldId && String(newId) !== String(oldId)) {
+        this.updateUISettings({ is_message_search_panel_open: false });
+      }
       this.fetchConversationIfUnavailable();
     },
   },

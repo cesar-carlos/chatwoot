@@ -698,6 +698,83 @@ describe('#mutations', () => {
     });
   });
 
+  describe('#INSERT_MESSAGES_AROUND', () => {
+    it('merges messages without replacing the full array', () => {
+      const state = {
+        allConversations: [
+          {
+            id: 1,
+            messages: [
+              { id: 1, created_at: '2024-01-01T10:00:00Z' },
+              { id: 3, created_at: '2024-01-01T12:00:00Z' },
+            ],
+          },
+        ],
+      };
+      const payload = {
+        id: 1,
+        data: [{ id: 2, created_at: '2024-01-01T11:00:00Z' }],
+      };
+
+      mutations[types.INSERT_MESSAGES_AROUND](state, payload);
+
+      expect(state.allConversations[0].messages.map(message => message.id)).toEqual([
+        1, 2, 3,
+      ]);
+    });
+
+    it('sorts messages using createdAt when created_at is absent', () => {
+      const state = {
+        allConversations: [
+          {
+            id: 1,
+            messages: [
+              { id: 1, created_at: '2024-01-01T10:00:00Z' },
+              { id: 3, createdAt: 1704110400000 },
+            ],
+          },
+        ],
+      };
+      const payload = {
+        id: 1,
+        data: [{ id: 2, createdAt: 1704106800000 }],
+      };
+
+      mutations[types.INSERT_MESSAGES_AROUND](state, payload);
+
+      expect(state.allConversations[0].messages.map(message => message.id)).toEqual([
+        1, 2, 3,
+      ]);
+      expect(state.allConversations[0].messages[1]).toMatchObject({
+        id: 2,
+        created_at: expect.anything(),
+      });
+    });
+
+    it('normalizes camelCase payloads to snake_case keys', () => {
+      const state = {
+        allConversations: [{ id: 1, messages: [] }],
+      };
+
+      mutations[types.INSERT_MESSAGES_AROUND](state, {
+        id: 1,
+        data: [
+          {
+            id: 9,
+            createdAt: '2024-01-01T11:00:00Z',
+            contentAttributes: { deleted: false },
+          },
+        ],
+      });
+
+      expect(state.allConversations[0].messages[0]).toMatchObject({
+        id: 9,
+        created_at: '2024-01-01T11:00:00Z',
+        content_attributes: { deleted: false },
+      });
+    });
+  });
+
   describe('#ASSIGN_AGENT', () => {
     it('should assign agent to the correct conversation by ID', () => {
       const assignee = { id: 1, name: 'Agent' };
