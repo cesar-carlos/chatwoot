@@ -1,6 +1,6 @@
+import { useI18n } from 'vue-i18n';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useAlert } from 'dashboard/composables';
-import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 import {
   mapWavoipOfferToStoreEntry,
   reconcileWavoipStoreEntry,
@@ -36,25 +36,25 @@ const upsertIncomingOffer = (offer, inboxId) => {
   callsStore.addCall(merged);
 };
 
-const wireOfferEvents = offer => {
+const wireOfferEvents = (offer, t) => {
   const dismiss = () => {
     removePendingOffer(offer.id);
     useCallsStore().dismissCall(offer.id);
   };
 
   offer.on?.('acceptedElsewhere', () => {
-    useAlert(conversationI18n.CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE);
+    useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE'));
     dismiss();
   });
   offer.on?.('rejectedElsewhere', () => {
-    useAlert(conversationI18n.CONVERSATION.WAVOIP_CALL.REJECTED_ELSEWHERE);
+    useAlert(t('CONVERSATION.WAVOIP_CALL.REJECTED_ELSEWHERE'));
     dismiss();
   });
   offer.on?.('unanswered', dismiss);
   offer.on?.('ended', dismiss);
 };
 
-const bindOfferListener = inboxId => {
+const bindOfferListener = (inboxId, t) => {
   if (boundInboxIds.has(inboxId)) return;
   const client = getWavoipClient(inboxId);
   if (!client?.on) return;
@@ -62,7 +62,7 @@ const bindOfferListener = inboxId => {
   const handler = offer => {
     if (!offer?.id) return;
     storeOffer(offer, inboxId);
-    wireOfferEvents(offer);
+    wireOfferEvents(offer, t);
     upsertIncomingOffer(offer, inboxId);
   };
 
@@ -75,9 +75,11 @@ const bindOfferListener = inboxId => {
 };
 
 export function useWavoipIncomingOffer() {
+  const { t } = useI18n();
+
   const attachToInbox = inboxId => {
     if (!inboxId) return;
-    bindOfferListener(inboxId);
+    bindOfferListener(inboxId, t);
   };
 
   const acceptOffer = async callId => {

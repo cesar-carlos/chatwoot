@@ -11,7 +11,7 @@ class Wavoip::Calls::InboundPushService
       next if notification_recently_sent?(agent)
 
       NotificationBuilder.new(
-        notification_type: 'conversation_creation',
+        notification_type: 'voice_call_incoming',
         user: agent,
         account: inbox.account,
         primary_actor: conversation,
@@ -28,7 +28,7 @@ class Wavoip::Calls::InboundPushService
 
   def notification_recently_sent?(user)
     conversation.notifications
-                  .where(user: user, notification_type: Notification.notification_types[:conversation_creation])
+                  .where(user: user, notification_type: Notification.notification_types[:voice_call_incoming])
                   .where('created_at > ?', 1.minute.ago)
                   .exists?
   end

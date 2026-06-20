@@ -248,7 +248,7 @@ Itens levantados na reanálise que **ainda não existem no código** — servem 
 | **Calls PATCH** | ✅ `accepted_by_agent_id` | `custom/app/controllers/api/v1/accounts/calls_controller.rb` |
 | **Inbox API** | ✅ Admin-only fields | `wavoip_webhook_url`, `wavoip_setup_pending` em `_inbox.json.jbuilder` |
 | **Frontend** | ✅ 18 arquivos | `custom/app/javascript/` — registry, composables, `Wavoip.vue`, `WavoipCallingPage.vue` |
-| **Testes** | ✅ 55 RSpec + 10 Vitest | `spec/custom/**/wavoip/**`, `custom/.../lib/voice/specs/*.spec.js` (com DB disponível) |
+| **Testes** | ✅ 76 RSpec + 21 Vitest | `spec/custom/**/wavoip/**`, `custom/.../composables/wavoip/specs/`, `custom/.../lib/voice/specs/*.spec.js` (com DB disponível) |
 | **E2E live** | ⚠️ Restrições | Outbound SDK conecta (RINGING → ACTIVE); **webhooks CALL do painel Wavoip ainda não recebidos** |
 | **Produção piloto** | ✅ Inbox ativo | Account 2, inbox 42, device `556697193168` (`open`) — URL exemplo: `/webhooks/wavoip/{webhook_key}` (não inbox id) |
 

@@ -1,0 +1,7 @@
+{
+  "type": "RECORD",
+  "action": "UPDATE",
+  "whatsapp_call_id": "wavoip_record_001",
+  "record_url": "https://storage.wavoip.com/wavoip_record_001.ogg",
+  "phone": "+5511999999999"
+}

@@ -25,7 +25,7 @@ divergência de prioridade ou fase, este plano prevalece.
 | **1 — Fundação** | ✅ Done | `Channel::Wavoip`, migration `channel_wavoip`, webhook `POST /webhooks/wavoip/:webhook_key`, tile `Wavoip.vue` |
 | **2 — Outbound** | ✅ Done | Composables SDK, `CallUpsertService`, outbound RINGING → ACTIVE em produção |
 | **3 — Inbound + registry** | ✅ Done | `voiceSessionRegistry`, `voiceCallCableRegistry`, `useCallSession` dispatch, `CallsController#update` |
-| **4 — Hardening** | ✅ Done | 55+ RSpec + 10 Vitest; audit + completion hardening jun. 2026 |
+| **4 — Hardening** | ✅ Done | 76 RSpec + 21 Vitest; audit + optional improvements jun. 2026 |
 
 ### Backend (`custom/`)
 

@@ -25,12 +25,12 @@ RSpec.describe Wavoip::Calls::InboundPushService do
 
   before do
     create(:inbox_member, user: agent, inbox: inbox)
-    agent.notification_settings.find_by(account: account).update!(push_conversation_creation: true)
+    agent.notification_settings.find_by(account: account).update!(push_voice_call_incoming: true)
   end
 
-  it 'creates conversation_creation notification for inbox members' do
+  it 'creates voice_call_incoming notification for inbox members' do
     expect do
       described_class.new(call: call, inbox: inbox).perform
-    end.to change { agent.notifications.conversation_creation.count }.by(1)
+    end.to change { agent.notifications.voice_call_incoming.count }.by(1)
   end
 end
