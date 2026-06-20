@@ -82,7 +82,10 @@ defineExpose({ conversationListRef });
     <div v-if="isLoading" class="flex justify-center my-4">
       <Spinner class="text-n-brand" />
     </div>
-    <p v-else-if="showEndOfListMessage" class="p-4 text-center text-n-slate-11">
+    <p
+      v-else-if="showEndOfListMessage"
+      class="px-4 pt-5 pb-4 text-center text-n-slate-11"
+    >
       {{ $t('CHAT_LIST.EOF') }}
     </p>
     <IntersectionObserver
