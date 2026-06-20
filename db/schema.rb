@@ -678,6 +678,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
     t.index ["account_id", "profile_id"], name: "index_channel_twitter_profiles_on_account_id_and_profile_id", unique: true
   end
 
+  create_table "channel_wavoip", force: :cascade do |t|
+    t.string "phone_number", null: false
+    t.integer "account_id", null: false
+    t.string "device_token"
+    t.string "webhook_key", null: false
+    t.jsonb "provider_config", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_channel_wavoip_on_account_id"
+    t.index ["phone_number"], name: "index_channel_wavoip_on_phone_number", unique: true
+    t.index ["webhook_key"], name: "index_channel_wavoip_on_webhook_key", unique: true
+  end
+
   create_table "channel_web_widgets", id: :serial, force: :cascade do |t|
     t.string "website_url"
     t.integer "account_id"

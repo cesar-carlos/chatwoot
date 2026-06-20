@@ -224,9 +224,8 @@ const fetchPreviewCount = async () => {
 
   isPreviewLoading.value = true;
   try {
-    const { data } = await ConversationWorkflowRulesAPI.previewCount(
-      buildPayload()
-    );
+    const { data } =
+      await ConversationWorkflowRulesAPI.previewCount(buildPayload());
     previewCount.value = data?.count ?? 0;
   } catch {
     previewCount.value = null;

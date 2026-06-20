@@ -11,6 +11,8 @@ export const aliases = {
   survey: path.resolve('./app/javascript/survey'),
   widget: path.resolve('./app/javascript/widget'),
   assets: path.resolve('./app/javascript/dashboard/assets'),
+  // FORK: custom dashboard overlay (Wavoip voice integration)
+  customDashboard: path.resolve('./custom/app/javascript/dashboard'),
 };
 
 export const vueOptions = {

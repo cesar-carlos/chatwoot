@@ -85,4 +85,8 @@ class InboxPolicy < ApplicationPolicy
   def set_inbound_calls?
     @account_user.administrator?
   end
+
+  def regenerate_wavoip_webhook_key?
+    @account_user.administrator?
+  end
 end

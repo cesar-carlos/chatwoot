@@ -6,6 +6,8 @@ import { useMapGetter, useStore } from 'dashboard/composables/store';
 import {
   isVoiceCallEnabled,
   getVoiceCallProvider,
+  getInboxIconByType,
+  INBOX_TYPES,
   VOICE_CALL_PROVIDERS,
 } from 'dashboard/helper/inbox';
 import {
@@ -123,13 +125,64 @@ const startWhatsappCall = async (inboxId, conversationIdHint) => {
   navigateToConversation(conversationId);
 };
 
+const startWavoipCall = async (inboxId, conversationIdHint) => {
+  const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
+  if (!session) return;
+
+  let conversationId = conversationIdHint;
+  if (!conversationId) {
+    conversationId = await findConversationInInbox(inboxId);
+  }
+  if (!conversationId) {
+    try {
+      conversationId = await ensureVoiceConversation({
+        contactId: props.contactId,
+        inboxId,
+        phone: props.phone,
+        channelType: INBOX_TYPES.WAVOIP,
+      });
+    } catch {
+      useAlert(t('CONTACT_PANEL.VOICE_CONVERSATION_REQUIRED'));
+      return;
+    }
+  }
+  if (!conversationId) {
+    useAlert(t('CONTACT_PANEL.VOICE_CONVERSATION_REQUIRED'));
+    return;
+  }
+
+  await session.connectForInbox?.(inboxId);
+  const response = await session.initiateOutboundCall(conversationId, {
+    inboxId,
+    toPhone: props.phone,
+  });
+  if (response?.status === 'locked') return;
+  if (!response?.call_id) {
+    useAlert(t('CONTACT_PANEL.CALL_FAILED'));
+    navigateToConversation(conversationId);
+    return;
+  }
+
+  useAlert(t('CONTACT_PANEL.CALL_INITIATED'));
+  navigateToConversation(conversationId);
+};
+
 const startCall = async (inboxId, conversationIdHint = null) => {
   if (isCallButtonDisabled.value) return;
 
   const inbox = (inboxesList.value || []).find(i => i.id === inboxId);
-  if (getVoiceCallProvider(inbox) === VOICE_CALL_PROVIDERS.WHATSAPP) {
+  const provider = getVoiceCallProvider(inbox);
+  if (provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
     try {
       await startWhatsappCall(inboxId, conversationIdHint);
+    } catch (error) {
+      useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
+    }
+    return;
+  }
+  if (provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+    try {
+      await startWavoipCall(inboxId, conversationIdHint);
     } catch (error) {
       useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
     }
@@ -188,6 +241,9 @@ const onPickInbox = async inbox => {
   dialogRef.value?.close();
   await startCall(inbox.id);
 };
+
+const inboxPickerIcon = inbox =>
+  getInboxIconByType(inbox.channel_type || inbox.channelType, inbox.medium);
 </script>
 
 <template>
@@ -221,7 +277,7 @@ const onPickInbox = async inbox => {
           @click="onPickInbox(inbox)"
         >
           <div class="flex items-center gap-2">
-            <span class="i-ri-phone-fill text-n-slate-10" />
+            <span :class="inboxPickerIcon(inbox)" class="size-4 text-n-slate-10" />
             <span class="text-sm text-n-slate-12">{{ inbox.name }}</span>
           </div>
           <span v-if="inbox.phone_number" class="text-xs text-n-slate-10">

@@ -97,7 +97,7 @@ class Custom::ConversationMessageSearchFinder
   def base_search_scope
     @conversation.messages
                  .where(message_type: %i[incoming outgoing template])
-                 .where("COALESCE(messages.content_attributes->>'deleted', 'false') != 'true'")
+                 .where(Custom::MessageSearch::ContentAttributes.deleted_predicate)
   end
 
   def unaccent_enabled?

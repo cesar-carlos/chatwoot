@@ -66,6 +66,9 @@
       "SEARCHING": "Searching messages...",
       "ERROR": "Search failed. Please try again.",
       "ERROR_RATE_LIMIT": "Too many searches. Please wait a moment and try again.",
+      "ERROR_QUERY_REQUIRED": "Enter a search term",
+      "ERROR_QUERY_LENGTH": "Search query must be between 2 and 200 characters",
+      "ERROR_PAGE": "Page must be a positive integer",
       "MESSAGE_NOT_FOUND": "This message could not be loaded",
       "MATCH_TRANSCRIPTION": "Match in audio transcription",
       "PRIVATE_NOTE": "Private note",
@@ -164,8 +167,14 @@
       "AGENT_ANSWERED": "{agentName} answered",
       "JOIN_CALL": "Join call",
       "CALL_BACK": "Call back",
+      "HANDLED_REMOTELY": "Answered by another agent",
       "TRANSCRIPT_SHOW_MORE": "Show more",
       "TRANSCRIPT_SHOW_LESS": "Show less"
+    },
+    "WAVOIP_CALL": {
+      "HANDLED_REMOTELY": "Another agent answered this call.",
+      "ACCEPTED_ELSEWHERE": "Another agent answered this call.",
+      "REJECTED_ELSEWHERE": "This call was declined by another agent."
     },
     "HEADER": {
       "RESOLVE_ACTION": "Resolve",

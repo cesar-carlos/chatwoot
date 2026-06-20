@@ -95,9 +95,15 @@ primeiro evento autenticado.
 
 | Campo | Storage | Comportamento |
 |-------|---------|---------------|
-| **URL do webhook** | derivada de `webhook_key` | `{FRONTEND_URL}/webhooks/wavoip/{opaque_key}` |
+| **URL do webhook** | derivada de `webhook_key` | `{FRONTEND_URL}/webhooks/wavoip/{webhook_key}` — **não** usar inbox id no path |
 | **Rotacionar URL** | gera nova chave | Invalida a anterior e exige atualizar o painel |
-| **Status** | `pending` / `verified` | `verified` após primeiro webhook válido |
+| **Status** | `pending` / `verified` | `verified` após primeiro webhook válido (`webhook_verified_at`) |
+
+> **Erro comum:** colar `/webhooks/wavoip/42` (id do inbox). O path correto usa a chave opaca
+> gerada em `channel_wavoip.webhook_key` (ex. `mz5uFxCZ4tVZn94Nm5osnqCQ`).
+
+No painel Wavoip: além da URL, **ativar o toggle** do webhook e selecionar evento **CALL**
+(no device correto). Ver [operations-runbook.md](./operations-runbook.md#checklist-painel-wavoip-obrigatório).
 
 Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/webhook-beta.md) ·
 contrato auth [webhook-contract.md](./webhook-contract.md).
@@ -240,16 +246,24 @@ end
 
 ### 5.4 Resposta API (inbox criado)
 
-Incluir na serialização do inbox (somente para admins da conta):
+Incluir na serialização do inbox (somente para **administradores** da conta):
 
 ```json
 {
-  "webhook_url": "https://app.example.com/webhooks/wavoip/opaque-random-key",
-  "webhook_configured": false
+  "wavoip_webhook_url": "https://app.example.com/webhooks/wavoip/opaque-random-key",
+  "wavoip_setup_pending": true,
+  "wavoip_device_token_configured": true
 }
 ```
 
-`webhook_url` só é exibida após o backend criar o canal e gerar `webhook_key`.
+Implementado em `app/views/api/v1/models/_inbox.json.jbuilder` (`# FORK:`). `wavoip_webhook_url` só é
+exibida para admins; nunca expor `device_token` nem `webhook_key` brutos.
+
+**Pós-criação (`Wavoip.vue`):** lê `channel.wavoip_webhook_url` ou `channel.wavoipWebhookUrl` do
+response e exibe alerta com botão copiar.
+
+**Settings (`WavoipCallingPage.vue`):** lê os mesmos campos (`wavoip_webhook_url` /
+`wavoip_setup_pending` + fallbacks camelCase) — corrigido jun. 2026.
 
 ---
 
@@ -266,20 +280,17 @@ Após `POST /inboxes` bem-sucedido:
 
 ## 7. Settings (edição posterior)
 
-No MVP, a tab **Chamadas** expõe token, toggles, URL/status do webhook e estado básico
-do device. Pareamento e ações administrativas completas ficam pós-MVP:
+No MVP, a tab **Chamadas** (`WavoipCallingPage.vue`) expõe URL read-only e status de setup
+(`wavoip_setup_pending`). Pareamento completo e painel de device ficam pós-MVP.
 
-| Painel | SDK | Quando mostrar |
-|--------|-----|----------------|
-| Status do dispositivo | `device.status`, `statusChanged` | Sempre |
-| QR code | `qrCodeChanged` | `status === 'connecting'` |
-| Código de pareamento | `pairingCode(phone)` | Alternativa ao QR |
-| Acordar | `wakeUp()` | `hibernating` |
-| Reiniciar / logout | `restart()`, `logout()` | Admin troubleshooting |
+| Campo API | Significado |
+|-----------|-------------|
+| `wavoip_webhook_url` | URL read-only derivada de `webhook_key` |
+| `wavoip_setup_pending` | `true` até primeiro webhook válido |
+| `wavoip_device_token_configured` | `device_token` presente (sem expor valor) |
+| `inbound_calls_enabled` | Toggle de chamadas recebidas |
 
-Detalhes: [sdk-reference.md §2](./sdk-reference.md#2-dispositivo-device).
-
-**`WavoipOnboardingChecklist`:** semáforo 6 passos — [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
+Checklist de onboarding (semáforo): ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo) — verificação manual via Settings e painel Wavoip; não há componente dedicado no MVP.
 
 Campos editáveis:
 
@@ -289,7 +300,12 @@ Campos editáveis:
 | `device_token` | Sim (rotacionar token) |
 | toggles e notification | Sim |
 | `webhook_key` | Rotação por ação dedicada; nunca aceitar valor escolhido pelo cliente |
-| `webhook_url` | Read-only (derivada da chave) |
+| `wavoip_webhook_url` | Read-only na API (derivada da chave) |
+
+### `users.wavoip_token` (legado)
+
+Coluna legada na tabela `users` — **não** usada pelo canal Wavoip. Credencial do dispositivo fica em
+`channel_wavoip.device_token` (criptografado quando disponível).
 
 ---
 
@@ -357,11 +373,12 @@ Os dois tiles podem aparecer na mesma grade; são produtos paralelos.
 
 ## 10. Critérios de done (setup inbox)
 
-- [ ] Tile `wavoip` visível com `channel_voice` habilitada
-- [ ] Formulário valida E.164 + token obrigatório
-- [ ] `Channel::Wavoip` criado com `provider_config` completo
-- [ ] `webhook_key` opaca gerada pelo backend
-- [ ] Pós-criação mostra URL e status de verificação
-- [ ] Redirect para adicionar agentes
-- [ ] Settings permitem editar token e toggles
-- [ ] Nenhum dado sensível em `window.chatwootConfig` global
+- [x] Tile `wavoip` visível com `channel_voice` habilitada
+- [x] Formulário valida E.164 + token obrigatório
+- [x] `Channel::Wavoip` criado com `provider_config` completo
+- [x] `webhook_key` opaca gerada pelo backend
+- [x] Pós-criação mostra URL e status de verificação
+- [x] Redirect para adicionar agentes
+- [x] Settings permitem editar token e toggles
+- [x] Nenhum dado sensível em `window.chatwootConfig` global
+- [x] `WavoipCallingPage` usa `wavoip_webhook_url` / `wavoip_setup_pending` (jun. 2026)

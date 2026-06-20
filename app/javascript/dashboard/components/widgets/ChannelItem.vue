@@ -56,6 +56,22 @@ const isActive = computed(() => {
     return props.enabledFeatures.channel_voice;
   }
 
+  if (key === 'whatsapp_call') {
+    return (
+      props.enabledFeatures.channel_voice &&
+      !!window.chatwootConfig?.whatsappAppId &&
+      window.chatwootConfig.whatsappAppId !== 'none'
+    );
+  }
+
+  if (key === 'wavoip') {
+    // FORK: Wavoip requires channel_voice + channel_wavoip feature flags
+    return (
+      props.enabledFeatures.channel_voice &&
+      props.enabledFeatures.channel_wavoip
+    );
+  }
+
   return [
     'website',
     'twilio',
@@ -78,12 +94,15 @@ const isComingSoon = computed(() => {
 });
 
 const isBeta = computed(() => {
-  return ['tiktok', 'voice', 'whatsapp_call'].includes(props.channel.key);
+  // FORK: wavoip beta badge
+  return ['tiktok', 'voice', 'whatsapp_call', 'wavoip'].includes(
+    props.channel.key
+  );
 });
 
 const hasVoiceBadge = computed(() => {
   return (
-    ['voice', 'whatsapp_call'].includes(props.channel.key) &&
+    ['voice', 'whatsapp_call', 'wavoip'].includes(props.channel.key) && // FORK: wavoip voice badge
     !!props.enabledFeatures.channel_voice
   );
 });

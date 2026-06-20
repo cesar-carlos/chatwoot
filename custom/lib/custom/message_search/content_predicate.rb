@@ -4,7 +4,10 @@ module Custom::MessageSearch::ContentPredicate
   def sql(alias_messages: 'messages', alias_attachments: 'attachments', unaccent: false)
     [
       ilike_expr("#{alias_messages}.content", unaccent: unaccent),
-      ilike_expr("#{alias_messages}.content_attributes->'email'->>'subject'", unaccent: unaccent),
+      ilike_expr(
+        Custom::MessageSearch::ContentAttributes.email_subject_sql(column: "#{alias_messages}.content_attributes"),
+        unaccent: unaccent
+      ),
       audio_clause(alias_attachments, 'transcribed_text', unaccent: unaccent),
       audio_clause(alias_attachments, 'transcription', unaccent: unaccent)
     ].join(' OR ')

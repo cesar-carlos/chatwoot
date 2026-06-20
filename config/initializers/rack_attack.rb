@@ -334,6 +334,25 @@ class Rack::Attack
   end
 
   ## ----------------------------------------------- ##
+
+  # FORK: Wavoip webhook throttle per opaque key + IP
+  throttle('webhooks/wavoip', limit: 120, period: 1.minute) do |req|
+    next unless req.post? && req.path.match?(%r{\A/webhooks/wavoip/[^/]+\z})
+
+    match = req.path.match(%r{/webhooks/wavoip/(?<key>[^/]+)})
+    "#{match[:key]}:#{req.ip}" if match
+  end
+
+  # FORK: Wavoip SDK bootstrap — limit per user + account
+  throttle('wavoip_sdk_bootstrap', limit: 30, period: 1.minute) do |req|
+    next unless req.get? && req.path.match?(%r{\A/api/v1/accounts/\d+/inboxes/\d+/wavoip_sdk_bootstrap\z})
+
+    user_uid = req.get_header('HTTP_UID')
+    api_access_token = req.get_header('HTTP_API_ACCESS_TOKEN') || req.get_header('api_access_token')
+    user_identifier = user_uid.presence || api_access_token.presence
+    match = req.path.match(%r{/accounts/(?<account_id>\d+)/inboxes/(?<inbox_id>\d+)/})
+    "#{user_identifier}:#{match[:account_id]}:#{match[:inbox_id]}" if user_identifier.present? && match
+  end
 end
 
 # Log blocked events

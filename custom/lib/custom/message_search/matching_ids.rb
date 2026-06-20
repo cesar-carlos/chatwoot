@@ -12,24 +12,33 @@ module Custom::MessageSearch::MatchingIds
       ilike_relation(filtered_scope, query, unaccent_enabled)
     end
   rescue ActiveRecord::StatementInvalid => e
-    Rails.logger.warn("GIN tsquery failed for in-conversation search, falling back to ILIKE: #{e.message}")
-    ilike_relation(filtered_scope, query, unaccent_enabled)
+    if gin_enabled && !unaccent_enabled
+      Rails.logger.warn("GIN tsquery failed for in-conversation search, falling back to ILIKE: #{e.message}")
+      return ilike_relation(filtered_scope, query, unaccent_enabled)
+    end
+
+    if unaccent_enabled
+      Rails.logger.warn("Unaccent search failed for in-conversation search, falling back to plain ILIKE: #{e.message}")
+      return ilike_relation(filtered_scope, query, false)
+    end
+
+    raise
   end
 
   def ilike_relation(scope, query, unaccent_enabled)
     pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query.to_s.strip)}%"
     audio_type = Attachment.file_types[:audio]
 
-    scope.left_joins(:attachments)
-         .where(
-           Custom::MessageSearch::ContentPredicate.sql(unaccent: unaccent_enabled),
-           pattern: pattern,
-           audio_type: audio_type
-         )
-         .select('messages.id')
-         .distinct
-         .reorder('messages.created_at DESC')
-         .limit(MAX_RESULTS)
+    matching_ids = scope.left_joins(:attachments)
+                        .where(
+                          Custom::MessageSearch::ContentPredicate.sql(unaccent: unaccent_enabled),
+                          pattern: pattern,
+                          audio_type: audio_type
+                        )
+                        .select('messages.id')
+                        .distinct
+
+    order_limited_ids(scope, matching_ids)
   end
 
   def gin_relation(filtered_scope, query, unaccent_enabled: false)
@@ -39,12 +48,19 @@ module Custom::MessageSearch::MatchingIds
     content_ids = filtered_scope.where('messages.content @@ to_tsquery(?)', tsquery).select('messages.id')
     transcription_ids = transcription_match_ids(filtered_scope, query)
 
-    filtered_scope.where(id: content_ids)
-                  .or(filtered_scope.where(id: transcription_ids))
-                  .select('messages.id')
-                  .distinct
-                  .reorder('messages.created_at DESC')
-                  .limit(MAX_RESULTS)
+    matching_ids = filtered_scope.where(id: content_ids)
+                                 .or(filtered_scope.where(id: transcription_ids))
+                                 .select('messages.id')
+                                 .distinct
+
+    order_limited_ids(filtered_scope, matching_ids)
+  end
+
+  def order_limited_ids(scope, matching_ids)
+    scope.where(id: matching_ids.unscope(:order))
+         .reorder(created_at: :desc)
+         .limit(MAX_RESULTS)
+         .pluck(:id)
   end
 
   def transcription_match_ids(filtered_scope, query)

@@ -1,7 +1,9 @@
 import { ref, watch, onUnmounted, unref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useTrack } from 'dashboard/composables';
 import { MESSAGE_SEARCH_EVENTS } from 'dashboard/helper/AnalyticsHelper/events';
 import ConversationMessageSearchAPI from 'dashboard/api/conversationMessageSearch';
+import { resolveConversationMessageSearchError } from 'dashboard/composables/fork/resolveConversationMessageSearchError';
 
 const DEBOUNCE_MS = 500;
 const MIN_QUERY_LENGTH = 2;

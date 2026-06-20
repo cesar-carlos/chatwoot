@@ -25,6 +25,8 @@ import GreetingsEditor from 'shared/components/GreetingsEditor.vue';
 import ConfigurationPage from './settingsPage/ConfigurationPage.vue';
 import VoiceConfigurationPage from './settingsPage/VoiceConfigurationPage.vue';
 import WhatsappCallingPage from './settingsPage/WhatsappCallingPage.vue';
+// FORK: Wavoip voice settings tab
+import WavoipCallingPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue';
 import CustomerSatisfactionPage from './settingsPage/CustomerSatisfactionPage.vue';
 import CollaboratorsPage from './settingsPage/CollaboratorsPage.vue';
 import BotConfiguration from './components/BotConfiguration.vue';
@@ -59,6 +61,7 @@ export default {
     ConfigurationPage,
     VoiceConfigurationPage,
     WhatsappCallingPage,
+    WavoipCallingPage,
     CustomerSatisfactionPage,
     FacebookReauthorize,
     GreetingsEditor,
@@ -161,6 +164,10 @@ export default {
     },
     shouldShowWhatsAppConfiguration() {
       return this.isAWhatsAppCloudChannel;
+    },
+    // FORK: Wavoip voice inbox
+    isAWavoipChannel() {
+      return this.inbox.channel_type === INBOX_TYPES.WAVOIP;
     },
     whatsAppAPIProviderName() {
       if (this.isAWhatsAppCloudChannel) {
@@ -275,6 +282,23 @@ export default {
           ...visibleToAllChannelTabs,
           {
             key: 'calls-configuration',
+            name: this.$t('INBOX_MGMT.TABS.CALLS'),
+          },
+        ];
+      }
+
+      // FORK: Wavoip voice inbox settings tab
+      if (
+        this.isAWavoipChannel &&
+        this.isFeatureEnabledonAccount(
+          this.accountId,
+          FEATURE_FLAGS.CHANNEL_VOICE
+        )
+      ) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'wavoip-calls-configuration',
             name: this.$t('INBOX_MGMT.TABS.CALLS'),
           },
         ];
@@ -1421,6 +1445,12 @@ export default {
           class="mx-6 max-w-4xl"
         >
           <WhatsappCallingPage :inbox="inbox" />
+        </div>
+        <div
+          v-if="selectedTabKey === 'wavoip-calls-configuration'"
+          class="mx-6 max-w-4xl"
+        >
+          <WavoipCallingPage :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'csat'">
           <CustomerSatisfactionPage :inbox="inbox" />
