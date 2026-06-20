@@ -47,10 +47,6 @@ export const useConversationCardFork = ({
     showAssignmentButton.value ? 'ltr:pr-24 rtl:pl-24' : ''
   );
 
-  // FORK: assignme - Keep card height stable across lists after assignment changes.
-  const contentSectionClass =
-    'px-0 py-3 border-b group-hover:border-transparent flex-1 border-n-slate-3 min-w-0';
-
   const fastAssign = e => {
     // FORK: assignme - Prevent card navigation on button click and guard against concurrent requests.
     e.stopPropagation();
@@ -64,7 +60,6 @@ export const useConversationCardFork = ({
     showAssignmentButton,
     showAssigneeInMeta,
     messagePreviewPaddingClass,
-    contentSectionClass,
     fastAssign,
   };
 };
