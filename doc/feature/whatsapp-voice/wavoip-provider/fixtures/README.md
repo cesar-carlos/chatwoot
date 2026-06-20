@@ -15,6 +15,7 @@ JSON de referência para specs e `PayloadNormalizer`. **Substituir** pelos paylo
 | `call_update_handled_remotely.json` | `CALL` UPDATE `HANDLED_REMOTELY` |
 | `record_update.json` | `RECORD` |
 | `device_update.json` | `DEVICE` |
+| `call_duplicate_type_field.json` | Spike: duplicate `type` key (last wins after `JSON.parse`) |
 
 Uso em spec:
 

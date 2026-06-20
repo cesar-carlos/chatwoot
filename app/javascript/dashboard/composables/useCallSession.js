@@ -17,6 +17,8 @@ import {
   clearLocalCall,
 } from 'dashboard/helper/voice';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
+// FORK: Wavoip voice session registry (factory wired in Phase 2)
+import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import {
   CONTENT_TYPES,
   VOICE_CALL_DIRECTION,
@@ -25,6 +27,7 @@ import {
 import Timer from 'dashboard/helper/Timer';
 
 const isWhatsappCall = call => call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP;
+const isWavoipCall = call => call?.provider === VOICE_CALL_PROVIDERS.WAVOIP;
 
 // Globals attached once across all useCallSession() consumers — bubbles in a
 // long thread call this composable many times, and a per-instance Timer +
@@ -45,7 +48,16 @@ const handleBeforeUnloadGlobal = event => {
   event.preventDefault();
   event.returnValue = '';
 };
-const handlePageHideGlobal = () => sendWhatsappTerminateBeacon();
+const handlePageHideGlobal = () => {
+  sendWhatsappTerminateBeacon();
+
+  const store = storedCallsStoreRef;
+  const active = store?.activeCall;
+  if (active?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+    const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
+    session?.endActiveCall?.(active.callSid);
+  }
+};
 const handleTwilioDisconnectedGlobal = () =>
   storedCallsStoreRef?.clearActiveCall();
 
@@ -82,7 +94,12 @@ const detachGlobalsOnLastUnmount = () => {
 // Build the action surface used by both the root session composable and the
 // lighter useCallActions consumer. All state is module-scoped — the actions
 // don't depend on per-instance refs, so they're cheap to call from anywhere.
-const buildCallActions = ({ callsStore, whatsappSession, t }) => {
+const buildCallActions = ({
+  callsStore,
+  whatsappSession,
+  t,
+  browserVoiceSessionFor = getBrowserVoiceSession,
+}) => {
   const findCall = callSid => callsStore.calls.find(c => c.callSid === callSid);
 
   const endCall = async ({ conversationId, inboxId, callSid }) => {
@@ -93,6 +110,13 @@ const buildCallActions = ({ callsStore, whatsappSession, t }) => {
       await whatsappSession.endActiveCall(call?.callId);
       globalDurationTimer?.stop();
       callsStore.clearActiveCall();
+      return;
+    }
+
+    if (isWavoipCall(call)) {
+      const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
+      if (session?.endActiveCall) await session.endActiveCall(call?.callSid);
+      globalDurationTimer?.stop();
       return;
     }
 
@@ -121,7 +145,7 @@ const buildCallActions = ({ callsStore, whatsappSession, t }) => {
     // auto-joins them), so don't short-circuit those.
     if (
       call?.callDirection === VOICE_CALL_DIRECTION.OUTBOUND &&
-      isWhatsappCall(call)
+      (isWhatsappCall(call) || isWavoipCall(call))
     ) {
       return null;
     }
@@ -134,6 +158,19 @@ const buildCallActions = ({ callsStore, whatsappSession, t }) => {
           sdpOffer: call.sdpOffer,
           iceServers: call.iceServers,
           recordingEnabled: call.recordingEnabled,
+        });
+        callsStore.setCallActive(callSid);
+        globalDurationTimer?.start();
+        return { callId: call.callId };
+      }
+
+      if (isWavoipCall(call)) {
+        const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
+        await session?.connectForInbox?.(call.inboxId);
+        await session?.acceptIncomingCall?.({
+          callId: call.callSid,
+          inboxId: call.inboxId,
+          conversationId: call.conversationId,
         });
         callsStore.setCallActive(callSid);
         globalDurationTimer?.start();
@@ -202,6 +239,13 @@ const buildCallActions = ({ callsStore, whatsappSession, t }) => {
           await whatsappSession.endActiveCall(call.callId);
         } else {
           await whatsappSession.rejectIncomingCall(call.callId);
+        }
+      } else if (isWavoipCall(call)) {
+        const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
+        if (call.callDirection === VOICE_CALL_DIRECTION.OUTBOUND) {
+          await session?.endActiveCall?.();
+        } else {
+          await session?.rejectIncomingCall?.(call.callSid);
         }
       } else if (call?.inboxId && call?.conversationId) {
         // Twilio incoming reject: agent hasn't joined the Device yet, so

@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# FORK: Wavoip pilot smoke checks (run on app host)
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+INBOX_ID="${WAVOIP_INBOX_ID:-42}"
+FRONTEND_URL="${FRONTEND_URL:-$(bundle exec rails runner "puts ENV.fetch('FRONTEND_URL', 'http://localhost:3000')")}"
+
+echo "== Wavoip pilot verify (inbox_id=${INBOX_ID}) =="
+
+bundle exec rails runner "
+inbox = Inbox.find_by(id: ${INBOX_ID})
+abort 'Inbox not found' unless inbox
+channel = inbox.channel
+abort 'Not a Wavoip inbox' unless channel.is_a?(Channel::Wavoip)
+
+account = inbox.account
+puts \"Account: \#{account.id} channel_voice=\#{account.feature_enabled?('channel_voice')} channel_wavoip=\#{account.feature_enabled?('channel_wavoip')}\"
+puts \"Channel phone: \#{channel.phone_number}\"
+puts \"Device token configured: \#{channel.device_token.present?}\"
+puts \"Inbound enabled: \#{channel.inbound_calls_enabled?}\"
+puts \"Webhook verified: \#{channel.webhook_verified?}\"
+puts \"Webhook URL: \#{channel.webhook_url}\"
+puts \"Calls (wavoip): \#{Call.where(inbox_id: inbox.id, provider: :wavoip).count}\"
+"
+
+WEBHOOK_KEY=$(bundle exec rails runner "puts Inbox.find(${INBOX_ID}).channel.webhook_key" 2>/dev/null || true)
+if [[ -n "${WEBHOOK_KEY}" ]]; then
+  echo ""
+  echo "== Webhook endpoint =="
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/${WEBHOOK_KEY}" \
+    -H "Content-Type: application/json" \
+    -d '{"type":"DEVICE","status":"open"}' || echo "000")
+  echo "POST /webhooks/wavoip/{key} => HTTP ${STATUS} (expect 202)"
+  INVALID=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/invalid-key" \
+    -H "Content-Type: application/json" -d '{}' || echo "000")
+  echo "POST invalid key => HTTP ${INVALID} (expect 401)"
+fi
+
+echo ""
+echo "== Manual E2E (see doc/feature/whatsapp-voice/wavoip-provider/spike-notes.md) =="
+echo "1. Wavoip panel: webhook ON, events CALL + DEVICE"
+echo "2. Outbound call -> Sidekiq ProcessWebhookJob + new Call row"
+echo "3. Inbound call -> widget + webhook INCOMING_RING"
+echo "4. Two agents online -> G0.4 acceptedElsewhere"

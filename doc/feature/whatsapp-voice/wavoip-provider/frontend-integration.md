@@ -307,9 +307,17 @@ custom/app/javascript/dashboard/
     WavoipWebhookInstructions.vue
     WavoipNotificationFields.vue
   routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue
-    WavoipDevicePanel.vue
-    WavoipOnboardingChecklist.vue
 ```
+
+**Componentes de setup (existentes):**
+
+| Componente | Responsabilidade |
+|------------|------------------|
+| `Wavoip.vue` | Wizard de criação + alerta com URL do webhook pós-criação |
+| `WavoipCallingPage.vue` | Settings → Chamadas: URL read-only + status `wavoip_setup_pending` |
+| `WavoipWebhookInstructions.vue` | Etapa pós-criação no wizard (copy URL, aguardar primeiro evento) |
+
+**Não implementados no MVP** (referenciados em docs antigos): `WavoipOnboardingChecklist.vue`, `WavoipDevicePanel.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
 
 Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).
 

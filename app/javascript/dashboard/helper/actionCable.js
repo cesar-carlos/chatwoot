@@ -14,6 +14,8 @@ import {
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { markCallDismissed, isLocalCall } from 'dashboard/helper/voice';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
+// FORK: Wavoip voice cable handlers (no SDP)
+import { VOICE_CALL_CABLE_HANDLERS } from 'customDashboard/lib/voice/voiceCallCableRegistry';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 const { isImpersonating } = useImpersonation();
@@ -436,6 +438,14 @@ class ActionCableConnector extends BaseActionCableConnector {
   };
 
   onVoiceCallIncoming = data => {
+    if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+      const availability = this.app.$store.getters.getCurrentUserAvailability;
+      if (availability !== 'online') return;
+      VOICE_CALL_CABLE_HANDLERS[VOICE_CALL_PROVIDERS.WAVOIP]?.onIncoming?.(
+        data
+      );
+      return;
+    }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
     // Defense in depth: the server already filters to online agent streams,
     // but if anything ever broadcasts to a broader stream (e.g. account-wide),
@@ -501,6 +511,12 @@ class ActionCableConnector extends BaseActionCableConnector {
   // contact answers. Flip active (timer starts) and arm the recorder.
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallOutboundAccepted = data => {
+    if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+      VOICE_CALL_CABLE_HANDLERS[
+        VOICE_CALL_PROVIDERS.WAVOIP
+      ]?.onOutboundAccepted?.(data);
+      return;
+    }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
     const store = useCallsStore();
     if (!store.calls.some(c => c.callSid === data.call_id)) return;
@@ -510,6 +526,10 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallEnded = async data => {
+    if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+      VOICE_CALL_CABLE_HANDLERS[VOICE_CALL_PROVIDERS.WAVOIP]?.onEnded?.(data);
+      return;
+    }
     if (!Object.values(VOICE_CALL_PROVIDERS).includes(data?.provider)) return;
     // A still-queued ringing message.created (see onVoiceCallAccepted) must not
     // resurrect a call that has already ended.

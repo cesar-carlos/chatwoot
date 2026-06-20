@@ -93,6 +93,15 @@ class Inboxes extends CacheEnabledApiClient {
       transcription_enabled: transcriptionEnabled,
     });
   }
+
+  // FORK: Wavoip SDK bootstrap for authorized inbox agents
+  getWavoipSdkBootstrap(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/wavoip_sdk_bootstrap`);
+  }
+
+  regenerateWavoipWebhookKey(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/regenerate_wavoip_webhook_key`);
+  }
 }
 
 export default new Inboxes();

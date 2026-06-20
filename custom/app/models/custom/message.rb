@@ -9,7 +9,7 @@ module Custom::Message
   private
 
   def schedule_workflow_rules_on_incoming
-    schedule_workflow_rules_for(ConversationWorkflowRule.schedulable_on_incoming?)
+    schedule_workflow_rules_for(ConversationWorkflowRule.method(:schedulable_on_incoming?))
   end
 
   def schedule_workflow_rules_on_outgoing

@@ -8,6 +8,8 @@ import Email from './channels/Email.vue';
 import Sms from './channels/Sms.vue';
 import Whatsapp from './channels/Whatsapp.vue';
 import WhatsappCall from './channels/WhatsappCall.vue';
+// FORK: Wavoip channel creation tile lives in custom overlay
+import Wavoip from 'customDashboard/routes/dashboard/settings/inbox/channels/Wavoip.vue';
 import Line from './channels/Line.vue';
 import Telegram from './channels/Telegram.vue';
 import Instagram from './channels/Instagram.vue';
@@ -23,6 +25,7 @@ const channelViewList = {
   sms: Sms,
   whatsapp: Whatsapp,
   whatsapp_call: WhatsappCall,
+  wavoip: Wavoip,
   line: Line,
   telegram: Telegram,
   instagram: Instagram,

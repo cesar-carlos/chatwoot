@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { useCallSession } from 'dashboard/composables/useCallSession';
 import { setWhatsappCallMuted } from 'dashboard/composables/useWhatsappCallSession';
+import { useWavoipActiveCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import TwilioVoiceClient from 'dashboard/api/channel/voice/twilioVoiceClient';
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
@@ -36,6 +37,10 @@ const isMuted = ref(false);
 const isWhatsappActive = computed(
   () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WHATSAPP
 );
+const isWavoipActive = computed(
+  () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
+);
+const { setMuted: setWavoipMuted } = useWavoipActiveCall();
 
 const primaryIncomingCall = computed(() =>
   hasActiveCall.value ? null : incomingCalls.value[0] || null
@@ -66,6 +71,8 @@ const toggleMute = () => {
   isMuted.value = !isMuted.value;
   if (isWhatsappActive.value) {
     setWhatsappCallMuted(isMuted.value);
+  } else if (isWavoipActive.value) {
+    setWavoipMuted(isMuted.value);
   } else {
     TwilioVoiceClient.setMuted(isMuted.value);
   }
@@ -189,6 +196,7 @@ watch(
     if (
       call?.callDirection === VOICE_CALL_DIRECTION.OUTBOUND &&
       call?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP &&
+      call?.provider !== VOICE_CALL_PROVIDERS.WAVOIP &&
       !hasActiveCall.value &&
       WindowVisibilityHelper.isWindowVisible()
     ) {

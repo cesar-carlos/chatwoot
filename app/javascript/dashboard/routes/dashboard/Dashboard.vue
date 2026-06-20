@@ -5,6 +5,8 @@ import NextSidebar from 'next/sidebar/Sidebar.vue';
 import WootKeyShortcutModal from 'dashboard/components/widgets/modal/WootKeyShortcutModal.vue';
 import AddAccountModal from 'dashboard/components/app/AddAccountModal.vue';
 import UpgradePage from 'dashboard/routes/dashboard/upgrade/UpgradePage.vue';
+// FORK: Wavoip SDK auto-connect when agent is online
+import WavoipConnectionHost from 'customDashboard/components/wavoip/WavoipConnectionHost.vue';
 
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useAccount } from 'dashboard/composables/useAccount';
@@ -37,6 +39,7 @@ export default {
     CopilotLauncher,
     CopilotContainer,
     FloatingCallWidget,
+    WavoipConnectionHost,
     MobileSidebarLauncher,
   },
   setup() {
@@ -160,6 +163,7 @@ export default {
           @toggle="toggleMobileSidebar"
         />
         <CopilotContainer />
+        <WavoipConnectionHost />
         <FloatingCallWidget v-if="hasActiveCall || hasIncomingCall" />
       </template>
       <CommandBar :is-paywalled="isAccountPaywalled" />

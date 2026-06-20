@@ -2,19 +2,59 @@
 
 Guia para admins e suporte quando a integração não funciona como esperado.
 
-**Relacionado:** [contracts-and-ports.md](./contracts-and-ports.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md) · [official-docs.md](./official-docs.md)
+**Relacionado:** [contracts-and-ports.md](./contracts-and-ports.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md) · [official-docs.md](./official-docs.md) · [spike-notes.md](./spike-notes.md)
+
+---
+
+## Produção piloto (Jun 2026)
+
+| Item | Valor (exemplo) |
+|------|-----------------|
+| Account | 2 |
+| Inbox id | 42 |
+| Device phone | `556697193168` (status `open`) |
+| Webhook URL pattern | `{FRONTEND_URL}/webhooks/wavoip/{webhook_key}` |
+| Exemplo URL | `https://chat.se7esistemassinop.com.br/webhooks/wavoip/mz5uFxCZ4tVZn94Nm5osnqCQ` |
+
+> **Erro comum:** usar `/webhooks/wavoip/42` (inbox id) em vez de `/webhooks/wavoip/{webhook_key}`. A chave opaca é gerada em `channel_wavoip.webhook_key`, não é o id do inbox.
+
+API (admin): `wavoip_webhook_url`, `wavoip_setup_pending` — ver [inbox-setup.md §7](./inbox-setup.md#7-settings-edição-posterior).
+
+---
+
+## Checklist painel Wavoip (obrigatório)
+
+Configurar URL **não basta** — o painel exige toggle e seleção de eventos:
+
+1. [app.wavoip.com](https://app.wavoip.com) → **Devices** → selecionar o dispositivo (ex. `556697193168`)
+2. **Integrações → Webhook**
+3. Colar URL completa: `{FRONTEND_URL}/webhooks/wavoip/{webhook_key}`
+4. **Ativar** o toggle do webhook
+5. Selecionar eventos: **CALL** (obrigatório), **DEVICE** (recomendado)
+6. Salvar — primeiro POST válido define `webhook_verified_at` em `provider_config`
+
+### Verificar entrega no nginx
+
+```bash
+# Deve aparecer POST de origem Wavoip (não só curl de testes)
+grep 'POST /webhooks/wavoip/' /var/log/nginx/chatwoot_access_443.log | grep -v curl
+```
+
+Sidekiq: `Wavoip::ProcessWebhookJob` enfileirado após POST válido (sem payload em produção nos logs).
 
 ---
 
 ## Checklist de onboarding (semáforo)
 
-Exibir em **Settings → Chamadas** (`WavoipOnboardingChecklist.vue`):
+Verificação manual — **não há componente Vue dedicado no MVP**. Use **Settings → Chamadas**
+(`WavoipCallingPage.vue`) para URL/status do webhook e o alerta pós-criação em `Wavoip.vue`
+para copiar a URL durante o setup.
 
 | # | Passo | Como verificar |
 |---|-------|----------------|
-| 1 | Token configurado | `device_token` presente |
-| 2 | Webhook no painel Wavoip | Status `verified` após primeiro evento válido |
-| 3 | Dispositivo `open` | `WavoipDevicePanel` badge verde |
+| 1 | Token configurado | `wavoip_device_token_configured` na API ou Settings |
+| 2 | Webhook no painel Wavoip | `wavoip_setup_pending: false` após primeiro evento válido |
+| 3 | Dispositivo `open` | Status no painel [app.wavoip.com](https://app.wavoip.com) → Devices |
 | 4 | Número confere | `contact.phone` do device = `phone_number` do inbox |
 | 5 | Agente online | Availability = online no dashboard |
 | 6 | `channel_voice` habilitado | Super admin / plano |
@@ -49,7 +89,7 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 |-------|------|
 | Agente offline / aba fechada | Ficar online e manter o dashboard aberto; push pós-MVP apenas avisa |
 | `inbound_calls_enabled: false` | Settings inbox → habilitar inbound |
-| Token errado / outro inbox | Conferir token no device panel |
+| Token errado / outro inbox | Conferir token em app.wavoip.com/devices |
 | Aba sem foco, sem permissão Notification | Permitir notificações no browser |
 | iOS Safari | Instalar PWA ou manter aba aberta |
 
@@ -57,12 +97,14 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 | Causa | Ação |
 |-------|------|
-| URL errada no Wavoip | Copiar novamente de Settings; a chave opaca faz parte do path |
+| **URL usa inbox id em vez de `webhook_key`** | Corrigir para `/webhooks/wavoip/{webhook_key}` — **não** `/webhooks/wavoip/42` |
+| URL errada no Wavoip | Copiar de Settings → Chamadas (`WavoipCallingPage`) ou alerta pós-criação em `Wavoip.vue`; campo API: `wavoip_webhook_url` |
+| Toggle/eventos não habilitados no painel | Ativar webhook + selecionar evento **CALL** no device correto |
 | `FRONTEND_URL` incorreto | `.env` / Installation Config |
 | Firewall | Liberar POST para `/webhooks/wavoip/*` |
 | Secret rotacionado | Atualizar URL no painel Wavoip |
 
-Ver logs: `Wavoip::ProcessWebhookJob` (sem payload em produção).
+Ver logs: `Wavoip::ProcessWebhookJob` (sem payload em produção). Nginx: `grep webhooks/wavoip` (ver seção acima).
 
 ### Áudio mudo / ICE falhou
 
@@ -84,7 +126,7 @@ Comportamento esperado com **um token por inbox**. Primeiro `accept()` ganha. De
 | Causa | Ação |
 |-------|------|
 | Webhook `RECORD` não configurado no Wavoip | Habilitar gravação no painel |
-| Fase 4 não implementada | Aguardar deploy |
+| UI RECORD | Pós-MVP — pipeline backend existe (`RecordHandler`) |
 | Fallback manual | `https://storage.wavoip.com/{whatsapp_call_id}` |
 
 ---
@@ -114,5 +156,41 @@ account = Account.find(ID)
 account.enable_features!('channel_voice')
 account.enable_features!('channel_wavoip') # se flag fork ativa
 ```
+
+---
+
+## Produção validada (checklist)
+
+| # | Verificação | Comando / ação |
+|---|-------------|----------------|
+| 1 | Smoke automatizado | `bin/wavoip-pilot-verify` (env `WAVOIP_INBOX_ID`) |
+| 2 | Webhook live (não curl) | `grep 'POST /webhooks/wavoip/' /var/log/nginx/chatwoot_access_443.log \| grep -v curl` |
+| 3 | Sidekiq processa CALL | Logs `[WAVOIP] processed inbox_id=… event_type=CALL` |
+| 4 | Outbound E2E | SDK RINGING → ACTIVE + `Call` + `voice_call` no DB |
+| 5 | Inbound E2E | Widget + webhook `INCOMING_RING` + push (se VAPID) |
+| 6 | G0.4 multi-agente | Dois browsers online; segundo agente vê toast `ACCEPTED_ELSEWHERE` |
+| 7 | Hang-up | SDK permanece conectado para próximo inbound |
+| 8 | Inbound off | Settings toggle → webhook não cria `Call` |
+
+### G0.4 — procedimento multi-agente
+
+1. Dois usuários agentes na mesma inbox Wavoip, ambos **online**
+2. Browser A e B no dashboard (`/app`)
+3. Iniciar chamada inbound para o device pareado
+4. Agente A aceita no widget
+5. Agente B deve: widget sumir + alerta *Another agent answered this call*
+6. Registrar em [spike-notes.md](./spike-notes.md) (Pass/Fail)
+
+---
+
+## Métricas e alertas (suporte)
+
+| Sinal | Onde buscar |
+|-------|-------------|
+| Webhook aceito | Rails log `[WAVOIP] webhook accepted inbox_id=…` |
+| Job processado | `[WAVOIP] processed inbox_id=… event_type=…` |
+| Webhook drop | `[WAVOIP] Dropping webhook: inbox_id=… not found` |
+| Recording fetch fail | `[WAVOIP] recording fetch failed call_id=…` |
+| Throttle bootstrap | Rack::Attack log `wavoip_sdk_bootstrap` |
 
 Migration `channel_wavoip` é **somente fork** — não existe em `upstream/develop`.

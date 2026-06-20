@@ -44,7 +44,7 @@ const selectTrigger = key => {
           <span
             class="size-8 rounded-full bg-n-alpha-2 flex items-center justify-center shrink-0"
           >
-            <span :class="[trigger.icon, 'size-4 text-n-slate-11']" />
+            <span class="size-4 text-n-slate-11" :class="[trigger.icon]" />
           </span>
           <span class="text-sm font-medium text-n-slate-12">
             {{ t(`CONVERSATION_RULES.TRIGGERS.${trigger.key}`) }}

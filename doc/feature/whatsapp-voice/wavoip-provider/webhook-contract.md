@@ -18,21 +18,26 @@ customizado. Contrato **do fork**:
 | Item | Valor |
 |------|-------|
 | **Método** | `POST` |
-| **Rota** | `/webhooks/wavoip/:webhook_key` |
-| **Chave** | Token opaco por canal, gerado e rotacionado pelo backend |
-| **Lookup** | `Channel::Wavoip.find_by(webhook_key:)` |
+| **Rota** | `POST /webhooks/wavoip/:webhook_key` |
+| **Chave** | Token opaco por canal (`channel_wavoip.webhook_key`), gerado e rotacionado pelo backend |
+| **Lookup** | `Channel::Wavoip.find_by(webhook_key:)` — **não** usar inbox id no path |
 | **Falha auth** | `401` sem body; log mínimo (sem payload) |
-| **Sucesso** | `202` imediato; processamento assíncrono via job |
+| **Sucesso** | `202` imediato; processamento assíncrono via `Wavoip::ProcessWebhookJob` |
 
-URL exibida ao admin:
+URL exibida ao admin (campo API `wavoip_webhook_url`):
 
 ```
-{FRONTEND_URL}/webhooks/wavoip/opaque-random-key
+{FRONTEND_URL}/webhooks/wavoip/{webhook_key}
 ```
+
+Exemplo produção (account 2, inbox 42): `https://chat.se7esistemassinop.com.br/webhooks/wavoip/mz5uFxCZ4tVZn94Nm5osnqCQ`
+
+> **Erro comum:** `/webhooks/wavoip/42` — `42` é o inbox id, não a `webhook_key`. O path correto
+> usa a chave opaca gerada na criação do canal.
 
 Não usar telefone no path nem secret em query: ambos aparecem com frequência em logs,
-proxies e analytics. **Rotação:** Settings → regenerar → atualizar URL no painel
-Wavoip.
+proxies e analytics. No painel Wavoip: ativar toggle do webhook e selecionar evento **CALL**.
+**Rotação:** Settings → regenerar → atualizar URL no painel Wavoip.
 
 ### Rate limiting
 
@@ -74,36 +79,25 @@ return if call.terminal? && !terminal_transition?(new_status)
 
 ---
 
-## 4. `accepted_by_agent_id` (sem REST MVP)
+## 4. `accepted_by_agent_id`
 
 | Momento | Fonte |
 |---------|-------|
-| Preferencial | Após `offer.accept()` no browser → API para persistir agente |
+| Preferencial | Após `offer.accept()` no browser → `PATCH /api/v1/accounts/:account_id/calls/:id` |
 | Fallback | Webhook `ACTIVE` sem agente → campo `nil`; atribuição manual depois |
-| Assignee conversa | Na Fase 3: ao aceitar, `conversation.update!(assignee: Current.user)` se inbox com auto-assign habilitado |
+| Assignee conversa | Ao aceitar, `conversation.update!(assignee: Current.user)` se inbox com auto-assign habilitado |
 
-**Não** criar `register_attempt` / `ack_accept` no MVP.
+### 4.1 Rota API (implementado)
 
-### 4.1 Rota API (pendente — implementar em `custom/`)
-
-**Verificado no código (jun/2026):** não existe `PATCH /api/v1/accounts/:id/calls/:id` no EE. `WhatsappCallsController` cobre só Meta (`accept` com SDP). Twilio usa `ConferenceController`.
-
-Contrato mínimo sugerido para Wavoip (Fase 3):
+**Verificado no código (jun/2026):** `custom/app/controllers/api/v1/accounts/calls_controller.rb`
 
 ```ruby
-# custom/app/controllers/api/v1/accounts/calls_controller.rb
-# PATCH sem user id no body — o backend usa Current.user
+# PATCH /api/v1/accounts/:account_id/calls/:id
+# Sem user id no body — o backend usa Current.user
+# Só preenche accepted_by_agent_id quando provider wavoip e campo ainda vazio
 ```
 
-Alternativas (pior):
-
-| Opção | Prós | Contras |
-|-------|------|---------|
-| Nova rota `custom/` `PATCH calls/:id` | Merge-safe, autorização explícita | Rota nova |
-| Meta `WhatsappCallsController#accept` | Reuso | Exige SDP — incompatível |
-| Só webhook `ACTIVE` | Zero API | `accepted_by_agent` frequentemente `nil` |
-
-Recomendação: **rota fina em `custom/`** + policy `CallPolicy#update?` via `conversation.show?`.
+Autorização: `authorize @call.inbox, :show?`. Spec: `spec/custom/controllers/api/v1/accounts/calls_controller_spec.rb`.
 
 ---
 

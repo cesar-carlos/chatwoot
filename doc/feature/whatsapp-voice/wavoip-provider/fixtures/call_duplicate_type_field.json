@@ -1,0 +1,15 @@
+{
+  "_comment": "Sanitized spike capture — official Wavoip CALL example declares type twice; JSON.parse keeps the last value.",
+  "type": "CALL",
+  "action": "CREATE",
+  "whatsapp_call_id": "spike_dup_type_sanitized",
+  "status": "INCOMING_RING",
+  "direction": "INCOMING",
+  "phone": "+5511999990001",
+  "peer": {
+    "phone": "+5511888777666",
+    "display_name": "Spike Peer"
+  },
+  "id_session": 12345,
+  "call_type": "unofficial"
+}

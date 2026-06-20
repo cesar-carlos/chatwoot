@@ -480,15 +480,16 @@ export const icons = {
     width: 24,
     height: 24,
   },
-  'audio-play': {
-    body: `<path d="M3.31445 11.3998V2.6002C3.31445 2.35931 3.39947 2.15725 3.56951 1.99401C3.73955 1.83077 3.93793 1.74944 4.16465 1.75C4.2355 1.75 4.31004 1.76049 4.38826 1.78146C4.46647 1.80243 4.54073 1.83446 4.61101 1.87753L11.5401 6.27732C11.6677 6.36234 11.7635 6.46862 11.8275 6.59615C11.8916 6.72368 11.9233 6.85829 11.9227 6.99999C11.9222 7.14169 11.8904 7.27631 11.8275 7.40384C11.7646 7.53137 11.6688 7.63764 11.5401 7.72266L4.61101 12.1224C4.54016 12.165 4.46591 12.197 4.38826 12.2185C4.3106 12.2401 4.23607 12.2505 4.16465 12.25C3.93793 12.25 3.73955 12.1684 3.56951 12.0051C3.39947 11.8419 3.31445 11.6401 3.31445 11.3998Z" fill="currentColor"/>`,
-    width: 14,
-    height: 14,
+  // FORK: Wavoip brand icons for inbox tiles and provider badges
+  wavoip: {
+    body: `<circle cx="3.25" cy="16.75" r="1.25" fill="currentColor"/><path d="M5.75 17.25C6.25 14.25 7.25 9.75 8.75 13.25C9.75 15.75 10.25 10.5 11.75 13.25C13 15.5 13.25 10.5 14.75 13.25C16 15.5 16.75 10 18.75 7.25C19.5 6 20.25 5.5 21 5.75" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`,
+    width: 24,
+    height: 24,
   },
-  'audio-pause': {
-    body: `<path d="M10.5001 1.75H8.75008C8.42792 1.75 8.16675 2.01117 8.16675 2.33333V11.6667C8.16675 11.9888 8.42792 12.25 8.75008 12.25H10.5001C10.8222 12.25 11.0834 11.9888 11.0834 11.6667V2.33333C11.0834 2.01117 10.8222 1.75 10.5001 1.75Z" fill="currentColor"/><path d="M5.25008 1.75H3.50008C3.17792 1.75 2.91675 2.01117 2.91675 2.33333V11.6667C2.91675 11.9888 3.17792 12.25 3.50008 12.25H5.25008C5.57225 12.25 5.83342 11.9888 5.83342 11.6667V2.33333C5.83342 2.01117 5.57225 1.75 5.25008 1.75Z" fill="currentColor"/>`,
-    width: 14,
-    height: 14,
+  'wavoip-color': {
+    body: `<defs><linearGradient id="wavoipGrad" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="#2563EB"/><stop offset="45%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#4ADE80"/></linearGradient></defs><circle cx="3.25" cy="16.75" r="1.35" fill="url(#wavoipGrad)"/><path d="M5.75 17.25C6.25 14.25 7.25 9.75 8.75 13.25C9.75 15.75 10.25 10.5 11.75 13.25C13 15.5 13.25 10.5 14.75 13.25C16 15.5 16.75 10 18.75 7.25C19.5 6 20.25 5.5 21 5.75" fill="none" stroke="url(#wavoipGrad)" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/>`,
+    width: 24,
+    height: 24,
   },
   plausible: {
     body: `<linearGradient id="SVGcy95AgrO" x1="189.056" x2="296.848" y1="470.428" y2="659.063" gradientTransform="translate(0 -278.024)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#909cf7"/><stop offset="1" stop-color="#4b38d8"/></linearGradient><path fill="url(#SVGcy95AgrO)" d="M448.6 192.9c-9.3 89.2-87.3 155.5-177 155.5H237v81.7c0 45.2-36.7 81.9-81.9 81.9h-64c-15.8 0-28.7-12.8-28.7-28.7V315.2l43-60.3c7.8-10.9 22.1-15 34.4-9.8l24.5 10.2c12.3 5.2 26.6 1.1 34.3-9.8l57.3-80.4c7.7-10.9 22-14.9 34.3-9.7l47.1 19.8c12.3 5.2 26.6 1.1 34.3-9.8l55.1-77.3c17.4 30.4 25.9 66.5 21.9 104.8"/><linearGradient id="SVGjYVYSdaH" x1="130.554" x2="241.634" y1="266.456" y2="460.846" gradientTransform="translate(0 -278.024)" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#909cf7"/><stop offset="1" stop-color="#4b38d8"/></linearGradient><path fill="url(#SVGjYVYSdaH)" d="M90.6 246.4c7-9.9 17.2-17.4 29.1-19.7c9.3-1.8 18.4-.8 26.9 2.7l24.4 10.2c1.4.6 2.9.9 4.4.9c3.7 0 7.2-1.8 9.4-4.8l56.3-78.9c7-9.8 17.2-17.4 29.1-19.7c9.2-1.8 18.3-.8 26.7 2.7l47.1 19.8c1.4.6 2.9.9 4.4.9c3.7 0 7.2-1.8 9.4-4.8l59-82.8C385.3 28.7 333.7 0 275.3 0H91.1C75.3 0 62.5 12.8 62.5 28.7v257.1z"/>`,

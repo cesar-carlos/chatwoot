@@ -1,0 +1,8 @@
+{
+  "_comment": "Sanitized from live HTTP ingress test 19 Jun 2026 — POST returned 202; phone aligned to paired device.",
+  "type": "DEVICE",
+  "action": "UPDATE",
+  "phone": "+556697193168",
+  "id_session": "spike-live-test",
+  "status": "open"
+}

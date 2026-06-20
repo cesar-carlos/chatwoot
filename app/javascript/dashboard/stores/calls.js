@@ -1,15 +1,15 @@
 import TwilioVoiceClient from 'dashboard/api/channel/voice/twilioVoiceClient';
-import { cleanupWhatsappSession } from 'dashboard/composables/useWhatsappCallSession';
-import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
+import { isBrowserVoiceProvider } from 'customDashboard/lib/voice/browserVoiceProviders';
+import { teardownBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { TERMINAL_STATUSES } from 'dashboard/helper/voice';
 import { defineStore } from 'pinia';
 
 const teardownByProvider = call => {
-  if (call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
-    cleanupWhatsappSession();
-  } else {
-    TwilioVoiceClient.endClientCall();
+  if (isBrowserVoiceProvider(call?.provider)) {
+    teardownBrowserVoiceSession(call.provider);
+    return;
   }
+  TwilioVoiceClient.endClientCall();
 };
 
 export const useCallsStore = defineStore('calls', {

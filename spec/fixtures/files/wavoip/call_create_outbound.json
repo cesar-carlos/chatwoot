@@ -1,0 +1,14 @@
+{
+  "type": "CALL",
+  "action": "CREATE",
+  "whatsapp_call_id": "wavoip_outbound_001",
+  "status": "OUTGOING_RING",
+  "direction": "OUTGOING",
+  "phone": "+5511999999999",
+  "peer": {
+    "phone": "+5511888888888",
+    "display_name": "Contato Teste"
+  },
+  "id_session": 12345,
+  "call_type": "unofficial"
+}

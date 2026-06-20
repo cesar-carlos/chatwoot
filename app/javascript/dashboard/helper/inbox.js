@@ -6,6 +6,7 @@ export const INBOX_TYPES = {
   TWITTER: 'Channel::TwitterProfile',
   TWILIO: 'Channel::TwilioSms',
   WHATSAPP: 'Channel::Whatsapp',
+  WAVOIP: 'Channel::Wavoip', // FORK: Wavoip voice provider inbox type
   API: 'Channel::Api',
   EMAIL: 'Channel::Email',
   TELEGRAM: 'Channel::Telegram',
@@ -37,6 +38,7 @@ export const CHANNEL_TYPES = {
 export const VOICE_CALL_PROVIDERS = {
   TWILIO: 'twilio',
   WHATSAPP: 'whatsapp',
+  WAVOIP: 'wavoip', // FORK: Wavoip browser SDK voice provider
 };
 
 export const getVoiceCallProvider = inbox => {
@@ -51,6 +53,8 @@ export const getVoiceCallProvider = inbox => {
   if (channelType === INBOX_TYPES.TWILIO) return VOICE_CALL_PROVIDERS.TWILIO;
   if (channelType === INBOX_TYPES.WHATSAPP)
     return VOICE_CALL_PROVIDERS.WHATSAPP;
+  // FORK: Wavoip voice when inbox reports voice_enabled
+  if (channelType === INBOX_TYPES.WAVOIP) return VOICE_CALL_PROVIDERS.WAVOIP;
 
   return null;
 };
@@ -92,6 +96,7 @@ const INBOX_ICON_MAP_FILL = {
   [INBOX_TYPES.LINE]: 'i-ri-line-fill',
   [INBOX_TYPES.INSTAGRAM]: 'i-ri-instagram-fill',
   [INBOX_TYPES.TIKTOK]: 'i-ri-tiktok-fill',
+  [INBOX_TYPES.WAVOIP]: 'i-woot-wavoip', // FORK: Wavoip inbox icon
 };
 
 const DEFAULT_ICON_FILL = 'i-ri-chat-1-fill';
@@ -107,6 +112,7 @@ const INBOX_ICON_MAP_LINE = {
   [INBOX_TYPES.LINE]: 'i-woot-line',
   [INBOX_TYPES.INSTAGRAM]: 'i-woot-instagram',
   [INBOX_TYPES.TIKTOK]: 'i-woot-tiktok',
+  [INBOX_TYPES.WAVOIP]: 'i-woot-wavoip', // FORK: Wavoip inbox icon
 };
 
 const DEFAULT_ICON_LINE = 'i-ri-chat-1-line';
@@ -117,6 +123,7 @@ const INBOX_IDENTIFIER_RESOLVERS = {
   [INBOX_TYPES.WEB]: inbox => inbox.website_url,
   [INBOX_TYPES.EMAIL]: inbox => inbox.email,
   [INBOX_TYPES.WHATSAPP]: inbox => inbox.phone_number,
+  [INBOX_TYPES.WAVOIP]: inbox => inbox.phone_number, // FORK: Wavoip uses business phone as source label
   [INBOX_TYPES.SMS]: inbox => inbox.phone_number,
   [INBOX_TYPES.LINE]: inbox => inbox.line_channel_id,
   [INBOX_TYPES.API]: inbox => inbox.inbox_identifier,
@@ -162,6 +169,9 @@ export const getReadableInboxByType = (type, phoneNumber) => {
 
     case INBOX_TYPES.WHATSAPP:
       return 'whatsapp';
+
+    case INBOX_TYPES.WAVOIP: // FORK: Wavoip channel readable type
+      return 'wavoip';
 
     case INBOX_TYPES.API:
       return 'api';
@@ -216,6 +226,9 @@ export const getInboxClassByType = (type, phoneNumber) => {
 
     case INBOX_TYPES.TIKTOK:
       return 'brand-tiktok';
+
+    case INBOX_TYPES.WAVOIP: // FORK: Wavoip channel CSS class
+      return 'brand-wavoip';
 
     default:
       return 'chat';

@@ -97,4 +97,8 @@ class InboxPolicy < ApplicationPolicy
   def set_call_recording?
     @account_user.administrator?
   end
+
+  def regenerate_wavoip_webhook_key?
+    @account_user.administrator?
+  end
 end
