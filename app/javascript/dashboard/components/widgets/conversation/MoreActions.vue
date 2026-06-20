@@ -11,6 +11,7 @@ import ResolveAction from '../../buttons/ResolveAction.vue';
 import ButtonV4 from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 import { useConversationMessageSearchPanel } from 'dashboard/composables/fork/useConversationMessageSearchPanel';
+import { isEditableTarget } from 'dashboard/composables/fork/isEditableTarget';
 
 import {
   CMD_MUTE_CONVERSATION,
@@ -107,6 +108,8 @@ emitter.on(CMD_SEARCH_IN_CONVERSATION, openMessageSearch);
 
 const onSearchHotkey = event => {
   if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f') {
+    if (isEditableTarget(event.target)) return;
+
     event.preventDefault();
     openMessageSearch();
   }

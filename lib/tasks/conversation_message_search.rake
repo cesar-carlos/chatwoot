@@ -31,29 +31,25 @@ namespace :conversation_message_search do
       page: 1
     )
 
-    pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query.strip)}%"
-    audio_type = Attachment.file_types[:audio]
     unaccent = Custom::MessageSearch::Unaccent.extension_enabled?
+    gin_enabled = conversation.account.feature_enabled?('search_with_gin')
 
-    ids_sql = conversation.messages
-                          .where(message_type: %i[incoming outgoing template])
-                          .where("COALESCE(messages.content_attributes->>'deleted', 'false') != 'true'")
-                          .left_joins(:attachments)
-                          .where(
-                            Custom::MessageSearch::ContentPredicate.sql(unaccent: unaccent),
-                            pattern: pattern,
-                            audio_type: audio_type
-                          )
-                          .select('messages.id')
-                          .distinct
-                          .reorder(nil)
-                          .to_sql
+    base_scope = conversation.messages
+                             .where(message_type: %i[incoming outgoing template])
+                             .where(Custom::MessageSearch::ContentAttributes.deleted_predicate)
 
-    sql = conversation.messages
-                      .where("id IN (#{ids_sql})")
-                      .reorder(created_at: :desc)
-                      .limit(Custom::ConversationMessageSearchFinder::PER_PAGE + 1)
-                      .to_sql
+    matching_ids = Custom::MessageSearch::MatchingIds.relation(
+      scope: base_scope,
+      query: query,
+      from: nil,
+      gin_enabled: gin_enabled,
+      unaccent_enabled: unaccent
+    )
+
+    sql = base_scope.where(id: matching_ids)
+                    .reorder(created_at: :desc)
+                    .limit(Custom::ConversationMessageSearchFinder::PER_PAGE + 1)
+                    .to_sql
 
     puts "Search engine (finder): #{finder.search_engine}"
     puts "EXPLAIN (ANALYZE, BUFFERS) for conversation ##{conversation.display_id}:"

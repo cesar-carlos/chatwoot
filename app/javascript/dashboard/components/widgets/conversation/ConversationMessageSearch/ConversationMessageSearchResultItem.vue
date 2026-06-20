@@ -13,6 +13,10 @@ import MessageContent from 'dashboard/modules/search/components/MessageContent.v
 import TranscribedText from 'dashboard/modules/search/components/TranscribedText.vue';
 
 const props = defineProps({
+  id: {
+    type: String,
+    default: '',
+  },
   message: {
     type: Object,
     required: true,
@@ -115,12 +119,15 @@ const handleSelect = () => {
 
 <template>
   <button
+    :id="id"
     type="button"
+    role="option"
     class="w-full text-start rounded-xl border px-4 py-3 cursor-pointer hover:bg-n-slate-2 dark:hover:bg-n-solid-3 disabled:cursor-not-allowed disabled:opacity-60"
     :class="
       active ? 'border-n-brand bg-n-brand/5' : 'border-n-weak bg-n-solid-1'
     "
     :aria-label="openResultLabel"
+    :aria-selected="active"
     :disabled="disabled"
     @click="handleSelect"
   >

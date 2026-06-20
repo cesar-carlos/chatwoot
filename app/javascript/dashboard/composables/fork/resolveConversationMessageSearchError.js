@@ -18,11 +18,11 @@ export const resolveConversationMessageSearchError = (error, t) => {
     }
   }
 
-  if (serverError) return serverError;
-
   if (status === 404) {
-    return t('CONVERSATION.404');
+    return t('CONVERSATION.MESSAGE_SEARCH.ERROR_NOT_FOUND');
   }
+
+  if (serverError) return serverError;
 
   return t('CONVERSATION.MESSAGE_SEARCH.ERROR');
 };

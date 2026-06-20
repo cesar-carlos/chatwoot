@@ -47,9 +47,11 @@ module Custom::MessageSearch::MatchingIds
 
     content_ids = filtered_scope.where('messages.content @@ to_tsquery(?)', tsquery).select('messages.id')
     transcription_ids = transcription_match_ids(filtered_scope, query)
+    subject_ids = email_subject_match_ids(filtered_scope, query, unaccent_enabled: unaccent_enabled)
 
     matching_ids = filtered_scope.where(id: content_ids)
                                  .or(filtered_scope.where(id: transcription_ids))
+                                 .or(filtered_scope.where(id: subject_ids))
                                  .select('messages.id')
                                  .distinct
 
@@ -61,6 +63,14 @@ module Custom::MessageSearch::MatchingIds
          .reorder(created_at: :desc)
          .limit(MAX_RESULTS)
          .pluck(:id)
+  end
+
+  def email_subject_match_ids(filtered_scope, query, unaccent_enabled: false)
+    pattern = "%#{ActiveRecord::Base.sanitize_sql_like(query.to_s.strip)}%"
+    subject_sql = Custom::MessageSearch::ContentAttributes.email_subject_sql
+    expr = Custom::MessageSearch::ContentPredicate.ilike_expr(subject_sql, unaccent: unaccent_enabled)
+
+    filtered_scope.where(expr, pattern: pattern).select('messages.id')
   end
 
   def transcription_match_ids(filtered_scope, query)

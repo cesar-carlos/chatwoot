@@ -38,7 +38,7 @@ Planejamento para busca no contexto da conversa aberta, incluindo **texto e tran
 |--------|-------------------|
 | Backend (`custom/` finder, controller, rota) | ✅ Implementado |
 | Frontend (painel lateral, composables, API) | ✅ Implementado |
-| Specs RSpec + Vitest (`messageSearchText`) | ✅ Implementado |
+| Specs RSpec + Vitest | ✅ Implementado (API, finder, lib, composables) |
 | Baseline `EXPLAIN ANALYZE` (dev local) | ✅ Documentado em `implementation-plan.md` §6.1.1 |
 | `EXPLAIN` em conversa grande (produção) | ⏳ `rake conversation_message_search:explain` |
 | Matriz de aceite §11 | ⏳ `rake conversation_message_search:acceptance` + teste manual |

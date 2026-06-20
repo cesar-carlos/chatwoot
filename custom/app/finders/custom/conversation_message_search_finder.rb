@@ -64,7 +64,7 @@ class Custom::ConversationMessageSearchFinder
       includes: [:attachments, :sender]
     )
 
-    Array(results)
+    filter_searchable_messages(Array(results))
   rescue Faraday::ConnectionFailed, Searchkick::Error, Elasticsearch::Transport::Transport::Error => e
     Rails.logger.warn("OpenSearch unavailable for in-conversation search, falling back to SQL: #{e.message}")
     perform_sql
@@ -114,5 +114,13 @@ class Custom::ConversationMessageSearchFinder
     return false unless @account.feature_enabled?('advanced_search')
 
     true
+  end
+
+  def filter_searchable_messages(messages)
+    messages.select { |message| searchable_message?(message) }
+  end
+
+  def searchable_message?(message)
+    message.message_type.in?(%w[incoming outgoing template]) && !message.deleted
   end
 end

@@ -27,6 +27,6 @@ module Custom::MessageSearch::MatchedOn
     return 'content' if content_match || subject_match
     return 'transcription' if transcription_match
 
-    'content'
+    nil
   end
 end
