@@ -1,8 +1,15 @@
 import { CONVERSATION_PRIORITY_ORDER } from 'shared/constants/messages';
+import snakecaseKeys from 'snakecase-keys';
 import {
   getUserPermissions,
   getUserRole,
 } from '../../../helper/permissionsHelper';
+
+export const messageCreatedAt = message =>
+  new Date(message.created_at ?? message.createdAt).getTime();
+
+export const normalizeStoreMessage = message =>
+  snakecaseKeys(message, { deep: true });
 
 export const findPendingMessageIndex = (chat, message) => {
   const { echo_id: tempMessageId } = message;

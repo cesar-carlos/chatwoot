@@ -161,7 +161,9 @@ export const useConversationMessageSearch = conversationIdSource => {
 
       error.value = err;
       isRateLimited.value = err?.response?.status === 429;
-      errorMessage.value = resolveConversationMessageSearchError(err, t);
+      errorMessage.value = append
+        ? t('CONVERSATION.MESSAGE_SEARCH.ERROR_LOAD_MORE')
+        : resolveConversationMessageSearchError(err, t);
       if (!append) {
         results.value = [];
       }

@@ -174,6 +174,24 @@ RSpec.describe Custom::ConversationMessageSearchFinder do
       it 'reports gin search engine' do
         expect(finder.search_engine).to eq('gin')
       end
+
+      it 'returns messages matching email subject' do
+        email_message = create(
+          :message,
+          conversation: conversation,
+          account: account,
+          inbox: inbox,
+          content: 'Please see attached',
+          message_type: :incoming,
+          sender: contact,
+          content_attributes: { email: { subject: 'Invoice for March' } }
+        )
+        subject_finder = described_class.new(conversation: conversation, query: 'invoice', page: 1)
+
+        results = subject_finder.perform
+
+        expect(results.map(&:id)).to include(email_message.id)
+      end
     end
 
     context 'when query matches transcription metadata' do
@@ -215,6 +233,78 @@ RSpec.describe Custom::ConversationMessageSearchFinder do
   describe '#search_engine' do
     it 'defaults to ilike or ilike_unaccent' do
       expect(finder.search_engine).to match(/\Ailike/)
+    end
+  end
+
+  describe 'when opensearch is enabled' do
+    subject(:opensearch_finder) do
+      described_class.new(conversation: conversation, query: 'contract', page: 1)
+    end
+
+    let(:valid_message) do
+      create(
+        :message,
+        conversation: conversation,
+        account: account,
+        inbox: inbox,
+        content: 'opensearch contract hit',
+        message_type: :incoming,
+        sender: contact
+      )
+    end
+    let(:deleted_message) do
+      create(
+        :message,
+        conversation: conversation,
+        account: account,
+        inbox: inbox,
+        content: 'deleted contract copy',
+        message_type: :incoming,
+        sender: contact,
+        content_attributes: { deleted: true }
+      )
+    end
+    let(:activity_message) do
+      create(
+        :message,
+        conversation: conversation,
+        account: account,
+        inbox: inbox,
+        content: 'contract activity noise',
+        message_type: :activity
+      )
+    end
+
+    before do
+      valid_message
+      deleted_message
+      activity_message
+      allow(opensearch_finder).to receive(:opensearch_enabled?).and_return(true)
+    end
+
+    it 'reports opensearch search engine' do
+      expect(opensearch_finder.search_engine).to eq('opensearch')
+    end
+
+    it 'filters deleted and activity messages from opensearch hits' do
+      filtered = opensearch_finder.send(
+        :filter_searchable_messages,
+        [deleted_message, activity_message, valid_message]
+      )
+
+      expect(filtered.map(&:id)).to eq([valid_message.id])
+    end
+
+    it 'falls back to sql when opensearch is unavailable' do
+      Message.define_singleton_method(:search) do |*_args, **_kwargs|
+        raise Faraday::ConnectionFailed, 'cluster down'
+      end
+
+      results = opensearch_finder.send(:perform_opensearch)
+
+      expect(results.map(&:id)).to include(valid_message.id)
+    ensure
+      Message.singleton_class.remove_method(:search)
     end
   end
 end

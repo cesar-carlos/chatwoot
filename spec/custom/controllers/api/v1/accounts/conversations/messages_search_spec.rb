@@ -65,9 +65,15 @@ RSpec.describe 'Conversation message search API', type: :request do
       end
 
       it 'returns too many requests when rate limited' do
+        cache = ActiveSupport::Cache::MemoryStore.new
+        allow(Rails).to receive(:cache).and_return(cache)
+
         key = "conversation_message_search:#{agent.id}:#{conversation.id}"
-        Rails.cache.write(key, Custom::Api::V1::Accounts::Conversations::MessagesController::SEARCH_RATE_LIMIT,
-                          expires_in: 1.minute)
+        cache.write(
+          key,
+          Custom::Api::V1::Accounts::Conversations::MessagesController::SEARCH_RATE_LIMIT,
+          expires_in: 1.minute
+        )
 
         get endpoint, params: { q: 'contract' }, headers: headers, as: :json
 

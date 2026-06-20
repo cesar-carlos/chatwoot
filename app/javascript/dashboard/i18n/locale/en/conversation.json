@@ -69,6 +69,8 @@
       "ERROR_QUERY_REQUIRED": "Enter a search term",
       "ERROR_QUERY_LENGTH": "Search query must be between 2 and 200 characters",
       "ERROR_PAGE": "Page must be a positive integer",
+      "ERROR_NOT_FOUND": "Search is unavailable for this conversation",
+      "ERROR_LOAD_MORE": "Could not load more results. Please try again.",
       "MESSAGE_NOT_FOUND": "This message could not be loaded",
       "MATCH_TRANSCRIPTION": "Match in audio transcription",
       "PRIVATE_NOTE": "Private note",

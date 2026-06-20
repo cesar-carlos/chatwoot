@@ -1,7 +1,7 @@
 import types from '../../mutation-types';
 import getters, { getSelectedChatConversation } from './getters';
 import actions from './actions';
-import { findPendingMessageIndex } from './helpers';
+import { findPendingMessageIndex, messageCreatedAt, normalizeStoreMessage } from './helpers';
 import { MESSAGE_STATUS } from 'shared/constants/messages';
 import wootConstants from 'dashboard/constants/globals';
 import { BUS_EVENTS } from '../../../../shared/constants/busEvents';
@@ -93,6 +93,20 @@ export const mutations = {
     const [chat] = _state.allConversations.filter(c => c.id === id);
     if (!chat) return;
     chat.messages = data;
+  },
+  [types.INSERT_MESSAGES_AROUND](_state, { id, data }) {
+    const chat = getConversationById(_state)(id);
+    if (!chat) return;
+
+    const messageMap = new Map(
+      (chat.messages || []).map(message => [message.id, message])
+    );
+    data.forEach(message => {
+      messageMap.set(message.id, normalizeStoreMessage(message));
+    });
+    chat.messages = Array.from(messageMap.values()).sort(
+      (left, right) => messageCreatedAt(left) - messageCreatedAt(right)
+    );
   },
 
   [types.SET_CHAT_DATA_FETCHED](_state, conversationId) {

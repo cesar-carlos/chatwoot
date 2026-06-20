@@ -21,9 +21,15 @@ module Custom::MessageSearch::FromFilter
   def opensearch_conditions(conversation, from)
     conditions = {
       account_id: conversation.account_id,
-      conversation_id: conversation.id
+      conversation_id: conversation.id,
+      message_type: searchable_message_types
     }
 
+    apply_opensearch_from!(conditions, from)
+    conditions
+  end
+
+  def apply_opensearch_from!(conditions, from)
     case from.to_s.strip.presence
     when 'private'
       conditions[:private] = true
@@ -38,7 +44,9 @@ module Custom::MessageSearch::FromFilter
       conditions[:sender_type] = 'User'
       conditions[:sender_id] = Regexp.last_match(1).to_i
     end
+  end
 
-    conditions
+  def searchable_message_types
+    %i[incoming outgoing template].map { |type| Message.message_types[type] }
   end
 end
