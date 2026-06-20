@@ -64,7 +64,6 @@ const {
   showAssignmentButton,
   showAssigneeInMeta,
   messagePreviewPaddingClass,
-  contentSectionClass,
   fastAssign,
 } = assignmeFork;
 
@@ -184,108 +183,106 @@ watch(
       />
     </div>
     <div class="px-0 py-3 flex-1 min-w-0 border-line">
-      <div :class="contentSectionClass">
+      <div
+        v-if="showMetaSection"
+        class="flex items-center min-w-0 gap-1"
+        :class="{
+          'ltr:ml-2 rtl:mr-2': !compact,
+          'mx-2': compact,
+        }"
+      >
+        <InboxName
+          v-if="showInboxName"
+          :inbox="inbox"
+          class="flex-1 min-w-0"
+        />
         <div
-          v-if="showMetaSection"
-          class="flex items-center min-w-0 gap-1"
+          class="flex items-baseline gap-2 flex-shrink-0"
           :class="{
-            'ltr:ml-2 rtl:mr-2': !compact,
-            'mx-2': compact,
+            'flex-1 justify-between': !showInboxName,
           }"
         >
-          <InboxName
-            v-if="showInboxName"
-            :inbox="inbox"
-            class="flex-1 min-w-0"
-          />
-          <div
-            class="flex items-baseline gap-2 flex-shrink-0"
-            :class="{
-              'flex-1 justify-between': !showInboxName,
-            }"
+          <span
+            v-if="showAssignee && metaAssignee.name"
+            class="text-n-slate-11 text-xs font-medium leading-3 py-0.5 px-0 inline-flex items-center truncate"
           >
-            <span
-              v-if="showAssignee && metaAssignee.name"
-              class="text-n-slate-11 text-xs font-medium leading-3 py-0.5 px-0 inline-flex items-center truncate"
-            >
-              <fluent-icon icon="person" size="12" class="text-n-slate-11" />
-              {{ metaAssignee.name }}
-            </span>
-            <CardPriorityIcon
-              :priority="chat.priority"
-              class="flex-shrink-0 !size-3.5"
-            />
-          </div>
-        </div>
-        <h4
-          class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12"
-          :class="hasUnread ? 'font-semibold' : 'font-medium'"
-        >
-          {{ resolvedContact.name }}
-        </h4>
-        <VoiceCallStatus
-          v-if="voiceCallData.status"
-          key="voice-status-row"
-          :status="voiceCallData.status"
-          :direction="voiceCallData.direction"
-          :message-preview-class="messagePreviewClass"
-        />
-        <MessagePreview
-          v-else-if="lastMessageInChat"
-          key="message-preview"
-          :message="lastMessageInChat"
-          class="my-0 mx-2 leading-6 h-6 flex-1 min-w-0 text-sm"
-          :class="messagePreviewClass"
-        />
-        <p
-          v-else
-          key="no-messages"
-          class="text-n-slate-11 text-sm my-0 mx-2 leading-6 h-6 flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-          :class="messagePreviewClass"
-        >
-          <fluent-icon
-            size="16"
-            class="-mt-0.5 align-middle inline-block text-n-slate-10"
-            icon="info"
-          />
-          <span class="mx-0.5">
-            {{ $t(`CHAT_LIST.NO_MESSAGES`) }}
+            <fluent-icon icon="person" size="12" class="text-n-slate-11" />
+            {{ metaAssignee.name }}
           </span>
-        </p>
-        <div
-          class="absolute flex flex-col items-end ltr:right-3 rtl:left-3"
-          :class="showMetaSection ? 'top-8' : 'top-4'"
-        >
-          <UnreadCountBadge
-            v-if="hideThumbnail && hasUnread"
-            :count="unreadCount"
-            class="mb-1"
-          />
-          <span class="font-normal leading-4 text-xxs">
-            <TimeAgo
-              :last-activity-timestamp="chat.timestamp"
-              :created-at-timestamp="chat.created_at"
-              :conversation-id="chat.id"
-            />
-          </span>
-          <ConversationCardFastAssignButton
-            :chat-id="chat.id"
-            :assignee-id="metaAssignee?.id"
-            :show="showAssignmentButton"
-            :is-assign-pending="isAssignPending"
-            @fast-assign="fastAssign"
+          <CardPriorityIcon
+            :priority="chat.priority"
+            class="flex-shrink-0 !size-3.5"
           />
         </div>
-        <CardLabels
-          v-if="showLabelsSection"
-          :conversation-labels="chat.labels"
-          class="mt-0.5 mx-2 mb-0"
-        >
-          <template v-if="hasSlaPolicyId" #before>
-            <SLACardLabel :chat="chat" class="ltr:mr-1 rtl:ml-1" />
-          </template>
-        </CardLabels>
       </div>
+      <h4
+        class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12"
+        :class="hasUnread ? 'font-semibold' : 'font-medium'"
+      >
+        {{ resolvedContact.name }}
+      </h4>
+      <VoiceCallStatus
+        v-if="voiceCallData.status"
+        key="voice-status-row"
+        :status="voiceCallData.status"
+        :direction="voiceCallData.direction"
+        :message-preview-class="messagePreviewClass"
+      />
+      <MessagePreview
+        v-else-if="lastMessageInChat"
+        key="message-preview"
+        :message="lastMessageInChat"
+        class="my-0 mx-2 leading-6 h-6 flex-1 min-w-0 text-sm"
+        :class="messagePreviewClass"
+      />
+      <p
+        v-else
+        key="no-messages"
+        class="text-n-slate-11 text-sm my-0 mx-2 leading-6 h-6 flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
+        :class="messagePreviewClass"
+      >
+        <fluent-icon
+          size="16"
+          class="-mt-0.5 align-middle inline-block text-n-slate-10"
+          icon="info"
+        />
+        <span class="mx-0.5">
+          {{ $t(`CHAT_LIST.NO_MESSAGES`) }}
+        </span>
+      </p>
+      <div
+        class="absolute flex flex-col ltr:right-3 rtl:left-3"
+        :class="showMetaSection ? 'top-8' : 'top-4'"
+      >
+        <UnreadCountBadge
+          v-if="hideThumbnail && hasUnread"
+          :count="unreadCount"
+          class="mb-1 ltr:ml-auto rtl:mr-auto"
+        />
+        <span class="ltr:ml-auto rtl:mr-auto font-normal leading-4 text-xxs">
+          <TimeAgo
+            :last-activity-timestamp="chat.timestamp"
+            :created-at-timestamp="chat.created_at"
+            :conversation-id="chat.id"
+          />
+        </span>
+        <ConversationCardFastAssignButton
+          :chat-id="chat.id"
+          :assignee-id="metaAssignee?.id"
+          :show="showAssignmentButton"
+          :is-assign-pending="isAssignPending"
+          @fast-assign="fastAssign"
+        />
+      </div>
+      <CardLabels
+        v-if="showLabelsSection"
+        :conversation-labels="chat.labels"
+        class="mt-0.5 mx-2 mb-0"
+      >
+        <template v-if="hasSlaPolicyId" #before>
+          <SLACardLabel :chat="chat" class="ltr:mr-1 rtl:ml-1" />
+        </template>
+      </CardLabels>
     </div>
   </div>
 </template>
