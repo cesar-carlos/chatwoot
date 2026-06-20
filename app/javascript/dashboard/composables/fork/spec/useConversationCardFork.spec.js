@@ -49,6 +49,16 @@ describe('useConversationCardFork', () => {
     expect(messagePreviewPaddingClass.value).toBe('ltr:pr-24 rtl:pl-24');
   });
 
+  it('applies consistent bottom padding on conversation cards', () => {
+    const { cardBottomPaddingClass } = buildFork();
+    expect(cardBottomPaddingClass).toBe('pb-3');
+  });
+
+  it('keeps bottom padding when the button is hidden', () => {
+    const { cardBottomPaddingClass } = buildFork({ assignee: { id: 7 } });
+    expect(cardBottomPaddingClass).toBe('pb-3');
+  });
+
   it('emits assignAgent with the current user payload', () => {
     const { fastAssign, emit } = buildFork();
     const event = { stopPropagation: vi.fn() };
