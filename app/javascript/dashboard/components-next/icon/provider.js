@@ -14,6 +14,7 @@ const channelTypeIconMap = {
   'Channel::Whatsapp': 'i-woot-whatsapp',
   'Channel::Instagram': 'i-woot-instagram',
   'Channel::Tiktok': 'i-woot-tiktok',
+  'Channel::Wavoip': 'i-woot-wavoip', // FORK: Wavoip provider icon
 };
 
 const providerIconMap = {
@@ -32,6 +33,7 @@ const channelTypeBrandIconMap = {
   'Channel::Whatsapp': 'i-logos-whatsapp-icon',
   'Channel::Instagram': 'i-woot-instagram-color',
   'Channel::Tiktok': 'i-logos-tiktok-icon',
+  'Channel::Wavoip': 'i-woot-wavoip-color', // FORK: Wavoip provider color icon
 };
 
 const providerBrandIconMap = {

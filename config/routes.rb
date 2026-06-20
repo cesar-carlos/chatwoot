@@ -258,9 +258,9 @@ Rails.application.routes.draw do
                 post :initiate
               end
             end
+            # FORK: Wavoip call accept attribution (no SDP)
+            resources :calls, only: [:update]
           end
-
-          resources :custom_attribute_definitions, only: [:index, :show, :create, :update, :destroy]
           resources :custom_filters, only: [:index, :show, :create, :update, :destroy]
           resources :inboxes, only: [:index, :show, :create, :update, :destroy] do
             get :assignable_agents, on: :member
@@ -272,6 +272,9 @@ Rails.application.routes.draw do
             get :health, on: :member
             post :register_webhook, on: :member
             post :reset_secret, on: :member
+            # FORK: Wavoip SDK bootstrap — agents only via inbox policy
+            get :wavoip_sdk_bootstrap, on: :member
+            post :regenerate_wavoip_webhook_key, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
@@ -654,6 +657,8 @@ Rails.application.routes.draw do
   post 'webhooks/instagram', to: 'webhooks/instagram#events'
   post 'webhooks/tiktok', to: 'webhooks/tiktok#events'
   post 'webhooks/shopify', to: 'webhooks/shopify#events'
+  # FORK: Wavoip voice webhook ingress (opaque key per channel)
+  post 'webhooks/wavoip/:webhook_key', to: 'webhooks/wavoip#process_payload'
 
   namespace :twitter do
     resource :callback, only: [:show]

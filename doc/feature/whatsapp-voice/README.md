@@ -77,8 +77,8 @@ O recurso permite que agentes **atendam e façam chamadas de voz pelo WhatsApp**
 | **Setup UI dedicado** | Tile `whatsapp_call` → `WhatsappCall.vue` → embedded signup + auto `enable_whatsapp_calling` |
 | **Setup em inbox existente** | Tab **Calls** (`WhatsappCallingPage.vue`) em inbox Cloud |
 | **Canal Twilio (PSTN)** | Tile `voice` → cria `Channel::TwilioSms` com `voice_enabled` — **produto diferente** |
-| **Modelo de dados** | `Call` (EE), enum `provider: { twilio, whatsapp }`, mensagem `content_type: voice_call` |
-| **Frontend WebRTC** | `useWhatsappCallSession.js` (~456 linhas) + orquestrador `useCallSession.js` |
+| **Modelo de dados** | `Call` (EE), enum `provider: { twilio, whatsapp, wavoip }` (`# FORK:`), mensagem `content_type: voice_call` |
+| **Frontend WebRTC** | `useWebRtcCallSession.js` + `useWhatsappCallSession.js` (wrapper) + orquestrador `useCallSession.js` |
 | **API REST** | `/api/v1/accounts/:id/whatsapp_calls/*` (EE only) |
 | **Webhooks** | Meta `field=calls` via `Enterprise::Webhooks::WhatsappEventsJob` |
 
@@ -190,7 +190,7 @@ Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-r
 ## Recomendação resumida (fork)
 
 1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — edições inevitáveis em `enterprise/` devem ser mínimas e marcadas `# FORK:`.
-2. **Antes de Wavoip:** executar o spike; depois criar registry de sessão/eventos. Não extrair o WebRTC Meta, pois o SDK Wavoip encapsula mídia e sinalização.
+2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun. 2026 (source_id, teardown scoped, inbound guard, webhook rotation). **Pendente:** confirmar entrega de webhooks CALL no painel Wavoip em produção (operacional/vendor).
 3. **Segundo provider Meta-like (CPaaS proxy):** estender stack com adapters — [second-provider-strategy.md](./second-provider-strategy.md).
 4. **Wavoip:** seguir [wavoip-provider/](./wavoip-provider/) — canal `Channel::Wavoip` em `custom/`; **não** inflar `WhatsappEventsJob`.
 5. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; validar contrato SDP/events antes de UI.
@@ -203,9 +203,10 @@ Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-r
 
 Implementação **separada** da stack Meta. Ordem:
 
-1. [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) — spike e gates de go/no-go
-2. [wavoip-provider/spike-notes.template.md](./wavoip-provider/spike-notes.template.md) — registrar payloads, IDs e multiagente
-3. [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) — contratos para a implementação aprovada
+1. [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) — fases 1–4 concluídas; status e checklist
+2. [wavoip-provider/spike-notes.md](./wavoip-provider/spike-notes.md) — resultados E2E e gates G0.1–G0.7
+3. [wavoip-provider/operations-runbook.md](./wavoip-provider/operations-runbook.md) — onboarding, webhook URL e troubleshooting
+4. [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) — contratos implementados
 
 O plano consolidado prevalece quando documentos auxiliares ainda mencionarem fases antigas.
 
@@ -224,7 +225,33 @@ Itens levantados na reanálise que **ainda não existem no código** — servem 
 | G4 | `Whatsapp::CallPermissionRequestService` | Só Meta | §13 P1 |
 | G5 | Handler `voice_call.permission_granted` | Só Meta | §13 P2 |
 | G6 | Specs Vitest WebRTC race/beacon | Meta | §13 P2 |
-| G7 | Canal `Channel::Wavoip` + webhook + composables | Fork `custom/` | [plano consolidado](./wavoip-provider/implementation-plan.md) |
-| G8 | `PATCH` `accepted_by_agent_id` pós-accept Wavoip | Fork `custom/` | [webhook-contract §4](./wavoip-provider/webhook-contract.md#4-accepted_by_agent_id-sem-rest-mvp) |
+| G7 | Canal `Channel::Wavoip` + webhook + composables | Fork `custom/` | ✅ **Done** — [implementation-plan](./wavoip-provider/implementation-plan.md) |
+| G8 | `PATCH` `accepted_by_agent_id` pós-accept Wavoip | Fork `custom/` | ✅ **Done** — `custom/.../calls_controller.rb` |
 
-**Status código (19 jun. 2026):** stack Meta implementada; Wavoip ainda somente planejado.
+**Status código (19 jun. 2026):** stack Meta implementada; **Wavoip fases 1–4 code-complete** em `custom/` + FORK mínimo upstream — E2E live de webhooks ainda pendente (ver [spike-notes](./wavoip-provider/spike-notes.md)).
+
+### Wavoip — doc status (Jun 2026)
+
+| Métrica | Estimativa |
+|---------|------------|
+| **MVP código** | ~85–90% |
+| **Piloto produção** | ~55–60% |
+| **Bloqueador piloto** | Webhooks CALL do painel Wavoip em chamadas live (G0.2/G0.3) |
+| **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 — `wavoip_webhook_url` / `wavoip_setup_pending` (+ camelCase) |
+
+### Wavoip — implementation status (Jun 2026)
+
+| Área | Estado | Localização principal |
+|------|--------|------------------------|
+| **Backend** | ✅ Code complete | `custom/app/models/channel/wavoip.rb`, `custom/app/controllers/webhooks/wavoip_controller.rb`, `custom/app/jobs/wavoip/process_webhook_job.rb`, `custom/app/services/wavoip/**` |
+| **Call enum** | ✅ `wavoip: 2` | `enterprise/app/models/call.rb` (`# FORK:`) |
+| **Calls PATCH** | ✅ `accepted_by_agent_id` | `custom/app/controllers/api/v1/accounts/calls_controller.rb` |
+| **Inbox API** | ✅ Admin-only fields | `wavoip_webhook_url`, `wavoip_setup_pending` em `_inbox.json.jbuilder` |
+| **Frontend** | ✅ 18 arquivos | `custom/app/javascript/` — registry, composables, `Wavoip.vue`, `WavoipCallingPage.vue` |
+| **Testes** | ✅ 55 RSpec + 10 Vitest | `spec/custom/**/wavoip/**`, `custom/.../lib/voice/specs/*.spec.js` (com DB disponível) |
+| **E2E live** | ⚠️ Restrições | Outbound SDK conecta (RINGING → ACTIVE); **webhooks CALL do painel Wavoip ainda não recebidos** |
+| **Produção piloto** | ✅ Inbox ativo | Account 2, inbox 42, device `556697193168` (`open`) — URL exemplo: `/webhooks/wavoip/{webhook_key}` (não inbox id) |
+
+**Veredicto spike:** `go com restrições` — [spike-notes.md](./wavoip-provider/spike-notes.md).
+
+**Legado:** coluna `users.wavoip_token` **não** é usada pelo canal Wavoip — credencial fica em `channel_wavoip.device_token`.

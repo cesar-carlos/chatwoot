@@ -154,3 +154,14 @@ if resource.channel_type == 'Channel::Whatsapp' && resource.channel.respond_to?(
   json.voice_enabled resource.channel.voice_enabled?
   json.inbound_calls_enabled resource.channel.inbound_calls_enabled?
 end
+
+# FORK: Wavoip voice inbox attributes (never expose device_token or webhook_key)
+if resource.channel_type == 'Channel::Wavoip' && resource.channel.respond_to?(:voice_enabled?)
+  json.voice_enabled resource.channel.voice_enabled?
+  json.inbound_calls_enabled resource.channel.inbound_calls_enabled?
+  json.wavoip_setup_pending resource.channel.setup_pending?
+  if Current.account_user&.administrator?
+    json.wavoip_webhook_url resource.channel.webhook_url
+    json.wavoip_device_token_configured resource.channel.device_token.present?
+  end
+end

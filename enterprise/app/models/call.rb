@@ -39,7 +39,8 @@ class Call < ApplicationRecord
 
   DEFAULT_STUN_URL = 'stun:stun.l.google.com:19302'.freeze
 
-  enum :provider, { twilio: 0, whatsapp: 1 }
+  # FORK: persist Wavoip voice calls in the shared call timeline
+  enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
   enum :direction, { incoming: 0, outgoing: 1 }
 
   belongs_to :account
@@ -129,3 +130,6 @@ class Call < ApplicationRecord
     }
   end
 end
+
+# FORK: wavoip recording_url fallback from meta when attachment missing
+Call.prepend_mod_with('Call')

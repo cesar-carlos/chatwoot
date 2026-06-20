@@ -70,6 +70,12 @@ describe('useChannelIcon', () => {
     expect(icon).toBe('i-woot-tiktok');
   });
 
+  it('returns correct icon for Wavoip channel', () => {
+    const inbox = { channel_type: 'Channel::Wavoip' };
+    const { value: icon } = useChannelIcon(inbox);
+    expect(icon).toBe('i-woot-wavoip');
+  });
+
   describe('TwilioSms channel', () => {
     it('returns chat icon for regular Twilio SMS channel', () => {
       const inbox = { channel_type: 'Channel::TwilioSms' };

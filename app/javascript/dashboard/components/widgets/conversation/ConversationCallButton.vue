@@ -11,6 +11,7 @@ import {
   VOICE_CALL_OUTBOUND_INIT_STATUS,
 } from 'dashboard/components-next/message/constants';
 import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
+import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useAccount } from 'dashboard/composables/useAccount';
@@ -45,26 +46,36 @@ const isVoiceCallInbox = computed(
 const isWhatsappVoiceInbox = computed(
   () => voiceCallProvider.value === VOICE_CALL_PROVIDERS.WHATSAPP
 );
+const isWavoipVoiceInbox = computed(
+  () => voiceCallProvider.value === VOICE_CALL_PROVIDERS.WAVOIP
+);
 
 const isCallButtonDisabled = computed(() => {
   if (callsStore.hasActiveCall || callsStore.hasIncomingCall) return true;
   if (isWhatsappVoiceInbox.value) {
     return whatsappCallSession.isInitiating.value;
   }
+  if (isWavoipVoiceInbox.value) {
+    const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
+    return session?.isInitiating?.value;
+  }
   return contactsUiFlags.value?.isInitiatingCall || false;
 });
 
-const isCallButtonLoading = computed(() =>
-  isWhatsappVoiceInbox.value
-    ? whatsappCallSession.isInitiating.value
-    : !!contactsUiFlags.value?.isInitiatingCall
-);
+const isCallButtonLoading = computed(() => {
+  if (isWhatsappVoiceInbox.value) return whatsappCallSession.isInitiating.value;
+  if (isWavoipVoiceInbox.value) {
+    const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
+    return session?.isInitiating?.value;
+  }
+  return !!contactsUiFlags.value?.isInitiatingCall;
+});
 
-const callButtonTooltip = computed(() =>
-  isWhatsappVoiceInbox.value
-    ? t('CONVERSATION.HEADER.WHATSAPP_CALL')
-    : t('CONVERSATION.HEADER.VOICE_CALL')
-);
+const callButtonTooltip = computed(() => {
+  if (isWhatsappVoiceInbox.value) return t('CONVERSATION.HEADER.WHATSAPP_CALL');
+  if (isWavoipVoiceInbox.value) return t('CONVERSATION.HEADER.VOICE_CALL');
+  return t('CONVERSATION.HEADER.VOICE_CALL');
+});
 
 const startWhatsappCall = async () => {
   if (whatsappCallSession.isInitiating.value) return;
@@ -122,8 +133,35 @@ const startTwilioCall = async () => {
   }
 };
 
+const startWavoipCall = async () => {
+  const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
+  if (!session || session.isInitiating?.value) return;
+
+  const toPhone = props.chat?.meta?.sender?.phone_number;
+  if (!toPhone) {
+    useAlert(t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));
+    return;
+  }
+
+  try {
+    await session.connectForInbox?.(props.inbox?.id);
+    const response = await session.initiateOutboundCall(props.chat.id, {
+      inboxId: props.inbox?.id,
+      toPhone,
+    });
+    if (response?.status === 'locked') return;
+    if (!response?.call_id) {
+      useAlert(t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));
+      return;
+    }
+  } catch (error) {
+    useAlert(error?.message || t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));
+  }
+};
+
 const startCall = () => {
   if (isWhatsappVoiceInbox.value) return startWhatsappCall();
+  if (isWavoipVoiceInbox.value) return startWavoipCall();
   return startTwilioCall();
 };
 </script>

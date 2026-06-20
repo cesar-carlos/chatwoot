@@ -367,6 +367,36 @@
           "ERROR_MESSAGE": "We were not able to create the voice channel"
         }
       },
+      "WAVOIP": {
+        "TITLE": "Wavoip Voice",
+        "DESC": "Connect a Wavoip device token for WhatsApp voice. After creating the inbox, configure the webhook URL in the Wavoip panel.",
+        "INBOX_NAME": {
+          "LABEL": "Inbox Name",
+          "PLACEHOLDER": "e.g. Support Calls",
+          "ERROR": "Please enter an inbox name"
+        },
+        "PHONE_NUMBER": {
+          "LABEL": "Business Phone Number",
+          "PLACEHOLDER": "+5566999050319",
+          "HELP_TEXT": "Use E.164 format: + followed by country code and number (e.g. +5566999050319 for a Brazilian mobile). Must match the phone paired in Wavoip.",
+          "ERROR": "Please provide a valid phone number in E.164 format"
+        },
+        "DEVICE_TOKEN": {
+          "LABEL": "Wavoip Device Token",
+          "PLACEHOLDER": "Paste the token from app.wavoip.com",
+          "ERROR": "Device token is required"
+        },
+        "INBOUND": {
+          "LABEL": "Allow inbound calls",
+          "DESCRIPTION": "When disabled, agents can still place outbound calls."
+        },
+        "SETUP_NOTE": "After creation, copy the webhook URL from inbox settings into the Wavoip dashboard. Setup stays pending until the first webhook event is received.",
+        "WEBHOOK_HINT": "Configure this webhook URL in Wavoip: {url}",
+        "SUBMIT_BUTTON": "Create Wavoip Inbox",
+        "API": {
+          "ERROR_MESSAGE": "We were not able to create the Wavoip inbox"
+        }
+      },
       "API_CHANNEL": {
         "TITLE": "API Channel",
         "DESC": "Integrate with API channel and start supporting your customers.",
@@ -471,6 +501,10 @@
           "WHATSAPP_CALL": {
             "TITLE": "WhatsApp Call",
             "DESCRIPTION": "Take voice calls on your WhatsApp number"
+          },
+          "WAVOIP": {
+            "TITLE": "Wavoip Call",
+            "DESCRIPTION": "WhatsApp voice via Wavoip device token and webhook"
           },
           "EMAIL": {
             "TITLE": "Email",
@@ -680,6 +714,33 @@
         "LABEL": "Call permission request message",
         "HELP_TEXT": "Shown to the contact when they haven't yet consented to receive calls. Leave blank to use the default.",
         "PLACEHOLDER": "We would like to call you regarding your conversation."
+      }
+    },
+    "WAVOIP_CALL": {
+      "PHONE_NUMBER": {
+        "LABEL": "Business phone number",
+        "HELP_TEXT": "WhatsApp number connected to this Wavoip device."
+      },
+      "WEBHOOK": {
+        "LABEL": "Webhook URL",
+        "HELP_TEXT": "Paste this URL into the Wavoip dashboard so call events reach Chatwoot.",
+        "UNAVAILABLE": "Webhook URL is available to administrators after the inbox is created.",
+        "REGENERATE": "Regenerate webhook URL",
+        "REGENERATE_CONFIRM": "Regenerating invalidates the current webhook URL in the Wavoip dashboard. Update the URL there before the next call event.",
+        "REGENERATE_SUCCESS": "Webhook URL regenerated. Update it in the Wavoip dashboard."
+      },
+      "SETUP_STATUS": {
+        "LABEL": "Webhook status",
+        "HELP_TEXT": "Chatwoot verifies the webhook automatically when the first call event is received.",
+        "PENDING": "Waiting for the first webhook event",
+        "VERIFIED": "Webhook verified"
+      },
+      "HOW_IT_WORKS": {
+        "LABEL": "How it works",
+        "DESCRIPTION": "Calls are routed through your Wavoip device. Agents answer from the browser when inbound calls are enabled. Make sure the agent's browser has microphone permission for this site."
+      },
+      "VOICE_DISABLED": {
+        "DESCRIPTION": "Voice calling requires a configured device token on this inbox."
       }
     },
     "CHANNEL_PREFERENCES": "Channel Preferences",
@@ -1179,7 +1240,8 @@
       "API": "API Channel",
       "INSTAGRAM": "Instagram",
       "TIKTOK": "TikTok",
-      "VOICE": "Voice"
+      "VOICE": "Voice",
+      "WAVOIP": "Wavoip"
     }
   }
 }

@@ -6,6 +6,8 @@ import { useMapGetter, useStore } from 'dashboard/composables/store';
 import {
   isVoiceCallEnabled,
   getVoiceCallProvider,
+  getInboxIconByType,
+  INBOX_TYPES,
   VOICE_CALL_PROVIDERS,
 } from 'dashboard/helper/inbox';
 import {
@@ -16,7 +18,11 @@ import { useAlert } from 'dashboard/composables';
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
-import ContactAPI from 'dashboard/api/contacts';
+import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
+import {
+  ensureVoiceConversation,
+  findVoiceConversationId,
+} from 'customDashboard/lib/voice/ensureVoiceConversation';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -83,28 +89,19 @@ const navigateToConversation = conversationId => {
 
 const whatsappCallSession = useWhatsappCallSession();
 
-// Find the most recent open conversation for this contact in the picked inbox.
 // WhatsApp /initiate is conversation-scoped (unlike Twilio's contact-scoped path).
 // Pass inboxId so the BE applies the filter before the 20-row cap — without it,
 // contacts whose latest WhatsApp conversation falls outside the 20 most recent
 // across all inboxes would be treated as having no conversation.
-const findWhatsappConversationId = async inboxId => {
-  const { data } = await ContactAPI.getConversations(props.contactId, {
-    inboxId,
-  });
-  const conversations = data?.payload || [];
-  const match = [...conversations].sort(
-    (a, b) => (b.last_activity_at || 0) - (a.last_activity_at || 0)
-  )[0];
-  return match?.id || null;
-};
+const findConversationInInbox = inboxId =>
+  findVoiceConversationId(props.contactId, inboxId);
 
 const startWhatsappCall = async (inboxId, conversationIdHint) => {
   // WhatsApp /initiate is conversation-scoped, so we must hand it a
   // conversation. Use the caller's hint when given (in-conversation flow);
   // otherwise pick the most recent one in the inbox.
   const conversationId =
-    conversationIdHint || (await findWhatsappConversationId(inboxId));
+    conversationIdHint || (await findConversationInInbox(inboxId));
   if (!conversationId) {
     useAlert(t('CONTACT_PANEL.CALL_FAILED'));
     return;
@@ -145,13 +142,64 @@ const startWhatsappCall = async (inboxId, conversationIdHint) => {
   navigateToConversation(conversationId);
 };
 
+const startWavoipCall = async (inboxId, conversationIdHint) => {
+  const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
+  if (!session) return;
+
+  let conversationId = conversationIdHint;
+  if (!conversationId) {
+    conversationId = await findConversationInInbox(inboxId);
+  }
+  if (!conversationId) {
+    try {
+      conversationId = await ensureVoiceConversation({
+        contactId: props.contactId,
+        inboxId,
+        phone: props.phone,
+        channelType: INBOX_TYPES.WAVOIP,
+      });
+    } catch {
+      useAlert(t('CONTACT_PANEL.VOICE_CONVERSATION_REQUIRED'));
+      return;
+    }
+  }
+  if (!conversationId) {
+    useAlert(t('CONTACT_PANEL.VOICE_CONVERSATION_REQUIRED'));
+    return;
+  }
+
+  await session.connectForInbox?.(inboxId);
+  const response = await session.initiateOutboundCall(conversationId, {
+    inboxId,
+    toPhone: props.phone,
+  });
+  if (response?.status === 'locked') return;
+  if (!response?.call_id) {
+    useAlert(t('CONTACT_PANEL.CALL_FAILED'));
+    navigateToConversation(conversationId);
+    return;
+  }
+
+  useAlert(t('CONTACT_PANEL.CALL_INITIATED'));
+  navigateToConversation(conversationId);
+};
+
 const startCall = async (inboxId, conversationIdHint = null) => {
   if (isCallButtonDisabled.value) return;
 
   const inbox = (inboxesList.value || []).find(i => i.id === inboxId);
-  if (getVoiceCallProvider(inbox) === VOICE_CALL_PROVIDERS.WHATSAPP) {
+  const provider = getVoiceCallProvider(inbox);
+  if (provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
     try {
       await startWhatsappCall(inboxId, conversationIdHint);
+    } catch (error) {
+      useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
+    }
+    return;
+  }
+  if (provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+    try {
+      await startWavoipCall(inboxId, conversationIdHint);
     } catch (error) {
       useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
     }
@@ -210,6 +258,9 @@ const onPickInbox = async inbox => {
   dialogRef.value?.close();
   await startCall(inbox.id);
 };
+
+const inboxPickerIcon = inbox =>
+  getInboxIconByType(inbox.channel_type || inbox.channelType, inbox.medium);
 </script>
 
 <template>
@@ -243,7 +294,7 @@ const onPickInbox = async inbox => {
           @click="onPickInbox(inbox)"
         >
           <div class="flex items-center gap-2">
-            <span class="i-ri-phone-fill text-n-slate-10" />
+            <span :class="inboxPickerIcon(inbox)" class="size-4 text-n-slate-10" />
             <span class="text-sm text-n-slate-12">{{ inbox.name }}</span>
           </div>
           <span v-if="inbox.phone_number" class="text-xs text-n-slate-10">

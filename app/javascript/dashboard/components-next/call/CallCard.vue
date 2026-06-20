@@ -69,6 +69,8 @@ const statusLabel = computed(() => {
 const channelIcon = computed(() => {
   if (props.call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP)
     return 'i-ri-whatsapp-fill';
+  if (props.call?.provider === VOICE_CALL_PROVIDERS.WAVOIP)
+    return 'i-woot-wavoip';
   return 'i-ph-phone-bold';
 });
 </script>

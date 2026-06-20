@@ -6,10 +6,11 @@ Estratégia para integrar Wavoip ao fork sem alterar o fluxo Meta Cloud Calling.
 
 ## Comece aqui
 
-1. [implementation-plan.md](./implementation-plan.md) — **fonte única de execução**
-2. [spike-notes.template.md](./spike-notes.template.md) — gates de go/no-go
-3. [official-docs.md](./official-docs.md) — documentação oficial atual
-4. [contracts-and-ports.md](./contracts-and-ports.md) — contratos de backend/frontend
+1. [implementation-plan.md](./implementation-plan.md) — **fonte única de execução** (fases 1–4 code-complete)
+2. [spike-notes.md](./spike-notes.md) — gates G0.1–G0.7 e veredicto E2E
+3. [operations-runbook.md](./operations-runbook.md) — onboarding e troubleshooting em produção
+4. [official-docs.md](./official-docs.md) — documentação oficial atual
+5. [contracts-and-ports.md](./contracts-and-ports.md) — contratos de backend/frontend
 
 Os demais documentos são referências especializadas:
 
@@ -50,15 +51,21 @@ Decisões principais:
 - MVP termina em inbound/outbound com histórico e aceite auditável;
 - push com aba fechada, gravação, pareamento completo e diagnóstico ficam pós-MVP.
 
-## Gates que bloqueiam implementação
+## Gates que bloquearam implementação (spike — resolvido com restrições)
 
-- Correlação determinística entre IDs do SDK e `whatsapp_call_id` do webhook.
-- Payload HTTP bruto real, pois o exemplo oficial de `CALL` declara `type` duas vezes.
-- Comportamento multiagente (`acceptedElsewhere`/`rejectedElsewhere`).
-- Entrega segura do token somente a agentes autorizados do inbox.
-- Smoke do `Call`/builder com `provider: :wavoip`.
+Resultados em [spike-notes.md](./spike-notes.md) (19 jun. 2026):
 
-Sem esses resultados, o plano permanece hipótese e não deve avançar para UI de produto.
+| Gate | Resultado |
+|------|-----------|
+| G0.1 SDK | ✅ Pass |
+| G0.2 IDs | ⚠️ Partial — pipeline OK via simulação; correlação live não provada (sem webhook CALL do painel) |
+| G0.3 Webhook bruto | ⚠️ Partial — endpoint `202`; painel Wavoip não POSTa CALL em chamadas live |
+| G0.4 Multiagente | ❌ Não testado |
+| G0.5 Lifecycle | ✅ Pass |
+| G0.6 Segurança | ✅ Pass |
+| G0.7 Histórico | ✅ Pass (simulado) |
+
+**Veredicto:** `go com restrições` — código em produção; piloto bloqueado em entrega de webhooks CALL pelo painel Wavoip.
 
 ## Escopo revisado
 
@@ -73,11 +80,26 @@ Sem esses resultados, o plano permanece hipótese e não deve avançar para UI d
 Estimativa inicial do MVP após spike: **4–6 semanas**, dependendo principalmente da
 correlação SDK/webhook e da extensão dos acoplamentos frontend.
 
-## Estado atual
+## Estado atual (19 jun. 2026)
 
-- Meta Calling: implementado em `enterprise/`.
-- Wavoip: documentação e fixtures de referência; nenhum código de integração.
-- Pacote npm verificado em 19 jun. 2026: `@wavoip/wavoip-api@2.5.0`.
+| Métrica | Valor |
+|---------|-------|
+| **MVP código** | ~95% (fases 0–4 code-complete; audit 20 jun. 2026) |
+| **Piloto produção** | ~60% (bloqueado em webhooks CALL live + G0.4) |
+| **Bloqueador piloto** | Webhooks CALL do painel Wavoip em chamadas live (G0.2/G0.3) |
+
+| Componente | Status |
+|------------|--------|
+| Meta Calling | Implementado em `enterprise/` |
+| **Wavoip backend** | ✅ Code complete — `custom/app/models/channel/wavoip.rb`, webhook pipeline, `CallUpsertService`, `ConversationLinker`, `Broadcaster`, `CallsController#update` |
+| **Wavoip frontend** | ✅ 18 arquivos em `custom/app/javascript/` — registry, composables SDK, `Wavoip.vue`, `WavoipCallingPage.vue` |
+| **Enum `Call.provider`** | ✅ `wavoip: 2` em `enterprise/app/models/call.rb` (`# FORK:`) |
+| **Testes** | ✅ 55 RSpec + 10 Vitest (com DB) |
+| **E2E live** | ⚠️ Outbound SDK RINGING → ACTIVE comprovado; webhooks CALL do painel **não recebidos** |
+| **Produção piloto** | Account 2, inbox 42, device `556697193168` (`open`) |
+| Pacote npm | `@wavoip/wavoip-api@2.5.0` |
+
+**Pós-MVP (inalterado):** UI RECORD, push offline, métricas. Rotação de webhook key na UI — ✅ implementada (`WavoipCallingPage`).
 
 Contexto geral: [../README.md](../README.md) ·
 [../architecture-and-flow.md](../architecture-and-flow.md) ·

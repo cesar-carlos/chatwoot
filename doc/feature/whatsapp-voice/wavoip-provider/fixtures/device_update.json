@@ -1,8 +1,8 @@
 {
+  "_comment": "Sanitized from live spike 19 Jun 2026 — DEVICE UPDATE after pairing (device status open).",
   "type": "DEVICE",
   "action": "UPDATE",
-  "phone": "+5511999999999",
-  "id_session": 12345,
-  "status": "open",
-  "device_token": "REPLACE"
+  "phone": "+5511999990001",
+  "id_session": "spike_live_device_session",
+  "status": "open"
 }

@@ -14,6 +14,7 @@ import {
 } from '../constants';
 import { useCallActions } from 'dashboard/composables/useCallSession';
 import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
+import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { formatDuration } from 'shared/helpers/timeHelper';
@@ -80,6 +81,9 @@ const isOutbound = computed(() => {
 const isWhatsapp = computed(
   () => call.value?.provider === VOICE_CALL_PROVIDERS.WHATSAPP
 );
+const isWavoip = computed(
+  () => call.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
+);
 const isFailed = computed(() =>
   [VOICE_CALL_STATUS.NO_ANSWER, VOICE_CALL_STATUS.FAILED].includes(status.value)
 );
@@ -89,6 +93,9 @@ const wasDeclinedByAgent = computed(
   () =>
     isMissedInbound.value &&
     endReason.value === VOICE_CALL_END_REASON.AGENT_REJECTED
+);
+const wasHandledRemotely = computed(
+  () => endReason.value === VOICE_CALL_END_REASON.HANDLED_REMOTELY
 );
 const acceptedByAgentId = computed(() => call.value?.acceptedByAgentId);
 const conversationAssignee = computed(() => {
@@ -137,6 +144,9 @@ const handledBy = computed(() =>
 );
 
 const labelKey = computed(() => {
+  if (wasHandledRemotely.value) {
+    return 'CONVERSATION.VOICE_CALL.HANDLED_REMOTELY';
+  }
   if (LABEL_MAP[status.value]) return LABEL_MAP[status.value];
   if (isFailed.value) {
     return isOutbound.value
@@ -151,6 +161,9 @@ const labelKey = computed(() => {
 });
 
 const subtext = computed(() => {
+  if (wasHandledRemotely.value) {
+    return null;
+  }
   // Completed: "Handled by {agent} · 0:42" (drops either part when absent).
   if (status.value === VOICE_CALL_STATUS.COMPLETED) {
     return [handledBy.value, formattedDuration.value]
@@ -204,6 +217,7 @@ const iconContainerClass = computed(() => {
 const callSid = computed(() => call.value?.providerCallId);
 
 const canJoinCall = computed(() => {
+  if (isWavoip.value) return false;
   if (status.value !== VOICE_CALL_STATUS.RINGING) return false;
   if (isOutbound.value) return false;
   if (acceptedByAgentId.value) return false;
@@ -280,6 +294,28 @@ const handleCallBack = async () => {
         callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
         provider: VOICE_CALL_PROVIDERS.WHATSAPP,
       });
+      return;
+    }
+    if (isWavoip.value) {
+      const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
+      const toPhone = sender.value?.phone_number;
+      if (!session || !toPhone) {
+        useAlert(t('CONTACT_PANEL.CALL_FAILED'));
+        return;
+      }
+      await session.connectForInbox?.(inboxId.value);
+      const response = await session.initiateOutboundCall(
+        conversationId.value,
+        {
+          inboxId: inboxId.value,
+          toPhone,
+        }
+      );
+      if (response?.status === VOICE_CALL_OUTBOUND_INIT_STATUS.LOCKED) return;
+      if (!response?.call_id) {
+        useAlert(t('CONTACT_PANEL.CALL_FAILED'));
+        return;
+      }
       return;
     }
     const response = await store.dispatch('contacts/initiateCall', {

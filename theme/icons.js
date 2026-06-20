@@ -470,5 +470,16 @@ export const icons = {
     width: 24,
     height: 24,
   },
+  // FORK: Wavoip brand icons for inbox tiles and provider badges
+  wavoip: {
+    body: `<circle cx="3.25" cy="16.75" r="1.25" fill="currentColor"/><path d="M5.75 17.25C6.25 14.25 7.25 9.75 8.75 13.25C9.75 15.75 10.25 10.5 11.75 13.25C13 15.5 13.25 10.5 14.75 13.25C16 15.5 16.75 10 18.75 7.25C19.5 6 20.25 5.5 21 5.75" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`,
+    width: 24,
+    height: 24,
+  },
+  'wavoip-color': {
+    body: `<defs><linearGradient id="wavoipGrad" x1="0" x2="1" y1="0" y2="0"><stop offset="0%" stop-color="#2563EB"/><stop offset="45%" stop-color="#06B6D4"/><stop offset="100%" stop-color="#4ADE80"/></linearGradient></defs><circle cx="3.25" cy="16.75" r="1.35" fill="url(#wavoipGrad)"/><path d="M5.75 17.25C6.25 14.25 7.25 9.75 8.75 13.25C9.75 15.75 10.25 10.5 11.75 13.25C13 15.5 13.25 10.5 14.75 13.25C16 15.5 16.75 10 18.75 7.25C19.5 6 20.25 5.5 21 5.75" fill="none" stroke="url(#wavoipGrad)" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round"/>`,
+    width: 24,
+    height: 24,
+  },
   /** Ends */
 };

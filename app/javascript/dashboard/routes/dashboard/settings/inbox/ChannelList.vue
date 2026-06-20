@@ -102,6 +102,13 @@ const channelList = computed(() => {
     icon: 'i-woot-whatsapp',
   });
 
+  channels.push({
+    key: 'wavoip', // FORK: Wavoip voice inbox tile
+    title: t('INBOX_MGMT.ADD.AUTH.CHANNEL.WAVOIP.TITLE'),
+    description: t('INBOX_MGMT.ADD.AUTH.CHANNEL.WAVOIP.DESCRIPTION'),
+    icon: 'i-woot-wavoip-color',
+  });
+
   return channels;
 });
 

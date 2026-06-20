@@ -1,0 +1,15 @@
+{
+  "type": "CALL",
+  "action": "CREATE",
+  "whatsapp_call_id": "521F44B42A5DD487693DEB5E65A24C43",
+  "status": "OUTGOING_RING",
+  "direction": "OUTGOING",
+  "phone": "+556697193168",
+  "peer": {
+    "phone": "+5566999050319",
+    "display_name": "Live Outbound Peer"
+  },
+  "id_session": "REDACTED",
+  "call_type": "unofficial",
+  "_spike_note": "Sanitized from live outbound E2E 19 Jun 2026. whatsapp_call_id matches SDK CallOutgoing.id. Payload shape simulated via curl (Wavoip panel did not deliver live CALL bytes during test)."
+}
