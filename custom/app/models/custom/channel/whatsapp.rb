@@ -63,7 +63,8 @@ module Custom::Channel::Whatsapp
     incoming = (provider_config || {}).stringify_keys
     preserve_masked_secrets!(incoming, previous)
 
-    self.provider_config = Custom::Whatsapp::Evolution::ProviderConfig.build(previous).merge(incoming)
+    merged = Custom::Whatsapp::Evolution::ProviderConfig.build(previous).merge(incoming)
+    self.provider_config = Custom::Whatsapp::Evolution::ProviderConfig.normalize_credentials(merged)
   end
 
   def preserve_masked_secrets!(incoming, previous)

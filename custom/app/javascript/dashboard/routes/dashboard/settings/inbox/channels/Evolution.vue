@@ -97,6 +97,9 @@ async function createChannel() {
     step.value = 'connect';
     isQrModalOpen.value = true;
   } catch (error) {
+    inboxId.value = null;
+    step.value = 'form';
+    isQrModalOpen.value = false;
     useAlert(
       error.response?.data?.message ||
         t('INBOX_MGMT.ADD.EVOLUTION.API.ERROR_MESSAGE')

@@ -170,7 +170,19 @@ module Custom::Api::V1::Accounts::InboxesController
   end
 
   def build_evolution_provider_config
-    evolution_params = params.require(:channel).permit(
+    evolution_params = evolution_channel_params
+
+    Custom::Whatsapp::Evolution::ProviderConfig.normalize_credentials(
+      Custom::Whatsapp::Evolution::ProviderConfig.build(
+        'base_url' => evolution_params[:base_url],
+        'instance_name' => evolution_params[:instance_name],
+        'api_key' => evolution_params[:api_key]
+      ).merge((evolution_params[:provider_config] || {}).stringify_keys)
+    )
+  end
+
+  def evolution_channel_params
+    params.require(:channel).permit(
       :base_url,
       :api_key,
       :instance_name,
@@ -183,12 +195,6 @@ module Custom::Api::V1::Accounts::InboxesController
         :proxy_password
       ]
     )
-
-    Custom::Whatsapp::Evolution::ProviderConfig.build(
-      'base_url' => evolution_params[:base_url].to_s.strip.delete_suffix('/'),
-      'instance_name' => evolution_params[:instance_name].to_s.strip,
-      'api_key' => evolution_params[:api_key].to_s.strip
-    ).merge((evolution_params[:provider_config] || {}).stringify_keys)
   end
 
   def provision_evolution_channel!(channel)

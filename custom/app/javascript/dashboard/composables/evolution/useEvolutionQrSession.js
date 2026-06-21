@@ -65,6 +65,15 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
     }
   }
 
+  function isInboxNotFoundError(error) {
+    return error?.response?.status === 404;
+  }
+
+  function handleInboxNotFound() {
+    stopSession();
+    qrRefreshError.value = true;
+  }
+
   async function refreshConnection() {
     const id = unref(inboxId);
     if (!id) return;
@@ -76,8 +85,10 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
         id
       );
       applyPayload(payload);
-    } catch {
-      // keep last known state
+    } catch (error) {
+      if (isInboxNotFoundError(error)) {
+        handleInboxNotFound();
+      }
     } finally {
       isLoading.value = false;
     }
@@ -101,8 +112,12 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
       const payload = await store.dispatch('inboxes/evolutionReconnect', id);
       applyPayload(payload);
       qrRefreshError.value = false;
-    } catch {
-      qrRefreshError.value = true;
+    } catch (error) {
+      if (isInboxNotFoundError(error)) {
+        handleInboxNotFound();
+      } else {
+        qrRefreshError.value = true;
+      }
     } finally {
       isRefreshing.value = false;
       if (!isConnected()) {
