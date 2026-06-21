@@ -3,7 +3,7 @@ import { EvolutionInboxApi } from '@components/api';
 import { evolutionConfig, hasEvolutionCredentials } from '@utils/evolution-config';
 import { accountIdFromUrl } from '@utils/auth';
 import { fake } from '@utils/test-data';
-import { expect, test } from '@playwright/test';
+import { expect, test } from '@utils/fixture';
 
 const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@chatwoot.com';
 const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'Password123@#';
