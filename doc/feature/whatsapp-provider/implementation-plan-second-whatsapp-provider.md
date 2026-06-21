@@ -45,62 +45,68 @@ flowchart TB
 
 ---
 
-## Fase 0 — Infraestrutura (sem mudar comportamento)
+## Fase 0 — Infraestrutura
 
-| Entrega | Local |
-|---------|-------|
-| `# FORK:` em `PROVIDERS` | `app/models/channel/whatsapp.rb` |
-| `MessagingProvider::Registry` | `custom/lib/messaging_provider/registry.rb` |
-| Initializer register | `custom/config/initializers/messaging_provider_registry.rb` |
-| Prepend `Channel::Whatsapp#provider_service` | `custom/app/models/custom/channel/whatsapp.rb` |
-| Prepend `WhatsappEventsJob` | `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` |
-| Capability helper (opcional) | `custom/lib/messaging_provider/capabilities.rb` |
+> **Estado jun/2026:** Fase 0 **implementada para `evolution`** (registry, prepends, rota webhook). Reutilizar ao adicionar `evolution_go` — ver [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
+
+| Entrega | Local | `evolution` | `evolution_go` |
+|---------|-------|-------------|----------------|
+| `# FORK:` em `PROVIDERS` | `app/models/channel/whatsapp.rb` | ✅ | ❌ |
+| `MessagingProvider::Registry` | `custom/lib/messaging_provider/registry.rb` | ✅ | ❌ |
+| Prepend `Channel::Whatsapp` | `custom/app/models/custom/channel/whatsapp.rb` | ✅ | estender |
+| Prepend `WhatsappEventsJob` | `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` | ✅ | branch novo |
+| Prepend `MessageWindowService` | `custom/.../message_window_service.rb` | ✅ | estender |
 
 ```ruby
-# custom/app/models/custom/channel/whatsapp.rb
-module Custom::Channel::Whatsapp
-  def provider_service
-    MessagingProvider::Registry.fetch(provider, self) || super
-  end
+# custom/app/models/custom/channel/whatsapp.rb — implementado
+def provider_service
+  service = MessagingProvider::Registry.resolve(provider, whatsapp_channel: self)
+  return service if service
+  super
 end
-Channel::Whatsapp.prepend(Custom::Channel::Whatsapp)
 ```
 
-**Bloqueio:** `validates :provider, inclusion: { in: PROVIDERS }` usa a constante congelada no load do model. Para novos providers, faça um diff mínimo:
+**Bloqueio resolvido para `evolution`:** `PROVIDERS` inclui `evolution`. Para **`evolution_go`**, adicionar na mesma linha `# FORK:`:
 
 ```ruby
-# app/models/channel/whatsapp.rb
-# FORK: allow gateway providers handled by custom adapters.
-PROVIDERS = %w[default whatsapp_cloud evolution zapi notificame].freeze
+PROVIDERS = %w[default whatsapp_cloud evolution evolution_go].freeze
 ```
-
-Depois disso, mantenha o restante em `custom/` e registre cada provider no registry.
 
 ---
 
-## Fase 1 — MVP texto (piloto: Evolution ou NotificaMe)
+## Fase 1 — MVP texto (piloto: Evolution API, Evolution Go ou NotificaMe)
 
-### Backend
+Providers gateway no fork (jun/2026):
+
+| Provider | Doc | Estado código |
+|----------|-----|---------------|
+| `evolution` (Node) | [evolution-api/](./evolution-api/README.md) | Fase 0–3 em `custom/` |
+| `evolution_go` (Go) | [evolution-go/](./evolution-go/README.md) | Somente documentação |
+| NotificaMe | [notificame-whatsapp-integration/](../notificame-whatsapp-integration/plano-geral.md) | Planejado |
+
+Fase 0 (registry + prepends) é **compartilhada** entre `evolution` e `evolution_go` — ver [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
+
+### Backend (Evolution API Node — referência)
 
 | Classe | Responsabilidade |
 |--------|------------------|
 | `Custom::Whatsapp::Providers::EvolutionService` | `send_message`, `validate_provider_config?`, `error_message`, `process_response` override |
 | `Custom::Whatsapp::Webhooks::EvolutionNormalizer` | `MESSAGES_UPSERT` → `{ contacts:, messages: }` |
-| `Custom::Whatsapp::ConnectionService` | QR, `CONNECTION_UPDATE`, register webhook na instância |
+| `Custom::Whatsapp::Evolution::ConnectionService` | QR, `CONNECTION_UPDATE`, register webhook na instância |
 
 ### Webhook flow
 
 ```mermaid
 sequenceDiagram
-  participant GW as Gateway
-  participant WH as WhatsappController
+  participant GW as Evolution API
+  participant WH as EvolutionController
   participant J as WhatsappEventsJob
   participant N as EvolutionNormalizer
   participant I as IncomingMessageService
 
-  GW->>WH: POST /webhooks/whatsapp/:phone
+  GW->>WH: POST /webhooks/evolution/:instance_name
   WH->>J: perform_later(params)
-  Note over J,N: prepend: se provider=evolution
+  Note over J,N: prepend evolution_envelope?
   J->>N: normalize(params)
   N->>I: flat payload
   I->>I: IncomingMessageBaseService
@@ -114,12 +120,12 @@ sequenceDiagram
 - Form: inbox name, `base_url`, `api_key`, `instance_name`
 - Step 2: QR via polling `ConnectionService`
 
-### Critério de done
+### Critério de done (`evolution`)
 
-- [ ] Inbox criado com `provider: 'evolution'`
-- [ ] Inbound texto → conversa
-- [ ] Outbound texto → `source_id` persistido
-- [ ] Status mapeado (se gateway enviar)
+- [x] Inbox criado com `provider: 'evolution'`
+- [ ] Inbound texto → conversa (E2E pendente)
+- [x] Outbound texto → `source_id` persistido
+- [x] Status mapeado (`MESSAGES_UPDATE`)
 
 ---
 
@@ -146,12 +152,12 @@ sequenceDiagram
 
 ## Componentes por provider
 
-| Componente | Evolution | Z-API | NotificaMe |
-|------------|-----------|-------|------------|
-| Service | `EvolutionService` | `ZapiService` | `NotificameService` |
-| Normalizer | `EvolutionNormalizer` | `ZapiNormalizer` (demux por `type`) | conforme plano NotificaMe |
-| Webhooks | 1 URL + evento no body | 4 URLs ou 1 demux | conforme API |
-| Config | `instance_name` | `instance_id`, token | credenciais NotificaMe |
+| Componente | Evolution (Node) | Evolution Go | Z-API | NotificaMe |
+|------------|------------------|--------------|-------|------------|
+| Service | `EvolutionService` | `EvolutionGoService` | `ZapiService` | `NotificameService` |
+| Normalizer | `EvolutionNormalizer` | `EvolutionGoNormalizer` | `ZapiNormalizer` | conforme plano |
+| Webhook route | `/webhooks/evolution/:name` | `/webhooks/evolution_go/:name` | 4 URLs ou demux | conforme API |
+| Config | `api_key`, `instance_name` | `global_api_key`, `instance_token` | `instance_id`, token | credenciais NM |
 
 Detalhes: [provider-comparison.md](./provider-comparison.md).
 

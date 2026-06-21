@@ -1,0 +1,32 @@
+{
+  "instance": {
+    "instanceName": "cw-spike-1781996187",
+    "instanceId": "83c71378-5304-4d6b-be48-9e573d6f5f5c",
+    "integration": "WHATSAPP-BAILEYS",
+    "webhookWaBusiness": null,
+    "accessTokenWaBusiness": "",
+    "status": "connecting"
+  },
+  "hash": "A00CE258-1BE7-49D9-89BB-1829C69724DE",
+  "webhook": {},
+  "websocket": {},
+  "rabbitmq": {},
+  "nats": {},
+  "sqs": {},
+  "settings": {
+    "rejectCall": false,
+    "msgCall": "",
+    "groupsIgnore": true,
+    "alwaysOnline": false,
+    "readMessages": false,
+    "readStatus": false,
+    "syncFullHistory": false,
+    "wavoipToken": ""
+  },
+  "qrcode": {
+    "pairingCode": null,
+    "code": "2@zZ/kDPNZ7OdGrfRZi4xZDgFM4Oaf9KI5LDXN4nl905JklEhALcvTd6fDAiasBghQPs0FBWfGOzXfHtQgVL/3rN+JpPPg2XtpaGg=,lEBpkWaW1PShov/xXgsveoCJ4fF7Aydf3R/W+l1fDxw=,13EhA/AmFiyfZH4SFArw41B7SPEgVqayW3LIsN+2GXU=,pvmDhxj0+LZggvITf6t0xSsmTQ+yaRA5pMqfMGkjKEI=",
+    "base64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAVwAAAFcCAYAAACEFgYsAAAjGUlEQVR4AezBwZEgya5syVMhRYTRZVSAJFABusBFTy+xchGXyIzb7w9U//zzL9Zaa/26h7XWWp94WGut9YmHtdZan3hYa631iYe11lqfeFhrrfWJh7XWWp94WGut9YmHtd...[truncated]",
+    "count": 1
+  }
+}

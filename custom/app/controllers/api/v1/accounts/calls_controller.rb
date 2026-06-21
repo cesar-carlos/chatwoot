@@ -6,13 +6,9 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
   def update
     authorize @call.inbox, :show?
 
-    unless @call.wavoip?
-      return render json: { error: 'Call provider not supported' }, status: :unprocessable_entity
-    end
+    return render json: { error: 'Call provider not supported' }, status: :unprocessable_entity unless @call.wavoip?
 
-    unless @call.ringing? || @call.in_progress?
-      return render json: { error: 'Call is not active' }, status: :unprocessable_entity
-    end
+    return render json: { error: 'Call is not active' }, status: :unprocessable_entity unless @call.ringing? || @call.in_progress?
 
     if @call.accepted_by_agent_id.blank?
       @call.update!(accepted_by_agent_id: Current.user.id)

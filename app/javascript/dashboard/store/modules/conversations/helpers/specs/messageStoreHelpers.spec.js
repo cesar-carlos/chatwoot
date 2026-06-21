@@ -7,9 +7,9 @@ import {
 describe('conversation message store helpers', () => {
   describe('messageCreatedAt', () => {
     it('reads snake_case timestamps', () => {
-      expect(
-        messageCreatedAt({ created_at: '2024-01-01T11:00:00Z' })
-      ).toBe(new Date('2024-01-01T11:00:00Z').getTime());
+      expect(messageCreatedAt({ created_at: '2024-01-01T11:00:00Z' })).toBe(
+        new Date('2024-01-01T11:00:00Z').getTime()
+      );
     });
 
     it('reads camelCase timestamps', () => {

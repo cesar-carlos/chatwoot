@@ -1,7 +1,11 @@
 import types from '../../mutation-types';
 import getters, { getSelectedChatConversation } from './getters';
 import actions from './actions';
-import { findPendingMessageIndex, messageCreatedAt, normalizeStoreMessage } from './helpers';
+import {
+  findPendingMessageIndex,
+  messageCreatedAt,
+  normalizeStoreMessage,
+} from './helpers';
 import { MESSAGE_STATUS } from 'shared/constants/messages';
 import wootConstants from 'dashboard/constants/globals';
 import { BUS_EVENTS } from '../../../../shared/constants/busEvents';

@@ -1,0 +1,37 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "test-instance",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteJidAlt": "5511999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0IMG123456789",
+      "addressingMode": "pn",
+      "participant": null,
+      "participantAlt": null
+    },
+    "pushName": "João Silva",
+    "message": {
+      "imageMessage": {
+        "url": "https://mmg.whatsapp.net/d/f/placeholder",
+        "mimetype": "image/jpeg",
+        "caption": "Foto do produto",
+        "fileSha256": "abc123",
+        "fileLength": 102400,
+        "height": 800,
+        "width": 600,
+        "mediaKey": "mediaKeyBase64Placeholder",
+        "directPath": "/v/t62.7118-24/placeholder",
+        "jpegThumbnail": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAn/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAA8A/9k="
+      }
+    },
+    "messageType": "imageMessage",
+    "messageTimestamp": 1718880060
+  },
+  "destination": "https://chatwoot.example.com/webhooks/evolution/test-instance",
+  "date_time": "2026-06-20T12:01:00.000Z",
+  "sender": "5511888888888@s.whatsapp.net",
+  "server_url": "https://evolution.example.com",
+  "apikey": "TEST-INSTANCE-API-KEY"
+}

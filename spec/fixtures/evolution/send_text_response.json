@@ -1,0 +1,28 @@
+{
+  "key": {
+    "remoteJid": "556681128433@s.whatsapp.net",
+    "fromMe": true,
+    "id": "3EB0C6D7F8BC03700FBB95"
+  },
+  "pushName": "Voc\u00ea",
+  "status": "PENDING",
+  "message": {
+    "conversation": "ping plano spike T0"
+  },
+  "contextInfo": {
+    "mentionedJid": [],
+    "groupMentions": [],
+    "ephemeralSettingTimestamp": {
+      "low": 1781823456,
+      "high": 0,
+      "unsigned": false
+    },
+    "disappearingMode": {
+      "initiator": 0
+    }
+  },
+  "messageType": "conversation",
+  "messageTimestamp": 1781996256,
+  "instanceId": "19959251-bb08-4faa-8050-eedc8a783fe7",
+  "source": "web"
+}

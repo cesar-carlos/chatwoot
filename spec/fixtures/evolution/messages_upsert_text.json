@@ -1,0 +1,31 @@
+{
+  "event": "MESSAGES_UPSERT",
+  "instance": "test-instance",
+  "data": {
+    "key": {
+      "id": "3EB00C82C9CE7A7439627F",
+      "fromMe": false,
+      "remoteJid": "242532642504895@lid",
+      "participant": "",
+      "remoteJidAlt": "556696971841@s.whatsapp.net",
+      "addressingMode": "lid"
+    },
+    "pushName": "Matheus Teixeira \ud83d\ude0e",
+    "messageType": "conversation",
+    "message": {
+      "conversation": "Oi",
+      "messageContextInfo": {
+        "messageSecret": "3m+efljXf59yhDpB9jjWNeAupeI0hcaAXaep7y6t0kw=",
+        "deviceListMetadataVersion": 2
+      }
+    },
+    "messageTimestamp": 1779299081,
+    "instanceId": "19959251-bb08-4faa-8050-eedc8a783fe7",
+    "source": "web"
+  },
+  "destination": "http://localhost:3000/webhooks/evolution/test-instance",
+  "date_time": "2026-06-20T22:56:38.502Z",
+  "sender": "556681128433@s.whatsapp.net",
+  "server_url": "https://evo.se7esistemassinop.com.br",
+  "apikey": "A00CE258-1BE7-49D9-89BB-1829C69724DE"
+}

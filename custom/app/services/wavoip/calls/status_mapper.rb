@@ -5,17 +5,20 @@ class Wavoip::Calls::StatusMapper
   FAILED = %w[REJECTED FAILED CONNECTION_LOST].freeze
   IGNORE = %w[REMOTE_CALL_IN_PROGRESS].freeze
 
+  DIRECT_STATUS_MAP = {
+    'ACTIVE' => 'in_progress',
+    'ENDED' => 'completed',
+    'HANDLED_REMOTELY' => 'completed',
+    'NOT_ANSWERED' => 'no_answer'
+  }.freeze
+
   def to_call_status(external_status)
     status = external_status.to_s.upcase
     return if status.blank? || IGNORE.include?(status)
-
     return 'ringing' if RINGING.include?(status)
-    return 'in_progress' if status == 'ACTIVE'
-    return 'completed' if status.in?(%w[ENDED HANDLED_REMOTELY])
-    return 'no_answer' if status == 'NOT_ANSWERED'
     return 'failed' if FAILED.include?(status)
 
-    nil
+    DIRECT_STATUS_MAP[status]
   end
 
   def terminal?(call_status)

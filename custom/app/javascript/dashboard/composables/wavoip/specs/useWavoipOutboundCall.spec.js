@@ -97,9 +97,15 @@ describe('useWavoipOutboundCall', () => {
     getWavoipClientEntry.mockReturnValue({ token: 'device-token' });
 
     const { initiateOutboundCall } = useWavoipOutboundCall();
-    const first = initiateOutboundCall(1, { inboxId: 2, toPhone: '+15550001111' });
+    const first = initiateOutboundCall(1, {
+      inboxId: 2,
+      toPhone: '+15550001111',
+    });
     await Promise.resolve();
-    const second = await initiateOutboundCall(1, { inboxId: 2, toPhone: '+15550001111' });
+    const second = await initiateOutboundCall(1, {
+      inboxId: 2,
+      toPhone: '+15550001111',
+    });
 
     expect(second).toEqual({ status: 'locked' });
     finishStart();

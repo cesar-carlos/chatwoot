@@ -3,7 +3,7 @@ module Custom::Account
 
   prepended do
     has_many :conversation_workflow_rules, dependent: :destroy_async
-    has_many :wavoip_channels, class_name: 'Channel::Wavoip', dependent: :destroy_async, foreign_key: 'account_id'
+    has_many :wavoip_channels, class_name: 'Channel::Wavoip', dependent: :destroy_async, foreign_key: 'account_id', inverse_of: :account
   end
 
   def workflow_rules_migrated?

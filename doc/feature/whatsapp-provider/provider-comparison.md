@@ -13,6 +13,7 @@ Notas de alto nível sobre gateways não oficiais comuns e como cada um se encai
 | **Meta Cloud API** | Oficial BSP | Token OAuth | `entry/changes/value` | ✅ Aprovados | ❌ individual | ✅ EE Calling API |
 | **360dialog** (`default`) | BSP oficial | API key | Flat Meta-like | ✅ Sync BSP | ❌ | ❌ |
 | **Evolution API** | Self-host / SaaS | QR + instance | Por evento (`MESSAGES_UPSERT`, …) | ❌ (modo Baileys) | ✅ | ⚠️ experimental |
+| **Evolution Go** | Self-host | QR + instance | Por evento (`MESSAGE`, `CONNECTION`, …) | ❌ (whatsmeow) | ✅ | ⚠️ experimental |
 | **Z-API** | SaaS | QR + instance | 4 URLs (receive, delivery, status, disconnected) | ❌ | ✅ | ❌ documentado |
 | **NotificaMe** | SaaS BR | API + credenciais | Proprietário | ❌ | ⚠️ | ❌ |
 | **Baileys/WPPConnect** (genérico) | Self-host | QR | Variável por wrapper | ❌ | ✅ | ⚠️ lib-level |
@@ -64,6 +65,74 @@ apikey: <key>
 - `provider_config`: `base_url`, `api_key`, `instance_name`
 - Conexão: polling `CONNECTION_UPDATE` + exibir QR de `QRCODE_UPDATED`
 - **Cuidado:** Evolution pode rodar em modo Cloud — não confundir com provider não oficial
+- **Plano detalhado:** [evolution-api/README.md](./evolution-api/README.md)
+
+---
+
+## Evolution Go
+
+**Site/docs:** [docs.evolutionfoundation.com.br/en/evolution-go](https://docs.evolutionfoundation.com.br/en/evolution-go) · GitHub: `evolution-foundation/evolution-go` · Postman: [evolution-go collection](https://www.postman.com/agenciadgcode/evolution-api/collection/nk736ze/evolution-go)
+
+### O que expõe
+
+- **REST** com auth dupla: `GLOBAL_API_KEY` (admin) + **token por instância**
+- **whatsmeow** (não Baileys) — payload mensagem similar mas **API paths distintos**
+- **Webhooks** configurados no `POST /instance/connect` (`webhookUrl` + `subscribe`)
+- **Eventos:** `MESSAGE`, `CONNECTION`, `QRCODE`, `READ_RECEIPT` — **não** `MESSAGES_UPSERT`
+- **Licença** obrigatória no painel Go
+- **PostgreSQL** obrigatório (auth + users DB)
+
+### Formato típico
+
+**Envio texto:**
+
+```http
+POST /send/text
+apikey: <instance-token>
+{ "number": "5511999999999", "text": "Olá" }
+```
+
+**Webhook `MESSAGE`:** envelope `{ event, instance, data }` — sem `apikey` no body.
+
+### Paridade vs Cloud API
+
+| Feature | Evolution Go |
+|---------|--------------|
+| Texto livre anytime | ✅ |
+| Templates Meta | ❌ |
+| Status read | ⚠️ via `READ_RECEIPT` |
+| Mídia | ✅ MinIO/S3 opcional |
+| Integração Chatwoot nativa | ❌ (diferente da Evolution API Node) |
+
+### Notas para Chatwoot
+
+- **Provider key:** `evolution_go` — **separado** de `evolution` (Node)
+- **Não reusar** `Custom::Whatsapp::Evolution::*` sem adaptação
+- Normalizer: `MESSAGE` → flat `{ contacts:, messages: }`
+- Auth webhook: `?token=` (sem `apikey` no envelope)
+- **Plano detalhado:** [evolution-go/README.md](./evolution-go/README.md) · divergências: [evolution-go/differences-from-evolution-api.md](./evolution-go/differences-from-evolution-api.md)
+
+---
+
+## Evolution API (Node) vs Evolution Go — quando escolher
+
+| Critério | Evolution API (Node) | Evolution Go |
+|----------|----------------------|--------------|
+| **Stack** | Node.js + Baileys | Go + whatsmeow |
+| **Provider key fork** | `evolution` | `evolution_go` |
+| **Performance / memória** | Adequado para maioria | Melhor para alto volume |
+| **Integração Chatwoot nativa na Evolution** | Sim (`/chatwoot/set`) — referência apenas | Não — webhook + REST direto |
+| **Webhook events** | `MESSAGES_UPSERT`, `CONNECTION_UPDATE` | `MESSAGE`, `CONNECTION`, `QRCODE` |
+| **Auth REST** | `apikey` única por instância | `global_api_key` + `instance_token` |
+| **Send text path** | `POST /message/sendText/{name}` | `POST /send/text` |
+| **Licença** | Depende do deploy | Obrigatória no painel Go |
+| **PostgreSQL** | Opcional (Redis comum) | Obrigatório |
+| **Código fork hoje** | `custom/.../evolution/` implementado | Somente docs |
+| **Reusar adapter do outro** | ❌ Nunca | ❌ Nunca |
+
+**Regra:** um inbox = um provider. Não misturar Node e Go na mesma instância ou rota webhook.
+
+**Coexistência:** mesmo fork pode ter inbox A (`evolution`) e inbox B (`evolution_go`) — [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
 
 ---
 
@@ -178,11 +247,12 @@ NotificaMe é **referência de implementação já planejada** neste fork — re
 
 ## Matriz de escolha rápida
 
-| Critério | Evolution | Z-API | NotificaMe | Self-host Baileys |
-|----------|-----------|-------|------------|-------------------|
-| Self-host / controle | ✅ | ❌ SaaS | ❌ SaaS | ✅ |
-| Doc REST estável | ✅ boa | ✅ boa | ✅ (fork) | ⚠️ varia |
-| Setup Chatwoot existente | Integração nativa (referência) | — | Plano no fork | — |
+| Critério | Evolution API | Evolution Go | Z-API | NotificaMe | Self-host Baileys |
+|----------|---------------|--------------|-------|------------|-------------------|
+| Self-host / controle | ✅ | ✅ | ❌ SaaS | ❌ SaaS | ✅ |
+| Doc REST estável | ✅ boa | ⚠️ paths divergentes | ✅ boa | ✅ (fork) | ⚠️ varia |
+| Performance / memória | Padrão | ✅ Go | — | — | varia |
+| Setup Chatwoot existente | Integração nativa (referência) | — | — | Plano no fork | — |
 | Interativos | ⚠️ | ✅ | ✅ planejado | ⚠️ |
 | Ops (QR, reconnect) | Médio | Baixo (SaaS) | Baixo | Alto |
 | Risco ToS / ban | Alto | Alto | Alto | Alto |

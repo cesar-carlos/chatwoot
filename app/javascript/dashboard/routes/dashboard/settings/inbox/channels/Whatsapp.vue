@@ -15,6 +15,8 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 import { useAccount } from 'dashboard/composables/useAccount';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { META_RESTRICTION_STATUS_URL } from 'dashboard/constants/globals';
+// FORK: Evolution API WhatsApp provider wizard
+import Evolution from 'customDashboard/routes/dashboard/settings/inbox/channels/Evolution.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -33,6 +35,7 @@ const PROVIDER_TYPES = {
   WHATSAPP_EMBEDDED: 'whatsapp_embedded',
   WHATSAPP_MANUAL: 'whatsapp_manual',
   THREE_SIXTY_DIALOG: '360dialog',
+  EVOLUTION: 'evolution',
 };
 
 const hasWhatsappAppId = computed(() => {
@@ -89,6 +92,12 @@ const availableProviders = computed(() => [
     title: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.TWILIO'),
     description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.TWILIO_DESC'),
     icon: 'i-woot-twilio',
+  },
+  {
+    key: PROVIDER_TYPES.EVOLUTION,
+    title: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION'),
+    description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION_DESC'),
+    icon: 'i-woot-evolution-color',
   },
 ]);
 
@@ -264,6 +273,7 @@ const requestEmbeddedSignupAccess = () => {
           v-else-if="selectedProvider === PROVIDER_TYPES.TWILIO"
           type="whatsapp"
         />
+        <Evolution v-else-if="selectedProvider === PROVIDER_TYPES.EVOLUTION" />
         <ThreeSixtyDialogWhatsapp
           v-else-if="selectedProvider === PROVIDER_TYPES.THREE_SIXTY_DIALOG"
         />

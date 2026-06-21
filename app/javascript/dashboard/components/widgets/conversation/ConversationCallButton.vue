@@ -152,7 +152,6 @@ const startWavoipCall = async () => {
     if (response?.status === 'locked') return;
     if (!response?.call_id) {
       useAlert(t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));
-      return;
     }
   } catch (error) {
     useAlert(error?.message || t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));

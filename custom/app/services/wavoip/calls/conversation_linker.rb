@@ -22,6 +22,26 @@ class Wavoip::Calls::ConversationLinker
     )
   end
 
+  def self.build_meta(event)
+    {
+      'wavoip_session_id' => event.session_id,
+      'call_type' => event.call_type&.to_s,
+      'wavoip_status' => event.external_status
+    }.compact
+  end
+
+  def self.contact_phone_for(event)
+    phone = event.from_phone.presence || event.to_phone
+    normalize_e164(phone)
+  end
+
+  def self.normalize_e164(phone)
+    return if phone.blank?
+
+    phone = phone.to_s
+    phone.start_with?('+') ? phone : "+#{phone}"
+  end
+
   def initialize(inbox:, event:)
     @inbox = inbox
     @event = event
@@ -47,26 +67,6 @@ class Wavoip::Calls::ConversationLinker
   private
 
   attr_reader :inbox, :event
-
-  def self.build_meta(event)
-    {
-      'wavoip_session_id' => event.session_id,
-      'call_type' => event.call_type&.to_s,
-      'wavoip_status' => event.external_status
-    }.compact
-  end
-
-  def self.contact_phone_for(event)
-    phone = event.from_phone.presence || event.to_phone
-    normalize_e164(phone)
-  end
-
-  def self.normalize_e164(phone)
-    return if phone.blank?
-
-    phone = phone.to_s
-    phone.start_with?('+') ? phone : "+#{phone}"
-  end
 
   def account
     inbox.account

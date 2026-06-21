@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { resolveConversationMessageSearchError } from '../resolveConversationMessageSearchError';
 
 const t = key => key;
@@ -51,7 +51,10 @@ describe('resolveConversationMessageSearchError', () => {
   });
 
   it('falls back to generic error', () => {
-    const message = resolveConversationMessageSearchError(new Error('network'), t);
+    const message = resolveConversationMessageSearchError(
+      new Error('network'),
+      t
+    );
 
     expect(message).toBe('CONVERSATION.MESSAGE_SEARCH.ERROR');
   });

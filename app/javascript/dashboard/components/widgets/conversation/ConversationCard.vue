@@ -202,11 +202,7 @@ watch(
           'mx-2': compact,
         }"
       >
-        <InboxName
-          v-if="showInboxName"
-          :inbox="inbox"
-          class="flex-1 min-w-0"
-        />
+        <InboxName v-if="showInboxName" :inbox="inbox" class="flex-1 min-w-0" />
         <div
           class="flex items-baseline gap-2 flex-shrink-0"
           :class="{

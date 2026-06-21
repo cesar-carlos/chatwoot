@@ -27,12 +27,12 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       to_phone: channel.phone_number,
       peer_name: 'Caller Test',
       duration_seconds: nil,
-      session_id: 12345,
+      session_id: 12_345,
       call_type: :official,
       record_url: nil,
       raw_type: 'CALL'
     }
-    Voice::Dto::WebhookCallEvent.new(**defaults.merge(overrides))
+    Voice::Dto::WebhookCallEvent.new(**defaults, **overrides)
   end
 
   def service_for(event)

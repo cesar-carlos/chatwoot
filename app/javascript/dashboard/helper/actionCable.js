@@ -16,6 +16,8 @@ import { markCallDismissed, isLocalCall } from 'dashboard/helper/voice';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 // FORK: Wavoip voice cable handlers (no SDP)
 import { VOICE_CALL_CABLE_HANDLERS } from 'customDashboard/lib/voice/voiceCallCableRegistry';
+// FORK: Evolution disconnect alert
+import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 const { isImpersonating } = useImpersonation();
@@ -74,6 +76,8 @@ class ActionCableConnector extends BaseActionCableConnector {
       'voice_call.outbound_connected': this.onVoiceCallOutboundConnected,
       'voice_call.outbound_accepted': this.onVoiceCallOutboundAccepted,
       'voice_call.ended': this.onVoiceCallEnded,
+      // FORK: Evolution WhatsApp disconnect
+      'evolution.connection_closed': this.onEvolutionConnectionClosed,
     };
   }
 
@@ -555,6 +559,12 @@ class ActionCableConnector extends BaseActionCableConnector {
       }
     }
     useCallsStore().removeCall(data.call_id);
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onEvolutionConnectionClosed = ({ data }) => {
+    if (!data?.inbox_id) return;
+    onEvolutionConnectionClosed(data);
   };
 }
 

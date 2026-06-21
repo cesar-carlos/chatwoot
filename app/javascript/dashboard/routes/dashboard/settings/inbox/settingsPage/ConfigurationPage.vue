@@ -383,7 +383,11 @@ export default {
     <ImapSettings :inbox="inbox" />
     <SmtpSettings :inbox="inbox" />
   </div>
-  <div v-else-if="isAWhatsAppChannel && !isATwilioChannel">
+  <div
+    v-else-if="
+      isAWhatsAppChannel && !isATwilioChannel && !isEvolutionWhatsAppChannel
+    "
+  >
     <div v-if="inbox.provider_config">
       <!-- Embedded Signup Section -->
       <template v-if="isEmbeddedSignupWhatsApp">

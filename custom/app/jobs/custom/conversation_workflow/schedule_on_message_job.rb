@@ -23,15 +23,47 @@ class Custom::ConversationWorkflow::ScheduleOnMessageJob < ApplicationJob
   def perform_for_conversation(rule, conversation_id)
     conversation = Conversation.find_by(id: conversation_id)
     return if conversation.blank?
-    return if ConversationWorkflowRule.schedulable_on_incoming?(rule.trigger_type) && conversation.waiting_since.blank?
-    return if rule.first_response_overdue? && conversation.first_reply_created_at.present?
-    return if rule.agent_no_reply? && conversation.waiting_since.blank?
-    return if rule.unassigned_too_long? && conversation.assignee_id.present?
-    return if rule.pending_stale? && !conversation.pending?
-    return if rule.customer_no_reply? && !customer_last_message_outgoing?(conversation)
+    return if conversation_ineligible_for_rule?(rule, conversation)
 
     Custom::ConversationWorkflow::RuleExecutor.new(account: conversation.account, rule: rule)
                                               .perform_for_conversation(conversation)
+  end
+
+  INELIGIBILITY_CHECKS = %i[
+    skip_schedulable_waiting?
+    skip_first_response_done?
+    skip_agent_no_reply?
+    skip_unassigned_too_long?
+    skip_pending_stale?
+    skip_customer_no_reply?
+  ].freeze
+
+  def conversation_ineligible_for_rule?(rule, conversation)
+    INELIGIBILITY_CHECKS.any? { |check| send(check, rule, conversation) }
+  end
+
+  def skip_schedulable_waiting?(rule, conversation)
+    ConversationWorkflowRule.schedulable_on_incoming?(rule.trigger_type) && conversation.waiting_since.blank?
+  end
+
+  def skip_first_response_done?(rule, conversation)
+    rule.first_response_overdue? && conversation.first_reply_created_at.present?
+  end
+
+  def skip_agent_no_reply?(rule, conversation)
+    rule.agent_no_reply? && conversation.waiting_since.blank?
+  end
+
+  def skip_unassigned_too_long?(rule, conversation)
+    rule.unassigned_too_long? && conversation.assignee_id.present?
+  end
+
+  def skip_pending_stale?(rule, conversation)
+    rule.pending_stale? && !conversation.pending?
+  end
+
+  def skip_customer_no_reply?(rule, conversation)
+    rule.customer_no_reply? && !customer_last_message_outgoing?(conversation)
   end
 
   def customer_last_message_outgoing?(conversation)

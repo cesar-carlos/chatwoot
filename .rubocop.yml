@@ -88,11 +88,6 @@ Metrics/BlockLength:
     - 'config/environments/*'
     - db/schema.rb
 
-Metrics/ModuleLength:
-  Exclude:
-    - lib/seeders/message_seeder.rb
-    - spec/support/slack_stubs.rb
-
 Rails/HelperInstanceVariable:
   Exclude:
     - enterprise/app/helpers/captain/chat_helper.rb

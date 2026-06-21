@@ -25,7 +25,8 @@ flowchart TD
 | Se… | Então… |
 |-----|--------|
 | Já usa NotificaMe contratualmente | Siga [plano NotificaMe](../notificame-whatsapp-integration/plano-geral.md) |
-| Quer self-host e controle | Piloto **Evolution API** (modo Baileys) |
+| Quer self-host Baileys (Node) | Piloto **Evolution API** — [evolution-api/](./evolution-api/README.md) |
+| Quer self-host Go (whatsmeow, performance) | Piloto **Evolution Go** — [evolution-go/](./evolution-go/README.md) |
 | Quer SaaS sem ops | **Z-API** ou NotificaMe |
 | Gateway proprietário interno | Padrão genérico Baileys — [provider-comparison.md](./provider-comparison.md) §4 |
 
