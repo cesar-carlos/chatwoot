@@ -63,7 +63,7 @@ flowchart TB
 
 ## Fase 1 — MVP texto + conexão QR + proxy opcional
 
-**Escopo:** criar inbox, conectar via QR, receber e enviar **texto**; **proxy opcional no wizard**; regras de conversa mínimas (`reopen_conversation`, defaults fork).
+**Escopo:** criar inbox, conectar via QR, receber e enviar **texto**; **proxy opcional no wizard**; regras de conversa mínimas (`lock_to_single_conversation`, defaults fork).
 
 **Pré-requisito:** [validation-checklist.md](./validation-checklist.md) · defaults: [business-rules-adaptation.md](./business-rules-adaptation.md)
 
@@ -98,7 +98,7 @@ flowchart TB
 - LID → `remoteJidAlt` quando presente
 
 | 1.13 | `provider_config` defaults fork | Seed wizard com [business-rules-adaptation.md](./business-rules-adaptation.md) |
-| 1.14 | `reopen_conversation` inbound | ✅ Reabrir conversa `resolved` ao receber mensagem (default `true`) |
+| 1.14 | Reabrir conversa `resolved` no inbound | ✅ `lock_to_single_conversation` + `Conversations::Resolver` + `Message#reopen_conversation` |
 
 ### `ConnectionService` — fluxo criação inbox
 
@@ -136,7 +136,7 @@ flowchart TB
 - [ ] Integração Chatwoot **desabilitada** na Evolution
 - [ ] Sem janela 24h (texto livre em conversa antiga)
 - [ ] Proxy opcional no wizard (set + validação Evolution)
-- [x] `reopen_conversation` — conversa resolvida reabre ao inbound (Resolver + Message callback)
+- [x] Reabrir conversa resolvida no inbound — `lock_to_single_conversation` + Resolver + Message callback
 - [ ] `provider_config` com defaults [business-rules-adaptation.md](./business-rules-adaptation.md)
 
 - [ ] Cloud e 360dialog inalterados (regressão)
@@ -158,7 +158,7 @@ flowchart TB
 | 2.6 | Sync settings ao salvar inbox settings | `ConnectionService#sync_settings` |
 | 2.7 | `sign_msg` / `sign_delimiter` no outbound | Portar lógica `receiveWebhook` Evolution |
 | 2.8 | `ignore_jids` no normalizer | `eventWhatsapp` ref |
-| 2.9 | `reopen_conversation` / `conversation_pending` | ✅ Resolver prepend + inbound hooks |
+| 2.9 | `conversation_pending`; reabrir via `lock_to_single_conversation` | ✅ `IncomingMessageServiceHelpers` + `Custom::Message` prepend |
 
 **Backend T1 (implementado):** 2.1, 2.2, 2.3, 2.4 (outbound quoted + inbound context), 2.7, 2.8 — ver `custom/app/services/custom/whatsapp/`.
 

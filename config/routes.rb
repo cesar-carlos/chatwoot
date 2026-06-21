@@ -261,6 +261,7 @@ Rails.application.routes.draw do
             # FORK: Wavoip call accept attribution (no SDP)
             resources :calls, only: [:update]
           end
+          resources :custom_attribute_definitions, only: [:index, :show, :create, :update, :destroy]
           resources :custom_filters, only: [:index, :show, :create, :update, :destroy]
           resources :inboxes, only: [:index, :show, :create, :update, :destroy] do
             get :assignable_agents, on: :member

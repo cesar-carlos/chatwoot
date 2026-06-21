@@ -18,6 +18,17 @@ function formatPairingCode(code) {
   return code.toString();
 }
 
+export function isEvolutionPlaceholderPhone(phone) {
+  return phone?.toString().startsWith('+55000');
+}
+
+export function formatQrDataUrl(value) {
+  if (!value) return '';
+  if (value.startsWith('data:')) return value;
+
+  return `data:image/png;base64,${value}`;
+}
+
 function extractPairingCode(raw) {
   const direct = raw.qrcode_code || raw.qrcodeCode || raw.pairingCode;
   if (direct) return formatPairingCode(direct);
@@ -36,10 +47,15 @@ export function normalizeEvolutionConnectionPayload(raw) {
   if (status) payload.connectionStatus = status;
 
   const qr = extractQrBase64(raw);
-  if (qr) payload.qrcodeBase64 = qr;
+  if (qr) payload.qrcodeBase64 = formatQrDataUrl(qr);
 
   const pairingCode = extractPairingCode(raw);
   if (pairingCode) payload.pairingCode = pairingCode;
+
+  const phone = raw.phone_number || raw.phoneNumber;
+  if (phone && !isEvolutionPlaceholderPhone(phone)) {
+    payload.phoneNumber = phone;
+  }
 
   return Object.keys(payload).length ? payload : null;
 }

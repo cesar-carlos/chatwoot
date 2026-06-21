@@ -1,6 +1,19 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::ApiClient
+  REQUEST_TIMEOUT = 30
+  OPEN_TIMEOUT = 10
+
+  def self.raise_unless_success!(response, message)
+    return if response.success?
+
+    raise Custom::Whatsapp::Evolution::ApiError.new(
+      message,
+      status: response.code,
+      body: response.parsed_response
+    )
+  end
+
   def initialize(base_url:, api_key:, instance_name:)
     @base_url = base_url.to_s.delete_suffix('/')
     @api_key = api_key
@@ -164,6 +177,8 @@ class Custom::Whatsapp::Evolution::ApiClient
       }
     }
     options[:body] = body.to_json if body.present?
+    options[:timeout] = REQUEST_TIMEOUT
+    options[:open_timeout] = OPEN_TIMEOUT
 
     HTTParty.public_send(method, "#{@base_url}#{path}", options)
   end

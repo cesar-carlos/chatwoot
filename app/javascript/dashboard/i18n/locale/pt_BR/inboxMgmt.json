@@ -247,6 +247,8 @@
           "WHATSAPP_CLOUD": "Cloud do WhatsApp",
           "WHATSAPP_CLOUD_DESC": "Configuração rápida via Meta",
           "TWILIO_DESC": "Conectar através de credenciais Twilio",
+          "EVOLUTION": "Evolution API",
+          "EVOLUTION_DESC": "WhatsApp via Baileys (Evolution self-hosted)",
           "360_DIALOG": "360Dialog"
         },
         "SELECT_PROVIDER": {
@@ -324,6 +326,50 @@
         },
         "API": {
           "ERROR_MESSAGE": "Não foi possível salvar o canal do WhatsApp"
+        }
+      },
+      "EVOLUTION": {
+        "TITLE": "Evolution API",
+        "DESC": "Conecte o WhatsApp pela sua instância Evolution API (Baileys). Escaneie o QR code para vincular seu número.",
+        "INBOX_NAME": {
+          "LABEL": "Nome da caixa de entrada",
+          "PLACEHOLDER": "ex.: Suporte WhatsApp",
+          "ERROR": "Informe o nome da caixa de entrada"
+        },
+        "BASE_URL": {
+          "LABEL": "URL da Evolution API",
+          "PLACEHOLDER": "https://evolution.exemplo.com",
+          "ERROR": "Informe uma URL base válida da Evolution API"
+        },
+        "API_KEY": {
+          "LABEL": "Chave da API",
+          "PLACEHOLDER": "Chave global ou da instância",
+          "ERROR": "A chave da API é obrigatória"
+        },
+        "INSTANCE_NAME": {
+          "LABEL": "Nome da instância",
+          "PLACEHOLDER": "ex.: inbox-vendas-1",
+          "ERROR": "O nome da instância é obrigatório"
+        },
+        "PROXY": {
+          "ENABLED": {
+            "LABEL": "Usar proxy (opcional)",
+            "DESCRIPTION": "Encaminhe o tráfego WhatsApp do Baileys por um proxy HTTP, HTTPS ou SOCKS."
+          },
+          "HOST": "Host do proxy",
+          "PORT": "Porta",
+          "PROTOCOL": "Protocolo (http, https, socks5)",
+          "USERNAME": "Usuário",
+          "PASSWORD": "Senha"
+        },
+        "SUBMIT_BUTTON": "Criar e exibir QR code",
+        "CONNECT": {
+          "TITLE": "Caixa de entrada criada",
+          "DESCRIPTION": "Escaneie o QR code com o WhatsApp para concluir a vinculação desta caixa de entrada.",
+          "OPEN_QR": "Abrir leitor de QR"
+        },
+        "API": {
+          "ERROR_MESSAGE": "Não foi possível criar a caixa de entrada Evolution. Verifique URL, chave da API e nome da instância."
         }
       },
       "VOICE": {
@@ -474,7 +520,7 @@
           },
           "EVOLUTION": {
             "TITLE": "Evolution API",
-            "DESCRIPTION": "WhatsApp via Evolution API self-hosted (Baileys / QR code)"
+            "DESCRIPTION": "Mensagens WhatsApp via Evolution API self-hosted (Baileys / QR code)"
           },
           "EMAIL": {
             "TITLE": "e-mail",
@@ -651,7 +697,8 @@
       "ACCOUNT_HEALTH": "Saúde da conta",
       "CSAT": "CSAT",
       "VOICE": "Voz",
-      "CALLS": "Chamadas"
+      "CALLS": "Chamadas",
+      "EVOLUTION": "WhatsApp"
     },
     "VOICE_CONFIGURATION": {
       "ENABLE_VOICE": {
@@ -684,6 +731,148 @@
         "LABEL": "Mensagem de solicitação de permissão de chamada",
         "HELP_TEXT": "Exibida ao contato quando ele ainda não consentiu em receber chamadas. Deixe em branco para usar o padrão.",
         "PLACEHOLDER": "Gostaríamos de ligar para você sobre sua conversa."
+      }
+    },
+    "EVOLUTION": {
+      "SETTINGS": {
+        "CONNECTION_STATUS": {
+          "LABEL": "Status da conexão",
+          "HELP_TEXT": "Estado atual da sessão WhatsApp reportado pela Evolution API.",
+          "OPEN": "Conectado",
+          "CONNECTING": "Conectando",
+          "CLOSE": "Desconectado"
+        },
+        "HEALTH": {
+          "LOADING": "Verificando conexão…",
+          "PHONE_NUMBER": {
+            "LABEL": "Número vinculado",
+            "HELP_TEXT": "Número WhatsApp conectado a esta instância Evolution."
+          },
+          "RECONNECT": "Reconectar (novo QR)",
+          "OPEN_QR_MODAL": "Escanear QR code",
+          "SCAN_CTA": "O WhatsApp não está conectado. Abra o leitor de QR e vincule seu celular em WhatsApp → Aparelhos conectados.",
+          "RESTART": "Reiniciar instância",
+          "LOGOUT": "Encerrar sessão",
+          "RESTART_CONFIRM": "Reiniciar a instância Evolution? A sessão pode desconectar brevemente e um novo QR code pode ser necessário.",
+          "LOGOUT_CONFIRM": "Encerrar esta sessão WhatsApp? Será necessário escanear um novo QR code para reconectar.",
+          "ACTION_SUCCESS": "Instância Evolution atualizada.",
+          "DISCONNECTED_ALERT": "WhatsApp desconectado na caixa de entrada \"{inbox}\". Abra as configurações da caixa de entrada para reconectar."
+        },
+        "QR_MODAL": {
+          "TITLE": "Escanear QR code",
+          "DESCRIPTION": "Abra o WhatsApp no celular → Aparelhos conectados → Conectar um aparelho.",
+          "LOADING": "Gerando QR code…",
+          "STATUS": "Status: {status}",
+          "PAIRING_CODE": "Ou digite o código de pareamento: {code}",
+          "EXPIRES_HINT": "Os QR codes expiram em cerca de 45 segundos. Um novo código é buscado automaticamente, ou toque em Atualizar QR.",
+          "REFRESH": "Atualizar QR",
+          "REFRESH_ERROR": "Não foi possível atualizar o QR code. Tente novamente.",
+          "CLOSE": "Fechar",
+          "CONNECTED": "WhatsApp conectado com sucesso."
+        },
+        "WHATSAPP_BEHAVIOR_SECTION": "Comportamento do WhatsApp",
+        "CONVERSATION_SECTION": "Conversas",
+        "OUTBOUND_SECTION": "Mensagens enviadas",
+        "FILTERS_SECTION": "Filtros de entrada",
+        "IMPORT_SECTION": "Importação histórica",
+        "IMPORT": {
+          "CONTACTS": {
+            "LABEL": "Importar contatos",
+            "DESCRIPTION": "Importa contatos WhatsApp da Evolution quando a sessão conectar ou ao executar a importação manualmente."
+          },
+          "MESSAGES": {
+            "LABEL": "Importar mensagens",
+            "DESCRIPTION": "Importa o histórico recente por contato usando findMessages da Evolution."
+          },
+          "DAYS_LIMIT": {
+            "LABEL": "Janela do histórico (dias)",
+            "DESCRIPTION": "Importar apenas mensagens dos últimos N dias."
+          },
+          "RUN": "Executar importação agora",
+          "RUN_SUCCESS": "Importação histórica iniciada em segundo plano.",
+          "RUN_ERROR": "Não foi possível iniciar a importação histórica.",
+          "STATUS_LABEL": "Status da importação",
+          "STATS_CONTACTS": "{count} contatos processados",
+          "STATS_MESSAGES": "{count} mensagens importadas",
+          "STATUS": {
+            "IDLE": "Inativo",
+            "RUNNING": "Em execução",
+            "COMPLETED": "Concluído",
+            "FAILED": "Falhou"
+          }
+        },
+        "PROXY_SECTION": "Proxy",
+        "GROUPS_IGNORE": {
+          "LABEL": "Ignorar grupos",
+          "DESCRIPTION": "Não processar mensagens de grupo (@g.us) no socket Baileys."
+        },
+        "REJECT_CALL": {
+          "LABEL": "Rejeitar chamadas",
+          "DESCRIPTION": "Rejeitar automaticamente chamadas de voz e vídeo recebidas."
+        },
+        "READ_MESSAGES": {
+          "LABEL": "Marcar recebidas como lidas no WhatsApp",
+          "DESCRIPTION": "Marcar mensagens como lidas no WhatsApp ao recebê-las."
+        },
+        "CONVERSATION_PENDING": {
+          "LABEL": "Iniciar conversas como pendentes",
+          "DESCRIPTION": "Conversas novas ou reabertas começam com status pendente em vez de aberto."
+        },
+        "SIGN_MSG": {
+          "LABEL": "Assinar mensagens com nome do agente",
+          "DESCRIPTION": "Prefixar o texto enviado com o nome do agente antes de enviar ao WhatsApp."
+        },
+        "SIGN_DELIMITER": {
+          "LABEL": "Delimitador da assinatura",
+          "DESCRIPTION": "Separador entre o nome do agente e o corpo da mensagem (padrão: quebra de linha)."
+        },
+        "CONVERT_MARKDOWN_OUTBOUND": {
+          "LABEL": "Converter markdown para WhatsApp",
+          "DESCRIPTION": "Transformar markdown do Chatwoot (negrito, itálico) em formatação WhatsApp antes de enviar."
+        },
+        "CONVERT_MARKDOWN_INBOUND": {
+          "LABEL": "Converter formatação WhatsApp para markdown",
+          "DESCRIPTION": "Transformar formatação WhatsApp em markdown do Chatwoot ao receber mensagens."
+        },
+        "MARK_READ_ON_REPLY": {
+          "LABEL": "Marcar recebidas como lidas ao responder",
+          "DESCRIPTION": "Após o agente enviar uma mensagem, marcar a última mensagem recebida como lida no WhatsApp."
+        },
+        "NOTIFY_SEND_ERRORS_PRIVATE": {
+          "LABEL": "Nota privada em falha de envio",
+          "DESCRIPTION": "Adicionar uma nota privada na conversa quando uma mensagem WhatsApp falhar ao enviar."
+        },
+        "SYNC_DELETE_TO_WHATSAPP": {
+          "LABEL": "Excluir no WhatsApp ao excluir no Chatwoot",
+          "DESCRIPTION": "Quando o agente excluir uma mensagem no Chatwoot, excluir para todos no WhatsApp."
+        },
+        "IGNORE_JIDS": {
+          "LABEL": "JIDs ignorados",
+          "DESCRIPTION": "Um JID ou padrão por linha. Use @g.us para todos os grupos ou um JID completo como 5511999999999@s.whatsapp.net.",
+          "PLACEHOLDER": "Adicione JIDs, ex.: 5511999999999@s.whatsapp.net"
+        },
+        "PROXY": {
+          "ENABLED": {
+            "LABEL": "Habilitar proxy",
+            "DESCRIPTION": "Encaminhar tráfego Baileys por proxy HTTP ou SOCKS. Salvar pode exigir reconectar a instância."
+          },
+          "HOST": {
+            "LABEL": "Host do proxy"
+          },
+          "PORT": {
+            "LABEL": "Porta"
+          },
+          "PROTOCOL": {
+            "LABEL": "Protocolo"
+          },
+          "USERNAME": {
+            "LABEL": "Usuário"
+          },
+          "PASSWORD": {
+            "LABEL": "Senha",
+            "DESCRIPTION": "Deixe em branco para manter a senha atual."
+          }
+        }
       }
     },
     "CHANNEL_PREFERENCES": "Preferências do Canal",
@@ -1165,7 +1354,8 @@
       "API": "Canal da API",
       "INSTAGRAM": "Instagram",
       "TIKTOK": "TikTok",
-      "VOICE": "Voz"
+      "VOICE": "Voz",
+      "EVOLUTION": "Evolution API"
     }
   }
 }

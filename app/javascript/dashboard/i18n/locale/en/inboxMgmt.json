@@ -423,7 +423,10 @@
           "ERROR": "Instance name is required"
         },
         "PROXY": {
-          "ENABLED": "Use proxy (optional)",
+          "ENABLED": {
+            "LABEL": "Use proxy (optional)",
+            "DESCRIPTION": "Route Baileys WhatsApp traffic through an HTTP, HTTPS, or SOCKS proxy."
+          },
           "HOST": "Proxy host",
           "PORT": "Port",
           "PROTOCOL": "Protocol (http, https, socks5)",
@@ -431,12 +434,10 @@
           "PASSWORD": "Password"
         },
         "SUBMIT_BUTTON": "Create and show QR code",
-        "QR": {
-          "TITLE": "Scan the QR code",
-          "DESCRIPTION": "Open WhatsApp on your phone → Linked devices → Link a device.",
-          "STATUS": "Connection status: {status}",
-          "LOADING": "Waiting for QR code from Evolution...",
-          "PAIRING_CODE": "Or enter pairing code: {code}"
+        "CONNECT": {
+          "TITLE": "Inbox created",
+          "DESCRIPTION": "Scan the QR code with WhatsApp to finish linking this inbox.",
+          "OPEN_QR": "Open QR scanner"
         },
         "API": {
           "ERROR_MESSAGE": "Could not create the Evolution inbox. Check URL, API key, and instance name."
@@ -808,17 +809,27 @@
             "LABEL": "Linked phone number",
             "HELP_TEXT": "WhatsApp number connected to this Evolution instance."
           },
-          "QR": {
-            "DESCRIPTION": "Scan this QR code with WhatsApp to reconnect the session.",
-            "PAIRING_CODE": "Or enter pairing code: {code}"
-          },
           "RECONNECT": "Reconnect (new QR)",
+          "OPEN_QR_MODAL": "Scan QR code",
+          "SCAN_CTA": "WhatsApp is not connected. Open the QR scanner and link your phone in WhatsApp → Linked devices.",
           "RESTART": "Restart instance",
           "LOGOUT": "Logout session",
           "RESTART_CONFIRM": "Restart the Evolution instance? The session may disconnect briefly and a new QR code may be required.",
           "LOGOUT_CONFIRM": "Log out this WhatsApp session? You will need to scan a new QR code to reconnect.",
           "ACTION_SUCCESS": "Evolution instance updated.",
           "DISCONNECTED_ALERT": "WhatsApp disconnected for inbox \"{inbox}\". Open inbox settings to reconnect."
+        },
+        "QR_MODAL": {
+          "TITLE": "Scan QR code",
+          "DESCRIPTION": "Open WhatsApp on your phone → Linked devices → Link a device.",
+          "LOADING": "Generating QR code…",
+          "STATUS": "Status: {status}",
+          "PAIRING_CODE": "Or enter pairing code: {code}",
+          "EXPIRES_HINT": "QR codes expire after about 45 seconds. A new code is fetched automatically, or tap Refresh QR.",
+          "REFRESH": "Refresh QR",
+          "REFRESH_ERROR": "Could not refresh the QR code. Try again.",
+          "CLOSE": "Close",
+          "CONNECTED": "WhatsApp connected successfully."
         },
         "WHATSAPP_BEHAVIOR_SECTION": "WhatsApp behavior",
         "CONVERSATION_SECTION": "Conversations",
@@ -863,10 +874,6 @@
         "READ_MESSAGES": {
           "LABEL": "Mark incoming as read on WhatsApp",
           "DESCRIPTION": "Mark messages as read in WhatsApp when they are received."
-        },
-        "REOPEN_CONVERSATION": {
-          "LABEL": "Reopen conversation on new message",
-          "DESCRIPTION": "When a resolved conversation receives a new message, reopen it instead of creating a new one."
         },
         "CONVERSATION_PENDING": {
           "LABEL": "Start conversations as pending",

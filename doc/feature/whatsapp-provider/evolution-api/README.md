@@ -96,7 +96,7 @@ Registrado em `Channel::Whatsapp::PROVIDERS` com `# FORK:` (ver [../gaps-and-blo
 | Fase | Estado | Incluído |
 |------|--------|----------|
 | **0–1** | ✅ código | Registry, texto in/out, QR wizard, proxy wizard, webhook, bypass 24h, create pós-inbox + compensação |
-| **2** | ✅ código | Mídia in/out (base64), statuses, settings UI, `sign_msg`, `ignore_jids`, `reopen_conversation`, `conversation_pending` |
+| **2** | ✅ código | Mídia in/out (base64), statuses, settings UI, `sign_msg`, `ignore_jids`, `conversation_pending` |
 | **3** | ✅ código | Health, reconnect/logout/restart, alerta desconexão, `merge_brazil_contacts`, ActionCable QR |
 | **4** | ⏸️ | Import histórico (`findContacts` / `findMessages`) |
 | **5** | — | Voz — ver `doc/feature/whatsapp-voice/` |

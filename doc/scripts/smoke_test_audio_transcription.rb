@@ -2,7 +2,7 @@
 
 # Smoke test for audio transcription fork components.
 # Run without a real Groq API key:
-#   bundle exec rails runner doc/scripts/smoke-test-audio-transcription.rb
+#   bundle exec rails runner doc/scripts/smoke_test_audio_transcription.rb
 #
 # Optional dry-run mode (default): stubs Groq provider and skips external calls.
 

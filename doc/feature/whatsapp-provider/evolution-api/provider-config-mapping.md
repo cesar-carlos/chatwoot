@@ -19,7 +19,7 @@ Grupos de campos:
 | Conexão | `base_url`, `api_key`, `instance_name`, `instance_id`, `connection_status` | create/connect |
 | WhatsApp settings | `groups_ignore`, `reject_call`, `msg_call`, `always_online`, `read_messages`, `read_status`, `sync_full_history` | `POST /settings/set` |
 | Proxy | `proxy_enabled`, `proxy_host`, `proxy_port`, `proxy_protocol`, `proxy_username`, `proxy_password` | `POST /proxy/set` |
-| Conversas | `reopen_conversation`, `conversation_pending`, `merge_brazil_contacts` | Chatwoot fork |
+| Conversas | `conversation_pending`, `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork |
 | Outbound | `sign_msg`, `sign_delimiter`, `mark_read_on_reply`, `sync_delete_to_whatsapp`, `convert_markdown_outbound`, `send_templates_as_text` | Chatwoot fork |
 | Filtros inbound | `ignore_jids`, `ignore_status_broadcast`, `ignore_from_me_echo`, `ignore_survey_links`, `ignore_private_notes` | Normalizer |
 | Import | `import_contacts`, `import_messages`, `days_limit_import_messages` | Fase 4 |
@@ -92,7 +92,8 @@ Detalhes e comportamento: [inbox-business-rules.md](./inbox-business-rules.md)
 | Campo | Implementar em |
 |-------|----------------|
 | `sign_msg`, `sign_delimiter` | `EvolutionService#send_message` |
-| `reopen_conversation`, `conversation_pending` | Conversation builder / listener |
+| `conversation_pending` | `IncomingMessageServiceHelpers` + `Custom::Message#reopen_resolved_conversation` |
+| Reabrir conversa resolvida | `inbox.lock_to_single_conversation` → `Conversations::Resolver` + `Message#reopen_conversation` |
 | `merge_brazil_contacts` | Normalizer + `ContactInboxBuilder` |
 | `mark_read_on_reply` | `EvolutionService` pós-envio → `markMessageAsRead` |
 | `sync_delete_to_whatsapp` | Listener `message_updated` |

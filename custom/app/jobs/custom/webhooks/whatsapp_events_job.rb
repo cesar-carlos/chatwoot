@@ -22,18 +22,22 @@ module Custom::Webhooks::WhatsappEventsJob
     when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
       process_evolution_message_events(channel, params)
     when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
-      Custom::Whatsapp::Evolution::ConnectionService.new(channel).handle_event(params)
+      Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
     end
   end
 
   private
 
   def evolution_envelope?(params)
-    params[:event].present? && params[:instance].present?
+    params[:event].present? && evolution_instance_name(params).present?
+  end
+
+  def evolution_instance_name(params)
+    params[:instance_name].presence || params[:instance]
   end
 
   def find_evolution_channel(params)
-    instance_name = params[:instance_name].presence || params[:instance]
+    instance_name = evolution_instance_name(params)
     Channel::Whatsapp.where(provider: 'evolution')
                      .where("provider_config->>'instance_name' = ?", instance_name)
                      .first
