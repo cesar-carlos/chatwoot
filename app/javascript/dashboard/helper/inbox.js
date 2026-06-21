@@ -31,8 +31,12 @@ export const getVoiceCallProvider = inbox => {
   if (!voiceEnabled) return null;
 
   if (channelType === INBOX_TYPES.TWILIO) return VOICE_CALL_PROVIDERS.TWILIO;
-  if (channelType === INBOX_TYPES.WHATSAPP)
+  if (channelType === INBOX_TYPES.WHATSAPP) {
+    // FORK: Evolution Baileys has no Meta Calling API
+    const provider = inbox.provider;
+    if (provider === 'evolution') return null;
     return VOICE_CALL_PROVIDERS.WHATSAPP;
+  }
   // FORK: Wavoip voice when inbox reports voice_enabled
   if (channelType === INBOX_TYPES.WAVOIP) return VOICE_CALL_PROVIDERS.WAVOIP;
 

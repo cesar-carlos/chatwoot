@@ -28,8 +28,7 @@ class Wavoip::Calls::InboundPushService
 
   def notification_recently_sent?(user)
     conversation.notifications
-                  .where(user: user, notification_type: Notification.notification_types[:voice_call_incoming])
-                  .where('created_at > ?', 1.minute.ago)
-                  .exists?
+                .where(user: user, notification_type: Notification.notification_types[:voice_call_incoming])
+                .exists?(['created_at > ?', 1.minute.ago])
   end
 end

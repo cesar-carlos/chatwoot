@@ -294,7 +294,10 @@ const inboxPickerIcon = inbox =>
           @click="onPickInbox(inbox)"
         >
           <div class="flex items-center gap-2">
-            <span :class="inboxPickerIcon(inbox)" class="size-4 text-n-slate-10" />
+            <span
+              :class="inboxPickerIcon(inbox)"
+              class="size-4 text-n-slate-10"
+            />
             <span class="text-sm text-n-slate-12">{{ inbox.name }}</span>
           </div>
           <span v-if="inbox.phone_number" class="text-xs text-n-slate-10">

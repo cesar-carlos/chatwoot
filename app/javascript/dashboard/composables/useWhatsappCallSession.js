@@ -30,7 +30,4 @@ export function useWhatsappCallSession() {
   return useWebRtcCallSession();
 }
 
-export {
-  applyOutboundAnswer,
-  armOutboundRecorder,
-};
+export { applyOutboundAnswer, armOutboundRecorder };

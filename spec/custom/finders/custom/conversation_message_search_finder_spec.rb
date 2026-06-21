@@ -279,7 +279,8 @@ RSpec.describe Custom::ConversationMessageSearchFinder do
       valid_message
       deleted_message
       activity_message
-      allow(opensearch_finder).to receive(:opensearch_enabled?).and_return(true)
+      allow(ChatwootApp).to receive(:advanced_search_allowed?).and_return(true)
+      account.enable_features('advanced_search')
     end
 
     it 'reports opensearch search engine' do

@@ -1,0 +1,19 @@
+{
+  "event": "MESSAGES_UPDATE",
+  "instance": "test-instance",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": true,
+      "id": "3EB0OUTBOUND987654"
+    },
+    "update": {
+      "status": 3
+    }
+  },
+  "destination": "https://chatwoot.example.com/webhooks/evolution/test-instance",
+  "date_time": "2026-06-20T12:02:00.000Z",
+  "sender": "5511888888888@s.whatsapp.net",
+  "server_url": "https://evolution.example.com",
+  "apikey": "TEST-INSTANCE-API-KEY"
+}

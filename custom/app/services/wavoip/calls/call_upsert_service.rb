@@ -59,10 +59,10 @@ class Wavoip::Calls::CallUpsertService
 
     call.with_lock do
       call.reload
-      return false unless transition_allowed?(call, mapped_status)
+      next false unless transition_allowed?(call, mapped_status)
 
       attrs = build_update_attrs(call, mapped_status)
-      return false if attrs.blank?
+      next false if attrs.blank?
 
       call.update!(attrs)
       Voice::CallMessageBuilder.new(call).update_status!(
@@ -80,20 +80,26 @@ class Wavoip::Calls::CallUpsertService
   def build_update_attrs(call, mapped_status)
     return nil if mapped_status == call.status && event.duration_seconds.blank?
 
+    attrs = base_status_attrs(call, mapped_status)
+    attrs[:meta] = status_meta(call, mapped_status)
+    attrs
+  end
+
+  def base_status_attrs(call, mapped_status)
     attrs = { status: mapped_status }
     attrs[:duration_seconds] = event.duration_seconds if event.duration_seconds.present?
     attrs[:started_at] = Time.current if mapped_status == 'in_progress' && call.started_at.blank?
 
     end_reason = status_mapper.end_reason_for(event.external_status)
     attrs[:end_reason] = end_reason if end_reason.present?
-
-    attrs[:meta] = if status_mapper.terminal?(mapped_status)
-                     (call.meta || {}).merge('ended_at' => Time.zone.now.to_i, 'wavoip_status' => event.external_status)
-                   else
-                     (call.meta || {}).merge('wavoip_status' => event.external_status)
-                   end
-
     attrs
+  end
+
+  def status_meta(call, mapped_status)
+    base_meta = (call.meta || {}).merge('wavoip_status' => event.external_status)
+    return base_meta.merge('ended_at' => Time.zone.now.to_i) if status_mapper.terminal?(mapped_status)
+
+    base_meta
   end
 
   def transition_allowed?(call, mapped_status)

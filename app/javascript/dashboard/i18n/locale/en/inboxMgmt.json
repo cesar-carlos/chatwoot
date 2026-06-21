@@ -247,6 +247,8 @@
           "WHATSAPP_CLOUD": "WhatsApp Cloud",
           "WHATSAPP_CLOUD_DESC": "Quick setup through Meta",
           "TWILIO_DESC": "Connect via Twilio credentials",
+          "EVOLUTION": "Evolution API",
+          "EVOLUTION_DESC": "WhatsApp via Baileys (self-hosted Evolution)",
           "360_DIALOG": "360Dialog"
         },
         "SELECT_PROVIDER": {
@@ -397,6 +399,48 @@
           "ERROR_MESSAGE": "We were not able to create the Wavoip inbox"
         }
       },
+      "EVOLUTION": {
+        "TITLE": "Evolution API",
+        "DESC": "Connect WhatsApp through your Evolution API instance (Baileys). Scan the QR code to link your number.",
+        "INBOX_NAME": {
+          "LABEL": "Inbox Name",
+          "PLACEHOLDER": "e.g. WhatsApp Support",
+          "ERROR": "Please enter an inbox name"
+        },
+        "BASE_URL": {
+          "LABEL": "Evolution API URL",
+          "PLACEHOLDER": "https://evolution.example.com",
+          "ERROR": "Enter a valid Evolution API base URL"
+        },
+        "API_KEY": {
+          "LABEL": "API Key",
+          "PLACEHOLDER": "Global or instance API key",
+          "ERROR": "API key is required"
+        },
+        "INSTANCE_NAME": {
+          "LABEL": "Instance name",
+          "PLACEHOLDER": "e.g. inbox-sales-1",
+          "ERROR": "Instance name is required"
+        },
+        "PROXY": {
+          "ENABLED": "Use proxy (optional)",
+          "HOST": "Proxy host",
+          "PORT": "Port",
+          "PROTOCOL": "Protocol (http, https, socks5)",
+          "USERNAME": "Username",
+          "PASSWORD": "Password"
+        },
+        "SUBMIT_BUTTON": "Create and show QR code",
+        "QR": {
+          "TITLE": "Scan the QR code",
+          "DESCRIPTION": "Open WhatsApp on your phone → Linked devices → Link a device.",
+          "STATUS": "Connection status: {status}",
+          "LOADING": "Waiting for QR code from Evolution..."
+        },
+        "API": {
+          "ERROR_MESSAGE": "Could not create the Evolution inbox. Check URL, API key, and instance name."
+        }
+      },
       "API_CHANNEL": {
         "TITLE": "API Channel",
         "DESC": "Integrate with API channel and start supporting your customers.",
@@ -505,6 +549,10 @@
           "WAVOIP": {
             "TITLE": "Wavoip Call",
             "DESCRIPTION": "WhatsApp voice via Wavoip device token and webhook"
+          },
+          "EVOLUTION": {
+            "TITLE": "Evolution API",
+            "DESCRIPTION": "WhatsApp messaging via self-hosted Evolution API (Baileys / QR code)"
           },
           "EMAIL": {
             "TITLE": "Email",
@@ -681,7 +729,8 @@
       "ACCOUNT_HEALTH": "Account Health",
       "CSAT": "CSAT",
       "VOICE": "Voice",
-      "CALLS": "Calls"
+      "CALLS": "Calls",
+      "EVOLUTION": "WhatsApp"
     },
     "VOICE_CONFIGURATION": {
       "ENABLE_VOICE": {
@@ -741,6 +790,94 @@
       },
       "VOICE_DISABLED": {
         "DESCRIPTION": "Voice calling requires a configured device token on this inbox."
+      }
+    },
+    "EVOLUTION": {
+      "SETTINGS": {
+        "CONNECTION_STATUS": {
+          "LABEL": "Connection status",
+          "HELP_TEXT": "Current WhatsApp session state reported by Evolution API.",
+          "OPEN": "Connected",
+          "CONNECTING": "Connecting",
+          "CLOSE": "Disconnected"
+        },
+        "HEALTH": {
+          "LOADING": "Checking connection…",
+          "PHONE_NUMBER": {
+            "LABEL": "Linked phone number",
+            "HELP_TEXT": "WhatsApp number connected to this Evolution instance."
+          },
+          "QR": {
+            "DESCRIPTION": "Scan this QR code with WhatsApp to reconnect the session."
+          },
+          "RECONNECT": "Reconnect (new QR)",
+          "RESTART": "Restart instance",
+          "LOGOUT": "Logout session",
+          "RESTART_CONFIRM": "Restart the Evolution instance? The session may disconnect briefly and a new QR code may be required.",
+          "LOGOUT_CONFIRM": "Log out this WhatsApp session? You will need to scan a new QR code to reconnect.",
+          "ACTION_SUCCESS": "Evolution instance updated.",
+          "DISCONNECTED_ALERT": "WhatsApp disconnected for inbox \"{inbox}\". Open inbox settings to reconnect."
+        },
+        "WHATSAPP_BEHAVIOR_SECTION": "WhatsApp behavior",
+        "CONVERSATION_SECTION": "Conversations",
+        "OUTBOUND_SECTION": "Outbound messages",
+        "FILTERS_SECTION": "Inbound filters",
+        "PROXY_SECTION": "Proxy",
+        "GROUPS_IGNORE": {
+          "LABEL": "Ignore groups",
+          "DESCRIPTION": "Do not process group messages (@g.us) on the Baileys socket."
+        },
+        "REJECT_CALL": {
+          "LABEL": "Reject calls",
+          "DESCRIPTION": "Automatically reject incoming voice and video calls."
+        },
+        "READ_MESSAGES": {
+          "LABEL": "Mark incoming as read on WhatsApp",
+          "DESCRIPTION": "Mark messages as read in WhatsApp when they are received."
+        },
+        "REOPEN_CONVERSATION": {
+          "LABEL": "Reopen conversation on new message",
+          "DESCRIPTION": "When a resolved conversation receives a new message, reopen it instead of creating a new one."
+        },
+        "CONVERSATION_PENDING": {
+          "LABEL": "Start conversations as pending",
+          "DESCRIPTION": "New or reopened conversations start in pending status instead of open."
+        },
+        "SIGN_MSG": {
+          "LABEL": "Sign messages with agent name",
+          "DESCRIPTION": "Prefix outbound text with the agent name before sending to WhatsApp."
+        },
+        "SIGN_DELIMITER": {
+          "LABEL": "Signature delimiter",
+          "DESCRIPTION": "Separator between the agent name and message body (default: newline)."
+        },
+        "IGNORE_JIDS": {
+          "LABEL": "Ignored JIDs",
+          "DESCRIPTION": "One JID or pattern per line. Use @g.us for all groups or a full JID such as 1234567890@s.whatsapp.net.",
+          "PLACEHOLDER": "Add JIDs e.g. 1234567890@s.whatsapp.net"
+        },
+        "PROXY": {
+          "ENABLED": {
+            "LABEL": "Enable proxy",
+            "DESCRIPTION": "Route Baileys traffic through an HTTP or SOCKS proxy. Saving may require reconnecting the instance."
+          },
+          "HOST": {
+            "LABEL": "Proxy host"
+          },
+          "PORT": {
+            "LABEL": "Port"
+          },
+          "PROTOCOL": {
+            "LABEL": "Protocol"
+          },
+          "USERNAME": {
+            "LABEL": "Username"
+          },
+          "PASSWORD": {
+            "LABEL": "Password",
+            "DESCRIPTION": "Leave blank to keep the current password."
+          }
+        }
       }
     },
     "CHANNEL_PREFERENCES": "Channel Preferences",

@@ -168,6 +168,8 @@ export default {
       );
     },
     showWhatsappTemplates() {
+      // FORK: Evolution has no WABA templates
+      if (this.isEvolutionWhatsAppChannel) return false;
       // We support templates for API channels if someone updates templates manually via API
       // That's why we don't explicitly check for channel type here
       const templates = this.$store.getters['inboxes/getWhatsAppTemplates'](
@@ -447,6 +449,8 @@ export default {
       return !this.showAudioRecorderEditor && !this.copilot.isActive.value;
     },
     isEditorDisabled() {
+      // FORK: Evolution has no 24h messaging window
+      if (this.isEvolutionWhatsAppChannel) return false;
       return (
         (this.isAWhatsAppChannel || this.isAPIInbox) &&
         !this.isOnPrivateNote &&

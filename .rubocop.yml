@@ -18,6 +18,13 @@ Metrics/ClassLength:
   Exclude:
     - 'app/models/message.rb'
     - 'app/models/conversation.rb'
+    - 'custom/app/services/custom/whatsapp/evolution/connection_service.rb'
+
+Metrics/ModuleLength:
+  Exclude:
+    - lib/seeders/message_seeder.rb
+    - spec/support/slack_stubs.rb
+    - 'custom/app/controllers/custom/api/v1/accounts/inboxes_controller.rb'
 
 Metrics/MethodLength:
   Max: 19
@@ -86,11 +93,6 @@ Metrics/BlockLength:
     - '**/routes.rb'
     - 'config/environments/*'
     - db/schema.rb
-
-Metrics/ModuleLength:
-  Exclude:
-    - lib/seeders/message_seeder.rb
-    - spec/support/slack_stubs.rb
 
 Rails/HelperInstanceVariable:
   Exclude:

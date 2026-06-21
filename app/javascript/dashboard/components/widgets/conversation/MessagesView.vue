@@ -455,7 +455,7 @@ export default {
   >
     <div ref="topBannerRef">
       <Banner
-        v-if="!currentChat.can_reply"
+        v-if="!currentChat.can_reply && !isEvolutionWhatsAppChannel"
         color-scheme="alert"
         class="mx-2 mt-2 overflow-hidden rounded-lg"
         :banner-message="replyWindowBannerMessage"

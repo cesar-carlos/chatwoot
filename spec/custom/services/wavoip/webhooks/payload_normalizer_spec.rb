@@ -43,7 +43,8 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
     end
 
     it 'uses the last duplicate type field after JSON.parse (official CALL quirk)' do
-      raw = '{"type":"RECORD","whatsapp_call_id":"dup_001","action":"CREATE","status":"INCOMING_RING","direction":"INCOMING","phone":"+5511999999999","type":"CALL"}'
+      raw = '{"type":"RECORD","whatsapp_call_id":"dup_001","action":"CREATE","status":"INCOMING_RING",' \
+            '"direction":"INCOMING","phone":"+5511999999999","type":"CALL"}'
       payload = JSON.parse(raw)
       event = normalize(payload)
 

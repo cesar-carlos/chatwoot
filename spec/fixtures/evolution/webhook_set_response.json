@@ -1,0 +1,16 @@
+{
+  "id": "cmqmyiyqu0t9gjoa8dt39y8ud",
+  "url": "http://localhost:3000/webhooks/evolution/cw-spike-1781996187",
+  "headers": null,
+  "enabled": true,
+  "events": [
+    "MESSAGES_UPSERT",
+    "CONNECTION_UPDATE",
+    "QRCODE_UPDATED"
+  ],
+  "webhookByEvents": false,
+  "webhookBase64": false,
+  "createdAt": "2026-06-20T22:56:38.502Z",
+  "updatedAt": "2026-06-20T22:56:38.502Z",
+  "instanceId": "83c71378-5304-4d6b-be48-9e573d6f5f5c"
+}

@@ -48,7 +48,9 @@ describe('useWavoipConnection', () => {
 
   it('connects an inbox using the bootstrap device token', async () => {
     const client = createOpenDeviceClient();
-    getWavoipSdkBootstrap.mockResolvedValue({ data: { device_token: 'token-abc' } });
+    getWavoipSdkBootstrap.mockResolvedValue({
+      data: { device_token: 'token-abc' },
+    });
     connectWavoipInbox.mockResolvedValue(client);
     getWavoipClient.mockReturnValue(null);
 
@@ -73,7 +75,9 @@ describe('useWavoipConnection', () => {
 
   it('syncs connections for assigned Wavoip inboxes when online', async () => {
     const client = createOpenDeviceClient();
-    getWavoipSdkBootstrap.mockResolvedValue({ data: { device_token: 'token-sync' } });
+    getWavoipSdkBootstrap.mockResolvedValue({
+      data: { device_token: 'token-sync' },
+    });
     connectWavoipInbox.mockResolvedValue(client);
     getWavoipClient.mockReturnValue(null);
 

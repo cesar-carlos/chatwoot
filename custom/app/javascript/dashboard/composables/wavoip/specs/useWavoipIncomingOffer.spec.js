@@ -93,7 +93,8 @@ describe('useWavoipIncomingOffer', () => {
   });
 
   it('accepts and rejects pending offers', async () => {
-    const { attachToInbox, acceptOffer, rejectOffer } = useWavoipIncomingOffer();
+    const { attachToInbox, acceptOffer, rejectOffer } =
+      useWavoipIncomingOffer();
     attachToInbox(3);
 
     const offer = createOffer('offer_actions');

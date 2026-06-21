@@ -326,8 +326,8 @@ defineExpose({ prepareOpen, close, focusSearchInput });
       >
         <ConversationMessageSearchResultItem
           v-for="(message, index) in results"
-          :key="message.id"
           :id="`conversation-message-search-result-${message.id}`"
+          :key="message.id"
           :message="message"
           :search-query="query"
           :disabled="isLocating"

@@ -14,7 +14,8 @@
 #
 # Indexes
 #
-#  index_channel_whatsapp_on_phone_number  (phone_number) UNIQUE
+#  index_channel_whatsapp_evolution_instance_name  (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution'::text)
+#  index_channel_whatsapp_on_phone_number          (phone_number) UNIQUE
 #
 
 class Channel::Whatsapp < ApplicationRecord
@@ -25,7 +26,8 @@ class Channel::Whatsapp < ApplicationRecord
   EDITABLE_ATTRS = [:phone_number, :provider, { provider_config: {} }].freeze
 
   # default at the moment is 360dialog lets change later.
-  PROVIDERS = %w[default whatsapp_cloud].freeze
+  # FORK: evolution — Baileys gateway via Evolution API (custom/)
+  PROVIDERS = %w[default whatsapp_cloud evolution].freeze
   before_validation :ensure_webhook_verify_token
 
   validates :provider, inclusion: { in: PROVIDERS }

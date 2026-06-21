@@ -24,12 +24,12 @@ RSpec.describe Wavoip::Calls::ConversationLinker do
       to_phone: channel.phone_number,
       peer_name: 'Inbound Caller',
       duration_seconds: nil,
-      session_id: 12345,
+      session_id: 12_345,
       call_type: :official,
       record_url: nil,
       raw_type: 'CALL'
     }
-    Voice::Dto::WebhookCallEvent.new(**defaults.merge(overrides))
+    Voice::Dto::WebhookCallEvent.new(**defaults, **overrides)
   end
 
   describe 'source_id normalization' do

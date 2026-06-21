@@ -100,6 +100,13 @@ export function useChannelBrandIcon(inbox) {
       icon = channelTypeBrandIconMap['Channel::Whatsapp'];
     }
 
+    if (
+      type === INBOX_TYPES.WHATSAPP &&
+      inboxDetails.provider === 'evolution'
+    ) {
+      icon = 'i-woot-evolution-color';
+    }
+
     return icon ?? null;
   });
 }
