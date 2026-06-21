@@ -65,4 +65,33 @@ export const channelActions = {
       throw error;
     }
   },
+  createEvolutionChannel: async ({ commit }, params) => {
+    try {
+      commit(types.default.SET_INBOXES_UI_FLAG, { isCreating: true });
+      const response = await InboxesAPI.create(params);
+      commit(types.default.ADD_INBOXES, response.data);
+      commit(types.default.SET_INBOXES_UI_FLAG, { isCreating: false });
+      sendAnalyticsEvent('whatsapp');
+      return response.data;
+    } catch (error) {
+      commit(types.default.SET_INBOXES_UI_FLAG, { isCreating: false });
+      throw error;
+    }
+  },
+  fetchEvolutionConnection: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.getEvolutionConnection(inboxId);
+    return response.data;
+  },
+  evolutionReconnect: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionReconnect(inboxId);
+    return response.data;
+  },
+  evolutionLogout: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionLogout(inboxId);
+    return response.data;
+  },
+  evolutionRestart: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionRestart(inboxId);
+    return response.data;
+  },
 };

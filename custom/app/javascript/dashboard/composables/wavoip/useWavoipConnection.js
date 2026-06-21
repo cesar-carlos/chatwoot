@@ -25,6 +25,9 @@ async function waitForDeviceOpen(device, timeoutMs = 30_000) {
 
   return new Promise(resolve => {
     let settled = false;
+    let timer;
+    let unsubscribe;
+
     const finish = result => {
       if (settled) return;
       settled = true;
@@ -33,11 +36,11 @@ async function waitForDeviceOpen(device, timeoutMs = 30_000) {
       resolve(result);
     };
 
-    const unsubscribe = device.on?.('statusChanged', status => {
+    unsubscribe = device.on?.('statusChanged', status => {
       if (status === 'open') finish(true);
     });
 
-    const timer = setTimeout(() => finish(device.status === 'open'), timeoutMs);
+    timer = setTimeout(() => finish(device.status === 'open'), timeoutMs);
   });
 }
 

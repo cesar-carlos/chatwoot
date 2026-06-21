@@ -4,6 +4,18 @@ Esta pasta consolida análise e decisões para integrar **providers WhatsApp alt
 
 Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloqueia**, **como adaptar com merge-safety** (`custom/`, `prepend_mod_with`, `# FORK:`) e **o que muda** ao abandonar a API oficial.
 
+**Status código + docs:** [STATUS.md](./STATUS.md)
+
+---
+
+## Estado dos providers (jun/2026)
+
+| Provider | Documentação | Código fork |
+|----------|--------------|-------------|
+| **Evolution API** (`evolution`) | [evolution-api/](./evolution-api/) | ✅ Fase 0–3 em `custom/` |
+| **Evolution Go** (`evolution_go`) | [evolution-go/](./evolution-go/) | ❌ planejamento |
+| Z-API, NotificaMe | comparação / pasta NotificaMe | ❌ |
+
 ---
 
 ## Por onde começar
@@ -13,6 +25,8 @@ Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloq
 | **Implementador novo** | [implementation-decision-tree.md](./implementation-decision-tree.md) → [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) |
 | **Revisão técnica do código atual** | [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) → [gaps-and-blockers.md](./gaps-and-blockers.md) |
 | **Escolha de gateway** | [provider-comparison.md](./provider-comparison.md) |
+| **Provider Evolution API (piloto Node)** | [evolution-api/README.md](./evolution-api/README.md) → [evolution-api/implementation-plan.md](./evolution-api/implementation-plan.md) |
+| **Provider Evolution Go** | [evolution-go/README.md](./evolution-go/README.md) → [evolution-go/gaps-and-improvements.md](./evolution-go/gaps-and-improvements.md) |
 | **Checklist feature a feature** | [feature-mapping.md](./feature-mapping.md) |
 
 ---
@@ -21,6 +35,7 @@ Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloq
 
 | Documento | Conteúdo |
 |-----------|----------|
+| [STATUS.md](./STATUS.md) | **Revisão consolidada** — código vs documentação por provider |
 | [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) | Estado atual no código: providers, webhooks, incoming, frontend, extension points |
 | [gaps-and-blockers.md](./gaps-and-blockers.md) | **Lacunas que bloqueiam** providers alternativos + mitigações |
 | [feature-mapping.md](./feature-mapping.md) | Mapeamento feature oficial → implementação gateway |
@@ -28,6 +43,8 @@ Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloq
 | [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) | Plano concreto, fases, critérios de done e estratégia de fork |
 | [provider-comparison.md](./provider-comparison.md) | Evolution API, Z-API, Baileys genérico, NotificaMe |
 | [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) | Restrições Meta evitadas vs riscos do gateway; impacto em voz |
+| [evolution-api/](./evolution-api/) | **Evolution API (Node/Baileys):** integração atual, APIs, webhooks, regras de negócio, plano de fases |
+| [evolution-go/](./evolution-go/) | **Evolution Go (whatsmeow):** planejamento — [implementation-readiness.md](./evolution-go/implementation-readiness.md), [gaps-and-improvements.md](./evolution-go/gaps-and-improvements.md) |
 
 ---
 
@@ -65,12 +82,11 @@ Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloq
 
 ### Principais lacunas no código
 
-- `PROVIDERS` whitelist bloqueia novos providers
-- `provider_service` envia tudo que não é cloud para 360dialog
-- `MessageWindowService` força janela 24h em **todo** `Channel::Whatsapp`
-- Frontend só distingue `whatsapp_cloud` vs `default`
+- ✅ Mitigado para **`evolution`**: registry, prepends, webhook dedicado, bypass 24h
+- ❌ `evolution_go`, `zapi`, `notificame` ainda fora de `PROVIDERS`
+- ⚠️ Upstream ainda envia non-cloud → 360dialog **sem** prepend (gateways precisam registry)
 
-Detalhes: [gaps-and-blockers.md](./gaps-and-blockers.md).
+Detalhes: [gaps-and-blockers.md](./gaps-and-blockers.md) · [STATUS.md](./STATUS.md).
 
 ### Restrições que desaparecem (e as que não desaparecem)
 
@@ -82,4 +98,4 @@ Ver [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictio
 
 ---
 
-*Última atualização: jun/2026 — reanálise código + providers Evolution/Z-API.*
+*Última atualização: jun/2026 — Evolution Node em código; Evolution Go documentado; ver [STATUS.md](./STATUS.md).*

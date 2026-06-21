@@ -718,9 +718,9 @@ describe('#mutations', () => {
 
       mutations[types.INSERT_MESSAGES_AROUND](state, payload);
 
-      expect(state.allConversations[0].messages.map(message => message.id)).toEqual([
-        1, 2, 3,
-      ]);
+      expect(
+        state.allConversations[0].messages.map(message => message.id)
+      ).toEqual([1, 2, 3]);
     });
 
     it('sorts messages using createdAt when created_at is absent', () => {
@@ -742,9 +742,9 @@ describe('#mutations', () => {
 
       mutations[types.INSERT_MESSAGES_AROUND](state, payload);
 
-      expect(state.allConversations[0].messages.map(message => message.id)).toEqual([
-        1, 2, 3,
-      ]);
+      expect(
+        state.allConversations[0].messages.map(message => message.id)
+      ).toEqual([1, 2, 3]);
       expect(state.allConversations[0].messages[1]).toMatchObject({
         id: 2,
         created_at: expect.anything(),

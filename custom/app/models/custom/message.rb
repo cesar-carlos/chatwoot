@@ -8,6 +8,22 @@ module Custom::Message
 
   private
 
+  def reopen_resolved_conversation
+    if evolution_pending_reopen?
+      conversation.pending!
+      return
+    end
+
+    super
+  end
+
+  def evolution_pending_reopen?
+    channel = conversation.inbox.channel
+    return false unless channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution'
+
+    ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['conversation_pending'])
+  end
+
   def schedule_workflow_rules_on_incoming
     schedule_workflow_rules_for(ConversationWorkflowRule.method(:schedulable_on_incoming?))
   end
@@ -32,16 +48,28 @@ module Custom::Message
     return if account.blank?
 
     account.conversation_workflow_rules.active.find_each do |rule|
-      next unless trigger_check.call(rule.trigger_type)
-      next unless feature_enabled_for_trigger?(account, rule)
-      next if rule.inbox_ids.present? && Array(rule.inbox_ids).exclude?(conversation.inbox_id)
-      next if rule.first_response_overdue? && conversation.first_reply_created_at.present?
+      next unless workflow_rule_applies?(rule, account, trigger_check)
 
       Custom::ConversationWorkflow::ScheduleOnMessageScheduler.new(
         rule: rule,
         conversation: conversation
       ).perform
     end
+  end
+
+  def workflow_rule_applies?(rule, account, trigger_check)
+    trigger_check.call(rule.trigger_type) &&
+      feature_enabled_for_trigger?(account, rule) &&
+      rule_applies_to_inbox?(rule) &&
+      !first_response_already_sent?(rule)
+  end
+
+  def rule_applies_to_inbox?(rule)
+    rule.inbox_ids.blank? || Array(rule.inbox_ids).include?(conversation.inbox_id)
+  end
+
+  def first_response_already_sent?(rule)
+    rule.first_response_overdue? && conversation.first_reply_created_at.present?
   end
 
   def feature_enabled_for_trigger?(account, rule)

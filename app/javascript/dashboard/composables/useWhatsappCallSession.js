@@ -183,7 +183,4 @@ export function useWhatsappCallSession() {
   };
 }
 
-export {
-  applyOutboundAnswer,
-  armOutboundRecorder,
-};
+export { applyOutboundAnswer, armOutboundRecorder };

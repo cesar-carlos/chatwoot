@@ -491,5 +491,16 @@ export const icons = {
     width: 24,
     height: 24,
   },
+  // FORK: Evolution API brand icons (official ring mark — see custom/.../evolution-logo.png)
+  evolution: {
+    body: `<path d="M17.4 7.1A8.25 8.25 0 1 0 7.6 18.4L4.8 20.2l1.9-2.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.35 11.05a.95.95 0 1 1-1.35-1.35.95.95 0 0 1 1.35 1.35z" fill="currentColor"/>`,
+    width: 24,
+    height: 24,
+  },
+  'evolution-color': {
+    body: `<path d="M17.4 7.1A8.25 8.25 0 1 0 7.6 18.4L4.8 20.2l1.9-2.8" fill="none" stroke="#01b274" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.35 11.05a.95.95 0 1 1-1.35-1.35.95.95 0 0 1 1.35 1.35z" fill="#01b274"/>`,
+    width: 24,
+    height: 24,
+  },
   /** Ends */
 };

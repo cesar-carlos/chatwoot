@@ -73,26 +73,6 @@ export function useAssignMePending({ store } = {}) {
     );
   }
 
-  function markAssignPendingUntilResolved(conversationIds, assigneeId) {
-    const nextPending = new Map(pendingAssignConversationIds.value);
-    const nextObserved = new Map(observedAssigneeIds.value);
-
-    conversationIds.forEach(id => {
-      const normalizedId = normalizeConversationId(id);
-      nextPending.set(normalizedId, assigneeId);
-      nextObserved.set(normalizedId, undefined);
-      schedulePendingFallback(normalizedId);
-    });
-
-    pendingAssignConversationIds.value = nextPending;
-    observedAssigneeIds.value = nextObserved;
-    syncPendingWithStore();
-  }
-
-  function markAssignPending(conversationIds) {
-    markAssignPendingUntilResolved(conversationIds, null);
-  }
-
   function shouldClearPending({
     expectedAssigneeId,
     currentAssigneeId,
@@ -165,6 +145,26 @@ export function useAssignMePending({ store } = {}) {
     if (idsToClear.length) {
       clearAssignPending(idsToClear);
     }
+  }
+
+  function markAssignPendingUntilResolved(conversationIds, assigneeId) {
+    const nextPending = new Map(pendingAssignConversationIds.value);
+    const nextObserved = new Map(observedAssigneeIds.value);
+
+    conversationIds.forEach(id => {
+      const normalizedId = normalizeConversationId(id);
+      nextPending.set(normalizedId, assigneeId);
+      nextObserved.set(normalizedId, undefined);
+      schedulePendingFallback(normalizedId);
+    });
+
+    pendingAssignConversationIds.value = nextPending;
+    observedAssigneeIds.value = nextObserved;
+    syncPendingWithStore();
+  }
+
+  function markAssignPending(conversationIds) {
+    markAssignPendingUntilResolved(conversationIds, null);
   }
 
   function resolveAssignPending(conversationId, currentAssigneeId) {

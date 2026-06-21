@@ -343,6 +343,14 @@ class Rack::Attack
     "#{match[:key]}:#{req.ip}" if match
   end
 
+  # FORK: Evolution webhook throttle per instance + IP
+  throttle('webhooks/evolution', limit: 120, period: 1.minute) do |req|
+    next unless req.post? && req.path.match?(%r{\A/webhooks/evolution/[^/]+\z})
+
+    match = req.path.match(%r{/webhooks/evolution/(?<instance>[^/]+)})
+    "#{match[:instance]}:#{req.ip}" if match
+  end
+
   # FORK: Wavoip SDK bootstrap — limit per user + account
   throttle('wavoip_sdk_bootstrap', limit: 30, period: 1.minute) do |req|
     next unless req.get? && req.path.match?(%r{\A/api/v1/accounts/\d+/inboxes/\d+/wavoip_sdk_bootstrap\z})

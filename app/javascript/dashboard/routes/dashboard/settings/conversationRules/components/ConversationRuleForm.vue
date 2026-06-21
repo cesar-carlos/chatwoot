@@ -242,7 +242,7 @@ const schedulePreviewCount = () => {
 
 watch(
   () => rule.value.trigger_type,
-  triggerType => {
+  () => {
     if (showUnattendedLink.value) {
       fetchUnattendedCount();
     }
@@ -290,7 +290,9 @@ onMounted(() => {
   }
   if (
     availableTriggers.value.length &&
-    !availableTriggers.value.some(t => t.key === rule.value.trigger_type)
+    !availableTriggers.value.some(
+      trigger => trigger.key === rule.value.trigger_type
+    )
   ) {
     rule.value.trigger_type = availableTriggers.value[0].key;
   }

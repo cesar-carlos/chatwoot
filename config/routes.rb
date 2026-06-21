@@ -301,6 +301,11 @@ Rails.application.routes.draw do
             # FORK: Wavoip SDK bootstrap — agents only via inbox policy
             get :wavoip_sdk_bootstrap, on: :member
             post :regenerate_wavoip_webhook_key, on: :member
+            # FORK: Evolution QR / connection polling
+            get :evolution_connection, on: :member
+            post :evolution_reconnect, on: :member
+            post :evolution_logout, on: :member
+            post :evolution_restart, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
@@ -688,6 +693,8 @@ Rails.application.routes.draw do
   post 'webhooks/shopify', to: 'webhooks/shopify#events'
   # FORK: Wavoip voice webhook ingress (opaque key per channel)
   post 'webhooks/wavoip/:webhook_key', to: 'webhooks/wavoip#process_payload'
+  # FORK: Evolution API webhooks (Baileys provider)
+  post 'webhooks/evolution/:instance_name', to: 'webhooks/evolution#process_payload'
 
   namespace :twitter do
     resource :callback, only: [:show]

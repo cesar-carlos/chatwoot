@@ -84,6 +84,23 @@ class Inboxes extends CacheEnabledApiClient {
   regenerateWavoipWebhookKey(inboxId) {
     return axios.post(`${this.url}/${inboxId}/regenerate_wavoip_webhook_key`);
   }
+
+  // FORK: Evolution connection / QR polling
+  getEvolutionConnection(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/evolution_connection`);
+  }
+
+  postEvolutionReconnect(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_reconnect`);
+  }
+
+  postEvolutionLogout(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_logout`);
+  }
+
+  postEvolutionRestart(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_restart`);
+  }
 }
 
 export default new Inboxes();

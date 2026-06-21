@@ -474,6 +474,10 @@
             "TITLE": "Chamada do WhatsApp",
             "DESCRIPTION": "Receba chamadas de voz no seu número do WhatsApp"
           },
+          "EVOLUTION": {
+            "TITLE": "Evolution API",
+            "DESCRIPTION": "WhatsApp via Evolution API self-hosted (Baileys / QR code)"
+          },
           "EMAIL": {
             "TITLE": "E-mail",
             "DESCRIPTION": "Conectar com Gmail, Outlook ou outros provedores"

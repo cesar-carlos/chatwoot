@@ -57,7 +57,8 @@ const handleCopilotSidebarToggle = () => {
 };
 
 // FORK: in-conversation message search
-const { toggle: toggleMessageSearchPanel } = useConversationMessageSearchPanel();
+const { toggle: toggleMessageSearchPanel } =
+  useConversationMessageSearchPanel();
 
 const handleMessageSearchToggle = () => {
   toggleMessageSearchPanel();

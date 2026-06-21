@@ -54,6 +54,10 @@ module Chatwoot
     enterprise_initializers = Rails.root.join('enterprise/config/initializers')
     Dir[enterprise_initializers.join('**/*.rb')].each { |f| require f } if enterprise_initializers.exist?
 
+    # FORK: load custom overlay initializers (e.g. messaging provider registry)
+    custom_initializers = Rails.root.join('custom/config/initializers')
+    Dir[custom_initializers.join('**/*.rb')].each { |f| require f } if custom_initializers.exist?
+
     # Settings in config/environments/* take precedence over those specified here.
     # Application configuration can go into files in config/initializers
     # -- all .rb files in that directory are automatically loaded after loading

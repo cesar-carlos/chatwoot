@@ -135,3 +135,12 @@ Voz é projeto separado. Ver [whatsapp-voice/README.md](../whatsapp-voice/README
 | **2** | Mídia, reply, bypass 24h (se desejado), `process_response` |
 | **3** | Interativos, health/QR, observabilidade |
 | **4** | Voz (só com contrato gateway documentado) |
+
+---
+
+## Matrizes por provider (fork)
+
+| Provider | Documento específico |
+|----------|---------------------|
+| Evolution API (Node) | [evolution-api/feature-mapping.md](./evolution-api/feature-mapping.md) |
+| Evolution Go | [evolution-go/feature-mapping.md](./evolution-go/feature-mapping.md) |

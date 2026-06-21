@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Custom::Call recording_url' do
+RSpec.describe Call, '#recording_url' do
   let(:account) { create(:account) }
   let(:channel) { create(:channel_wavoip, account: account) }
   let(:inbox) { channel.inbox }

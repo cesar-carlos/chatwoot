@@ -4,7 +4,18 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   before_action :fetch_agent_bot, only: [:set_agent_bot]
   # we are already handling the authorization in fetch inbox
   # FORK: Wavoip endpoints authorize in custom prepend (bootstrap uses show?, rotate uses admin policy)
-  before_action :check_authorization, except: [:show, :wavoip_sdk_bootstrap, :regenerate_wavoip_webhook_key]
+  # FORK: Evolution connection status for QR wizard and health settings
+  # rubocop:disable Rails/LexicallyScopedActionFilter -- actions live in Custom::Api::V1::Accounts::InboxesController prepend
+  before_action :check_authorization, except: %i[
+    show
+    wavoip_sdk_bootstrap
+    regenerate_wavoip_webhook_key
+    evolution_connection
+    evolution_reconnect
+    evolution_logout
+    evolution_restart
+  ]
+  # rubocop:enable Rails/LexicallyScopedActionFilter
 
   include Api::V1::Accounts::Concerns::WhatsappHealthManagement
 

@@ -1,0 +1,9 @@
+# Versão alvo — Evolution Go (spike pendente)
+
+# Congelar após validation-checklist.md:
+# - Docker image tag (ex: evoapicloud/evolution-go:vX.Y.Z)
+# - Git commit hash do repositório
+# - Data do spike
+
+latest
+# TODO: substituir por tag exata após spike — jun/2026

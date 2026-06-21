@@ -43,9 +43,7 @@ describe('useConversationMessageSearch', () => {
         page: 1,
       })
     );
-    expect(search.results.value).toEqual([
-      { id: 10, content: 'hello world' },
-    ]);
+    expect(search.results.value).toEqual([{ id: 10, content: 'hello world' }]);
     expect(search.errorMessage.value).toBe('');
   });
 

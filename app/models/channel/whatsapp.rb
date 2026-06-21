@@ -31,7 +31,8 @@ class Channel::Whatsapp < ApplicationRecord
   encrypts :business_management_token if Chatwoot.encryption_configured?
 
   # default at the moment is 360dialog lets change later.
-  PROVIDERS = %w[default whatsapp_cloud].freeze
+  # FORK: evolution — Baileys gateway via Evolution API (custom/)
+  PROVIDERS = %w[default whatsapp_cloud evolution].freeze
   before_validation :ensure_webhook_verify_token
 
   validates :provider, inclusion: { in: PROVIDERS }

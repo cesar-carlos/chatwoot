@@ -27,6 +27,8 @@ import VoiceConfigurationPage from './settingsPage/VoiceConfigurationPage.vue';
 import WhatsappCallingPage from './settingsPage/WhatsappCallingPage.vue';
 // FORK: Wavoip voice settings tab
 import WavoipCallingPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue';
+// FORK: Evolution WhatsApp settings tab
+import EvolutionSettingsPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionSettingsPage.vue';
 import CustomerSatisfactionPage from './settingsPage/CustomerSatisfactionPage.vue';
 import CollaboratorsPage from './settingsPage/CollaboratorsPage.vue';
 import BotConfiguration from './components/BotConfiguration.vue';
@@ -62,6 +64,7 @@ export default {
     VoiceConfigurationPage,
     WhatsappCallingPage,
     WavoipCallingPage,
+    EvolutionSettingsPage,
     CustomerSatisfactionPage,
     FacebookReauthorize,
     GreetingsEditor,
@@ -169,12 +172,22 @@ export default {
     isAWavoipChannel() {
       return this.inbox.channel_type === INBOX_TYPES.WAVOIP;
     },
+    // FORK: Evolution WhatsApp inbox
+    isEvolutionWhatsAppChannel() {
+      return (
+        this.inbox.channel_type === INBOX_TYPES.WHATSAPP &&
+        this.inbox.provider === 'evolution'
+      );
+    },
     whatsAppAPIProviderName() {
       if (this.isAWhatsAppCloudChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD');
       }
       if (this.is360DialogWhatsAppChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.360_DIALOG');
+      }
+      if (this.isEvolutionWhatsAppChannel) {
+        return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION');
       }
       if (this.isATwilioWhatsAppChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.TWILIO');
@@ -300,6 +313,17 @@ export default {
           {
             key: 'wavoip-calls-configuration',
             name: this.$t('INBOX_MGMT.TABS.CALLS'),
+          },
+        ];
+      }
+
+      // FORK: Evolution WhatsApp settings tab
+      if (this.isEvolutionWhatsAppChannel) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'evolution-settings',
+            name: this.$t('INBOX_MGMT.TABS.EVOLUTION'),
           },
         ];
       }
@@ -1451,6 +1475,12 @@ export default {
           class="mx-6 max-w-4xl"
         >
           <WavoipCallingPage :inbox="inbox" />
+        </div>
+        <div
+          v-if="selectedTabKey === 'evolution-settings'"
+          class="mx-6 max-w-4xl"
+        >
+          <EvolutionSettingsPage :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'csat'">
           <CustomerSatisfactionPage :inbox="inbox" />
