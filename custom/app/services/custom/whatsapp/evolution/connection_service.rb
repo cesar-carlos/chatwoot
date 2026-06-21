@@ -167,8 +167,12 @@ class Custom::Whatsapp::Evolution::ConnectionService
     }
   end
 
+  PROXY_DISABLED_HOST = 'x'
+  PROXY_DISABLED_PORT = '1'
+  PROXY_DISABLED_PROTOCOL = 'http'
+
   def proxy_payload
-    return { enabled: false } unless proxy_enabled?
+    return disabled_proxy_payload unless proxy_enabled?
 
     {
       enabled: true,
@@ -177,6 +181,19 @@ class Custom::Whatsapp::Evolution::ConnectionService
       protocol: provider_config['proxy_protocol'],
       username: provider_config['proxy_username'],
       password: provider_config['proxy_password']
+    }
+  end
+
+  def disabled_proxy_payload
+    # Evolution JSON schema requires non-empty host/port/protocol even when enabled: false
+    # (controller clears them after validation — see proxy.controller.ts).
+    {
+      enabled: false,
+      host: provider_config['proxy_host'].presence || PROXY_DISABLED_HOST,
+      port: provider_config['proxy_port'].presence || PROXY_DISABLED_PORT,
+      protocol: provider_config['proxy_protocol'].presence || PROXY_DISABLED_PROTOCOL,
+      username: provider_config['proxy_username'].to_s,
+      password: provider_config['proxy_password'].to_s
     }
   end
 
