@@ -373,12 +373,30 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def qrcode_storage_attrs(qrcode)
     return {} unless qrcode.is_a?(Hash)
 
-    base64 = qrcode.dig(:qrcode, :base64) || qrcode[:base64]
-    code = qrcode.dig(:qrcode, :code) || qrcode[:code]
+    base64 = qrcode_field(qrcode, :base64)
+    code = extract_pairing_code(qrcode)
     attrs = {}
     attrs['last_qr_base64'] = base64 if base64.present?
     attrs['last_qr_code'] = code if code.present?
     attrs
+  end
+
+  def extract_pairing_code(qrcode)
+    [qrcode_field(qrcode, :pairingCode), qrcode_field(qrcode, :code)].find do |value|
+      pairing_code?(value)
+    end
+  end
+
+  def pairing_code?(value)
+    value.present? && value.to_s.gsub(/\W/, '').length == 8
+  end
+
+  def qrcode_field(qrcode, field)
+    data = qrcode.with_indifferent_access
+    nested = data[:qrcode]
+    nested = nested.with_indifferent_access if nested.is_a?(Hash)
+
+    nested&.[](field) || data[field]
   end
 
   def maybe_enqueue_history_import!(previous_status, state)

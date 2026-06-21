@@ -864,7 +864,7 @@
         "PROXY_SECTION": "Proxy",
         "GROUPS_IGNORE": {
           "LABEL": "Ignore groups",
-          "DESCRIPTION": "Do not process group messages (@g.us) on the Baileys socket."
+          "DESCRIPTION": "Do not process group messages ({'@'}g.us) on the Baileys socket."
         },
         "REJECT_CALL": {
           "LABEL": "Reject calls",
@@ -908,8 +908,8 @@
         },
         "IGNORE_JIDS": {
           "LABEL": "Ignored JIDs",
-          "DESCRIPTION": "One JID or pattern per line. Use @g.us for all groups or a full JID such as 1234567890@s.whatsapp.net.",
-          "PLACEHOLDER": "Add JIDs e.g. 1234567890@s.whatsapp.net"
+          "DESCRIPTION": "One JID or pattern per line. Use {'@'}g.us for all groups or a full JID such as 1234567890{'@'}s.whatsapp.net.",
+          "PLACEHOLDER": "Add JIDs e.g. 1234567890{'@'}s.whatsapp.net"
         },
         "PROXY": {
           "ENABLED": {

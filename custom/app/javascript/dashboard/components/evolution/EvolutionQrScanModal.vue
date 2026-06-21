@@ -57,22 +57,24 @@ const statusKey = computed(
 );
 
 const statusLabel = computed(() =>
-  t(
-    `INBOX_MGMT.EVOLUTION.SETTINGS.CONNECTION_STATUS.${statusKey.value}`,
-    connectionStatus.value
-  )
+  t(`INBOX_MGMT.EVOLUTION.SETTINGS.CONNECTION_STATUS.${statusKey.value}`)
 );
 
 const showQr = computed(() => Boolean(qrcodeBase64.value));
 const showLoading = computed(
-  () => isLoading.value && !showQr.value && !pairingCode.value
+  () =>
+    (isLoading.value || isRefreshing.value) &&
+    !showQr.value &&
+    !pairingCode.value
 );
 const showQrError = computed(
   () =>
     !showQr.value &&
     !showLoading.value &&
     !pairingCode.value &&
-    (qrRefreshError.value || connectionStatus.value === 'close')
+    (qrRefreshError.value ||
+      connectionStatus.value === 'close' ||
+      connectionStatus.value === 'connecting')
 );
 
 function cleanupSession() {
@@ -188,7 +190,10 @@ defineExpose({ open: openModal, close: closeModal });
         />
       </div>
 
-      <p v-if="pairingCode" class="text-sm font-medium text-n-slate-12">
+      <p
+        v-if="pairingCode"
+        class="text-sm font-medium text-n-slate-12 break-all max-w-full px-2"
+      >
         {{
           t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.PAIRING_CODE', {
             code: pairingCode,

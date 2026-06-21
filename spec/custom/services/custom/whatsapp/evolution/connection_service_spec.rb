@@ -84,6 +84,35 @@ RSpec.describe Custom::Whatsapp::Evolution::ConnectionService do
     end
   end
 
+  describe '#qrcode_storage_attrs' do
+    it 'extracts QR image from flat string-key connect responses without storing QR token as pairing code' do
+      attrs = service.send(
+        :qrcode_storage_attrs,
+        JSON.parse(Rails.root.join('spec/fixtures/evolution/instance_connect_response.json').read)
+      )
+
+      expect(attrs['last_qr_base64']).to start_with('data:image/png;base64,')
+      expect(attrs['last_qr_code']).to be_nil
+    end
+
+    it 'extracts QR image from nested webhook payloads without storing QR token as pairing code' do
+      envelope = JSON.parse(Rails.root.join('spec/fixtures/evolution/qrcode_updated.json').read)
+      attrs = service.send(:qrcode_storage_attrs, envelope['data'])
+
+      expect(attrs['last_qr_base64']).to start_with('data:image/png;base64,')
+      expect(attrs['last_qr_code']).to be_nil
+    end
+
+    it 'stores eight-character pairing codes' do
+      attrs = service.send(
+        :qrcode_storage_attrs,
+        { 'pairingCode' => 'ABCD1234', 'base64' => 'data:image/png;base64,x' }
+      )
+
+      expect(attrs['last_qr_code']).to eq('ABCD1234')
+    end
+  end
+
   describe '#update_runtime_config!' do
     it 'persists runtime fields without triggering save callbacks' do
       expect(channel).not_to receive(:save!)
