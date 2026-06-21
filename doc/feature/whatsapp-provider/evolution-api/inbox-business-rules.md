@@ -26,8 +26,9 @@ Inclui **proxy opcional no wizard** e regras de conversa essenciais — ver [bus
 **Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `conversation_pending`, `ignore_jids`, proxy completo, badge `connection_status`. Reabrir conversa: **Settings → Configurações** (`lock_to_single_conversation`), não nesta aba. Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
 
 **Adiado Fase 2:** markdown, delay, merge BR UI, `msg_call`, `always_online`.  
-**Adiado Fase 3:** reconnect QR, logout/restart, `read_status`, `sync_full_history`.  
-**Adiado Fase 4:** import_* (default OFF, days=7).
+**Fase 3 (implementada):** reconnect QR (modal), logout/restart, alerta desconexão, `merge_brazil_contacts` no normalizer.  
+**Adiado Fase 3:** `read_status`, `sync_full_history` (settings UI).  
+**Fase 4 (parcial):** import via `ImportService` + job; UI em `EvolutionSettingsPage`.
 
 ---
 
@@ -93,7 +94,7 @@ flowchart LR
 | Campo | Tipo | Default | Fase | Sync | UI |
 |-------|------|---------|------|------|-----|
 | `base_url` | string | — | 1 | — | URL do servidor Evolution |
-| `api_key` | string | — | 1 | — | Token / apikey (**write-only** — ver § Segurança) |
+| `api_key` | string | — | 1 | — | **`AUTHENTICATION_API_KEY` global** do servidor Evolution (`.env`) — não o token UUID por instância do Manager |
 | `instance_name` | string | — | 1 | — | Nome da instância Evolution |
 
 | Campo runtime | Tipo | UI |
@@ -108,7 +109,8 @@ flowchart LR
 |-------|---------------|
 | GET inbox/channel API | `api_key` e `proxy_password` **omitidos** ou `••••••••` |
 | PATCH settings | Enviar `api_key` só quando usuário alterar (campo vazio = manter) |
-| Logs / Sentry | Nunca logar envelope webhook completo (`apikey` no body) |
+| Logs / Sentry | Nunca logar envelope webhook completo (`apikey` no body); `apikey` removido do payload Sidekiq antes de `perform_later` |
+| Resposta API (produção) | `ApiError#user_message` — detalhes upstream só em `Rails.logger` |
 | Serializer | Prepend em `Channel::Whatsapp` ou controller inbox evolution |
 
 Ver [decisions.md §15](./decisions.md).
@@ -298,27 +300,24 @@ Detalhes completos: **[implementation-analysis.md](./implementation-analysis.md)
 
 ## Layout UI — Caixa de entrada Evolution
 
-### Wizard (criação)
+### Wizard (criação) — implementado (`Evolution.vue`)
 
-**Step 1 — Conexão**
-- Nome do inbox (Chatwoot)
-- Base URL Evolution
-- API Key
-- Nome da instância (ou gerar automaticamente)
-- Toggle: criar nova instância vs usar existente
+Fluxo em **2 etapas** (regras avançadas ficam em Settings após criar o inbox):
 
-**Step 2 — Regras principais**
-- Ignorar grupos (`groups_ignore`)
-- Rejeitar chamadas (`reject_call`) + mensagem (`msg_call`)
-- Assinar mensagem (`sign_msg`) + delimitador
-- Conversa pendente (`conversation_pending`)
-- Ignorar JIDs (tags)
+**Etapa 1 — Formulário**
+- Nome da caixa de entrada (Chatwoot)
+- URL da Evolution API (`base_url`, sem barra final)
+- **Chave da API** — `AUTHENTICATION_API_KEY` do `.env` da Evolution (campo password + texto de ajuda i18n)
+- Nome da instância (`instance_name`, único globalmente)
+- Proxy opcional (toggle + host/porta/protocolo/usuário/senha)
 
-> Reabrir conversa: configurar em **Settings → Configurações** do inbox (`lock_to_single_conversation`).
+**Etapa 2 — Conectar**
+- Mensagem "Caixa de entrada criada"
+- Botão **Abrir leitor de QR** → abre modal `EvolutionQrScanModal`
+- Modal: QR, pairing code, status, auto-refresh ~45s, ActionCable + polling 3s
+- Ao conectar (`open`): redirect para adicionar agentes
 
-**Step 3 — QR / Conexão**
-- QR code (polling ou webhook)
-- Status conexão
+> Regras (`groups_ignore`, `sign_msg`, proxy completo, import, etc.): **Settings → inbox → aba WhatsApp / Evolution** (`EvolutionSettingsPage.vue` + `EvolutionHealthPage.vue`).
 
 ### Settings do inbox (pós-criação)
 
@@ -344,7 +343,7 @@ Abas sugeridas:
 ```json
 {
   "base_url": "https://evolution.example.com",
-  "api_key": "INSTANCE-TOKEN",
+  "api_key": "AUTHENTICATION_API_KEY_FROM_EVOLUTION_ENV",
   "instance_name": "inbox-sales-1",
   "instance_id": "uuid",
 

@@ -8,7 +8,7 @@ Planejamento para o primeiro provider alternativo do fork: **`Channel::Whatsapp`
 |------|--------|
 | **Documentação fork** | 18 arquivos nesta pasta (ver índice abaixo) |
 | **Código Chatwoot (`custom/`)** | **Fase 0–3 implementada** (~95%) — ver [tasks.md](./tasks.md) |
-| **Specs automatizados** | ✅ 24 examples em `spec/custom/` (Evolution provider) |
+| **Specs automatizados** | ✅ ~42 examples em `spec/custom/` + Playwright em `tests/playwright/` |
 | **Validação T0 (REST spike)** | ✅ **v2.3.6** local — fixtures reais, sendText `text` plano |
 | **E2E pendente** | ⚠️ §2–3 ✅ local jun/2026 — wizard QR com scan real ainda manual |
 | **Versão alvo** | [evolution-target-version.txt](./evolution-target-version.txt) → **2.3.7** |
@@ -121,10 +121,13 @@ Detalhe: [inbox-business-rules.md](./inbox-business-rules.md) · [tasks.md](./ta
 | Prepend `Channel::Whatsapp` | 0–2 | Registry, mask secrets, sync/validate condicional |
 | Prepend `WhatsappEventsJob` | 0–1 | Normalizer + mutex Redis |
 | Prepend `MessageWindowService` | 0 | `nil` para `evolution` |
-| Prepend `Conversations::Resolver` + `Message` | 2 | reopen / conversation_pending |
+| Prepend `Message` | 2 | delete sync, `conversation_pending`, import guards |
 | `Custom::Whatsapp::Evolution::Broadcaster` | 3 | ActionCable desconexão |
+| `Custom::Whatsapp::Evolution::ImportService` + import/* | 4 | Import histórico batelado |
 | `EvolutionSettingsPage.vue` + `EvolutionHealthPage.vue` | 2–3 | Settings + health/reconnect |
-| `Evolution.vue` | 1 | Wizard form + QR |
+| `Evolution.vue` | 1 | Wizard form + etapa conectar |
+| `EvolutionQrScanModal.vue` + `useEvolutionQrSession.js` | 1–3 | Modal QR (wizard + health), polling/expiry |
+| `useEvolutionConnectionCable.js` | 1–3 | ActionCable `EvolutionConnectionChannel` |
 
 ---
 
@@ -143,9 +146,9 @@ Logo oficial da Evolution API para tiles e wizard:
 1. **Configurações → Caixas de Entrada → Adicionar → Evolution API** — tile dedicado no grid (`ChannelList.vue` + `ChannelFactory.vue`)
 2. **WhatsApp → Evolution API** — sub-provider em `Whatsapp.vue` (mesmo wizard `Evolution.vue`)
 
-**Uso no wizard (QR grande):** `<img src="~customDashboard/assets/images/channels/evolution-logo.png" alt="Evolution API" />`
+**Uso no wizard:** logo na etapa "Caixa de entrada criada"; QR no modal `EvolutionQrScanModal` (não inline na página).
 
-**Fixtures:** `spec/fixtures/evolution/` — T0 REST concluído; E2E via [validation-checklist.md](./validation-checklist.md).
+**Fixtures:** `spec/fixtures/evolution/` — T0 REST concluído; E2E Playwright em `tests/playwright/tests/e2e/{api,ui}/evolution-inbox-create.spec.ts` (requer credenciais reais em `.env`).
 
 ---
 
@@ -158,6 +161,10 @@ Logo oficial da Evolution API para tiles e wizard:
 | P3 | Create: inbox salvo antes do provision; falha remove inbox/channel + `DELETE /instance/delete` |
 | Create | `rescue StandardError` com cleanup — evita inbox órfão em timeout/rede |
 | Ruby 3.4 | `MessagingProvider::Capabilities` — `self.for(provider)` ( `for` é palavra reservada) |
+| UX jun/2026 | Modal QR (`EvolutionQrScanModal`); help text `AUTHENTICATION_API_KEY`; anti-duplicata create |
+| Seg jun/2026 | `apikey` removido do job Sidekiq; `ApiError#user_message` sanitizado em produção; `filter_parameter_logging` `:apikey` |
+| Ops jun/2026 | Trim credenciais (`ProviderConfig.normalize_credentials`); validação `instance_name` único antes do create |
+| QR jun/2026 | `fetch_qr_code` reutiliza `qrcode_storage_attrs` — preserva `code` do connect flat; cable `QRCODE_UPDATED` emite `qrcode_base64`/`qrcode_code` (paridade API) |
 
 ---
 

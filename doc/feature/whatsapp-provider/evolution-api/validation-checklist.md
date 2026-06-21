@@ -198,7 +198,7 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
 | 1.5 sendText nested | ❌ | 400 — não aplicável v2.3.6 |
 | 2 webhook inbound E2E | ✅ | HTTP 200 + mensagem no inbox; `MESSAGES_UPDATE` → read |
 | 3 outbound Chatwoot | ✅ | `source_id` = `key.id`, sem WAID |
-| 4 conexão UI | ⚠️ parcial | CONNECTION_UPDATE + mask OK; wizard QR não exercitado |
+| 4 conexão UI | ✅ | Modal `EvolutionQrScanModal` + health; Playwright em `tests/playwright/` |
 | 5 regressão | ✅ | bypass 24h; sem cloud/default no DB |
 | 6 proxy | ⏸️ | Opcional — não executado |
 | Bug Fase 1 | ✅ | `disable_chatwoot_integration` body completo |
@@ -208,12 +208,13 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
 1. **`FORCE_SSL=true`:** webhooks locais precisam de `X-Forwarded-Proto: https` ou Evolution não alcança Chatwoot via HTTP puro.
 2. **Conta suspensa:** `WhatsappEventsJob` ignora canais de contas inativas (`[EVOLUTION] inactive channel`).
 3. **`phone_number` UNIQUE:** uma instância open compartilha o número `+5566981128433` no channel.
-4. **Wizard QR / scan real:** validar manualmente com instância nova `cw-e2e-*` se necessário.
+4. **Wizard QR / scan real:** modal abre após create; Playwright `evolution-inbox-create.spec.ts` (credenciais em `tests/playwright/.env`).
 
-Anexar fixtures ao PR da Fase 1.
+## Automação Playwright (`tests/playwright/`)
 
----
+| Spec | Cobertura |
+|------|-----------|
+| `tests/e2e/api/evolution-inbox-create.spec.ts` | Create 422 (key inválida) + happy path + delete |
+| `tests/e2e/ui/evolution-inbox-create.spec.ts` | Formulário, erro API key, QR modal |
 
-## Automação futura
-
-Contract tests com WebMock/VCR contra fixtures desta pasta — ver [spec-design.md § Testes](./spec-design.md).
+Requer `BASE_URL`, `TEST_USER_*`, `EVOLUTION_BASE_URL`, `EVOLUTION_API_KEY` (global), `ACCOUNT_ID`. Ver `.env.example`.

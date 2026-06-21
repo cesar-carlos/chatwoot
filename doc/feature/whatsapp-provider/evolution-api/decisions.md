@@ -236,10 +236,13 @@ Implementar **A** na Fase 0–1. Se testes de regressão falharem, migrar para *
 
 | Decisão | Valor |
 |---------|-------|
-| **Canal ActionCable** | `evolution:connection:{inbox_id}` |
+| **Componente QR** | `EvolutionQrScanModal.vue` — modal compartilhado (wizard + health) |
+| **Composable** | `useEvolutionQrSession.js` — polling, expiry ~45s, `evolution_reconnect` |
+| **Canal ActionCable** | `EvolutionConnectionChannel` → `evolution:connection:{inbox_id}` |
 | **Eventos** | `qrcode_updated`, `connection_update` |
-| **Fallback** | Polling `GET /instance/connect` a cada 3s no wizard até `open` |
-| **Emitter** | `ConnectionService#handle_event` após webhook ou poll |
+| **Fallback polling** | **3s** no modal; **5s** em `EvolutionHealthPage` |
+| **Wizard pós-create** | Etapa "Abrir leitor de QR" abre modal; `fetchFreshQr` chama reconnect na 1ª abertura |
+| **Emitter** | `ConnectionService#handle_event` + broadcast `phone_number` ao conectar |
 
 ---
 

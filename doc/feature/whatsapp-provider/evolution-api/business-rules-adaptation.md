@@ -40,7 +40,7 @@ Legenda **Decisão fork:**
 | Regra (Manager / código) | Evolution | **Default fork** | Decisão | Fase | Notas |
 |--------------------------|-----------|------------------|---------|------|-------|
 | **Proxy** (host, port, protocol, auth) | `POST /proxy/set` | `proxy_enabled: false` | ⚙️ Portar | **1** (wizard opcional) + settings | Operadores com ban/IP fixo precisam antes do QR. Seção colapsável no wizard; `sync_proxy!` no create. |
-| `base_url`, `api_key`, `instance_name` | create/connect | obrigatório | ✅ | 1 | — |
+| `base_url`, `api_key` (`AUTHENTICATION_API_KEY` global), `instance_name` | create/connect | obrigatório | ✅ | 1 | — |
 | Desabilitar integração CW na Evolution | `chatwoot.enabled` | sempre `false` | ✅ | 1 | [decisions.md §7](./decisions.md) |
 
 ### Settings Baileys (`POST /settings/set`)
