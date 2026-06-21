@@ -414,7 +414,8 @@
         },
         "API_KEY": {
           "LABEL": "API Key",
-          "PLACEHOLDER": "Global or instance API key",
+          "PLACEHOLDER": "AUTHENTICATION_API_KEY from Evolution .env",
+          "HELP": "Use the global AUTHENTICATION_API_KEY from your Evolution server .env — not a per-instance token from Evolution Manager.",
           "ERROR": "API key is required"
         },
         "INSTANCE_NAME": {
