@@ -61,7 +61,7 @@ Somente transcrições com `state=success` (ou `transcribed_text` legado) são r
 ## Smoke test (sem Groq key)
 
 ```bash
-bundle exec rails runner doc/scripts/smoke-test-audio-transcription.rb
+bundle exec rails runner doc/scripts/smoke_test_audio_transcription.rb
 ```
 
 ## Troubleshooting

@@ -15,7 +15,7 @@ Campos do inbox Chatwoot (`Channel::Whatsapp#provider_config`) mapeados para API
 | Conexão | `base_url`, `global_api_key`, `instance_token`, `instance_name`, `instance_id`, `connection_status`, `webhook_secret` | create/connect/status |
 | WhatsApp settings | `ignore_groups`, `reject_call`, `msg_call`, `always_online`, `read_messages`, `ignore_status` | `advanced-settings` |
 | Proxy | `proxy_enabled`, `proxy_host`, `proxy_port`, `proxy_username`, `proxy_password` | create `proxy` object |
-| Conversas | `reopen_conversation`, `merge_brazil_contacts` | Chatwoot fork |
+| Conversas | `conversation_pending`, `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork |
 | Outbound | `sign_msg`, `send_templates_as_text` | Chatwoot fork |
 | Filtros inbound | `ignore_from_me_echo` | Normalizer |
 | Webhook | URL + `subscribe` events | `POST /instance/connect` |
@@ -88,7 +88,7 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 
 | Campo | Default | Descrição |
 |-------|---------|-----------|
-| `reopen_conversation` | `true` | Reabrir conversa resolved no inbound |
+| Reabrir conversa resolvida | `inbox.lock_to_single_conversation: true` | Via `Conversations::Resolver` |
 | `merge_brazil_contacts` | `true` | Normalizar 9º dígito BR |
 | `sign_msg` | `false` | Assinatura agente no texto |
 | `send_templates_as_text` | `true` | Template → send_text |
@@ -113,7 +113,6 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
   "read_messages": false,
   "ignore_status": true,
   "proxy_enabled": false,
-  "reopen_conversation": true,
   "merge_brazil_contacts": true,
   "sign_msg": false,
   "send_templates_as_text": true,

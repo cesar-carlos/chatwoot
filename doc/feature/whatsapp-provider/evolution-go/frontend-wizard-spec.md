@@ -228,7 +228,7 @@ Componente: `EvolutionGoSettings.vue` (custom)
 | Connection | status, logout, delete instance |
 | WhatsApp | ignore_groups, reject_call, read_messages |
 | Proxy | edit / remove |
-| Conversation | reopen_conversation, merge_brazil_contacts |
+| Conversation | `lock_to_single_conversation`, merge_brazil_contacts |
 | Outbound | sign_msg, send_templates_as_text |
 
 Salvar → PATCH channel + `ConnectionService#sync_settings` → advanced-settings Go.

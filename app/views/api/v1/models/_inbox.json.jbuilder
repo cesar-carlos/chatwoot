@@ -146,13 +146,13 @@ if resource.whatsapp?
   json.message_templates message_templates.is_a?(Array) ? message_templates : []
   if Current.account_user&.administrator?
     # FORK: mask Evolution secrets in dashboard API
-    json.provider_config(
+    provider_config_json =
       if resource.channel.try(:evolution_provider?)
         resource.channel.dashboard_provider_config
       else
-        resource.channel.try(:provider_config)
+        resource.channel.try(:provider_config) || {}
       end
-    )
+    json.provider_config provider_config_json
     if ChatwootApp.chatwoot_cloud? &&
        (resource.channel.try(:provider_config) || {}).to_h['source'] == 'embedded_signup'
       json.business_management_token_configured resource.channel.try(:business_management_token).present?

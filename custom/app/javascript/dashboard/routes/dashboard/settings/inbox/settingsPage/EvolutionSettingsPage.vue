@@ -46,7 +46,6 @@ function loadState() {
     syncDeleteToWhatsapp: config.sync_delete_to_whatsapp === true,
     rejectCall: config.reject_call === true,
     readMessages: config.read_messages === true,
-    reopenConversation: config.reopen_conversation !== false,
     conversationPending: config.conversation_pending === true,
     proxyEnabled: config.proxy_enabled === true,
     proxyHost: config.proxy_host || '',
@@ -108,7 +107,6 @@ function buildProviderConfig() {
     sync_delete_to_whatsapp: state.syncDeleteToWhatsapp,
     reject_call: state.rejectCall,
     read_messages: state.readMessages,
-    reopen_conversation: state.reopenConversation,
     conversation_pending: state.conversationPending,
     proxy_enabled: state.proxyEnabled,
     proxy_host: state.proxyHost,
@@ -122,6 +120,7 @@ function buildProviderConfig() {
   };
 
   delete config.api_key;
+  delete config.reopen_conversation;
 
   if (state.proxyPassword) {
     config.proxy_password = state.proxyPassword;
@@ -132,22 +131,31 @@ function buildProviderConfig() {
   return config;
 }
 
+async function persistSettings({ showSuccessAlert = true } = {}) {
+  await store.dispatch('inboxes/updateInbox', {
+    id: props.inbox.id,
+    formData: false,
+    channel: {
+      provider_config: buildProviderConfig(),
+    },
+  });
+
+  if (showSuccessAlert) {
+    useAlert(t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+  }
+}
+
 async function saveSettings() {
   if (isSaving.value) return;
 
   isSaving.value = true;
   try {
-    await store.dispatch('inboxes/updateInbox', {
-      id: props.inbox.id,
-      formData: false,
-      channel: {
-        provider_config: buildProviderConfig(),
-      },
-    });
-    useAlert(t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+    await persistSettings();
   } catch (error) {
     useAlert(
-      error?.response?.data?.message || t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE')
+      error?.response?.data?.message ||
+        error?.message ||
+        t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE')
     );
   } finally {
     isSaving.value = false;
@@ -159,6 +167,7 @@ async function runImport() {
 
   isImporting.value = true;
   try {
+    await persistSettings({ showSuccessAlert: false });
     const payload = await store.dispatch(
       'inboxes/evolutionImport',
       props.inbox.id
@@ -221,13 +230,6 @@ function importStatusLabel(status) {
     <SettingsAccordion
       :title="t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_SECTION')"
     >
-      <SettingsToggleSection
-        v-model="state.reopenConversation"
-        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.REOPEN_CONVERSATION.LABEL')"
-        :description="
-          t('INBOX_MGMT.EVOLUTION.SETTINGS.REOPEN_CONVERSATION.DESCRIPTION')
-        "
-      />
       <SettingsToggleSection
         v-model="state.conversationPending"
         :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_PENDING.LABEL')"

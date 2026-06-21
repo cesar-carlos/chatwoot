@@ -14,7 +14,12 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
 
   def import_batch!
     remote_jids = Array.wrap(runtime.cursor[:remote_jids])
-    return runtime.mark_completed! if remote_jids.blank?
+    if remote_jids.blank?
+      remote_jids = remote_jids_collector.collect!
+      return runtime.mark_completed! if remote_jids.blank?
+
+      runtime.persist_cursor!('remote_jids' => remote_jids)
+    end
 
     jid_index, page = message_cursor
     return runtime.mark_completed! if jid_index >= remote_jids.size
@@ -36,6 +41,10 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
   def import_page(remote_jids, jid_index, page)
     remote_jid = remote_jids[jid_index]
     response = api_client.find_messages(page: page, offset: BATCH_SIZE, where: messages_where(remote_jid))
+    Custom::Whatsapp::Evolution::ApiClient.raise_unless_success!(
+      response,
+      'Failed to fetch Evolution messages for import'
+    )
     parsed = response.parsed_response || {}
     records = Array.wrap(parsed.dig('messages', 'records'))
 
@@ -99,21 +108,123 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
   end
 
   def import_outgoing_record(record)
+    envelope = { 'event' => 'MESSAGES_UPSERT', 'data' => record }
+    normalized = normalizer(envelope).perform
+    message_data = normalized&.dig(:messages, 0)
+    return if message_data.blank?
+
     key = record['key'] || {}
-    content = outgoing_content(record)
-    return if content.blank?
+    content = outgoing_content(record, message_data)
+    return if content.blank? && !outgoing_media_message?(message_data)
 
     contact_inbox = find_or_create_contact_inbox_for_key(key, record['pushName'])
     return if contact_inbox.blank?
 
-    create_outgoing_message!(contact_inbox, key, content, record['messageTimestamp'])
+    message = create_outgoing_message!(
+      contact_inbox,
+      key,
+      content,
+      record['messageTimestamp']
+    )
+    attach_outgoing_media!(message, message_data)
     runtime.increment_stat!(:messages_imported)
   end
 
-  def outgoing_content(record)
-    envelope = { 'event' => 'MESSAGES_UPSERT', 'data' => record }
-    normalized = normalizer(envelope).perform
-    normalized&.dig(:messages, 0, :text, :body) || extract_fallback_text(record)
+  def outgoing_content(record, message_data = nil)
+    message_data ||= begin
+      envelope = { 'event' => 'MESSAGES_UPSERT', 'data' => record }
+      normalizer(envelope).perform&.dig(:messages, 0)
+    end
+    return extract_fallback_text(record) if message_data.blank?
+
+    message_data.dig(:text, :body) || media_caption(message_data) || extract_fallback_text(record)
+  end
+
+  def outgoing_media_message?(message_data)
+    type = message_data[:type].to_s
+    %w[image video audio document sticker].include?(type) && message_data[type.to_sym].present?
+  end
+
+  def media_caption(message_data)
+    type = message_data[:type].to_s
+    return unless %w[image video audio document sticker].include?(type)
+
+    message_data[type.to_sym]&.dig(:caption)
+  end
+
+  def attach_outgoing_media!(message, message_data)
+    return unless outgoing_media_message?(message_data)
+
+    type = message_data[:type].to_s
+    attachment_payload = message_data[type.to_sym]
+    tempfile = download_outgoing_media(attachment_payload)
+    return if tempfile.blank?
+
+    message.attachments.create!(
+      account_id: runtime.account.id,
+      file_type: outgoing_file_type(type),
+      file: {
+        io: tempfile,
+        filename: tempfile.original_filename,
+        content_type: tempfile.content_type
+      }
+    )
+  rescue StandardError => e
+    Rails.logger.warn "[EVOLUTION] outgoing media import failed for message #{message.id}: #{e.message}"
+  end
+
+  def download_outgoing_media(attachment_payload)
+    response = api_client.get_base64_from_media_message(
+      message: attachment_payload[:_evolution_message]
+    )
+    return nil unless response.success?
+
+    build_outgoing_media_tempfile(response.parsed_response, attachment_payload)
+  rescue StandardError => e
+    Rails.logger.error("[EVOLUTION] outgoing media download failed: #{e.message}")
+    nil
+  end
+
+  def build_outgoing_media_tempfile(parsed, attachment_payload)
+    base64 = parsed['base64']
+    return nil if base64.blank?
+
+    extension = extension_for_outgoing_media(parsed, attachment_payload)
+    tempfile = Tempfile.new(['evolution-outgoing-media', extension])
+    tempfile.binmode
+    tempfile.write(Base64.decode64(base64))
+    tempfile.rewind
+
+    filename = parsed['fileName'] || attachment_payload[:filename] || "media#{extension}"
+    content_type = parsed['mimetype'] || attachment_payload[:mimetype] || 'application/octet-stream'
+
+    tempfile.define_singleton_method(:original_filename) { filename }
+    tempfile.define_singleton_method(:content_type) { content_type }
+    tempfile
+  end
+
+  OUTGOING_MEDIA_EXTENSIONS = [
+    [%r{image/png}, '.png'],
+    [%r{image/}, '.jpg'],
+    [%r{video/}, '.mp4'],
+    [%r{audio/}, '.ogg']
+  ].freeze
+
+  def extension_for_outgoing_media(parsed, attachment_payload)
+    filename = parsed['fileName'] || attachment_payload[:filename]
+    ext = File.extname(filename.to_s)
+    return ext if ext.present?
+
+    mimetype = (parsed['mimetype'] || attachment_payload[:mimetype]).to_s
+    OUTGOING_MEDIA_EXTENSIONS.find { |pattern, _| mimetype.match?(pattern) }&.last || '.bin'
+  end
+
+  def outgoing_file_type(type)
+    return :image if %w[image sticker].include?(type)
+    return :audio if type == 'audio'
+    return :video if type == 'video'
+
+    :file
   end
 
   def create_outgoing_message!(contact_inbox, key, content, raw_timestamp)
@@ -220,6 +331,13 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
       channel: channel,
       envelope: envelope,
       import_mode: true
+    )
+  end
+
+  def remote_jids_collector
+    @remote_jids_collector ||= Custom::Whatsapp::Evolution::Import::RemoteJidsCollector.new(
+      runtime: runtime,
+      api_client: api_client
     )
   end
 end

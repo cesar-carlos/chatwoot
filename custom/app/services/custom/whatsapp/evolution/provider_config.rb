@@ -17,7 +17,6 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     'proxy_password' => '',
     'sign_msg' => false,
     'sign_delimiter' => "\n",
-    'reopen_conversation' => true,
     'conversation_pending' => false,
     'merge_brazil_contacts' => true,
     'mark_read_on_reply' => false,

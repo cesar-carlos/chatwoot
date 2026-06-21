@@ -17,7 +17,7 @@ Regras do inbox `provider: 'evolution_go'` mapeadas para campos `provider_config
 | Proxy opcional no create | `proxy_enabled: false` | delete proxy API |
 | QR + pairing + ActionCable | — | — |
 | `ignore_groups: true` | no create | advanced-settings UI |
-| `reopen_conversation: true` | inbound | toggle UI |
+| Reabrir conversa resolvida | `inbox.lock_to_single_conversation` | Settings inbox nativo |
 | Webhook no connect | `subscribe` restrito | editar subscribe |
 | Filtros hardcoded | `@g.us`, `fromMe`, broadcast | `ignore_jids` UI |
 
@@ -67,7 +67,7 @@ flowchart LR
 | **Advanced-settings** | `alwaysOnline`, `rejectCall`, `ignoreGroups`, etc. |
 | **Fork envio** | `sign_msg`, markdown, template→texto |
 | **Fork inbound** | `ignore_jids`, echo, broadcast |
-| **Fork conversas** | `reopen_conversation`, merge BR |
+| **Fork conversas** | `lock_to_single_conversation`, merge BR |
 
 > **Sem** `POST /settings/set` nem `POST /webhook/set` — diferente da Evolution API Node.
 
@@ -146,7 +146,7 @@ Doc create: [create-a-new-instance](https://docs.evolutionfoundation.com.br/evol
 
 | Campo | Default | Fase | Comportamento |
 |-------|---------|------|---------------|
-| `reopen_conversation` | **`true`** | 1 | Resolved + inbound → reabre |
+| `inbox.lock_to_single_conversation` | **`true`** | nativo | Resolved + inbound → reabre (via `Conversations::Resolver`) |
 | `conversation_pending` | `false` | 2 | Status inicial pending |
 | `merge_brazil_contacts` | `true` | 2 | Normaliza 9º dígito BR |
 
@@ -202,7 +202,7 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 | **Connection** | Status badge, reconnect, logout, QR |
 | **WhatsApp** | ignore_groups, reject_call, read_messages |
 | **Proxy** | Editar proxy / delete |
-| **Advanced** | ignore_jids, sign_msg, reopen_conversation |
+| **Advanced** | ignore_jids, sign_msg, conversation_pending |
 
 Ocultar: templates Meta, campanhas, embedded signup, health cloud, voz Meta.
 

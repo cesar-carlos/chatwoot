@@ -3,7 +3,13 @@
 class Custom::Whatsapp::Evolution::ConnectionService
   pattr_initialize [:channel!]
 
+  def teardown!
+    delete_remote_instance!
+  end
+
   def provision_new_instance!
+    validate_webhook_base_url!
+
     instance_created = false
 
     response = api_client.create_instance(create_instance_body)
@@ -201,6 +207,13 @@ class Custom::Whatsapp::Evolution::ConnectionService
     ActiveModel::Type::Boolean.new.cast(provider_config['proxy_enabled'])
   end
 
+  def validate_webhook_base_url!
+    return if ENV.fetch('FRONTEND_URL', nil).present?
+
+    raise Custom::Whatsapp::Evolution::ApiError,
+          'FRONTEND_URL is not configured; cannot register Evolution webhook'
+  end
+
   def webhook_url
     base = ENV.fetch('FRONTEND_URL', nil).to_s.delete_suffix('/')
     "#{base}/webhooks/evolution/#{provider_config['instance_name']}"
@@ -213,12 +226,10 @@ class Custom::Whatsapp::Evolution::ConnectionService
       'instance_id' => instance['instanceId'],
       'connection_status' => instance['status'] || 'connecting'
     }
-    if channel.new_record?
-      channel.provider_config = provider_config.merge(attrs)
-      channel.save!
-    else
-      update_provider_config!(attrs)
-    end
+    merged = provider_config.merge(attrs.stringify_keys)
+    channel.provider_config = merged
+    # Skip credential validation mid-provision; connection is not ready for health checks yet.
+    persist_provider_config!(merged)
     @api_client = nil
   end
 
@@ -228,7 +239,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
     return unless state == 'open'
 
     phone = phone_from_sender(provider_config['last_sender'])
-    update_phone_number!(phone) if phone.present? && !placeholder_phone?(channel.phone_number)
+    update_phone_number!(phone) if phone.present? && placeholder_phone?(channel.phone_number)
     maybe_enqueue_history_import!(previous_status, state)
   end
 
@@ -282,6 +293,10 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def update_phone_number!(phone)
     channel.update_columns(phone_number: phone, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
     channel.phone_number = phone
+  rescue ActiveRecord::RecordNotUnique
+    Rails.logger.warn(
+      "[EVOLUTION] phone #{phone} already in use; keeping current number for channel #{channel.id}"
+    )
   end
 
   def notify_disconnection!(previous_status, state)
@@ -329,8 +344,14 @@ class Custom::Whatsapp::Evolution::ConnectionService
     previous_status = provider_config['connection_status']
     update_connection_status(state)
     extract_phone_number(envelope)
-    broadcast_connection_event(connection_status: state)
+    broadcast_connection_event(connection_event_payload(state))
     notify_disconnection!(previous_status, state)
+  end
+
+  def connection_event_payload(state)
+    payload = { connection_status: state }
+    payload[:phone_number] = channel.phone_number if state == 'open' && channel.phone_number.present?
+    payload
   end
 
   def handle_qrcode_updated_event(envelope)

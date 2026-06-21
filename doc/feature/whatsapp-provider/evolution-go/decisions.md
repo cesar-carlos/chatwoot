@@ -201,7 +201,7 @@ Prepend deve expor `contact_sender_id` compatível com payload **já normalizado
 |-------|---------|
 | `sign_msg` | `false` |
 | `ignore_groups` | `true` |
-| `reopen_conversation` | `true` |
+| Reabrir conversa | `inbox.lock_to_single_conversation: true` |
 | `merge_brazil_contacts` | `true` |
 | `send_templates_as_text` | `true` |
 

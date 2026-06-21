@@ -112,7 +112,7 @@
 - [x] Add tests for idempotency behavior (parallel requests for same attachment).
 - [ ] Add tests confirming `meta` merge does not remove unrelated keys.
 - [x] Manual smoke test on conversation UI with real audio attachment.
-- [x] Smoke test script: `doc/scripts/smoke-test-audio-transcription.rb`
+- [x] Smoke test script: `doc/scripts/smoke_test_audio_transcription.rb`
 - [ ] Confirm no regressions in audio playback and existing message rendering.
 - [x] Validate format matrix (direct send vs conversion):
   - [x] `oga` / `x-oga` -> normalize to `ogg` and send direct
@@ -304,7 +304,7 @@
 - `app/javascript/dashboard/components/fork/AudioTranscriptionFork.vue`
 - `spec/custom/controllers/api/v1/accounts/transcriptions_controller_spec.rb`
 - `spec/custom/services/custom/audio_converter_service_spec.rb`
-- `doc/scripts/smoke-test-audio-transcription.rb`
+- `doc/scripts/smoke_test_audio_transcription.rb`
 
 ### I18n Files Modified
 - `app/javascript/dashboard/i18n/locale/en/settings.json` (GROQ_TOKEN section)

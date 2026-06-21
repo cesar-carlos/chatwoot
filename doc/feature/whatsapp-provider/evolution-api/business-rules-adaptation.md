@@ -150,16 +150,18 @@ Se `proxy_enabled` no create:
 
 ## Conversas — adaptar ao Chatwoot upstream
 
-### `reopen_conversation: true` (Fase 1)
+### Reabrir conversa resolvida (Fase 1)
 
-Evolution reutiliza conversa mesmo `resolved`. O Chatwoot upstream já tem lógica de reopen em vários canais — **preferir hook mínimo:**
+Evolution reutiliza conversa mesmo `resolved`. No fork, usar o mecanismo nativo **`inbox.lock_to_single_conversation`** (Settings → Roteamento de conversas) — **não** duplicar em `provider_config`.
 
 ```ruby
-# Ao criar mensagem inbound evolution — se conversa resolved e reopen_conversation
-conversation.open! if conversation.resolved? && channel.provider_config['reopen_conversation']
+# Conversations::Resolver#find_conversation (fork)
+return contact_inbox.conversations.order(created_at: :desc).first if inbox.lock_to_single_conversation?
+
+# Message#reopen_conversation (after_create_commit) — reabre resolved no inbound
 ```
 
-Se `conversation_pending: true` (Fase 2): após reopen, `conversation.pending!` quando política do inbox exigir.
+Se `conversation_pending: true` (Fase 2): prepend `Custom::Message` chama `conversation.pending!` em vez de `open!` ao reabrir.
 
 ### `merge_brazil_contacts: true` (Fase 2)
 
@@ -190,7 +192,6 @@ Substitui o JSON de referência em [inbox-business-rules.md](./inbox-business-ru
 
   "sign_msg": false,
   "sign_delimiter": "\n",
-  "reopen_conversation": true,
   "conversation_pending": false,
   "merge_brazil_contacts": true,
 
@@ -219,7 +220,7 @@ Substitui o JSON de referência em [inbox-business-rules.md](./inbox-business-ru
 
 | Fase | Entregas de regras |
 |------|-------------------|
-| **1** | Conexão, proxy opcional wizard, `groups_ignore`, filtros hardcoded, `reopen_conversation`, `send_templates_as_text`, bypass 24h |
+| **1** | Conexão, proxy opcional wizard, `groups_ignore`, filtros hardcoded, `lock_to_single_conversation`, `send_templates_as_text`, bypass 24h |
 | **2** | Settings UI completa, `sign_msg`, markdown, delay, merge BR, ignore_jids UI, reject_call, read_messages, mark_read_on_reply, erros privados, mídia |
 | **3** | sync_delete, read_status, sync_full_history, grupos (se produto) |
 | **4** | import_* via API |
@@ -230,6 +231,6 @@ Substitui o JSON de referência em [inbox-business-rules.md](./inbox-business-ru
 
 - [ ] Wizard aplica JSON defaults acima no `provider_config`
 - [ ] `ConnectionService` aplica proxy + settings no create (não só no PATCH settings)
-- [ ] `reopen_conversation` na criação de conversa inbound
+- [ ] `lock_to_single_conversation` na criação/reabertura de conversa inbound
 - [ ] Nunca persistir `chatwootAccountId` / token Evolution no channel
 - [ ] Documentar para operador: defaults diferem do Manager Evolution (tabela acima)

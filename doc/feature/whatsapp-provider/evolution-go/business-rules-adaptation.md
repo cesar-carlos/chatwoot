@@ -6,7 +6,7 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 
 ## Princípios
 
-1. **Chatwoot é source of truth** para regras de conversa (`reopen_conversation`, templates como texto).
+1. **Chatwoot é source of truth** para regras de conversa (`lock_to_single_conversation`, templates como texto).
 2. **Evolution Go** controla sessão WhatsApp (QR, proxy, ignore groups).
 3. **Sem integração nativa Chatwoot** na Go — diferente da Evolution API Node.
 4. **Provider separado** — não herdar defaults do Manager Evolution API sem revisar.
@@ -22,7 +22,7 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 | `reject_call` | `false` | Operador decide |
 | `read_messages` | `false` | Não marcar lido automaticamente |
 | `always_online` | `false` | Presença natural |
-| `reopen_conversation` | `true` | UX suporte — conversa resolved reabre |
+| Reabrir conversa resolvida | `inbox.lock_to_single_conversation: true` | UX suporte — não duplicar em `provider_config` |
 | `merge_brazil_contacts` | `true` | Fork BR |
 | `sign_msg` | `false` | Chatwoot já mostra agente |
 | `send_templates_as_text` | `true` | Sem WABA templates |

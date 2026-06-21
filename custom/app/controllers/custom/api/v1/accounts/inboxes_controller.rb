@@ -26,8 +26,10 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless evolution_channel?(channel)
 
-    payload = Custom::Whatsapp::Evolution::ConnectionService.new(channel).connection_payload
+    payload = Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).connection_payload
     render json: payload
+  rescue Custom::Whatsapp::Evolution::ApiError => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def evolution_reconnect
@@ -35,7 +37,7 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless evolution_channel?(channel)
 
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel).reconnect!
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).reconnect!
     render json: connection_payload_for(channel)
   rescue Custom::Whatsapp::Evolution::ApiError => e
     render json: { error: e.message }, status: :unprocessable_entity
@@ -46,7 +48,7 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless evolution_channel?(channel)
 
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel).logout!
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).logout!
     render json: connection_payload_for(channel)
   rescue Custom::Whatsapp::Evolution::ApiError => e
     render json: { error: e.message }, status: :unprocessable_entity
@@ -57,7 +59,7 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless evolution_channel?(channel)
 
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel).restart!
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).restart!
     render json: connection_payload_for(channel)
   rescue Custom::Whatsapp::Evolution::ApiError => e
     render json: { error: e.message }, status: :unprocessable_entity
@@ -79,7 +81,7 @@ module Custom::Api::V1::Accounts::InboxesController
   end
 
   def connection_payload_for(channel)
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel).connection_payload
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).connection_payload
   end
 
   def import_payload_for(channel)
@@ -109,11 +111,23 @@ module Custom::Api::V1::Accounts::InboxesController
     end
 
     provision_evolution_channel!(channel)
-  rescue Custom::Whatsapp::Evolution::ApiError => e
-    render json: { message: e.message }, status: :unprocessable_entity
   rescue StandardError => e
-    Rails.logger.error "[EVOLUTION] inbox create failed: #{e.class} #{e.message}"
-    render json: { message: 'Failed to provision Evolution instance' }, status: :unprocessable_entity
+    render_evolution_create_error(e)
+  end
+
+  def render_evolution_create_error(error)
+    case error
+    when Custom::Whatsapp::Evolution::ApiError
+      render json: { message: error.message }, status: :unprocessable_entity
+    when ActiveRecord::RecordInvalid
+      render json: { message: error.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    when ActiveRecord::RecordNotUnique
+      render json: { message: 'An Evolution inbox with this instance name already exists' },
+             status: :unprocessable_entity
+    else
+      Rails.logger.error "[EVOLUTION] inbox create failed: #{error.class} #{error.message}"
+      render json: { message: evolution_provision_error_message(error) }, status: :unprocessable_entity
+    end
   end
 
   def create_channel
@@ -128,8 +142,17 @@ module Custom::Api::V1::Accounts::InboxesController
   end
 
   def evolution_whatsapp_channel?
-    permitted_params[:channel][:type] == 'whatsapp' &&
-      permitted_params[:channel][:provider] == 'evolution'
+    channel_params = params[:channel]
+    return false if channel_params.blank?
+
+    channel_params[:type].to_s == 'whatsapp' && channel_params[:provider].to_s == 'evolution'
+  end
+
+  def evolution_provision_error_message(error)
+    message = error.message.to_s
+    return 'An Evolution inbox with this instance name already exists' if message.include?('index_channel_whatsapp_evolution_instance_name')
+
+    message.presence || 'Failed to provision Evolution instance'
   end
 
   def create_evolution_whatsapp_channel
@@ -169,7 +192,7 @@ module Custom::Api::V1::Accounts::InboxesController
   end
 
   def provision_evolution_channel!(channel)
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel).provision_new_instance!
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).provision_new_instance!
   rescue StandardError
     cleanup_failed_evolution_channel!(channel)
     raise

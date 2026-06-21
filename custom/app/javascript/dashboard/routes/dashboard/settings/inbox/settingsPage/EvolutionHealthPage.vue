@@ -3,7 +3,12 @@ import { useAlert } from 'dashboard/composables';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import EvolutionQrScanModal from 'customDashboard/components/evolution/EvolutionQrScanModal.vue';
 import { subscribeEvolutionConnection } from 'customDashboard/composables/evolution/useEvolutionConnectionCable';
+import {
+  normalizeEvolutionConnectionPayload,
+  isEvolutionPlaceholderPhone,
+} from 'customDashboard/lib/evolution/evolutionConnectionPayload';
 
 const POLL_MS = 5000;
 
@@ -18,6 +23,7 @@ export default {
     SettingsFieldSection,
     NextButton,
     Spinner,
+    EvolutionQrScanModal,
   },
   props: {
     inbox: {
@@ -29,14 +35,15 @@ export default {
     return {
       connectionStatus: 'connecting',
       phoneNumber: '',
-      qrcodeBase64: '',
-      pairingCode: '',
       isLoading: true,
-      isReconnecting: false,
       isLoggingOut: false,
       isRestarting: false,
+      isQrModalOpen: false,
+      qrModalFetchFresh: false,
       pollTimer: null,
       unsubscribeCable: null,
+      confirmTitle: '',
+      confirmDescription: '',
     };
   },
   computed: {
@@ -53,11 +60,11 @@ export default {
     isConnected() {
       return this.connectionStatus === 'open';
     },
-    showQr() {
-      return !this.isConnected && this.qrcodeBase64;
-    },
     isBusy() {
-      return this.isReconnecting || this.isLoggingOut || this.isRestarting;
+      return this.isLoggingOut || this.isRestarting;
+    },
+    showConnectCta() {
+      return !this.isLoading && !this.isConnected;
     },
   },
   mounted() {
@@ -84,16 +91,39 @@ export default {
       this.stopPolling();
       this.pollTimer = setInterval(this.refreshConnection, POLL_MS);
     },
-    applyPayload(payload) {
-      this.connectionStatus =
-        payload.connectionStatus ||
-        payload.connection_status ||
-        this.connectionStatus;
-      this.phoneNumber = payload.phoneNumber || payload.phone_number || '';
-      const qr = payload.qrcodeBase64 || payload.qrcode_base64;
-      if (qr) this.qrcodeBase64 = qr;
-      const code = payload.pairingCode || payload.qrcode_code;
-      if (code) this.pairingCode = code;
+    applyPhoneFromPayload(payload, normalized) {
+      const phone =
+        normalized.phoneNumber || payload.phoneNumber || payload.phone_number;
+      if (phone && !isEvolutionPlaceholderPhone(phone)) {
+        this.phoneNumber = phone;
+      }
+    },
+    async applyPayload(payload) {
+      const normalized = normalizeEvolutionConnectionPayload(payload) || {};
+
+      if (normalized.connectionStatus) {
+        const wasConnected = this.isConnected;
+        this.connectionStatus = normalized.connectionStatus;
+
+        if (this.isConnected && !wasConnected) {
+          try {
+            const full = await this.$store.dispatch(
+              'inboxes/fetchEvolutionConnection',
+              this.inbox.id
+            );
+            this.applyPhoneFromPayload(
+              full,
+              normalizeEvolutionConnectionPayload(full) || {}
+            );
+          } catch {
+            this.applyPhoneFromPayload(payload, normalized);
+          }
+          this.stopPolling();
+          this.isQrModalOpen = false;
+        }
+      }
+
+      this.applyPhoneFromPayload(payload, normalized);
     },
     async refreshConnection() {
       try {
@@ -101,12 +131,20 @@ export default {
           'inboxes/fetchEvolutionConnection',
           this.inbox.id
         );
-        this.applyPayload(payload);
+        await this.applyPayload(payload);
       } catch {
         // keep last known state
       } finally {
         this.isLoading = false;
       }
+    },
+    openQrModal({ fresh = false } = {}) {
+      this.qrModalFetchFresh = fresh;
+      this.isQrModalOpen = true;
+    },
+    async onQrConnected() {
+      await this.$store.dispatch('inboxes/get', this.inbox.id);
+      await this.refreshConnection();
     },
     async runAction(action, flag) {
       if (this[flag]) return;
@@ -116,7 +154,7 @@ export default {
           `inboxes/${action}`,
           this.inbox.id
         );
-        this.applyPayload(payload);
+        await this.applyPayload(payload);
         await this.$store.dispatch('inboxes/get', this.inbox.id);
         useAlert(
           this.$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.ACTION_SUCCESS')
@@ -130,24 +168,31 @@ export default {
         this[flag] = false;
       }
     },
-    async reconnect() {
-      await this.runAction('evolutionReconnect', 'isReconnecting');
+    async showConfirm(title, description) {
+      this.confirmTitle = title;
+      this.confirmDescription = description;
+      return this.$refs.confirmDialog.showConfirmation();
+    },
+    reconnect() {
+      this.openQrModal({ fresh: true });
     },
     async restart() {
-      // eslint-disable-next-line no-alert
-      const confirmed = window.confirm(
+      const ok = await this.showConfirm(
+        this.$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.RESTART'),
         this.$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.RESTART_CONFIRM')
       );
-      if (!confirmed) return;
+      if (!ok) return;
       await this.runAction('evolutionRestart', 'isRestarting');
+      this.openQrModal({ fresh: true });
     },
     async logout() {
-      // eslint-disable-next-line no-alert
-      const confirmed = window.confirm(
+      const ok = await this.showConfirm(
+        this.$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.LOGOUT'),
         this.$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.LOGOUT_CONFIRM')
       );
-      if (!confirmed) return;
+      if (!ok) return;
       await this.runAction('evolutionLogout', 'isLoggingOut');
+      this.phoneNumber = '';
     },
   },
 };
@@ -177,7 +222,7 @@ export default {
     </SettingsFieldSection>
 
     <SettingsFieldSection
-      v-if="phoneNumber"
+      v-if="phoneNumber && isConnected"
       :label="$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.PHONE_NUMBER.LABEL')"
       :help-text="
         $t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.PHONE_NUMBER.HELP_TEXT')
@@ -186,30 +231,23 @@ export default {
       <woot-code :script="phoneNumber" lang="html" />
     </SettingsFieldSection>
 
-    <div v-if="showQr" class="flex flex-col items-start gap-3">
+    <div
+      v-if="showConnectCta"
+      class="flex flex-col gap-3 p-4 rounded-xl border border-n-weak bg-n-alpha-black2"
+    >
       <p class="text-sm text-n-slate-11">
-        {{ $t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.QR.DESCRIPTION') }}
+        {{ $t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.SCAN_CTA') }}
       </p>
-      <div class="p-4 rounded-2xl bg-white border border-n-weak">
-        <img
-          :src="qrcodeBase64"
-          alt="WhatsApp QR Code"
-          class="w-48 h-48 object-contain"
-        />
-      </div>
-      <p v-if="pairingCode" class="text-sm font-medium text-n-slate-12">
-        {{
-          $t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.QR.PAIRING_CODE', {
-            code: pairingCode,
-          })
-        }}
-      </p>
+      <NextButton
+        :label="$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.OPEN_QR_MODAL')"
+        @click="openQrModal({ fresh: true })"
+      />
     </div>
 
     <div class="flex flex-wrap gap-3">
       <NextButton
+        v-if="!isConnected"
         :label="$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.RECONNECT')"
-        :is-loading="isReconnecting"
         :disabled="isBusy"
         @click="reconnect"
       />
@@ -230,5 +268,18 @@ export default {
         @click="logout"
       />
     </div>
+
+    <EvolutionQrScanModal
+      v-model="isQrModalOpen"
+      :inbox-id="inbox.id"
+      :fetch-fresh-qr="qrModalFetchFresh"
+      @connected="onQrConnected"
+    />
+
+    <woot-confirm-modal
+      ref="confirmDialog"
+      :title="confirmTitle"
+      :description="confirmDescription"
+    />
   </div>
 </template>

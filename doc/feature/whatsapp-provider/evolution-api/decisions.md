@@ -277,7 +277,7 @@ Ver [business-rules-adaptation.md § Proxy](./business-rules-adaptation.md#proxy
 | **Fonte de verdade** | [business-rules-adaptation.md](./business-rules-adaptation.md) |
 | **`sign_msg`** | **`false`** (Manager Evolution default ON — fork OFF: CW já mostra agente) |
 | **`groups_ignore`** | **`true`** (Manager screenshot OFF — fork ON: suporte 1:1) |
-| **`reopen_conversation`** | **`true`** — **Fase 1** (comportamento inbound) |
+| **`reopen` (conversa resolvida)** | **`inbox.lock_to_single_conversation: true`** — Settings inbox, não `provider_config` |
 | **`conversation_pending`** | **`false`** (CW default open) |
 | **`merge_brazil_contacts`** | **`true`** (fork BR) |
 | **import_*** | **`false`**, `days_limit_import_messages: 7` (Manager UI, não API 60) |

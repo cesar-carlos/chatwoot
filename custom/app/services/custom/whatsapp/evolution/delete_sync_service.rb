@@ -12,7 +12,13 @@ class Custom::Whatsapp::Evolution::DeleteSyncService
       id: message.source_id,
       remote_jid: remote_jid,
       from_me: !message.incoming?
-    )
+    ).tap do |response|
+      unless response.success?
+        Rails.logger.warn(
+          "[EVOLUTION] delete sync HTTP #{response.code} for message #{message.id}"
+        )
+      end
+    end
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION] delete sync failed for message #{message.id}: #{e.message}"
   end

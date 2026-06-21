@@ -9,6 +9,11 @@ class EvolutionConnectionChannel < ApplicationCable::Channel
       return
     end
 
+    unless inbox_accessible?(inbox)
+      reject
+      return
+    end
+
     stream_from "evolution:connection:#{inbox.id}"
   end
 
@@ -20,5 +25,10 @@ class EvolutionConnectionChannel < ApplicationCable::Channel
 
   def current_account
     @current_account ||= current_user.accounts.find(params[:account_id])
+  end
+
+  def inbox_accessible?(inbox)
+    current_user.assigned_inboxes.exists?(id: inbox.id) ||
+      inbox.account.administrators.exists?(id: current_user.id)
   end
 end
