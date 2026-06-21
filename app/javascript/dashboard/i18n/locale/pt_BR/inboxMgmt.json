@@ -345,7 +345,8 @@
         },
         "API_KEY": {
           "LABEL": "Chave da API",
-          "PLACEHOLDER": "Chave global ou da instância",
+          "PLACEHOLDER": "AUTHENTICATION_API_KEY do .env da Evolution",
+          "HELP": "Use a AUTHENTICATION_API_KEY global do arquivo .env do servidor Evolution — não é o token por instância exibido no Evolution Manager.",
           "ERROR": "A chave da API é obrigatória"
         },
         "INSTANCE_NAME": {

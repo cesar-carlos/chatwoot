@@ -75,13 +75,13 @@ async function createChannel() {
 
   try {
     const inbox = await store.dispatch('inboxes/createEvolutionChannel', {
-      name: state.inboxName,
+      name: state.inboxName.trim(),
       channel: {
         type: 'whatsapp',
         provider: 'evolution',
-        base_url: state.baseUrl.replace(/\/$/, ''),
-        api_key: state.apiKey,
-        instance_name: state.instanceName,
+        base_url: state.baseUrl.trim().replace(/\/$/, ''),
+        api_key: state.apiKey.trim(),
+        instance_name: state.instanceName.trim(),
         provider_config: {
           proxy_enabled: state.proxyEnabled,
           proxy_host: state.proxyHost,
@@ -132,7 +132,7 @@ async function createChannel() {
         type="password"
         :label="t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.LABEL')"
         :placeholder="t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.PLACEHOLDER')"
-        :message="formErrors.apiKey"
+        :message="formErrors.apiKey || t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.HELP')"
         :message-type="formErrors.apiKey ? 'error' : 'info'"
       />
       <Input

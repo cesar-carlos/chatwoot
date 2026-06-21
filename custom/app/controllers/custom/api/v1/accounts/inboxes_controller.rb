@@ -185,9 +185,9 @@ module Custom::Api::V1::Accounts::InboxesController
     )
 
     Custom::Whatsapp::Evolution::ProviderConfig.build(
-      'base_url' => evolution_params[:base_url].to_s.delete_suffix('/'),
-      'instance_name' => evolution_params[:instance_name],
-      'api_key' => evolution_params[:api_key]
+      'base_url' => evolution_params[:base_url].to_s.strip.delete_suffix('/'),
+      'instance_name' => evolution_params[:instance_name].to_s.strip,
+      'api_key' => evolution_params[:api_key].to_s.strip
     ).merge((evolution_params[:provider_config] || {}).stringify_keys)
   end
 
