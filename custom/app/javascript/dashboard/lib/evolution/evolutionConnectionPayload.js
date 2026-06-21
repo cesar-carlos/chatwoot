@@ -9,13 +9,15 @@ function extractQrBase64(raw) {
   return qrcode?.qrcode?.base64 || qrcode?.base64 || null;
 }
 
+function isPairingCode(code) {
+  if (!code) return false;
+  return code.toString().replace(/\W/g, '').length === 8;
+}
+
 function formatPairingCode(code) {
-  if (!code) return null;
+  if (!code || !isPairingCode(code)) return null;
   const normalized = code.toString().replace(/\W/g, '');
-  if (normalized.length === 8) {
-    return `${normalized.slice(0, 4)}-${normalized.slice(4, 8)}`;
-  }
-  return code.toString();
+  return `${normalized.slice(0, 4)}-${normalized.slice(4, 8)}`;
 }
 
 export function isEvolutionPlaceholderPhone(phone) {
@@ -30,13 +32,22 @@ export function formatQrDataUrl(value) {
 }
 
 function extractPairingCode(raw) {
-  const direct = raw.qrcode_code || raw.qrcodeCode || raw.pairingCode;
-  if (direct) return formatPairingCode(direct);
+  const candidates = [
+    raw.pairingCode,
+    raw.qrcode_code,
+    raw.qrcodeCode,
+    raw.qrcode?.pairingCode,
+    raw.qrcode?.qrcode?.pairingCode,
+    raw.qrcode?.code,
+    raw.qrcode?.qrcode?.code,
+  ];
 
-  const qrcode = raw.qrcode;
-  if (!qrcode || typeof qrcode !== 'object') return null;
+  for (const candidate of candidates) {
+    const formatted = formatPairingCode(candidate);
+    if (formatted) return formatted;
+  }
 
-  return formatPairingCode(qrcode?.qrcode?.code || qrcode?.code);
+  return null;
 }
 
 export function normalizeEvolutionConnectionPayload(raw) {

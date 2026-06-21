@@ -52,10 +52,7 @@ export default {
     },
     statusLabel() {
       const key = this.connectionStatus.toUpperCase();
-      return this.$t(
-        `INBOX_MGMT.EVOLUTION.SETTINGS.CONNECTION_STATUS.${key}`,
-        this.connectionStatus
-      );
+      return this.$t(`INBOX_MGMT.EVOLUTION.SETTINGS.CONNECTION_STATUS.${key}`);
     },
     isConnected() {
       return this.connectionStatus === 'open';
