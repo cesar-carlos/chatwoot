@@ -32,7 +32,7 @@ class Custom::Whatsapp::Evolution::ApiClient
     delete("/instance/delete/#{@instance_name}")
   end
 
-  def apply_webhook(url, events: ProviderConfig::WEBHOOK_EVENTS)
+  def apply_webhook(url, events: Custom::Whatsapp::Evolution::ProviderConfig::WEBHOOK_EVENTS)
     post("/webhook/set/#{@instance_name}", {
            webhook: {
              enabled: true,
@@ -110,6 +110,38 @@ class Custom::Whatsapp::Evolution::ApiClient
     post("/chat/getBase64FromMediaMessage/#{@instance_name}", body)
   end
 
+  def mark_message_as_read(read_messages:)
+    post("/chat/markMessageAsRead/#{@instance_name}", { readMessages: read_messages })
+  end
+
+  def delete_message_for_everyone(id:, remote_jid:, from_me:)
+    delete(
+      "/chat/deleteMessageForEveryone/#{@instance_name}",
+      { id: id, fromMe: from_me, remoteJid: remote_jid }
+    )
+  end
+
+  def find_contacts(page: 1, offset: 50, where: nil)
+    body = { page: page, offset: offset }
+    body[:where] = where if where.present?
+
+    post("/chat/findContacts/#{@instance_name}", body)
+  end
+
+  def find_messages(page: 1, offset: 50, where: nil)
+    body = { page: page, offset: offset }
+    body[:where] = where if where.present?
+
+    post("/chat/findMessages/#{@instance_name}", body)
+  end
+
+  def find_chats(page: 1, offset: 50, where: nil)
+    body = { page: page, offset: offset }
+    body[:where] = where if where.present?
+
+    post("/chat/findChats/#{@instance_name}", body)
+  end
+
   private
 
   def get(path)
@@ -120,8 +152,8 @@ class Custom::Whatsapp::Evolution::ApiClient
     request(:post, path, body)
   end
 
-  def delete(path)
-    request(:delete, path)
+  def delete(path, body = nil)
+    request(:delete, path, body)
   end
 
   def request(method, path, body = nil)

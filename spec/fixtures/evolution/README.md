@@ -36,7 +36,8 @@ Instância spike: `cw-spike-1781996187`. sendText executado em instância conect
 | `messages_update_read.json` | `MESSAGES_UPDATE` | Status read |
 | `connection_update_open.json` | Webhook `CONNECTION_UPDATE` (estrutura v2.3.6) | ConnectionService |
 | `qrcode_updated.json` | Webhook `QRCODE_UPDATED` (QR real, base64 truncado) | Wizard QR |
-| `send_text_response.json` | Resposta `POST /message/sendText` | EvolutionService#process_response |
+| `messages_upsert_e2e_local.json` | E2E local jun/2026 — POST webhook Chatwoot | Normalizer E2E |
+| `messages_upsert_e2e_local_normalized.json` | Saída normalizer E2E | Contract test |
 
 ---
 

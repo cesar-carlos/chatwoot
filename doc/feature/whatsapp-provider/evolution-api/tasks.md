@@ -124,6 +124,6 @@ T4 (import) — após E2E §2–4
 T5 (specs) — ✅ 12 examples em `spec/custom/` (Evolution provider)
 ```
 
-## Revisão (2026-06-20)
+**Revisão (2026-06-21):** flags Fase 2 implementadas (`convert_markdown_*`, `mark_read_on_reply`, `notify_send_errors_private`, `sync_delete_to_whatsapp`); normalizer ampliado (sticker, location, contact, survey links); tile dedicado `ChannelList`; lookup JSONB corrigido no job; pairing code na UI; multi-attachment outbound.
 
-Auditoria completa do código Fase 0–3. Principais gaps: E2E §2–4. **Corrigido (2026-06-20):** `sync_proxy!` envia `{ enabled: false }` quando proxy desligado; `reopen_conversation` / `conversation_pending` inbound; mutex Evolution webhooks; defaults `convert_markdown_*` → false até Fase 2; ActionCable QR/connection no wizard + health; gates cloud-only UI via `isEvolutionWhatsAppChannel`; specs mínimos Evolution (T5); `EvolutionNormalizer.new` keywords no job prepend.
+**Revisão (2026-06-20):** auditoria Fase 0–3. Principais gaps: E2E §2–4. **Corrigido (2026-06-20):** `sync_proxy!` envia `{ enabled: false }` quando proxy desligado; `reopen_conversation` / `conversation_pending` inbound; mutex Evolution webhooks; defaults `convert_markdown_*` → false até Fase 2; ActionCable QR/connection no wizard + health; gates cloud-only UI via `isEvolutionWhatsAppChannel`; specs mínimos Evolution (T5); `EvolutionNormalizer.new` keywords no job prepend.

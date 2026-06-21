@@ -30,6 +30,7 @@ export default {
       connectionStatus: 'connecting',
       phoneNumber: '',
       qrcodeBase64: '',
+      pairingCode: '',
       isLoading: true,
       isReconnecting: false,
       isLoggingOut: false,
@@ -91,6 +92,8 @@ export default {
       this.phoneNumber = payload.phoneNumber || payload.phone_number || '';
       const qr = payload.qrcodeBase64 || payload.qrcode_base64;
       if (qr) this.qrcodeBase64 = qr;
+      const code = payload.pairingCode || payload.qrcode_code;
+      if (code) this.pairingCode = code;
     },
     async refreshConnection() {
       try {
@@ -194,6 +197,13 @@ export default {
           class="w-48 h-48 object-contain"
         />
       </div>
+      <p v-if="pairingCode" class="text-sm font-medium text-n-slate-12">
+        {{
+          $t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.QR.PAIRING_CODE', {
+            code: pairingCode,
+          })
+        }}
+      </p>
     </div>
 
     <div class="flex flex-wrap gap-3">

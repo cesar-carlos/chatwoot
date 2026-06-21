@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- maps Evolution message types to Chatwoot webhook shape
 class Custom::Whatsapp::Webhooks::EvolutionNormalizer
-  pattr_initialize [:channel!, :envelope!]
+  attr_reader :channel, :envelope, :import_mode
+
+  def initialize(channel:, envelope:, import_mode: false)
+    @channel = channel
+    @envelope = envelope
+    @import_mode = import_mode
+  end
 
   MESSAGE_TYPE_MAP = {
     'conversation' => 'text',
@@ -9,7 +16,12 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     'imageMessage' => 'image',
     'documentMessage' => 'document',
     'audioMessage' => 'audio',
-    'videoMessage' => 'video'
+    'videoMessage' => 'video',
+    'stickerMessage' => 'sticker',
+    'locationMessage' => 'location',
+    'liveLocationMessage' => 'location',
+    'contactMessage' => 'contacts',
+    'contactsArrayMessage' => 'contacts'
   }.freeze
 
   MEDIA_MESSAGE_KEYS = %w[
@@ -17,6 +29,7 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     documentMessage
     audioMessage
     videoMessage
+    stickerMessage
   ].freeze
 
   def perform
@@ -53,6 +66,7 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     }
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity -- one branch per Evolution message type
   def build_message_hash(data, wa_id, message_type)
     return nil if wa_id.blank? || message_type.blank?
 
@@ -67,12 +81,19 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     when 'text'
       return nil unless apply_text_payload!(message_hash, data)
 
-    when 'image', 'video', 'audio', 'document'
+    when 'image', 'video', 'audio', 'document', 'sticker'
       message_hash[message_type.to_sym] = build_media_payload(data, message_type)
+
+    when 'location'
+      return nil unless apply_location_payload!(message_hash, data)
+
+    when 'contacts'
+      return nil unless apply_contacts_payload!(message_hash, data)
     end
 
     message_hash
   end
+  # rubocop:enable Metrics/CyclomaticComplexity
 
   def normalize_status(data)
     key = data['key'] || {}
@@ -99,6 +120,7 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     infer_type_from_message(data['message'])
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- type inference from Baileys payload keys
   def infer_type_from_message(message)
     return nil if message.blank?
 
@@ -106,13 +128,16 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
       return MESSAGE_TYPE_MAP[key] if message[key].present?
     end
 
+    return 'location' if message['locationMessage'].present? || message['liveLocationMessage'].present?
+    return 'contacts' if message['contactMessage'].present? || message['contactsArrayMessage'].present?
     return 'text' if message['conversation'].present? || message['extendedTextMessage'].present?
 
     nil
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def build_media_payload(data, type)
-    message_key = "#{type}Message"
+    message_key = media_message_key(data['message'], type)
     media = data.dig('message', message_key) || {}
 
     {
@@ -128,6 +153,81 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     }.compact
   end
 
+  def media_message_key(message, type)
+    return 'stickerMessage' if type == 'sticker' && message&.dig('stickerMessage').present?
+
+    "#{type}Message"
+  end
+
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- location vs live location fields
+  def apply_location_payload!(message_hash, data)
+    message = data['message'] || {}
+    location = message['locationMessage'] || message['liveLocationMessage']
+    return false if location.blank?
+
+    latitude = location['degreesLatitude'] || location['latitude']
+    longitude = location['degreesLongitude'] || location['longitude']
+    return false if latitude.blank? || longitude.blank?
+
+    name = location['name'].presence
+    address = location['address'].presence
+    maps_url = "https://maps.google.com/?q=#{latitude},#{longitude}"
+
+    message_hash[:location] = {
+      latitude: latitude,
+      longitude: longitude,
+      name: name,
+      address: address,
+      url: maps_url
+    }.compact
+
+    message_hash[:text] = { body: [name, address, maps_url].compact.join(' — ') } if name.present? || address.present?
+    true
+  end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
+  def apply_contacts_payload!(message_hash, data)
+    message = data['message'] || {}
+    contacts = extract_contacts(message)
+    return false if contacts.blank?
+
+    message_hash[:contacts] = contacts
+    true
+  end
+
+  def extract_contacts(message)
+    if message['contactsArrayMessage'].present?
+      Array.wrap(message.dig('contactsArrayMessage', 'contacts')).filter_map do |entry|
+        build_contact_hash(entry['contactMessage'] || entry)
+      end
+    elsif message['contactMessage'].present?
+      [build_contact_hash(message['contactMessage'])].compact
+    else
+      []
+    end
+  end
+
+  def build_contact_hash(contact)
+    return nil if contact.blank?
+
+    display_name = contact['displayName'].presence
+    vcard = contact['vcard'].to_s
+    phone = vcard[/waid=\d+:(\+?[\d\s()-]+)/, 1] || vcard[/TEL[^:]*:([^\n]+)/, 1]
+    phone_list = if phone.present?
+                   [{ phone: phone.gsub(/\D/, '').presence || phone.strip }]
+                 else
+                   [{ phone: 'Phone number is not available' }]
+                 end
+
+    {
+      name: {
+        formatted_name: display_name,
+        first_name: display_name
+      }.compact,
+      phones: phone_list
+    }
+  end
+
   def add_reply_context!(message_hash, data)
     context_info = extract_context_info(data)
     return if context_info.blank? || context_info['stanzaId'].blank?
@@ -137,7 +237,7 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
 
   def extract_context_info(data)
     message = data['message'] || {}
-    %w[extendedTextMessage imageMessage videoMessage audioMessage documentMessage].each do |type|
+    %w[extendedTextMessage imageMessage videoMessage audioMessage documentMessage stickerMessage].each do |type|
       context_info = message.dig(type, 'contextInfo')
       return context_info if context_info.present?
     end
@@ -148,7 +248,9 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
   def apply_text_payload!(message_hash, data)
     body = extract_text_body(data)
     return false if body.blank?
+    return false if ignore_survey_link?(body)
 
+    body = Custom::Whatsapp::Evolution::MarkdownConverter.inbound(body) if convert_markdown_inbound?
     message_hash[:text] = { body: body }
     true
   end
@@ -164,6 +266,8 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
   end
 
   def ignored_from_me_echo?(key)
+    return false if import_mode
+
     ActiveModel::Type::Boolean.new.cast(config['ignore_from_me_echo']) && key['fromMe']
   end
 
@@ -177,6 +281,12 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
 
   def ignore_jid?(remote_jid)
     Array(config['ignore_jids']).any? { |pattern| remote_jid.include?(pattern.to_s) }
+  end
+
+  def ignore_survey_link?(body)
+    ActiveModel::Type::Boolean.new.cast(config['ignore_survey_links']) &&
+      body.include?('/survey/responses/') &&
+      body.include?('http')
   end
 
   def extract_text_body(data)
@@ -209,6 +319,10 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     ActiveModel::Type::Boolean.new.cast(config['merge_brazil_contacts'])
   end
 
+  def convert_markdown_inbound?
+    ActiveModel::Type::Boolean.new.cast(config['convert_markdown_inbound'])
+  end
+
   def map_status(code)
     case code.to_i
     when 3, 4 then 'read'
@@ -217,3 +331,4 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     end
   end
 end
+# rubocop:enable Metrics/ClassLength

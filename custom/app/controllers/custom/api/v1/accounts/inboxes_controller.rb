@@ -63,6 +63,15 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  def evolution_import
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_channel?(channel)
+
+    Custom::Whatsapp::Evolution::ImportJob.perform_later(channel.id, force: true)
+    render json: import_payload_for(channel.reload)
+  end
+
   private
 
   def evolution_channel?(channel)
@@ -71,6 +80,17 @@ module Custom::Api::V1::Accounts::InboxesController
 
   def connection_payload_for(channel)
     Custom::Whatsapp::Evolution::ConnectionService.new(channel).connection_payload
+  end
+
+  def import_payload_for(channel)
+    config = channel.provider_config || {}
+    {
+      import_status: config['import_status'],
+      import_stats: config['import_stats'] || {},
+      import_error: config['import_error'],
+      import_started_at: config['import_started_at'],
+      import_completed_at: config['import_completed_at']
+    }
   end
 
   def create

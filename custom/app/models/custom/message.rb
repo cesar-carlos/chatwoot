@@ -4,11 +4,14 @@ module Custom::Message
   prepended do
     after_create_commit :schedule_workflow_rules_on_incoming, if: :incoming?
     after_create_commit :schedule_workflow_rules_on_outgoing, if: :outgoing?
+    after_update_commit :sync_evolution_delete_to_whatsapp
   end
 
   private
 
   def reopen_resolved_conversation
+    return if history_import_message?
+
     if evolution_pending_reopen?
       conversation.pending!
       return
@@ -24,11 +27,49 @@ module Custom::Message
     ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['conversation_pending'])
   end
 
+  def sync_evolution_delete_to_whatsapp
+    return unless evolution_message_marked_deleted?
+
+    Custom::Whatsapp::Evolution::DeleteSyncService.new(message: self).perform
+  end
+
+  def evolution_message_marked_deleted?
+    channel = evolution_whatsapp_channel
+    return false unless channel
+    return false unless evolution_sync_delete_enabled?(channel)
+    return false unless newly_marked_deleted?
+
+    true
+  end
+
+  def evolution_whatsapp_channel
+    channel = conversation&.inbox&.channel
+    return unless channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution'
+
+    channel
+  end
+
+  def evolution_sync_delete_enabled?(channel)
+    ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['sync_delete_to_whatsapp'])
+  end
+
+  def newly_marked_deleted?
+    return false if source_id.blank?
+    return false unless ActiveModel::Type::Boolean.new.cast(content_attributes[:deleted])
+
+    before = (content_attributes_before_last_save || {}).with_indifferent_access
+    !ActiveModel::Type::Boolean.new.cast(before[:deleted])
+  end
+
   def schedule_workflow_rules_on_incoming
+    return if history_import_message?
+
     schedule_workflow_rules_for(ConversationWorkflowRule.method(:schedulable_on_incoming?))
   end
 
   def schedule_workflow_rules_on_outgoing
+    return if history_import_message?
+
     account = conversation&.account
     return if account.blank?
 
@@ -75,5 +116,9 @@ module Custom::Message
   def feature_enabled_for_trigger?(account, rule)
     flag = Custom::ConversationWorkflow::AccountProcessor::FEATURE_FLAG_BY_TRIGGER[rule.trigger_type]
     flag.blank? || account.feature_enabled?(flag)
+  end
+
+  def history_import_message?
+    ActiveModel::Type::Boolean.new.cast(content_attributes[:history_import])
   end
 end

@@ -94,4 +94,8 @@ export const channelActions = {
     const response = await InboxesAPI.postEvolutionRestart(inboxId);
     return response.data;
   },
+  evolutionImport: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionImport(inboxId);
+    return response.data;
+  },
 };

@@ -6,6 +6,8 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
 
     if message.attachments.present?
       send_attachment_message(phone_number, message)
+    elsif input_select_items(message).present?
+      send_input_select_message(phone_number, message)
     else
       send_text_message(phone_number, message)
     end
@@ -62,6 +64,11 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     end
   end
 
+  def handle_error(response, message)
+    super
+    create_send_error_private_note!(message, response)
+  end
+
   private
 
   def send_text_message(phone_number, message)
@@ -71,23 +78,54 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
       quoted: build_quoted_context(phone_number, message),
       delay: outbound_delay
     )
-    process_response(response, message)
+    message_id = process_response(response, message)
+    mark_incoming_read_after_reply(phone_number, message) if message_id.present?
+    message_id
+  end
+
+  def send_input_select_message(phone_number, message)
+    items = input_select_items(message)
+    lines = items.map.with_index(1) { |item, index| "#{index}. #{item['title']}" }
+    body = [message.outgoing_content.presence, *lines].compact.join("\n")
+
+    response = api_client.send_text(
+      number: phone_number,
+      text: apply_outbound_text(body, message),
+      quoted: build_quoted_context(phone_number, message),
+      delay: outbound_delay
+    )
+    message_id = process_response(response, message)
+    mark_incoming_read_after_reply(phone_number, message) if message_id.present?
+    message_id
   end
 
   def send_attachment_message(phone_number, message)
-    attachment = message.attachments.first
-    media_source = Custom::Whatsapp::Evolution::MediaPayload.for_attachment(attachment)
-    response = dispatch_attachment(
-      phone_number: phone_number,
-      attachment: attachment,
-      media_source: media_source,
-      message: message
-    )
+    message_id = nil
 
-    process_response(response, message)
+    message.attachments.each_with_index do |attachment, index|
+      media_source = Custom::Whatsapp::Evolution::MediaPayload.for_attachment(attachment)
+      response = dispatch_attachment(
+        phone_number: phone_number,
+        attachment: attachment,
+        media_source: media_source,
+        message: message,
+        include_caption: index.zero?
+      )
+
+      if index.zero?
+        message_id = process_response(response, message)
+      elsif !response.success?
+        Rails.logger.warn(
+          "[EVOLUTION] secondary attachment send failed for message #{message.id}: HTTP #{response.code}"
+        )
+      end
+    end
+
+    mark_incoming_read_after_reply(phone_number, message) if message_id.present?
+    message_id
   end
 
-  def dispatch_attachment(phone_number:, attachment:, media_source:, message:)
+  def dispatch_attachment(phone_number:, attachment:, media_source:, message:, include_caption: true)
     quoted = build_quoted_context(phone_number, message)
     delay = outbound_delay
     mediatype = attachment_mediatype(attachment)
@@ -97,7 +135,7 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
       number: phone_number,
       mediatype: mediatype,
       media: media_source,
-      caption: attachment_caption(message, mediatype),
+      caption: include_caption ? attachment_caption(message, mediatype) : nil,
       file_name: attachment.file.filename.to_s,
       quoted: quoted,
       delay: delay
@@ -127,13 +165,15 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
   end
 
   def apply_outbound_text(body, message)
-    return body unless sign_msg?
+    text = body.to_s
+    text = Custom::Whatsapp::Evolution::MarkdownConverter.outbound(text) if convert_markdown_outbound?
+    return text unless sign_msg?
 
     sender_name = message.sender&.available_name
-    return body if sender_name.blank?
+    return text if sender_name.blank?
 
     delimiter = provider_config['sign_delimiter'].to_s.gsub('\\n', "\n").presence || "\n"
-    ["*#{sender_name}:*", body].join(delimiter)
+    ["*#{sender_name}:*", text].join(delimiter)
   end
 
   def build_quoted_context(phone_number, message)
@@ -155,10 +195,56 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     original&.content&.truncate(100).to_s
   end
 
+  def mark_incoming_read_after_reply(phone_number, message)
+    return unless mark_read_on_reply?
+
+    last_incoming = message.conversation.messages.incoming
+                            .where(inbox_id: message.inbox_id)
+                            .where.not(source_id: [nil, ''])
+                            .order(created_at: :desc)
+                            .first
+    return if last_incoming.blank?
+
+    api_client.mark_message_as_read(
+      read_messages: [
+        {
+          id: last_incoming.source_id,
+          fromMe: false,
+          remoteJid: "#{normalize_phone(phone_number)}@s.whatsapp.net"
+        }
+      ]
+    )
+  rescue StandardError => e
+    Rails.logger.warn "[EVOLUTION] mark read on reply failed: #{e.message}"
+  end
+
+  def create_send_error_private_note!(message, response)
+    return unless notify_send_errors_private?
+    return if message.blank? || message.conversation.blank?
+
+    error_text = error_message(response).presence || 'Unknown error'
+    message.conversation.messages.create!(
+      account_id: message.account_id,
+      inbox_id: message.inbox_id,
+      message_type: :outgoing,
+      private: true,
+      sender: message.sender,
+      content: "WhatsApp message could not be sent: #{error_text}"
+    )
+  rescue StandardError => e
+    Rails.logger.warn "[EVOLUTION] failed to create send error private note: #{e.message}"
+  end
+
   def outbound_delay
     return nil unless send_random_delay?
 
     rand(500..2000)
+  end
+
+  def input_select_items(message)
+    Array.wrap(message.content_attributes&.dig('items')).select do |item|
+      item.is_a?(Hash) && item['title'].present?
+    end
   end
 
   def sign_msg?
@@ -171,6 +257,18 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
 
   def send_templates_as_text?
     ActiveModel::Type::Boolean.new.cast(provider_config['send_templates_as_text'])
+  end
+
+  def convert_markdown_outbound?
+    ActiveModel::Type::Boolean.new.cast(provider_config['convert_markdown_outbound'])
+  end
+
+  def mark_read_on_reply?
+    ActiveModel::Type::Boolean.new.cast(provider_config['mark_read_on_reply'])
+  end
+
+  def notify_send_errors_private?
+    ActiveModel::Type::Boolean.new.cast(provider_config['notify_send_errors_private'])
   end
 
   def provider_config

@@ -56,6 +56,16 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
       expect(normalize(envelope)).to be_nil
     end
 
+    it 'includes fromMe messages in import_mode' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['key']['fromMe'] = true
+
+      result = described_class.new(channel: channel, envelope: envelope, import_mode: true).perform
+
+      expect(result).to be_present
+      expect(result[:messages].first[:id]).to eq(envelope.dig('data', 'key', 'id'))
+    end
+
     it 'ignores group messages when groups_ignore is enabled' do
       envelope = load_fixture('messages_upsert_text')
       envelope['data']['key']['remoteJid'] = '120363123456789012@g.us'
@@ -76,6 +86,14 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
       envelope['data']['key']['remoteJid'] = 'no-reply@newsletter'
       envelope['data']['key'].delete('remoteJidAlt')
       envelope['data']['key'].delete('addressingMode')
+
+      expect(normalize(envelope)).to be_nil
+    end
+
+    it 'ignores survey response links when ignore_survey_links is enabled' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['message']['conversation'] =
+        'Please rate us https://app.example.com/survey/responses/abc123'
 
       expect(normalize(envelope)).to be_nil
     end

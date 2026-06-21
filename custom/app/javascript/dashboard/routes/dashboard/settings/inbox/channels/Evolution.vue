@@ -36,6 +36,7 @@ const state = reactive({
 const step = ref('form');
 const inboxId = ref(null);
 const qrcodeBase64 = ref('');
+const pairingCode = ref('');
 const connectionStatus = ref('connecting');
 let pollTimer = null;
 
@@ -82,6 +83,9 @@ function applyConnectionPayload(payload) {
   if (payload.qrcodeBase64) {
     qrcodeBase64.value = payload.qrcodeBase64;
   }
+  if (payload.pairingCode) {
+    pairingCode.value = payload.pairingCode;
+  }
 
   if (isConnected.value) {
     stopPolling();
@@ -104,6 +108,7 @@ async function pollConnection() {
       connectionStatus:
         payload.connectionStatus || payload.connection_status || 'connecting',
       qrcodeBase64: payload.qrcodeBase64 || payload.qrcode_base64,
+      pairingCode: payload.pairingCode || payload.qrcode_code,
     });
   } catch {
     // keep polling
@@ -262,7 +267,17 @@ onUnmounted(stopPolling);
           class="w-64 h-64 object-contain"
         />
       </div>
-      <p v-else class="text-sm text-n-slate-11">
+      <p v-if="pairingCode" class="text-sm font-medium text-n-slate-12">
+        {{
+          t('INBOX_MGMT.ADD.EVOLUTION.QR.PAIRING_CODE', {
+            code: pairingCode,
+          })
+        }}
+      </p>
+      <p
+        v-if="!qrcodeBase64 && !pairingCode"
+        class="text-sm text-n-slate-11"
+      >
         {{ t('INBOX_MGMT.ADD.EVOLUTION.QR.LOADING') }}
       </p>
     </div>
