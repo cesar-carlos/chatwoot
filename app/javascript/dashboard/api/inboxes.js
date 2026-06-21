@@ -101,6 +101,10 @@ class Inboxes extends CacheEnabledApiClient {
   postEvolutionRestart(inboxId) {
     return axios.post(`${this.url}/${inboxId}/evolution_restart`);
   }
+
+  postEvolutionImport(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_import`);
+  }
 }
 
 export default new Inboxes();

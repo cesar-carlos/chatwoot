@@ -447,7 +447,8 @@
           "TITLE": "Scan the QR code",
           "DESCRIPTION": "Open WhatsApp on your phone → Linked devices → Link a device.",
           "STATUS": "Connection status: {status}",
-          "LOADING": "Waiting for QR code from Evolution..."
+          "LOADING": "Waiting for QR code from Evolution...",
+          "PAIRING_CODE": "Or enter pairing code: {code}"
         },
         "API": {
           "ERROR_MESSAGE": "Could not create the Evolution inbox. Check URL, API key, and instance name."
@@ -820,7 +821,8 @@
             "HELP_TEXT": "WhatsApp number connected to this Evolution instance."
           },
           "QR": {
-            "DESCRIPTION": "Scan this QR code with WhatsApp to reconnect the session."
+            "DESCRIPTION": "Scan this QR code with WhatsApp to reconnect the session.",
+            "PAIRING_CODE": "Or enter pairing code: {code}"
           },
           "RECONNECT": "Reconnect (new QR)",
           "RESTART": "Restart instance",
@@ -834,6 +836,33 @@
         "CONVERSATION_SECTION": "Conversations",
         "OUTBOUND_SECTION": "Outbound messages",
         "FILTERS_SECTION": "Inbound filters",
+        "IMPORT_SECTION": "Historical import",
+        "IMPORT": {
+          "CONTACTS": {
+            "LABEL": "Import contacts",
+            "DESCRIPTION": "Import WhatsApp contacts from Evolution when the session connects or when you run import manually."
+          },
+          "MESSAGES": {
+            "LABEL": "Import messages",
+            "DESCRIPTION": "Import recent chat history per contact using Evolution findMessages."
+          },
+          "DAYS_LIMIT": {
+            "LABEL": "Message history window (days)",
+            "DESCRIPTION": "Only import messages from the last N days."
+          },
+          "RUN": "Run import now",
+          "RUN_SUCCESS": "Historical import started in the background.",
+          "RUN_ERROR": "Could not start historical import.",
+          "STATUS_LABEL": "Import status",
+          "STATS_CONTACTS": "{count} contacts processed",
+          "STATS_MESSAGES": "{count} messages imported",
+          "STATUS": {
+            "IDLE": "Idle",
+            "RUNNING": "Running",
+            "COMPLETED": "Completed",
+            "FAILED": "Failed"
+          }
+        },
         "PROXY_SECTION": "Proxy",
         "GROUPS_IGNORE": {
           "LABEL": "Ignore groups",
@@ -862,6 +891,26 @@
         "SIGN_DELIMITER": {
           "LABEL": "Signature delimiter",
           "DESCRIPTION": "Separator between the agent name and message body (default: newline)."
+        },
+        "CONVERT_MARKDOWN_OUTBOUND": {
+          "LABEL": "Convert markdown for WhatsApp",
+          "DESCRIPTION": "Transform Chatwoot markdown (bold, italic) into WhatsApp formatting before sending."
+        },
+        "CONVERT_MARKDOWN_INBOUND": {
+          "LABEL": "Convert WhatsApp formatting to markdown",
+          "DESCRIPTION": "Transform WhatsApp formatting into Chatwoot markdown when receiving messages."
+        },
+        "MARK_READ_ON_REPLY": {
+          "LABEL": "Mark incoming as read when agent replies",
+          "DESCRIPTION": "After an agent sends a message, mark the last incoming WhatsApp message as read."
+        },
+        "NOTIFY_SEND_ERRORS_PRIVATE": {
+          "LABEL": "Private note on send failure",
+          "DESCRIPTION": "Add a private note to the conversation when a WhatsApp message fails to send."
+        },
+        "SYNC_DELETE_TO_WHATSAPP": {
+          "LABEL": "Delete on WhatsApp when deleted in Chatwoot",
+          "DESCRIPTION": "When an agent deletes a message in Chatwoot, delete it for everyone on WhatsApp."
         },
         "IGNORE_JIDS": {
           "LABEL": "Ignored JIDs",
@@ -1555,7 +1604,8 @@
       "INSTAGRAM": "Instagram",
       "TIKTOK": "TikTok",
       "VOICE": "Voice",
-      "WAVOIP": "Wavoip"
+      "WAVOIP": "Wavoip",
+      "EVOLUTION": "Evolution API"
     }
   }
 }

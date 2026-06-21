@@ -109,6 +109,13 @@ const channelList = computed(() => {
     icon: 'i-woot-wavoip-color',
   });
 
+  channels.push({
+    key: 'evolution', // FORK: Evolution API WhatsApp inbox tile
+    title: t('INBOX_MGMT.ADD.AUTH.CHANNEL.EVOLUTION.TITLE'),
+    description: t('INBOX_MGMT.ADD.AUTH.CHANNEL.EVOLUTION.DESCRIPTION'),
+    icon: 'i-woot-evolution-color',
+  });
+
   return channels;
 });
 

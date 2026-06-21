@@ -34,12 +34,9 @@ module Custom::Webhooks::WhatsappEventsJob
 
   def find_evolution_channel(params)
     instance_name = params[:instance_name].presence || params[:instance]
-    Channel::Whatsapp.find_by(
-      provider: 'evolution',
-      provider_config: { instance_name: instance_name }
-    ) || Channel::Whatsapp.where(provider: 'evolution')
-                          .where("provider_config->>'instance_name' = ?", instance_name)
-                          .first
+    Channel::Whatsapp.where(provider: 'evolution')
+                     .where("provider_config->>'instance_name' = ?", instance_name)
+                     .first
   end
 
   def process_evolution_message_events(channel, params)

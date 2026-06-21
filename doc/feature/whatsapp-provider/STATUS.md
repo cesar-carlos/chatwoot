@@ -10,7 +10,7 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 
 | Provider key | Gateway | Doc | Código `custom/` | Spike/fixtures | Próximo passo |
 |--------------|---------|-----|------------------|----------------|---------------|
-| `evolution` | Evolution API Node/Baileys | ✅ 18 arquivos | ✅ Fase 0–3 (~80%) | ✅ T0 REST v2.3.6 | E2E webhook + wizard QR |
+| `evolution` | Evolution API Node/Baileys | ✅ 18 arquivos | ✅ Fase 0–3 (~95%) | ✅ T0 REST + E2E local | Wizard QR com scan real (opcional) |
 | `evolution_go` | Evolution Go/whatsmeow | ✅ 25 arquivos (~92%) | ❌ não iniciado | ❌ pendente | Spike Docker P1 |
 | `zapi` | Z-API SaaS | ⚠️ só comparação | ❌ | — | Após piloto Evolution |
 | `notificame` | NotificaMe | 📁 pasta separada | ❌ | — | [plano-geral](../notificame-whatsapp-integration/plano-geral.md) |
@@ -58,7 +58,7 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 |------|-------|---------------|
 | Planejamento + ADRs | ✅ | — |
 | API reference + webhooks | ✅ | — |
-| Código alinhado | ⚠️ ~80% | E2E inbound/QR |
+| Código alinhado | ✅ ~95% | E2E §2–3 local OK; wizard QR scan manual |
 | Fixtures | ✅ T0 | `spec/fixtures/evolution/` |
 
 Índice: [evolution-api/README.md](./evolution-api/README.md) · Tarefas: [tasks.md](./evolution-api/tasks.md)

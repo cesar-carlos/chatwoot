@@ -95,17 +95,9 @@ class Custom::Whatsapp::Evolution::ConnectionService
     envelope = envelope.with_indifferent_access
     case envelope[:event]
     when 'CONNECTION_UPDATE'
-      state = envelope.dig(:data, :state)
-      previous_status = provider_config['connection_status']
-      update_connection_status(state)
-      extract_phone_number(envelope)
-      broadcast_connection_event(connection_status: state)
-      notify_disconnection!(previous_status, state)
+      handle_connection_update_event(envelope)
     when 'QRCODE_UPDATED'
-      qrcode = envelope[:data]
-      base64 = qrcode.is_a?(Hash) ? qrcode.dig(:qrcode, :base64) || qrcode[:base64] : nil
-      update_provider_config!('last_qr_base64' => base64) if base64.present?
-      broadcast_connection_event(qrcode: qrcode)
+      handle_qrcode_updated_event(envelope)
     end
   end
 
@@ -122,7 +114,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
   private
 
   def api_client
-    @api_client ||= ApiClient.new(
+    @api_client ||= Custom::Whatsapp::Evolution::ApiClient.new(
       base_url: provider_config['base_url'],
       api_key: provider_config['api_key'],
       instance_name: provider_config['instance_name']
@@ -214,11 +206,13 @@ class Custom::Whatsapp::Evolution::ConnectionService
   end
 
   def update_connection_status(state)
+    previous_status = provider_config['connection_status']
     update_runtime_config!('connection_status' => state)
     return unless state == 'open'
 
     phone = phone_from_sender(provider_config['last_sender'])
     update_phone_number!(phone) if phone.present? && !placeholder_phone?(channel.phone_number)
+    maybe_enqueue_history_import!(previous_status, state)
   end
 
   def extract_phone_number(envelope)
@@ -279,7 +273,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
     inbox = channel.inbox
     return if inbox.blank?
 
-    Broadcaster.new(inbox: inbox).broadcast_disconnected
+    Custom::Whatsapp::Evolution::Broadcaster.new(inbox: inbox).broadcast_disconnected
   end
 
   def broadcast_connection_event(payload)
@@ -306,10 +300,54 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def raise_api_error!(response, message)
     return if response.success?
 
-    raise ApiError.new(
+    raise Custom::Whatsapp::Evolution::ApiError.new(
       message,
       status: response.code,
       body: response.parsed_response
     )
+  end
+
+  def handle_connection_update_event(envelope)
+    state = envelope.dig(:data, :state)
+    previous_status = provider_config['connection_status']
+    update_connection_status(state)
+    extract_phone_number(envelope)
+    broadcast_connection_event(connection_status: state)
+    notify_disconnection!(previous_status, state)
+  end
+
+  def handle_qrcode_updated_event(envelope)
+    qrcode = envelope[:data]
+    attrs = qrcode_storage_attrs(qrcode)
+    update_provider_config!(attrs) if attrs.present?
+    broadcast_connection_event(qrcode: qrcode)
+  end
+
+  def qrcode_storage_attrs(qrcode)
+    return {} unless qrcode.is_a?(Hash)
+
+    base64 = qrcode.dig(:qrcode, :base64) || qrcode[:base64]
+    code = qrcode.dig(:qrcode, :code) || qrcode[:code]
+    attrs = {}
+    attrs['last_qr_base64'] = base64 if base64.present?
+    attrs['last_qr_code'] = code if code.present?
+    attrs
+  end
+
+  def maybe_enqueue_history_import!(previous_status, state)
+    return unless state == 'open'
+    return if previous_status == 'open'
+    return unless history_import_enabled?
+
+    status = provider_config['import_status']
+    return if status.in?(%w[running completed])
+
+    Custom::Whatsapp::Evolution::ImportJob.perform_later(channel.id)
+  end
+
+  def history_import_enabled?
+    cfg = provider_config
+    ActiveModel::Type::Boolean.new.cast(cfg['import_contacts']) ||
+      ActiveModel::Type::Boolean.new.cast(cfg['import_messages'])
   end
 end
