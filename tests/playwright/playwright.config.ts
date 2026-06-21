@@ -20,7 +20,7 @@ export default defineConfig({
     navigationTimeout: 30 * 1000,
     baseURL: process.env.BASE_URL || 'http://localhost:3000',
     trace: 'retain-on-failure',
-    headless: false,
+    headless: process.env.CI === 'true' || !process.env.DISPLAY,
     viewport: {
       width: 1440,
       height: 1080,
