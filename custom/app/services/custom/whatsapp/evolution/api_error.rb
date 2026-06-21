@@ -1,12 +1,38 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::ApiError < StandardError
-  attr_reader :status, :body
+  attr_reader :status, :body, :base_message
 
   def initialize(message = nil, status: nil, body: nil)
     @status = status
     @body = body
-    super(self.class.compose_message(message, status, body))
+    @base_message = message
+    super(log_message)
+  end
+
+  def log_message
+    self.class.compose_message(base_message, status, body)
+  end
+
+  def user_message
+    return log_message unless Rails.env.production?
+
+    detail = self.class.safe_response_detail(body, status)
+    return "#{base_message}: #{detail}" if base_message.present? && detail.present?
+
+    base_message.presence || detail.presence || 'Evolution API request failed'
+  end
+
+  def self.safe_response_detail(body, status)
+    case status.to_i
+    when 401
+      response_detail(body, status)
+    else
+      text = extract_message(body)
+      return 'An Evolution instance with this name already exists' if duplicate_instance?(text)
+
+      nil
+    end
   end
 
   def self.compose_message(message, status, body)
@@ -20,7 +46,7 @@ class Custom::Whatsapp::Evolution::ApiError < StandardError
     case status.to_i
     when 401
       return 'Evolution API rejected the API key (use the global AUTHENTICATION_API_KEY from your Evolution server)'
-  end
+    end
 
     text = extract_message(body)
     return 'An Evolution instance with this name already exists' if duplicate_instance?(text)

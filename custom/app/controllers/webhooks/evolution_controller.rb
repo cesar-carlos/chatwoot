@@ -5,7 +5,7 @@ class Webhooks::EvolutionController < ActionController::API
 
   def process_payload
     Webhooks::WhatsappEventsJob.perform_later(
-      webhook_payload.merge(instance_name: params[:instance_name])
+      sanitized_job_payload.merge(instance_name: params[:instance_name])
     )
     head :ok
   end
@@ -33,5 +33,9 @@ class Webhooks::EvolutionController < ActionController::API
 
   def webhook_payload
     params.to_unsafe_hash.except('controller', 'action', 'instance_name')
+  end
+
+  def sanitized_job_payload
+    webhook_payload.except('apikey', 'api_key', :apikey, :api_key)
   end
 end
