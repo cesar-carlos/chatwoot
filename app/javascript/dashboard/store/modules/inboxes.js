@@ -348,7 +348,7 @@ export const mutations = {
   },
   [types.default.SET_INBOXES]: MutationHelpers.set,
   [types.default.SET_INBOXES_ITEM]: MutationHelpers.setSingleRecord,
-  [types.default.ADD_INBOXES]: MutationHelpers.create,
+  [types.default.ADD_INBOXES]: MutationHelpers.setSingleRecord,
   [types.default.EDIT_INBOXES]: MutationHelpers.update,
   [types.default.DELETE_INBOXES]: MutationHelpers.destroy,
 };

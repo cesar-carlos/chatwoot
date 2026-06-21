@@ -823,8 +823,6 @@
             "HELP_TEXT": "WhatsApp number connected to this Evolution instance."
           },
           "RECONNECT": "Reconnect (new QR)",
-          "OPEN_QR_MODAL": "Scan QR code",
-          "SCAN_CTA": "WhatsApp is not connected. Open the QR scanner and link your phone in WhatsApp → Linked devices.",
           "RESTART": "Restart instance",
           "LOGOUT": "Logout session",
           "RESTART_CONFIRM": "Restart the Evolution instance? The session may disconnect briefly and a new QR code may be required.",

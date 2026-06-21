@@ -750,8 +750,6 @@
             "HELP_TEXT": "Número WhatsApp conectado a esta instância Evolution."
           },
           "RECONNECT": "Reconectar (novo QR)",
-          "OPEN_QR_MODAL": "Escanear QR code",
-          "SCAN_CTA": "O WhatsApp não está conectado. Abra o leitor de QR e vincule seu celular em WhatsApp → Aparelhos conectados.",
           "RESTART": "Reiniciar instância",
           "LOGOUT": "Encerrar sessão",
           "RESTART_CONFIRM": "Reiniciar a instância Evolution? A sessão pode desconectar brevemente e um novo QR code pode ser necessário.",

@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, computed, ref } from 'vue';
+import { reactive, computed, ref, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useVuelidate } from '@vuelidate/core';
@@ -34,6 +34,8 @@ const state = reactive({
 const step = ref('form');
 const inboxId = ref(null);
 const isQrModalOpen = ref(false);
+const qrModalRef = ref(null);
+const isSubmitting = ref(false);
 
 const uiFlags = useMapGetter('inboxes/getUIFlags');
 
@@ -69,10 +71,26 @@ function onWizardConnected() {
   });
 }
 
+async function openQrReader() {
+  if (isQrModalOpen.value) {
+    qrModalRef.value?.open();
+    return;
+  }
+
+  isQrModalOpen.value = true;
+  await nextTick();
+  qrModalRef.value?.open();
+}
+
 async function createChannel() {
+  if (isSubmitting.value || uiFlags.value.isCreating || step.value !== 'form') {
+    return;
+  }
+
   const isFormValid = await v$.value.$validate();
   if (!isFormValid) return;
 
+  isSubmitting.value = true;
   try {
     const inbox = await store.dispatch('inboxes/createEvolutionChannel', {
       name: state.inboxName.trim(),
@@ -104,6 +122,8 @@ async function createChannel() {
       error.response?.data?.message ||
         t('INBOX_MGMT.ADD.EVOLUTION.API.ERROR_MESSAGE')
     );
+  } finally {
+    isSubmitting.value = false;
   }
 }
 </script>
@@ -135,7 +155,9 @@ async function createChannel() {
         type="password"
         :label="t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.LABEL')"
         :placeholder="t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.PLACEHOLDER')"
-        :message="formErrors.apiKey || t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.HELP')"
+        :message="
+          formErrors.apiKey || t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.HELP')
+        "
         :message-type="formErrors.apiKey ? 'error' : 'info'"
       />
       <Input
@@ -185,9 +207,10 @@ async function createChannel() {
       </div>
 
       <NextButton
+        type="button"
         :label="t('INBOX_MGMT.ADD.EVOLUTION.SUBMIT_BUTTON')"
-        :disabled="isSubmitDisabled || uiFlags.isCreating"
-        :is-loading="uiFlags.isCreating"
+        :disabled="isSubmitDisabled || uiFlags.isCreating || isSubmitting"
+        :is-loading="uiFlags.isCreating || isSubmitting"
         @click="createChannel"
       />
     </div>
@@ -206,13 +229,15 @@ async function createChannel() {
         </p>
       </div>
       <NextButton
+        type="button"
         :label="t('INBOX_MGMT.ADD.EVOLUTION.CONNECT.OPEN_QR')"
-        @click="isQrModalOpen = true"
+        @click="openQrReader"
       />
     </div>
 
     <EvolutionQrScanModal
       v-if="inboxId"
+      ref="qrModalRef"
       v-model="isQrModalOpen"
       :inbox-id="inboxId"
       fetch-fresh-qr

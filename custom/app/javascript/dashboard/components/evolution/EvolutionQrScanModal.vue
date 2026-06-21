@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, toRef } from 'vue';
+import { computed, ref, watch, toRef, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -29,6 +29,7 @@ const { t } = useI18n();
 const store = useStore();
 const dialogRef = ref(null);
 let unsubscribeCable = null;
+let sessionActive = false;
 
 const {
   connectionStatus,
@@ -75,6 +76,7 @@ const showQrError = computed(
 );
 
 function cleanupSession() {
+  sessionActive = false;
   stopSession();
   unsubscribeCable?.();
   unsubscribeCable = null;
@@ -82,6 +84,9 @@ function cleanupSession() {
 
 function openModal() {
   dialogRef.value?.open();
+  if (sessionActive) return;
+
+  sessionActive = true;
   unsubscribeCable = subscribeEvolutionConnection(props.inboxId, applyPayload, {
     store,
   });
@@ -105,14 +110,18 @@ async function handleRefreshQr() {
   }
 }
 
-watch(isOpen, (open, wasOpen) => {
-  if (open) {
-    openModal();
-  } else if (wasOpen) {
-    cleanupSession();
-    dialogRef.value?.close();
-  }
-});
+watch(
+  isOpen,
+  (open, wasOpen) => {
+    if (open) {
+      nextTick(() => openModal());
+    } else if (wasOpen) {
+      cleanupSession();
+      dialogRef.value?.close();
+    }
+  },
+  { immediate: true }
+);
 
 defineExpose({ open: openModal, close: closeModal });
 </script>

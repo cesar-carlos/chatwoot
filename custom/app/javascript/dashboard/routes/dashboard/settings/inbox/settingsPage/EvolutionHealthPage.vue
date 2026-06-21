@@ -63,9 +63,6 @@ export default {
     isBusy() {
       return this.isLoggingOut || this.isRestarting;
     },
-    showConnectCta() {
-      return !this.isLoading && !this.isConnected;
-    },
   },
   mounted() {
     this.refreshConnection();
@@ -230,19 +227,6 @@ export default {
     >
       <woot-code :script="phoneNumber" lang="html" />
     </SettingsFieldSection>
-
-    <div
-      v-if="showConnectCta"
-      class="flex flex-col gap-3 p-4 rounded-xl border border-n-weak bg-n-alpha-black2"
-    >
-      <p class="text-sm text-n-slate-11">
-        {{ $t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.SCAN_CTA') }}
-      </p>
-      <NextButton
-        :label="$t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.OPEN_QR_MODAL')"
-        @click="openQrModal({ fresh: true })"
-      />
-    </div>
 
     <div class="flex flex-wrap gap-3">
       <NextButton

@@ -102,6 +102,8 @@ module Custom::Api::V1::Accounts::InboxesController
   def create
     return super unless evolution_whatsapp_channel?
 
+    validate_evolution_instance_name_available!
+
     channel = nil
     ActiveRecord::Base.transaction do
       channel = create_evolution_whatsapp_channel
@@ -184,6 +186,24 @@ module Custom::Api::V1::Accounts::InboxesController
         'api_key' => evolution_params[:api_key]
       ).merge((evolution_params[:provider_config] || {}).stringify_keys)
     )
+  end
+
+  def validate_evolution_instance_name_available!
+    instance_name = evolution_channel_params[:instance_name].to_s.strip
+    return if instance_name.blank?
+
+    return unless evolution_instance_name_taken?(instance_name)
+
+    raise Custom::Whatsapp::Evolution::ApiError.new(
+      'An Evolution inbox with this instance name already exists',
+      status: 422
+    )
+  end
+
+  def evolution_instance_name_taken?(instance_name)
+    Channel::Whatsapp
+      .where(provider: 'evolution')
+      .exists?(["provider_config->>'instance_name' = ?", instance_name])
   end
 
   def evolution_channel_params
