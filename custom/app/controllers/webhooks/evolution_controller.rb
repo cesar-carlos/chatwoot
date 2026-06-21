@@ -16,9 +16,10 @@ class Webhooks::EvolutionController < ActionController::API
     @channel = find_channel_by_instance_name
     return head :not_found if @channel.blank?
 
-    envelope_key = webhook_payload['apikey'].presence || request.headers['apikey']
-    stored_key = @channel.provider_config['api_key'].to_s
-    return if envelope_key.present? && ActiveSupport::SecurityUtils.secure_compare(envelope_key.to_s, stored_key)
+    envelope_key = (webhook_payload['apikey'].presence || request.headers['apikey']).to_s.strip
+    stored_key = @channel.provider_config['api_key'].to_s.strip
+    return if envelope_key.present? && stored_key.present? &&
+              ActiveSupport::SecurityUtils.secure_compare(envelope_key, stored_key)
 
     head :unauthorized
     nil

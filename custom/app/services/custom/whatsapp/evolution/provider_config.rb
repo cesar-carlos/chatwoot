@@ -87,7 +87,15 @@ module Custom::Whatsapp::Evolution::ProviderConfig
   CREDENTIAL_KEYS = %w[base_url api_key instance_name].freeze
 
   def self.build(attrs = {})
-    DEFAULTS.merge(attrs.stringify_keys)
+    normalize_credentials(DEFAULTS.merge(attrs.stringify_keys))
+  end
+
+  def self.normalize_credentials(config)
+    config = config.stringify_keys
+    config['base_url'] = config['base_url'].to_s.strip.delete_suffix('/') if config['base_url'].present?
+    config['api_key'] = config['api_key'].to_s.strip if config['api_key'].present?
+    config['instance_name'] = config['instance_name'].to_s.strip if config['instance_name'].present?
+    config
   end
 
   def self.runtime_only?(attrs)

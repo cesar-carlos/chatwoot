@@ -15,9 +15,9 @@ class Custom::Whatsapp::Evolution::ApiClient
   end
 
   def initialize(base_url:, api_key:, instance_name:)
-    @base_url = base_url.to_s.delete_suffix('/')
-    @api_key = api_key
-    @instance_name = instance_name
+    @base_url = base_url.to_s.strip.delete_suffix('/')
+    @api_key = api_key.to_s.strip
+    @instance_name = instance_name.to_s.strip
   end
 
   def create_instance(body)

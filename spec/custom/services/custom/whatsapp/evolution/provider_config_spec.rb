@@ -3,6 +3,22 @@
 require 'rails_helper'
 
 RSpec.describe Custom::Whatsapp::Evolution::ProviderConfig do
+  describe '.normalize_credentials' do
+    it 'strips whitespace from credential fields' do
+      expect(
+        described_class.normalize_credentials(
+          'base_url' => ' https://evo.example.com/ ',
+          'api_key' => " key-with-space \n",
+          'instance_name' => ' my-instance '
+        )
+      ).to include(
+        'base_url' => 'https://evo.example.com',
+        'api_key' => 'key-with-space',
+        'instance_name' => 'my-instance'
+      )
+    end
+  end
+
   describe '.runtime_only?' do
     it 'returns true for runtime keys only' do
       expect(described_class.runtime_only?('connection_status' => 'open')).to be(true)
