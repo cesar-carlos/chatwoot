@@ -49,6 +49,20 @@ describe('evolutionConnectionPayload', () => {
       });
     });
 
+    it('ignores long QR token strings in qrcode_code', () => {
+      expect(
+        normalizeEvolutionConnectionPayload({
+          connection_status: 'connecting',
+          qrcode_base64: 'abc123',
+          qrcode_code:
+            '2@zZ/kDPNZ7OdGrfRZi4xZDgFM4Oaf9KI5LDXN4nl905JklEhALcvTd6fDAiasBghQPs0FBWfGOzXfHtQgVL/3rN+JpPPg2XtpaGg=',
+        })
+      ).toEqual({
+        connectionStatus: 'connecting',
+        qrcodeBase64: 'data:image/png;base64,abc123',
+      });
+    });
+
     it('normalizes nested qrcode objects from webhooks', () => {
       const payload = normalizeEvolutionConnectionPayload({
         connection_status: 'connecting',
