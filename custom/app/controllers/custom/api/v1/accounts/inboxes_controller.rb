@@ -29,7 +29,8 @@ module Custom::Api::V1::Accounts::InboxesController
     payload = Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).connection_payload
     render json: payload
   rescue Custom::Whatsapp::Evolution::ApiError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    Rails.logger.error "[EVOLUTION] evolution_connection failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
   end
 
   def evolution_reconnect
@@ -40,7 +41,8 @@ module Custom::Api::V1::Accounts::InboxesController
     Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).reconnect!
     render json: connection_payload_for(channel)
   rescue Custom::Whatsapp::Evolution::ApiError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    Rails.logger.error "[EVOLUTION] evolution_reconnect failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
   end
 
   def evolution_logout
@@ -51,7 +53,8 @@ module Custom::Api::V1::Accounts::InboxesController
     Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).logout!
     render json: connection_payload_for(channel)
   rescue Custom::Whatsapp::Evolution::ApiError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    Rails.logger.error "[EVOLUTION] evolution_logout failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
   end
 
   def evolution_restart
@@ -62,7 +65,8 @@ module Custom::Api::V1::Accounts::InboxesController
     Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).restart!
     render json: connection_payload_for(channel)
   rescue Custom::Whatsapp::Evolution::ApiError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    Rails.logger.error "[EVOLUTION] evolution_restart failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
   end
 
   def evolution_import
@@ -118,7 +122,8 @@ module Custom::Api::V1::Accounts::InboxesController
   def render_evolution_create_error(error)
     case error
     when Custom::Whatsapp::Evolution::ApiError
-      render json: { message: error.message }, status: :unprocessable_entity
+      Rails.logger.error "[EVOLUTION] inbox create failed: #{error.log_message}"
+      render json: { message: error.user_message }, status: :unprocessable_entity
     when ActiveRecord::RecordInvalid
       render json: { message: error.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
     when ActiveRecord::RecordNotUnique
