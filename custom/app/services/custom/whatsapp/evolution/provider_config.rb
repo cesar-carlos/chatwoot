@@ -20,10 +20,10 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     'reopen_conversation' => true,
     'conversation_pending' => false,
     'merge_brazil_contacts' => true,
-    'mark_read_on_reply' => false, # TODO(fork): markMessageAsRead after agent reply (Fase 2)
+    'mark_read_on_reply' => false,
     'sync_delete_to_whatsapp' => false,
-    'convert_markdown_outbound' => false, # TODO(fork): CW → WA formatting (Fase 2)
-    'convert_markdown_inbound' => false, # TODO(fork): WA → CW formatting (Fase 2)
+    'convert_markdown_outbound' => true,
+    'convert_markdown_inbound' => true,
     'send_templates_as_text' => true,
     'send_random_delay' => true,
     'notify_send_errors_private' => true,
@@ -34,8 +34,15 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     'import_contacts' => false,
     'import_messages' => false,
     'days_limit_import_messages' => 7,
-    'connection_status' => 'connecting'
+    'connection_status' => 'connecting',
+    'import_status' => 'idle',
+    'import_cursor' => {},
+    'import_stats' => {},
+    'import_error' => nil
   }.freeze
+
+  IMPORT_STATUSES = %w[idle running completed failed].freeze
+  IMPORT_PHASES = %w[contacts messages done].freeze
 
   PENDING_PROVISION_STATUS = 'pending_provision'
 
@@ -53,6 +60,12 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     last_qr_code
     last_sender
     instance_id
+    import_status
+    import_cursor
+    import_stats
+    import_error
+    import_started_at
+    import_completed_at
   ].freeze
 
   # Pushed to Evolution via ConnectionService#sync_settings! / #sync_proxy!

@@ -1,0 +1,21 @@
+{
+  "contacts": [
+    {
+      "profile": {
+        "name": "Matheus Teixeira 😎"
+      },
+      "wa_id": "5566996971841"
+    }
+  ],
+  "messages": [
+    {
+      "from": "5566996971841",
+      "id": "E2E1782062034",
+      "timestamp": "1779299081",
+      "type": "text",
+      "text": {
+        "body": "E2E inbound checklist"
+      }
+    }
+  ]
+}

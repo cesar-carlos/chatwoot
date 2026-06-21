@@ -15,6 +15,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     evolution_reconnect
     evolution_logout
     evolution_restart
+    evolution_import
   ]
   # rubocop:enable Rails/LexicallyScopedActionFilter
 

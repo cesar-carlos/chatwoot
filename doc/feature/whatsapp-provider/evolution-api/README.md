@@ -7,10 +7,10 @@ Planejamento para o primeiro provider alternativo do fork: **`Channel::Whatsapp`
 | Item | Estado |
 |------|--------|
 | **Documentação fork** | 18 arquivos nesta pasta (ver índice abaixo) |
-| **Código Chatwoot (`custom/`)** | **Fase 0–3 em código** (~85%) — ver [tasks.md](./tasks.md) |
+| **Código Chatwoot (`custom/`)** | **Fase 0–3 implementada** (~95%) — ver [tasks.md](./tasks.md) |
 | **Specs automatizados** | ✅ 24 examples em `spec/custom/` (Evolution provider) |
 | **Validação T0 (REST spike)** | ✅ **v2.3.6** local — fixtures reais, sendText `text` plano |
-| **E2E pendente** | Webhook inbound + wizard QR (§2–4 [validation-checklist](./validation-checklist.md)) |
+| **E2E pendente** | ⚠️ §2–3 ✅ local jun/2026 — wizard QR com scan real ainda manual |
 | **Versão alvo** | [evolution-target-version.txt](./evolution-target-version.txt) → **2.3.7** |
 | **Evolution API local** | `/root/evolution-api` v**2.3.6** @ `:8080` |
 | **v2.4.0+** | Exige [licença](https://docs.evolutionfoundation.com.br/licensing) — ver [documentation-links.md § Compatibilidade](./documentation-links.md#compatibilidade-de-versão) |

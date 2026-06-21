@@ -280,6 +280,7 @@ Rails.application.routes.draw do
             post :evolution_reconnect, on: :member
             post :evolution_logout, on: :member
             post :evolution_restart, on: :member
+            post :evolution_import, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
