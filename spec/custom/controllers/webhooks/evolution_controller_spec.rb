@@ -37,6 +37,14 @@ RSpec.describe Webhooks::EvolutionController, type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it 'does not enqueue apikey in the job payload' do
+      post "/webhooks/evolution/#{instance_name}", params: payload
+
+      job_args = enqueued_jobs.find { |job| job[:job] == Webhooks::WhatsappEventsJob }[:args].first
+      expect(job_args).not_to include('apikey' => api_key)
+      expect(job_args).not_to have_key('api_key')
+    end
+
     it 'returns unauthorized when apikey does not match' do
       post "/webhooks/evolution/#{instance_name}", params: payload.merge('apikey' => 'wrong-key')
 
