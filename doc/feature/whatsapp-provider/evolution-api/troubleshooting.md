@@ -11,6 +11,7 @@ Sintomas comuns, causas prováveis e ações. Complementa [validation-checklist.
 | Causa | Verificação | Ação |
 |-------|-------------|------|
 | Instância não criada | `GET /instance/connectionState/{instance}` | `POST /instance/create` ou corrigir `instance_name` |
+| Botão **"Abrir leitor de QR"** sem ação | Modal não abriu após create | Atualizar assets (Ctrl+F5); ver [decisions.md §17](./decisions.md) — `EvolutionQrScanModal` |
 | Webhook `QRCODE_UPDATED` não chega | Logs Evolution + firewall | Polling `GET /instance/connect/{instance}`; verificar URL pública Chatwoot |
 | ActionCable desconectado | DevTools → WS | Ver [decisions.md §17](./decisions.md) — evento `evolution:connection` |
 | Evolution sem licença (2.4+) | `GET /license/status` | Ativar em [licensing](https://docs.evolutionfoundation.com.br/licensing) |
@@ -51,13 +52,36 @@ Operações disponíveis no dashboard (**Settings → WhatsApp → Evolution** t
 | Logout sessão | `POST …/evolution_logout` | `DELETE /instance/logout/{instance}` |
 | Restart instância | `POST …/evolution_restart` | `POST /instance/restart/{instance}` |
 
-**Fluxo reconnect:** `ConnectionService#reconnect!` → `connect` → atualiza `last_qr_base64` → UI exibe QR. Polling a cada 5s no settings até `connection_status: open`.
+**Fluxo reconnect:** `ConnectionService#reconnect!` → `connect` → atualiza `last_qr_base64` → UI exibe QR no **modal** (`EvolutionQrScanModal`). Polling a cada **5s** na aba health e **3s** no modal até `connection_status: open`. QR expira em ~45s — refresh automático ou botão **Atualizar QR**.
 
-**Logout:** exige confirmação na UI. Após logout, status → `close`; escanear QR novamente para reconectar.
+**Logout:** confirmação via modal na UI (`woot-confirm-modal`). Após logout, status → `close`; escanear QR novamente para reconectar.
 
 **Restart:** útil após alterar proxy ou sessão presa em `connecting`. Pode exigir novo QR.
 
 **Alerta desconexão:** webhook `CONNECTION_UPDATE` com `state: close` → `Broadcaster#broadcast_disconnected` → evento ActionCable `evolution.connection_closed` para agentes do inbox.
+
+---
+
+## Criação do inbox (wizard)
+
+### HTTP 422 — `Failed to create Evolution instance`
+
+| Sintoma | Causa | Ação |
+|---------|-------|------|
+| Toast com menção à **API key** / `AUTHENTICATION_API_KEY` | Chave errada no formulário | Usar valor de `AUTHENTICATION_API_KEY` no `.env` do servidor Evolution — **não** o token UUID por instância do Manager |
+| `401` nos logs `[EVOLUTION]` | Mesma causa | Testar: `curl -X POST {base_url}/instance/create -H "apikey: SUA_CHAVE" …` → `201` = OK |
+| `instance name already exists` | `instance_name` duplicado (índice único global) | Escolher outro nome ou apagar inbox/instância antiga |
+| Cleanup `failed to delete instance … HTTP 404` | Provision falhou; instância remota nunca existiu | Esperado — ignorar; corrigir causa do 422 |
+
+**Campo Chave da API (wizard):** aceita apenas a chave **global** do servidor Evolution (`AUTHENTICATION_API_KEY`). O token exibido no Manager **após** criar uma instância é outro valor e não serve para provisionar via Chatwoot.
+
+### Duas caixas de entrada com o mesmo nome
+
+| Causa | Ação |
+|-------|------|
+| Duplo clique em **Criar e exibir QR code** | Aguardar loading; botão fica desabilitado (`isSubmitting`) |
+| Retentativa após sucesso (modal não abriu / página recarregada) | Apagar inbox duplicada; usar `instance_name` único na próxima vez |
+| Backend | `validate_evolution_instance_name_available!` bloqueia `instance_name` já usado |
 
 ---
 

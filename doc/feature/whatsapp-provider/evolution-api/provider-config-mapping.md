@@ -32,7 +32,7 @@ Grupos de campos:
 | Campo Chatwoot | API Evolution | Notas |
 |----------------|---------------|-------|
 | `base_url` | Todas | URL do servidor Evolution (sem trailing slash) |
-| `api_key` | Header `apikey` | Token da instância ou API key global |
+| `api_key` | Header `apikey` | **`AUTHENTICATION_API_KEY` global** no wizard/create; após provision, hash da instância Evolution |
 | `instance_name` | Path `/:instanceName` | Único no fork — **1 instância = 1 inbox** ([decisions.md §3](./decisions.md)) |
 
 ### Segurança — campos sensíveis

@@ -57,11 +57,9 @@ class Custom::Whatsapp::Evolution::ConnectionService
     raise_api_error!(response, 'Failed to fetch Evolution QR code') unless response.success?
 
     parsed = response.parsed_response
-    qrcode = parsed['qrcode'] || parsed['base64']
-    update_provider_config!(
-      'last_qr_base64' => qrcode.is_a?(Hash) ? qrcode['base64'] : qrcode,
-      'last_qr_code' => qrcode.is_a?(Hash) ? qrcode['code'] : nil
-    )
+    qrcode_source = parsed['qrcode'].presence || parsed
+    attrs = qrcode_storage_attrs(qrcode_source)
+    update_provider_config!(attrs) if attrs.present?
     parsed
   end
 
@@ -359,8 +357,17 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def handle_qrcode_updated_event(envelope)
     qrcode = envelope[:data]
     attrs = qrcode_storage_attrs(qrcode)
-    update_provider_config!(attrs) if attrs.present?
-    broadcast_connection_event(qrcode: qrcode)
+    return if attrs.blank?
+
+    update_provider_config!(attrs)
+    broadcast_connection_event(qrcode_broadcast_payload(attrs))
+  end
+
+  def qrcode_broadcast_payload(attrs)
+    payload = {}
+    payload[:qrcode_base64] = attrs['last_qr_base64'] if attrs['last_qr_base64'].present?
+    payload[:qrcode_code] = attrs['last_qr_code'] if attrs['last_qr_code'].present?
+    payload
   end
 
   def qrcode_storage_attrs(qrcode)

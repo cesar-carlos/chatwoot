@@ -121,7 +121,7 @@
 T0 (spike) ──┬──► T1 (backend mídia) ──► T2 (settings UI usa sync)
              └──► T3 (ops) — pode paralelizar com T1 após T0 parcial
 T4 (import) — após E2E §2–4
-T5 (specs) — ✅ 12 examples em `spec/custom/` (Evolution provider)
+T5 (specs) — ✅ ~42 examples em `spec/custom/` (Evolution provider) + Playwright em `tests/playwright/`
 ```
 
 **Revisão (2026-06-21):** flags Fase 2 implementadas (`convert_markdown_*`, `mark_read_on_reply`, `notify_send_errors_private`, `sync_delete_to_whatsapp`); normalizer ampliado (sticker, location, contact, survey links); tile dedicado `ChannelList`; lookup JSONB corrigido no job; pairing code na UI; multi-attachment outbound.
@@ -129,3 +129,14 @@ T5 (specs) — ✅ 12 examples em `spec/custom/` (Evolution provider)
 **Revisão (2026-06-20):** auditoria Fase 0–3. Principais gaps: E2E §2–4. **Corrigido (2026-06-20):** `sync_proxy!` envia `{ enabled: false }` quando proxy desligado; `conversation_pending` inbound; mutex Evolution webhooks; defaults `convert_markdown_*` → false até Fase 2; ActionCable QR/connection no wizard + health; gates cloud-only UI via `isEvolutionWhatsAppChannel`; specs mínimos Evolution (T5); `EvolutionNormalizer.new` keywords no job prepend.
 
 **Revisão (2026-06-21):** removido `provider_config.reopen_conversation` (duplicava `lock_to_single_conversation`); UI e `Custom::Conversations::Resolver` prepend eliminados.
+
+**Revisão (2026-06-21 — pós-produção):**
+
+| Item | Status |
+|------|--------|
+| Modal QR (`EvolutionQrScanModal` + `useEvolutionQrSession`) | ✅ wizard + health |
+| Help `AUTHENTICATION_API_KEY` + trim credenciais | ✅ |
+| Anti-duplicata create (`isSubmitting` + `validate_evolution_instance_name_available!`) | ✅ |
+| Segurança webhook (`apikey` fora do job Sidekiq; `ApiError#user_message`) | ✅ |
+| Playwright `tests/playwright/` (API + UI create) | ✅ estrutura; credenciais reais no `.env` |
+| Specs `spec/custom/` Evolution | ✅ ~42 examples |

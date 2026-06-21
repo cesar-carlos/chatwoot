@@ -227,7 +227,7 @@ Ação: atualizar `provider_config.connection_status` e broadcast ActionCable `e
 }
 ```
 
-Ação: exibir no wizard; não passar por `IncomingMessageService`.
+Ação: persistir `last_qr_base64` / `last_qr_code`; broadcast ActionCable com `qrcode_base64` e `qrcode_code` (mesmas chaves que `GET …/evolution_connection`); não passar por `IncomingMessageService`.
 
 **Rota alternativa:** polling `GET /instance/connect/:instanceName` se webhook não chegar.
 

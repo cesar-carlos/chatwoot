@@ -149,7 +149,8 @@ def handle_event(envelope)
     update_connection_status(envelope.dig('data', 'state'))
     broadcast_connection_event(connection_status: envelope.dig('data', 'state'))
   when 'QRCODE_UPDATED'
-    broadcast_connection_event(qrcode: envelope.dig('data', 'qrcode'))
+    attrs = qrcode_storage_attrs(envelope.dig('data'))
+    broadcast_connection_event(qrcode_base64: attrs['last_qr_base64'], qrcode_code: attrs['last_qr_code'])
   end
 end
 ```

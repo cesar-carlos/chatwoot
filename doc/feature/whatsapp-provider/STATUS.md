@@ -10,7 +10,7 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 
 | Provider key | Gateway | Doc | Código `custom/` | Spike/fixtures | Próximo passo |
 |--------------|---------|-----|------------------|----------------|---------------|
-| `evolution` | Evolution API Node/Baileys | ✅ 18 arquivos | ✅ Fase 0–3 (~95%) | ✅ T0 REST + E2E local | Wizard QR com scan real (opcional) |
+| `evolution` | Evolution API Node/Baileys | ✅ 18 arquivos | ✅ Fase 0–4 parcial (~95%) | ✅ T0 REST + Playwright E2E | Credenciais E2E em CI/staging |
 | `evolution_go` | Evolution Go/whatsmeow | ✅ 25 arquivos (~92%) | ❌ não iniciado | ❌ pendente | Spike Docker P1 |
 | `zapi` | Z-API SaaS | ⚠️ só comparação | ❌ | — | Após piloto Evolution |
 | `notificame` | NotificaMe | 📁 pasta separada | ❌ | — | [plano-geral](../notificame-whatsapp-integration/plano-geral.md) |
@@ -30,8 +30,8 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 | Webhook route | `POST /webhooks/evolution/:instance_name` | ✅ |
 | `EvolutionController` | `custom/app/controllers/webhooks/evolution_controller.rb` | ✅ |
 | ApiClient, ConnectionService, Normalizer, Service | `custom/app/services/custom/whatsapp/` | ✅ |
-| Wizard + settings Vue | `Evolution.vue`, `EvolutionSettingsPage.vue`, … | ✅ |
-| Specs `spec/custom/` | normalizer, controller, job, connection | ✅ |
+| Wizard + settings Vue | `Evolution.vue`, `EvolutionQrScanModal`, `EvolutionSettingsPage.vue`, … | ✅ |
+| Specs `spec/custom/` + Playwright | normalizer, controller, job, connection, import | ✅ ~42 + 5 E2E |
 
 **Ainda não no código:** `evolution_go`, `zapi`, `notificame` em `PROVIDERS`.
 
@@ -58,7 +58,7 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 |------|-------|---------------|
 | Planejamento + ADRs | ✅ | — |
 | API reference + webhooks | ✅ | — |
-| Código alinhado | ✅ ~95% | E2E §2–3 local OK; wizard QR scan manual |
+| Código alinhado | ✅ ~95% | E2E Playwright parcial; wizard QR via modal |
 | Fixtures | ✅ T0 | `spec/fixtures/evolution/` |
 
 Índice: [evolution-api/README.md](./evolution-api/README.md) · Tarefas: [tasks.md](./evolution-api/tasks.md)
