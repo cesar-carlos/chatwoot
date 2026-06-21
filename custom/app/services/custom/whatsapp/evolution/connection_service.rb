@@ -332,11 +332,13 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def raise_api_error!(response, message)
     return if response.success?
 
-    raise Custom::Whatsapp::Evolution::ApiError.new(
+    error = Custom::Whatsapp::Evolution::ApiError.new(
       message,
       status: response.code,
       body: response.parsed_response
     )
+    Rails.logger.warn "[EVOLUTION] #{error.message} (HTTP #{response.code})"
+    raise error
   end
 
   def handle_connection_update_event(envelope)
