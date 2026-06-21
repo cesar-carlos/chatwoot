@@ -22,8 +22,37 @@ RSpec.describe Custom::Whatsapp::Evolution::ConnectionService do
   end
 
   describe '#proxy_payload' do
-    it 'returns enabled false when proxy_enabled is false' do
-      expect(service.send(:proxy_payload)).to eq(enabled: false)
+    it 'returns disabled payload with Evolution schema placeholders when proxy is off' do
+      expect(service.send(:proxy_payload)).to eq(
+        enabled: false,
+        host: 'x',
+        port: '1',
+        protocol: 'http',
+        username: '',
+        password: ''
+      )
+    end
+
+    it 'returns enabled payload with provider_config fields when proxy is on' do
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'proxy_enabled' => true,
+          'proxy_host' => 'proxy.example.com',
+          'proxy_port' => '8080',
+          'proxy_protocol' => 'socks5',
+          'proxy_username' => 'user',
+          'proxy_password' => 'secret'
+        )
+      )
+
+      expect(described_class.new(channel: channel.reload).send(:proxy_payload)).to eq(
+        enabled: true,
+        host: 'proxy.example.com',
+        port: '8080',
+        protocol: 'socks5',
+        username: 'user',
+        password: 'secret'
+      )
     end
   end
 
