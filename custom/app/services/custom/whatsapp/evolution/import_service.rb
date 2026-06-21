@@ -24,7 +24,6 @@ class Custom::Whatsapp::Evolution::ImportService
     requeue_if_pending!
   rescue StandardError => e
     @runtime.mark_failed!(e)
-    raise
   end
 
   private

@@ -135,13 +135,13 @@ if resource.whatsapp?
   json.message_templates resource.channel.try(:message_templates)
   if Current.account_user&.administrator?
     # FORK: mask Evolution secrets in dashboard API
-    json.provider_config(
+    provider_config_json =
       if resource.channel.try(:evolution_provider?)
         resource.channel.dashboard_provider_config
       else
-        resource.channel.try(:provider_config)
+        resource.channel.try(:provider_config) || {}
       end
-    )
+    json.provider_config provider_config_json
   end
   # Only show reauthorization for embedded signup; manual flow uses API keys, not OAuth
   json.reauthorization_required(

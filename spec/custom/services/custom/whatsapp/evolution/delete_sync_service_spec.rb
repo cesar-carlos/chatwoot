@@ -42,12 +42,27 @@ RSpec.describe Custom::Whatsapp::Evolution::DeleteSyncService do
   end
 
   it 'calls Evolution delete endpoint when enabled' do
+    success_response = instance_double(HTTParty::Response, success?: true)
+    allow(api_client).to receive(:delete_message_for_everyone).and_return(success_response)
+
     described_class.new(message: message).perform
 
     expect(api_client).to have_received(:delete_message_for_everyone).with(
       id: 'MSG123',
       remote_jid: '5511999999999@s.whatsapp.net',
       from_me: true
+    )
+  end
+
+  it 'logs when Evolution delete endpoint returns a non-success response' do
+    failed_response = instance_double(HTTParty::Response, success?: false, code: 500)
+    allow(api_client).to receive(:delete_message_for_everyone).and_return(failed_response)
+    allow(Rails.logger).to receive(:warn)
+
+    described_class.new(message: message).perform
+
+    expect(Rails.logger).to have_received(:warn).with(
+      "[EVOLUTION] delete sync HTTP 500 for message #{message.id}"
     )
   end
 

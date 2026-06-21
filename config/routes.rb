@@ -285,6 +285,7 @@ Rails.application.routes.draw do
             # FORK: Wavoip call accept attribution (no SDP)
             resources :calls, only: [:update]
           end
+          resources :custom_attribute_definitions, only: [:index, :show, :create, :update, :destroy]
           resources :custom_filters, only: [:index, :show, :create, :update, :destroy]
           resource :branded_email_layout, only: [:show, :update]
           resources :inboxes, only: [:index, :show, :create, :update, :destroy] do

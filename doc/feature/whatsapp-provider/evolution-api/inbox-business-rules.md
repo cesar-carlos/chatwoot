@@ -18,12 +18,12 @@ Inclui **proxy opcional no wizard** e regras de conversa essenciais — ver [bus
 | **Proxy** (seção colapsável) | `proxy_enabled: false` | ✅ Editar em settings (aba **WhatsApp**) |
 | QR + ActionCable | — | — |
 | `groups_ignore: true` | fixo no create | ✅ toggle UI |
-| `reopen_conversation: true` | na lógica inbound | ✅ toggle UI |
+| Reabrir conversa resolvida | `inbox.lock_to_single_conversation` (Settings → Roteamento) | ✅ toggle nativo inbox |
 | `send_templates_as_text: true` | — | — |
 | Filtros hardcoded | `@g.us`, `status@broadcast`, `fromMe` | ✅ `ignore_jids` UI |
 | `ignore_jids: ["@g.us"]` | em `provider_config` | ✅ editor textarea |
 
-**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `reopen_conversation`, `conversation_pending`, `ignore_jids`, proxy completo, badge `connection_status`. Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
+**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `conversation_pending`, `ignore_jids`, proxy completo, badge `connection_status`. Reabrir conversa: **Settings → Configurações** (`lock_to_single_conversation`), não nesta aba. Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
 
 **Adiado Fase 2:** markdown, delay, merge BR UI, `msg_call`, `always_online`.  
 **Adiado Fase 3:** reconnect QR, logout/restart, `read_status`, `sync_full_history`.  
@@ -184,20 +184,24 @@ Portadas de `ChatwootDto` — implementação no fork, **não** na Evolution.
 
 | Campo | Tipo | Default | Fase | Label UI (pt) | O que faz | Ref. Evolution |
 |-------|------|---------|------|---------------|-----------|----------------|
-| `reopen_conversation` | boolean | **`true`** | **1** | Reabrir conversa ao receber mensagem | Se conversa `resolved`, nova mensagem reabre (ou cria nova) | `chatwoot.service.ts` ~789 |
+| `inbox.lock_to_single_conversation` | boolean (coluna `inboxes`) | **`true`** (fork) | nativo | Reabrir mesma conversa | Se conversa `resolved`, nova mensagem reabre (ou cria nova) | `reopenConversation` ~789 |
 | `conversation_pending` | boolean | **`false`** | 2 | Conversas iniciam como pendentes | Status inicial `pending`; se reopen + não open → toggle pending | ~791, 820 |
 | `merge_brazil_contacts` | boolean | `true` | 2 | Unificar contatos Brasil (+55) | Merge duplicatas com/sem 9º dígito | ~499–523 |
 
-### Comportamento `reopen_conversation`
+> **Jun/2026:** `provider_config.reopen_conversation` foi **removido** — duplicava `lock_to_single_conversation`. Ver [conversation-single-history-per-channel](../../conversation-single-history-per-channel/implementation-plan.md).
 
-| Valor | Comportamento (igual Evolution) |
-|-------|--------------------------------|
-| `true` | Usa conversa existente no inbox mesmo se `resolved`; com `conversation_pending` ajusta status |
-| `false` | Só reutiliza conversa se status ≠ `resolved`; se resolvida, cria nova |
+### Comportamento reabrir conversa (`lock_to_single_conversation`)
+
+| Valor | Comportamento |
+|-------|---------------|
+| `true` | `Conversations::Resolver` reutiliza a conversa mais recente (incl. `resolved`); `Message#reopen_conversation` reabre no inbound |
+| `false` | Resolver só reutiliza conversas não resolvidas; se todas resolvidas, cria nova |
+
+Com `conversation_pending: true`, o prepend `Custom::Message` chama `conversation.pending!` em vez de `open!` ao reabrir.
 
 ### Cache ao resolver
 
-Quando `reopen_conversation: false` e conversa vai para `resolved`, Evolution limpa cache `createConversation-{identifier}` no webhook `conversation_status_changed` (~1290). **Portar** listener equivalente no fork.
+Quando `lock_to_single_conversation: false` e conversa vai para `resolved`, Evolution limpa cache `createConversation-{identifier}` no webhook `conversation_status_changed` (~1290). **Portar** listener equivalente no fork.
 
 ---
 
@@ -307,9 +311,10 @@ Detalhes completos: **[implementation-analysis.md](./implementation-analysis.md)
 - Ignorar grupos (`groups_ignore`)
 - Rejeitar chamadas (`reject_call`) + mensagem (`msg_call`)
 - Assinar mensagem (`sign_msg`) + delimitador
-- Reabrir conversa (`reopen_conversation`)
 - Conversa pendente (`conversation_pending`)
 - Ignorar JIDs (tags)
+
+> Reabrir conversa: configurar em **Settings → Configurações** do inbox (`lock_to_single_conversation`).
 
 **Step 3 — QR / Conexão**
 - QR code (polling ou webhook)
@@ -322,8 +327,8 @@ Abas sugeridas:
 | Aba | Campos |
 |-----|--------|
 | **Conexão** | Status, reconectar (QR), logout, restart instance |
-| **WhatsApp** | groups_ignore, reject_call, msg_call, always_online, read_messages, read_status, sync_full_history |
-| **Conversas** | reopen_conversation, conversation_pending, merge_brazil_contacts |
+| **WhatsApp** | groups_ignore, reject_call, msg_call, always_online, read_messages, read_status, sync_full_history, conversation_pending, outbound, filtros, proxy, import |
+| **Configurações** (inbox nativo) | `lock_to_single_conversation` — reabrir mesma conversa |
 | **Mensagens** | sign_msg, sign_delimiter, mark_read_on_reply, sync_delete_to_whatsapp, convert_markdown_outbound |
 | **Filtros** | ignore_jids (editor) |
 | **Proxy** | proxy_* |
@@ -360,7 +365,6 @@ Abas sugeridas:
 
   "sign_msg": false,
   "sign_delimiter": "\n",
-  "reopen_conversation": true,
   "conversation_pending": false,
   "merge_brazil_contacts": true,
 
@@ -395,7 +399,7 @@ Ver detalhe e justificativa: [business-rules-adaptation.md § Fases revisadas](.
 
 | Fase | Regras incluídas |
 |------|------------------|
-| **1** | Conexão; **proxy opcional wizard**; `groups_ignore`; `reopen_conversation`; `ignore_jids` default; filtros hardcoded; `send_templates_as_text`; bypass 24h |
+| **1** | Conexão; **proxy opcional wizard**; `groups_ignore`; `lock_to_single_conversation`; `ignore_jids` default; filtros hardcoded; `send_templates_as_text`; bypass 24h |
 | **2** | Settings UI; `sign_msg`, markdown, delay, merge BR, reject_call, read_messages, mark_read_on_reply, erros privados, mídia/status |
 | **3** | sync_delete, read_status, sync_full_history |
 | **4** | import_* (API, days=7) |
@@ -497,7 +501,7 @@ flowchart TB
 | UI Manager | Campo Evolution | Campo inbox fork | Código | Fase fork |
 |------------|-----------------|------------------|--------|-----------|
 | **Conversation Pending** | `conversationPending` | `conversation_pending` | `createConversation` ~820 | 2 |
-| **Reopen Conversation** | `reopenConversation` | `reopen_conversation` | ~789–805 | 2 |
+| **Reopen Conversation** | `reopenConversation` | `inbox.lock_to_single_conversation` | ~789–805 | nativo inbox |
 | **Import Contacts** | `importContacts` | `import_contacts` | `whatsapp.baileys.service.ts` ~811 | 4 |
 | **Import Messages** | `importMessages` | `import_messages` | ~1034, ~1866 | 4 |
 | **Days Limit Import Messages** | `daysLimitImportMessages` | `days_limit_import_messages` | ~931 (`daysLimitToImport`) | 4 |

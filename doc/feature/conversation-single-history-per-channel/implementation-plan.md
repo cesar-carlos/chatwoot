@@ -559,7 +559,7 @@ Channel unification, per-cycle bot handoff, UX, and default migration completed 
 - 2026-06-18: Engineering audit — fixed LINE/TikTok duplicate resolver logic, reporting `event.timestamp` + `safe_rollup` gaps, extracted `Custom::Conversations::ResolutionCycle`, added resolver `#find` with optional params. Focused validation: `53 examples, 0 failures`.
 - 2026-06-18: Worker 3 — automation warning banner on single-history toggle (uses existing automations store), `:single_history` factory trait, EN/PT-BR ops copy.
 - 2026-06-18: Orchestration round 2 — FB/IG and `ConversationBuilder` migrated to `Conversations::Resolver`; added `#resolve_or_create`; per-cycle `bot_handoff`; default ON migration for new inboxes; `ResolutionCycle` uses `reporting_events` association. Focused validation: `342 examples, 0 failures`.
-- 2026-06-18: Orchestration round 3 — Voice Enterprise migrated to `Conversations::Resolver`; per-cycle `bot_resolutions_count` via `Custom::V2::Reports::BotMetricsBuilder`. Focused validation: `16 examples, 0 failures` (bot metrics + voice inbound).
+- 2026-06-21: Evolution WhatsApp — removed duplicate `provider_config.reopen_conversation` and `Custom::Conversations::Resolver` prepend; Evolution inboxes now use native `lock_to_single_conversation` only (Settings → Configurações).
 
 ## Existing Inbox Backfill Policy
 

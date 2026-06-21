@@ -9,6 +9,7 @@ module Custom::Channel::Whatsapp
     after_commit :sync_evolution_templates_noop, on: :create, if: :evolution_provider?
     before_validation :sanitize_evolution_provider_config, on: :update, if: :evolution_provider?
     after_commit :sync_evolution_provider_to_api, on: :update, if: :evolution_provider?
+    before_destroy :teardown_evolution_instance, if: :evolution_provider?
   end
 
   def provider_service
@@ -77,7 +78,7 @@ module Custom::Channel::Whatsapp
     return unless previous_changes.key?('provider_config')
     return unless evolution_syncable_settings_changed?
 
-    service = Custom::Whatsapp::Evolution::ConnectionService.new(self)
+    service = Custom::Whatsapp::Evolution::ConnectionService.new(channel: self)
     service.sync_settings!
     service.sync_proxy!
   rescue Custom::Whatsapp::Evolution::ApiError => e
@@ -87,6 +88,12 @@ module Custom::Channel::Whatsapp
   def evolution_syncable_settings_changed?
     before_cfg, after_cfg = previous_changes['provider_config']
     Custom::Whatsapp::Evolution::ProviderConfig.syncable_change?(before_cfg, after_cfg)
+  end
+
+  def teardown_evolution_instance
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: self).teardown!
+  rescue StandardError => e
+    Rails.logger.warn "[EVOLUTION] destroy cleanup failed for channel #{id}: #{e.message}"
   end
 end
 

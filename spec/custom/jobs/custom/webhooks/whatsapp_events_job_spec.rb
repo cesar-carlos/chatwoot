@@ -20,6 +20,7 @@ RSpec.describe Webhooks::WhatsappEventsJob do
     )
   end
   let(:process_service) { instance_double(Whatsapp::IncomingMessageService, perform: nil) }
+  let(:connection_service) { instance_double(Custom::Whatsapp::Evolution::ConnectionService, handle_event: nil) }
 
   def load_fixture(name)
     JSON.parse(Rails.root.join("spec/fixtures/evolution/#{name}.json").read)
@@ -28,6 +29,7 @@ RSpec.describe Webhooks::WhatsappEventsJob do
   before do
     channel
     allow(Whatsapp::IncomingMessageService).to receive(:new).and_return(process_service)
+    allow(Custom::Whatsapp::Evolution::ConnectionService).to receive(:new).and_return(connection_service)
     allow(described_class).to receive(:new).and_wrap_original do |original, *args|
       instance = original.call(*args)
       allow(instance).to receive(:with_lock).and_yield
@@ -69,6 +71,27 @@ RSpec.describe Webhooks::WhatsappEventsJob do
         instance: 'missing-instance',
         data: { 'key' => { 'id' => 'ignored' } }
       )
+    end
+  end
+
+  describe 'connection events' do
+    it 'delegates CONNECTION_UPDATE to ConnectionService' do
+      envelope = load_fixture('connection_update_open')
+
+      job.perform_now(envelope)
+
+      expect(Custom::Whatsapp::Evolution::ConnectionService).to have_received(:new).with(channel: channel)
+      expect(connection_service).to have_received(:handle_event).with(envelope)
+      expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
+    end
+
+    it 'delegates QRCODE_UPDATED to ConnectionService' do
+      envelope = load_fixture('qrcode_updated')
+
+      job.perform_now(envelope)
+
+      expect(connection_service).to have_received(:handle_event).with(envelope)
+      expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
     end
   end
 end

@@ -32,6 +32,7 @@ RSpec.describe Custom::Whatsapp::Evolution::ImportService do
       allow(api_client).to receive(:find_contacts).and_return(
         instance_double(
           HTTParty::Response,
+          success?: true,
           parsed_response: [
             { 'remoteJid' => '5511999999999@s.whatsapp.net', 'pushName' => 'Alice' }
           ]

@@ -16,6 +16,10 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
     page = 1 if page < 1
 
     response = api_client.find_contacts(page: page, offset: BATCH_SIZE)
+    Custom::Whatsapp::Evolution::ApiClient.raise_unless_success!(
+      response,
+      'Failed to fetch Evolution contacts'
+    )
     contacts = Array.wrap(response.parsed_response)
     if contacts.blank?
       advance_to_messages_phase!
@@ -68,7 +72,7 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
 
   def advance_to_messages_phase!
     if runtime.import_messages?
-      remote_jids = runtime.cursor[:remote_jids].presence || collect_remote_jids!
+      remote_jids = runtime.cursor[:remote_jids].presence || remote_jids_collector.collect!
       runtime.persist_cursor!(
         'phase' => 'messages',
         'message_jid_index' => 0,
@@ -80,26 +84,10 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
     end
   end
 
-  def collect_remote_jids!
-    jids = []
-    page = 1
-
-    loop do
-      response = api_client.find_contacts(page: page, offset: BATCH_SIZE)
-      contacts = Array.wrap(response.parsed_response)
-      break if contacts.blank?
-
-      contacts.each do |record|
-        jid = record['remoteJid'].to_s
-        jids << jid if jid.present? && !skip_remote_jid?(jid)
-      end
-
-      break if contacts.size < BATCH_SIZE
-
-      page += 1
-      sleep(RATE_LIMIT_SLEEP)
-    end
-
-    jids.uniq
+  def remote_jids_collector
+    @remote_jids_collector ||= Custom::Whatsapp::Evolution::Import::RemoteJidsCollector.new(
+      runtime: runtime,
+      api_client: api_client
+    )
   end
 end

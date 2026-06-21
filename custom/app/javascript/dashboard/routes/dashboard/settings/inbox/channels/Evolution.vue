@@ -1,24 +1,22 @@
 <script setup>
-import { reactive, computed, ref, onUnmounted } from 'vue';
+import { reactive, computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useVuelidate } from '@vuelidate/core';
 import { required, url } from '@vuelidate/validators';
 import { useAlert } from 'dashboard/composables';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
-import { useEvolutionConnectionCable } from 'customDashboard/composables/evolution/useEvolutionConnectionCable';
 
 import PageHeader from 'dashboard/routes/dashboard/settings/SettingsSubPageHeader.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
+import EvolutionQrScanModal from 'customDashboard/components/evolution/EvolutionQrScanModal.vue';
 import evolutionLogo from 'customDashboard/assets/images/channels/evolution-logo.png';
 
 const { t } = useI18n();
 const store = useStore();
 const router = useRouter();
-
-const POLL_MS = 3000;
 
 const state = reactive({
   inboxName: '',
@@ -35,10 +33,7 @@ const state = reactive({
 
 const step = ref('form');
 const inboxId = ref(null);
-const qrcodeBase64 = ref('');
-const pairingCode = ref('');
-const connectionStatus = ref('connecting');
-let pollTimer = null;
+const isQrModalOpen = ref(false);
 
 const uiFlags = useMapGetter('inboxes/getUIFlags');
 
@@ -51,8 +46,6 @@ const validationRules = {
 
 const v$ = useVuelidate(validationRules, state);
 const isSubmitDisabled = computed(() => v$.value.$invalid);
-
-const isConnected = computed(() => connectionStatus.value === 'open');
 
 const formErrors = computed(() => ({
   inboxName: v$.value.inboxName?.$error
@@ -69,56 +62,11 @@ const formErrors = computed(() => ({
     : '',
 }));
 
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
-
-function applyConnectionPayload(payload) {
-  if (payload.connectionStatus) {
-    connectionStatus.value = payload.connectionStatus;
-  }
-  if (payload.qrcodeBase64) {
-    qrcodeBase64.value = payload.qrcodeBase64;
-  }
-  if (payload.pairingCode) {
-    pairingCode.value = payload.pairingCode;
-  }
-
-  if (isConnected.value) {
-    stopPolling();
-    router.replace({
-      name: 'settings_inboxes_add_agents',
-      params: { page: 'new', inbox_id: inboxId.value },
-    });
-  }
-}
-
-async function pollConnection() {
-  if (!inboxId.value) return;
-
-  try {
-    const payload = await store.dispatch(
-      'inboxes/fetchEvolutionConnection',
-      inboxId.value
-    );
-    applyConnectionPayload({
-      connectionStatus:
-        payload.connectionStatus || payload.connection_status || 'connecting',
-      qrcodeBase64: payload.qrcodeBase64 || payload.qrcode_base64,
-      pairingCode: payload.pairingCode || payload.qrcode_code,
-    });
-  } catch {
-    // keep polling
-  }
-}
-
-function startPolling() {
-  stopPolling();
-  pollConnection();
-  pollTimer = setInterval(pollConnection, POLL_MS);
+function onWizardConnected() {
+  router.replace({
+    name: 'settings_inboxes_add_agents',
+    params: { page: 'new', inbox_id: inboxId.value },
+  });
 }
 
 async function createChannel() {
@@ -126,7 +74,7 @@ async function createChannel() {
   if (!isFormValid) return;
 
   try {
-    const channel = await store.dispatch('inboxes/createEvolutionChannel', {
+    const inbox = await store.dispatch('inboxes/createEvolutionChannel', {
       name: state.inboxName,
       channel: {
         type: 'whatsapp',
@@ -145,9 +93,9 @@ async function createChannel() {
       },
     });
 
-    inboxId.value = channel.id;
-    step.value = 'qr';
-    startPolling();
+    inboxId.value = inbox.id;
+    step.value = 'connect';
+    isQrModalOpen.value = true;
   } catch (error) {
     useAlert(
       error.response?.data?.message ||
@@ -155,10 +103,6 @@ async function createChannel() {
     );
   }
 }
-
-useEvolutionConnectionCable(inboxId, applyConnectionPayload);
-
-onUnmounted(stopPolling);
 </script>
 
 <template>
@@ -185,6 +129,7 @@ onUnmounted(stopPolling);
       />
       <Input
         v-model="state.apiKey"
+        type="password"
         :label="t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.LABEL')"
         :placeholder="t('INBOX_MGMT.ADD.EVOLUTION.API_KEY.PLACEHOLDER')"
         :message="formErrors.apiKey"
@@ -198,12 +143,19 @@ onUnmounted(stopPolling);
         :message-type="formErrors.instanceName ? 'error' : 'info'"
       />
 
-      <div class="pt-2 border-t border-n-weak">
-        <ToggleSwitch
-          v-model="state.proxyEnabled"
-          :label="t('INBOX_MGMT.ADD.EVOLUTION.PROXY.ENABLED')"
-        />
-        <div v-if="state.proxyEnabled" class="grid grid-cols-2 gap-3 mt-4">
+      <div class="pt-4 mt-2 border-t border-n-weak space-y-4">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="text-sm font-medium text-n-slate-12">
+              {{ t('INBOX_MGMT.ADD.EVOLUTION.PROXY.ENABLED.LABEL') }}
+            </p>
+            <p class="text-xs text-n-slate-11">
+              {{ t('INBOX_MGMT.ADD.EVOLUTION.PROXY.ENABLED.DESCRIPTION') }}
+            </p>
+          </div>
+          <ToggleSwitch v-model="state.proxyEnabled" />
+        </div>
+        <div v-if="state.proxyEnabled" class="grid grid-cols-2 gap-3">
           <Input
             v-model="state.proxyHost"
             :label="t('INBOX_MGMT.ADD.EVOLUTION.PROXY.HOST')"
@@ -244,42 +196,24 @@ onUnmounted(stopPolling);
       <img :src="evolutionLogo" alt="Evolution API" class="size-16" />
       <div>
         <h2 class="text-lg font-medium text-n-slate-12">
-          {{ t('INBOX_MGMT.ADD.EVOLUTION.QR.TITLE') }}
+          {{ t('INBOX_MGMT.ADD.EVOLUTION.CONNECT.TITLE') }}
         </h2>
         <p class="mt-2 text-sm text-n-slate-11">
-          {{ t('INBOX_MGMT.ADD.EVOLUTION.QR.DESCRIPTION') }}
-        </p>
-        <p class="mt-1 text-xs text-n-slate-10">
-          {{
-            t('INBOX_MGMT.ADD.EVOLUTION.QR.STATUS', {
-              status: connectionStatus,
-            })
-          }}
+          {{ t('INBOX_MGMT.ADD.EVOLUTION.CONNECT.DESCRIPTION') }}
         </p>
       </div>
-      <div
-        v-if="qrcodeBase64"
-        class="p-4 rounded-2xl bg-white border border-n-weak"
-      >
-        <img
-          :src="qrcodeBase64"
-          alt="WhatsApp QR Code"
-          class="w-64 h-64 object-contain"
-        />
-      </div>
-      <p v-if="pairingCode" class="text-sm font-medium text-n-slate-12">
-        {{
-          t('INBOX_MGMT.ADD.EVOLUTION.QR.PAIRING_CODE', {
-            code: pairingCode,
-          })
-        }}
-      </p>
-      <p
-        v-if="!qrcodeBase64 && !pairingCode"
-        class="text-sm text-n-slate-11"
-      >
-        {{ t('INBOX_MGMT.ADD.EVOLUTION.QR.LOADING') }}
-      </p>
+      <NextButton
+        :label="t('INBOX_MGMT.ADD.EVOLUTION.CONNECT.OPEN_QR')"
+        @click="isQrModalOpen = true"
+      />
     </div>
+
+    <EvolutionQrScanModal
+      v-if="inboxId"
+      v-model="isQrModalOpen"
+      :inbox-id="inboxId"
+      fetch-fresh-qr
+      @connected="onWizardConnected"
+    />
   </div>
 </template>
