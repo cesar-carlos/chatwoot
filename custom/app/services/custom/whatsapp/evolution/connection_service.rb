@@ -222,7 +222,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def persist_instance_credentials!(parsed)
     instance = parsed['instance'] || {}
     attrs = {
-      'api_key' => parsed['hash'] || provider_config['api_key'],
+      'api_key' => (parsed['hash'] || provider_config['api_key']).to_s.strip,
       'instance_id' => instance['instanceId'],
       'connection_status' => instance['status'] || 'connecting'
     }

@@ -43,6 +43,15 @@ RSpec.describe Webhooks::EvolutionController, type: :request do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    it 'accepts apikey with surrounding whitespace' do
+      expect do
+        post "/webhooks/evolution/#{instance_name}",
+             params: payload.merge('apikey' => "  #{api_key}  ")
+      end.to have_enqueued_job(Webhooks::WhatsappEventsJob)
+
+      expect(response).to have_http_status(:ok)
+    end
+
     it 'returns not found for an unknown instance' do
       post '/webhooks/evolution/unknown-instance', params: payload
 
