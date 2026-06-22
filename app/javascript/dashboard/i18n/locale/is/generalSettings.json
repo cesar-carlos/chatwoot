@@ -152,12 +152,7 @@
     "LIST": {
       "LOADING_MESSAGE": "Hleð skilaboðum...",
       "404": "Engin skilaboð",
-      "TABLE_HEADER": [
-        "Nafn",
-        "Símanúmer",
-        "Samtöl",
-        "Síðast samband"
-      ]
+      "TABLE_HEADER": ["Nafn", "Símanúmer", "Samtöl", "Síðast samband"]
     },
     "TYPE_LABEL": {
       "conversation_creation": "Nýtt samtal",

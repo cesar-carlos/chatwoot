@@ -152,12 +152,7 @@
     "LIST": {
       "LOADING_MESSAGE": "Laster varsler...",
       "404": "Ingen varsler",
-      "TABLE_HEADER": [
-        "Navn",
-        "Telefonnummer",
-        "Samtaler",
-        "Siste kontakt"
-      ]
+      "TABLE_HEADER": ["Navn", "Telefonnummer", "Samtaler", "Siste kontakt"]
     },
     "TYPE_LABEL": {
       "conversation_creation": "Ny samtale",

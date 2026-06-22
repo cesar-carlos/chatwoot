@@ -7,13 +7,13 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
   EVOLUTION_REMOTE_JID_KEY = 'evolution_remote_jid'
   EVOLUTION_ENRICHED_AT_KEY = 'evolution_enriched_at'
 
-  def initialize(channel:, contact:, remote_jid: nil, push_name: nil, profile_pic_url: nil, force: false)
+  def initialize(channel:, contact:, **options)
     @channel = channel
     @contact = contact
-    @remote_jid = remote_jid.to_s.presence
-    @push_name = push_name.to_s.strip.presence
-    @profile_pic_url = profile_pic_url.to_s.presence
-    @force = ActiveModel::Type::Boolean.new.cast(force)
+    @remote_jid = options[:remote_jid].to_s.presence
+    @push_name = options[:push_name].to_s.strip.presence
+    @profile_pic_url = options[:profile_pic_url].to_s.presence
+    @force = ActiveModel::Type::Boolean.new.cast(options[:force])
   end
 
   def perform

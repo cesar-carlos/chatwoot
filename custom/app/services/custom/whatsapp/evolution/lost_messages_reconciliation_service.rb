@@ -100,13 +100,22 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
 
   def import_message(data_item)
     key = data_item['key'] || data_item[:key] || {}
-    if ActiveModel::Type::Boolean.new.cast(key['fromMe'] || key[:fromMe])
-      return if ignore_from_me_echo?
+    return import_phone_outgoing_message(data_item) if from_me_message?(key)
 
-      Custom::Whatsapp::Evolution::PhoneOutgoingSyncService.new(channel: channel, data: data_item).perform
-      return
-    end
+    import_inbound_message(data_item)
+  end
 
+  def from_me_message?(key)
+    ActiveModel::Type::Boolean.new.cast(key['fromMe'] || key[:fromMe])
+  end
+
+  def import_phone_outgoing_message(data_item)
+    return if ignore_from_me_echo?
+
+    Custom::Whatsapp::Evolution::PhoneOutgoingSyncService.new(channel: channel, data: data_item).perform
+  end
+
+  def import_inbound_message(data_item)
     envelope = {
       event: 'MESSAGES_UPSERT',
       instance: channel.provider_config['instance_name'],

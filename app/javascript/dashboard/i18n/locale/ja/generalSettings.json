@@ -152,12 +152,7 @@
     "LIST": {
       "LOADING_MESSAGE": "通知を読み込み中...",
       "404": "通知なし",
-      "TABLE_HEADER": [
-        "名前",
-        "電話番号",
-        "会話データ",
-        "最終連絡日"
-      ]
+      "TABLE_HEADER": ["名前", "電話番号", "会話データ", "最終連絡日"]
     },
     "TYPE_LABEL": {
       "conversation_creation": "新しい会話",
