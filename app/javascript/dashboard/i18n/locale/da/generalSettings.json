@@ -152,12 +152,7 @@
     "LIST": {
       "LOADING_MESSAGE": "Indlæser notifikationer...",
       "404": "Ingen Notifikationer",
-      "TABLE_HEADER": [
-        "Navn",
-        "Telefonnummer",
-        "Samtaler",
-        "Sidst Kontaktet"
-      ]
+      "TABLE_HEADER": ["Navn", "Telefonnummer", "Samtaler", "Sidst Kontaktet"]
     },
     "TYPE_LABEL": {
       "conversation_creation": "Ny samtale",

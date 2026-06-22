@@ -14,21 +14,7 @@ class Custom::Whatsapp::Evolution::MediaAttachmentService
     evolution_message = attachment_payload[:_evolution_message]
     return if evolution_message.blank?
 
-    response = api_client.get_base64_from_media_message(message: evolution_message)
-    return unless response.success?
-
-    tempfile = build_tempfile(response.parsed_response)
-    return if tempfile.blank?
-
-    message.attachments.create!(
-      account_id: message.account_id,
-      file_type: file_type,
-      file: {
-        io: tempfile,
-        filename: tempfile.original_filename,
-        content_type: tempfile.content_type
-      }
-    )
+    attach_from_evolution_message!(evolution_message)
   rescue ArgumentError => e
     Rails.logger.warn("[EVOLUTION] media download rejected: #{e.message}")
     mark_media_failed!(e.message)
@@ -38,6 +24,28 @@ class Custom::Whatsapp::Evolution::MediaAttachmentService
   end
 
   private
+
+  def attach_from_evolution_message!(evolution_message)
+    response = api_client.get_base64_from_media_message(message: evolution_message)
+    return unless response.success?
+
+    tempfile = build_tempfile(response.parsed_response)
+    return if tempfile.blank?
+
+    create_attachment!(tempfile)
+  end
+
+  def create_attachment!(tempfile)
+    message.attachments.create!(
+      account_id: message.account_id,
+      file_type: file_type,
+      file: {
+        io: tempfile,
+        filename: tempfile.original_filename,
+        content_type: tempfile.content_type
+      }
+    )
+  end
 
   def mark_media_failed!(error_message)
     attrs = message.content_attributes.stringify_keys.merge(

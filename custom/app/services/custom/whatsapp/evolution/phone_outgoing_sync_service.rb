@@ -6,12 +6,8 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
   pattr_initialize [:channel!, :data!]
 
   def perform
-    key = data['key'] || data[:key] || {}
-    source_id = key['id'].to_s
-    return if source_id.blank?
-    return if duplicate_message?(source_id)
-    return unless acquire_dedup_lock!(source_id)
-    return if skip_remote_jid?(key['remoteJid'].to_s)
+    key = message_key
+    return if skip_sync?(key)
 
     normalized = normalizer.perform
     message_data = normalized&.dig(:messages, 0)
@@ -38,6 +34,18 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
 
   def config
     channel.provider_config || {}
+  end
+
+  def message_key
+    data['key'] || data[:key] || {}
+  end
+
+  def skip_sync?(key)
+    source_id = key['id'].to_s
+    source_id.blank? ||
+      duplicate_message?(source_id) ||
+      !acquire_dedup_lock!(source_id) ||
+      skip_remote_jid?(key['remoteJid'].to_s)
   end
 
   def acquire_dedup_lock!(source_id)
@@ -102,7 +110,13 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
   end
 
   def create_outgoing_message!(contact_inbox, key, content)
-    conversation = Conversations::Resolver.new(
+    conversation = resolve_conversation(contact_inbox)
+    timestamp = message_timestamp(data['messageTimestamp'])
+    conversation.messages.create!(outgoing_message_attributes(key, content, timestamp))
+  end
+
+  def resolve_conversation(contact_inbox)
+    Conversations::Resolver.new(
       inbox: inbox,
       contact_inbox: contact_inbox,
       conversation_params: {
@@ -112,9 +126,10 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
         contact_inbox_id: contact_inbox.id
       }
     ).perform
+  end
 
-    timestamp = message_timestamp(data['messageTimestamp'])
-    conversation.messages.create!(
+  def outgoing_message_attributes(key, content, timestamp)
+    {
       account_id: account.id,
       inbox_id: inbox.id,
       message_type: :outgoing,
@@ -127,7 +142,7 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
       },
       created_at: timestamp,
       updated_at: timestamp
-    )
+    }
   end
 
   def enqueue_outgoing_media_download!(message, message_data)

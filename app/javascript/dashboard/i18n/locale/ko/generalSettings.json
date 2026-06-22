@@ -152,12 +152,7 @@
     "LIST": {
       "LOADING_MESSAGE": "알림을 불러오는 중...",
       "404": "알림 없음",
-      "TABLE_HEADER": [
-        "이름",
-        "전화 번호",
-        "대화",
-        "마지막으로 연락한 사람"
-      ]
+      "TABLE_HEADER": ["이름", "전화 번호", "대화", "마지막으로 연락한 사람"]
     },
     "TYPE_LABEL": {
       "conversation_creation": "새 대화",

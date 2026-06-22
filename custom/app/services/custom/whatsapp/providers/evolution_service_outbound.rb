@@ -70,10 +70,10 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
 
   def read_target_message(message)
     scope = message.conversation.messages
-                     .incoming
-                     .where(inbox_id: message.inbox_id)
-                     .where.not(source_id: [nil, ''])
-                     .order(created_at: :desc)
+                   .incoming
+                   .where(inbox_id: message.inbox_id)
+                   .where.not(source_id: [nil, ''])
+                   .order(created_at: :desc)
 
     scope.where.not(status: Message.statuses[:read]).first || scope.first
   end
