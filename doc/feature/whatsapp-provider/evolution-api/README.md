@@ -6,13 +6,13 @@ Planejamento para o primeiro provider alternativo do fork: **`Channel::Whatsapp`
 
 | Item | Estado |
 |------|--------|
-| **Documentação fork** | 18 arquivos nesta pasta (ver índice abaixo) |
+| **Documentação fork** | 20 arquivos nesta pasta (ver índice abaixo) |
 | **Código Chatwoot (`custom/`)** | **Fase 0–4 implementada** (~95%) — ver [tasks.md](./tasks.md) |
 | **Specs automatizados** | ✅ ~42 examples em `spec/custom/` + Playwright em `tests/playwright/` |
-| **Validação T0 (REST spike)** | ✅ **v2.3.6** local — fixtures reais, sendText `text` plano |
-| **E2E pendente** | ⚠️ §2–3 ✅ local jun/2026 — wizard QR com scan real ainda manual |
-| **Versão alvo** | [evolution-target-version.txt](./evolution-target-version.txt) → **2.3.7** |
-| **Evolution API local** | `/root/evolution-api` v**2.3.6** @ `:8080` |
+| **Validação T0 (REST spike)** | ✅ v2.3.6 local — fixtures reais, sendText `text` plano |
+| **Versão produção** | **2.3.7** — [evolution-target-version.txt](./evolution-target-version.txt) |
+| **E2E local** | ✅ §2–4 jun/2026 — wizard QR com scan real ainda manual |
+| **Evolution API local (dev)** | `/root/evolution-api` v**2.3.6** @ `:8080` |
 | **v2.4.0+** | Exige [licença](https://docs.evolutionfoundation.com.br/licensing) — ver [documentation-links.md § Compatibilidade](./documentation-links.md#compatibilidade-de-versão) |
 
 > **Tarefas:** [tasks.md](./tasks.md) · Validação REST (T0) concluída — ver [validation-checklist.md §7](./validation-checklist.md#7-registro).
@@ -127,6 +127,9 @@ Detalhe: [inbox-business-rules.md](./inbox-business-rules.md) · [tasks.md](./ta
 | Prepend `Message` | 2 | delete sync, `conversation_pending`, import guards |
 | `Custom::Whatsapp::Evolution::Broadcaster` | 3 | ActionCable desconexão |
 | `Custom::Whatsapp::Evolution::ImportService` + import/* | 4 | Import histórico batelado |
+| `Custom::Whatsapp::Evolution::ContactsSyncService` | 2 | Webhooks `CONTACTS_*` → contatos + enrichment |
+| `Custom::Whatsapp::Evolution::DeleteSyncService` | 2 | Delete outbound → `deleteMessageForEveryone` |
+| `Custom::Whatsapp::Evolution::ContactEnrichmentService` | 2 | Foto/perfil via APIs `/chat/fetch*` |
 | `EvolutionSettingsPage.vue` + `EvolutionHealthPage.vue` | 2–3 | Settings + health/reconnect |
 | `Evolution.vue` | 1 | Wizard form + etapa conectar |
 | `EvolutionQrScanModal.vue` + `useEvolutionQrSession.js` | 1–3 | Modal QR (wizard + health), polling/expiry |
@@ -166,6 +169,9 @@ Logo oficial da Evolution API para tiles e wizard:
 | Ruby 3.4 | `MessagingProvider::Capabilities` — `self.for(provider)` ( `for` é palavra reservada) |
 | UX jun/2026 | Modal QR (`EvolutionQrScanModal`); help text `AUTHENTICATION_API_KEY`; anti-duplicata create |
 | Seg jun/2026 | `apikey` removido do job Sidekiq; `ApiError#user_message` sanitizado em produção; `filter_parameter_logging` `:apikey` |
+| Auth jun/2026 | `webhook_token` gerado no provision; URL webhook com `?token=`; auth secundária no controller |
+| Ops jun/2026 | `ensure_chatwoot_integration_disabled!` verifica `GET /chatwoot/find` — falha provision se legado ativo |
+| Outbound jun/2026 | Anexos parciais: 1º enviado mantém `source_id`; falhas 2º+ geram nota privada (não marca `failed`) |
 | Ops jun/2026 | Trim credenciais (`ProviderConfig.normalize_credentials`); validação `instance_name` único antes do create |
 | QR jun/2026 | `fetch_qr_code` reutiliza `qrcode_storage_attrs` — preserva `code` do connect flat; cable `QRCODE_UPDATED` emite `qrcode_base64`/`qrcode_code` (paridade API) |
 | Inbound jun/2026 | `EventNames` normaliza `messages.upsert` → `MESSAGES_UPSERT`; job loga `[EVOLUTION] normalizer skipped` quando filtro retorna `nil` |
@@ -175,7 +181,7 @@ Logo oficial da Evolution API para tiles e wizard:
 
 ---
 
-## Índice (18 arquivos)
+## Índice (20 arquivos + scripts)
 
 | # | Arquivo |
 |---|---------|

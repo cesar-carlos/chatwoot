@@ -131,18 +131,18 @@ flowchart TB
 
 ### Critérios de done
 
-- [ ] [validation-checklist.md](./validation-checklist.md) completo
-- [ ] Inbox criado com `provider: 'evolution'`
-- [ ] QR conecta e `connection_status` → `open`
-- [ ] Inbound texto → conversa no Chatwoot
-- [ ] Outbound texto → `source_id` = `key.id` da Evolution
-- [ ] Integração Chatwoot **desabilitada** na Evolution
-- [ ] Sem janela 24h (texto livre em conversa antiga)
-- [ ] Proxy opcional no wizard (set + validação Evolution)
+- [x] [validation-checklist.md](./validation-checklist.md) completo (T0 REST + E2E local jun/2026)
+- [x] Inbox criado com `provider: 'evolution'`
+- [x] QR conecta e `connection_status` → `open`
+- [x] Inbound texto → conversa no Chatwoot
+- [x] Outbound texto → `source_id` = `key.id` da Evolution
+- [x] Integração Chatwoot **desabilitada** na Evolution (com verificação `GET /chatwoot/find`)
+- [x] Sem janela 24h (texto livre em conversa antiga)
+- [x] Proxy opcional no wizard (set + validação Evolution)
 - [x] Reabrir conversa resolvida no inbound — `lock_to_single_conversation` + Resolver + Message callback
-- [ ] `provider_config` com defaults [business-rules-adaptation.md](./business-rules-adaptation.md)
+- [x] `provider_config` com defaults [business-rules-adaptation.md](./business-rules-adaptation.md)
 
-- [ ] Cloud e 360dialog inalterados (regressão)
+- [x] Cloud e 360dialog inalterados (regressão)
 
 **Estimativa:** 2–2,5 semanas (proxy + reopen no escopo F1)
 
@@ -169,8 +169,8 @@ flowchart TB
 
 - [x] Enviar/receber imagem e documento (backend — download via `getBase64FromMediaMessage`)
 - [x] Status delivered/read mapeados
-- [ ] Proxy configurável no settings do inbox (T2 frontend)
-- [ ] Grupos ignorados quando `groups_ignore: true` (settings sync — T2)
+- [x] Proxy configurável no settings do inbox (`EvolutionSettingsPage.vue`)
+- [x] Grupos ignorados quando `groups_ignore: true` (settings sync + filtro normalizer)
 
 **Estimativa:** 2–4 semanas
 

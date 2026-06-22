@@ -40,6 +40,8 @@ O fork normaliza em `Custom::Whatsapp::Evolution::EventNames` (controller + `Wha
 |------------------------|-------------------|
 | `messages.upsert` | `MESSAGES_UPSERT` |
 | `messages.update` | `MESSAGES_UPDATE` |
+| `contacts.upsert` | `CONTACTS_UPSERT` |
+| `contacts.update` | `CONTACTS_UPDATE` |
 | `connection.update` | `CONNECTION_UPDATE` |
 | `qrcode.updated` | `QRCODE_UPDATED` |
 
@@ -71,16 +73,19 @@ Evolution aceita `webhook.headers` em `POST /webhook/set` — incluindo `jwt_key
 |--------|------|------------------|
 | `MESSAGES_UPSERT` | 1 | Normalizer → `IncomingMessageService` |
 | `MESSAGES_UPDATE` | 2 | Status sent/delivered/read |
+| `CONTACTS_UPSERT` | 2 | `ContactsSyncService` + `ContactEnrichmentJob` |
+| `CONTACTS_UPDATE` | 2 | Idem — atualização de nome/foto |
 | `CONNECTION_UPDATE` | 1 | Atualizar `connection_status` no channel |
 | `QRCODE_UPDATED` | 1 | Exibir QR no wizard/settings |
+
+Registrados em `ProviderConfig::WEBHOOK_EVENTS` e aplicados via `ApiClient#apply_webhook`.
 
 ### Eventos opcionais (fases posteriores)
 
 | Evento | Uso |
 |--------|-----|
-| `MESSAGES_DELETE` | Apagar mensagem no Chatwoot |
+| `MESSAGES_DELETE` | Apagar mensagem no Chatwoot (inbound) |
 | `MESSAGES_EDITED` | Edição de mensagem |
-| `CONTACTS_UPSERT` | Sync contato |
 | `SEND_MESSAGE` | Echo outbound (cuidado com duplicação) |
 
 Lista completa: `EventController.events` em `src/api/integrations/event/event.controller.ts`
@@ -182,15 +187,18 @@ Target para `Whatsapp::IncomingMessageService` (formato 360dialog-like):
 }
 ```
 
-Status Baileys (mapear para canônico):
+Status Baileys (mapear para canônico) — alinhado com `EvolutionNormalizer#map_status` e enum Baileys v2.3.x:
 
-| Baileys | Canônico |
-|---------|----------|
-| 0 / PENDING | `sent` |
-| 1 / SERVER_ACK | `sent` |
-| 2 / DELIVERY_ACK | `delivered` |
-| 3 / READ | `read` |
-| 4 / PLAYED | `read` |
+| Código / nome | Significado Baileys | Canônico Chatwoot |
+|---------------|---------------------|-------------------|
+| `0` / `ERROR` | Erro | `failed` |
+| `1` / `PENDING` | Pendente | `sent` |
+| `2` / `SERVER_ACK` | Enviado ao servidor | `sent` |
+| `3` / `DELIVERY_ACK` | Entregue | `delivered` |
+| `4` / `READ` | Lida | `read` |
+| `5` / `PLAYED` | Reproduzida (áudio/vídeo) | `read` |
+
+**Formato flat Evolution (v2.3.7):** alguns webhooks enviam `keyId` + `status: "READ"` em vez de `update.status` numérico — o normalizer trata ambos (ver fixtures `messages_update_read.json` / `messages_update_delivered.json`).
 
 Normalizer output:
 
@@ -268,7 +276,7 @@ Evolution **não** assina com HMAC Meta. Opções:
 
 | Opção | Implementação |
 |-------|---------------|
-| Token na URL (secundário) | `/webhooks/evolution/:instance_name?token=SECRET` |
+| Token na URL (secundário) | `/webhooks/evolution/:instance_name?token=SECRET` — validado contra `provider_config.webhook_token` (gerado no provision) |
 | Header / body | Validar `apikey` do envelope contra `provider_config.api_key` (**primário**) |
 | IP allowlist | Fora do escopo MVP |
 
