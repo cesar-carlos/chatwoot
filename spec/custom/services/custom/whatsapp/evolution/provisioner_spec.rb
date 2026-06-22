@@ -144,14 +144,13 @@ RSpec.describe Custom::Whatsapp::Evolution::Provisioner do
     end
 
     it 'syncs proxy when enabled' do
-      channel.update_columns(
+      channel.update!(
         provider_config: channel.provider_config.merge(
           'proxy_enabled' => true,
           'proxy_host' => 'proxy.example.com',
           'proxy_port' => '8080',
           'proxy_protocol' => 'http'
-        ),
-        updated_at: Time.current
+        )
       )
       channel.reload
       allow(api_client).to receive_messages(

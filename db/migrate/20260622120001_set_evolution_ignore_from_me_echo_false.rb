@@ -8,7 +8,8 @@ class SetEvolutionIgnoreFromMeEchoFalse < ActiveRecord::Migration[7.1]
         current = config['ignore_from_me_echo']
         next unless current.nil? || ActiveModel::Type::Boolean.new.cast(current)
 
-        channel.update_column(:provider_config, config.merge('ignore_from_me_echo' => false))
+        channel.assign_attributes(provider_config: config.merge('ignore_from_me_echo' => false))
+        channel.save!(validate: false)
       end
     end
   end

@@ -53,9 +53,8 @@ RSpec.describe Custom::Whatsapp::Evolution::ConnectionEvents do
     end
 
     it 'broadcasts disconnect alert when connection closes' do
-      channel.update_columns(
-        provider_config: channel.provider_config.merge('connection_status' => 'open'),
-        updated_at: Time.current
+      channel.update!(
+        provider_config: channel.provider_config.merge('connection_status' => 'open')
       )
       broadcaster = instance_double(Custom::Whatsapp::Evolution::Broadcaster, broadcast_disconnected: nil)
       allow(Custom::Whatsapp::Evolution::Broadcaster).to receive(:new).and_return(broadcaster)

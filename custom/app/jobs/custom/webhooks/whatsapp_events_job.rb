@@ -65,26 +65,27 @@ module Custom::Webhooks::WhatsappEventsJob
 
   def process_evolution_message_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
-      key = evolution_message_key(data_item)
-      if from_me_message?(key)
-        process_from_me_message(channel, params[:event], data_item, key)
-        next
-      end
+      process_evolution_message_item(channel, params, data_item)
+    end
+  end
 
-      normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer.new(
-        channel: channel,
-        envelope: params.merge(data: data_item)
-      ).perform
-      if normalized.blank?
-        log_normalizer_skipped(params[:event], data_item)
-        next
-      end
+  def process_evolution_message_item(channel, params, data_item)
+    key = evolution_message_key(data_item)
+    if from_me_message?(key)
+      process_from_me_message(channel, params[:event], data_item, key)
+      return
+    end
 
-      flat_params = normalized.merge(phone_number: channel.phone_number)
-      sender_id = evolution_contact_sender_id(flat_params)
-      process_with_evolution_message_lock(channel, sender_id) do
-        process_events(channel, flat_params)
-      end
+    normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer.new(
+      channel: channel,
+      envelope: params.merge(data: data_item)
+    ).perform
+    return log_normalizer_skipped(params[:event], data_item) if normalized.blank?
+
+    flat_params = normalized.merge(phone_number: channel.phone_number)
+    sender_id = evolution_contact_sender_id(flat_params)
+    process_with_evolution_message_lock(channel, sender_id) do
+      process_events(channel, flat_params)
     end
   end
 
