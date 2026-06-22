@@ -42,12 +42,7 @@ function extractPairingCode(raw) {
     raw.qrcode?.qrcode?.code,
   ];
 
-  for (const candidate of candidates) {
-    const formatted = formatPairingCode(candidate);
-    if (formatted) return formatted;
-  }
-
-  return null;
+  return candidates.map(formatPairingCode).find(Boolean) || null;
 }
 
 export function normalizeEvolutionConnectionPayload(raw) {

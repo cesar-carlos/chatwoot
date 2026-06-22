@@ -20,6 +20,12 @@ module Custom::Webhooks::WhatsappEventsJob
       return
     end
 
+    dispatch_evolution_event(channel, params)
+  end
+
+  private
+
+  def dispatch_evolution_event(channel, params)
     case params[:event]
     when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
       process_evolution_message_events(channel, params)
@@ -33,8 +39,6 @@ module Custom::Webhooks::WhatsappEventsJob
       )
     end
   end
-
-  private
 
   def evolution_envelope?(params)
     params[:event].present? && evolution_instance_name(params).present?

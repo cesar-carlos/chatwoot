@@ -4,6 +4,8 @@ module Custom::Account
   prepended do
     has_many :conversation_workflow_rules, dependent: :destroy_async
     has_many :wavoip_channels, class_name: 'Channel::Wavoip', dependent: :destroy_async, foreign_key: 'account_id', inverse_of: :account
+    has_many :attachment_retention_events, dependent: :nullify
+    has_many :attachment_retention_failures, dependent: :delete_all
   end
 
   def workflow_rules_migrated?

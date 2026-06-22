@@ -63,7 +63,7 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
     contact.name = record['pushName'].presence || contact.name || contact.phone_number
     contact.save!
 
-    contact_inbox = ContactInboxBuilder.new(
+    ContactInboxBuilder.new(
       contact: contact,
       inbox: runtime.inbox,
       source_id: source_id
