@@ -31,7 +31,13 @@ class Custom::Whatsapp::Evolution::MessageEditSyncService
 
   def update_original!(message, body)
     formatted_body = apply_inbound_formatting(body)
-    message.update!(content: "#{EDITED_PREFIX}#{formatted_body}")
+    attrs = (message.content_attributes || {}).stringify_keys
+    attrs['edited'] = true
+    attrs['edited_at'] = Time.current.utc.iso8601(3)
+    message.update!(
+      content: "#{EDITED_PREFIX}#{formatted_body}",
+      content_attributes: attrs
+    )
   end
 
   def create_edited_message(key, body, original)

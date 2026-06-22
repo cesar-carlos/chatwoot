@@ -192,7 +192,7 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
     extension = extension_for_outgoing_media(parsed, attachment_payload)
     tempfile = Tempfile.new(['evolution-outgoing-media', extension])
     tempfile.binmode
-    tempfile.write(Base64.decode64(base64))
+    tempfile.write(Custom::Whatsapp::Evolution::MediaDecoder.decode!(base64))
     tempfile.rewind
 
     filename = parsed['fileName'] || attachment_payload[:filename] || "media#{extension}"

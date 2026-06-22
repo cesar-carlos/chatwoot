@@ -893,9 +893,18 @@
         },
         "CONVERSATION_PENDING": {
           "LABEL": "Start conversations as pending",
-          "DESCRIPTION": "New or reopened conversations start in pending status instead of open."
+          "DESCRIPTION": "New or reopened conversations start in pending status instead of open. The second customer message moves the conversation to open."
         },
-        "CONVERSATION_REOPEN_HINT": "To reuse and reopen the same conversation when a contact messages again, enable \"Reuse and reopen previous conversation\" in the inbox Settings tab.",
+        "REOPEN_CONVERSATION": {
+          "LABEL": "Reopen conversation when receiving message",
+          "DESCRIPTION": "When the contact messages again, reuse and reopen the same conversation instead of creating a new one after it was resolved."
+        },
+        "CONVERSATION_PENDING_REQUIRES_REOPEN": "Enable \"Reopen conversation when receiving message\" above for pending status to apply when a resolved conversation is reopened. Without it, only brand-new conversations start as pending.",
+        "OPERATIONAL_NOTES": {
+          "TEMPLATES": "WhatsApp Business templates are sent as plain text when template mode is enabled. Native template submission is not supported.",
+          "RECONCILIATION": "Lost message sync checks the last 6 hours and up to 20 pages of Evolution history every 6 hours when enabled.",
+          "PARTIAL_ATTACHMENTS": "If one attachment in a multi-file message fails to send, earlier files may already be delivered and a private note is added."
+        },
         "SYNC_ERROR": "Settings were saved in Chatwoot but could not be synced to Evolution: {error}",
         "SEND_TEMPLATES_AS_TEXT": {
           "LABEL": "Send templates as plain text",

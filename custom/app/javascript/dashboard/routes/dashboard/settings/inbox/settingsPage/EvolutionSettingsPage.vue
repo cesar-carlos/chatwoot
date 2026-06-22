@@ -11,6 +11,7 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import TextArea from 'next/textarea/TextArea.vue';
 import SelectInput from 'dashboard/components-next/select/Select.vue';
 import EvolutionHealthPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionHealthPage.vue';
+import SingleHistoryAutomationWarning from 'dashboard/routes/dashboard/settings/inbox/components/SingleHistoryAutomationWarning.vue';
 
 const props = defineProps({
   inbox: {
@@ -59,6 +60,7 @@ function loadState() {
     rejectCall: config.reject_call === true,
     readMessages: config.read_messages === true,
     conversationPending: config.conversation_pending === true,
+    lockToSingleConversation: props.inbox.lock_to_single_conversation !== false,
     proxyEnabled: config.proxy_enabled === true,
     proxyHost: config.proxy_host || '',
     proxyPort: config.proxy_port || '',
@@ -79,6 +81,28 @@ const importStatus = ref(null);
 
 const settingsSyncError = computed(
   () => props.inbox.provider_config?.settings_sync_error || ''
+);
+
+const showPendingRequiresReopenWarning = computed(
+  () => state.conversationPending && !state.lockToSingleConversation
+);
+
+const canSaveConversationSettings = computed(
+  () => !state.conversationPending || state.lockToSingleConversation
+);
+
+watch(
+  () => props.inbox.lock_to_single_conversation,
+  value => {
+    state.lockToSingleConversation = value !== false;
+  }
+);
+
+watch(
+  () => state.lockToSingleConversation,
+  enabled => {
+    if (!enabled) state.conversationPending = false;
+  }
 );
 
 watch(
@@ -167,6 +191,7 @@ async function persistSettings({ showSuccessAlert = true } = {}) {
   await store.dispatch('inboxes/updateInbox', {
     id: props.inbox.id,
     formData: false,
+    lock_to_single_conversation: state.lockToSingleConversation,
     channel: {
       provider_config: buildProviderConfig(),
     },
@@ -186,6 +211,13 @@ async function persistSettings({ showSuccessAlert = true } = {}) {
 
 async function saveSettings() {
   if (isSaving.value) return;
+
+  if (!canSaveConversationSettings.value) {
+    useAlert(
+      t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_PENDING_REQUIRES_REOPEN')
+    );
+    return;
+  }
 
   isSaving.value = true;
   try {
@@ -334,14 +366,29 @@ function importStatusLabel(status) {
       :title="t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_SECTION')"
     >
       <SettingsToggleSection
+        v-model="state.lockToSingleConversation"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.REOPEN_CONVERSATION.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.REOPEN_CONVERSATION.DESCRIPTION')
+        "
+      />
+      <SingleHistoryAutomationWarning
+        :inbox-id="inbox.id"
+        :lock-to-single-conversation="state.lockToSingleConversation"
+      />
+      <SettingsToggleSection
         v-model="state.conversationPending"
         :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_PENDING.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_PENDING.DESCRIPTION')
         "
       />
-      <p class="text-sm text-n-slate-11">
-        {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_REOPEN_HINT') }}
+      <p v-if="showPendingRequiresReopenWarning" class="text-sm text-n-ruby-11">
+        {{
+          t(
+            'INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_PENDING_REQUIRES_REOPEN'
+          )
+        }}
       </p>
     </SettingsAccordion>
 
@@ -393,6 +440,13 @@ function importStatusLabel(status) {
           )
         "
       />
+      <p class="text-sm text-n-slate-11">
+        {{
+          t(
+            'INBOX_MGMT.EVOLUTION.SETTINGS.OPERATIONAL_NOTES.PARTIAL_ATTACHMENTS'
+          )
+        }}
+      </p>
       <SettingsToggleSection
         v-model="state.syncDeleteToWhatsapp"
         :header="
@@ -411,6 +465,9 @@ function importStatusLabel(status) {
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.DESCRIPTION')
         "
       />
+      <p class="text-sm text-n-slate-11">
+        {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.OPERATIONAL_NOTES.TEMPLATES') }}
+      </p>
       <SettingsToggleSection
         v-model="state.sendRandomDelay"
         :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_RANDOM_DELAY.LABEL')"
@@ -554,6 +611,11 @@ function importStatusLabel(status) {
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_LOST_MESSAGES.DESCRIPTION')
         "
       />
+      <p class="text-sm text-n-slate-11">
+        {{
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.OPERATIONAL_NOTES.RECONCILIATION')
+        }}
+      </p>
     </SettingsAccordion>
 
     <SettingsAccordion
