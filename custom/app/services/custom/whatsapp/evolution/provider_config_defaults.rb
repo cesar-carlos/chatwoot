@@ -37,6 +37,7 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     'import_status' => 'idle',
     'import_cursor' => {},
     'import_stats' => {},
-    'import_error' => nil
+    'import_error' => nil,
+    'webhook_token' => nil
   }.freeze
 end

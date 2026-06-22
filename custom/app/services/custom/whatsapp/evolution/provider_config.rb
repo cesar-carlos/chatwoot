@@ -28,6 +28,7 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     import_error
     import_started_at
     import_completed_at
+    webhook_token
   ].freeze
 
   # Pushed to Evolution via ConnectionService#sync_settings! / #sync_proxy!

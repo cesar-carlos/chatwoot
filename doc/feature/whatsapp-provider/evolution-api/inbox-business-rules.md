@@ -23,12 +23,12 @@ Inclui **proxy opcional no wizard** e regras de conversa essenciais — ver [bus
 | Filtros hardcoded | `@g.us`, `status@broadcast`, `fromMe` | ✅ `ignore_jids` UI |
 | `ignore_jids: ["@g.us"]` | em `provider_config` | ✅ editor textarea |
 
-**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `conversation_pending`, `ignore_jids`, proxy completo, badge `connection_status`. Reabrir conversa: **Settings → Configurações** (`lock_to_single_conversation`), não nesta aba. Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
+**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `conversation_pending`, `convert_markdown_*`, `ignore_jids`, proxy completo, badge `connection_status`. Reabrir conversa: **Settings → Configurações** (`lock_to_single_conversation`), não nesta aba. Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
 
-**Adiado Fase 2:** markdown, delay, merge BR UI, `msg_call`, `always_online`.  
+**Campos em `provider_config` sem toggle na UI** (defaults ativos no código): `send_random_delay`, `ignore_survey_links`, `merge_brazil_contacts`, `read_status`, `sync_full_history`, `always_online`, `msg_call`, `mark_read_on_reply`, `sync_delete_to_whatsapp`, `notify_send_errors_private`.
+
 **Fase 3 (implementada):** reconnect QR (modal), logout/restart, alerta desconexão, `merge_brazil_contacts` no normalizer.  
-**Adiado Fase 3:** `read_status`, `sync_full_history` (settings UI).  
-**Fase 4 (parcial):** import via `ImportService` + job; UI em `EvolutionSettingsPage`.
+**Fase 4 (parcial):** import via `ImportService` + job; UI import em `EvolutionSettingsPage`; auto-enqueue ao conectar se `import_contacts`/`import_messages` habilitados.
 
 ---
 

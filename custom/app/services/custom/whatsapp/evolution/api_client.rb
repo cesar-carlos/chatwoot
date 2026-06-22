@@ -89,6 +89,10 @@ class Custom::Whatsapp::Evolution::ApiClient
          })
   end
 
+  def find_chatwoot_integration
+    get("/chatwoot/find/#{@instance_name}")
+  end
+
   def send_text(number:, text:, quoted: nil, delay: nil)
     body = { number: normalize_number(number), text: text }
     body[:quoted] = quoted if quoted.present?
