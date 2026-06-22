@@ -34,7 +34,7 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     config = whatsapp_channel.provider_config || {}
     return false if config['base_url'].blank? || config['instance_name'].blank? || config['api_key'].blank?
 
-    api_client.connection_state.success?
+    connection_open?(api_client.connection_state)
   rescue StandardError
     false
   end
@@ -107,7 +107,6 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
 
   def deliver_attachment_batch(phone_number, message)
     message_id = nil
-    any_failed = false
 
     message.attachments.each_with_index do |attachment, index|
       response = dispatch_attachment(
@@ -117,26 +116,28 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
         message: message,
         include_caption: index.zero?
       )
-      message_id, failed = attachment_batch_result(response, message, index)
-      any_failed ||= failed
+      message_id = process_attachment_response(response, message, index, message_id)
+      return message_id if message_id == :failed
     end
 
-    mark_attachment_batch_failed!(message) if any_failed && message_id.present?
-
-    message_id
+    message_id == :failed ? nil : message_id
   end
 
-  def attachment_batch_result(response, message, index)
+  def process_attachment_response(response, message, index, message_id)
     if index.zero?
-      [process_response(response, message), !response.success?]
-    elsif !response.success?
-      Rails.logger.warn(
-        "[EVOLUTION] secondary attachment send failed for message #{message.id}: HTTP #{response.code}"
-      )
-      [nil, true]
-    else
-      [nil, false]
+      first_id = process_response(response, message)
+      return :failed if first_id.blank?
+
+      return first_id
     end
+
+    return message_id if response.success?
+
+    Rails.logger.warn(
+      "[EVOLUTION] secondary attachment send failed for message #{message.id}: HTTP #{response.code}"
+    )
+    mark_attachment_batch_failed!(message)
+    :failed
   end
 
   def mark_attachment_batch_failed!(message)
@@ -186,5 +187,12 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
 
   def normalize_phone(phone)
     phone.to_s.gsub(/\D/, '')
+  end
+
+  def connection_open?(response)
+    return false unless response.success?
+
+    state = response.parsed_response.dig('instance', 'state') || response.parsed_response['state']
+    state.to_s == 'open'
   end
 end

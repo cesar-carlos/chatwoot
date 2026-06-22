@@ -410,7 +410,7 @@ POST /message/sendWhatsAppAudio/:instanceName
 }
 ```
 
-Inbound mídia (webhook `webhookBase64: false`): Chatwoot chama `POST /chat/getBase64FromMediaMessage/:instanceName` com `{ "message": { "key", "message", "messageTimestamp" } }` — ver `IncomingMessageServiceHelpers` prepend em `custom/`.
+Inbound mídia (webhook `webhookBase64: false`): Chatwoot chama `POST /chat/getBase64FromMediaMessage/:instanceName` — ver `IncomingMessageServiceHelpers` prepend em `custom/`. O normalizer inclui `evolution_remote_jid` no payload para delete sync e contatos LID.
 
 ---
 
@@ -482,10 +482,10 @@ No fork: `sync_templates` → noop; `send_template` → texto livre ou erro docu
 
 ```ruby
 # custom/app/services/custom/whatsapp/evolution/api_client.rb
-# - base_url, api_key do channel
-# - headers: { 'apikey' => api_key, 'Content-Type' => 'application/json' }
-# - métodos: create_instance, connect, connection_state, set_webhook, set_settings,
-#             set_proxy, send_text, send_media
+# ApiClient.for_channel(channel) — base_url, api_key, instance_name do provider_config
+# headers: { 'apikey' => api_key, 'Content-Type' => 'application/json' }
+# métodos: create_instance, connect, connection_state, apply_webhook, apply_settings,
+#          apply_proxy, disable_chatwoot_integration, send_text, send_media, send_audio, …
 ```
 
-Centralizar em um único client — `EvolutionService` e `ConnectionService` delegam para ele.
+`ConnectionService`, `Provisioner` e `EvolutionService` delegam para o mesmo client.

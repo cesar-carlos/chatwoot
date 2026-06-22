@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength -- outbound transforms share provider_config/api_client context
 module Custom::Whatsapp::Providers::EvolutionServiceOutbound
   private
 
@@ -19,18 +20,31 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     reply_id = message.content_attributes[:in_reply_to_external_id]
     return nil if reply_id.blank?
 
+    original = message.conversation.messages.find_by(source_id: reply_id)
     {
       key: {
         id: reply_id,
-        remoteJid: "#{normalize_phone(phone_number)}@s.whatsapp.net",
-        fromMe: false
+        remoteJid: quoted_remote_jid(phone_number, original),
+        fromMe: quoted_from_me?(original)
       },
-      message: { conversation: reply_snippet(message, reply_id) }
+      message: { conversation: reply_snippet(original, reply_id) }
     }
   end
 
-  def reply_snippet(message, reply_id)
-    original = message.conversation.messages.find_by(source_id: reply_id)
+  def quoted_from_me?(original)
+    return false if original.blank?
+
+    !original.incoming?
+  end
+
+  def quoted_remote_jid(phone_number, original)
+    jid = original&.content_attributes&.dig('evolution_remote_jid').presence
+    return jid if jid.present?
+
+    "#{normalize_phone(phone_number)}@s.whatsapp.net"
+  end
+
+  def reply_snippet(original, _reply_id)
     original&.content&.truncate(100).to_s
   end
 
@@ -45,7 +59,7 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
         {
           id: target.source_id,
           fromMe: false,
-          remoteJid: "#{normalize_phone(phone_number)}@s.whatsapp.net"
+          remoteJid: read_target_remote_jid(phone_number, target)
         }
       ]
     )
@@ -59,6 +73,13 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     return scope.find_by(source_id: reply_id) if reply_id.present?
 
     scope.where.not(source_id: [nil, '']).order(created_at: :desc).first
+  end
+
+  def read_target_remote_jid(phone_number, target)
+    jid = target&.content_attributes&.dig('evolution_remote_jid').presence
+    return jid if jid.present?
+
+    "#{normalize_phone(phone_number)}@s.whatsapp.net"
   end
 
   def create_send_error_private_note!(message, response)
@@ -119,10 +140,7 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
   end
 
   def api_client
-    @api_client ||= Custom::Whatsapp::Evolution::ApiClient.new(
-      base_url: provider_config['base_url'],
-      api_key: provider_config['api_key'],
-      instance_name: provider_config['instance_name']
-    )
+    @api_client ||= Custom::Whatsapp::Evolution::ApiClient.for_channel(whatsapp_channel)
   end
 end
+# rubocop:enable Metrics/ModuleLength

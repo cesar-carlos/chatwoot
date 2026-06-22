@@ -17,11 +17,13 @@ Grupos de campos:
 | Grupo | Campos | Sync Evolution |
 |-------|--------|----------------|
 | Conexão | `base_url`, `api_key`, `instance_name`, `instance_id`, `connection_status` | create/connect |
+
+**Runtime keys** (`ProviderConfig::RUNTIME_KEYS`): `connection_status`, `last_qr_*`, `last_sender`, `import_*` — escritas via `update_columns` em webhooks/polling; **não** disparam `sync_settings`/`sync_proxy` nem `validate_provider_config` remoto. Validação de credenciais exige `connectionState` → `open` ([decisions.md §22](./decisions.md)).
 | WhatsApp settings | `groups_ignore`, `reject_call`, `msg_call`, `always_online`, `read_messages`, `read_status`, `sync_full_history` | `POST /settings/set` |
 | Proxy | `proxy_enabled`, `proxy_host`, `proxy_port`, `proxy_protocol`, `proxy_username`, `proxy_password` | `POST /proxy/set` |
 | Conversas | `conversation_pending`, `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork |
 | Outbound | `sign_msg`, `sign_delimiter`, `mark_read_on_reply`, `sync_delete_to_whatsapp`, `convert_markdown_outbound`, `send_templates_as_text` | Chatwoot fork |
-| Filtros inbound | `ignore_jids`, `ignore_status_broadcast`, `ignore_from_me_echo`, `ignore_survey_links`, `ignore_private_notes` | Normalizer |
+| Filtros inbound | `ignore_jids`, `ignore_status_broadcast`, `ignore_from_me_echo`, `ignore_survey_links` | Normalizer |
 | Import | `import_contacts`, `import_messages`, `days_limit_import_messages` | Fase 4 |
 | Webhook | (auto) URL + events | `POST /webhook/set` |
 
@@ -57,7 +59,7 @@ Modalidades na criação:
 
 | Campo `provider_config` | Campo Evolution | Default |
 |-------------------------|-----------------|---------|
-| `groups_ignore` | `groupsIgnore` | `false` |
+| `groups_ignore` | `groupsIgnore` | `true` |
 | `reject_call` | `rejectCall` | `false` |
 | `msg_call` | `msgCall` | `""` |
 | `always_online` | `alwaysOnline` | `false` |

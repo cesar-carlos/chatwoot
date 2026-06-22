@@ -7,6 +7,8 @@ module Custom::Webhooks::WhatsappEventsJob
     params = params.with_indifferent_access
     return super(params) unless evolution_envelope?(params)
 
+    params = params.merge(event: Custom::Whatsapp::Evolution::EventNames.normalize(params[:event]))
+
     channel = find_evolution_channel(params)
     unless channel
       Rails.logger.warn("[EVOLUTION] unknown instance=#{params[:instance]}")
@@ -21,8 +23,14 @@ module Custom::Webhooks::WhatsappEventsJob
     case params[:event]
     when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
       process_evolution_message_events(channel, params)
+    when 'CONTACTS_UPSERT', 'CONTACTS_UPDATE'
+      Custom::Whatsapp::Evolution::ContactsSyncService.new(channel: channel, data: params[:data]).perform
     when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
       Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
+    else
+      Rails.logger.warn(
+        "[EVOLUTION] unhandled event=#{params[:event]} instance=#{params[:instance]}"
+      )
     end
   end
 
@@ -49,7 +57,10 @@ module Custom::Webhooks::WhatsappEventsJob
         channel: channel,
         envelope: params.merge(data: data_item)
       ).perform
-      next if normalized.blank?
+      if normalized.blank?
+        log_normalizer_skipped(params[:event], data_item)
+        next
+      end
 
       flat_params = normalized.merge(phone_number: channel.phone_number)
       sender_id = evolution_contact_sender_id(flat_params)
@@ -73,6 +84,15 @@ module Custom::Webhooks::WhatsappEventsJob
   def evolution_contact_sender_id(params)
     params.dig(:messages, 0, :from) ||
       params.dig(:statuses, 0, :recipient_id)
+  end
+
+  def log_normalizer_skipped(event, data_item)
+    key = data_item.is_a?(Hash) ? (data_item['key'] || data_item[:key] || {}) : {}
+    Rails.logger.warn(
+      "[EVOLUTION] normalizer skipped event=#{event} " \
+      "id=#{key['id'] || key[:id]} fromMe=#{key['fromMe'] || key[:fromMe]} " \
+      "remoteJid=#{key['remoteJid'] || key[:remoteJid]}"
+    )
   end
 end
 

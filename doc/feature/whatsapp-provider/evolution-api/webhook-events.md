@@ -25,10 +25,25 @@ Evolution POST no `url` configurado em `/webhook/set`:
 
 | Campo | Uso no Chatwoot |
 |-------|-----------------|
-| `event` | Roteamento no prepend `WhatsappEventsJob` |
+| `event` | Roteamento no prepend `WhatsappEventsJob` — ver **Formato do nome do evento** abaixo |
 | `instance` | Validar `provider_config.instance_name` |
 | `data` | Payload a normalizar |
 | `apikey` | Auth opcional (validar contra `provider_config.api_key`) |
+
+### Formato do nome do evento
+
+Evolution API **v2.3+ em runtime** envia eventos em **minúsculas com ponto** (`messages.upsert`, `connection.update`). Fixtures de spike e OpenAPI usam **SCREAMING_SNAKE** (`MESSAGES_UPSERT`).
+
+O fork normaliza em `Custom::Whatsapp::Evolution::EventNames` (controller + `WhatsappEventsJob`) antes do roteamento:
+
+| Payload Evolution (live) | Após normalização |
+|------------------------|-------------------|
+| `messages.upsert` | `MESSAGES_UPSERT` |
+| `messages.update` | `MESSAGES_UPDATE` |
+| `connection.update` | `CONNECTION_UPDATE` |
+| `qrcode.updated` | `QRCODE_UPDATED` |
+
+Sem essa normalização, jobs executam em ~5–30ms sem criar mensagens (case não casa, sem erro visível).
 
 ### `webhookByEvents: true`
 
@@ -103,7 +118,7 @@ Payload único — referência `whatsapp.baileys.service.ts` ~1353:
 | Caso | `remoteJid` | Phone para Chatwoot |
 |------|-------------|---------------------|
 | Contato normal | `5511...@s.whatsapp.net` | Dígitos antes de `@` |
-| LID | `xxx@lid` + `remoteJidAlt` | Usar `remoteJidAlt` se `addressingMode === 'lid'` |
+| LID | `xxx@lid` + `remoteJidAlt` | Usar `remoteJidAlt` se JID termina `@lid` **ou** `addressingMode === 'lid'` |
 | Grupo | `120363...@g.us` | Ver `ignore_jids` / `groups_ignore` |
 | Status | `status@broadcast` | **Ignorar** |
 | Echo `fromMe: true` | — | Ignorar ou tratar para evitar duplicação com outbound |
@@ -257,7 +272,7 @@ Evolution **não** assina com HMAC Meta. Opções:
 | Header / body | Validar `apikey` do envelope contra `provider_config.api_key` (**primário**) |
 | IP allowlist | Fora do escopo MVP |
 
-`Custom::Webhooks::EvolutionController` — rota dedicada; **não** reutilizar `Webhooks::WhatsappController` (formato Meta). Ver [decisions.md](./decisions.md) §1–2 e [spec-design.md §5](./spec-design.md).
+`Webhooks::EvolutionController` (`custom/app/controllers/webhooks/evolution_controller.rb`) — rota dedicada; **não** reutilizar `Webhooks::WhatsappController` (formato Meta). Normaliza `event` via `EventNames` antes do enqueue. Ver [decisions.md](./decisions.md) §1–2 e [spec-design.md §5](./spec-design.md).
 
 ---
 
@@ -279,19 +294,27 @@ Ver [decisions.md §14](./decisions.md) · [troubleshooting.md](./troubleshootin
 ```ruby
 # custom/app/jobs/custom/webhooks/whatsapp_events_job.rb
 def perform(params = {})
-  channel = find_channel(params)
-  return super(params) unless channel&.provider == 'evolution'
+  params = params.with_indifferent_access
+  return super(params) unless evolution_envelope?(params)
 
-  case params['event']
+  params = params.merge(event: Custom::Whatsapp::Evolution::EventNames.normalize(params[:event]))
+
+  channel = find_evolution_channel(params)
+  return unless channel
+
+  case params[:event]
   when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
-    Array.wrap(params['data']).each do |data_item|
+    Array.wrap(params[:data]).each do |data_item|
       normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer
-        .new(channel, params.merge('data' => data_item)).perform
-      super(normalized.merge(phone_number: channel.phone_number)) if normalized
+        .new(channel: channel, envelope: params.merge(data: data_item)).perform
+      if normalized.blank?
+        log_normalizer_skipped(params[:event], data_item) # [EVOLUTION] normalizer skipped …
+        next
+      end
+      process_events(channel, normalized.merge(phone_number: channel.phone_number))
     end
   when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel).handle_event(params)
-  else
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
   end
 end
 ```

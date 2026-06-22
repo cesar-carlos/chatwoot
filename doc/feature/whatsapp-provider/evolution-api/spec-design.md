@@ -14,15 +14,17 @@ flowchart LR
   JOB[WhatsappEventsJob prepend]
   NORM[EvolutionNormalizer]
   CONN[ConnectionService]
-  PROV[EvolutionService]
+  PROV[Provisioner]
+  EVT[ConnectionEvents]
+  EVOSVC[EvolutionService]
   API[ApiClient]
   IMS[IncomingMessageService]
 
   CTRL --> JOB
   JOB --> NORM --> IMS
-  JOB --> CONN
-  PROV --> API
-  CONN --> API
+  JOB --> CONN --> EVT
+  CONN --> PROV --> API
+  EVOSVC --> API
 ```
 
 ---
@@ -36,6 +38,10 @@ Cliente HTTP fino — sem regras de negócio Chatwoot.
 ### Inicialização
 
 ```ruby
+# Preferido — lê credenciais do channel
+Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
+
+# Ou explícito
 Custom::Whatsapp::Evolution::ApiClient.new(
   base_url: channel.provider_config['base_url'],
   api_key: channel.provider_config['api_key'],
@@ -50,20 +56,21 @@ Custom::Whatsapp::Evolution::ApiClient.new(
 | `#create_instance(body)` | `POST /instance/create` | `Hash` parsed |
 | `#connect(number: nil)` | `GET /instance/connect/:instance` | `Hash` (qrcode) |
 | `#connection_state` | `GET /instance/connectionState/:instance` | `Hash` |
-| `#logout` | `DELETE /instance/logout/:instance` | `Hash` |
-| `#restart` | `POST /instance/restart/:instance` | `Hash` |
+| `#logout_instance` | `DELETE /instance/logout/:instance` | `Hash` |
+| `#restart_instance` | `POST /instance/restart/:instance` | `Hash` |
 | `#delete_instance` | `DELETE /instance/delete/:instance` | `Hash` |
-| `#set_webhook(url, events:)` | `POST /webhook/set/:instance` | `Hash` |
-| `#set_settings(settings)` | `POST /settings/set/:instance` | `Hash` |
-| `#set_proxy(proxy)` | `POST /proxy/set/:instance` | `Hash` — mapear `provider_config` → `host`/`port` (não `proxyHost` no set) |
+| `#apply_webhook(url, events:)` | `POST /webhook/set/:instance` | `Hash` |
+| `#apply_settings(settings)` | `POST /settings/set/:instance` | `Hash` |
+| `#apply_proxy(proxy)` | `POST /proxy/set/:instance` | `Hash` |
+| `#disable_chatwoot_integration` | `POST /chatwoot/set/:instance` | `Hash` — `enabled: false` |
 | `#send_text(number:, text:, quoted: nil, delay: nil)` | `POST /message/sendText/:instance` | `Hash` messageRaw |
 | `#send_media(number:, mediatype:, media:, caption: nil)` | `POST /message/sendMedia/:instance` | `Hash` |
 | `#send_buttons(number:, title:, buttons:)` | `POST /message/sendButtons/:instance` | `Hash` |
 | `#send_list(number:, title:, button_text:, sections:)` | `POST /message/sendList/:instance` | `Hash` |
-| `#mark_message_read(ids)` | `POST /chat/markMessageAsRead/:instance` | `Hash` |
-| `#find_contacts` | `POST /chat/findContacts/:instance` | `Array` |
-| `#find_messages(remote_jid:, page: 1)` | `POST /chat/findMessages/:instance` | `Array` |
-| `#get_base64_from_media(message_key)` | `POST /chat/getBase64FromMediaMessage/:instance` | `Hash` |
+| `#mark_message_as_read(read_messages:)` | `POST /chat/markMessageAsRead/:instance` | `Hash` |
+| `#find_contacts(page:, offset:, where:)` | `POST /chat/findContacts/:instance` | `Array` |
+| `#find_messages(page:, offset:, where:)` | `POST /chat/findMessages/:instance` | `Array` |
+| `#get_base64_from_media_message(message:)` | `POST /chat/getBase64FromMediaMessage/:instance` | `Hash` |
 
 ### `#send_text` — fallback doc vs código
 
@@ -106,74 +113,103 @@ Erros: logar body; levantar `Custom::Whatsapp::Evolution::ApiError` com `status`
 
 **Arquivo:** `custom/app/services/custom/whatsapp/evolution/connection_service.rb`
 
-Orquestra lifecycle da instância Evolution e eventos não-mensagem.
+Facade de lifecycle da instância: QR, reconnect/logout/restart, polling de status. Delega provisionamento para `Provisioner` e webhooks de conexão para `ConnectionEvents`.
 
 ### Inicialização
 
 ```ruby
-ConnectionService.new(channel) # Channel::Whatsapp, provider: 'evolution'
+ConnectionService.new(channel: channel) # Channel::Whatsapp, provider: 'evolution'
 ```
 
 ### API pública
 
 | Método | Fase | Descrição |
 |--------|------|-----------|
-| `#provision_new_instance!(attrs)` | 1 | create + **proxy** + set_webhook + settings defaults fork |
-| `#link_existing_instance!(instance_name, api_key)` | 1 | Valida `connection_state`; não cria instância |
-| `#register_webhook!` | 1 | `POST /webhook/set` com URL [decisions.md](./decisions.md) |
-| `#sync_settings!` | 2 | `provider_config` → `POST /settings/set` |
-| `#sync_proxy!` | 2 | `provider_config` proxy_* → `POST /proxy/set` (`host`/`port`); tratar 400 Invalid proxy |
-| `#fetch_qr_code` | 1 | `GET /instance/connect` → `{ base64:, code: }` |
-| `#refresh_connection_status!` | 1 | Poll ou após webhook |
-| `#handle_event(envelope)` | 1 | `CONNECTION_UPDATE`, `QRCODE_UPDATED` |
-| `#ensure_chatwoot_integration_disabled!` | 1 | Garante que integração legada CW está off |
-| `#extract_phone_number(envelope)` | 1 | De `sender` ou state pós-open |
+| `#provision_new_instance!` | 1 | Delega → `Provisioner#provision_new_instance!` |
+| `#provision_post_create!(parsed)` | 1 | Pós-create: webhook, settings, QR |
+| `#register_webhook!` | 1 | Delega → `Provisioner#register_webhook!` |
+| `#sync_settings!` | 2 | Delega → `Provisioner#sync_settings!` |
+| `#sync_proxy!` | 2 | Delega → `Provisioner#sync_proxy!` |
+| `#ensure_chatwoot_integration_disabled!` | 1 | Delega → `Provisioner#ensure_chatwoot_integration_disabled!` |
+| `#teardown!` | 1 | `DELETE /instance/delete` na Evolution |
+| `#fetch_qr_code` | 1 | `GET /instance/connect` → persiste QR via `ConnectionEvents#qrcode_storage_attrs` |
+| `#reconnect!` / `#logout!` / `#restart!` | 3 | Operações de sessão |
+| `#refresh_connection_status!` | 1 | Poll `connectionState` |
+| `#connection_payload` | 3 | Snapshot para API dashboard (status + QR) |
+| `#handle_event(envelope)` | 1 | Delega → `ConnectionEvents#handle_event` |
+
+Runtime updates (`connection_status`, QR, `last_sender`) usam `update_columns` — não disparam `validate_provider_config` remoto nem `sync_settings`/`sync_proxy`.
+
+---
+
+## 2b. `Custom::Whatsapp::Evolution::Provisioner`
+
+**Arquivo:** `custom/app/services/custom/whatsapp/evolution/provisioner.rb`
+
+Create remoto, webhook, settings, proxy e desabilitar integração legada Chatwoot na Evolution.
 
 ### `#provision_new_instance!` — sequência
 
 ```
-1. ApiClient#create_instance(integration: WHATSAPP-BAILEYS, qrcode: true, settings from attrs)
-2. Persistir api_key (hash), instance_id, instance_name em provider_config
-3. #register_webhook!
-4. #sync_settings! (groups_ignore, etc.)
-5. #ensure_chatwoot_integration_disabled!
-6. Retornar qrcode para o wizard
+1. ApiClient#create_instance (WHATSAPP-BAILEYS, qrcode: true, settings from provider_config)
+2. provision_post_create!(parsed):
+   a. Persistir api_key (hash), instance_id, connection_status
+   b. register_webhook!
+   c. sync_settings!
+   d. sync_proxy! (se proxy_enabled)
+   e. ensure_chatwoot_integration_disabled!
+   f. ConnectionService#fetch_qr_code
+3. Em falha após create: delete_remote_instance!
 ```
+
+---
+
+## 2c. `Custom::Whatsapp::Evolution::ConnectionEvents`
+
+**Arquivo:** `custom/app/services/custom/whatsapp/evolution/connection_events.rb`
+
+Handlers de `CONNECTION_UPDATE` e `QRCODE_UPDATED`.
 
 ### `#handle_event`
 
 ```ruby
 def handle_event(envelope)
-  case envelope['event']
+  case envelope[:event]
   when 'CONNECTION_UPDATE'
-    update_connection_status(envelope.dig('data', 'state'))
-    broadcast_connection_event(connection_status: envelope.dig('data', 'state'))
+    connection_service.update_connection_status(envelope.dig(:data, :state))
+    connection_service.extract_phone_number(envelope)
+    broadcast_connection_event(...)
+    notify_disconnection! # state == 'close' → Broadcaster
   when 'QRCODE_UPDATED'
-    attrs = qrcode_storage_attrs(envelope.dig('data'))
-    broadcast_connection_event(qrcode_base64: attrs['last_qr_base64'], qrcode_code: attrs['last_qr_code'])
+    attrs = qrcode_storage_attrs(envelope[:data])
+    connection_service.update_provider_config!(attrs)
+    broadcast_connection_event(qrcode_base64:, qrcode_code:)
   end
 end
 ```
 
-**ActionCable** ([decisions.md §17](./decisions.md)):
+**ActionCable** ([decisions.md §17](./decisions.md)): canal `evolution:connection:{inbox_id}`.
 
-```ruby
-# broadcast_connection_event(payload)
-ActionCable.server.broadcast(
-  "evolution:connection:#{channel.inbox_id}",
-  payload.merge(inbox_id: channel.inbox_id)
-)
-```
-
-Fallback wizard: polling `GET /instance/connect` a cada 3s até `connection_status == 'open'`.
-
-### `provider_config` keys escritas
+### `provider_config` keys escritas (runtime)
 
 | Key | Quando |
 |-----|--------|
 | `connection_status` | `open` / `close` / `connecting` |
 | `phone_number` | Primeiro `open` com `sender` válido (`+5511...`) |
-| `last_qr_base64` | `QRCODE_UPDATED` (opcional, cache UI) |
+| `last_qr_base64` / `last_qr_code` | `QRCODE_UPDATED` ou `fetch_qr_code` |
+| `last_sender` | Envelope `sender` em `CONNECTION_UPDATE` |
+
+---
+
+## 2d. `Custom::Whatsapp::Evolution::EventNames`
+
+**Arquivo:** `custom/app/services/custom/whatsapp/evolution/event_names.rb`
+
+```ruby
+Custom::Whatsapp::Evolution::EventNames.normalize('messages.upsert') # => 'MESSAGES_UPSERT'
+```
+
+Chamado em `EvolutionController#sanitized_job_payload` e no prepend `WhatsappEventsJob` antes do `case` de roteamento.
 
 ---
 
@@ -190,7 +226,7 @@ Herda `Whatsapp::Providers::BaseService`. Registrado via `MessagingProvider::Reg
 | `#send_message(phone_number, message)` | Roteia por attachments / input_select / texto |
 | `#send_template(phone_number, template_info, message)` | Se `send_templates_as_text` → texto; senão no-op / erro |
 | `#sync_templates` | No-op — mark updated |
-| `#validate_provider_config?` | `GET connectionState` success |
+| `#validate_provider_config?` | `connectionState` → `state == 'open'` (não só HTTP 2xx) |
 | `#media_url(media_id)` | N/A ou URL Evolution se Fase 2 |
 | `#api_headers` | Não usado (ApiClient encapsula) |
 
@@ -217,7 +253,7 @@ end
 | `sign_msg` | Prefixar `*Nome Agente:*\n` (delimiter de `sign_delimiter`) |
 | `convert_markdown_outbound` | `**bold**` → `*bold*` (WhatsApp) |
 | `mark_read_on_reply` | Após send, `mark_message_read` da msg citada |
-| `send_delay_random` | `delay: rand(500..2000)` |
+| `send_random_delay` | `delay: rand(500..2000)` |
 
 ### `#process_response` — override
 
@@ -259,7 +295,7 @@ Transforma envelope Evolution → payload flat 360dialog-like para `IncomingMess
 ### Inicialização
 
 ```ruby
-EvolutionNormalizer.new(channel, envelope).perform
+EvolutionNormalizer.new(channel: channel, envelope: envelope).perform
 # envelope: Hash com keys 'event', 'instance', 'data', 'apikey', ...
 ```
 
@@ -300,11 +336,15 @@ Ordem fixa — ver [webhook-events.md](./webhook-events.md). Ler flags de `chann
 
 ```ruby
 def resolve_wa_id(key)
-  if key['addressingMode'] == 'lid' && key['remoteJidAlt'].present?
-    jid_to_phone(key['remoteJidAlt'])
-  else
-    jid_to_phone(key['remoteJid'])
-  end
+  key ||= {}
+  remote_jid = key['remoteJid'].to_s
+  jid = if key['remoteJidAlt'].present? &&
+           (remote_jid.end_with?('@lid') || key['addressingMode'] == 'lid')
+          key['remoteJidAlt']
+        else
+          key['remoteJid']
+        end
+  jid_to_phone(jid)
 end
 
 def jid_to_phone(jid)
@@ -352,17 +392,21 @@ message_hash[:context] = { id: context_info['stanzaId'] }
 
 ---
 
-## 5. `Custom::Webhooks::EvolutionController`
+## 5. `Webhooks::EvolutionController`
 
-**Arquivo:** `custom/app/controllers/custom/webhooks/evolution_controller.rb`
+**Arquivo:** `custom/app/controllers/webhooks/evolution_controller.rb`
 
 ```ruby
-class Custom::Webhooks::EvolutionController < ActionController::API
+class Webhooks::EvolutionController < ActionController::API
   def process_payload
     authenticate_webhook! # decisions.md §2
-    Webhooks::WhatsappEventsJob.perform_later(permitted_params.merge(instance_name: params[:instance_name]))
+    Webhooks::WhatsappEventsJob.perform_later(
+      sanitized_job_payload.merge(instance_name: params[:instance_name])
+    )
     head :ok
   end
+
+  # sanitized_job_payload: remove apikey; EventNames.normalize(event)
 end
 ```
 
@@ -374,23 +418,13 @@ end
 
 **Arquivo:** `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb`
 
-Ver pseudocódigo em [decisions.md §12](./decisions.md#12-mutex-no-job-album--concorrência).
+Ver pseudocódigo em [decisions.md §12](./decisions.md#12-mutex-no-job-album--concorrência) e [webhook-events.md](./webhook-events.md).
 
 Adicionalmente:
 
-```ruby
-def evolution_envelope?(params)
-  params['event'].present? && params['instance'].present?
-end
-
-def find_evolution_channel(params)
-  Channel::Whatsapp.find_by(
-    provider: 'evolution',
-    provider_config: { instance_name: params['instance'] }
-  )
-  # ou query JSONB: provider_config->>'instance_name'
-end
-```
+- `EventNames.normalize` no início do `perform`
+- `log_normalizer_skipped` quando normalizer retorna `nil` (filtros inbound, tipo não suportado)
+- Mutex Redis por `sender_id` em mensagens Evolution (`EVOLUTION_MESSAGE_LOCK_TTL`)
 
 ---
 

@@ -91,13 +91,16 @@ Operações disponíveis no dashboard (**Settings → WhatsApp → Evolution** t
 
 | Check | Comando / local |
 |-------|-----------------|
-| Webhook registrado | `GET {base_url}/webhook/find/{instance_name}` |
+| Webhook registrado | `GET {base_url}/webhook/find/{instance_name}` — **`null` = nunca provisionado**; recriar inbox ou `ConnectionService#register_webhook!` |
 | URL correta | Deve ser `https://{FRONTEND_URL}/webhooks/evolution/{instance_name}` |
 | `FRONTEND_URL` | Mesma variável usada por Telegram/SMS (`app/models/inbox.rb`) — deve ser URL **pública** |
 | Auth | Body contém `apikey` — deve bater com `provider_config.api_key` |
+| Formato `event` | Live v2.3 envia `messages.upsert` (ponto, minúsculas) — fork normaliza via `EventNames` ([webhook-events.md](./webhook-events.md)) |
+| Integração legada | `GET /chatwoot/find/{instance}` com `enabled: true` desvia tráfego para inbox API antiga — desabilitar |
+| Instância pré-provider | Inboxes criados antes do fork ou migrados da integração legada podem ter `GET /webhook/find/{instance}` → `null` — usar **Reconnect** no health ou `ConnectionService#register_webhook!` |
 | Eventos | MVP: `MESSAGES_UPSERT`, `CONNECTION_UPDATE`, `QRCODE_UPDATED` |
-| Logs Sidekiq | `WhatsappEventsJob` / prepend — job falhou silenciosamente? |
-| Filtros | Grupo (`@g.us`), `fromMe: true`, `status@broadcast` ignorados por design no MVP |
+| Logs Sidekiq | Job ~5–30ms sem `IncomingMessageService` → evento não casou, normalizer retornou `nil`, ou filtro inbound; buscar `[EVOLUTION] normalizer skipped` |
+| Filtros | Grupo (`@g.us`), `fromMe: true` (eco do celular), `status@broadcast` ignorados por default |
 
 ### HTTP 401 no webhook
 
@@ -159,8 +162,8 @@ Esperado no modo Baileys — `send_templates_as_text` converte para texto livre.
 
 ### Contato sem telefone / conversa errada
 
-- WhatsApp LID: usar `remoteJidAlt` quando `addressingMode: lid`
-- Capturar webhook real e ajustar normalizer — [webhook-events.md](./webhook-events.md)
+- WhatsApp LID: usar `remoteJidAlt` quando o JID termina `@lid` **ou** `addressingMode: lid` (Evolution nem sempre envia `addressingMode`)
+- Log `[EVOLUTION] normalizer skipped … remoteJid=…@lid` sem `remoteJidAlt` → capturar envelope bruto e ajustar normalizer — [webhook-events.md](./webhook-events.md)
 
 ### `phone_number` UNIQUE violation
 
@@ -183,7 +186,7 @@ Um número = um `Channel::Whatsapp`. Segundo inbox com mesmo número falha na va
 | Onde | O quê |
 |------|-------|
 | Evolution API | `WebhookController` — retry com backoff em falha HTTP |
-| Chatwoot Rails | `EvolutionController`, `WhatsappEventsJob` prepend |
+| Chatwoot Rails | `EvolutionController`, `WhatsappEventsJob` prepend — inclui `[EVOLUTION] normalizer skipped` e `unhandled event=` |
 | Sidekiq | Dead jobs em webhook auth / normalizer |
 | Redis | Lock dedup `source_id` em incoming |
 

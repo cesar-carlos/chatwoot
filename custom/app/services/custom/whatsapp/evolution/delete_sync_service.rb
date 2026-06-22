@@ -38,16 +38,18 @@ class Custom::Whatsapp::Evolution::DeleteSyncService
   end
 
   def remote_jid
-    phone = message.conversation.contact_inbox.source_id.to_s.gsub(/\D/, '')
+    attrs = message.content_attributes || {}
+    jid = attrs['evolution_remote_jid'].presence || attrs[:evolution_remote_jid].presence
+    return jid if jid.present?
+
+    source_id = message.conversation.contact_inbox.source_id.to_s
+    return source_id if source_id.include?('@')
+
+    phone = source_id.gsub(/\D/, '')
     "#{phone}@s.whatsapp.net"
   end
 
   def api_client
-    config = channel.provider_config || {}
-    Custom::Whatsapp::Evolution::ApiClient.new(
-      base_url: config['base_url'],
-      api_key: config['api_key'],
-      instance_name: config['instance_name']
-    )
+    Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
   end
 end

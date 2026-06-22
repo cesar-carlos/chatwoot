@@ -21,6 +21,7 @@ RSpec.describe Webhooks::WhatsappEventsJob do
   end
   let(:process_service) { instance_double(Whatsapp::IncomingMessageService, perform: nil) }
   let(:connection_service) { instance_double(Custom::Whatsapp::Evolution::ConnectionService, handle_event: nil) }
+  let(:contacts_sync_service) { instance_double(Custom::Whatsapp::Evolution::ContactsSyncService, perform: nil) }
 
   def load_fixture(name)
     JSON.parse(Rails.root.join("spec/fixtures/evolution/#{name}.json").read)
@@ -30,6 +31,7 @@ RSpec.describe Webhooks::WhatsappEventsJob do
     channel
     allow(Whatsapp::IncomingMessageService).to receive(:new).and_return(process_service)
     allow(Custom::Whatsapp::Evolution::ConnectionService).to receive(:new).and_return(connection_service)
+    allow(Custom::Whatsapp::Evolution::ContactsSyncService).to receive(:new).and_return(contacts_sync_service)
     allow(described_class).to receive(:new).and_wrap_original do |original, *args|
       instance = original.call(*args)
       allow(instance).to receive(:with_lock).and_yield
@@ -60,6 +62,43 @@ RSpec.describe Webhooks::WhatsappEventsJob do
       )
     end
 
+    it 'routes MESSAGES_UPDATE status through IncomingMessageService' do
+      envelope = load_fixture('messages_update_read')
+
+      job.perform_now(envelope)
+
+      expect(Whatsapp::IncomingMessageService).to have_received(:new).with(
+        inbox: channel.inbox,
+        params: hash_including(
+          statuses: [hash_including(id: '3EB0OUTBOUND987654', status: 'read')],
+          phone_number: channel.phone_number
+        )
+      )
+    end
+
+    it 'routes live Evolution dotted event names (messages.upsert)' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['event'] = 'messages.upsert'
+
+      job.perform_now(envelope)
+
+      expect(Whatsapp::IncomingMessageService).to have_received(:new)
+    end
+
+    it 'logs when the normalizer skips a message' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['key']['fromMe'] = true
+      allow(Rails.logger).to receive(:warn)
+
+      job.perform_now(envelope)
+
+      expect(Rails.logger).to have_received(:warn).with(
+        '[EVOLUTION] normalizer skipped event=MESSAGES_UPSERT ' \
+        'id=3EB00C82C9CE7A7439627F fromMe=true remoteJid=242532642504895@lid'
+      )
+      expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
+    end
+
     it 'logs and skips when the evolution instance is unknown' do
       allow(Rails.logger).to receive(:warn)
 
@@ -71,6 +110,21 @@ RSpec.describe Webhooks::WhatsappEventsJob do
         instance: 'missing-instance',
         data: { 'key' => { 'id' => 'ignored' } }
       )
+    end
+  end
+
+  describe 'contact events' do
+    it 'delegates CONTACTS_UPSERT to ContactsSyncService' do
+      envelope = load_fixture('contacts_upsert')
+
+      job.perform_now(envelope)
+
+      expect(Custom::Whatsapp::Evolution::ContactsSyncService).to have_received(:new).with(
+        channel: channel,
+        data: envelope['data']
+      )
+      expect(contacts_sync_service).to have_received(:perform)
+      expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
     end
   end
 

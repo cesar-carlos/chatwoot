@@ -41,6 +41,7 @@ Guia para operadores que já usam a integração **built-in** da Evolution (`POS
    ```
    https://{FRONTEND_URL}/webhooks/evolution/{instance_name}
    ```
+   Se a instância existia na integração legada, `GET /webhook/find/{instance_name}` pode retornar `null` — o wizard do fork registra no create; para instâncias antigas, usar **Reconnect** no health ou `ConnectionService#register_webhook!` antes de validar inbound.
 5. **Não** habilitar ainda o envio em produção — validar com [validation-checklist.md](./validation-checklist.md)
 
 ### 2. Desabilitar integração Chatwoot na Evolution

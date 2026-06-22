@@ -51,11 +51,13 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
   end
 
   def normalize_message(data)
+    data = unwrap_ephemeral_message(data)
     return nil if ignore_message?(data)
 
-    wa_id = resolve_wa_id(data['key'] || data[:key])
+    key = data['key'] || data[:key] || {}
+    wa_id = resolve_wa_id(key)
     message_type = map_message_type(data)
-    message_hash = build_message_hash(data, wa_id, message_type)
+    message_hash = build_message_hash(data, wa_id, message_type, key)
     return nil if message_hash.blank?
 
     add_reply_context!(message_hash, data)
@@ -67,15 +69,18 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity -- one branch per Evolution message type
-  def build_message_hash(data, wa_id, message_type)
-    return nil if wa_id.blank? || message_type.blank?
+  # rubocop:disable Metrics/MethodLength -- one branch per Evolution message type
+  def build_message_hash(data, wa_id, message_type, key)
+    return nil if wa_id.blank?
 
+    message_type = 'text' if message_type.blank?
     message_hash = {
       from: wa_id,
-      id: data.dig('key', 'id'),
+      id: key['id'],
       timestamp: data['messageTimestamp'].to_s,
-      type: message_type
-    }
+      type: message_type,
+      evolution_remote_jid: key['remoteJid']
+    }.compact
 
     case message_type
     when 'text'
@@ -93,31 +98,71 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
 
     message_hash
   end
-  # rubocop:enable Metrics/CyclomaticComplexity
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/MethodLength
 
   def normalize_status(data)
-    key = data['key'] || {}
-    update = data['update'] || {}
-    status_code = update['status']
-    return nil if key['id'].blank? || status_code.nil?
+    data = data.with_indifferent_access
+    return normalize_evolution_status_payload(data) if evolution_status_payload?(data)
 
+    normalize_baileys_status_payload(data)
+  end
+
+  def evolution_status_payload?(data)
+    data[:keyId].present?
+  end
+
+  def normalize_evolution_status_payload(data)
+    status_value = data[:status]
+    return nil if data[:keyId].blank? || status_value.blank?
+
+    build_status_hash(
+      id: data[:keyId],
+      status: map_status(status_value),
+      remote_jid: data[:remoteJid],
+      timestamp: status_timestamp(data)
+    )
+  end
+
+  def normalize_baileys_status_payload(data)
+    key = data[:key] || {}
+    update = data[:update] || {}
+    status_code = update[:status]
+    message_id = key[:id]
+    return nil if message_id.blank? || status_code.nil?
+
+    build_status_hash(
+      id: message_id,
+      status: map_status(status_code),
+      remote_jid: key[:remoteJid],
+      timestamp: status_timestamp(data)
+    )
+  end
+
+  def build_status_hash(id:, status:, remote_jid:, timestamp:)
     {
       statuses: [
         {
-          id: key['id'],
-          status: map_status(status_code),
-          timestamp: Time.current.to_i.to_s,
-          recipient_id: jid_to_phone(key['remoteJid'])
+          id: id,
+          status: status,
+          timestamp: timestamp.to_s,
+          recipient_id: jid_to_phone(remote_jid)
         }
       ]
     }
+  end
+
+  def status_timestamp(data)
+    data['messageTimestamp'].presence || data['timestamp'].presence || Time.current.to_i
   end
 
   def map_message_type(data)
     mapped = MESSAGE_TYPE_MAP[data['messageType'].to_s]
     return mapped if mapped.present?
 
-    infer_type_from_message(data['message'])
+    inferred = infer_type_from_message(data['message'])
+    return inferred if inferred.present?
+
+    unsupported_message_type?(data['message']) ? 'text' : nil
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- type inference from Baileys payload keys
@@ -291,16 +336,55 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
 
   def extract_text_body(data)
     message = data['message'] || {}
-    message['conversation'] ||
-      message.dig('extendedTextMessage', 'text') ||
-      message.dig('imageMessage', 'caption') ||
-      message.dig('videoMessage', 'caption') ||
-      message.dig('documentMessage', 'caption')
+    body = message['conversation'] ||
+           message.dig('extendedTextMessage', 'text') ||
+           message.dig('imageMessage', 'caption') ||
+           message.dig('videoMessage', 'caption') ||
+           message.dig('documentMessage', 'caption')
+    return body if body.present?
+
+    unsupported_placeholder(data['message'])
+  end
+
+  def unsupported_message_type?(message)
+    unsupported_placeholder(message).present?
+  end
+
+  UNSUPPORTED_TYPE_PLACEHOLDERS = {
+    'reactionMessage' => '[Reaction message]',
+    'listMessage' => '[List message]',
+    'listResponseMessage' => '[List message]'
+  }.freeze
+
+  # rubocop:disable Metrics/CyclomaticComplexity -- explicit branches per Baileys wrapper key
+  def unsupported_placeholder(message)
+    return nil if message.blank?
+
+    type_key = UNSUPPORTED_TYPE_PLACEHOLDERS.keys.find { |key| message[key].present? }
+    return UNSUPPORTED_TYPE_PLACEHOLDERS[type_key] if type_key
+
+    return nil if message.key?('viewOnceMessageV2') || message.key?('ephemeralMessage')
+
+    message.keys.any? { |key| key.end_with?('Message') } ? '[Unsupported message type]' : nil
+  end
+  # rubocop:enable Metrics/CyclomaticComplexity
+
+  def unwrap_ephemeral_message(data)
+    message = data['message']
+    return data unless message.is_a?(Hash)
+
+    inner = message['ephemeralMessage']&.dig('message') ||
+            message['viewOnceMessageV2']&.dig('message')
+    return data if inner.blank?
+
+    data.merge('message' => inner)
   end
 
   def resolve_wa_id(key)
     key ||= {}
-    jid = if key['addressingMode'] == 'lid' && key['remoteJidAlt'].present?
+    remote_jid = key['remoteJid'].to_s
+    jid = if key['remoteJidAlt'].present? &&
+             (remote_jid.end_with?('@lid') || key['addressingMode'] == 'lid')
             key['remoteJidAlt']
           else
             key['remoteJid']
@@ -324,9 +408,21 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
   end
 
   def map_status(code)
+    return map_status_string(code) if code.is_a?(String) && code.match?(/[A-Za-z]/)
+
     case code.to_i
-    when 3, 4 then 'read'
-    when 2 then 'delivered'
+    when 3 then 'delivered'
+    when 4, 5 then 'read'
+    when 0 then 'failed'
+    else 'sent'
+    end
+  end
+
+  def map_status_string(status)
+    case status.to_s.upcase
+    when 'DELIVERY_ACK' then 'delivered'
+    when 'READ', 'PLAYED' then 'read'
+    when 'ERROR' then 'failed'
     else 'sent'
     end
   end

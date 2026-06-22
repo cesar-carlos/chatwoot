@@ -64,11 +64,7 @@ class Custom::Whatsapp::Evolution::ImportService
   end
 
   def api_client
-    @api_client ||= Custom::Whatsapp::Evolution::ApiClient.new(
-      base_url: @runtime.config['base_url'],
-      api_key: @runtime.config['api_key'],
-      instance_name: @runtime.config['instance_name']
-    )
+    @api_client ||= Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
   end
 
   def requeue_if_pending!

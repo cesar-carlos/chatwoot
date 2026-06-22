@@ -1,8 +1,19 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- Evolution HTTP surface grows with provider features
 class Custom::Whatsapp::Evolution::ApiClient
   REQUEST_TIMEOUT = 30
   OPEN_TIMEOUT = 10
+  TEXT_BODY_VALIDATION_PATTERN = /text(?:message)?/i
+
+  def self.for_channel(channel)
+    config = channel.provider_config || {}
+    new(
+      base_url: config['base_url'],
+      api_key: config['api_key'],
+      instance_name: config['instance_name']
+    )
+  end
 
   def self.raise_unless_success!(response, message)
     return if response.success?
@@ -86,7 +97,7 @@ class Custom::Whatsapp::Evolution::ApiClient
     response = post("/message/sendText/#{@instance_name}", body)
     return response if response.success?
 
-    if response.code == 400
+    if response.code == 400 && text_body_validation_error?(response)
       fallback = body.except(:text).merge(textMessage: { text: text })
       response = post("/message/sendText/#{@instance_name}", fallback)
     end
@@ -155,6 +166,18 @@ class Custom::Whatsapp::Evolution::ApiClient
     post("/chat/findChats/#{@instance_name}", body)
   end
 
+  def fetch_profile_picture_url(number:)
+    post("/chat/fetchProfilePictureUrl/#{@instance_name}", { number: profile_lookup_number(number) })
+  end
+
+  def fetch_profile(number:)
+    post("/chat/fetchProfile/#{@instance_name}", { number: profile_lookup_number(number) })
+  end
+
+  def fetch_business_profile(number:)
+    post("/chat/fetchBusinessProfile/#{@instance_name}", { number: profile_lookup_number(number) })
+  end
+
   private
 
   def get(path)
@@ -186,4 +209,22 @@ class Custom::Whatsapp::Evolution::ApiClient
   def normalize_number(phone)
     phone.to_s.gsub(/\D/, '')
   end
+
+  def profile_lookup_number(number)
+    value = number.to_s.strip
+    return value if value.include?('@')
+
+    normalize_number(value)
+  end
+
+  def text_body_validation_error?(response)
+    body = response.parsed_response
+    message = if body.is_a?(Hash)
+                body.dig('response', 'message') || body['message'] || body.dig('error', 'message') || body['error']
+              else
+                body.to_s
+              end
+    message.to_s.match?(TEXT_BODY_VALIDATION_PATTERN)
+  end
 end
+# rubocop:enable Metrics/ClassLength

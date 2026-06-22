@@ -103,7 +103,7 @@ Inverso:
 
 | Comportamento | Código | Campo inbox sugerido |
 |---------------|--------|----------------------|
-| Delay aleatório 500–2000 ms antes de `sendText` | `receiveWebhook` ~1480 | `send_delay_random: true` (ou fixo) |
+| Delay aleatório 500–2000 ms antes de `sendText` | `receiveWebhook` ~1480 | `send_random_delay: true` |
 | `textMessage(data, true)` — flag `isIntegration` | ~1488 | Sempre `true` no provider — evita re-entrada Chatwoot no Baileys |
 | Templates CW (`message_type === 'template'`) | ~1563 | `send_templates_as_text` — já documentado |
 | Newlines em template: `\\\r\n` → `\n` | ~1566 | Idem |
@@ -344,7 +344,7 @@ Não são por instância — ficam no servidor Evolution:
 |---|--------|------|
 | 1 | Prefixo `WAID:` e loop prevention | Documentado acima; provider usa `key.id` direto |
 | 2 | Markdown bidirecional | Adicionar `convert_markdown_inbound` |
-| 3 | Delay aleatório envio | Campo `send_random_delay_ms` |
+| 3 | Delay aleatório envio | Campo `send_random_delay` |
 | 4 | Tipos: location, contact, list, ads, reaction, viewOnce | Normalizer fases 2–3 |
 | 5 | Grupos: formatação participante | `format_group_messages` |
 | 6 | `messages.edit` → nova msg | `handle_message_edits` |

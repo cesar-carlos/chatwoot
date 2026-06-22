@@ -4,52 +4,31 @@ class Custom::Whatsapp::Evolution::ConnectionService
   pattr_initialize [:channel!]
 
   def teardown!
-    delete_remote_instance!
+    provisioner.delete_remote_instance!
   end
 
   def provision_new_instance!
-    validate_webhook_base_url!
-
-    instance_created = false
-
-    response = api_client.create_instance(create_instance_body)
-    raise_api_error!(response, 'Failed to create Evolution instance')
-    instance_created = true
-
-    provision_post_create!(response.parsed_response)
-  rescue Custom::Whatsapp::Evolution::ApiError, StandardError => e
-    delete_remote_instance! if instance_created
-    raise e
+    provisioner.provision_new_instance!
   end
 
   def provision_post_create!(parsed)
-    persist_instance_credentials!(parsed)
-    register_webhook!
-    sync_settings!
-    sync_proxy! if proxy_enabled?
-    ensure_chatwoot_integration_disabled!
-    fetch_qr_code
+    provisioner.provision_post_create!(parsed)
   end
 
   def register_webhook!
-    response = api_client.apply_webhook(webhook_url)
-    raise_api_error!(response, 'Failed to register Evolution webhook')
+    provisioner.register_webhook!
   end
 
   def sync_settings!
-    response = api_client.apply_settings(settings_payload)
-    raise_api_error!(response, 'Failed to sync Evolution settings')
+    provisioner.sync_settings!
   end
 
   def sync_proxy!
-    response = api_client.apply_proxy(proxy_payload)
-    raise_api_error!(response, 'Failed to configure Evolution proxy')
+    provisioner.sync_proxy!
   end
 
   def ensure_chatwoot_integration_disabled!
-    api_client.disable_chatwoot_integration
-  rescue StandardError => e
-    Rails.logger.warn "[EVOLUTION] disable chatwoot integration: #{e.message}"
+    provisioner.ensure_chatwoot_integration_disabled!
   end
 
   def fetch_qr_code
@@ -96,13 +75,11 @@ class Custom::Whatsapp::Evolution::ConnectionService
   end
 
   def handle_event(envelope)
-    envelope = envelope.with_indifferent_access
-    case envelope[:event]
-    when 'CONNECTION_UPDATE'
-      handle_connection_update_event(envelope)
-    when 'QRCODE_UPDATED'
-      handle_qrcode_updated_event(envelope)
-    end
+    connection_events.handle_event(envelope)
+  end
+
+  def qrcode_storage_attrs(qrcode)
+    connection_events.qrcode_storage_attrs(qrcode)
   end
 
   def connection_payload
@@ -117,58 +94,26 @@ class Custom::Whatsapp::Evolution::ConnectionService
 
   private
 
-  def api_client
-    @api_client ||= Custom::Whatsapp::Evolution::ApiClient.new(
-      base_url: provider_config['base_url'],
-      api_key: provider_config['api_key'],
-      instance_name: provider_config['instance_name']
+  def provisioner
+    @provisioner ||= Custom::Whatsapp::Evolution::Provisioner.new(
+      channel: channel,
+      connection_service: self
     )
+  end
+
+  def connection_events
+    @connection_events ||= Custom::Whatsapp::Evolution::ConnectionEvents.new(
+      channel: channel,
+      connection_service: self
+    )
+  end
+
+  def api_client
+    @api_client ||= Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
   end
 
   def provider_config
     channel.provider_config || {}
-  end
-
-  def create_instance_body
-    create_instance_base_body.tap do |body|
-      merge_proxy_credentials!(body) if proxy_enabled? && provider_config['proxy_host'].present?
-    end
-  end
-
-  def create_instance_base_body
-    {
-      instanceName: provider_config['instance_name'],
-      integration: 'WHATSAPP-BAILEYS',
-      qrcode: true,
-      groupsIgnore: provider_config['groups_ignore'],
-      rejectCall: provider_config['reject_call'],
-      alwaysOnline: provider_config['always_online'],
-      readMessages: provider_config['read_messages'],
-      readStatus: provider_config['read_status'],
-      syncFullHistory: provider_config['sync_full_history']
-    }
-  end
-
-  def merge_proxy_credentials!(body)
-    body.merge!(
-      proxyHost: provider_config['proxy_host'],
-      proxyPort: provider_config['proxy_port'].to_s,
-      proxyProtocol: provider_config['proxy_protocol'],
-      proxyUsername: provider_config['proxy_username'],
-      proxyPassword: provider_config['proxy_password']
-    )
-  end
-
-  def settings_payload
-    {
-      rejectCall: provider_config['reject_call'],
-      msgCall: provider_config['msg_call'],
-      groupsIgnore: provider_config['groups_ignore'],
-      alwaysOnline: provider_config['always_online'],
-      readMessages: provider_config['read_messages'],
-      readStatus: provider_config['read_status'],
-      syncFullHistory: provider_config['sync_full_history']
-    }
   end
 
   PROXY_DISABLED_HOST = 'x'
@@ -189,8 +134,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
   end
 
   def disabled_proxy_payload
-    # Evolution JSON schema requires non-empty host/port/protocol even when enabled: false
-    # (controller clears them after validation — see proxy.controller.ts).
     {
       enabled: false,
       host: provider_config['proxy_host'].presence || PROXY_DISABLED_HOST,
@@ -203,32 +146,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
 
   def proxy_enabled?
     ActiveModel::Type::Boolean.new.cast(provider_config['proxy_enabled'])
-  end
-
-  def validate_webhook_base_url!
-    return if ENV.fetch('FRONTEND_URL', nil).present?
-
-    raise Custom::Whatsapp::Evolution::ApiError,
-          'FRONTEND_URL is not configured; cannot register Evolution webhook'
-  end
-
-  def webhook_url
-    base = ENV.fetch('FRONTEND_URL', nil).to_s.delete_suffix('/')
-    "#{base}/webhooks/evolution/#{provider_config['instance_name']}"
-  end
-
-  def persist_instance_credentials!(parsed)
-    instance = parsed['instance'] || {}
-    attrs = {
-      'api_key' => (parsed['hash'] || provider_config['api_key']).to_s.strip,
-      'instance_id' => instance['instanceId'],
-      'connection_status' => instance['status'] || 'connecting'
-    }
-    merged = provider_config.merge(attrs.stringify_keys)
-    channel.provider_config = merged
-    # Skip credential validation mid-provision; connection is not ready for health checks yet.
-    persist_provider_config!(merged)
-    @api_client = nil
   end
 
   def update_connection_status(state)
@@ -283,7 +200,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
   end
 
   def persist_provider_config!(merged)
-    # Runtime keys must not re-run provider validations on every webhook poll.
     channel.update_columns(provider_config: merged, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
     channel.provider_config = merged
   end
@@ -297,36 +213,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
     )
   end
 
-  def notify_disconnection!(previous_status, state)
-    return unless state == 'close' && previous_status != 'close'
-
-    inbox = channel.inbox
-    return if inbox.blank?
-
-    Custom::Whatsapp::Evolution::Broadcaster.new(inbox: inbox).broadcast_disconnected
-  end
-
-  def broadcast_connection_event(payload)
-    inbox = channel.inbox
-    return if inbox.blank?
-
-    ActionCable.server.broadcast(
-      "evolution:connection:#{inbox.id}",
-      payload.merge(inbox_id: inbox.id)
-    )
-  end
-
-  def delete_remote_instance!
-    response = api_client.delete_instance
-    return if response.success?
-
-    Rails.logger.warn(
-      "[EVOLUTION] failed to delete instance #{provider_config['instance_name']}: HTTP #{response.code}"
-    )
-  rescue StandardError => e
-    Rails.logger.warn "[EVOLUTION] delete instance error: #{e.message}"
-  end
-
   def raise_api_error!(response, message)
     return if response.success?
 
@@ -337,66 +223,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
     )
     Rails.logger.warn "[EVOLUTION] #{error.message} (HTTP #{response.code})"
     raise error
-  end
-
-  def handle_connection_update_event(envelope)
-    state = envelope.dig(:data, :state)
-    previous_status = provider_config['connection_status']
-    update_connection_status(state)
-    extract_phone_number(envelope)
-    broadcast_connection_event(connection_event_payload(state))
-    notify_disconnection!(previous_status, state)
-  end
-
-  def connection_event_payload(state)
-    payload = { connection_status: state }
-    payload[:phone_number] = channel.phone_number if state == 'open' && channel.phone_number.present?
-    payload
-  end
-
-  def handle_qrcode_updated_event(envelope)
-    qrcode = envelope[:data]
-    attrs = qrcode_storage_attrs(qrcode)
-    return if attrs.blank?
-
-    update_provider_config!(attrs)
-    broadcast_connection_event(qrcode_broadcast_payload(attrs))
-  end
-
-  def qrcode_broadcast_payload(attrs)
-    payload = {}
-    payload[:qrcode_base64] = attrs['last_qr_base64'] if attrs['last_qr_base64'].present?
-    payload[:qrcode_code] = attrs['last_qr_code'] if attrs['last_qr_code'].present?
-    payload
-  end
-
-  def qrcode_storage_attrs(qrcode)
-    return {} unless qrcode.is_a?(Hash)
-
-    base64 = qrcode_field(qrcode, :base64)
-    code = extract_pairing_code(qrcode)
-    attrs = {}
-    attrs['last_qr_base64'] = base64 if base64.present?
-    attrs['last_qr_code'] = code if code.present?
-    attrs
-  end
-
-  def extract_pairing_code(qrcode)
-    [qrcode_field(qrcode, :pairingCode), qrcode_field(qrcode, :code)].find do |value|
-      pairing_code?(value)
-    end
-  end
-
-  def pairing_code?(value)
-    value.present? && value.to_s.gsub(/\W/, '').length == 8
-  end
-
-  def qrcode_field(qrcode, field)
-    data = qrcode.with_indifferent_access
-    nested = data[:qrcode]
-    nested = nested.with_indifferent_access if nested.is_a?(Hash)
-
-    nested&.[](field) || data[field]
   end
 
   def maybe_enqueue_history_import!(previous_status, state)

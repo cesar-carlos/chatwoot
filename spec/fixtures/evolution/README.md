@@ -33,7 +33,8 @@ Instância spike: `cw-spike-1781996187`. sendText executado em instância conect
 | `messages_upsert_text.json` | Webhook `MESSAGES_UPSERT` (dados reais DB) | Normalizer Fase 1 |
 | `messages_upsert_text_normalized.json` | Saída `EvolutionNormalizer` | Normalizer Fase 1 |
 | `messages_upsert_image.json` | `MESSAGES_UPSERT` imagem | Normalizer Fase 2 |
-| `messages_update_read.json` | `MESSAGES_UPDATE` | Status read |
+| `messages_update_read.json` | Webhook `MESSAGES_UPDATE` formato Evolution (flat `keyId` + `status: READ`) | Status read |
+| `messages_update_delivered.json` | Webhook `MESSAGES_UPDATE` `DELIVERY_ACK` | Status delivered |
 | `connection_update_open.json` | Webhook `CONNECTION_UPDATE` (estrutura v2.3.6) | ConnectionService |
 | `qrcode_updated.json` | Webhook `QRCODE_UPDATED` (QR real, base64 truncado) | Wizard QR |
 | `messages_upsert_e2e_local.json` | E2E local jun/2026 — POST webhook Chatwoot | Normalizer E2E |

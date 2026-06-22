@@ -37,7 +37,7 @@ RSpec.describe Custom::Whatsapp::Evolution::DeleteSyncService do
   let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
 
   before do
-    allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:new).and_return(api_client)
+    allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).and_return(api_client)
     allow(api_client).to receive(:delete_message_for_everyone)
   end
 
@@ -74,5 +74,19 @@ RSpec.describe Custom::Whatsapp::Evolution::DeleteSyncService do
     described_class.new(message: message).perform
 
     expect(api_client).not_to have_received(:delete_message_for_everyone)
+  end
+
+  it 'uses evolution_remote_jid from content_attributes when present' do
+    message.update!(content_attributes: { deleted: true, evolution_remote_jid: '242532642504895@lid' })
+    success_response = instance_double(HTTParty::Response, success?: true)
+    allow(api_client).to receive(:delete_message_for_everyone).and_return(success_response)
+
+    described_class.new(message: message).perform
+
+    expect(api_client).to have_received(:delete_message_for_everyone).with(
+      id: 'MSG123',
+      remote_jid: '242532642504895@lid',
+      from_me: true
+    )
   end
 end
