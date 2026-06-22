@@ -8,7 +8,7 @@
 | T1 | Fase 2 backend — mídia in/out + statuses + reply quoted | phase2-backend | ✅ backend done (T2 sync/settings UI pendente) | `api-reference.md`, `webhook-events.md`, `implementation-plan.md` |
 | T2 | Fase 2 frontend — settings inbox Evolution + sync | phase2-frontend | ✅ UI + inbound reopen/pending + ActionCable QR + cloud UI gates | `inbox-business-rules.md`, `provider-config-mapping.md` |
 | T3 | Fase 3 — health, reconnect QR, logout/restart | phase3-ops | ✅ concluído | `implementation-plan.md`, `troubleshooting.md`, `decisions.md` |
-| T4 | Fase 4 — import histórico (opcional) | — | ⏸️ aguardando T0–T3 | `implementation-plan.md` |
+| T4 | Fase 4 — import histórico | — | ✅ código (validação E2E pendente) | `implementation-plan.md` |
 | T5 | Specs automatizados mínimos (`spec/custom/`) | — | ✅ feito | `spec-design.md`, este arquivo |
 
 **Bugfix P0 (2026-06-20):** updates de runtime (`connection_status`, QR, `last_sender`) usam `update_columns` — não disparam `validate_provider_config` remoto nem `sync_settings`/`sync_proxy` em webhooks. Sync só quando `ProviderConfig::SYNCABLE_KEYS` mudam via save do inbox.
@@ -101,7 +101,7 @@
 | 2 | Botões reconnect (QR), logout, restart instance |
 | 3 | Alerta `CONNECTION_UPDATE` → `close` |
 | 4 | `merge_brazil_contacts` no normalizer |
-| 5 | `InstanceProvisioner` (fluxos avançados) — se escopo couber |
+| 5 | `Provisioner` (create/webhook/settings) — `ConnectionEvents` para CONNECTION/QRCODE | ✅ |
 
 ---
 
@@ -129,6 +129,17 @@ T5 (specs) — ✅ ~42 examples em `spec/custom/` (Evolution provider) + Playwri
 **Revisão (2026-06-20):** auditoria Fase 0–3. Principais gaps: E2E §2–4. **Corrigido (2026-06-20):** `sync_proxy!` envia `{ enabled: false }` quando proxy desligado; `conversation_pending` inbound; mutex Evolution webhooks; defaults `convert_markdown_*` → false até Fase 2; ActionCable QR/connection no wizard + health; gates cloud-only UI via `isEvolutionWhatsAppChannel`; specs mínimos Evolution (T5); `EvolutionNormalizer.new` keywords no job prepend.
 
 **Revisão (2026-06-21):** removido `provider_config.reopen_conversation` (duplicava `lock_to_single_conversation`); UI e `Custom::Conversations::Resolver` prepend eliminados.
+
+**Revisão (2026-06-22 — pós-auditoria inbound):**
+
+| Item | Status |
+|------|--------|
+| `EventNames` — `messages.upsert` → `MESSAGES_UPSERT` (controller + job) | ✅ |
+| `WhatsappEventsJob` — log `[EVOLUTION] normalizer skipped` quando filtro retorna `nil` | ✅ |
+| `resolve_wa_id` — `@lid` sem `addressingMode` usa `remoteJidAlt` | ✅ |
+| Split `Provisioner` + `ConnectionEvents` (`ConnectionService` facade) | ✅ |
+| `ApiClient.for_channel` | ✅ |
+| `validate_provider_config?` exige `connectionState` → `open` | ✅ |
 
 **Revisão (2026-06-21 — pós-produção):**
 

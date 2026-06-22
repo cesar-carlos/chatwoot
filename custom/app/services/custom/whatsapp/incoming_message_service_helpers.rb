@@ -26,6 +26,19 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
     )
   end
 
+  def evolution_api_client
+    Custom::Whatsapp::Evolution::ApiClient.for_channel(inbox.channel)
+  end
+
+  def message_content_attributes(message)
+    attrs = super
+    return attrs unless evolution_channel?
+
+    remote_jid = message[:evolution_remote_jid].presence || message['evolution_remote_jid'].presence
+    attrs[:evolution_remote_jid] = remote_jid if remote_jid.present?
+    attrs
+  end
+
   def download_evolution_media(attachment_payload)
     response = evolution_api_client.get_base64_from_media_message(
       message: attachment_payload[:_evolution_message]
@@ -36,15 +49,6 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
   rescue StandardError => e
     Rails.logger.error("[EVOLUTION] media download failed: #{e.message}")
     nil
-  end
-
-  def evolution_api_client
-    config = inbox.channel.provider_config || {}
-    Custom::Whatsapp::Evolution::ApiClient.new(
-      base_url: config['base_url'],
-      api_key: config['api_key'],
-      instance_name: config['instance_name']
-    )
   end
 
   def build_evolution_media_tempfile(parsed, attachment_payload)

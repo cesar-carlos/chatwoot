@@ -48,6 +48,8 @@ module Custom::Whatsapp::Evolution::ProviderConfig
   WEBHOOK_EVENTS = %w[
     MESSAGES_UPSERT
     MESSAGES_UPDATE
+    CONTACTS_UPSERT
+    CONTACTS_UPDATE
     CONNECTION_UPDATE
     QRCODE_UPDATED
   ].freeze

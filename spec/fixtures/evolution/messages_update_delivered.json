@@ -5,11 +5,11 @@
     "keyId": "3EB0OUTBOUND987654",
     "remoteJid": "5511999999999@s.whatsapp.net",
     "fromMe": true,
-    "status": "READ",
+    "status": "DELIVERY_ACK",
     "instanceId": "00000000-0000-0000-0000-000000000001"
   },
   "destination": "https://chatwoot.example.com/webhooks/evolution/test-instance",
-  "date_time": "2026-06-20T12:02:00.000Z",
+  "date_time": "2026-06-20T12:01:00.000Z",
   "sender": "5511888888888@s.whatsapp.net",
   "server_url": "https://evolution.example.com",
   "apikey": "TEST-INSTANCE-API-KEY"

@@ -60,7 +60,7 @@ RSpec.describe Custom::Whatsapp::Evolution::ConnectionService do
     let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
 
     before do
-      allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:new).and_return(api_client)
+      allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).and_return(api_client)
     end
 
     it 'deletes the remote instance when post-create provisioning fails' do
