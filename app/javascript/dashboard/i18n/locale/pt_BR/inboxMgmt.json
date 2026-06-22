@@ -817,13 +817,23 @@
           "LABEL": "Iniciar conversas como pendentes",
           "DESCRIPTION": "Conversas novas ou reabertas começam com status pendente em vez de aberto."
         },
+        "CONVERSATION_REOPEN_HINT": "Para reutilizar e reabrir a mesma conversa quando o contato mandar mensagem de novo, habilite \"Reutilizar e reabrir a conversa anterior\" na aba Configurações da caixa de entrada.",
+        "SYNC_ERROR": "As configurações foram salvas no Chatwoot, mas não foi possível sincronizar com a Evolution: {error}",
+        "SEND_TEMPLATES_AS_TEXT": {
+          "LABEL": "Enviar templates como texto",
+          "DESCRIPTION": "Converter mensagens de template do WhatsApp em texto simples quando o provider não envia templates nativos."
+        },
+        "IGNORE_FROM_ME_ECHO": {
+          "LABEL": "Ignorar ecos do celular",
+          "DESCRIPTION": "Ignorar webhooks de mensagens enviadas pelo WhatsApp conectado (fromMe). Desative apenas se precisar ver mensagens enviadas pelo celular no Chatwoot."
+        },
+        "IGNORE_STATUS_BROADCAST": {
+          "LABEL": "Ignorar status do WhatsApp",
+          "DESCRIPTION": "Não importar atualizações de status (status@broadcast)."
+        },
         "SIGN_MSG": {
           "LABEL": "Assinar mensagens com nome do agente",
-          "DESCRIPTION": "Prefixar o texto enviado com o nome do agente antes de enviar ao WhatsApp."
-        },
-        "SIGN_DELIMITER": {
-          "LABEL": "Delimitador da assinatura",
-          "DESCRIPTION": "Separador entre o nome do agente e o corpo da mensagem (padrão: quebra de linha)."
+          "DESCRIPTION": "Prefixar o texto com o nome de exibição do atendente, dois pontos e quebra de linha antes da mensagem (ex.: \"Cesar Carlos:\\nOlá, bom dia!\")."
         },
         "CONVERT_MARKDOWN_OUTBOUND": {
           "LABEL": "Converter markdown para WhatsApp",
@@ -835,7 +845,7 @@
         },
         "MARK_READ_ON_REPLY": {
           "LABEL": "Marcar recebidas como lidas ao responder",
-          "DESCRIPTION": "Após o agente enviar uma mensagem, marcar a última mensagem recebida como lida no WhatsApp."
+          "DESCRIPTION": "Ao responder uma mensagem específica, marcar essa mensagem como lida no WhatsApp após o envio do agente."
         },
         "NOTIFY_SEND_ERRORS_PRIVATE": {
           "LABEL": "Nota privada em falha de envio",

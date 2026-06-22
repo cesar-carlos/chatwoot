@@ -78,7 +78,19 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: import_payload_for(channel.reload)
   end
 
+  def update
+    super
+    refresh_evolution_channel_after_update!
+  end
+
   private
+
+  def refresh_evolution_channel_after_update!
+    channel = @inbox&.channel
+    return unless channel.is_a?(Channel::Whatsapp) && channel.evolution_provider?
+
+    channel.reload
+  end
 
   def evolution_channel?(channel)
     channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution'

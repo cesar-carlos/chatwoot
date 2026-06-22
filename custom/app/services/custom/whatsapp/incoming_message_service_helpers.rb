@@ -16,6 +16,14 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
 
   private
 
+  def find_message_by_source_id(source_id)
+    return super unless evolution_channel?
+
+    return unless source_id
+
+    @message = inbox.messages.find_by(source_id: source_id)
+  end
+
   def evolution_channel?
     inbox.channel.is_a?(Channel::Whatsapp) && inbox.channel.provider == 'evolution'
   end

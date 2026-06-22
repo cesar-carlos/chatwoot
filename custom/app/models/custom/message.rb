@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ModuleLength -- Evolution conversation reopen and delete sync hooks
 module Custom::Message
   extend ActiveSupport::Concern
 
@@ -8,6 +9,32 @@ module Custom::Message
   end
 
   private
+
+  def reopen_conversation
+    return if history_import_message?
+    return super unless conversation.inbox.lock_to_single_conversation?
+
+    return if conversation.muted?
+    return unless incoming?
+    return if conversation.open?
+
+    reopen_inactive_conversation
+  end
+
+  def reopen_inactive_conversation
+    if conversation.resolved?
+      reopen_resolved_conversation
+    elsif conversation.snoozed? || (conversation.pending? && !initial_pending_conversation?)
+      conversation.open!
+    end
+  end
+
+  def initial_pending_conversation?
+    return false unless conversation.pending?
+    return false unless evolution_pending_reopen?
+
+    conversation.messages.incoming.where(created_at: ..created_at).count <= 1
+  end
 
   def reopen_resolved_conversation
     return if history_import_message?
@@ -56,6 +83,7 @@ module Custom::Message
   def newly_marked_deleted?
     return false if source_id.blank?
     return false unless ActiveModel::Type::Boolean.new.cast(content_attributes[:deleted])
+    return false if ActiveModel::Type::Boolean.new.cast(content_attributes[:deleted_via_evolution_webhook])
 
     before = (content_attributes_before_last_save || {}).with_indifferent_access
     !ActiveModel::Type::Boolean.new.cast(before[:deleted])
@@ -122,3 +150,4 @@ module Custom::Message
     ActiveModel::Type::Boolean.new.cast(content_attributes[:history_import])
   end
 end
+# rubocop:enable Metrics/ModuleLength

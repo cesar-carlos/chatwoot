@@ -883,13 +883,23 @@
           "LABEL": "Start conversations as pending",
           "DESCRIPTION": "New or reopened conversations start in pending status instead of open."
         },
+        "CONVERSATION_REOPEN_HINT": "To reuse and reopen the same conversation when a contact messages again, enable \"Reuse and reopen previous conversation\" in the inbox Settings tab.",
+        "SYNC_ERROR": "Settings were saved in Chatwoot but could not be synced to Evolution: {error}",
+        "SEND_TEMPLATES_AS_TEXT": {
+          "LABEL": "Send templates as plain text",
+          "DESCRIPTION": "Convert WhatsApp template messages to plain text sends when the provider cannot submit templates."
+        },
+        "IGNORE_FROM_ME_ECHO": {
+          "LABEL": "Ignore phone-sent echoes",
+          "DESCRIPTION": "Skip inbound webhooks for messages sent from the connected WhatsApp phone (fromMe). Disable only if you need mobile-sent messages in Chatwoot."
+        },
+        "IGNORE_STATUS_BROADCAST": {
+          "LABEL": "Ignore status broadcasts",
+          "DESCRIPTION": "Do not import WhatsApp status updates (status@broadcast)."
+        },
         "SIGN_MSG": {
           "LABEL": "Sign messages with agent name",
-          "DESCRIPTION": "Prefix outbound text with the agent name before sending to WhatsApp."
-        },
-        "SIGN_DELIMITER": {
-          "LABEL": "Signature delimiter",
-          "DESCRIPTION": "Separator between the agent name and message body (default: newline)."
+          "DESCRIPTION": "Prefix outbound text with the agent display name, a colon, and a new line before the message body (e.g. \"Jane Doe:\\nHello\")."
         },
         "CONVERT_MARKDOWN_OUTBOUND": {
           "LABEL": "Convert markdown for WhatsApp",
@@ -901,7 +911,7 @@
         },
         "MARK_READ_ON_REPLY": {
           "LABEL": "Mark incoming as read when agent replies",
-          "DESCRIPTION": "After an agent sends a message, mark the last incoming WhatsApp message as read."
+          "DESCRIPTION": "When replying to a specific message, mark that WhatsApp message as read after the agent sends a reply."
         },
         "NOTIFY_SEND_ERRORS_PRIVATE": {
           "LABEL": "Private note on send failure",

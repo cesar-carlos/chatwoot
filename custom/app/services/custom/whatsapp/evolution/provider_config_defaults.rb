@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Custom::Whatsapp::Evolution::ProviderConfig
+module Custom::Whatsapp::Evolution::ProviderConfigDefaults
   DEFAULTS = {
     'groups_ignore' => true,
     'reject_call' => false,
@@ -16,7 +16,6 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     'proxy_username' => '',
     'proxy_password' => '',
     'sign_msg' => false,
-    'sign_delimiter' => "\n",
     'conversation_pending' => false,
     'merge_brazil_contacts' => true,
     'mark_read_on_reply' => false,
@@ -30,7 +29,7 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     'ignore_status_broadcast' => true,
     'ignore_from_me_echo' => true,
     'ignore_survey_links' => true,
-    'format_group_messages' => true,
+    'format_group_messages' => false,
     'import_on_connect' => true,
     'sync_lost_messages' => false,
     'import_contacts' => false,
