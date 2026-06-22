@@ -1,53 +1,63 @@
-# Tarefas — Provider Evolution Go (planejamento)
+# Tarefas — Provider Evolution Go
 
-**Fase atual:** documentação consolidada — spike runtime antes de código.
+**Escopo:** integração no fork Chatwoot. Evolution Go roda **fora** do repositório (instância do operador).
 
 | ID | Tarefa | Status | Doc |
 |----|--------|--------|-----|
-| P0 | Reavaliação + melhorias documentação | ✅ feito | [gaps-and-improvements.md](./gaps-and-improvements.md) |
-| P0b | ADR §22 global_api_key | ✅ fechado | [decisions.md §22](./decisions.md) |
-| P0c | ADR §23 reconnect/webhook | ✅ fechado | [decisions.md §23](./decisions.md) |
-| P0d | Runbook licença, wizard sequence, Node vs Go | ✅ feito | vários |
-| P0e | `sync-documentation-links.sh` | ✅ criado | [documentation-links.md](./documentation-links.md) |
-| P1 | Spike REST + fixtures | ❌ pendente | `spec/fixtures/evolution_go/` |
-| P3 | Swagger: advanced-settings, Group paths | ⚠️ marcado no doc | spike only |
-| I0 | Fase 0 infra | ❌ bloqueado por P1 | [implementation-plan.md](./implementation-plan.md) |
-| I1 | Fase 1 MVP texto | ❌ bloqueado | idem |
+| D0 | Documentação consolidada (integração only) | ✅ feito | [README.md](./README.md), [status.md](./status.md) |
+| I0 | Fase 0 — infra registry + prepends | ❌ pendente | [implementation-plan.md § Fase 0](./implementation-plan.md) |
+| I1 | Fase 1 — MVP texto + QR | ❌ pendente | idem § Fase 1 |
+| I2 | Fase 2 — mídia, READ_RECEIPT, settings | ❌ pendente | idem § Fase 2 |
+| E1 | Checklist E2E (instância operador) | ❌ durante I1 | [validation-checklist.md](./validation-checklist.md) |
 
 ---
 
-## P1 — Spike (pré-implementação)
+## I0 — Fase 0 (infra)
 
-**Objetivo:** [validation-checklist.md](./validation-checklist.md) contra Evolution Go Docker.
+Não depende de servidor Go — registry e prepends:
 
-**Entregas:**
-- `spec/fixtures/evolution_go/*.json` (5 arquivos)
-- `evolution-target-version.txt` com tag Docker
-- Preencher tabelas em `spec/fixtures/evolution_go/README.md`
-- Fechar G2/G3 em [gaps-and-improvements.md](./gaps-and-improvements.md)
-
-**Env:** `evoapicloud/evolution-go:latest`, licença ativada, PostgreSQL
+| # | Entrega |
+|---|---------|
+| 0.1 | `# FORK:` `evolution_go` em `PROVIDERS` |
+| 0.2 | Registry `evolution_go` |
+| 0.3 | Capability `unlimited_session` |
+| 0.4 | Prepend `MessageWindowService` |
+| 0.5 | Rota + controller stub `EvolutionGoController` |
 
 ---
 
-## P3 — Swagger audit (durante spike)
+## I1 — Fase 1 (MVP)
 
-```bash
-# Diff docs oficiais
-./doc/feature/whatsapp-provider/evolution-go/sync-documentation-links.sh
+| # | Entrega |
+|---|---------|
+| 1.1 | `EvolutionGo::ApiClient` |
+| 1.2 | `EvolutionGo::ConnectionService` |
+| 1.3 | `EvolutionGoService` + `EvolutionGoNormalizer` |
+| 1.4 | Webhook controller + prepend job |
+| 1.5 | Wizard Vue + card `Whatsapp.vue` |
+| 1.6 | Specs com fixtures (sintéticas ou E2E) |
 
-# Inspecionar runtime
-open "${BASE_URL}/swagger/index.html"
-```
+**Pré-requisito operador:** instância Evolution Go acessível (`base_url`, `GLOBAL_API_KEY`, licença ativa).
 
-Confirmar: `advanced-settings`, paths Group/Chat.
+---
+
+## E1 — Validação E2E (paralelo a I1)
+
+Executar [validation-checklist.md](./validation-checklist.md) contra a instância do operador — **não** bloqueia início do código.
+
+Entregas:
+- `spec/fixtures/evolution_go/*.json` (capturas reais)
+- `evolution-target-version.txt` com versão do servidor
+- Confirmar ADR §24–26 no ambiente real
 
 ---
 
 ## Dependências
 
 ```
-P0 (doc) ──► P1 (spike) ──► I0 (Fase 0) ──► I1 (Fase 1)
+I0 (Fase 0) → I1 (Fase 1 MVP) → I2 (Fase 2)
+                    │
+                    └── E1 (E2E) em paralelo — fixtures + versão
 ```
 
 Coordenação Node: [coordination-with-evolution-api.md](./coordination-with-evolution-api.md)

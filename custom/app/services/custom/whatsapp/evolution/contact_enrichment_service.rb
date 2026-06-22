@@ -5,25 +5,30 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
   WHATSAPP_BUSINESS_KEY = 'whatsapp_business'
   EVOLUTION_PUSH_NAME_KEY = 'evolution_push_name'
   EVOLUTION_REMOTE_JID_KEY = 'evolution_remote_jid'
+  EVOLUTION_ENRICHED_AT_KEY = 'evolution_enriched_at'
 
-  def initialize(channel:, contact:, remote_jid: nil, push_name: nil, profile_pic_url: nil)
+  def initialize(channel:, contact:, remote_jid: nil, push_name: nil, profile_pic_url: nil, force: false)
     @channel = channel
     @contact = contact
     @remote_jid = remote_jid.to_s.presence
     @push_name = push_name.to_s.strip.presence
     @profile_pic_url = profile_pic_url.to_s.presence
+    @force = ActiveModel::Type::Boolean.new.cast(force)
   end
 
   def perform
     persist_remote_jid!
     update_name_from_push_name!
     sync_avatar_from_url(@profile_pic_url) if @profile_pic_url.present?
+    return unless @force || profile_fetch_needed?
+
     fetch_and_apply_profile!
+    mark_enriched!
   end
 
   private
 
-  attr_reader :channel, :contact
+  attr_reader :channel, :contact, :force
 
   def api_client
     @api_client ||= Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
@@ -93,6 +98,23 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
     fetch_profile_picture!(number) unless contact.avatar.attached?
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION] contact enrichment failed for contact #{contact.id}: #{e.message}")
+    raise
+  end
+
+  def profile_fetch_needed?
+    enriched_at = contact.additional_attributes[EVOLUTION_ENRICHED_AT_KEY]
+    return true if enriched_at.blank?
+
+    Time.zone.parse(enriched_at) <= ContactEnrichmentJob::ENRICHMENT_COOLDOWN.ago
+  rescue ArgumentError
+    true
+  end
+
+  def mark_enriched!
+    additional = contact.additional_attributes.stringify_keys.merge(
+      EVOLUTION_ENRICHED_AT_KEY => Time.current.utc.iso8601(3)
+    )
+    contact.update!(additional_attributes: additional)
   end
 
   def fetch_profile_picture!(number)

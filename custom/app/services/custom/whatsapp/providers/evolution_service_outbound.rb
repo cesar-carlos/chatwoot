@@ -69,10 +69,13 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
   end
 
   def read_target_message(message)
-    reply_id = message.content_attributes[:in_reply_to_external_id]
-    return nil if reply_id.blank?
+    scope = message.conversation.messages
+                     .incoming
+                     .where(inbox_id: message.inbox_id)
+                     .where.not(source_id: [nil, ''])
+                     .order(created_at: :desc)
 
-    message.conversation.messages.incoming.where(inbox_id: message.inbox_id).find_by(source_id: reply_id)
+    scope.where.not(status: Message.statuses[:read]).first || scope.first
   end
 
   def read_target_remote_jid(phone_number, target)

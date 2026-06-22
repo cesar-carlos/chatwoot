@@ -142,7 +142,7 @@ No dashboard, responder na conversa criada no passo 2 — **E2E local:** `Whatsa
 
 ## 4. Spike conexão UI
 
-- [ ] Wizard exibe QR (ActionCable ou polling) — **não testado** (instância já `open`; QR vazio esperado)
+- [x] Wizard exibe QR (ActionCable ou polling) — Playwright `evolution-inbox-create.spec.ts` (UI) + API spec valida `qrcode_base64`; RSpec `evolution_validation_checklist_spec.rb` cobre polling após `QRCODE_UPDATED`
 - [x] `CONNECTION_UPDATE` → `connection_status: open`
 - [x] `api_key` **não** visível em serialização (`dashboard_provider_config` → `••••••••`)
 - [x] `connection_payload` retorna `open` via `ConnectionService`
@@ -200,7 +200,7 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
 | 1.5 sendText nested | ❌ | 400 — não aplicável v2.3.6 |
 | 2 webhook inbound E2E | ✅ | HTTP 200 + mensagem no inbox; `MESSAGES_UPDATE` → read |
 | 3 outbound Chatwoot | ✅ | `source_id` = `key.id`, sem WAID |
-| 4 conexão UI | ✅ | Modal `EvolutionQrScanModal` + health; Playwright em `tests/playwright/` |
+| 4 conexão UI | ✅ | Modal + health; Playwright + RSpec `evolution_validation_checklist_spec.rb`; rake `evolution:validate_checklist` |
 | 5 regressão | ✅ | bypass 24h; sem cloud/default no DB |
 | 6 proxy | ⏸️ | Opcional — não executado |
 | Bug Fase 1 | ✅ | `disable_chatwoot_integration` body completo |
@@ -210,7 +210,7 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
 1. **`FORCE_SSL=true`:** webhooks locais precisam de `X-Forwarded-Proto: https` ou Evolution não alcança Chatwoot via HTTP puro.
 2. **Conta suspensa:** `WhatsappEventsJob` ignora canais de contas inativas (`[EVOLUTION] inactive channel`).
 3. **`phone_number` UNIQUE:** uma instância open compartilha o número `+5566981128433` no channel.
-4. **Wizard QR / scan real:** modal abre após create; Playwright `evolution-inbox-create.spec.ts` (credenciais em `tests/playwright/.env`).
+4. **Wizard QR / scan real:** modal abre após create; Playwright `evolution-inbox-create.spec.ts` (UI) + `evolution_validation_checklist_spec.rb` (RSpec). Smoke manual: `bundle exec rake evolution:validate_checklist` com `EVOLUTION_*` e `FRONTEND_URL`.
 
 ## Automação Playwright (`tests/playwright/`)
 

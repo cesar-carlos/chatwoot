@@ -549,19 +549,18 @@ Não é classe Ruby; interface entre wizard e API interna do fork.
 | `provisionInstance(payload)` | `async fn` | POST API interna create inbox |
 | `refreshQr()` | `async fn` | Poll connect |
 
-### API interna Rails (sugestão Fase 1)
+### API interna Rails (implementado)
 
 | Método | Path | Ação |
 |--------|------|------|
-| POST | `/api/v1/accounts/:id/evolution_instances` | `ConnectionService#provision_new_instance!` |
-| GET | `/api/v1/accounts/:id/evolution_instances/:inbox_id/qr` | `fetch_qr_code` |
-| GET | `/api/v1/accounts/:id/evolution_instances/:inbox_id/status` | `connection_state` |
-
-Controller em `custom/app/controllers/api/v1/accounts/evolution_instances_controller.rb` — fora do escopo deste doc detalhar strong params; ver [inbox-business-rules.md](./inbox-business-rules.md).
+| GET | `/api/v1/accounts/:id/inboxes/:inbox_id/evolution_connection` | `connection_payload` (status + QR em cache) |
+| POST | `/api/v1/accounts/:id/inboxes/:inbox_id/evolution_reconnect` | `reconnect!` |
+| POST | `/api/v1/accounts/:id/inboxes/:inbox_id/evolution_logout` | `logout!` |
+| POST | `/api/v1/accounts/:id/inboxes/:inbox_id/evolution_restart` | `restart!` |
 
 ### ActionCable
 
-Canal: `EvolutionConnectionChannel` — payload `{ type: 'qrcode' | 'connection', ... }`.
+Canal: `EvolutionConnectionChannel` — payload plano: `connection_status`, `qrcode_base64`, `qrcode_code`, `phone_number` (mesmas chaves que `evolution_connection`).
 
 ---
 

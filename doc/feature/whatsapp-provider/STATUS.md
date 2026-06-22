@@ -1,8 +1,8 @@
 # Status da documentação — WhatsApp providers (fork)
 
-Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de código ou spikes.
+Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de código.
 
-**Escopo:** `doc/feature/whatsapp-provider/` (53 arquivos) + código `custom/` relacionado.
+**Escopo:** `doc/feature/whatsapp-provider/` + código `custom/` relacionado.
 
 ---
 
@@ -11,7 +11,7 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 | Provider key | Gateway | Doc | Código `custom/` | Spike/fixtures | Próximo passo |
 |--------------|---------|-----|------------------|----------------|---------------|
 | `evolution` | Evolution API Node/Baileys | ✅ 18 arquivos | ✅ Fase 0–4 parcial (~95%) | ✅ T0 REST + Playwright E2E | Credenciais E2E em CI/staging |
-| `evolution_go` | Evolution Go/whatsmeow | ✅ 25 arquivos (~92%) | ❌ não iniciado | ❌ pendente | Spike Docker P1 |
+| `evolution_go` | Evolution Go/whatsmeow | ✅ consolidada | ❌ não iniciado | ⚠️ E2E pendente | Fase 0 → Fase 1 |
 | `zapi` | Z-API SaaS | ⚠️ só comparação | ❌ | — | Após piloto Evolution |
 | `notificame` | NotificaMe | 📁 pasta separada | ❌ | — | [plano-geral](../notificame-whatsapp-integration/plano-geral.md) |
 
@@ -69,12 +69,14 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 
 | Área | Score | Gap principal |
 |------|-------|---------------|
-| Planejamento + ADRs §1–23 | ✅ | — |
-| Contratos + wizard spec | ✅ | — |
-| Spike runtime | ❌ | Fixtures + versão congelada |
-| Código | ❌ | Bloqueado por P1 |
+| Planejamento + ADRs §1–26 | ✅ | — |
+| Contratos + wizard + composable | ✅ | — |
+| Integração (escopo fork) | ✅ | Sem provisionar Evolution Go |
+| E2E com instância operador | ⚠️ | Fixtures reais + versão |
+| Fase 2 paths (settings, mídia) | ⚠️ | advanced-settings body, download |
+| Código | ❌ | Fase 0 não iniciada |
 
-Índice: [evolution-go/README.md](./evolution-go/README.md) · Gaps: [gaps-and-improvements.md](./evolution-go/gaps-and-improvements.md) · Tarefas: [tasks.md](./evolution-go/tasks.md)
+Índice: [evolution-go/README.md](./evolution-go/README.md) · Status: [status.md](./evolution-go/status.md) · Tarefas: [tasks.md](./evolution-go/tasks.md)
 
 ---
 
@@ -86,6 +88,7 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 | `architecture-current-whatsapp` só mostrava upstream | Seção fork overlay adicionada |
 | `evolution-go/README` duplicava Brand assets | Removido |
 | `evolution-go/README` "Evolution planejada" | Corrigido — Node já em `custom/` |
+| Evolution Go doc consolidada | Integração only — sem spike local |
 | `evolution-api/README` tabela ConnectionService | Linha corrigida |
 | Parent README sem status código | Tabela + link STATUS |
 | `PROVIDERS` exemplo inclui `evolution_go` antes do código | Nota: só `evolution` no repo hoje |
@@ -96,9 +99,8 @@ Revisão consolidada **jun/2026**. Atualizar este arquivo ao fechar fases de có
 
 ```
 1. Evolution Node — fechar E2E (validation-checklist §2–4)
-2. Evolution Go — spike P1 → fixtures
-3. Evolution Go — Fase 0 (reusar prepends) + Fase 1
-4. Demais gateways (Z-API, NotificaMe) — após padrão estável
+2. Evolution Go — Fase 0 → Fase 1 (E2E em paralelo)
+3. Demais gateways (Z-API, NotificaMe) — após padrão estável
 ```
 
 ---

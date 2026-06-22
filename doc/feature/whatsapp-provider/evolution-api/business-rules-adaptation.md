@@ -83,7 +83,7 @@ Legenda **Decisão fork:**
 |-------|-----------|------------------|---------|------|-------|
 | **Ignore Jids** | tags, ex. `@g.us` | **`["@g.us"]`** | ⚙️ | 1 (default) / 2 (UI) | Redundante com `groups_ignore` — defesa em profundidade. |
 | `ignore_status_broadcast` | implícito | **`true`** | ✅ | 1 | Hardcoded normalizer. |
-| `ignore_from_me_echo` | implícito | **`true`** | ✅ | 1 | Hardcoded — evita duplicata outbound. |
+| `ignore_from_me_echo` | implícito | **`false`** | ✅ | 1 | Default `false` — permite sync de msgs enviadas pelo celular. |
 | `ignore_survey_links` | `/survey/responses/` | **`true`** | ⚙️ | 2 | CSAT CW ecoando no WA. |
 | `ignore_private_notes` | `receiveWebhook` | 🔧 **CW nativo** | — | Notas privadas já não disparam `SendOnWhatsappService`. |
 | `format_group_messages` | prefixo participante | **`false`** | ⚙️ | 3 | Grupos fora do escopo MVP; se habilitar grupos no futuro. |
@@ -205,7 +205,7 @@ Substitui o JSON de referência em [inbox-business-rules.md](./inbox-business-ru
 
   "ignore_jids": ["@g.us"],
   "ignore_status_broadcast": true,
-  "ignore_from_me_echo": true,
+  "ignore_from_me_echo": false,
   "ignore_survey_links": true,
 
   "import_contacts": false,

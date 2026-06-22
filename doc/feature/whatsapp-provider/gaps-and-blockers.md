@@ -253,7 +253,7 @@ Reutilizar **com payload normalizado**:
 
 ### Evolution Go (`evolution_go`)
 
-- [x] Documentação completa (~92%)
+- [x] Documentação completa (~93% — melhorias 22/jun/2026)
 - [ ] Spike fixtures P1 — [evolution-go/tasks.md](./evolution-go/tasks.md)
 - [ ] `# FORK:` `evolution_go` em PROVIDERS
 - [ ] Código `custom/.../evolution_go/`

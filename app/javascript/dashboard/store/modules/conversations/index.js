@@ -7,6 +7,11 @@ import {
   normalizeStoreMessage,
 } from './helpers';
 import { MESSAGE_STATUS } from 'shared/constants/messages';
+import {
+  isNonActivityMessage,
+  mergeConversationOnListRefresh,
+  messageCreatedAtTimestamp,
+} from '../../../helper/conversationHelper';
 import wootConstants from 'dashboard/constants/globals';
 import { BUS_EVENTS } from '../../../../shared/constants/busEvents';
 import { emitter } from 'shared/helpers/mitt';
@@ -48,7 +53,12 @@ export const mutations = {
         // Added this to fix the issue of the conversation not being updated
         // When reconnecting to the websocket. If the selectedChatId is not the same as
         // the conversation.id in the store, replace the existing conversation with the new one
-        newAllConversations[indexInCurrentList] = conversation;
+        // FORK: preserve websocket message preview data during list refresh
+        newAllConversations[indexInCurrentList] =
+          mergeConversationOnListRefresh(
+            newAllConversations[indexInCurrentList],
+            conversation
+          );
       } else {
         // If the conversation is already in the list and selectedChatId is the same,
         // replace all data except the messages array, attachments, dataFetched, allMessagesLoaded
@@ -242,6 +252,17 @@ export const mutations = {
       chat.timestamp = message.created_at;
       const { conversation: { unread_count: unreadCount = 0 } = {} } = message;
       chat.unread_count = unreadCount;
+      // FORK: keep conversation list preview in sync with websocket messages
+      if (isNonActivityMessage(message)) {
+        const existingPreview = chat.last_non_activity_message;
+        if (
+          !existingPreview ||
+          messageCreatedAtTimestamp(message) >=
+            messageCreatedAtTimestamp(existingPreview)
+        ) {
+          chat.last_non_activity_message = message;
+        }
+      }
       if (selectedChatId === conversationId) {
         emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
       }

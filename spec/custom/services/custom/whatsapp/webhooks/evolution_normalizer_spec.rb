@@ -85,6 +85,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
     end
 
     it 'ignores fromMe messages when ignore_from_me_echo is enabled' do
+      channel.update!(provider_config: channel.provider_config.merge('ignore_from_me_echo' => true))
       envelope = load_fixture('messages_upsert_text')
       envelope['data']['key']['fromMe'] = true
 

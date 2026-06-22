@@ -138,7 +138,7 @@ Doc: [get-instance-status](https://docs.evolutionfoundation.com.br/evolution-go/
 
 ### Extração de `phone_number` (Chatwoot)
 
-O exemplo oficial **não** inclui JID. Na implementação, tentar nesta ordem (confirmar no spike — ver [validation-checklist.md](./validation-checklist.md)):
+O exemplo oficial **não** inclui JID. Na implementação, tentar nesta ordem (confirmar no E2E — ver [validation-checklist.md](./validation-checklist.md)):
 
 | Prioridade | Campo | Transformação |
 |------------|-------|---------------|
@@ -172,26 +172,39 @@ end
 
 ### Advanced settings (Fase 2)
 
-> ⚠️ **Path não confirmado no OpenAPI indexado** — validar no Swagger runtime ou Postman (pasta Instance) antes de implementar `ConnectionService#sync_settings`.
+Confirmado na collection Postman **[Evolution GO](https://www.postman.com/agenciadgcode/evolution-api/collection/nk736ze/evolution-go)** (abr/2026). **Não** está no índice `llms.txt` — validar no Swagger runtime.
 
-| Operação | Path planejado | Auth | Fase |
-|----------|----------------|------|------|
-| Update settings | `POST /instance/{instanceId}/advanced-settings` | `instance_token` | 2 |
+| Operação | Método | Path | Auth | Fase |
+|----------|--------|------|------|------|
+| Get settings | `GET` | `/instance/{instanceId}/advanced-settings` | `instance_token` | 2 |
+| Update settings | `PUT` | `/instance/{instanceId}/advanced-settings` | `instance_token` | 2 |
 
-Body esperado (camelCase — confirmar no spike):
+Body Postman (confirmar casing no E2E — OpenAPI create usa camelCase diferente):
 
 ```json
 {
-  "ignoreGroups": true,
-  "rejectCall": false,
-  "msgRejectCall": "",
-  "alwaysOnline": false,
+  "rejectCalls": false,
+  "rejectCallMessage": "",
   "readMessages": false,
-  "ignoreStatus": true
+  "readStatus": false,
+  "alwaysOnline": false
 }
 ```
 
-Mapeamento fork: [provider-config-mapping.md § Grupo 2](./provider-config-mapping.md).
+Mapeamento fork ↔ OpenAPI create response — ver [provider-config-mapping.md § Grupo 2](./provider-config-mapping.md) e [decisions.md §26](./decisions.md).
+
+**`POST /instance/reconnect`:** existe no Postman — **não usar** no fork (ADR §24); usar sempre `connect` com webhook.
+
+### Instance admin (fora do MVP inbox)
+
+| Operação | Método | Path | Auth |
+|----------|--------|------|------|
+| Info | `GET` | `/instance/info/{instanceId}` | global |
+| Logs | `GET` | `/instance/logs/{instanceId}` | global |
+| Reconnect | `POST` | `/instance/reconnect` | instance token |
+| Force reconnect | `POST` | `/instance/forcereconnect/{instanceId}` | global |
+
+> **Reconnect fork:** ADR §23 usa `POST /instance/connect` com webhook reenviado. `POST /instance/reconnect` existe no Postman — validar se equivale ou é atalho sem webhook.
 
 ---
 
@@ -321,7 +334,8 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 | `POST /message/react` | [react-a-message](https://docs.evolutionfoundation.com.br/evolution-go/react-a-message) |
 | `POST /message/edit` | [edit-a-message](https://docs.evolutionfoundation.com.br/evolution-go/edit-a-message) |
 | `POST /message/delete` | [delete-a-message-for-everyone](https://docs.evolutionfoundation.com.br/evolution-go/delete-a-message-for-everyone) |
-| `POST /message/downloadimage` | [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image) |
+| `POST /message/downloadimage` | [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image) — OpenAPI oficial |
+| `POST /message/downloadmedia` | Postman — body com `message.{type}Message`; validar no E2E qual endpoint usar |
 
 ---
 

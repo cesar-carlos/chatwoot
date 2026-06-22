@@ -1,8 +1,6 @@
 <script setup>
-import { computed } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { MESSAGE_TYPE } from 'widget/helpers/constants';
-import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
+import { toRef } from 'vue';
+import { useMessagePreview } from 'shared/composables/useMessagePreview';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 
 const props = defineProps({
@@ -24,77 +22,20 @@ const props = defineProps({
   },
 });
 
-const { getPlainText } = useMessageFormatter();
-const { t } = useI18n();
-
-const attachmentIcons = {
-  image: 'i-lucide-image',
-  audio: 'i-lucide-headphones',
-  video: 'i-lucide-video',
-  file: 'i-lucide-file',
-  location: 'i-lucide-map-pin',
-  contact: 'i-lucide-contact',
-  fallback: 'i-lucide-link-2',
-};
-
-const messageByAgent = computed(() => {
-  const { message_type: messageType } = props.message;
-  return messageType === MESSAGE_TYPE.OUTGOING;
-});
-
-const isMessageAnActivity = computed(() => {
-  const { message_type: messageType } = props.message;
-  return messageType === MESSAGE_TYPE.ACTIVITY;
-});
-
-const isMessagePrivate = computed(() => {
-  const { private: isPrivate } = props.message;
-  return isPrivate;
-});
-
-const parsedLastMessage = computed(() => {
-  const { content_attributes: contentAttributes } = props.message;
-  const { email: { subject } = {} } = contentAttributes || {};
-  return getPlainText(subject || props.message.content);
-});
-
-const lastMessageFileType = computed(() => {
-  const [{ file_type: fileType } = {}] = props.message.attachments;
-  return fileType;
-});
-
-const attachmentIcon = computed(() => {
-  return attachmentIcons[lastMessageFileType.value];
-});
-
-const attachmentMessageText = computed(() => {
-  switch (lastMessageFileType.value) {
-    case 'image':
-      return t('CHAT_LIST.ATTACHMENTS.image.CONTENT');
-    case 'audio':
-      return t('CHAT_LIST.ATTACHMENTS.audio.CONTENT');
-    case 'video':
-      return t('CHAT_LIST.ATTACHMENTS.video.CONTENT');
-    case 'file':
-      return t('CHAT_LIST.ATTACHMENTS.file.CONTENT');
-    case 'location':
-      return t('CHAT_LIST.ATTACHMENTS.location.CONTENT');
-    case 'contact':
-      return t('CHAT_LIST.ATTACHMENTS.contact.CONTENT');
-    default:
-      return '';
-  }
-});
-
-const showAttachmentPreview = computed(() => {
-  if (!props.message.attachments?.length) return false;
-  // FORK: share contact card
-  if (lastMessageFileType.value === 'contact') return true;
-  return !props.message.content;
-});
-
-const isMessageSticker = computed(() => {
-  return props.message && props.message.content_type === 'sticker';
+const {
+  showMessageType,
+  messageByAgent,
+  isMessageAnActivity,
+  isMessagePrivate,
+  parsedLastMessage,
+  lastMessageFileType,
+  attachmentIconClass,
+  attachmentMessageText,
+  showAttachmentPreview,
+  isMessageSticker,
+  hasPreviewText,
+} = useMessagePreview(toRef(props, 'message'), {
+  showMessageType: toRef(props, 'showMessageType'),
 });
 </script>
 
@@ -129,7 +70,6 @@ const isMessageSticker = computed(() => {
       class="min-w-0 text-body-main"
       :class="multiLine ? 'line-clamp-2' : 'truncate'"
     >
-      <!-- Case for previous and conversation conversation card -->
       <template v-if="showMessageType && multiLine">
         <Icon
           v-if="isMessagePrivate"
@@ -148,16 +88,14 @@ const isMessageSticker = computed(() => {
         />
       </template>
       <span
-        v-if="message.content && isMessageSticker"
+        v-if="hasPreviewText && isMessageSticker"
         class="inline-grid grid-flow-col auto-cols-max items-center gap-1"
       >
         <Icon icon="i-lucide-image" class="size-3.5" />
         {{ $t('CHAT_LIST.ATTACHMENTS.image.CONTENT') }}
       </span>
 
-      <template
-        v-else-if="message.content && lastMessageFileType !== 'contact'"
-      >
+      <template v-else-if="hasPreviewText && lastMessageFileType !== 'contact'">
         {{ parsedLastMessage }}
       </template>
 
@@ -166,8 +104,8 @@ const isMessageSticker = computed(() => {
         class="inline-block align-middle truncate"
       >
         <Icon
-          v-if="attachmentIcon && showMessageType"
-          :icon="attachmentIcon"
+          v-if="attachmentIconClass && showMessageType"
+          :icon="attachmentIconClass"
           class="inline-block align-middle size-3.5 ltr:mr-1 rtl:ml-1"
         />
         <span class="inline-block align-middle">

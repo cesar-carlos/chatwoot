@@ -39,7 +39,7 @@ flowchart LR
   subgraph evogo_api["Evolution Go REST"]
     CREATE["POST /instance/create"]
     CONNECT["POST /instance/connect"]
-    ADV["POST /instance/:id/advanced-settings"]
+    ADV["GET/PUT /instance/:id/advanced-settings"]
     DELPROXY["DELETE /instance/proxy/:id"]
   end
 
@@ -108,9 +108,9 @@ Ver [decisions.md §14](./decisions.md).
 
 ## 2. Comportamento WhatsApp
 
-Flags no **create** (`data` da instância) e **advanced-settings** (Fase 2).
+Flags no **create** (`data` da instância) e **advanced-settings** (Fase 2) via `GET`+`PUT /instance/{id}/advanced-settings`.
 
-> ⚠️ `advanced-settings`: path REST a confirmar no spike — [api-reference.md](./api-reference.md).
+Mapeamento completo com variantes de casing: [provider-config-mapping.md § Grupo 2](./provider-config-mapping.md) · [decisions.md §26](./decisions.md).
 
 | Campo fork | Campo Go | Default | Fase | Label UI (en) |
 |------------|----------|---------|------|---------------|

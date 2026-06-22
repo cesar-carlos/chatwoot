@@ -13,7 +13,7 @@ Sintomas comuns, causas e ações. Complementa [validation-checklist.md](./valid
 | Primeiro deploy | Painel Go pede login | Magic Link — [getting-started](https://docs.evolutionfoundation.com.br/en/evolution-go/getting-started) |
 | Licença expirada | `GET /server/ok` OK mas connect/QR falha; logs Go mencionam license | Reativar no **painel Go** (fora do adapter Chatwoot) |
 | Licença inválida pós-migração | 403 em admin endpoints | Revalidar licença no host; reiniciar container |
-| Sem licença em staging | Spike bloqueado | Usar ambiente com licença ativa antes de fixtures |
+| Sem licença em staging | E2E bloqueado | Operador ativa licença na instância Go |
 
 **Escopo fork:** Chatwoot **não** implementa fluxo de licença — apenas documenta pré-requisito ([decisions.md §15](./decisions.md)).
 
@@ -113,6 +113,8 @@ Campo `phone` obrigatório — E.164 sem `+`.
 
 Ver [decisions.md §23](./decisions.md).
 
+**Não usar** `POST /instance/reconnect` no fork — não garante webhook ([decisions.md §24](./decisions.md)).
+
 ### Reconnect no Chatwoot não restaura sessão
 
 1. `POST /instance/disconnect` (instance token)
@@ -203,4 +205,4 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 |---------|---------------|
 | Payload webhook desconhecido | Salvar raw JSON → fixture + atualizar normalizer |
 | `READ_RECEIPT` formato diferente | Spike Fase 2 |
-| Mídia inbound falha | `POST /message/downloadimage` + normalizer Fase 2 |
+| Mídia inbound falha | `download_media` — primário `downloadimage`, fallback `downloadmedia` ([decisions.md §25](./decisions.md)) |

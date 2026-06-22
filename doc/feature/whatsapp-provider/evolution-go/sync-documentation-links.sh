@@ -27,5 +27,7 @@ echo "=== Paths marked unconfirmed (manual Postman/Swagger audit) ==="
 rg -n '⚠️|típico|confirmar' "$DOC_LINKS" || true
 
 echo ""
+echo "=== CI (opcional) ==="
+echo "Adicionar ao pipeline: ./sync-documentation-links.sh (falhar se MISSING URLs)"
+echo ""
 echo "Done. Update documentation-links.md for any MISSING URLs."
-echo "Run Swagger audit for advanced-settings: {base_url}/swagger/index.html"

@@ -34,7 +34,7 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 | Feature | Evento Go | Fase | Componente |
 |---------|-----------|------|------------|
 | Texto | `MESSAGE` | 1 | `EvolutionGoNormalizer` |
-| Mídia | `MESSAGE` (imageMessage, etc.) | 2 | Normalizer + download |
+| Mídia | `MESSAGE` (imageMessage, etc.) | 2 | Normalizer + `ApiClient#download_media` |
 | Status read | `READ_RECEIPT` | 2 | → `statuses[]` flat |
 | Dedup | — | 1 | `lock_message_source_id!` (upstream) |
 | Contato/conversa | — | 1 | `IncomingMessageBaseService` |

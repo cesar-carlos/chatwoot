@@ -912,7 +912,7 @@
         },
         "IGNORE_FROM_ME_ECHO": {
           "LABEL": "Ignore phone-sent echoes",
-          "DESCRIPTION": "Skip inbound webhooks for messages sent from the connected WhatsApp phone (fromMe). Disable only if you need mobile-sent messages in Chatwoot."
+          "DESCRIPTION": "When enabled, skips all messages sent from the connected WhatsApp phone. Leave disabled to show phone-sent messages as outgoing (Chatwoot agent replies are still deduplicated by message ID)."
         },
         "IGNORE_STATUS_BROADCAST": {
           "LABEL": "Ignore status broadcasts",
