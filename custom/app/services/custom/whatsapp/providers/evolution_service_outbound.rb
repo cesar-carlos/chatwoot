@@ -42,7 +42,7 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     jid = original&.content_attributes&.dig('evolution_remote_jid').presence
     return jid if jid.present?
 
-    "#{normalize_phone(phone_number)}@s.whatsapp.net"
+    delivery_remote_jid(phone_number, original)
   end
 
   def reply_snippet(original, _reply_id)
@@ -79,7 +79,21 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     jid = target&.content_attributes&.dig('evolution_remote_jid').presence
     return jid if jid.present?
 
-    "#{normalize_phone(phone_number)}@s.whatsapp.net"
+    delivery_remote_jid(phone_number, target)
+  end
+
+  def delivery_remote_jid(phone_number, context_message = nil)
+    contact = context_message&.conversation&.contact
+    stored = contact&.additional_attributes&.dig(
+      Custom::Whatsapp::Evolution::ContactEnrichmentService::EVOLUTION_REMOTE_JID_KEY
+    )
+    return stored if stored.present?
+
+    value = phone_number.to_s.strip
+    return value if value.include?('@')
+
+    digits = normalize_phone(value)
+    "#{digits}@s.whatsapp.net"
   end
 
   def create_send_error_private_note!(message, response)

@@ -55,6 +55,19 @@ class Custom::Whatsapp::Evolution::JidResolver
     remote_jid if remote_jid.to_s.end_with?('@lid')
   end
 
+  def recipient_id_for_status(remote_jid, key = nil)
+    key = key.with_indifferent_access if key.present?
+    if key.present?
+      phone_from_message_key(key) || group_id_from_jid(key[:remoteJid] || remote_jid)
+    else
+      phone_from_jid(resolve_message_jid({ remoteJid: remote_jid })) || group_id_from_jid(remote_jid)
+    end
+  end
+
+  def group_id_from_jid(jid)
+    jid.to_s.split('@').first if jid.to_s.end_with?('@g.us')
+  end
+
   private
 
   attr_reader :config

@@ -3,6 +3,7 @@
 class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   LOOKBACK_HOURS = 6
   PAGE_SIZE = 50
+  MAX_PAGES = 20
 
   pattr_initialize [:channel!]
 
@@ -48,6 +49,7 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
       break if records.blank?
 
       messages.concat(records)
+      break if page >= MAX_PAGES
       break if total_pages.zero? || page >= total_pages
 
       page += 1
