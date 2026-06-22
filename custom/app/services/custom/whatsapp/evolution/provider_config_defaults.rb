@@ -1,0 +1,42 @@
+# frozen_string_literal: true
+
+module Custom::Whatsapp::Evolution::ProviderConfig
+  DEFAULTS = {
+    'groups_ignore' => true,
+    'reject_call' => false,
+    'msg_call' => '',
+    'always_online' => false,
+    'read_messages' => false,
+    'read_status' => false,
+    'sync_full_history' => false,
+    'proxy_enabled' => false,
+    'proxy_host' => '',
+    'proxy_port' => '',
+    'proxy_protocol' => 'http',
+    'proxy_username' => '',
+    'proxy_password' => '',
+    'sign_msg' => false,
+    'sign_delimiter' => "\n",
+    'conversation_pending' => false,
+    'merge_brazil_contacts' => true,
+    'mark_read_on_reply' => false,
+    'sync_delete_to_whatsapp' => false,
+    'convert_markdown_outbound' => true,
+    'convert_markdown_inbound' => true,
+    'send_templates_as_text' => true,
+    'send_random_delay' => true,
+    'notify_send_errors_private' => true,
+    'ignore_jids' => ['@g.us'],
+    'ignore_status_broadcast' => true,
+    'ignore_from_me_echo' => true,
+    'ignore_survey_links' => true,
+    'import_contacts' => false,
+    'import_messages' => false,
+    'days_limit_import_messages' => 7,
+    'connection_status' => 'connecting',
+    'import_status' => 'idle',
+    'import_cursor' => {},
+    'import_stats' => {},
+    'import_error' => nil
+  }.freeze
+end

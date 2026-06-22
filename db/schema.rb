@@ -241,6 +241,36 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
     t.index ["enabled"], name: "index_assignment_policies_on_enabled"
   end
 
+  create_table "attachment_retention_events", force: :cascade do |t|
+    t.bigint "account_id"
+    t.bigint "attachment_id", null: false
+    t.bigint "message_id"
+    t.string "blob_key"
+    t.bigint "byte_size", default: 0, null: false
+    t.datetime "attachment_created_at"
+    t.string "status", null: false
+    t.text "error_message"
+    t.string "run_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_attachment_retention_events_on_account_id_and_created_at"
+    t.index ["account_id"], name: "index_attachment_retention_events_on_account_id"
+    t.index ["attachment_id"], name: "index_attachment_retention_events_on_attachment_id"
+    t.index ["run_id"], name: "index_attachment_retention_events_on_run_id"
+  end
+
+  create_table "attachment_retention_failures", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "attachment_id", null: false
+    t.integer "failure_count", default: 0, null: false
+    t.text "last_error"
+    t.datetime "last_failed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_attachment_retention_failures_on_account_id"
+    t.index ["attachment_id"], name: "index_attachment_retention_failures_on_attachment_id", unique: true
+  end
+
   create_table "attachments", id: :serial, force: :cascade do |t|
     t.integer "file_type", default: 0
     t.string "external_url"
@@ -253,6 +283,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
     t.string "fallback_title"
     t.string "extension"
     t.jsonb "meta", default: {}
+    t.index ["account_id", "created_at"], name: "index_attachments_on_account_id_and_created_at"
     t.index ["account_id"], name: "index_attachments_on_account_id"
     t.index ["message_id"], name: "index_attachments_on_message_id"
     t.index ["meta"], name: "index_attachments_on_meta", using: :gin
@@ -1595,6 +1626,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "attachment_retention_events", "accounts", on_delete: :nullify
+  add_foreign_key "attachment_retention_failures", "accounts"
   add_foreign_key "conversation_workflow_rule_executions", "conversation_workflow_rules"
   add_foreign_key "conversation_workflow_rule_executions", "conversations"
   add_foreign_key "conversation_workflow_rules", "accounts"
