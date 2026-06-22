@@ -31,7 +31,10 @@ class Custom::Whatsapp::Evolution::MessageDeleteSyncService
     message.update!(
       content: I18n.t('conversations.messages.deleted'),
       content_type: :text,
-      content_attributes: (message.content_attributes || {}).merge('deleted' => true)
+      content_attributes: (message.content_attributes || {}).merge(
+        'deleted' => true,
+        'deleted_via_evolution_webhook' => true
+      )
     )
   end
 end

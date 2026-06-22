@@ -30,7 +30,8 @@ class Custom::Whatsapp::Evolution::MessageEditSyncService
   end
 
   def update_original!(message, body)
-    message.update!(content: "#{EDITED_PREFIX}#{body}")
+    formatted_body = apply_inbound_formatting(body)
+    message.update!(content: "#{EDITED_PREFIX}#{formatted_body}")
   end
 
   def create_edited_message(key, body, original)
@@ -41,7 +42,8 @@ class Custom::Whatsapp::Evolution::MessageEditSyncService
     }
     normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer.new(
       channel: channel,
-      envelope: envelope
+      envelope: envelope,
+      import_mode: key[:fromMe] == true
     ).perform
     return if normalized.blank?
 
@@ -53,6 +55,7 @@ class Custom::Whatsapp::Evolution::MessageEditSyncService
 
   def build_upsert_payload(key, body, original)
     remote_jid = key[:remoteJid].presence || original&.content_attributes&.dig('evolution_remote_jid')
+    formatted_body = apply_inbound_formatting(body)
     {
       key: {
         id: "#{key[:id]}-edited-#{Time.current.to_i}",
@@ -62,8 +65,20 @@ class Custom::Whatsapp::Evolution::MessageEditSyncService
       }.compact,
       pushName: original&.sender&.name,
       messageType: 'conversation',
-      message: { conversation: "#{EDITED_PREFIX}#{body}" },
+      message: { conversation: "#{EDITED_PREFIX}#{formatted_body}" },
       messageTimestamp: Time.current.to_i
     }
+  end
+
+  def apply_inbound_formatting(body)
+    return body unless convert_markdown_inbound?
+
+    Custom::Whatsapp::Evolution::MarkdownConverter.inbound(body)
+  end
+
+  def convert_markdown_inbound?
+    ActiveModel::Type::Boolean.new.cast(
+      (channel.provider_config || {})['convert_markdown_inbound']
+    )
   end
 end

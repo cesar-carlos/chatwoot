@@ -7,7 +7,7 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
     @channel = channel
     @inbox = channel.inbox
     @data = data
-    @config = channel.provider_config || Custom::Whatsapp::Evolution::ProviderConfig::DEFAULTS
+    @config = channel.provider_config || Custom::Whatsapp::Evolution::ProviderConfigDefaults::DEFAULTS
   end
 
   def perform
@@ -26,7 +26,7 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
     remote_jid = record[:remoteJid].to_s
     return if skip_remote_jid?(remote_jid)
 
-    phone = resolve_phone(record, remote_jid)
+    phone = phone_from_contact_record(record)
     return if phone.blank?
 
     push_name = record[:pushName].to_s.strip.presence
@@ -35,14 +35,8 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
     enqueue_enrichment(contact, remote_jid, push_name, profile_pic_url)
   end
 
-  def resolve_phone(record, remote_jid)
-    alt = record[:remoteJidAlt].to_s
-    jid = if alt.present? && (remote_jid.end_with?('@lid') || record[:addressingMode] == 'lid')
-            alt
-          else
-            remote_jid
-          end
-    phone_from_jid(jid)
+  def jid_resolver
+    @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(config)
   end
 
   def find_or_create_contact(phone, remote_jid, push_name)
