@@ -836,6 +836,11 @@
         "FILTERS_SECTION": "Inbound filters",
         "IMPORT_SECTION": "Historical import",
         "IMPORT": {
+          "ON_CONNECT": {
+            "LABEL": "Import automatically on connect",
+            "DESCRIPTION": "When the WhatsApp session becomes connected, start historical import in the background if contacts or messages import is enabled."
+          },
+          "AUTO_ON_CONNECT_WARNING": "Historical import may start automatically the next time this inbox connects to WhatsApp. Use \"Run import now\" for a manual run, or disable automatic import on connect.",
           "CONTACTS": {
             "LABEL": "Import contacts",
             "DESCRIPTION": "Import WhatsApp contacts from Evolution when the session connects or when you run import manually."
@@ -864,7 +869,7 @@
         "PROXY_SECTION": "Proxy",
         "GROUPS_IGNORE": {
           "LABEL": "Ignore groups",
-          "DESCRIPTION": "Do not process group messages ({'@'}g.us) on the Baileys socket."
+          "DESCRIPTION": "When enabled, group messages ({'@'}g.us) are not imported. Disable to receive group chats (requires format group messages for readability)."
         },
         "REJECT_CALL": {
           "LABEL": "Reject calls",
@@ -906,6 +911,42 @@
           "LABEL": "Delete on WhatsApp when deleted in Chatwoot",
           "DESCRIPTION": "When an agent deletes a message in Chatwoot, delete it for everyone on WhatsApp."
         },
+        "SEND_RANDOM_DELAY": {
+          "LABEL": "Random send delay",
+          "DESCRIPTION": "Wait 500–2000 ms before each outbound message to reduce automation patterns."
+        },
+        "MERGE_BRAZIL_CONTACTS": {
+          "LABEL": "Merge Brazil phone variants",
+          "DESCRIPTION": "Match contacts with and without the mobile 9th digit for +55 numbers."
+        },
+        "IGNORE_SURVEY_LINKS": {
+          "LABEL": "Ignore CSAT survey links",
+          "DESCRIPTION": "Drop inbound messages that contain Chatwoot survey response URLs."
+        },
+        "SYNC_LOST_MESSAGES": {
+          "LABEL": "Reconcile missed messages",
+          "DESCRIPTION": "Periodically compare Evolution chat history with Chatwoot and import messages missing from the last 6 hours."
+        },
+        "FORMAT_GROUP_MESSAGES": {
+          "LABEL": "Format group participant names",
+          "DESCRIPTION": "Prefix group messages with the sender name or phone when group chats are enabled."
+        },
+        "READ_STATUS": {
+          "LABEL": "Mark status updates as read",
+          "DESCRIPTION": "Sync WhatsApp status views to the Evolution instance (Baileys readStatus)."
+        },
+        "SYNC_FULL_HISTORY": {
+          "LABEL": "Sync full history on connect",
+          "DESCRIPTION": "Ask Baileys to sync full chat history when the session connects."
+        },
+        "ALWAYS_ONLINE": {
+          "LABEL": "Always online presence",
+          "DESCRIPTION": "Keep the WhatsApp session presence as available."
+        },
+        "MSG_CALL": {
+          "LABEL": "Rejected call message",
+          "DESCRIPTION": "Auto-reply text sent when a call is rejected (requires reject calls enabled)."
+        },
         "IGNORE_JIDS": {
           "LABEL": "Ignored JIDs",
           "DESCRIPTION": "One JID or pattern per line. Use {'@'}g.us for all groups or a full JID such as 1234567890{'@'}s.whatsapp.net.",
@@ -931,7 +972,11 @@
           "PASSWORD": {
             "LABEL": "Password",
             "DESCRIPTION": "Leave blank to keep the current password."
-          }
+          },
+          "RESTART_HINT": "After changing proxy settings, restart the Evolution instance so Baileys reconnects through the proxy.",
+          "RESTART": "Save proxy and restart instance",
+          "RESTART_SUCCESS": "Proxy saved and instance restart requested.",
+          "RESTART_ERROR": "Could not restart the Evolution instance after saving proxy."
         }
       }
     },

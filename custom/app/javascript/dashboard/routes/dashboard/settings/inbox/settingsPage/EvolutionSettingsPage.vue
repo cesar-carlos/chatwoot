@@ -41,9 +41,19 @@ function loadState() {
     signDelimiter: config.sign_delimiter ?? '\n',
     convertMarkdownOutbound: config.convert_markdown_outbound !== false,
     convertMarkdownInbound: config.convert_markdown_inbound !== false,
+    sendRandomDelay: config.send_random_delay !== false,
     markReadOnReply: config.mark_read_on_reply === true,
     notifySendErrorsPrivate: config.notify_send_errors_private !== false,
     syncDeleteToWhatsapp: config.sync_delete_to_whatsapp === true,
+    mergeBrazilContacts: config.merge_brazil_contacts !== false,
+    ignoreSurveyLinks: config.ignore_survey_links !== false,
+    formatGroupMessages: config.format_group_messages !== false,
+    readStatus: config.read_status === true,
+    syncFullHistory: config.sync_full_history === true,
+    alwaysOnline: config.always_online === true,
+    msgCall: config.msg_call || '',
+    importOnConnect: config.import_on_connect !== false,
+    syncLostMessages: config.sync_lost_messages === true,
     rejectCall: config.reject_call === true,
     readMessages: config.read_messages === true,
     conversationPending: config.conversation_pending === true,
@@ -62,6 +72,7 @@ function loadState() {
 
 const state = reactive(loadState());
 const isImporting = ref(false);
+const isRestartingProxy = ref(false);
 const importStatus = ref(null);
 
 watch(
@@ -93,6 +104,9 @@ function buildProviderConfig() {
 
   if (state.groupsIgnore && !ignoreJids.includes('@g.us')) {
     ignoreJids.push('@g.us');
+  } else if (!state.groupsIgnore) {
+    const groupIndex = ignoreJids.indexOf('@g.us');
+    if (groupIndex >= 0) ignoreJids.splice(groupIndex, 1);
   }
 
   const config = {
@@ -102,11 +116,19 @@ function buildProviderConfig() {
     sign_delimiter: state.signDelimiter,
     convert_markdown_outbound: state.convertMarkdownOutbound,
     convert_markdown_inbound: state.convertMarkdownInbound,
+    send_random_delay: state.sendRandomDelay,
     mark_read_on_reply: state.markReadOnReply,
     notify_send_errors_private: state.notifySendErrorsPrivate,
     sync_delete_to_whatsapp: state.syncDeleteToWhatsapp,
+    merge_brazil_contacts: state.mergeBrazilContacts,
+    ignore_survey_links: state.ignoreSurveyLinks,
+    format_group_messages: state.formatGroupMessages,
     reject_call: state.rejectCall,
     read_messages: state.readMessages,
+    read_status: state.readStatus,
+    sync_full_history: state.syncFullHistory,
+    always_online: state.alwaysOnline,
+    msg_call: state.msgCall,
     conversation_pending: state.conversationPending,
     proxy_enabled: state.proxyEnabled,
     proxy_host: state.proxyHost,
@@ -116,6 +138,8 @@ function buildProviderConfig() {
     ignore_jids: ignoreJids,
     import_contacts: state.importContacts,
     import_messages: state.importMessages,
+    import_on_connect: state.importOnConnect,
+    sync_lost_messages: state.syncLostMessages,
     days_limit_import_messages: Number(state.daysLimitImportMessages) || 7,
   };
 
@@ -159,6 +183,25 @@ async function saveSettings() {
     );
   } finally {
     isSaving.value = false;
+  }
+}
+
+async function restartAfterProxyChange() {
+  if (isRestartingProxy.value) return;
+
+  isRestartingProxy.value = true;
+  try {
+    await persistSettings({ showSuccessAlert: false });
+    await store.dispatch('inboxes/evolutionRestart', props.inbox.id);
+    useAlert(t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.RESTART_SUCCESS'));
+  } catch (error) {
+    useAlert(
+      error?.response?.data?.error ||
+        error?.message ||
+        t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.RESTART_ERROR')
+    );
+  } finally {
+    isRestartingProxy.value = false;
   }
 }
 
@@ -223,6 +266,40 @@ function importStatusLabel(status) {
         :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.READ_MESSAGES.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.READ_MESSAGES.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.readStatus"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.READ_STATUS.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.READ_STATUS.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.syncFullHistory"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_FULL_HISTORY.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_FULL_HISTORY.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.alwaysOnline"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.ALWAYS_ONLINE.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.ALWAYS_ONLINE.DESCRIPTION')
+        "
+      />
+      <SettingsFieldSection
+        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.MSG_CALL.LABEL')"
+        :help-text="t('INBOX_MGMT.EVOLUTION.SETTINGS.MSG_CALL.DESCRIPTION')"
+      >
+        <Input v-model="state.msgCall" />
+      </SettingsFieldSection>
+      <SettingsToggleSection
+        v-model="state.formatGroupMessages"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.FORMAT_GROUP_MESSAGES.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.FORMAT_GROUP_MESSAGES.DESCRIPTION')
         "
       />
     </SettingsAccordion>
@@ -305,11 +382,38 @@ function importStatusLabel(status) {
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_DELETE_TO_WHATSAPP.DESCRIPTION')
         "
       />
+      <SettingsToggleSection
+        v-model="state.sendRandomDelay"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_RANDOM_DELAY.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_RANDOM_DELAY.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.mergeBrazilContacts"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.MERGE_BRAZIL_CONTACTS.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.MERGE_BRAZIL_CONTACTS.DESCRIPTION')
+        "
+      />
     </SettingsAccordion>
 
     <SettingsAccordion
       :title="t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT_SECTION')"
     >
+      <p
+        v-if="state.importContacts || state.importMessages"
+        class="text-sm text-n-amber-11"
+      >
+        {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.AUTO_ON_CONNECT_WARNING') }}
+      </p>
+      <SettingsToggleSection
+        v-model="state.importOnConnect"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.ON_CONNECT.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.ON_CONNECT.DESCRIPTION')
+        "
+      />
       <SettingsToggleSection
         v-model="state.importContacts"
         :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.CONTACTS.LABEL')"
@@ -391,6 +495,20 @@ function importStatusLabel(status) {
           class="w-full [&>div]:!bg-transparent [&>div]:!border-none [&>div]:!border-0 [&>div]:px-0 [&>div]:pb-0 [&>div]:pt-0"
         />
       </SettingsFieldSection>
+      <SettingsToggleSection
+        v-model="state.ignoreSurveyLinks"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_SURVEY_LINKS.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_SURVEY_LINKS.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.syncLostMessages"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_LOST_MESSAGES.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_LOST_MESSAGES.DESCRIPTION')
+        "
+      />
     </SettingsAccordion>
 
     <SettingsAccordion
@@ -437,6 +555,17 @@ function importStatusLabel(status) {
         >
           <Input v-model="state.proxyPassword" type="password" />
         </SettingsFieldSection>
+        <p class="text-sm text-n-slate-11">
+          {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.RESTART_HINT') }}
+        </p>
+        <div class="flex justify-end">
+          <NextButton
+            :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.RESTART')"
+            :is-loading="isRestartingProxy"
+            faded
+            @click="restartAfterProxyChange"
+          />
+        </div>
       </div>
     </SettingsAccordion>
 

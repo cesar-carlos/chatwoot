@@ -29,6 +29,10 @@ module Custom::Webhooks::WhatsappEventsJob
     case params[:event]
     when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
       process_evolution_message_events(channel, params)
+    when 'MESSAGES_DELETE'
+      Custom::Whatsapp::Evolution::MessageDeleteSyncService.new(channel: channel, data: params[:data]).perform
+    when 'MESSAGES_EDITED'
+      Custom::Whatsapp::Evolution::MessageEditSyncService.new(channel: channel, data: params[:data]).perform
     when 'CONTACTS_UPSERT', 'CONTACTS_UPDATE'
       Custom::Whatsapp::Evolution::ContactsSyncService.new(channel: channel, data: params[:data]).perform
     when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'

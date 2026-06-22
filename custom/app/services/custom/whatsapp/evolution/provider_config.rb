@@ -9,6 +9,8 @@ module Custom::Whatsapp::Evolution::ProviderConfig
   WEBHOOK_EVENTS = %w[
     MESSAGES_UPSERT
     MESSAGES_UPDATE
+    MESSAGES_DELETE
+    MESSAGES_EDITED
     CONTACTS_UPSERT
     CONTACTS_UPDATE
     CONNECTION_UPDATE
@@ -51,7 +53,14 @@ module Custom::Whatsapp::Evolution::ProviderConfig
   CREDENTIAL_KEYS = %w[base_url api_key instance_name].freeze
 
   def self.build(attrs = {})
+    ensure_defaults_loaded!
     normalize_credentials(DEFAULTS.merge(attrs.stringify_keys))
+  end
+
+  def self.ensure_defaults_loaded!
+    return if const_defined?(:DEFAULTS, false)
+
+    load Rails.root.join('custom/app/services/custom/whatsapp/evolution/provider_config_defaults.rb')
   end
 
   def self.normalize_credentials(config)

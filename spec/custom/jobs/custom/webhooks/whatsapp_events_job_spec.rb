@@ -22,6 +22,8 @@ RSpec.describe Webhooks::WhatsappEventsJob do
   let(:process_service) { instance_double(Whatsapp::IncomingMessageService, perform: nil) }
   let(:connection_service) { instance_double(Custom::Whatsapp::Evolution::ConnectionService, handle_event: nil) }
   let(:contacts_sync_service) { instance_double(Custom::Whatsapp::Evolution::ContactsSyncService, perform: nil) }
+  let(:delete_sync_service) { instance_double(Custom::Whatsapp::Evolution::MessageDeleteSyncService, perform: nil) }
+  let(:edit_sync_service) { instance_double(Custom::Whatsapp::Evolution::MessageEditSyncService, perform: nil) }
 
   def load_fixture(name)
     JSON.parse(Rails.root.join("spec/fixtures/evolution/#{name}.json").read)
@@ -32,6 +34,8 @@ RSpec.describe Webhooks::WhatsappEventsJob do
     allow(Whatsapp::IncomingMessageService).to receive(:new).and_return(process_service)
     allow(Custom::Whatsapp::Evolution::ConnectionService).to receive(:new).and_return(connection_service)
     allow(Custom::Whatsapp::Evolution::ContactsSyncService).to receive(:new).and_return(contacts_sync_service)
+    allow(Custom::Whatsapp::Evolution::MessageDeleteSyncService).to receive(:new).and_return(delete_sync_service)
+    allow(Custom::Whatsapp::Evolution::MessageEditSyncService).to receive(:new).and_return(edit_sync_service)
     allow(described_class).to receive(:new).and_wrap_original do |original, *args|
       instance = original.call(*args)
       allow(instance).to receive(:with_lock).and_yield
@@ -85,6 +89,14 @@ RSpec.describe Webhooks::WhatsappEventsJob do
       expect(Whatsapp::IncomingMessageService).to have_received(:new)
     end
 
+    it 'processes each item in a batch MESSAGES_UPSERT data array' do
+      envelope = load_fixture('messages_upsert_batch')
+
+      job.perform_now(envelope)
+
+      expect(Whatsapp::IncomingMessageService).to have_received(:new).twice
+    end
+
     it 'logs when the normalizer skips a message' do
       envelope = load_fixture('messages_upsert_text')
       envelope['data']['key']['fromMe'] = true
@@ -125,6 +137,32 @@ RSpec.describe Webhooks::WhatsappEventsJob do
       )
       expect(contacts_sync_service).to have_received(:perform)
       expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
+    end
+  end
+
+  describe 'delete and edit events' do
+    it 'delegates MESSAGES_DELETE to MessageDeleteSyncService' do
+      envelope = load_fixture('messages_delete')
+
+      job.perform_now(envelope)
+
+      expect(Custom::Whatsapp::Evolution::MessageDeleteSyncService).to have_received(:new).with(
+        channel: channel,
+        data: envelope['data']
+      )
+      expect(delete_sync_service).to have_received(:perform)
+    end
+
+    it 'delegates MESSAGES_EDITED to MessageEditSyncService' do
+      envelope = load_fixture('messages_edited')
+
+      job.perform_now(envelope)
+
+      expect(Custom::Whatsapp::Evolution::MessageEditSyncService).to have_received(:new).with(
+        channel: channel,
+        data: envelope['data']
+      )
+      expect(edit_sync_service).to have_received(:perform)
     end
   end
 
