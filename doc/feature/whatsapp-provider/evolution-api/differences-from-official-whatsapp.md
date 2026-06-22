@@ -122,7 +122,7 @@ Adicionar: `isEvolutionWhatsAppChannel` ou entry em `messagingProviderCapabiliti
 
 Normalizer deve:
 
-1. Preferir dígitos de `remoteJidAlt` quando `addressingMode == 'lid'`
+1. Preferir dígitos de `remoteJidAlt` quando JID termina `@lid` ou `addressingMode == 'lid'`
 2. Aplicar `merge_brazil_contacts` (+55 com/sem 9º dígito) se habilitado
 3. Usar `key.id` como `source_id` da mensagem
 

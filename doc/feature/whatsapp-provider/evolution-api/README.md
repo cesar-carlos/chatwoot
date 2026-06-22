@@ -7,7 +7,7 @@ Planejamento para o primeiro provider alternativo do fork: **`Channel::Whatsapp`
 | Item | Estado |
 |------|--------|
 | **Documentação fork** | 18 arquivos nesta pasta (ver índice abaixo) |
-| **Código Chatwoot (`custom/`)** | **Fase 0–3 implementada** (~95%) — ver [tasks.md](./tasks.md) |
+| **Código Chatwoot (`custom/`)** | **Fase 0–4 implementada** (~95%) — ver [tasks.md](./tasks.md) |
 | **Specs automatizados** | ✅ ~42 examples em `spec/custom/` + Playwright em `tests/playwright/` |
 | **Validação T0 (REST spike)** | ✅ **v2.3.6** local — fixtures reais, sendText `text` plano |
 | **E2E pendente** | ⚠️ §2–3 ✅ local jun/2026 — wizard QR com scan real ainda manual |
@@ -98,7 +98,7 @@ Registrado em `Channel::Whatsapp::PROVIDERS` com `# FORK:` (ver [../gaps-and-blo
 | **0–1** | ✅ código | Registry, texto in/out, QR wizard, proxy wizard, webhook, bypass 24h, create pós-inbox + compensação |
 | **2** | ✅ código | Mídia in/out (base64), statuses, settings UI, `sign_msg`, `ignore_jids`, `conversation_pending` |
 | **3** | ✅ código | Health, reconnect/logout/restart, alerta desconexão, `merge_brazil_contacts`, ActionCable QR |
-| **4** | ⏸️ | Import histórico (`findContacts` / `findMessages`) |
+| **4** | ✅ código (validação operacional pendente) | Import histórico (`findContacts` / `findMessages`) via `ImportService` |
 | **5** | — | Voz — ver `doc/feature/whatsapp-voice/` |
 
 **Pendente validação operacional:** E2E §2–4 em [validation-checklist.md](./validation-checklist.md).
@@ -111,13 +111,16 @@ Detalhe: [inbox-business-rules.md](./inbox-business-rules.md) · [tasks.md](./ta
 
 | Classe / arquivo | Fase | Responsabilidade |
 |------------------|------|------------------|
-| `Custom::Whatsapp::Evolution::ApiClient` | 1 | HTTP fino para Evolution |
-| `Custom::Whatsapp::Evolution::ConnectionService` | 1–3 | create/connect/webhook/proxy/QR/ActionCable + delete compensação |
+| `Custom::Whatsapp::Evolution::ApiClient` | 1 | HTTP fino para Evolution (`ApiClient.for_channel`) |
+| `Custom::Whatsapp::Evolution::ConnectionService` | 1–3 | Facade: connect/webhook/QR/ActionCable + delete compensação |
+| `Custom::Whatsapp::Evolution::Provisioner` | 1–3 | create/connect/webhook/settings/proxy provision |
+| `Custom::Whatsapp::Evolution::ConnectionEvents` | 1–3 | `CONNECTION_UPDATE` / `QRCODE_UPDATED` handlers |
 | `Custom::Whatsapp::Evolution::MediaPayload` | 2 | base64 outbound quando URL não é pública |
 | `Custom::Whatsapp::Evolution::ProviderConfig` | 0–2 | DEFAULTS, RUNTIME/SYNCABLE/CREDENTIAL keys |
 | `Custom::Whatsapp::Providers::EvolutionService` | 1–2 | Envio texto/mídia, quoted, sign_msg |
 | `Custom::Whatsapp::Webhooks::EvolutionNormalizer` | 1–2 | Envelope → flat payload |
-| `Custom::Webhooks::EvolutionController` | 1 | Auth + enqueue job |
+| `Webhooks::EvolutionController` | 1 | Auth + enqueue job (`EventNames` no payload) |
+| `Custom::Whatsapp::Evolution::EventNames` | 1 | `messages.upsert` → `MESSAGES_UPSERT` |
 | Prepend `Channel::Whatsapp` | 0–2 | Registry, mask secrets, sync/validate condicional |
 | Prepend `WhatsappEventsJob` | 0–1 | Normalizer + mutex Redis |
 | Prepend `MessageWindowService` | 0 | `nil` para `evolution` |
@@ -165,6 +168,10 @@ Logo oficial da Evolution API para tiles e wizard:
 | Seg jun/2026 | `apikey` removido do job Sidekiq; `ApiError#user_message` sanitizado em produção; `filter_parameter_logging` `:apikey` |
 | Ops jun/2026 | Trim credenciais (`ProviderConfig.normalize_credentials`); validação `instance_name` único antes do create |
 | QR jun/2026 | `fetch_qr_code` reutiliza `qrcode_storage_attrs` — preserva `code` do connect flat; cable `QRCODE_UPDATED` emite `qrcode_base64`/`qrcode_code` (paridade API) |
+| Inbound jun/2026 | `EventNames` normaliza `messages.upsert` → `MESSAGES_UPSERT`; job loga `[EVOLUTION] normalizer skipped` quando filtro retorna `nil` |
+| LID jun/2026 | `resolve_wa_id` usa `remoteJidAlt` para `@lid` mesmo sem `addressingMode` |
+| Refactor jun/2026 | `Provisioner` (create/webhook/settings) + `ConnectionEvents` (CONNECTION/QRCODE); `ConnectionService` facade; `ApiClient.for_channel` |
+| Validação jun/2026 | `validate_provider_config?` exige `connectionState` → `open`; runtime keys não disparam sync/validate remoto |
 
 ---
 

@@ -9,7 +9,7 @@ Decisões de implementação registradas para evitar retrabalho na Fase 0–1. *
 | Decisão | Valor |
 |---------|-------|
 | **Rota** | `POST /webhooks/evolution/:instance_name` |
-| **Controller** | `Custom::Webhooks::EvolutionController` |
+| **Controller** | `Webhooks::EvolutionController` (`custom/app/controllers/webhooks/evolution_controller.rb`) |
 | **Job** | `Webhooks::WhatsappEventsJob` (prepend) |
 
 **Motivo:** o controller upstream (`Webhooks::WhatsappController`) e o job assumem payload Meta/360dialog (`phone_number` na URL ou `object: whatsapp_business_account`). O envelope Evolution (`event`, `instance`, `data`) colide com essa validação.
@@ -22,7 +22,7 @@ https://{FRONTEND_URL}/webhooks/evolution/{instance_name}
 
 **Por que `FRONTEND_URL`:** o Chatwoot já monta webhooks de channel com essa variável (`app/models/inbox.rb`, `Whatsapp::WebhookSetupService`, `Whatsapp360DialogService`). A Evolution deve usar o mesmo host público que Telegram, SMS e WhatsApp cloud — não `BACKEND_URL` interno.
 
-Configurar em `ConnectionService#set_webhook` com `byEvents: false` (evento único na URL base).
+Configurar em `Provisioner#register_webhook!` (via `ConnectionService#register_webhook!`) com `byEvents: false` (evento único na URL base).
 
 ---
 
@@ -118,7 +118,8 @@ Outbound já cria mensagem com `source_id` no Chatwoot; processar echo duplicari
 
 | Decisão | Valor |
 |---------|-------|
-| **Sempre** | `chatwoot.enabled = false` — nunca chamar `POST /chatwoot/set` |
+| **Sempre** | `chatwoot.enabled = false` — nunca habilitar a integração legada |
+| **Desabilitar** | `POST /chatwoot/set` com `enabled: false` após create (schema exige todos os campos) |
 | **Verificação** | `ConnectionService#ensure_chatwoot_integration_disabled` após create/connect |
 
 ---
@@ -157,8 +158,8 @@ Outbound já cria mensagem com `source_id` no Chatwoot; processar echo duplicari
 
 | Decisão | Valor |
 |---------|-------|
-| **Preferência** | `webhookBase64: true` na config do webhook para MVP mídia |
-| **Alternativa** | `POST /chat/getBase64FromMediaMessage/:instanceName` se base64 desabilitado |
+| **Preferência** | `webhookBase64: false` + `POST /chat/getBase64FromMediaMessage/:instanceName` no download inbound |
+| **Alternativa** | `webhookBase64: true` na config do webhook (payloads maiores, menos round-trips) |
 
 ---
 
@@ -168,20 +169,25 @@ O prepend `WhatsappEventsJob` deve expor `contact_sender_id` compatível com pay
 
 ```ruby
 def perform(params = {})
+  params = params.with_indifferent_access
   return super(params) unless evolution_envelope?(params)
+
+  params = params.merge(event: Custom::Whatsapp::Evolution::EventNames.normalize(params[:event]))
 
   channel = find_evolution_channel(params)
   return unless channel
 
-  case params['event']
+  case params[:event]
   when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
-    Array.wrap(params['data']).each do |data_item|
+    Array.wrap(params[:data]).each do |data_item|
       normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer
-        .new(channel, params.merge('data' => data_item)).perform
-      super(normalized.merge(phone_number: channel.phone_number)) if normalized.present?
+        .new(channel: channel, envelope: params.merge(data: data_item)).perform
+      next if normalized.blank?
+
+      super(normalized.merge(phone_number: channel.phone_number))
     end
   when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel).handle_event(params)
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
   end
 end
 ```
@@ -290,6 +296,30 @@ Wizard e factories devem aplicar o JSON de defaults do documento de adaptação 
 
 ---
 
+## 21. Normalização de nomes de evento (webhook)
+
+| Decisão | Valor |
+|---------|-------|
+| **Módulo** | `Custom::Whatsapp::Evolution::EventNames.normalize` |
+| **Transformação** | `messages.upsert` → `MESSAGES_UPSERT` (`tr('.', '_').upcase`) |
+| **Onde** | `EvolutionController#sanitized_job_payload` + prepend `WhatsappEventsJob` (defesa em profundidade) |
+
+Evolution v2.3+ envia eventos em minúsculas com ponto; handlers do fork usam SCREAMING_SNAKE. Sem normalização, jobs terminam em ~5–30ms sem criar mensagens.
+
+---
+
+## 22. `validate_provider_config?` — exige conexão `open`
+
+| Decisão | Valor |
+|---------|-------|
+| **Regra** | `EvolutionService#validate_provider_config?` retorna `true` só se `connectionState` → `state == 'open'` |
+| **Runtime keys** | Updates de `connection_status`, QR, `last_sender` via `update_columns` — **não** disparam validação remota |
+| **Skip** | `Channel::Whatsapp#validate_provider_config` pula quando só `ProviderConfig::RUNTIME_KEYS` mudam |
+
+Evita falha de validação enquanto instância está em `connecting` ou aguardando QR.
+
+---
+
 ## Histórico
 
 | Data | Decisão |
@@ -297,3 +327,4 @@ Wizard e factories devem aplicar o JSON de defaults do documento de adaptação 
 | jun/2026 | Documento criado; rota B, auth apikey, sendText com fallback |
 | jun/2026 | MVP enxuto, batch data, ADR job, ActionCable, segredos, FRONTEND_URL |
 | jun/2026 | Proxy Fase 1; defaults fork; business-rules-adaptation.md |
+| jun/2026 | `EventNames` (dotted → SCREAMING_SNAKE); `Provisioner`/`ConnectionEvents` split; `validate_provider_config` exige `open` |

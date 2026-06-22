@@ -63,11 +63,25 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
     contact.name = record['pushName'].presence || contact.name || contact.phone_number
     contact.save!
 
-    ContactInboxBuilder.new(
+    contact_inbox = ContactInboxBuilder.new(
       contact: contact,
       inbox: runtime.inbox,
       source_id: source_id
     ).perform
+
+    enqueue_contact_enrichment(contact, remote_jid, record['pushName'], record['profilePicUrl'])
+  end
+
+  def enqueue_contact_enrichment(contact, remote_jid, push_name, profile_pic_url)
+    Custom::Whatsapp::Evolution::ContactEnrichmentJob.perform_later(
+      runtime.channel.id,
+      contact.id,
+      {
+        remote_jid: remote_jid,
+        push_name: push_name,
+        profile_pic_url: profile_pic_url
+      }.compact
+    )
   end
 
   def advance_to_messages_phase!

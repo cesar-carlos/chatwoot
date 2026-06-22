@@ -36,7 +36,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
       expect(result.deep_stringify_keys).to eq(expected)
     end
 
-    it 'maps MESSAGES_UPDATE status to read' do
+    it 'maps MESSAGES_UPDATE Evolution flat payload to read' do
       envelope = load_fixture('messages_update_read')
 
       result = normalize(envelope)
@@ -46,6 +46,41 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
         expect(result[:statuses].first[:id]).to eq('3EB0OUTBOUND987654')
         expect(result[:statuses].first[:status]).to eq('read')
         expect(result[:statuses].first[:recipient_id]).to eq('5511999999999')
+      end
+    end
+
+    it 'maps MESSAGES_UPDATE DELIVERY_ACK to delivered' do
+      envelope = load_fixture('messages_update_delivered')
+
+      result = normalize(envelope)
+
+      expect(result[:statuses].first[:status]).to eq('delivered')
+    end
+
+    it 'maps Baileys numeric status codes correctly' do
+      envelope = {
+        'event' => 'MESSAGES_UPDATE',
+        'data' => {
+          'key' => { 'id' => 'BAILEYS123', 'remoteJid' => '5511999999999@s.whatsapp.net', 'fromMe' => true },
+          'update' => { 'status' => 3 }
+        }
+      }
+
+      expect(normalize(envelope)[:statuses].first[:status]).to eq('delivered')
+
+      envelope['data']['update']['status'] = 4
+      expect(normalize(envelope)[:statuses].first[:status]).to eq('read')
+    end
+
+    it 'resolves wa_id from remoteJidAlt when remoteJid ends with @lid without addressingMode' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['key'].delete('addressingMode')
+
+      result = normalize(envelope)
+
+      aggregate_failures do
+        expect(result.dig(:contacts, 0, :wa_id)).to eq('5566996971841')
+        expect(result.dig(:messages, 0, :from)).to eq('5566996971841')
       end
     end
 
@@ -96,6 +131,30 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
         'Please rate us https://app.example.com/survey/responses/abc123'
 
       expect(normalize(envelope)).to be_nil
+    end
+
+    it 'normalizes unsupported message types as placeholder text' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['message'] = { 'reactionMessage' => { 'text' => '👍' } }
+      envelope['data']['messageType'] = 'reactionMessage'
+
+      result = normalize(envelope)
+
+      expect(result.dig(:messages, 0, :text, :body)).to eq('[Reaction message]')
+    end
+
+    it 'unwraps ephemeral messages before normalization' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['message'] = {
+        'ephemeralMessage' => {
+          'message' => { 'conversation' => 'Secret text' }
+        }
+      }
+      envelope['data']['messageType'] = 'ephemeralMessage'
+
+      result = normalize(envelope)
+
+      expect(result.dig(:messages, 0, :text, :body)).to eq('Secret text')
     end
   end
 end

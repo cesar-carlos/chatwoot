@@ -118,6 +118,7 @@ Enviar mensagem **do celular** para o número conectado — **E2E local (2026-06
 - [x] Conversa + mensagem aparecem no inbox (account 8, inbox 47)
 - [x] Envelope E2E → `spec/fixtures/evolution/messages_upsert_e2e_local.json`
 - [x] Output normalizer → `messages_upsert_e2e_local_normalized.json`
+- [x] Evento live `messages.upsert` normalizado para `MESSAGES_UPSERT` via `EventNames` (fixture E2E usa SCREAMING_SNAKE)
 
 ### Batch `data` (se aplicável)
 

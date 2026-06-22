@@ -1,0 +1,10 @@
+{
+  "event": "CONTACTS_UPSERT",
+  "instance": "test-instance",
+  "data": {
+    "remoteJid": "556696971841@s.whatsapp.net",
+    "pushName": "Matheus Teixeira",
+    "profilePicUrl": "https://pps.whatsapp.net/v/example.jpg"
+  },
+  "apikey": "TEST-INSTANCE-API-KEY"
+}

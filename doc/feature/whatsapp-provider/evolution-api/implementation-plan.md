@@ -71,14 +71,17 @@ flowchart TB
 
 | # | Classe | Responsabilidade |
 |---|--------|------------------|
-| 1.1 | `Custom::Whatsapp::Evolution::ApiClient` | HTTP para Evolution (ver [api-reference.md](./api-reference.md)) |
-| 1.2 | `Custom::Whatsapp::Evolution::ConnectionService` | create, connect, webhook, **proxy opcional**, QR, ActionCable |
+| 1.1 | `Custom::Whatsapp::Evolution::ApiClient` | HTTP para Evolution (`for_channel`) — ver [api-reference.md](./api-reference.md) |
+| 1.2 | `Custom::Whatsapp::Evolution::ConnectionService` | Facade: QR, reconnect, status, delega provision/events |
+| 1.2b | `Custom::Whatsapp::Evolution::Provisioner` | create, webhook, settings, proxy, disable legado |
+| 1.2c | `Custom::Whatsapp::Evolution::ConnectionEvents` | `CONNECTION_UPDATE`, `QRCODE_UPDATED` + ActionCable |
+| 1.2d | `Custom::Whatsapp::Evolution::EventNames` | Normaliza `messages.upsert` → `MESSAGES_UPSERT` |
 | 1.3 | `Custom::Whatsapp::Providers::EvolutionService` | `send_message` (texto puro), `validate_provider_config?`, `process_response` |
 | 1.4 | `Custom::Whatsapp::Webhooks::EvolutionNormalizer` | `MESSAGES_UPSERT` → flat; `Array.wrap(data)` |
 | 1.5 | Rota webhook dedicada | `POST /webhooks/evolution/:instance_name` |
-| 1.6 | `Custom::Webhooks::EvolutionController` | Auth + enqueue job |
+| 1.6 | `Webhooks::EvolutionController` | Auth + enqueue job (`EventNames` no payload) |
 
-> **`InstanceProvisioner`:** fora do MVP — `ConnectionService` orquestra create/connect/webhook até Fase 3.
+> **`Provisioner` / `ConnectionEvents`:** implementados jun/2026 — `ConnectionService` é facade; provisionamento remoto em `Provisioner`, handlers de conexão em `ConnectionEvents`.
 
 ### `EvolutionService` — MVP
 
@@ -95,7 +98,7 @@ flowchart TB
 - `status@broadcast` → ignore
 - JID termina `@g.us` → ignore
 - `fromMe: true` → ignore
-- LID → `remoteJidAlt` quando presente
+- LID → `remoteJidAlt` quando JID termina `@lid` ou `addressingMode: lid`
 
 | 1.13 | `provider_config` defaults fork | Seed wizard com [business-rules-adaptation.md](./business-rules-adaptation.md) |
 | 1.14 | Reabrir conversa `resolved` no inbound | ✅ `lock_to_single_conversation` + `Conversations::Resolver` + `Message#reopen_conversation` |
@@ -177,7 +180,7 @@ flowchart TB
 
 | # | Item | Status |
 |---|------|--------|
-| 3.0 | `InstanceProvisioner` — fluxos create multi-step avançados | ⏸️ deferido |
+| 3.0 | `Provisioner` — create/webhook/settings (fluxos avançados multi-step) | ✅ básico |
 | 3.1 | Botões/listas → `sendButtons` / `sendList` + mapear `input_select` | ⏸️ deferido |
 | 3.2 | Health: `connectionState` no settings ([decisions.md §18](./decisions.md)) | ✅ |
 | 3.3 | Alerta desconexão (`CONNECTION_UPDATE` → `close`) | ✅ |

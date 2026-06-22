@@ -233,8 +233,7 @@ Quando `lock_to_single_conversation: false` e conversa vai para `resolved`, Evol
 | `ignore_status_broadcast` | boolean | `true` | 1‡ | (implícito) | Ignora `status@broadcast` | ~1964 |
 | `ignore_from_me_echo` | boolean | `true` | 1‡ | (implícito) | Ignora `fromMe: true` no UPSERT (evita duplicar outbound) | implícito no fluxo |
 | `ignore_survey_links` | boolean | `true` | 2 | Ignore CSAT survey echoes | Ignora msgs com `/survey/responses/` + URL | ~1982 |
-| `ignore_private_notes` | boolean | `true` | 1 | (implícito) | Notas privadas CW não vão para WA | `receiveWebhook` ~1301 |
-| `format_group_messages` | boolean | `true` | 2 | Prefix group messages with participant | `**+55 (11) 9999-9999 - Name:**` | ~2198 |
+| `format_group_messages` | boolean | `false` | 3+ | Prefix group messages with participant | `**+55 (11) 9999-9999 - Name:**` | ~2198 |
 | `show_pairing_code` | boolean | `true` | 2 | Show pairing code alongside QR | `qrcode.pairingCode` format `XXXX-XXXX` | ~2439 |
 
 ‡ Fase 1: filtros aplicados **hardcoded** no normalizer — sem toggles na UI.
@@ -276,7 +275,7 @@ Disponível após conexão QR — igual UI Evolution (screenshot).
 | Loop prevention outbound | Pipeline nativo CW — Evolution usava check `WAID:` no webhook | N/A no provider |
 | `isIntegration` flag no send | `textMessage(..., true)` — evita re-entrada Chatwoot no Baileys | `EvolutionService` sempre true |
 | Dedup inbound | Redis lock por `source_id` | `IncomingMessageBaseService` (já existe) |
-| LID contacts | Usar `remoteJidAlt` quando `addressingMode: lid` | Normalizer |
+| LID contacts | Usar `remoteJidAlt` quando JID termina `@lid` ou `addressingMode: lid` | Normalizer |
 | Ephemeral messages | Unwrap `message.ephemeralMessage.message` | Normalizer |
 | Tipos complexos inbound | location, contact, list, ads, reaction — ver [implementation-analysis.md §6](./implementation-analysis.md#6-tipos-de-mensagem-inbound--além-de-texto) | Normalizer fases 2–3 |
 
