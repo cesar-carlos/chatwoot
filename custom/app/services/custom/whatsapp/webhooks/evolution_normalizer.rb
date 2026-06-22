@@ -295,6 +295,7 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     return false if body.blank?
     return false if ignore_survey_link?(body)
 
+    body = format_group_message_body(body, data)
     body = Custom::Whatsapp::Evolution::MarkdownConverter.inbound(body) if convert_markdown_inbound?
     message_hash[:text] = { body: body }
     true
@@ -383,6 +384,8 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
   def resolve_wa_id(key)
     key ||= {}
     remote_jid = key['remoteJid'].to_s
+    return group_wa_id(remote_jid) if group_jid?(remote_jid)
+
     jid = if key['remoteJidAlt'].present? &&
              (remote_jid.end_with?('@lid') || key['addressingMode'] == 'lid')
             key['remoteJidAlt']
@@ -390,6 +393,31 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
             key['remoteJid']
           end
     jid_to_phone(jid)
+  end
+
+  def group_jid?(jid)
+    jid.to_s.end_with?('@g.us')
+  end
+
+  def group_wa_id(remote_jid)
+    remote_jid.to_s.split('@').first
+  end
+
+  def format_group_message_body(body, data)
+    return body unless format_group_messages?
+
+    key = data['key'] || {}
+    return body unless group_jid?(key['remoteJid'])
+
+    participant_jid = key['participant'].to_s
+    label = data['pushName'].to_s.strip.presence || jid_to_phone(participant_jid)
+    return body if label.blank?
+
+    "**#{label}:**\n\n#{body}"
+  end
+
+  def format_group_messages?
+    ActiveModel::Type::Boolean.new.cast(config['format_group_messages'])
   end
 
   def jid_to_phone(jid)

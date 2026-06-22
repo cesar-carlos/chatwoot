@@ -111,6 +111,50 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     end
   end
 
+  def dispatch_input_select(phone_number, title, items, quoted, delay)
+    if items.size <= 3
+      api_client.send_buttons(
+        number: phone_number,
+        title: title,
+        buttons: build_reply_buttons(items),
+        quoted: quoted,
+        delay: delay
+      )
+    else
+      api_client.send_list(
+        number: phone_number,
+        title: title,
+        button_text: 'Options',
+        sections: [build_list_section(items)],
+        quoted: quoted,
+        delay: delay
+      )
+    end
+  end
+
+  def build_reply_buttons(items)
+    items.map.with_index(1) do |item, index|
+      {
+        type: 'reply',
+        displayText: item['title'].to_s.truncate(20),
+        id: (item['value'].presence || index).to_s
+      }
+    end
+  end
+
+  def build_list_section(items)
+    {
+      title: 'Options',
+      rows: items.map.with_index(1) do |item, index|
+        {
+          title: item['title'].to_s.truncate(24),
+          description: item['description'].to_s.truncate(72),
+          rowId: (item['value'].presence || index).to_s
+        }
+      end
+    }
+  end
+
   def sign_msg?
     ActiveModel::Type::Boolean.new.cast(provider_config['sign_msg'])
   end

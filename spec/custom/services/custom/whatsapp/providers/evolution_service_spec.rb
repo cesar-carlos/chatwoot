@@ -49,7 +49,7 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionService do
     let(:user) { create(:user, account: account) }
 
     it 'sets fromMe true when replying to an outbound message' do
-      original = create(
+      create(
         :message,
         account: account,
         inbox: inbox,
@@ -76,7 +76,7 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionService do
     end
 
     it 'sets fromMe false when replying to an incoming message' do
-      original = create(
+      create(
         :message,
         account: account,
         inbox: inbox,
