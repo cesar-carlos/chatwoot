@@ -110,6 +110,21 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
       expect(normalize(envelope)).to be_nil
     end
 
+    it 'normalizes group messages when groups_ignore is disabled' do
+      channel.update!(
+        provider_config: channel.provider_config.merge('groups_ignore' => false, 'ignore_jids' => [])
+      )
+      envelope = load_fixture('messages_upsert_group')
+
+      result = normalize(envelope)
+
+      aggregate_failures do
+        expect(result.dig(:contacts, 0, :wa_id)).to eq('120363123456789012')
+        expect(result.dig(:messages, 0, :text, :body)).to include('**Group Member:**')
+        expect(result.dig(:messages, 0, :text, :body)).to include('Hello group')
+      end
+    end
+
     it 'ignores remote jids matching ignore_jids patterns' do
       channel.update!(
         provider_config: channel.provider_config.merge(

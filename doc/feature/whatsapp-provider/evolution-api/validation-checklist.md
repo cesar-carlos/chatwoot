@@ -124,8 +124,8 @@ Enviar mensagem **do celular** para o número conectado — **E2E local (2026-06
 
 Se o envelope tiver `data` como array:
 
-- [ ] Normalizer processa todas as entradas (`Array.wrap`)
-- [ ] Fixture `messages_upsert_batch.json` adicionado
+- [x] Normalizer processa todas as entradas (`Array.wrap`)
+- [x] Fixture `messages_upsert_batch.json` adicionado
 
 ---
 
@@ -157,7 +157,7 @@ No dashboard, responder na conversa criada no passo 2 — **E2E local:** `Whatsa
 
 ---
 
-## 6. Proxy (Fase 1 — se habilitado no wizard)
+## 6. Proxy (Fase 2 — staging 2.3.7)
 
 ```bash
 curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
@@ -171,9 +171,10 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
   }'
 ```
 
-- [ ] HTTP 2xx ou 400 documentado (proxy inválido)
+- [ ] HTTP 2xx ou 400 documentado (proxy inválido — Evolution testa via icanhazip)
 - [ ] `GET /proxy/find/${INSTANCE}` reflete config
-- [ ] WhatsApp reconecta após proxy (restart se necessário)
+- [ ] **UI:** Settings → Proxy → "Save proxy and restart instance" (fork)
+- [ ] WhatsApp reconecta após proxy (`POST /instance/restart` + `connectionState` → `open`)
 
 ---
 

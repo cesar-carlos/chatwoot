@@ -228,12 +228,17 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def maybe_enqueue_history_import!(previous_status, state)
     return unless state == 'open'
     return if previous_status == 'open'
+    return unless import_on_connect_enabled?
     return unless history_import_enabled?
 
     status = provider_config['import_status']
     return if status.in?(%w[running completed])
 
     Custom::Whatsapp::Evolution::ImportJob.perform_later(channel.id)
+  end
+
+  def import_on_connect_enabled?
+    ActiveModel::Type::Boolean.new.cast(provider_config.fetch('import_on_connect', true))
   end
 
   def history_import_enabled?

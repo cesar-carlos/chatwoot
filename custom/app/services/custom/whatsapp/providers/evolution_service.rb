@@ -85,15 +85,11 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
 
   def send_input_select_message(phone_number, message)
     items = input_select_items(message)
-    lines = items.map.with_index(1) { |item, index| "#{index}. #{item['title']}" }
-    body = [message.outgoing_content.presence, *lines].compact.join("\n")
+    quoted = build_quoted_context(phone_number, message)
+    delay = outbound_delay
+    title = message.outgoing_content.presence || 'Please choose an option'
 
-    response = api_client.send_text(
-      number: phone_number,
-      text: apply_outbound_text(body, message),
-      quoted: build_quoted_context(phone_number, message),
-      delay: outbound_delay
-    )
+    response = dispatch_input_select(phone_number, title, items, quoted, delay)
     message_id = process_response(response, message)
     mark_incoming_read_after_reply(phone_number, message) if message_id.present?
     message_id

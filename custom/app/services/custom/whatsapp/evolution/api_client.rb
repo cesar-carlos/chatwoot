@@ -131,6 +131,35 @@ class Custom::Whatsapp::Evolution::ApiClient
     post("/message/sendWhatsAppAudio/#{@instance_name}", body)
   end
 
+  def send_buttons(number:, title:, buttons:, **options)
+    body = {
+      number: normalize_number(number),
+      title: title,
+      buttons: buttons
+    }
+    body[:description] = options[:description] if options[:description].present?
+    body[:footer] = options[:footer] if options[:footer].present?
+    body[:quoted] = options[:quoted] if options[:quoted].present?
+    body[:delay] = options[:delay] if options[:delay].present?
+
+    post("/message/sendButtons/#{@instance_name}", body)
+  end
+
+  def send_list(number:, title:, button_text:, sections:, **options)
+    body = {
+      number: normalize_number(number),
+      title: title,
+      buttonText: button_text,
+      sections: sections
+    }
+    body[:description] = options[:description] if options[:description].present?
+    body[:footerText] = options[:footer_text] if options[:footer_text].present?
+    body[:quoted] = options[:quoted] if options[:quoted].present?
+    body[:delay] = options[:delay] if options[:delay].present?
+
+    post("/message/sendList/#{@instance_name}", body)
+  end
+
   def get_base64_from_media_message(message:, convert_to_mp4: false)
     body = { message: message }
     body[:convertToMp4] = true if convert_to_mp4

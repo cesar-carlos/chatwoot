@@ -40,6 +40,10 @@ Instância spike: `cw-spike-1781996187`. sendText executado em instância conect
 | `qrcode_updated.json` | Webhook `QRCODE_UPDATED` (QR real, base64 truncado) | Wizard QR |
 | `messages_upsert_e2e_local.json` | E2E local jun/2026 — POST webhook Chatwoot | Normalizer E2E |
 | `messages_upsert_e2e_local_normalized.json` | Saída normalizer E2E | Contract test |
+| `messages_upsert_batch.json` | Webhook `MESSAGES_UPSERT` com `data` array (2 msgs) | Batch job spec |
+| `messages_upsert_group.json` | Grupo `@g.us` com participante | Normalizer groups |
+| `messages_delete.json` | Webhook `MESSAGES_DELETE` | Delete sync inbound |
+| `messages_edited.json` | Webhook `MESSAGES_EDITED` | Edit sync inbound |
 
 ---
 

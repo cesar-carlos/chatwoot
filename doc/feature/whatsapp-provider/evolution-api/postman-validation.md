@@ -2,7 +2,7 @@
 
 Revisão endpoint a endpoint da collection **[Evolution API | v2.3.*](https://www.postman.com/agenciadgcode/evolution-api/collection/nm0wqgt/evolution-api-v2-3)** contra:
 
-1. Código local `/root/evolution-api` (v**2.3.6**)
+1. Código local `/root/evolution-api` (v**2.3.6** dev) · produção **2.3.7**
 2. Documentação do fork: [api-reference.md](./api-reference.md) · [documentation-links.md](./documentation-links.md)
 
 **Última revisão:** jun/2026

@@ -1,0 +1,16 @@
+{
+  "event": "MESSAGES_DELETE",
+  "instance": "test-instance",
+  "data": {
+    "key": {
+      "id": "3EB0DELETE123456",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false
+    }
+  },
+  "destination": "http://localhost:3000/webhooks/evolution/test-instance",
+  "date_time": "2026-06-22T12:00:00.000Z",
+  "sender": "556681128433@s.whatsapp.net",
+  "server_url": "https://evolution.example.com",
+  "apikey": "TEST-INSTANCE-API-KEY"
+}
