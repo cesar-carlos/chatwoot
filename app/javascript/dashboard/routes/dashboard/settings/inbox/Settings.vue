@@ -380,6 +380,8 @@ export default {
       return getInboxIdentifier(this.inbox);
     },
     canLocktoSingleConversation() {
+      if (this.isEvolutionWhatsAppChannel) return false;
+
       return (
         this.isASmsInbox ||
         this.isAWhatsAppChannel ||

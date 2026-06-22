@@ -5,7 +5,16 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
     params = super
     return params unless evolution_conversation_pending?
 
-    params.merge(status: :pending)
+    params.merge(
+      status: :pending,
+      additional_attributes: pending_cycle_attributes(params[:additional_attributes])
+    )
+  end
+
+  def pending_cycle_attributes(existing_attrs)
+    (existing_attrs || {}).stringify_keys.merge(
+      'evolution_pending_since' => Time.current.utc.iso8601(3)
+    )
   end
 
   def download_attachment_file(attachment_payload)
@@ -54,6 +63,9 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
     return nil unless response.success?
 
     build_evolution_media_tempfile(response.parsed_response, attachment_payload)
+  rescue ArgumentError => e
+    Rails.logger.warn("[EVOLUTION] media download rejected: #{e.message}")
+    nil
   rescue StandardError => e
     Rails.logger.error("[EVOLUTION] media download failed: #{e.message}")
     nil
@@ -66,7 +78,7 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
     extension = extension_for_media(parsed, attachment_payload)
     tempfile = Tempfile.new(['evolution-media', extension])
     tempfile.binmode
-    tempfile.write(Base64.decode64(base64))
+    tempfile.write(Custom::Whatsapp::Evolution::MediaDecoder.decode!(base64))
     tempfile.rewind
 
     filename = parsed['fileName'] || attachment_payload[:filename] || "media#{extension}"

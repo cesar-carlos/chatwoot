@@ -119,7 +119,8 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
       id: data[:keyId],
       status: map_status(status_value),
       remote_jid: data[:remoteJid],
-      timestamp: status_timestamp(data)
+      timestamp: status_timestamp(data),
+      key: nil
     )
   end
 
@@ -134,18 +135,19 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
       id: message_id,
       status: map_status(status_code),
       remote_jid: key[:remoteJid],
-      timestamp: status_timestamp(data)
+      timestamp: status_timestamp(data),
+      key: key
     )
   end
 
-  def build_status_hash(id:, status:, remote_jid:, timestamp:)
+  def build_status_hash(id:, status:, remote_jid:, timestamp:, key: nil)
     {
       statuses: [
         {
           id: id,
           status: status,
           timestamp: timestamp.to_s,
-          recipient_id: jid_to_phone(remote_jid)
+          recipient_id: jid_resolver.recipient_id_for_status(remote_jid, key)
         }
       ]
     }
