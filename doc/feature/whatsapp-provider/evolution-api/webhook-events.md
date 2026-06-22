@@ -252,7 +252,7 @@ Ação: atualizar `provider_config.connection_status` e broadcast ActionCable `e
 
 Ação: persistir `last_qr_base64` / `last_qr_code`; broadcast ActionCable com `qrcode_base64` e `qrcode_code` (mesmas chaves que `GET …/evolution_connection`); não passar por `IncomingMessageService`.
 
-**Rota alternativa:** polling `GET /instance/connect/:instanceName` se webhook não chegar.
+**Rota alternativa:** polling `GET …/evolution_connection` (Chatwoot); busca QR em cache ou chama Evolution `connect` quando cache vazio e instância desconectada.
 
 ---
 
@@ -266,7 +266,7 @@ Ordem sugerida — espelha `eventWhatsapp()`:
 4. `ignore_jids` contém `@g.us` e é grupo → ignore
 5. `ignore_jids` contém `@s.whatsapp.net` e é contato → ignore
 6. `ignore_jids` contém JID exato → ignore
-7. `fromMe: true` no UPSERT → ignore (outbound já criado pelo Chatwoot)
+7. `fromMe: true` no UPSERT → `PhoneOutgoingSyncService` (ou ignore se `ignore_from_me_echo` ativo)
 
 ---
 

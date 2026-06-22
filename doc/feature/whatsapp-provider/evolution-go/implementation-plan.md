@@ -1,14 +1,14 @@
 # Plano de implementação — Provider Evolution Go
 
-Plano concreto para `provider: 'evolution_go'` no fork Chatwoot. Alinhado com [../implementation-plan-second-whatsapp-provider.md](../implementation-plan-second-whatsapp-provider.md).
+Integração `provider: 'evolution_go'` no fork Chatwoot. Alinhado com [../implementation-plan-second-whatsapp-provider.md](../implementation-plan-second-whatsapp-provider.md).
 
-**Pré-requisitos:** [differences-from-evolution-api.md](./differences-from-evolution-api.md) · [validation-checklist.md](./validation-checklist.md) · [../gaps-and-blockers.md](../gaps-and-blockers.md)
+**Pré-requisitos:** [differences-from-evolution-api.md](./differences-from-evolution-api.md) · [decisions.md](./decisions.md) · [status.md](./status.md)
 
-**Dependência:** Fase 0 compartilhada com `evolution` (registry) — providers independentes a partir da Fase 1.
+**Infra Evolution Go:** externa ao fork — operador fornece `base_url`, licença e chaves.
 
 ---
 
-## Visão da arquitetura alvo
+## Visão da arquitetura
 
 ```mermaid
 flowchart TB
@@ -24,7 +24,7 @@ flowchart TB
     PRE3[prepend MessageWindowService]
   end
 
-  subgraph evogo["Evolution Go"]
+  subgraph evogo["Evolution Go (externo)"]
     INST[/instance/*]
     SEND[/send/*]
     CONN[connect + webhook inline]
@@ -41,9 +41,7 @@ flowchart TB
 
 ---
 
-## Fase 0 — Infraestrutura (compartilhada)
-
-Se `evolution` ainda não implementou Fase 0, fazer uma vez:
+## Fase 0 — Infraestrutura
 
 | # | Entrega | Local |
 |---|---------|-------|
@@ -51,6 +49,7 @@ Se `evolution` ainda não implementou Fase 0, fazer uma vez:
 | 0.2 | Registry register `evolution_go` | `custom/config/initializers/messaging_provider_registry.rb` |
 | 0.3 | Capability `unlimited_session: true` | `custom/lib/messaging_provider/capabilities.rb` |
 | 0.4 | Prepend `MessageWindowService` | `custom/app/services/custom/conversations/message_window_service.rb` |
+| 0.5 | Rota + stub `EvolutionGoController` | `config/routes.rb`, `custom/.../evolution_go_controller.rb` |
 
 **Critério:** `provider: 'evolution_go'` persiste; cloud inalterado.
 
@@ -58,7 +57,7 @@ Se `evolution` ainda não implementou Fase 0, fazer uma vez:
 
 ## Fase 1 — MVP texto + conexão QR
 
-**Pré-requisito:** [validation-checklist.md](./validation-checklist.md) completo
+Contratos: [spec-design.md](./spec-design.md) · validação E2E: [validation-checklist.md](./validation-checklist.md)
 
 ### Backend
 
@@ -96,15 +95,12 @@ Se `evolution` ainda não implementou Fase 0, fazer uma vez:
 
 ### Critérios de done
 
-- [ ] [validation-checklist.md](./validation-checklist.md) completo
 - [ ] Inbox `provider: 'evolution_go'`
 - [ ] QR conecta; `connection_status` → `open`
-- [ ] Inbound texto → conversa
-- [ ] Outbound texto → `source_id` = `key.id`
+- [ ] Inbound/outbound texto
 - [ ] Sem janela 24h
-- [ ] `evolution` e cloud inalterados (se já existirem)
-
-**Estimativa:** 2–3 semanas (inclui spike Postman + path send/text)
+- [ ] `evolution` e cloud inalterados
+- [ ] Specs: normalizer, controller auth
 
 ---
 
@@ -116,7 +112,7 @@ Se `evolution` ainda não implementou Fase 0, fazer uma vez:
 | 2.2 | Mídia inbound no normalizer |
 | 2.3 | `READ_RECEIPT` → statuses |
 | 2.4 | Reply/quote no send |
-| 2.5 | `POST /instance/:id/advanced-settings` sync |
+| 2.5 | `GET`+`PUT /instance/:id/advanced-settings` |
 | 2.6 | Proxy no create/settings |
 
 ---
@@ -136,11 +132,11 @@ Se `evolution` ainda não implementou Fase 0, fazer uma vez:
 
 | # | Item |
 |---|------|
-| 4.1 | `HISTORY_SYNC` webhook + `/chat/history-sync-request` |
+| 4.1 | `HISTORY_SYNC` webhook + `POST /chat/history-sync` |
 
 ---
 
-## Arquivos fork — checklist
+## Arquivos fork
 
 ```
 custom/
@@ -168,18 +164,16 @@ custom/
 
 | Risco | Mitigação |
 |-------|-----------|
-| Paths `/send/text` vs `/message/sendText` | Spike Postman; fallback no ApiClient |
-| Docs "API compatible" enganosa | Provider separado; [differences-from-evolution-api.md](./differences-from-evolution-api.md) |
-| Sem `apikey` no webhook | Auth por `?token=` |
-| Licença Go obrigatória | Documentar; operador responsável |
-| Confusão com `evolution` | UI labels distintos; provider keys distintos |
+| Paths divergentes | [postman-validation.md](./postman-validation.md); fallback no ApiClient |
+| Sem `apikey` no webhook | Auth por `?token=` — [decisions.md §2](./decisions.md) |
+| Licença Go | Pré-requisito operador — [troubleshooting.md](./troubleshooting.md) |
+| Confusão com `evolution` | Provider keys e UI distintos |
 
 ---
 
 ## Ordem recomendada
 
 ```
-validation-checklist + Postman spike → fixtures
-Fase 0 (se necessário) → ApiClient → ConnectionService
-→ EvolutionGoService → webhook + Normalizer → wizard → Fase 1 done
+Fase 0 → ApiClient → ConnectionService → EvolutionGoService
+→ webhook + Normalizer → wizard → specs → E2E (validation-checklist)
 ```

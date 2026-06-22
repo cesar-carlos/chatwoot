@@ -9,8 +9,12 @@ module Custom::Whatsapp::IncomingMessageBaseService
 
     status = @processed_params[:statuses].first
     unless find_message_by_source_id(status[:id])
-      Rails.logger.warn(
-        "[EVOLUTION] status update skipped message not found source_id=#{status[:id]} status=#{status[:status]}"
+      Custom::Whatsapp::Evolution::DeferredStatusJob.set(wait: 5.seconds).perform_later(
+        inbox.id,
+        status.deep_stringify_keys
+      )
+      Rails.logger.info(
+        "[EVOLUTION] status update deferred source_id=#{status[:id]} status=#{status[:status]}"
       )
       return
     end
@@ -37,6 +41,11 @@ module Custom::Whatsapp::IncomingMessageBaseService
 
     additional = @contact.additional_attributes.stringify_keys.merge(EVOLUTION_PUSH_NAME_KEY => profile_name)
     @contact.update!(name: profile_name, additional_attributes: additional)
+  end
+
+  def create_regular_message(message)
+    super
+    enqueue_pending_evolution_media_download if evolution_channel?
   end
 
   private

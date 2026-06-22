@@ -3,13 +3,12 @@
 class Custom::Whatsapp::Evolution::LostMessagesReconciliationJob < ApplicationJob
   queue_as :low
 
-  THROTTLE_KEY = 'evolution:lost_messages_reconciliation'
-  THROTTLE_TTL = 30.minutes
+  THROTTLE_TTL = 30.minutes.to_i
 
   def perform
-    return unless throttle_claimed?
-
     evolution_channels_with_lost_sync.find_each do |channel|
+      next unless throttle_claimed_for?(channel.id)
+
       Custom::Whatsapp::Evolution::LostMessagesReconciliationService.new(channel: channel).perform
     end
   end
@@ -21,7 +20,8 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationJob < ApplicationJo
 
   private
 
-  def throttle_claimed?
-    Redis::Alfred.set(THROTTLE_KEY, '1', nx: true, ex: THROTTLE_TTL.to_i)
+  def throttle_claimed_for?(channel_id)
+    key = format(Redis::RedisKeys::EVOLUTION_LOST_MESSAGES_THROTTLE, channel_id: channel_id)
+    ::Redis::Alfred.set(key, '1', nx: true, ex: THROTTLE_TTL)
   end
 end

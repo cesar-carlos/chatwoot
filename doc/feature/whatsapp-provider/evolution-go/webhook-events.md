@@ -169,7 +169,7 @@ Mapear para `provider_config.connection_status`:
 
 Emitir ActionCable `evolution_go:connection:{inbox_id}`.
 
-> ⚠️ **Payload real pendente spike** — template sintético até fixture `connection_event.json`:
+> ⚠️ **Payload real pendente E2E** — template sintético até fixture `connection_event.json`:
 
 ```json
 {
@@ -189,7 +189,7 @@ Emitir ActionCable `evolution_go:connection:{inbox_id}`.
 
 Payload contém QR base64 — broadcast para wizard.
 
-> ⚠️ Template sintético — confirmar no spike (`qrcode_event.json`):
+> ⚠️ Template sintético — confirmar no E2E (`qrcode_event.json`):
 
 ```json
 {
@@ -203,7 +203,7 @@ Payload contém QR base64 — broadcast para wizard.
 
 Fallback polling: `GET /instance/qr` a cada 3s até status conectado.
 
-**Casing status (`GET /instance/status`):** OpenAPI usa `Connected` / `LoggedIn` (PascalCase). `ApiClient#unwrap` deve aceitar também `connected` / `loggedIn` até spike definir canônico.
+**Casing status (`GET /instance/status`):** OpenAPI usa `Connected` / `LoggedIn` (PascalCase). `ApiClient#unwrap` deve aceitar também `connected` / `loggedIn` até E2E definir canônico.
 
 ---
 
@@ -221,7 +221,7 @@ Mapear para flat `statuses[]`:
 }
 ```
 
-> ⚠️ **Template alvo Chatwoot** — payload bruto Go a confirmar no spike:
+> ⚠️ **Template alvo Chatwoot** — payload bruto Go a confirmar no E2E:
 
 ```json
 {

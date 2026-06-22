@@ -39,7 +39,7 @@ flowchart TD
 | `base_url` | url | HTTPS recomendado; sem trailing slash |
 | `global_api_key` | password | obrigatório para modo criar |
 
-**Ação:** opcional `GET {base_url}/server/ok` — health check antes de avançar.
+**Ação:** `GET {base_url}/server/ok` — **recomendado** no Step 1; falha rápida se servidor inacessível.
 
 ### Step 2 — Instância
 
@@ -47,6 +47,8 @@ flowchart TD
 |------|--------|
 | **Criar nova** | `instance_name` (regex: `^[a-zA-Z0-9_-]+$`) |
 | **Existente** | `instance_name` + `instance_token` (colar do painel Go) |
+
+Modo **instância existente:** `global_api_key` opcional no Step 1 — obrigatório apenas para delete/list admin ([decisions.md §22](./decisions.md)).
 
 **Seção colapsável — Proxy:**
 
@@ -254,3 +256,17 @@ Chaves mínimas:
 - [ ] QR exibido em < 5s após connect
 - [ ] Keys nunca retornam em GET channel JSON
 - [ ] `isEvolutionGoWhatsAppChannel` oculta features cloud-only
+
+---
+
+## Composable compartilhado
+
+Ver [coordination-with-evolution-api.md § Composable](./coordination-with-evolution-api.md#o-que-reusar-no-frontend-composable).
+
+Arquivo alvo: `custom/app/javascript/dashboard/composables/useGatewayWhatsappWizard.js`
+
+| Export | Responsabilidade |
+|--------|------------------|
+| `pollConnectionStatus` | polling QR/status 3s |
+| `subscribeConnectionChannel` | ActionCable por provider |
+| `validateBaseUrl` | URL sem trailing slash |

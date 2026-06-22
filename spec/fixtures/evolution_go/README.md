@@ -1,6 +1,8 @@
 # Fixtures Evolution Go — `spec/fixtures/evolution_go/`
 
-Templates para specs e validação do provider `evolution_go`. **Substituir por capturas reais** após [validation-checklist.md](../../doc/feature/whatsapp-provider/evolution-go/validation-checklist.md).
+Templates para specs do provider `evolution_go`. Contrato primário: [postman-validation.md](../../doc/feature/whatsapp-provider/evolution-go/postman-validation.md) e [decisions.md](../../doc/feature/whatsapp-provider/evolution-go/decisions.md).
+
+Substituir por capturas reais no [E2E](../../doc/feature/whatsapp-provider/evolution-go/validation-checklist.md) com instância do operador.
 
 ---
 
@@ -9,6 +11,7 @@ Templates para specs e validação do provider `evolution_go`. **Substituir por 
 | Arquivo | Origem | Uso |
 |---------|--------|-----|
 | `send_text_response.json` | `POST /send/text` | `EvolutionGoService#process_response` → `data.Info.ID` |
+| `postman-environment.json` | Template | Variáveis para testes manuais |
 | `message_inbound.json` | Webhook `MESSAGE` | `EvolutionGoNormalizer` |
 | `message_normalized.json` | Output do normalizer | Spec expectativa flat |
 | `connection_event.json` | Webhook `CONNECTION` | `ConnectionService#handle_event` |
@@ -17,36 +20,30 @@ Templates para specs e validação do provider `evolution_go`. **Substituir por 
 
 ---
 
-## Validação send text (preencher no spike)
+## Contrato documentado (implementar com estes valores)
 
-| Campo | Valor confirmado |
-|-------|------------------|
-| Path | `POST /send/text` |
-| Auth header | `apikey: {instance_token}` |
-| Body | `{ "number": "...", "text": "..." }` |
-| `source_id` field | `data.Info.ID` — **confirmar** |
-| Versão Go | _preencher_ |
-| Data spike | _preencher_ |
-
----
-
-## Validação inbound MESSAGE (preencher no spike)
-
-| Campo | Valor confirmado |
-|-------|------------------|
-| `source_id` | `data.key.id` — **confirmar** |
+| Campo | Valor |
+|-------|-------|
+| Path send | `POST /send/text` |
+| Auth send | `apikey: {instance_token}` |
+| Body send | `{ "number": "...", "text": "..." }` |
+| `source_id` outbound | `data.Info.ID` |
+| `source_id` inbound | `data.key.id` |
 | Texto simples | `message.conversation` |
-| Texto formatado | `message.extendedTextMessage.text` — **confirmar** |
-| Envelope auth | Sem `apikey` no body |
+| Eventos webhook | `MESSAGE`, `CONNECTION`, `QRCODE` |
 
 ---
 
-## Validação status (preencher no spike)
+## Preencher no E2E
 
 | Campo | Valor confirmado |
 |-------|------------------|
-| `Connected` / `connected` | _qual casing?_ |
-| JID / phone | _campo:_ `myJid` / `jid` / outro |
+| Versão Go | _preencher_ |
+| Data E2E | _preencher_ |
+| JID / phone | _campo exato no status_ |
+| `Connected` casing | _PascalCase vs camelCase_ |
+| advanced-settings body | Fase 2 |
+| Download mídia | Fase 2 — ADR §25 |
 
 ---
 

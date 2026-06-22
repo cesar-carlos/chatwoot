@@ -25,6 +25,16 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   end
 
   def connection_open?
+    response = api_client.connection_state
+    return false unless response.success?
+
+    state = response.parsed_response.dig('instance', 'state') ||
+            response.parsed_response['state']
+    state.to_s == 'open'
+  rescue StandardError => e
+    Rails.logger.warn(
+      "[EVOLUTION] lost messages connection check failed channel=#{channel.id}: #{e.message}"
+    )
     channel.provider_config['connection_status'].to_s == 'open'
   end
 
@@ -34,10 +44,11 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
 
   def skip_reconciliation_entry?(entry)
     key = entry['key'] || entry[:key] || {}
-    return true if ActiveModel::Type::Boolean.new.cast(key['fromMe'] || key[:fromMe])
-
     source_id = key['id'] || key[:id]
-    source_id.blank? || existing_source_ids.include?(source_id)
+    return true if source_id.blank?
+    return true if existing_source_ids.include?(source_id)
+
+    false
   end
 
   def remote_messages
@@ -88,6 +99,14 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   end
 
   def import_message(data_item)
+    key = data_item['key'] || data_item[:key] || {}
+    if ActiveModel::Type::Boolean.new.cast(key['fromMe'] || key[:fromMe])
+      return if ignore_from_me_echo?
+
+      Custom::Whatsapp::Evolution::PhoneOutgoingSyncService.new(channel: channel, data: data_item).perform
+      return
+    end
+
     envelope = {
       event: 'MESSAGES_UPSERT',
       instance: channel.provider_config['instance_name'],
@@ -107,5 +126,9 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
 
   def api_client
     Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
+  end
+
+  def ignore_from_me_echo?
+    ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['ignore_from_me_echo'])
   end
 end

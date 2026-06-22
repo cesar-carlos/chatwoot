@@ -103,4 +103,144 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionService do
       expect(quoted.dig(:key, :remoteJid)).to eq('5511999999999@s.whatsapp.net')
     end
   end
+
+  describe '#process_response' do
+    let(:user) { create(:user, account: account) }
+    let(:message) do
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        sender: user,
+        content: 'Hello'
+      )
+    end
+
+    it 'returns source_id from a successful response' do
+      response = instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'key' => { 'id' => 'EVO-MSG-123' } }
+      )
+
+      expect(service.process_response(response, message)).to eq('EVO-MSG-123')
+    end
+
+    it 'returns nil and marks the message failed on error' do
+      response = instance_double(
+        HTTParty::Response,
+        success?: false,
+        parsed_response: { 'message' => 'send failed' },
+        code: 400,
+        body: 'send failed'
+      )
+
+      expect(service.process_response(response, message)).to be_nil
+      expect(message.reload.status).to eq('failed')
+    end
+  end
+
+  describe 'mark_read_on_reply' do
+    let(:user) { create(:user, account: account) }
+    let!(:incoming_message) do
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :incoming,
+        sender: contact,
+        source_id: 'IN-LAST',
+        status: :delivered,
+        content: 'Customer question',
+        content_attributes: { evolution_remote_jid: '5511999999999@s.whatsapp.net' }
+      )
+    end
+    let(:outgoing_message) do
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        sender: user,
+        content: 'Agent reply'
+      )
+    end
+    let(:success_response) do
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'key' => { 'id' => 'OUT-123' } }
+      )
+    end
+
+    before do
+      channel.update!(provider_config: channel.provider_config.merge('mark_read_on_reply' => true))
+      allow(api_client).to receive(:send_text).and_return(success_response)
+      allow(api_client).to receive(:mark_message_as_read).and_return(success_response)
+    end
+
+    it 'marks the last incoming message as read after a successful send' do
+      service.send(:send_text_message, '5511999999999', outgoing_message)
+
+      expect(api_client).to have_received(:mark_message_as_read).with(
+        read_messages: [
+          {
+            id: incoming_message.source_id,
+            fromMe: false,
+            remoteJid: '5511999999999@s.whatsapp.net'
+          }
+        ]
+      )
+    end
+
+    it 'does not mark read when mark_read_on_reply is disabled' do
+      channel.update!(provider_config: channel.provider_config.merge('mark_read_on_reply' => false))
+
+      service.send(:send_text_message, '5511999999999', outgoing_message)
+
+      expect(api_client).not_to have_received(:mark_message_as_read)
+    end
+
+    it 'prefers the latest unread incoming message over an older quoted one' do
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :incoming,
+        sender: contact,
+        source_id: 'IN-OLDER',
+        status: :read,
+        content: 'Older message',
+        created_at: 2.hours.ago,
+        content_attributes: { evolution_remote_jid: '5511999999999@s.whatsapp.net' }
+      )
+      reply_message = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        sender: user,
+        content: 'Quoted reply',
+        content_attributes: { in_reply_to_external_id: 'IN-OLDER' }
+      )
+
+      service.send(:send_text_message, '5511999999999', reply_message)
+
+      expect(api_client).to have_received(:mark_message_as_read).with(
+        read_messages: [
+          {
+            id: 'IN-LAST',
+            fromMe: false,
+            remoteJid: '5511999999999@s.whatsapp.net'
+          }
+        ]
+      )
+    end
+  end
 end

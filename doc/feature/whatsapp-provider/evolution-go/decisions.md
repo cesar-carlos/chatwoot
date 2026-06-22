@@ -1,6 +1,6 @@
 # Decisões fechadas — Provider Evolution Go
 
-Decisões de implementação registradas para evitar retrabalho. **Status:** levantamento aprovado para planejamento (jun/2026). Validar no spike antes de codificar.
+Decisões de implementação registradas para evitar retrabalho. **Status:** aprovado para implementação (jun/2026). Confirmar payloads no E2E com instância do operador ([validation-checklist.md](./validation-checklist.md)).
 
 ---
 
@@ -153,7 +153,7 @@ Reusar prepend da Fase 0 com capability `unlimited_session: true`.
 | **ApiClient** | Classe nova `EvolutionGo::ApiClient` |
 | **Normalizer** | Classe nova — mapear `MESSAGE` não `MESSAGES_UPSERT` |
 | **Infra Fase 0** | Compartilhar registry + prepends |
-| **Wizard Vue** | Componente separado ou prop `engine=go` — avaliar na implementação |
+| **Wizard Vue** | Componente `EvolutionGoWhatsapp.vue` + composable compartilhado `useGatewayWhatsappWizard` — ver [frontend-wizard-spec.md](./frontend-wizard-spec.md) e [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) |
 
 ---
 
@@ -215,7 +215,7 @@ Detalhe: [business-rules-adaptation.md](./business-rules-adaptation.md)
 |---------|-------|
 | **Campo primário** | `data.key.id` no webhook `MESSAGE` |
 | **Outbound (envio)** | `data.Info.ID` — ver §6 |
-| **Validação** | Confirmar ambos no spike — são campos distintos |
+| **Validação** | Confirmar ambos no E2E — são campos distintos |
 
 ---
 
@@ -242,7 +242,7 @@ Detalhe: [business-rules-adaptation.md](./business-rules-adaptation.md)
 | Decisão | Valor |
 |---------|-------|
 | **OpenAPI** | `Connected`, `LoggedIn`, `Name` (PascalCase) |
-| **Implementação** | `ApiClient` aceita PascalCase e camelCase até spike |
+| **Implementação** | `ApiClient` aceita PascalCase e camelCase até E2E |
 
 ---
 
@@ -284,9 +284,53 @@ Detalhe operação: [troubleshooting.md § Reconnect](./troubleshooting.md).
 
 ---
 
+## 24. `POST /instance/reconnect` vs connect
+
+| Decisão | Valor |
+|---------|-------|
+| **Caminho canônico fork** | `POST /instance/connect` com `webhookUrl` + `subscribe` — ver §23 |
+| **`POST /instance/reconnect`** | Existe no Postman; **não usar** no fork — não garante reconfiguração de webhook |
+| **`ConnectionService#reconnect!`** | `disconnect` (opcional) → `connect` com URL + subscribe persistidos |
+| **Spike** | Validar se `reconnect` preserva webhook; se sim, documentar como atalho ops — não substituir connect no código |
+
+**Status:** **✅ Fechado** (22/jun/2026) — connect é único ponto de configuração webhook.
+
+---
+
+## 25. Download mídia inbound (Fase 2)
+
+| Decisão | Valor |
+|---------|-------|
+| **Primário** | `POST /message/downloadimage` — OpenAPI oficial |
+| **Fallback** | `POST /message/downloadmedia` — Postman (body `message.{type}Message`) se primário falhar |
+| **`ApiClient`** | `download_media(message_payload)` tenta `downloadimage` → `downloadmedia` |
+| **Spike** | Confirmar qual endpoint responde 2xx na versão congelada |
+
+Doc: [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image)
+
+**Status:** **✅ Fechado** (22/jun/2026) — validar comportamento no E2E §2b.
+
+---
+
+## 26. Normalização de casing — `ApiClient`
+
+| Decisão | Valor |
+|---------|-------|
+| **Problema** | Evolution Go mistura PascalCase (whatsmeow `Info.ID`) e camelCase (REST `connected`) |
+| **Helper** | `dig_field(hash, *keys)` — tenta variantes `key`, `Key`, camelize, Pascalize |
+| **Uso** | `connection_status`, `advanced-settings` GET/PUT, `sync_phone_number!` |
+| **PUT body** | Serializar com chaves do OpenAPI create (`rejectCall`, `ignoreGroups`); aceitar leitura Postman (`rejectCalls`) no GET |
+
+Ver implementação sugerida em [spec-design.md § ApiClient](./spec-design.md).
+
+**Status:** **✅ Fechado** (22/jun/2026)
+
+---
+
 ## Histórico
 
 | Data | Decisão |
 |------|---------|
 | jun/2026 | Levantamento completo; provider `evolution_go` separado; webhook auth por query token |
 | jun/2026 | ADR §22 `global_api_key` fechado; §23 reconnect sempre reenvia webhook no connect |
+| 22/jun/2026 | Audit Postman MCP; §24 reconnect vs connect; §25 download mídia; §26 casing ApiClient |

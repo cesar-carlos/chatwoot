@@ -1,8 +1,12 @@
 import {
   filterDuplicateSourceMessages,
   getLastMessage,
+  getLastNonActivityMessage,
   getReadMessages,
   getUnreadMessages,
+  mergeConversationListMessages,
+  mergeConversationOnListRefresh,
+  messageCreatedAtTimestamp,
 } from '../conversationHelper';
 import {
   conversationData,
@@ -96,6 +100,83 @@ describe('conversationHelper', () => {
       expect(getLastMessage(testConversation)).toEqual(
         testConversation.messages[1]
       );
+    });
+
+    it('should return preview message from camelCase API field', () => {
+      const testConversation = {
+        messages: [],
+        lastNonActivityMessage: lastMessageData,
+      };
+      expect(getLastMessage(testConversation)).toEqual(lastMessageData);
+    });
+  });
+
+  describe('#getLastNonActivityMessage', () => {
+    it('compares timestamps when created_at types differ', () => {
+      const older = { ...lastMessageData, created_at: '1621145476' };
+      const newer = { ...lastMessageData, id: 999, created_at: 1621145477 };
+
+      expect(getLastNonActivityMessage(older, newer)).toEqual(newer);
+      expect(getLastNonActivityMessage(newer, older)).toEqual(newer);
+    });
+  });
+
+  describe('#mergeConversationOnListRefresh', () => {
+    it('keeps the newest websocket preview when list data is refreshed', () => {
+      const existing = {
+        id: 1,
+        messages: [
+          { id: 10, message_type: 0, content: 'live', created_at: 20 },
+        ],
+        last_non_activity_message: {
+          id: 10,
+          message_type: 0,
+          content: 'live',
+          created_at: 20,
+        },
+      };
+      const incoming = {
+        id: 1,
+        messages: [
+          { id: 9, message_type: 0, content: 'stale', created_at: 10 },
+        ],
+        last_non_activity_message: {
+          id: 9,
+          message_type: 0,
+          content: 'stale',
+          created_at: 10,
+        },
+      };
+
+      const merged = mergeConversationOnListRefresh(existing, incoming);
+
+      expect(merged.last_non_activity_message.content).toBe('live');
+      expect(merged.messages.map(message => message.id)).toEqual([9, 10]);
+    });
+  });
+
+  describe('#messageCreatedAtTimestamp', () => {
+    it('normalizes numeric and string timestamps', () => {
+      expect(messageCreatedAtTimestamp({ created_at: 1621145476 })).toBe(
+        1621145476
+      );
+      expect(messageCreatedAtTimestamp({ created_at: '1621145476' })).toBe(
+        1621145476
+      );
+      expect(messageCreatedAtTimestamp({ createdAt: 1621145477 })).toBe(
+        1621145477
+      );
+    });
+  });
+
+  describe('#mergeConversationListMessages', () => {
+    it('merges message arrays without losing websocket updates', () => {
+      const merged = mergeConversationListMessages(
+        [{ id: 2, created_at: 2 }],
+        [{ id: 1, created_at: 1 }]
+      );
+
+      expect(merged.map(message => message.id)).toEqual([1, 2]);
     });
   });
 });

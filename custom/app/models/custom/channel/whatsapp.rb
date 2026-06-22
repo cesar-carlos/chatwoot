@@ -107,5 +107,3 @@ module Custom::Channel::Whatsapp
     Rails.logger.warn "[EVOLUTION] destroy cleanup failed for channel #{id}: #{e.message}"
   end
 end
-
-Channel::Whatsapp.prepend_mod_with('Channel::Whatsapp')

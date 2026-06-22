@@ -49,7 +49,7 @@ A documentação oficial afirma que ambos compartilham **"API contract REST (com
 | Delete | `DELETE /instance/delete/:instanceName` | `DELETE /instance/:name` ou equivalente Postman |
 | Restart | `POST /instance/restart/:instanceName` | Validar no Postman — pode não existir |
 | Webhook config | `POST /webhook/set/:instanceName` | **`POST /instance/connect`** body `webhookUrl` + `subscribe` |
-| Settings | `POST /settings/set/:instanceName` | `POST /instance/:id/advanced-settings` |
+| Settings | `POST /settings/set/:instanceName` | `GET`+`PUT /instance/:id/advanced-settings` |
 | Proxy | `POST /proxy/set/:instanceName` | `proxy` no body do create ou advanced-settings |
 
 ---

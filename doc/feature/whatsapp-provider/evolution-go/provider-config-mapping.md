@@ -47,16 +47,20 @@ Campos do inbox Chatwoot (`Channel::Whatsapp#provider_config`) mapeados para API
 
 ## Grupo 2 — Settings → advanced-settings (Fase 2)
 
-> ⚠️ Path planejado `POST /instance/{instanceId}/advanced-settings` — **confirmar no Swagger/Postman** antes de implementar. Ver [api-reference.md § Advanced settings](./api-reference.md).
+Path confirmado Postman: `GET` + `PUT /instance/{instanceId}/advanced-settings`. Ver [api-reference.md § Advanced settings](./api-reference.md) e [decisions.md §26](./decisions.md).
 
-| Campo `provider_config` | Campo Go | Default fork |
-|-------------------------|----------|--------------|
-| `ignore_groups` | `ignoreGroups` | `true` |
-| `reject_call` | `rejectCall` | `false` |
-| `msg_call` | `msgRejectCall` | `""` |
-| `always_online` | `alwaysOnline` | `false` |
-| `read_messages` | `readMessages` | `false` |
-| `ignore_status` | `ignoreStatus` | `true` |
+### Mapeamento `provider_config` → API
+
+| Campo `provider_config` | Enviar (PUT body) | Ler (GET — aceitar variantes) | Default fork |
+|-------------------------|-------------------|--------------------------------|--------------|
+| `ignore_groups` | `ignoreGroups` | `ignoreGroups` | `true` |
+| `reject_call` | `rejectCall` | `rejectCall`, `rejectCalls` | `false` |
+| `msg_call` | `msgRejectCall` | `msgRejectCall`, `rejectCallMessage` | `""` |
+| `always_online` | `alwaysOnline` | `alwaysOnline` | `false` |
+| `read_messages` | `readMessages` | `readMessages` | `false` |
+| `ignore_status` | `ignoreStatus` | `ignoreStatus`, `readStatus` (⚠️ semântica diferente — não inverter) | `true` |
+
+`ConnectionService#sync_settings!` usa `ApiClient#update_advanced_settings` com chaves **OpenAPI create** na escrita; leitura via `dig_field` na resposta GET.
 
 ---
 

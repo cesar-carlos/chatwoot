@@ -5,7 +5,7 @@ class Webhooks::EvolutionController < ActionController::API
 
   def process_payload
     Webhooks::WhatsappEventsJob.perform_later(
-      sanitized_job_payload.merge(instance_name: params[:instance_name])
+      sanitized_job_payload.merge(instance_name: params[:instance_name], channel_id: @channel.id)
     )
     head :ok
   end

@@ -26,7 +26,7 @@ Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloq
 | **Revisão técnica do código atual** | [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) → [gaps-and-blockers.md](./gaps-and-blockers.md) |
 | **Escolha de gateway** | [provider-comparison.md](./provider-comparison.md) |
 | **Provider Evolution API (piloto Node)** | [evolution-api/README.md](./evolution-api/README.md) → [evolution-api/implementation-plan.md](./evolution-api/implementation-plan.md) |
-| **Provider Evolution Go** | [evolution-go/README.md](./evolution-go/README.md) → [evolution-go/gaps-and-improvements.md](./evolution-go/gaps-and-improvements.md) |
+| **Provider Evolution Go** | [evolution-go/README.md](./evolution-go/README.md) → [evolution-go/status.md](./evolution-go/status.md) |
 | **Checklist feature a feature** | [feature-mapping.md](./feature-mapping.md) |
 
 ---
@@ -44,7 +44,7 @@ Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloq
 | [provider-comparison.md](./provider-comparison.md) | Evolution API, Z-API, Baileys genérico, NotificaMe |
 | [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) | Restrições Meta evitadas vs riscos do gateway; impacto em voz |
 | [evolution-api/](./evolution-api/) | **Evolution API (Node/Baileys):** integração atual, APIs, webhooks, regras de negócio, plano de fases |
-| [evolution-go/](./evolution-go/) | **Evolution Go (whatsmeow):** planejamento — [implementation-readiness.md](./evolution-go/implementation-readiness.md), [gaps-and-improvements.md](./evolution-go/gaps-and-improvements.md) |
+| [evolution-go/](./evolution-go/) | **Evolution Go (whatsmeow):** integração Chatwoot — [status.md](./evolution-go/status.md), [implementation-plan.md](./evolution-go/implementation-plan.md) |
 
 ---
 

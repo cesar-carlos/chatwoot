@@ -43,10 +43,6 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
     )
   end
 
-  def evolution_api_client
-    Custom::Whatsapp::Evolution::ApiClient.for_channel(inbox.channel)
-  end
-
   def message_content_attributes(message)
     attrs = super
     return attrs unless evolution_channel?
@@ -57,52 +53,20 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
   end
 
   def download_evolution_media(attachment_payload)
-    response = evolution_api_client.get_base64_from_media_message(
-      message: attachment_payload[:_evolution_message]
+    @pending_evolution_media = attachment_payload
+    nil
+  end
+
+  def enqueue_pending_evolution_media_download
+    return if @pending_evolution_media.blank? || @message.blank? || @message.id.blank?
+
+    Custom::Whatsapp::Evolution::MediaDownloadJob.perform_later(
+      inbox.channel.id,
+      @message.id,
+      @pending_evolution_media.deep_stringify_keys,
+      message_type.to_s
     )
-    return nil unless response.success?
-
-    build_evolution_media_tempfile(response.parsed_response, attachment_payload)
-  rescue ArgumentError => e
-    Rails.logger.warn("[EVOLUTION] media download rejected: #{e.message}")
-    nil
-  rescue StandardError => e
-    Rails.logger.error("[EVOLUTION] media download failed: #{e.message}")
-    nil
-  end
-
-  def build_evolution_media_tempfile(parsed, attachment_payload)
-    base64 = parsed['base64']
-    return nil if base64.blank?
-
-    extension = extension_for_media(parsed, attachment_payload)
-    tempfile = Tempfile.new(['evolution-media', extension])
-    tempfile.binmode
-    tempfile.write(Custom::Whatsapp::Evolution::MediaDecoder.decode!(base64))
-    tempfile.rewind
-
-    filename = parsed['fileName'] || attachment_payload[:filename] || "media#{extension}"
-    content_type = parsed['mimetype'] || attachment_payload[:mimetype] || 'application/octet-stream'
-
-    tempfile.define_singleton_method(:original_filename) { filename }
-    tempfile.define_singleton_method(:content_type) { content_type }
-    tempfile
-  end
-
-  MIME_EXTENSION_PATTERNS = [
-    [%r{image/png}, '.png'],
-    [%r{image/}, '.jpg'],
-    [%r{video/}, '.mp4'],
-    [%r{audio/}, '.ogg']
-  ].freeze
-
-  def extension_for_media(parsed, attachment_payload)
-    filename = parsed['fileName'] || attachment_payload[:filename]
-    ext = File.extname(filename.to_s)
-    return ext if ext.present?
-
-    mimetype = (parsed['mimetype'] || attachment_payload[:mimetype]).to_s
-    MIME_EXTENSION_PATTERNS.find { |pattern, _| mimetype.match?(pattern) }&.last || '.bin'
+    @pending_evolution_media = nil
   end
 end
 

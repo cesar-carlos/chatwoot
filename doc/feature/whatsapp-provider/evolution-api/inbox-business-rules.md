@@ -231,7 +231,7 @@ Quando `lock_to_single_conversation: false` e conversa vai para `resolved`, Evol
 |-------|------|---------|------|----------|-----------|----------------|
 | `ignore_jids` | string[] | **`["@g.us"]`** | 1 / 2‡ | Ignored JIDs | Lista de JIDs/padrões ignorados no inbound | `eventWhatsapp` ~1932 |
 | `ignore_status_broadcast` | boolean | `true` | 1‡ | (implícito) | Ignora `status@broadcast` | ~1964 |
-| `ignore_from_me_echo` | boolean | `true` | 1‡ | (implícito) | Ignora `fromMe: true` no UPSERT (evita duplicar outbound) | implícito no fluxo |
+| `ignore_from_me_echo` | boolean | `false` | 1‡ | (implícito) | Ignora `fromMe: true` no UPSERT (evita duplicar outbound) | implícito no fluxo |
 | `ignore_survey_links` | boolean | `true` | 2 | Ignore CSAT survey echoes | Ignora msgs com `/survey/responses/` + URL | ~1982 |
 | `format_group_messages` | boolean | `false` | 3+ | Prefix group messages with participant | `**+55 (11) 9999-9999 - Name:**` | ~2198 |
 | `show_pairing_code` | boolean | `true` | 2 | Show pairing code alongside QR | `qrcode.pairingCode` format `XXXX-XXXX` | ~2439 |
@@ -378,7 +378,7 @@ Abas sugeridas:
 
   "ignore_jids": ["@g.us"],
   "ignore_status_broadcast": true,
-  "ignore_from_me_echo": true,
+  "ignore_from_me_echo": false,
   "ignore_survey_links": true,
 
   "import_contacts": false,

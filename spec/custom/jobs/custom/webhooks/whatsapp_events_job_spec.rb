@@ -98,6 +98,7 @@ RSpec.describe Webhooks::WhatsappEventsJob do
     end
 
     it 'logs when the normalizer skips a message' do
+      channel.update!(provider_config: channel.provider_config.merge('ignore_from_me_echo' => true))
       envelope = load_fixture('messages_upsert_text')
       envelope['data']['key']['fromMe'] = true
       allow(Rails.logger).to receive(:warn)
@@ -108,6 +109,23 @@ RSpec.describe Webhooks::WhatsappEventsJob do
         '[EVOLUTION] normalizer skipped event=MESSAGES_UPSERT ' \
         'id=3EB00C82C9CE7A7439627F fromMe=true remoteJid=242532642504895@lid'
       )
+      expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
+    end
+
+    it 'syncs phone-sent fromMe messages as outgoing when ignore_from_me_echo is disabled' do
+      phone_sync = instance_double(Custom::Whatsapp::Evolution::PhoneOutgoingSyncService, perform: nil)
+      allow(Custom::Whatsapp::Evolution::PhoneOutgoingSyncService).to receive(:new).and_return(phone_sync)
+
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['key']['fromMe'] = true
+
+      job.perform_now(envelope)
+
+      expect(Custom::Whatsapp::Evolution::PhoneOutgoingSyncService).to have_received(:new).with(
+        channel: channel,
+        data: envelope['data']
+      )
+      expect(phone_sync).to have_received(:perform)
       expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
     end
 
@@ -126,16 +144,16 @@ RSpec.describe Webhooks::WhatsappEventsJob do
   end
 
   describe 'contact events' do
-    it 'delegates CONTACTS_UPSERT to ContactsSyncService' do
+    it 'enqueues CONTACTS_UPSERT for ContactsSyncJob' do
       envelope = load_fixture('contacts_upsert')
 
-      job.perform_now(envelope)
-
-      expect(Custom::Whatsapp::Evolution::ContactsSyncService).to have_received(:new).with(
-        channel: channel,
-        data: envelope['data']
+      expect do
+        job.perform_now(envelope)
+      end.to have_enqueued_job(Custom::Whatsapp::Evolution::ContactsSyncJob).with(
+        channel.id,
+        envelope['data']
       )
-      expect(contacts_sync_service).to have_received(:perform)
+
       expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
     end
   end

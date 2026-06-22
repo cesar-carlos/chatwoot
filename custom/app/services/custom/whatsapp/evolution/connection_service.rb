@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::ConnectionService
+  CONNECTION_STATE_CACHE_TTL = 15.seconds
+
   pattr_initialize [:channel!]
 
   def teardown!
@@ -44,6 +46,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
 
   def reconnect!
     update_connection_status('connecting')
+    invalidate_connection_state_cache!
     fetch_qr_code
   end
 
@@ -51,6 +54,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
     response = api_client.logout_instance
     raise_api_error!(response, 'Failed to logout Evolution instance')
 
+    invalidate_connection_state_cache!
     update_connection_status('close')
     response.parsed_response
   end
@@ -59,18 +63,28 @@ class Custom::Whatsapp::Evolution::ConnectionService
     response = api_client.restart_instance
     raise_api_error!(response, 'Failed to restart Evolution instance')
 
+    invalidate_connection_state_cache!
     update_connection_status('connecting')
     fetch_qr_code
     response.parsed_response
   end
 
-  def refresh_connection_status!
+  def refresh_connection_status!(force: false)
+    cache_key = connection_state_cache_key
+    return if !force && Rails.cache.read(cache_key).present?
+
     response = api_client.connection_state
-    return unless response.success?
+    unless response.success?
+      Rails.logger.warn(
+        "[EVOLUTION] connection_state failed channel=#{channel.id} status=#{response.code}"
+      )
+      return
+    end
 
     state = response.parsed_response.dig('instance', 'state') ||
             response.parsed_response['state']
     update_connection_status(state) if state.present?
+    Rails.cache.write(cache_key, true, expires_in: CONNECTION_STATE_CACHE_TTL)
     response.parsed_response
   end
 
@@ -84,6 +98,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
 
   def connection_payload
     refresh_connection_status!
+    fetch_qr_if_needed!
     {
       connection_status: provider_config['connection_status'],
       phone_number: channel.phone_number,
@@ -149,6 +164,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
   end
 
   def update_connection_status(state)
+    invalidate_connection_state_cache!
     previous_status = provider_config['connection_status']
     update_runtime_config!('connection_status' => state)
     return unless state == 'open'
@@ -245,5 +261,22 @@ class Custom::Whatsapp::Evolution::ConnectionService
     cfg = provider_config
     ActiveModel::Type::Boolean.new.cast(cfg['import_contacts']) ||
       ActiveModel::Type::Boolean.new.cast(cfg['import_messages'])
+  end
+
+  def fetch_qr_if_needed!
+    return if provider_config['connection_status'].to_s == 'open'
+    return if provider_config['last_qr_base64'].present?
+
+    fetch_qr_code
+  rescue Custom::Whatsapp::Evolution::ApiError => e
+    Rails.logger.warn "[EVOLUTION] fetch_qr_if_needed failed channel=#{channel.id}: #{e.message}"
+  end
+
+  def connection_state_cache_key
+    "evolution:connection_state_refresh:#{channel.id}"
+  end
+
+  def invalidate_connection_state_cache!
+    Rails.cache.delete(connection_state_cache_key)
   end
 end
