@@ -31,23 +31,23 @@ Configurar em `Provisioner#register_webhook!` (via `ConnectionService#register_w
 | Decisão | Valor |
 |---------|-------|
 | **Método primário** | Validar `apikey` do envelope contra `provider_config.api_key` |
-| **Método secundário (opcional)** | Query `?token=` com secret gerado no create do inbox |
+| **Método secundário** | Query `?token=` com `provider_config.webhook_token` (gerado no provision; incluído na URL do webhook) |
 | **IP allowlist** | Fora do escopo MVP |
 
 ```ruby
 # EvolutionController#authenticate_webhook!
 def authenticate_webhook!
-  channel = find_channel_by_instance_name(params[:instance_name])
-  return head :not_found unless channel
+  @channel = find_channel_by_instance_name
+  return head :not_found if @channel.blank?
 
-  envelope_key = params[:apikey].presence || request.headers['apikey']
-  return head :unauthorized unless ActiveSupport::SecurityUtils.secure_compare(
-    envelope_key.to_s, channel.provider_config['api_key'].to_s
-  )
+  return if webhook_token_valid?
+  return if apikey_valid?
 
-  @channel = channel
+  head :unauthorized
 end
 ```
+
+Aceita **qualquer um** dos métodos: `?token=` (se `webhook_token` presente) ou `apikey` no body/header.
 
 **Motivo:** Evolution envia `apikey` no body do webhook (`webhook.controller.ts` → `emit()`). Token na URL sozinho não cobre o caso em que a URL vaza sem o secret no query string.
 
@@ -61,7 +61,7 @@ end
 | **Regra operacional** | **1 instância Evolution = 1 inbox** `provider: 'evolution'` no fork |
 | **Multi-account** | Dois accounts Chatwoot **não** devem compartilhar o mesmo `instance_name` apontando para webhooks distintos — colisão de rota |
 
-Índice recomendado (migration fork, Fase 1) — **único global** no banco:
+Índice **único global** no banco — **implementado** (migration fork):
 
 ```ruby
 add_index :channel_whatsapp, "(provider_config->>'instance_name')",
@@ -120,7 +120,7 @@ Outbound já cria mensagem com `source_id` no Chatwoot; processar echo duplicari
 |---------|-------|
 | **Sempre** | `chatwoot.enabled = false` — nunca habilitar a integração legada |
 | **Desabilitar** | `POST /chatwoot/set` com `enabled: false` após create (schema exige todos os campos) |
-| **Verificação** | `ConnectionService#ensure_chatwoot_integration_disabled` após create/connect |
+| **Verificação** | `Provisioner#ensure_chatwoot_integration_disabled!` — `POST /chatwoot/set` + `GET /chatwoot/find` confirma `enabled: false`; falha o provision se ainda ativo |
 
 ---
 

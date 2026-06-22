@@ -1,6 +1,6 @@
 # Fixtures Evolution — webhooks e API
 
-Payloads JSON capturados do servidor Evolution local v**2.3.6** (`http://localhost:8080`, código em `/root/evolution-api`).
+Payloads JSON capturados do servidor Evolution local v**2.3.6** (`http://localhost:8080`). **Produção:** v**2.3.7** — mesmos contratos REST/webhook validados no spike T0.
 
 Validação: [validation-checklist.md](../../../doc/feature/whatsapp-provider/evolution-api/validation-checklist.md) · T0 jun/2026.
 
@@ -12,7 +12,8 @@ Validação: [validation-checklist.md](../../../doc/feature/whatsapp-provider/ev
 
 | Campo | Resultado |
 |-------|-----------|
-| Versão Evolution | **2.3.6** (`GET /` → `version`) |
+| Versão Evolution (dev) | **2.3.6** (`GET /` → `version`) |
+| Versão produção alvo | **2.3.7** — ver [evolution-target-version.txt](../../../doc/feature/whatsapp-provider/evolution-api/evolution-target-version.txt) |
 | Body aceito | **`text` plano** — `{"number":"…","text":"…"}` |
 | Body rejeitado | `textMessage.text` nested → HTTP **400** (`instance requires property "text"`) |
 | HTTP status (sucesso) | **201** |

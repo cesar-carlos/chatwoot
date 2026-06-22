@@ -65,12 +65,18 @@ Custom::Whatsapp::Evolution::ApiClient.new(
 | `#disable_chatwoot_integration` | `POST /chatwoot/set/:instance` | `Hash` — `enabled: false` |
 | `#send_text(number:, text:, quoted: nil, delay: nil)` | `POST /message/sendText/:instance` | `Hash` messageRaw |
 | `#send_media(number:, mediatype:, media:, caption: nil)` | `POST /message/sendMedia/:instance` | `Hash` |
-| `#send_buttons(number:, title:, buttons:)` | `POST /message/sendButtons/:instance` | `Hash` |
-| `#send_list(number:, title:, button_text:, sections:)` | `POST /message/sendList/:instance` | `Hash` |
+| `#send_audio(number:, audio:, quoted: nil, delay: nil)` | `POST /message/sendWhatsAppAudio/:instance` | `Hash` |
+| `#delete_message_for_everyone(id:, remote_jid:, from_me:)` | `DELETE /chat/deleteMessageForEveryone/:instance` | `Hash` |
+| `#find_chatwoot_integration` | `GET /chatwoot/find/:instance` | `Hash` — verificação pós-provision |
 | `#mark_message_as_read(read_messages:)` | `POST /chat/markMessageAsRead/:instance` | `Hash` |
 | `#find_contacts(page:, offset:, where:)` | `POST /chat/findContacts/:instance` | `Array` |
 | `#find_messages(page:, offset:, where:)` | `POST /chat/findMessages/:instance` | `Array` |
 | `#get_base64_from_media_message(message:)` | `POST /chat/getBase64FromMediaMessage/:instance` | `Hash` |
+| `#fetch_profile_picture_url(number:)` | `POST /chat/fetchProfilePictureUrl/:instance` | `Hash` |
+| `#fetch_profile(number:)` | `POST /chat/fetchProfile/:instance` | `Hash` |
+| `#fetch_business_profile(number:)` | `POST /chat/fetchBusinessProfile/:instance` | `Hash` |
+
+> **Deferido Fase 3:** `#send_buttons` / `#send_list` — `EvolutionService#send_input_select_message` usa fallback `sendText` com lista numerada.
 
 ### `#send_text` — fallback doc vs código
 
@@ -282,7 +288,23 @@ api_client.send_media(
 
 ### `#send_interactive_text_message` (Fase 3)
 
-Mapear `message.content_attributes[:items]` → `send_buttons` ou `send_list` conforme contagem de itens (≤3 botões, senão lista).
+`input_select` com ≤10 itens → lista numerada via `send_text` (não usa `sendButtons`/`sendList` da Evolution).
+
+---
+
+## 4b. `Custom::Whatsapp::Evolution::ContactsSyncService`
+
+**Arquivo:** `custom/app/services/custom/whatsapp/evolution/contacts_sync_service.rb`
+
+Processa webhooks `CONTACTS_UPSERT` / `CONTACTS_UPDATE` — cria/atualiza contatos e enfileira `ContactEnrichmentJob` para foto/perfil.
+
+---
+
+## 4c. `Custom::Whatsapp::Evolution::DeleteSyncService`
+
+**Arquivo:** `custom/app/services/custom/whatsapp/evolution/delete_sync_service.rb`
+
+Quando agente apaga mensagem no Chatwoot e `sync_delete_to_whatsapp: true`, chama `ApiClient#delete_message_for_everyone`.
 
 ---
 

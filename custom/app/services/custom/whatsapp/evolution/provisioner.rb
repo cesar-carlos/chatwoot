@@ -43,9 +43,10 @@ class Custom::Whatsapp::Evolution::Provisioner
   end
 
   def ensure_chatwoot_integration_disabled!
-    api_client.disable_chatwoot_integration
-  rescue StandardError => e
-    Rails.logger.warn "[EVOLUTION] disable chatwoot integration: #{e.message}"
+    response = api_client.disable_chatwoot_integration
+    raise_api_error!(response, 'Failed to disable Evolution Chatwoot integration') unless response.success?
+
+    verify_chatwoot_integration_disabled!
   end
 
   def delete_remote_instance!
@@ -128,7 +129,20 @@ class Custom::Whatsapp::Evolution::Provisioner
 
   def webhook_url
     base = ENV.fetch('FRONTEND_URL', nil).to_s.delete_suffix('/')
-    "#{base}/webhooks/evolution/#{provider_config['instance_name']}"
+    url = "#{base}/webhooks/evolution/#{provider_config['instance_name']}"
+    token = provider_config['webhook_token'].presence
+    token ? "#{url}?token=#{CGI.escape(token)}" : url
+  end
+
+  def verify_chatwoot_integration_disabled!
+    response = api_client.find_chatwoot_integration
+    raise_api_error!(response, 'Failed to verify Evolution Chatwoot integration status') unless response.success?
+
+    parsed = response.parsed_response
+    enabled = parsed.is_a?(Hash) && ActiveModel::Type::Boolean.new.cast(parsed['enabled'])
+    return unless enabled
+
+    raise Custom::Whatsapp::Evolution::ApiError, 'Evolution Chatwoot integration is still enabled'
   end
 
   def persist_instance_credentials!(parsed)
@@ -136,7 +150,8 @@ class Custom::Whatsapp::Evolution::Provisioner
     attrs = {
       'api_key' => (parsed['hash'] || provider_config['api_key']).to_s.strip,
       'instance_id' => instance['instanceId'],
-      'connection_status' => instance['status'] || 'connecting'
+      'connection_status' => instance['status'] || 'connecting',
+      'webhook_token' => provider_config['webhook_token'].presence || SecureRandom.hex(16)
     }
     merged = provider_config.merge(attrs.stringify_keys)
     channel.provider_config = merged

@@ -136,14 +136,24 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     Rails.logger.warn(
       "[EVOLUTION] secondary attachment send failed for message #{message.id}: HTTP #{response.code}"
     )
-    mark_attachment_batch_failed!(message)
-    :failed
+    notify_partial_attachment_failure!(message, index + 1)
+    message_id
   end
 
-  def mark_attachment_batch_failed!(message)
-    message.update!(status: :failed, external_error: 'One or more attachments failed to send')
+  def notify_partial_attachment_failure!(message, attachment_index)
+    return unless notify_send_errors_private?
+    return if message.blank? || message.conversation.blank?
+
+    message.conversation.messages.create!(
+      account_id: message.account_id,
+      inbox_id: message.inbox_id,
+      message_type: :outgoing,
+      private: true,
+      sender: message.sender,
+      content: "Attachment ##{attachment_index} could not be sent to WhatsApp."
+    )
   rescue StandardError => e
-    Rails.logger.warn "[EVOLUTION] failed to mark attachment batch failed: #{e.message}"
+    Rails.logger.warn "[EVOLUTION] failed to create partial attachment private note: #{e.message}"
   end
 
   def dispatch_attachment(phone_number:, attachment:, media_source:, message:, include_caption: true)

@@ -60,6 +60,18 @@ RSpec.describe Webhooks::EvolutionController, type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it 'accepts webhook token query param when apikey is absent' do
+      webhook_token = 'secure-webhook-token'
+      channel.update!(provider_config: channel.provider_config.merge('webhook_token' => webhook_token))
+
+      expect do
+        post "/webhooks/evolution/#{instance_name}?token=#{webhook_token}",
+             params: payload.except('apikey')
+      end.to have_enqueued_job(Webhooks::WhatsappEventsJob)
+
+      expect(response).to have_http_status(:ok)
+    end
+
     it 'returns not found for an unknown instance' do
       post '/webhooks/evolution/unknown-instance', params: payload
 

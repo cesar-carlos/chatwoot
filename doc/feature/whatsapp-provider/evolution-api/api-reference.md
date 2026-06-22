@@ -290,7 +290,7 @@ POST /webhook/set/:instanceName
     "url": "https://chatwoot.example.com/webhooks/evolution/minha-instancia",
     "byEvents": false,
     "base64": false,
-    "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"]
+    "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONTACTS_UPSERT", "CONTACTS_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"]
   }
 }
 ```
@@ -306,7 +306,7 @@ Se `events` vazio com `enabled: true`, Evolution registra **todos** os eventos (
     "url": "https://chatwoot.example.com/webhooks/evolution/minha-instancia",
     "byEvents": false,
     "base64": false,
-    "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
+    "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONTACTS_UPSERT", "CONTACTS_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"],
     "headers": {
       "Authorization": "Bearer optional-shared-secret"
     }
@@ -423,15 +423,15 @@ Inbound mídia (webhook `webhookBase64: false`): Chatwoot chama `POST /chat/getB
 | `POST /message/sendSticker/:instanceName` | 3 | Upload |
 | `POST /message/sendPoll/:instanceName` | 3 | Enquete |
 
-### Interativos (Fase 3)
+### Interativos (Fase 3 — não implementado no fork)
 
-| Endpoint | Doc |
-|----------|-----|
-| `POST /message/sendButtons/:instanceName` | [send-buttons](https://docs.evolutionfoundation.com.br/evolution-api/send-buttons) |
-| `POST /message/sendList/:instanceName` | [send-list](https://docs.evolutionfoundation.com.br/evolution-api/send-list) |
-| `POST /message/sendLocation/:instanceName` | [send-location](https://docs.evolutionfoundation.com.br/evolution-api/send-location) |
-| `POST /message/sendContact/:instanceName` | [send-contact](https://docs.evolutionfoundation.com.br/evolution-api/send-contact) |
-| `POST /message/sendReaction/:instanceName` | [send-reaction](https://docs.evolutionfoundation.com.br/evolution-api/send-reaction) |
+| Endpoint | Doc | Status fork |
+|----------|-----|-------------|
+| `POST /message/sendButtons/:instanceName` | [send-buttons](https://docs.evolutionfoundation.com.br/evolution-api/send-buttons) | ⏸️ Deferido — `input_select` usa lista numerada via `sendText` |
+| `POST /message/sendList/:instanceName` | [send-list](https://docs.evolutionfoundation.com.br/evolution-api/send-list) | ⏸️ Deferido |
+| `POST /message/sendLocation/:instanceName` | [send-location](https://docs.evolutionfoundation.com.br/evolution-api/send-location) | ⏸️ Fase 3+ |
+| `POST /message/sendContact/:instanceName` | [send-contact](https://docs.evolutionfoundation.com.br/evolution-api/send-contact) | ⏸️ Fase 3+ |
+| `POST /message/sendReaction/:instanceName` | [send-reaction](https://docs.evolutionfoundation.com.br/evolution-api/send-reaction) | ⏸️ Fase 3+ |
 
 ---
 
@@ -442,6 +442,27 @@ POST /chat/markMessageAsRead/:instanceName
 ```
 
 **Doc:** https://docs.evolutionfoundation.com.br/evolution-api/mark-message-as-read
+
+---
+
+### Deletar mensagem (sync outbound)
+
+```
+DELETE /chat/deleteMessageForEveryone/:instanceName
+{ "id": "MSG_ID", "fromMe": true, "remoteJid": "5511...@s.whatsapp.net" }
+```
+
+Usado por `DeleteSyncService` quando `sync_delete_to_whatsapp: true` no inbox.
+
+---
+
+### Perfil de contato (enrichment)
+
+| Endpoint | Uso no fork |
+|----------|-------------|
+| `POST /chat/fetchProfilePictureUrl/:instanceName` | `ContactEnrichmentService` |
+| `POST /chat/fetchProfile/:instanceName` | Idem |
+| `POST /chat/fetchBusinessProfile/:instanceName` | Idem |
 
 ---
 

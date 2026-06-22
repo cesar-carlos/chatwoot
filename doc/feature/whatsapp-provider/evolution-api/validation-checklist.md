@@ -2,7 +2,7 @@
 
 Executar **antes** de fechar o MVP texto + QR. Resultados alimentam `spec/fixtures/evolution/` e confirmam compatibilidade com [evolution-target-version.txt](./evolution-target-version.txt).
 
-**Ambiente:** servidor Evolution staging (recomendado `evoapicloud/evolution-api:2.3.7`) + Chatwoot fork com Fase 0–1 implementada.
+**Ambiente:** servidor Evolution **produção v2.3.7** + Chatwoot fork com Fase 0–4 implementada. Dev local validado em v2.3.6 (`/root/evolution-api` @ `:8080`).
 
 **Postman:** usar collection [Evolution API v2.3.*](https://www.postman.com/agenciadgcode/evolution-api/collection/nm0wqgt/evolution-api-v2-3) — mapa completo em [postman-validation.md](./postman-validation.md).
 
@@ -13,7 +13,7 @@ Executar **antes** de fechar o MVP texto + QR. Resultados alimentam `spec/fixtur
 - [x] `FRONTEND_URL` aponta para URL pública alcançável pela Evolution — **local E2E:** webhook registrado em `http://localhost:3000` (`.env` produção usa URL remota)
 - [x] Chatwoot recebe `POST` externo — **local:** HTTP 200 com header `X-Forwarded-Proto: https` (`FORCE_SSL=true`)
 - [x] Evolution **sem** integração Chatwoot legada (`GET /chatwoot/find` → `enabled: false`) — instância `MATHEUS-66981128433-TESTE`
-- [x] Versão Evolution registrada: **2.3.6**
+- [x] Versão Evolution registrada: **2.3.7** (produção) · dev local **2.3.6**
 - [x] Conta Chatwoot **ativa** (`account.active?`) — webhooks ignorados em contas `suspended`
 
 ---
@@ -181,8 +181,8 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
 
 | Campo | Valor |
 |-------|-------|
-| Data | 2026-06-21 |
-| Versão Evolution | **2.3.6** (local `/root/evolution-api`, `:8080`) |
+| Data | 2026-06-21 (atualizado jun/2026 para produção 2.3.7) |
+| Versão Evolution | **2.3.7** produção · **2.3.6** dev local (`/root/evolution-api`, `:8080`) |
 | Formato sendText aceito | **`text` plano** |
 | Operador | E2E local automated |
 | Instância E2E | `MATHEUS-66981128433-TESTE` (state: open) |

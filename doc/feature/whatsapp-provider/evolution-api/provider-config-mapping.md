@@ -18,7 +18,7 @@ Grupos de campos:
 |-------|--------|----------------|
 | Conexão | `base_url`, `api_key`, `instance_name`, `instance_id`, `connection_status` | create/connect |
 
-**Runtime keys** (`ProviderConfig::RUNTIME_KEYS`): `connection_status`, `last_qr_*`, `last_sender`, `import_*` — escritas via `update_columns` em webhooks/polling; **não** disparam `sync_settings`/`sync_proxy` nem `validate_provider_config` remoto. Validação de credenciais exige `connectionState` → `open` ([decisions.md §22](./decisions.md)).
+**Runtime keys** (`ProviderConfig::RUNTIME_KEYS`): `connection_status`, `last_qr_*`, `last_sender`, `webhook_token`, `import_*` — escritas via `update_columns` em webhooks/polling; **não** disparam `sync_settings`/`sync_proxy` nem `validate_provider_config` remoto. Validação de credenciais exige `connectionState` → `open` ([decisions.md §22](./decisions.md)).
 | WhatsApp settings | `groups_ignore`, `reject_call`, `msg_call`, `always_online`, `read_messages`, `read_status`, `sync_full_history` | `POST /settings/set` |
 | Proxy | `proxy_enabled`, `proxy_host`, `proxy_port`, `proxy_protocol`, `proxy_username`, `proxy_password` | `POST /proxy/set` |
 | Conversas | `conversation_pending`, `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork |
@@ -113,7 +113,14 @@ POST /webhook/set/:instanceName
     "url": "https://{CHATWOOT}/webhooks/evolution/{instance_name}",
     "byEvents": false,
     "base64": false,
-    "events": ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "CONNECTION_UPDATE", "QRCODE_UPDATED"]
+    "events": [
+      "MESSAGES_UPSERT",
+      "MESSAGES_UPDATE",
+      "CONTACTS_UPSERT",
+      "CONTACTS_UPDATE",
+      "CONNECTION_UPDATE",
+      "QRCODE_UPDATED"
+    ]
   }
 }
 ```

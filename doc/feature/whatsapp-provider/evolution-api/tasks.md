@@ -130,6 +130,17 @@ T5 (specs) — ✅ ~42 examples em `spec/custom/` (Evolution provider) + Playwri
 
 **Revisão (2026-06-21):** removido `provider_config.reopen_conversation` (duplicava `lock_to_single_conversation`); UI e `Custom::Conversations::Resolver` prepend eliminados.
 
+**Revisão (2026-06-22 — auditoria doc+código):**
+
+| Item | Status |
+|------|--------|
+| `webhook-events.md` — tabela status Baileys corrigida | ✅ |
+| Eventos `CONTACTS_*` documentados | ✅ |
+| `ensure_chatwoot_integration_disabled!` com verificação `GET /chatwoot/find` | ✅ |
+| Auth webhook `?token=` + `webhook_token` no provision | ✅ |
+| Anexos parciais — nota privada em vez de `failed` | ✅ |
+| Versão produção **2.3.7** alinhada em docs | ✅ |
+
 **Revisão (2026-06-22 — pós-auditoria inbound):**
 
 | Item | Status |
