@@ -84,10 +84,10 @@ RSpec.describe Custom::Retention::Policy do
 
     it 'reads override from InstallationConfig when ENV is absent' do
       with_modified_env MESSAGE_ATTACHMENT_RETENTION_DRY_RUN: nil do
-        InstallationConfig.find_or_create_by!(name: described_class::DRY_RUN_KEY) do |config|
-          config.value = 'true'
-          config.locked = false
-        end
+        InstallationConfig.find_or_initialize_by(name: described_class::DRY_RUN_KEY).update!(
+          value: 'true',
+          locked: false
+        )
         GlobalConfig.clear_cache
 
         expect(described_class.dry_run?).to be(true)

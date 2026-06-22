@@ -180,8 +180,11 @@ RSpec.describe Custom::Retention::PurgeMessageAttachmentsService do
       purged_message.define_singleton_method(:reindex) { |mode:| reindex_modes << mode }
       allow(purged_message).to receive(:should_index?).and_return(true)
 
-      service = described_class.new(account: account, run_id: run_id)
-      service.send(:reindex_message_for_search, purged_message)
+      Custom::Retention::MessagePostPurgeService.new(
+        message: purged_message,
+        account: account,
+        run_id: run_id
+      ).perform
 
       expect(reindex_modes).to eq([:async])
     end
