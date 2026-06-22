@@ -17,10 +17,11 @@
 #
 # Indexes
 #
-#  index_attachments_on_account_id  (account_id)
-#  index_attachments_on_message_id  (message_id)
-#  index_attachments_on_meta        (meta) USING gin
-#  index_attachments_on_meta_gin    (meta) USING gin
+#  index_attachments_on_account_id                 (account_id)
+#  index_attachments_on_account_id_and_created_at  (account_id,created_at)
+#  index_attachments_on_message_id                 (message_id)
+#  index_attachments_on_meta                       (meta) USING gin
+#  index_attachments_on_meta_gin                   (meta) USING gin
 #
 
 class Attachment < ApplicationRecord
