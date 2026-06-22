@@ -2,6 +2,8 @@
 
 # rubocop:disable Metrics/ModuleLength -- outbound transforms share provider_config/api_client context
 module Custom::Whatsapp::Providers::EvolutionServiceOutbound
+  INTERACTIVE_LIST_BUTTON_TEXT = 'Options'
+
   private
 
   def apply_outbound_text(body, message)
@@ -12,8 +14,7 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     sender_name = message.sender&.available_name
     return text if sender_name.blank?
 
-    delimiter = provider_config['sign_delimiter'].to_s.gsub('\\n', "\n").presence || "\n"
-    ["*#{sender_name}:*", text].join(delimiter)
+    "#{sender_name}:\n#{text}"
   end
 
   def build_quoted_context(phone_number, message)
@@ -69,10 +70,9 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
 
   def read_target_message(message)
     reply_id = message.content_attributes[:in_reply_to_external_id]
-    scope = message.conversation.messages.incoming.where(inbox_id: message.inbox_id)
-    return scope.find_by(source_id: reply_id) if reply_id.present?
+    return nil if reply_id.blank?
 
-    scope.where.not(source_id: [nil, '']).order(created_at: :desc).first
+    message.conversation.messages.incoming.where(inbox_id: message.inbox_id).find_by(source_id: reply_id)
   end
 
   def read_target_remote_jid(phone_number, target)
@@ -124,7 +124,7 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
       api_client.send_list(
         number: phone_number,
         title: title,
-        button_text: 'Options',
+        button_text: INTERACTIVE_LIST_BUTTON_TEXT,
         sections: [build_list_section(items)],
         quoted: quoted,
         delay: delay

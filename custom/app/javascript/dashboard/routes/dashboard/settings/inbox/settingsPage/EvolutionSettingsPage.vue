@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch, ref } from 'vue';
+import { reactive, watch, ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -38,7 +38,6 @@ function loadState() {
   return {
     groupsIgnore: config.groups_ignore !== false,
     signMsg: config.sign_msg === true,
-    signDelimiter: config.sign_delimiter ?? '\n',
     convertMarkdownOutbound: config.convert_markdown_outbound !== false,
     convertMarkdownInbound: config.convert_markdown_inbound !== false,
     sendRandomDelay: config.send_random_delay !== false,
@@ -47,7 +46,10 @@ function loadState() {
     syncDeleteToWhatsapp: config.sync_delete_to_whatsapp === true,
     mergeBrazilContacts: config.merge_brazil_contacts !== false,
     ignoreSurveyLinks: config.ignore_survey_links !== false,
-    formatGroupMessages: config.format_group_messages !== false,
+    ignoreFromMeEcho: config.ignore_from_me_echo !== false,
+    ignoreStatusBroadcast: config.ignore_status_broadcast !== false,
+    sendTemplatesAsText: config.send_templates_as_text !== false,
+    formatGroupMessages: config.format_group_messages === true,
     readStatus: config.read_status === true,
     syncFullHistory: config.sync_full_history === true,
     alwaysOnline: config.always_online === true,
@@ -74,6 +76,10 @@ const state = reactive(loadState());
 const isImporting = ref(false);
 const isRestartingProxy = ref(false);
 const importStatus = ref(null);
+
+const settingsSyncError = computed(
+  () => props.inbox.provider_config?.settings_sync_error || ''
+);
 
 watch(
   () => props.inbox.provider_config,
@@ -113,7 +119,6 @@ function buildProviderConfig() {
     ...existing,
     groups_ignore: state.groupsIgnore,
     sign_msg: state.signMsg,
-    sign_delimiter: state.signDelimiter,
     convert_markdown_outbound: state.convertMarkdownOutbound,
     convert_markdown_inbound: state.convertMarkdownInbound,
     send_random_delay: state.sendRandomDelay,
@@ -122,6 +127,9 @@ function buildProviderConfig() {
     sync_delete_to_whatsapp: state.syncDeleteToWhatsapp,
     merge_brazil_contacts: state.mergeBrazilContacts,
     ignore_survey_links: state.ignoreSurveyLinks,
+    ignore_from_me_echo: state.ignoreFromMeEcho,
+    ignore_status_broadcast: state.ignoreStatusBroadcast,
+    send_templates_as_text: state.sendTemplatesAsText,
     format_group_messages: state.formatGroupMessages,
     reject_call: state.rejectCall,
     read_messages: state.readMessages,
@@ -163,6 +171,13 @@ async function persistSettings({ showSuccessAlert = true } = {}) {
       provider_config: buildProviderConfig(),
     },
   });
+
+  const updatedInbox = store.getters['inboxes/getInbox'](props.inbox.id);
+  const syncError = updatedInbox?.provider_config?.settings_sync_error;
+  if (syncError) {
+    useAlert(syncError);
+    return;
+  }
 
   if (showSuccessAlert) {
     useAlert(t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
@@ -244,6 +259,17 @@ function importStatusLabel(status) {
   <div class="flex flex-col gap-6">
     <EvolutionHealthPage :inbox="inbox" />
 
+    <p
+      v-if="settingsSyncError"
+      class="text-sm text-n-ruby-11 rounded-lg border border-n-ruby-6 bg-n-ruby-2 px-4 py-3"
+    >
+      {{
+        t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_ERROR', {
+          error: settingsSyncError,
+        })
+      }}
+    </p>
+
     <SettingsAccordion
       :title="t('INBOX_MGMT.EVOLUTION.SETTINGS.WHATSAPP_BEHAVIOR_SECTION')"
     >
@@ -314,6 +340,9 @@ function importStatusLabel(status) {
           t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_PENDING.DESCRIPTION')
         "
       />
+      <p class="text-sm text-n-slate-11">
+        {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERSATION_REOPEN_HINT') }}
+      </p>
     </SettingsAccordion>
 
     <SettingsAccordion
@@ -324,15 +353,6 @@ function importStatusLabel(status) {
         :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SIGN_MSG.LABEL')"
         :description="t('INBOX_MGMT.EVOLUTION.SETTINGS.SIGN_MSG.DESCRIPTION')"
       />
-      <SettingsFieldSection
-        v-if="state.signMsg"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.SIGN_DELIMITER.LABEL')"
-        :help-text="
-          t('INBOX_MGMT.EVOLUTION.SETTINGS.SIGN_DELIMITER.DESCRIPTION')
-        "
-      >
-        <Input v-model="state.signDelimiter" />
-      </SettingsFieldSection>
       <SettingsToggleSection
         v-model="state.convertMarkdownOutbound"
         :header="
@@ -380,6 +400,15 @@ function importStatusLabel(status) {
         "
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_DELETE_TO_WHATSAPP.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.sendTemplatesAsText"
+        :header="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.LABEL')
+        "
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.DESCRIPTION')
         "
       />
       <SettingsToggleSection
@@ -500,6 +529,22 @@ function importStatusLabel(status) {
         :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_SURVEY_LINKS.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_SURVEY_LINKS.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.ignoreFromMeEcho"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_FROM_ME_ECHO.LABEL')"
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_FROM_ME_ECHO.DESCRIPTION')
+        "
+      />
+      <SettingsToggleSection
+        v-model="state.ignoreStatusBroadcast"
+        :header="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_STATUS_BROADCAST.LABEL')
+        "
+        :description="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_STATUS_BROADCAST.DESCRIPTION')
         "
       />
       <SettingsToggleSection

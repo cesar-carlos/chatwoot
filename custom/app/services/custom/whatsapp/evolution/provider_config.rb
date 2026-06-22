@@ -31,10 +31,10 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     import_started_at
     import_completed_at
     webhook_token
+    settings_sync_error
   ].freeze
 
-  # Pushed to Evolution via ConnectionService#sync_settings! / #sync_proxy!
-  SYNCABLE_KEYS = %w[
+  EVOLUTION_SETTINGS_KEYS = %w[
     groups_ignore
     reject_call
     msg_call
@@ -42,6 +42,9 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     read_messages
     read_status
     sync_full_history
+  ].freeze
+
+  PROXY_KEYS = %w[
     proxy_enabled
     proxy_host
     proxy_port
@@ -50,17 +53,15 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     proxy_password
   ].freeze
 
+  # Pushed to Evolution via ConnectionService#sync_settings! / #sync_proxy!
+  SYNCABLE_KEYS = (EVOLUTION_SETTINGS_KEYS + PROXY_KEYS).freeze
+
   CREDENTIAL_KEYS = %w[base_url api_key instance_name].freeze
 
+  DEFAULTS = Custom::Whatsapp::Evolution::ProviderConfigDefaults::DEFAULTS
+
   def self.build(attrs = {})
-    ensure_defaults_loaded!
     normalize_credentials(DEFAULTS.merge(attrs.stringify_keys))
-  end
-
-  def self.ensure_defaults_loaded!
-    return if const_defined?(:DEFAULTS, false)
-
-    load Rails.root.join('custom/app/services/custom/whatsapp/evolution/provider_config_defaults.rb')
   end
 
   def self.normalize_credentials(config)
@@ -76,7 +77,15 @@ module Custom::Whatsapp::Evolution::ProviderConfig
   end
 
   def self.syncable_change?(before_config, after_config)
-    config_changed?(before_config, after_config, SYNCABLE_KEYS)
+    settings_change?(before_config, after_config) || proxy_change?(before_config, after_config)
+  end
+
+  def self.settings_change?(before_config, after_config)
+    config_changed?(before_config, after_config, EVOLUTION_SETTINGS_KEYS)
+  end
+
+  def self.proxy_change?(before_config, after_config)
+    config_changed?(before_config, after_config, PROXY_KEYS)
   end
 
   def self.credential_change?(before_config, after_config)

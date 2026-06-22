@@ -28,29 +28,49 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   end
 
   def missing_payloads
-    remote_messages.filter_map do |entry|
-      key = entry['key'] || entry[:key] || {}
-      source_id = key['id'] || key[:id]
-      next if source_id.blank?
-      next if existing_source_ids.include?(source_id)
+    remote_messages.reject { |entry| skip_reconciliation_entry?(entry) }
+  end
 
-      entry
-    end
+  def skip_reconciliation_entry?(entry)
+    key = entry['key'] || entry[:key] || {}
+    return true if ActiveModel::Type::Boolean.new.cast(key['fromMe'] || key[:fromMe])
+
+    source_id = key['id'] || key[:id]
+    source_id.blank? || existing_source_ids.include?(source_id)
   end
 
   def remote_messages
+    messages = []
+    page = 1
+
+    loop do
+      records, total_pages = fetch_reconciliation_page(page)
+      break if records.blank?
+
+      messages.concat(records)
+      break if total_pages.zero? || page >= total_pages
+
+      page += 1
+    end
+
+    messages
+  end
+
+  def fetch_reconciliation_page(page)
     response = api_client.find_messages(
-      page: 1,
+      page: page,
       offset: PAGE_SIZE,
       where: {
         messageTimestamp: {
-          gte: lookback_timestamp
+          gte: lookback_timestamp,
+          lte: Time.current.utc.iso8601(3)
         }
       }
     )
-    return [] unless response.success?
+    return [[], 0] unless response.success?
 
-    Array.wrap(response.parsed_response)
+    parsed = response.parsed_response || {}
+    [Array.wrap(parsed.dig('messages', 'records')), parsed.dig('messages', 'pages').to_i]
   end
 
   def existing_source_ids
@@ -62,7 +82,7 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   end
 
   def lookback_timestamp
-    LOOKBACK_HOURS.hours.ago.to_i
+    LOOKBACK_HOURS.hours.ago.utc.iso8601(3)
   end
 
   def import_message(data_item)
@@ -73,8 +93,7 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
     }
     normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer.new(
       channel: channel,
-      envelope: envelope,
-      import_mode: true
+      envelope: envelope
     ).perform
     return if normalized.blank?
 

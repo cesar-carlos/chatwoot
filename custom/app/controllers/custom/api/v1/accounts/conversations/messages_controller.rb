@@ -25,6 +25,18 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     @search_engine = finder.search_engine
   end
 
+  def destroy
+    ActiveRecord::Base.transaction do
+      merged_attrs = (message.content_attributes || {}).stringify_keys.merge('deleted' => true)
+      message.update!(
+        content: I18n.t('conversations.messages.deleted'),
+        content_type: :text,
+        content_attributes: merged_attrs
+      )
+      message.attachments.destroy_all
+    end
+  end
+
   private
 
   def normalized_query

@@ -77,18 +77,28 @@ module Custom::Channel::Whatsapp
 
   def sync_evolution_provider_to_api
     return unless previous_changes.key?('provider_config')
-    return unless evolution_syncable_settings_changed?
 
+    before_cfg, after_cfg = previous_changes['provider_config']
     service = Custom::Whatsapp::Evolution::ConnectionService.new(channel: self)
-    service.sync_settings!
-    service.sync_proxy!
+    service.sync_settings! if Custom::Whatsapp::Evolution::ProviderConfig.settings_change?(before_cfg, after_cfg)
+    service.sync_proxy! if Custom::Whatsapp::Evolution::ProviderConfig.proxy_change?(before_cfg, after_cfg)
+    clear_settings_sync_error!
   rescue Custom::Whatsapp::Evolution::ApiError => e
     Rails.logger.error "[EVOLUTION] settings sync failed for channel #{id}: #{e.message}"
+    record_settings_sync_error!(e.message)
   end
 
-  def evolution_syncable_settings_changed?
-    before_cfg, after_cfg = previous_changes['provider_config']
-    Custom::Whatsapp::Evolution::ProviderConfig.syncable_change?(before_cfg, after_cfg)
+  def clear_settings_sync_error!
+    return if (provider_config || {})['settings_sync_error'].blank?
+
+    config = (provider_config || {}).stringify_keys.except('settings_sync_error')
+    # Intentionally skip validations — runtime metadata only
+    update_column(:provider_config, config) # rubocop:disable Rails/SkipsModelValidations
+  end
+
+  def record_settings_sync_error!(message)
+    config = (provider_config || {}).stringify_keys.merge('settings_sync_error' => message.to_s.truncate(500))
+    update_column(:provider_config, config) # rubocop:disable Rails/SkipsModelValidations
   end
 
   def teardown_evolution_instance

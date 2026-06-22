@@ -53,23 +53,33 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
     remote_jid = record['remoteJid'].to_s
     return if skip_remote_jid?(remote_jid)
 
-    phone = phone_from_jid(remote_jid)
-    return if phone.blank?
-
-    source_id = normalize_source_id(phone)
+    source_id = normalize_source_id(phone_from_contact_record(record))
     return if source_id.blank?
 
+    contact = upsert_contact(record, remote_jid)
+    link_contact_inbox(contact, source_id)
+    enqueue_contact_enrichment(contact, remote_jid, record['pushName'], record['profilePicUrl'])
+  end
+
+  def upsert_contact(record, remote_jid)
+    phone = phone_from_contact_record(record)
     contact = runtime.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
     contact.name = record['pushName'].presence || contact.name || contact.phone_number
+    lid = jid_resolver.lid_identifier_for(remote_jid)
+    contact.identifier = lid if lid.present?
+    contact.additional_attributes = (contact.additional_attributes || {}).merge(
+      Custom::Whatsapp::Evolution::ContactEnrichmentService::EVOLUTION_REMOTE_JID_KEY => remote_jid
+    )
     contact.save!
+    contact
+  end
 
+  def link_contact_inbox(contact, source_id)
     ContactInboxBuilder.new(
       contact: contact,
       inbox: runtime.inbox,
       source_id: source_id
     ).perform
-
-    enqueue_contact_enrichment(contact, remote_jid, record['pushName'], record['profilePicUrl'])
   end
 
   def enqueue_contact_enrichment(contact, remote_jid, push_name, profile_pic_url)

@@ -9,9 +9,14 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationJob < ApplicationJo
   def perform
     return unless throttle_claimed?
 
-    Channel::Whatsapp.where(provider: 'evolution').find_each do |channel|
+    evolution_channels_with_lost_sync.find_each do |channel|
       Custom::Whatsapp::Evolution::LostMessagesReconciliationService.new(channel: channel).perform
     end
+  end
+
+  def evolution_channels_with_lost_sync
+    Channel::Whatsapp.where(provider: 'evolution')
+                     .where('provider_config @> ?', { sync_lost_messages: true }.to_json)
   end
 
   private

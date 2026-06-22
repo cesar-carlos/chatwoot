@@ -15,6 +15,10 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
 
   private
 
+  def evolution_channel?
+    inbox.channel.is_a?(Channel::Whatsapp) && inbox.channel.provider == 'evolution'
+  end
+
   def enrich_evolution_contact_attributes!(attrs)
     remote_jid = evolution_remote_jid_from_message
     return attrs if remote_jid.blank?

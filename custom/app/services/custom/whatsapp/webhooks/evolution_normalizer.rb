@@ -47,7 +47,7 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
   private
 
   def config
-    channel.provider_config || Custom::Whatsapp::Evolution::ProviderConfig::DEFAULTS
+    channel.provider_config || Custom::Whatsapp::Evolution::ProviderConfigDefaults::DEFAULTS
   end
 
   def normalize_message(data)
@@ -386,13 +386,11 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     remote_jid = key['remoteJid'].to_s
     return group_wa_id(remote_jid) if group_jid?(remote_jid)
 
-    jid = if key['remoteJidAlt'].present? &&
-             (remote_jid.end_with?('@lid') || key['addressingMode'] == 'lid')
-            key['remoteJidAlt']
-          else
-            key['remoteJid']
-          end
-    jid_to_phone(jid)
+    jid_resolver.phone_from_message_key(key)
+  end
+
+  def jid_resolver
+    @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(config)
   end
 
   def group_jid?(jid)

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength -- Evolution webhook dispatch extends upstream job
 module Custom::Webhooks::WhatsappEventsJob
   EVOLUTION_MESSAGE_LOCK_TTL = 30.seconds
 
@@ -30,9 +31,9 @@ module Custom::Webhooks::WhatsappEventsJob
     when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
       process_evolution_message_events(channel, params)
     when 'MESSAGES_DELETE'
-      Custom::Whatsapp::Evolution::MessageDeleteSyncService.new(channel: channel, data: params[:data]).perform
+      process_evolution_delete_events(channel, params)
     when 'MESSAGES_EDITED'
-      Custom::Whatsapp::Evolution::MessageEditSyncService.new(channel: channel, data: params[:data]).perform
+      process_evolution_edit_events(channel, params)
     when 'CONTACTS_UPSERT', 'CONTACTS_UPDATE'
       Custom::Whatsapp::Evolution::ContactsSyncService.new(channel: channel, data: params[:data]).perform
     when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
@@ -89,6 +90,28 @@ module Custom::Webhooks::WhatsappEventsJob
     with_lock(key, EVOLUTION_MESSAGE_LOCK_TTL, &)
   end
 
+  def process_evolution_delete_events(channel, params)
+    Array.wrap(params[:data]).each do |data_item|
+      process_evolution_mutation_event(channel, data_item) do
+        Custom::Whatsapp::Evolution::MessageDeleteSyncService.new(channel: channel, data: data_item).perform
+      end
+    end
+  end
+
+  def process_evolution_edit_events(channel, params)
+    Array.wrap(params[:data]).each do |data_item|
+      process_evolution_mutation_event(channel, data_item) do
+        Custom::Whatsapp::Evolution::MessageEditSyncService.new(channel: channel, data: data_item).perform
+      end
+    end
+  end
+
+  def process_evolution_mutation_event(channel, data_item, &)
+    key = data_item.is_a?(Hash) ? (data_item['key'] || data_item[:key] || {}) : {}
+    sender_id = key['remoteJid'] || key[:remoteJid] || key['id'] || key[:id]
+    process_with_evolution_message_lock(channel, sender_id, &)
+  end
+
   def evolution_contact_sender_id(params)
     params.dig(:messages, 0, :from) ||
       params.dig(:statuses, 0, :recipient_id)
@@ -103,5 +126,6 @@ module Custom::Webhooks::WhatsappEventsJob
     )
   end
 end
+# rubocop:enable Metrics/ModuleLength
 
 Webhooks::WhatsappEventsJob.prepend_mod_with('Webhooks::WhatsappEventsJob')

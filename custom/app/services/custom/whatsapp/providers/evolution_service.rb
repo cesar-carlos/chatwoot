@@ -87,7 +87,7 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     items = input_select_items(message)
     quoted = build_quoted_context(phone_number, message)
     delay = outbound_delay
-    title = message.outgoing_content.presence || 'Please choose an option'
+    title = apply_outbound_text(message.outgoing_content.presence || 'Please choose an option', message)
 
     response = dispatch_input_select(phone_number, title, items, quoted, delay)
     message_id = process_response(response, message)
@@ -186,6 +186,7 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
   end
 
   def attachment_mediatype(attachment)
+    return 'sticker' if attachment.file_type == 'sticker'
     return attachment.file_type if %w[image audio video].include?(attachment.file_type)
 
     'document'

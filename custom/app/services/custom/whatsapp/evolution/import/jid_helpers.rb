@@ -3,6 +3,10 @@
 module Custom::Whatsapp::Evolution::Import::JidHelpers
   private
 
+  def jid_resolver
+    @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(runtime.config)
+  end
+
   def skip_remote_jid?(remote_jid)
     return true if remote_jid.blank?
     return true if remote_jid == 'status@broadcast' && runtime.config['ignore_status_broadcast'] != false
@@ -12,22 +16,19 @@ module Custom::Whatsapp::Evolution::Import::JidHelpers
   end
 
   def phone_from_jid(jid)
-    phone = jid.to_s.split('@').first.presence
-    return if phone.blank?
-    return unless phone.match?(/\A\d+\z/)
-
-    normalize_phone(phone)
+    jid_resolver.phone_from_jid(jid)
   end
 
   def phone_from_message_key(key)
-    phone_from_jid(key['remoteJidAlt'].presence || key['remoteJid'])
+    jid_resolver.phone_from_message_key(key)
+  end
+
+  def phone_from_contact_record(record)
+    jid_resolver.phone_from_record(record)
   end
 
   def normalize_phone(phone)
-    normalized = phone.to_s.gsub(/\D/, '')
-    return normalized unless merge_brazil_contacts? && normalized.start_with?('55')
-
-    Whatsapp::PhoneNormalizers::BrazilPhoneNormalizer.new.normalize(normalized)
+    jid_resolver.normalize_phone(phone)
   end
 
   def normalize_source_id(phone)
