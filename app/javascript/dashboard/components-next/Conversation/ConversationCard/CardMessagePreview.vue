@@ -1,7 +1,6 @@
 <script setup>
-import { computed } from 'vue';
-import { useI18n } from 'vue-i18n';
-import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
+import { computed, toRef } from 'vue';
+import { useConversationListPreview } from 'dashboard/composables/useConversationListPreview';
 
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 
@@ -16,18 +15,9 @@ const props = defineProps({
   },
 });
 
-const { t } = useI18n();
-
-const { getPlainText } = useMessageFormatter();
-
-const lastNonActivityMessageContent = computed(() => {
-  const { lastNonActivityMessage = {}, customAttributes = {} } =
-    props.conversation;
-  const { email: { subject } = {} } = customAttributes;
-  return getPlainText(
-    subject || lastNonActivityMessage?.content || t('CHAT_LIST.NO_CONTENT')
-  );
-});
+const lastNonActivityMessageContent = useConversationListPreview(
+  toRef(props, 'conversation')
+);
 
 const assignee = computed(() => {
   const { meta: { assignee: agent = {} } = {} } = props.conversation;

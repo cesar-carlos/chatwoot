@@ -82,6 +82,7 @@ export default {
       }
     },
     startPolling() {
+      if (this.isQrModalOpen) return;
       this.stopPolling();
       this.pollTimer = setInterval(this.refreshConnection, POLL_MS);
     },
@@ -133,8 +134,16 @@ export default {
       }
     },
     openQrModal({ fresh = false } = {}) {
+      this.stopPolling();
       this.qrModalFetchFresh = fresh;
       this.isQrModalOpen = true;
+    },
+    onQrSessionActive(active) {
+      if (active) {
+        this.stopPolling();
+      } else if (!this.isConnected) {
+        this.startPolling();
+      }
     },
     async onQrConnected() {
       await this.$store.dispatch('inboxes/get', this.inbox.id);
@@ -255,6 +264,7 @@ export default {
       :inbox-id="inbox.id"
       :fetch-fresh-qr="qrModalFetchFresh"
       @connected="onQrConnected"
+      @session-active="onQrSessionActive"
     />
 
     <woot-confirm-modal

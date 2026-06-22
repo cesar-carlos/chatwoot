@@ -1,84 +1,37 @@
-<script>
-import { MESSAGE_TYPE } from 'widget/helpers/constants';
-import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
-import { ATTACHMENT_ICONS } from 'shared/constants/messages';
+<script setup>
+import { toRef } from 'vue';
+import { useMessagePreview } from 'shared/composables/useMessagePreview';
 
-export default {
-  name: 'MessagePreview',
-  props: {
-    message: {
-      type: Object,
-      required: true,
-    },
-    showMessageType: {
-      type: Boolean,
-      default: true,
-    },
-    defaultEmptyMessage: {
-      type: String,
-      default: '',
-    },
+const props = defineProps({
+  message: {
+    type: Object,
+    required: true,
   },
-  setup() {
-    const { getPlainText } = useMessageFormatter();
-    return {
-      getPlainText,
-    };
+  showMessageType: {
+    type: Boolean,
+    default: true,
   },
-  computed: {
-    messageByAgent() {
-      const { message_type: messageType } = this.message;
-      return messageType === MESSAGE_TYPE.OUTGOING;
-    },
-    isMessageAnActivity() {
-      const { message_type: messageType } = this.message;
-      return messageType === MESSAGE_TYPE.ACTIVITY;
-    },
-    isMessagePrivate() {
-      const { private: isPrivate } = this.message;
-      return isPrivate;
-    },
-    parsedLastMessage() {
-      const { content_attributes: contentAttributes } = this.message;
-      const { email: { subject } = {} } = contentAttributes || {};
-      return this.getPlainText(subject || this.message.content);
-    },
-    lastMessageFileType() {
-      const [{ file_type: fileType } = {}] = this.message.attachments;
-      return fileType;
-    },
-    attachmentIcon() {
-      return ATTACHMENT_ICONS[this.lastMessageFileType];
-    },
-    attachmentMessageText() {
-      switch (this.lastMessageFileType) {
-        case 'image':
-          return this.$t('CHAT_LIST.ATTACHMENTS.image.CONTENT');
-        case 'audio':
-          return this.$t('CHAT_LIST.ATTACHMENTS.audio.CONTENT');
-        case 'video':
-          return this.$t('CHAT_LIST.ATTACHMENTS.video.CONTENT');
-        case 'file':
-          return this.$t('CHAT_LIST.ATTACHMENTS.file.CONTENT');
-        case 'location':
-          return this.$t('CHAT_LIST.ATTACHMENTS.location.CONTENT');
-        case 'contact':
-          return this.$t('CHAT_LIST.ATTACHMENTS.contact.CONTENT');
-        default:
-          return '';
-      }
-    },
-    showAttachmentPreview() {
-      if (!this.message.attachments?.length) return false;
-      // FORK: share contact card
-      if (this.lastMessageFileType === 'contact') return true;
-      return !this.message.content;
-    },
-    isMessageSticker() {
-      return this.message && this.message.content_type === 'sticker';
-    },
+  defaultEmptyMessage: {
+    type: String,
+    default: '',
   },
-};
+});
+
+const {
+  showMessageType,
+  messageByAgent,
+  isMessageAnActivity,
+  isMessagePrivate,
+  parsedLastMessage,
+  lastMessageFileType,
+  attachmentIconName,
+  attachmentMessageText,
+  showAttachmentPreview,
+  isMessageSticker,
+  hasPreviewText,
+} = useMessagePreview(toRef(props, 'message'), {
+  showMessageType: toRef(props, 'showMessageType'),
+});
 </script>
 
 <template>
@@ -103,7 +56,7 @@ export default {
         icon="info"
       />
     </template>
-    <span v-if="message.content && isMessageSticker">
+    <span v-if="hasPreviewText && isMessageSticker">
       <fluent-icon
         size="16"
         class="-mt-0.5 align-middle inline-block text-n-slate-11"
@@ -111,15 +64,15 @@ export default {
       />
       {{ $t('CHAT_LIST.ATTACHMENTS.image.CONTENT') }}
     </span>
-    <span v-else-if="message.content && lastMessageFileType !== 'contact'">
+    <span v-else-if="hasPreviewText && lastMessageFileType !== 'contact'">
       {{ parsedLastMessage }}
     </span>
     <span v-else-if="showAttachmentPreview">
       <fluent-icon
-        v-if="attachmentIcon && showMessageType"
+        v-if="attachmentIconName && showMessageType"
         size="16"
         class="-mt-0.5 align-middle inline-block text-n-slate-11"
-        :icon="attachmentIcon"
+        :icon="attachmentIconName"
       />
       {{ attachmentMessageText }}
     </span>

@@ -29,4 +29,11 @@ RSpec.describe Channel::Whatsapp, type: :model do
       channel.valid?
     end
   end
+
+  describe '#dashboard_provider_config' do
+    it 'masks evolution secrets for dashboard serialization' do
+      expect(channel.dashboard_provider_config['api_key']).to eq(Custom::Channel::Whatsapp::MASKED_SECRET)
+      expect(channel.dashboard_provider_config['api_key']).not_to eq('TEST-INSTANCE-API-KEY')
+    end
+  end
 end

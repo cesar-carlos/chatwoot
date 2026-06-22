@@ -4,7 +4,7 @@
 
 **Base URL docs:** https://docs.evolutionfoundation.com.br/evolution-go/
 
-**Última revisão:** jun/2026 — paths confirmados via OpenAPI oficial; Group/Chat/advanced-settings marcados ⚠️ até spike
+**Última revisão:** 22/jun/2026 — paths Fase 1 confirmados Postman + OpenAPI; inventário completo em [postman-validation.md](./postman-validation.md)
 
 **Manutenção:** `./sync-documentation-links.sh` — diff `llms.txt` vs este arquivo
 
@@ -39,7 +39,12 @@
 | Logout | `DELETE` | `/instance/logout` | [logout-from-instance](https://docs.evolutionfoundation.com.br/evolution-go/logout-from-instance) |
 | Delete | `DELETE` | `/instance/delete/{instanceId}` | [delete-instance](https://docs.evolutionfoundation.com.br/evolution-go/delete-instance) |
 | Delete proxy | `DELETE` | `/instance/proxy/{instanceId}` | [delete-proxy](https://docs.evolutionfoundation.com.br/evolution-go/delete-proxy) |
-| Advanced settings | `POST` | `/instance/{instanceId}/advanced-settings` ⚠️ | Confirmar Swagger — Fase 2 fork |
+| Advanced settings (get) | `GET` | `/instance/{instanceId}/advanced-settings` | Postman — Fase 2 fork |
+| Advanced settings (update) | `PUT` | `/instance/{instanceId}/advanced-settings` | Postman — Fase 2 fork |
+| Instance info | `GET` | `/instance/info/{instanceId}` | Postman — admin |
+| Instance logs | `GET` | `/instance/logs/{instanceId}` | Postman — admin |
+| Reconnect | `POST` | `/instance/reconnect` | Postman — **não usar** no fork (ADR §24) |
+| Force reconnect | `POST` | `/instance/forcereconnect/{instanceId}` | Postman — admin |
 
 **Auth Instance:** `apikey` header — global key (create/all/delete) ou instance token (connect/qr/status/pair/disconnect/logout/advanced-settings).
 
@@ -56,6 +61,9 @@
 | Link | `POST` | `/send/link` | [send-a-link-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-link-message) | 3 |
 | Sticker | `POST` | `/send/sticker` | [send-a-sticker-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-sticker-message) | 3 |
 | Poll | `POST` | `/send/poll` | [send-a-poll-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-poll-message) | 3 |
+| Button | `POST` | `/send/button` | Postman only — Fase 3+ |
+| List | `POST` | `/send/list` | Postman only — Fase 3+ |
+| Carousel | `POST` | `/send/carousel` | Postman only — Fase 3+ |
 
 **Auth Send:** `apikey: {instance_token}` (OpenAPI marca `security: []` mas 401 exige apikey).
 
@@ -73,72 +81,83 @@
 | Presence (typing) | `POST` | `/message/presence` | [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/set-chat-presence) | 3 |
 | Edit | `POST` | `/message/edit` | [edit-a-message](https://docs.evolutionfoundation.com.br/evolution-go/edit-a-message) | 3 |
 | Delete for everyone | `POST` | `/message/delete` | [delete-a-message-for-everyone](https://docs.evolutionfoundation.com.br/evolution-go/delete-a-message-for-everyone) | 3 |
-| Download image | `POST` | `/message/downloadimage` | [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image) | 2 |
+| Download media | `POST` | `/message/downloadmedia` | Postman — Fase 2 |
+| Download image | `POST` | `/message/downloadimage` | [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image) — OpenAPI; validar no E2E |
 
 ---
 
 ### Chat
 
-| Operação | Doc oficial | Fase fork |
-|----------|-------------|-----------|
-| Archive | [archive-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/archive-a-chat) | — |
-| Mute | [mute-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/mute-a-chat) | — |
-| Pin | [pin-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/pin-a-chat) | — |
-| Unpin | [unpin-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/unpin-a-chat) | — |
+| Operação | Método | Path | Doc oficial | Fase fork |
+|----------|--------|------|-------------|-----------|
+| Pin | `POST` | `/chat/pin` | [pin-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/pin-a-chat) | — |
+| Unpin | `POST` | `/chat/unpin` | [unpin-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/unpin-a-chat) | — |
+| Archive | `POST` | `/chat/archive` | [archive-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/archive-a-chat) | — |
+| Unarchive | `POST` | `/chat/unarchive` | Postman | — |
+| Mute | `POST` | `/chat/mute` | [mute-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/mute-a-chat) | — |
+| Unmute | `POST` | `/chat/unmute` | Postman | — |
+| History sync | `POST` | `/chat/history-sync` | Postman — evento `HISTORY_SYNC` | 4 |
 
 ---
 
 ### Group
 
-> ⚠️ Paths abaixo têm links oficiais de documentação mas **paths REST não confirmados no spike** — validar na collection Postman (pasta Group) ou Swagger runtime antes de implementar Fase 3+.
+Paths confirmados Postman (abr/2026). **Fork MVP:** ignorar grupos (`ignore_groups: true`).
 
-| Operação | Método | Path (típico) | Doc oficial |
-|----------|--------|---------------|-------------|
+| Operação | Método | Path | Doc oficial |
+|----------|--------|------|-------------|
 | Create | `POST` | `/group/create` | [create-group](https://docs.evolutionfoundation.com.br/evolution-go/create-group) |
 | Info | `POST` | `/group/info` | [get-group-info](https://docs.evolutionfoundation.com.br/evolution-go/get-group-info) |
 | Invite link | `POST` | `/group/invitelink` | [get-group-invite-link](https://docs.evolutionfoundation.com.br/evolution-go/get-group-invite-link) |
 | Join link | `POST` | `/group/join` | [join-group-link](https://docs.evolutionfoundation.com.br/evolution-go/join-group-link) |
+| Leave | `POST` | `/group/leave` | Postman |
 | List | `GET` | `/group/list` | [list-groups](https://docs.evolutionfoundation.com.br/evolution-go/list-groups) |
-| My groups | `GET` | `/group/my` | [get-my-groups](https://docs.evolutionfoundation.com.br/evolution-go/get-my-groups) |
+| My groups | `GET` | `/group/myall` | [get-my-groups](https://docs.evolutionfoundation.com.br/evolution-go/get-my-groups) |
 | Set name | `POST` | `/group/name` | [set-group-name](https://docs.evolutionfoundation.com.br/evolution-go/set-group-name) |
+| Set description | `POST` | `/group/description` | Postman |
 | Update participant | `POST` | `/group/participant` | [update-participant](https://docs.evolutionfoundation.com.br/evolution-go/update-participant) |
 | Set photo | `POST` | `/group/photo` | [set-group-photo](https://docs.evolutionfoundation.com.br/evolution-go/set-group-photo) |
-
-**Fork MVP:** ignorar grupos (`ignore_groups: true`).
 
 ---
 
 ### User
 
-| Operação | Doc oficial |
-|----------|-------------|
-| Get user | [get-a-user](https://docs.evolutionfoundation.com.br/evolution-go/get-a-user) |
-| Check user | [check-a-user](https://docs.evolutionfoundation.com.br/evolution-go/check-a-user) |
-| Avatar | [get-a-users-avatar](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-avatar) |
-| Contacts | [get-a-users-contacts](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-contacts) |
-| Privacy settings | [get-a-users-privacy-settings](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-privacy-settings) |
-| Profile picture | [set-a-users-profile-picture](https://docs.evolutionfoundation.com.br/evolution-go/set-a-users-profile-picture) |
-| Block | [block-a-contact](https://docs.evolutionfoundation.com.br/evolution-go/block-a-contact) |
-| Unblock | [unblock-a-contact](https://docs.evolutionfoundation.com.br/evolution-go/unblock-a-contact) |
-| Block list | [get-a-users-block-list](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-block-list) |
+| Operação | Método | Path | Doc oficial |
+|----------|--------|------|-------------|
+| Get user | `POST` | `/user/info` | [get-a-user](https://docs.evolutionfoundation.com.br/evolution-go/get-a-user) |
+| Check user | `POST` | `/user/check` | [check-a-user](https://docs.evolutionfoundation.com.br/evolution-go/check-a-user) |
+| Avatar | `POST` | `/user/avatar` | [get-a-users-avatar](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-avatar) |
+| Contacts | `GET` | `/user/contacts` | [get-a-users-contacts](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-contacts) |
+| Privacy | `GET` | `/user/privacy` | [get-a-users-privacy-settings](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-privacy-settings) |
+| Block | `POST` | `/user/block` | [block-a-contact](https://docs.evolutionfoundation.com.br/evolution-go/block-a-contact) |
+| Unblock | `POST` | `/user/unblock` | [unblock-a-contact](https://docs.evolutionfoundation.com.br/evolution-go/unblock-a-contact) |
+| Block list | `GET` | `/user/blocklist` | [get-a-users-block-list](https://docs.evolutionfoundation.com.br/evolution-go/get-a-users-block-list) |
+| Profile picture | `POST` | `/user/profilePicture` | [set-a-users-profile-picture](https://docs.evolutionfoundation.com.br/evolution-go/set-a-users-profile-picture) |
+| Profile name | `POST` | `/user/profileName` | Postman |
+| Profile status | `POST` | `/user/profileStatus` | Postman |
 
 ---
 
 ### Label
 
-| Operação | Doc oficial |
-|----------|-------------|
-| Add to chat | [add-label-to-chat](https://docs.evolutionfoundation.com.br/evolution-go/add-label-to-chat) |
-| Remove from chat | [remove-label-from-chat](https://docs.evolutionfoundation.com.br/evolution-go/remove-label-from-chat) |
-| Add to message | [add-label-to-message](https://docs.evolutionfoundation.com.br/evolution-go/add-label-to-message) |
-| Remove from message | [remove-label-from-message](https://docs.evolutionfoundation.com.br/evolution-go/remove-label-from-message) |
-| Edit label | [edit-label](https://docs.evolutionfoundation.com.br/evolution-go/edit-label) |
-
----
+| Operação | Método | Path | Doc oficial |
+|----------|--------|------|-------------|
+| Add to chat | `POST` | `/label/chat` | [add-label-to-chat](https://docs.evolutionfoundation.com.br/evolution-go/add-label-to-chat) |
+| Remove from chat | `POST` | `/unlabel/chat` | [remove-label-from-chat](https://docs.evolutionfoundation.com.br/evolution-go/remove-label-from-chat) |
+| Add to message | `POST` | `/label/message` | [add-label-to-message](https://docs.evolutionfoundation.com.br/evolution-go/add-label-to-message) |
+| Remove from message | `POST` | `/unlabel/message` | [remove-label-from-message](https://docs.evolutionfoundation.com.br/evolution-go/remove-label-from-message) |
+| Edit | `POST` | `/label/edit` | [edit-label](https://docs.evolutionfoundation.com.br/evolution-go/edit-label) |
+| List | `GET` | `/label/list` | Postman |
 
 ### Call · Community · Newsletter · Polls · Server
 
-Pastas Postman presentes na collection — fora do escopo MVP mensagens 1:1. Consultar Postman + Swagger para paths exatos.
+| Pasta Postman | Path exemplo | Fase fork |
+|---------------|--------------|-----------|
+| Call | `POST /call/reject` | — |
+| Community | `POST /community/create`, `/add`, `/remove` | — |
+| Newsletter | `POST /newsletter/create`, `GET /newsletter/list`, … | — |
+| Polls | `GET /polls/{pollMessageId}/results` | 3 |
+| Server | `GET /server/ok` | health check wizard |
 
 ---
 

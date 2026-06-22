@@ -1,9 +1,15 @@
-# Versão alvo — Evolution Go (spike pendente)
+# Versão alvo — Evolution Go
+# Preencher após E2E com instância do operador (validation-checklist.md)
 
-# Congelar após validation-checklist.md:
-# - Docker image tag (ex: evoapicloud/evolution-go:vX.Y.Z)
-# - Git commit hash do repositório
-# - Data do spike
+# Versão do servidor operador (image tag, release ou GET /server/ok):
+image=
 
-latest
-# TODO: substituir por tag exata após spike — jun/2026
+# Git commit (opcional — repositório evolution-foundation/evolution-go):
+# commit=
+
+# Data da validação E2E:
+# e2e_date=
+
+# Notas:
+# - Licença ativa é pré-requisito do operador
+# - Validar ADR §25 (downloadimage vs downloadmedia) na versão usada

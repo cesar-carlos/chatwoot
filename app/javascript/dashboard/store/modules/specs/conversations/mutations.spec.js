@@ -1,6 +1,7 @@
 import { describe } from 'vitest';
 import types from '../../../mutation-types';
 import { mutations } from '../../conversations';
+import { mergeConversationOnListRefresh } from '../../../../helper/conversationHelper';
 
 vi.mock('shared/helpers/mitt', () => ({
   emitter: {
@@ -126,6 +127,7 @@ describe('#mutations', () => {
         conversation_id: 1,
         content: 'Test message',
         created_at: 1602256198,
+        message_type: 0,
       });
       expect(state.allConversations).toEqual([
         {
@@ -135,8 +137,15 @@ describe('#mutations', () => {
               conversation_id: 1,
               content: 'Test message',
               created_at: 1602256198,
+              message_type: 0,
             },
           ],
+          last_non_activity_message: {
+            conversation_id: 1,
+            content: 'Test message',
+            created_at: 1602256198,
+            message_type: 0,
+          },
           unread_count: 0,
           timestamp: 1602256198,
         },
@@ -154,6 +163,7 @@ describe('#mutations', () => {
         conversation_id: 1,
         content: 'Test message',
         created_at: 1602256198,
+        message_type: 0,
       });
       expect(state.allConversations).toEqual([
         {
@@ -163,8 +173,15 @@ describe('#mutations', () => {
               conversation_id: 1,
               content: 'Test message',
               created_at: 1602256198,
+              message_type: 0,
             },
           ],
+          last_non_activity_message: {
+            conversation_id: 1,
+            content: 'Test message',
+            created_at: 1602256198,
+            message_type: 0,
+          },
           unread_count: 0,
           timestamp: 1602256198,
         },
@@ -295,7 +312,9 @@ describe('#mutations', () => {
       const state = { allConversations: [{ id: 1 }] };
       const data = [{ id: 1, name: 'test' }];
       mutations[types.SET_ALL_CONVERSATION](state, data);
-      expect(state.allConversations).toEqual(data);
+      expect(state.allConversations).toEqual([
+        mergeConversationOnListRefresh({ id: 1 }, data[0]),
+      ]);
     });
 
     it('set all conversation in reconnect if selected chat id and conversation id is the same', () => {
@@ -343,16 +362,19 @@ describe('#mutations', () => {
     });
 
     it('set all conversation in reconnect if selected chat id and conversation id is not the same', () => {
+      const existing = { id: 1, status: 'open' };
       const state = {
-        allConversations: [{ id: 1, status: 'open' }],
+        allConversations: [existing],
         selectedChatId: 2,
       };
       const data = [{ id: 1, name: 'test', status: 'resolved' }];
       mutations[types.SET_ALL_CONVERSATION](state, data);
-      expect(state.allConversations).toEqual(data);
+      expect(state.allConversations).toEqual([
+        mergeConversationOnListRefresh(existing, data[0]),
+      ]);
     });
 
-    it('set all conversation in reconnect if selected chat id and conversation id is not the same then update messages', () => {
+    it('merges websocket messages when reconnecting a non-selected conversation', () => {
       const state = {
         allConversations: [{ id: 1, messages: [{ id: 1, content: 'test' }] }],
         selectedChatId: 2,
@@ -361,7 +383,8 @@ describe('#mutations', () => {
         { id: 1, name: 'test', messages: [{ id: 1, content: 'tested' }] },
       ];
       mutations[types.SET_ALL_CONVERSATION](state, data);
-      expect(state.allConversations).toEqual(data);
+      expect(state.allConversations[0].messages[0].content).toBe('test');
+      expect(state.allConversations[0].name).toBe('test');
     });
   });
 

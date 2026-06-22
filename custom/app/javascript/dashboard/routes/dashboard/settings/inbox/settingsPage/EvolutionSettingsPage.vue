@@ -47,7 +47,7 @@ function loadState() {
     syncDeleteToWhatsapp: config.sync_delete_to_whatsapp === true,
     mergeBrazilContacts: config.merge_brazil_contacts !== false,
     ignoreSurveyLinks: config.ignore_survey_links !== false,
-    ignoreFromMeEcho: config.ignore_from_me_echo !== false,
+    ignoreFromMeEcho: config.ignore_from_me_echo === true,
     ignoreStatusBroadcast: config.ignore_status_broadcast !== false,
     sendTemplatesAsText: config.send_templates_as_text !== false,
     formatGroupMessages: config.format_group_messages === true,

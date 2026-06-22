@@ -149,3 +149,5 @@ class Channel::Whatsapp < ApplicationRecord
     provider == 'whatsapp_cloud' && provider_config['source'] != 'embedded_signup'
   end
 end
+
+Channel::Whatsapp.prepend_mod_with('Channel::Whatsapp') # FORK: evolution provider overlay

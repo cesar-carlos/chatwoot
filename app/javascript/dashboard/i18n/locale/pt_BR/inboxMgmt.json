@@ -775,6 +775,11 @@
         "FILTERS_SECTION": "Filtros de entrada",
         "IMPORT_SECTION": "Importação histórica",
         "IMPORT": {
+          "ON_CONNECT": {
+            "LABEL": "Importar automaticamente ao conectar",
+            "DESCRIPTION": "Quando a sessão WhatsApp conectar, iniciar a importação histórica em segundo plano se a importação de contatos ou mensagens estiver ativada."
+          },
+          "AUTO_ON_CONNECT_WARNING": "A importação histórica pode iniciar automaticamente na próxima vez que esta caixa de entrada conectar ao WhatsApp. Use \"Executar importação agora\" para uma execução manual ou desative a importação automática ao conectar.",
           "CONTACTS": {
             "LABEL": "Importar contatos",
             "DESCRIPTION": "Importa contatos WhatsApp da Evolution quando a sessão conectar ou ao executar a importação manualmente."
@@ -834,7 +839,7 @@
         },
         "IGNORE_FROM_ME_ECHO": {
           "LABEL": "Ignorar ecos do celular",
-          "DESCRIPTION": "Ignorar webhooks de mensagens enviadas pelo WhatsApp conectado (fromMe). Desative apenas se precisar ver mensagens enviadas pelo celular no Chatwoot."
+          "DESCRIPTION": "Quando ativado, ignora todas as mensagens enviadas pelo WhatsApp conectado. Deixe desativado para exibir mensagens do celular como enviadas (respostas do agente no Chatwoot continuam deduplicadas pelo ID da mensagem)."
         },
         "IGNORE_STATUS_BROADCAST": {
           "LABEL": "Ignorar status do WhatsApp",
@@ -864,6 +869,42 @@
           "LABEL": "Excluir no WhatsApp ao excluir no Chatwoot",
           "DESCRIPTION": "Quando o agente excluir uma mensagem no Chatwoot, excluir para todos no WhatsApp."
         },
+        "SEND_RANDOM_DELAY": {
+          "LABEL": "Atraso aleatório no envio",
+          "DESCRIPTION": "Aguardar 500–2000 ms antes de cada mensagem enviada para reduzir padrões de automação."
+        },
+        "MERGE_BRAZIL_CONTACTS": {
+          "LABEL": "Unificar variantes de telefone do Brasil",
+          "DESCRIPTION": "Associar contatos com e sem o 9º dígito móvel em números +55."
+        },
+        "IGNORE_SURVEY_LINKS": {
+          "LABEL": "Ignorar links de pesquisa CSAT",
+          "DESCRIPTION": "Descartar mensagens recebidas que contenham URLs de resposta de pesquisa do Chatwoot."
+        },
+        "SYNC_LOST_MESSAGES": {
+          "LABEL": "Reconciliar mensagens perdidas",
+          "DESCRIPTION": "Comparar periodicamente o histórico Evolution com o Chatwoot e importar mensagens ausentes das últimas 6 horas."
+        },
+        "FORMAT_GROUP_MESSAGES": {
+          "LABEL": "Formatar nomes de participantes em grupos",
+          "DESCRIPTION": "Prefixar mensagens de grupo com o nome ou telefone do remetente quando chats de grupo estão habilitados."
+        },
+        "READ_STATUS": {
+          "LABEL": "Marcar visualizações de status como lidas",
+          "DESCRIPTION": "Sincronizar visualizações de status do WhatsApp com a instância Evolution (Baileys readStatus)."
+        },
+        "SYNC_FULL_HISTORY": {
+          "LABEL": "Sincronizar histórico completo ao conectar",
+          "DESCRIPTION": "Solicitar ao Baileys que sincronize todo o histórico de conversas quando a sessão conectar."
+        },
+        "ALWAYS_ONLINE": {
+          "LABEL": "Presença sempre online",
+          "DESCRIPTION": "Manter a presença da sessão WhatsApp como disponível."
+        },
+        "MSG_CALL": {
+          "LABEL": "Mensagem de chamada rejeitada",
+          "DESCRIPTION": "Texto de resposta automática enviado quando uma chamada é rejeitada (requer rejeitar chamadas ativado)."
+        },
         "IGNORE_JIDS": {
           "LABEL": "JIDs ignorados",
           "DESCRIPTION": "Um JID ou padrão por linha. Use {'@'}g.us para todos os grupos ou um JID completo como 5511999999999{'@'}s.whatsapp.net.",
@@ -889,7 +930,11 @@
           "PASSWORD": {
             "LABEL": "Senha",
             "DESCRIPTION": "Deixe em branco para manter a senha atual."
-          }
+          },
+          "RESTART_HINT": "Após alterar as configurações de proxy, reinicie a instância Evolution para o Baileys reconectar pelo proxy.",
+          "RESTART": "Salvar proxy e reiniciar instância",
+          "RESTART_SUCCESS": "Proxy salvo e reinício da instância solicitado.",
+          "RESTART_ERROR": "Não foi possível reiniciar a instância Evolution após salvar o proxy."
         }
       }
     },

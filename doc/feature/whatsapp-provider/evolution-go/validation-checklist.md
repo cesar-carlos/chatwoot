@@ -1,24 +1,24 @@
-# Checklist de validação — pré Fase 1 (Evolution Go)
+# Checklist E2E — integração Evolution Go
 
-Executar **antes** de fechar o MVP texto + QR. Resultados alimentam `spec/fixtures/evolution_go/` e confirmam compatibilidade com [evolution-target-version.txt](./evolution-target-version.txt).
+Validação **durante** a Fase 1, contra uma **instância Evolution Go já provisionada pelo operador**. Não é pré-requisito para iniciar código — contratos vêm de [postman-validation.md](./postman-validation.md) e [decisions.md](./decisions.md).
 
-**Postman:** [Evolution Go collection](https://www.postman.com/agenciadgcode/evolution-api/collection/nk736ze/evolution-go)
+**Variáveis:** `BASE_URL`, `GLOBAL_API_KEY`, `INSTANCE_TOKEN`, `FRONTEND_URL` (público para webhook), `TEST_PHONE`
 
-**Ambiente:** Evolution Go Docker (`evoapicloud/evolution-go:latest`) + licença ativada + Chatwoot fork Fase 0–1.
-
----
-
-## 0. Pré-requisitos
-
-- [ ] Licença Evolution Go ativada (Magic Link no painel)
-- [ ] `GLOBAL_API_KEY` configurado no `.env` do servidor Go
-- [ ] PostgreSQL auth + users DB acessíveis
-- [ ] `FRONTEND_URL` público para webhook
-- [ ] Versão Go registrada: `_______________` (image tag ou `GET /server/ok`)
+**Postman:** [Evolution GO collection](https://www.postman.com/agenciadgcode/evolution-api/collection/nk736ze/evolution-go) · environment em `spec/fixtures/evolution_go/postman-environment.json`
 
 ---
 
-## 1. Spike REST (manual)
+## 0. Pré-requisitos (operador)
+
+- [ ] Instância Evolution Go acessível em `BASE_URL`
+- [ ] Licença ativa no painel Go
+- [ ] `GLOBAL_API_KEY` configurado no servidor
+- [ ] `FRONTEND_URL` do Chatwoot alcançável pelo servidor Go (webhook)
+- [ ] Versão registrada em [evolution-target-version.txt](./evolution-target-version.txt)
+
+---
+
+## 1. REST — conexão e envio
 
 ### 1.1 Criar instância
 
@@ -33,7 +33,7 @@ curl -sS -X POST "${BASE_URL}/instance/create" \
 ```
 
 - [ ] HTTP 2xx
-- [ ] Resposta contém `data.token` (ou token informado)
+- [ ] Resposta contém `data.token`
 - [ ] Salvar token → `provider_config.instance_token`
 
 ### 1.2 Conectar + webhook Chatwoot
@@ -54,27 +54,23 @@ curl -sS -X POST "${BASE_URL}/instance/connect" \
 ```
 
 - [ ] HTTP 2xx
-- [ ] Webhook recebe evento `CONNECTION` ou `QRCODE` ao conectar
+- [ ] Webhook recebe `CONNECTION` ou `QRCODE`
 
-### 1.3 QR
+### 1.3 QR e status
 
 ```bash
 curl -sS "${BASE_URL}/instance/qr" \
   -H "apikey: ${INSTANCE_TOKEN}" | tee /tmp/evogo-qr.json
-```
 
-- [ ] QR retornado (base64 ou pipe-separated)
-- [ ] Escanear → status connected
-
-```bash
 curl -sS "${BASE_URL}/instance/status" \
   -H "apikey: ${INSTANCE_TOKEN}" | tee /tmp/evogo-status.json
 ```
 
-- [ ] `data.connected` e `data.loggedIn` true
-- [ ] `data.myJid` presente → futuro `phone_number`
+- [ ] QR retornado; scan → connected
+- [ ] `Connected` + `LoggedIn` true
+- [ ] JID presente → `phone_number` do channel
 
-### 1.4 sendText
+### 1.4 Send text
 
 ```bash
 curl -sS -X POST "${BASE_URL}/send/text" \
@@ -84,48 +80,47 @@ curl -sS -X POST "${BASE_URL}/send/text" \
   | tee spec/fixtures/evolution_go/send_text_response.json
 ```
 
-- [ ] HTTP 2xx
-- [ ] Resposta contém `data.Info.ID` (PascalCase whatsmeow)
+- [ ] HTTP 2xx · `data.Info.ID` presente
 - [ ] Mensagem chega no WhatsApp
 
-> Path oficial confirmado: `POST /send/text` — ver [send-a-text-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-text-message). Não usar `/message/sendText`.
+---
+
+## 2. Webhook inbound
+
+Enviar mensagem do celular para o número conectado.
+
+- [ ] POST em `/webhooks/evolution_go/:instance_name`
+- [ ] Salvar: `message_inbound.json`, `connection_event.json`, `qrcode_event.json`
+- [ ] Normalizer → conversa no Chatwoot
+- [ ] Echo `fromMe` não duplica
 
 ---
 
-## 2. Spike webhook inbound
+## 2b. Fase 2 (opcional)
 
-Enviar mensagem **do celular** para o número conectado.
-
-- [ ] Chatwoot recebe POST em `/webhooks/evolution_go/:instance_name`
-- [ ] Body `event: MESSAGE`
-- [ ] Salvar fixture: `spec/fixtures/evolution_go/message_inbound.json`
-- [ ] Normalizer produz `{ contacts:, messages: }` válido
-- [ ] Conversa criada no Chatwoot
-- [ ] Echo `fromMe` **não** duplica
+- [ ] `GET`+`PUT /instance/{id}/advanced-settings` — anotar casing dos campos
+- [ ] `POST /message/downloadimage` vs `downloadmedia` — ADR §25
+- [ ] Reconnect: confirmar que `POST /instance/connect` preserva webhook (ADR §23–24)
 
 ---
 
-## 3. Spike outbound Chatwoot → Go
+## 3. Outbound Chatwoot → Go
 
 - [ ] Agente responde no Chatwoot
-- [ ] `EvolutionGoService#send_message` usa path validado em §1.4/1.5
-- [ ] `source_id` persistido
-- [ ] Mensagem chega no WhatsApp
+- [ ] `source_id` = `data.Info.ID`
+- [ ] Mensagem no WhatsApp
 
 ---
 
 ## 4. Regressão
 
-- [ ] Providers `whatsapp_cloud`, `default` inalterados
-- [ ] Se `evolution` existir — inalterado
+- [ ] Providers `whatsapp_cloud`, `default`, `evolution` inalterados
 
 ---
 
 ## 5. Documentar resultados
 
-Atualizar após spike:
-
 - [ ] [evolution-target-version.txt](./evolution-target-version.txt)
-- [ ] [postman-validation.md](./postman-validation.md) — ⚠️ → ✅
-- [ ] [api-reference.md](./api-reference.md) — path send definitivo
-- [ ] `spec/fixtures/evolution_go/README.md` com notas de validação
+- [ ] [postman-validation.md](./postman-validation.md) — checklist pós-E2E
+- [ ] [status.md](./status.md) — fechar G1–G4
+- [ ] `spec/fixtures/evolution_go/README.md`

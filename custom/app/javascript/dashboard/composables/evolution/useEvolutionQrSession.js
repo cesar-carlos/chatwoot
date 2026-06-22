@@ -18,6 +18,7 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
   let expiryTimer = null;
   let sessionStartedConnected = false;
   let hasEmittedConnected = false;
+  let refreshInFlight = null;
 
   function isConnected() {
     return connectionStatus.value === 'open';
@@ -40,6 +41,7 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
   function stopSession() {
     stopPolling();
     clearExpiryTimer();
+    refreshInFlight = null;
   }
 
   function applyPayload(raw) {
@@ -76,22 +78,25 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
 
   async function refreshConnection() {
     const id = unref(inboxId);
-    if (!id) return;
+    if (!id || refreshInFlight) return refreshInFlight;
 
     isLoading.value = true;
-    try {
-      const payload = await store.dispatch(
-        'inboxes/fetchEvolutionConnection',
-        id
-      );
-      applyPayload(payload);
-    } catch (error) {
-      if (isInboxNotFoundError(error)) {
-        handleInboxNotFound();
-      }
-    } finally {
-      isLoading.value = false;
-    }
+    refreshInFlight = store
+      .dispatch('inboxes/fetchEvolutionConnection', id)
+      .then(payload => {
+        applyPayload(payload);
+      })
+      .catch(error => {
+        if (isInboxNotFoundError(error)) {
+          handleInboxNotFound();
+        }
+      })
+      .finally(() => {
+        isLoading.value = false;
+        refreshInFlight = null;
+      });
+
+    return refreshInFlight;
   }
 
   function armQrExpiryTimer() {
@@ -128,18 +133,20 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
 
   function startPolling() {
     stopPolling();
-    pollTimer = setInterval(refreshConnection, POLL_MS);
+    pollTimer = setInterval(() => {
+      refreshConnection();
+    }, POLL_MS);
   }
 
-  function startSession({ fetchFreshQr = false } = {}) {
+  async function startSession({ fetchFreshQr = false } = {}) {
     sessionStartedConnected = isConnected();
     hasEmittedConnected = false;
     qrRefreshError.value = false;
 
     if (fetchFreshQr) {
-      requestNewQr();
+      await requestNewQr();
     } else {
-      refreshConnection();
+      await refreshConnection();
       armQrExpiryTimer();
     }
     startPolling();

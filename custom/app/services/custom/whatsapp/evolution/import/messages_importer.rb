@@ -126,7 +126,7 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
       content,
       record['messageTimestamp']
     )
-    attach_outgoing_media!(message, message_data)
+    enqueue_outgoing_media_download!(message, message_data)
     runtime.increment_stat!(:messages_imported)
   end
 
@@ -152,79 +152,19 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
     message_data[type.to_sym]&.dig(:caption)
   end
 
-  def attach_outgoing_media!(message, message_data)
+  def enqueue_outgoing_media_download!(message, message_data)
     return unless outgoing_media_message?(message_data)
 
     type = message_data[:type].to_s
     attachment_payload = message_data[type.to_sym]
-    tempfile = download_outgoing_media(attachment_payload)
-    return if tempfile.blank?
+    return if attachment_payload.blank?
 
-    message.attachments.create!(
-      account_id: runtime.account.id,
-      file_type: outgoing_file_type(type),
-      file: {
-        io: tempfile,
-        filename: tempfile.original_filename,
-        content_type: tempfile.content_type
-      }
+    Custom::Whatsapp::Evolution::MediaDownloadJob.perform_later(
+      channel.id,
+      message.id,
+      attachment_payload.deep_stringify_keys,
+      type
     )
-  rescue StandardError => e
-    Rails.logger.warn "[EVOLUTION] outgoing media import failed for message #{message.id}: #{e.message}"
-  end
-
-  def download_outgoing_media(attachment_payload)
-    response = api_client.get_base64_from_media_message(
-      message: attachment_payload[:_evolution_message]
-    )
-    return nil unless response.success?
-
-    build_outgoing_media_tempfile(response.parsed_response, attachment_payload)
-  rescue StandardError => e
-    Rails.logger.error("[EVOLUTION] outgoing media download failed: #{e.message}")
-    nil
-  end
-
-  def build_outgoing_media_tempfile(parsed, attachment_payload)
-    base64 = parsed['base64']
-    return nil if base64.blank?
-
-    extension = extension_for_outgoing_media(parsed, attachment_payload)
-    tempfile = Tempfile.new(['evolution-outgoing-media', extension])
-    tempfile.binmode
-    tempfile.write(Custom::Whatsapp::Evolution::MediaDecoder.decode!(base64))
-    tempfile.rewind
-
-    filename = parsed['fileName'] || attachment_payload[:filename] || "media#{extension}"
-    content_type = parsed['mimetype'] || attachment_payload[:mimetype] || 'application/octet-stream'
-
-    tempfile.define_singleton_method(:original_filename) { filename }
-    tempfile.define_singleton_method(:content_type) { content_type }
-    tempfile
-  end
-
-  OUTGOING_MEDIA_EXTENSIONS = [
-    [%r{image/png}, '.png'],
-    [%r{image/}, '.jpg'],
-    [%r{video/}, '.mp4'],
-    [%r{audio/}, '.ogg']
-  ].freeze
-
-  def extension_for_outgoing_media(parsed, attachment_payload)
-    filename = parsed['fileName'] || attachment_payload[:filename]
-    ext = File.extname(filename.to_s)
-    return ext if ext.present?
-
-    mimetype = (parsed['mimetype'] || attachment_payload[:mimetype]).to_s
-    OUTGOING_MEDIA_EXTENSIONS.find { |pattern, _| mimetype.match?(pattern) }&.last || '.bin'
-  end
-
-  def outgoing_file_type(type)
-    return :image if %w[image sticker].include?(type)
-    return :audio if type == 'audio'
-    return :video if type == 'video'
-
-    :file
   end
 
   def create_outgoing_message!(contact_inbox, key, content, raw_timestamp)

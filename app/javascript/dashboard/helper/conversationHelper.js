@@ -1,19 +1,86 @@
+import { MESSAGE_TYPE } from 'shared/constants/messages';
+
+/**
+ * Normalizes message timestamps for reliable comparisons.
+ * @param {Object} message
+ * @returns {number}
+ */
+export const messageCreatedAtTimestamp = message => {
+  if (!message) return 0;
+
+  const raw = message.created_at ?? message.createdAt;
+  if (raw == null || raw === '') return 0;
+
+  const numeric = Number(raw);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+export const isNonActivityMessage = message =>
+  Boolean(message) && message.message_type !== MESSAGE_TYPE.ACTIVITY;
+
 /**
  * Determines the last non-activity message between store and API messages.
  * @param {Object} messageInStore - The last non-activity message from the store.
  * @param {Object} messageFromAPI - The last non-activity message from the API.
  * @returns {Object} The latest non-activity message.
  */
-const getLastNonActivityMessage = (messageInStore, messageFromAPI) => {
-  // If both API value and store value for last non activity message
-  // are available, then return the latest one.
+export const getLastNonActivityMessage = (messageInStore, messageFromAPI) => {
   if (messageInStore && messageFromAPI) {
-    return messageInStore.created_at >= messageFromAPI.created_at
+    return messageCreatedAtTimestamp(messageInStore) >=
+      messageCreatedAtTimestamp(messageFromAPI)
       ? messageInStore
       : messageFromAPI;
   }
-  // Otherwise, return whichever is available
+
   return messageInStore || messageFromAPI;
+};
+
+export const getLastNonActivityMessageFromList = (messages = []) => {
+  const nonActivityMessages = messages.filter(isNonActivityMessage);
+  return nonActivityMessages[nonActivityMessages.length - 1];
+};
+
+export const mergeConversationListMessages = (
+  existingMessages = [],
+  incomingMessages = []
+) => {
+  const messageMap = new Map();
+
+  [...incomingMessages, ...existingMessages].forEach(message => {
+    if (!message?.id) return;
+    messageMap.set(message.id, message);
+  });
+
+  return Array.from(messageMap.values()).sort(
+    (left, right) =>
+      messageCreatedAtTimestamp(left) - messageCreatedAtTimestamp(right)
+  );
+};
+
+export const mergeConversationOnListRefresh = (existing, incoming) => {
+  if (!existing) return incoming;
+
+  const mergedMessages = mergeConversationListMessages(
+    existing.messages,
+    incoming.messages
+  );
+
+  const lastNonActivityMessage = getLastNonActivityMessage(
+    getLastNonActivityMessage(
+      getLastNonActivityMessageFromList(existing.messages),
+      existing.last_non_activity_message || existing.lastNonActivityMessage
+    ),
+    getLastNonActivityMessage(
+      getLastNonActivityMessageFromList(incoming.messages),
+      incoming.last_non_activity_message || incoming.lastNonActivityMessage
+    )
+  );
+
+  return {
+    ...incoming,
+    messages: mergedMessages,
+    last_non_activity_message: lastNonActivityMessage,
+  };
 };
 
 /**
@@ -47,18 +114,13 @@ export const filterDuplicateSourceMessages = (messages = []) => {
  * @returns {Object} The last message of the conversation.
  */
 export const getLastMessage = m => {
-  const lastMessageIncludingActivity = m.messages[m.messages.length - 1];
-
-  const nonActivityMessages = m.messages.filter(
-    message => message.message_type !== 2
-  );
+  const messages = m.messages || [];
+  const lastMessageIncludingActivity = messages[messages.length - 1];
   const lastNonActivityMessageInStore =
-    nonActivityMessages[nonActivityMessages.length - 1];
+    getLastNonActivityMessageFromList(messages);
+  const lastNonActivityMessageFromAPI =
+    m.last_non_activity_message || m.lastNonActivityMessage;
 
-  const lastNonActivityMessageFromAPI = m.last_non_activity_message;
-
-  // If API value and store value for last non activity message
-  // is empty, then return the last activity message
   if (!lastNonActivityMessageInStore && !lastNonActivityMessageFromAPI) {
     return lastMessageIncludingActivity;
   }

@@ -21,7 +21,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['connected']);
+const emit = defineEmits(['connected', 'session-active']);
 
 const isOpen = defineModel({ type: Boolean, default: false });
 
@@ -72,9 +72,7 @@ const showQrError = computed(
     !showQr.value &&
     !showLoading.value &&
     !pairingCode.value &&
-    (qrRefreshError.value ||
-      connectionStatus.value === 'close' ||
-      connectionStatus.value === 'connecting')
+    (qrRefreshError.value || connectionStatus.value === 'close')
 );
 
 function cleanupSession() {
@@ -112,18 +110,22 @@ async function handleRefreshQr() {
   }
 }
 
-watch(
-  isOpen,
-  (open, wasOpen) => {
-    if (open) {
-      nextTick(() => openModal());
-    } else if (wasOpen) {
-      cleanupSession();
-      dialogRef.value?.close();
-    }
-  },
-  { immediate: true }
-);
+  watch(
+    isOpen,
+    (open, wasOpen) => {
+      if (open) {
+        nextTick(() => openModal());
+      } else if (wasOpen) {
+        cleanupSession();
+        dialogRef.value?.close();
+      }
+    },
+    { immediate: true }
+  );
+
+  watch(isOpen, open => {
+    emit('session-active', open);
+  });
 
 defineExpose({ open: openModal, close: closeModal });
 </script>

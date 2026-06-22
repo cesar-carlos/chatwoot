@@ -57,6 +57,9 @@ module Redis::RedisKeys
   LATEST_CHATWOOT_VERSION = 'LATEST_CHATWOOT_VERSION'.freeze
   # Check if a message create with same source-id is in progress?
   MESSAGE_SOURCE_KEY = 'MESSAGE_SOURCE_KEY::%<id>s'.freeze
+  EVOLUTION_MEDIA_DOWNLOAD_LOCK = 'EVOLUTION_MEDIA_DOWNLOAD_LOCK::%<message_id>d'.freeze
+  EVOLUTION_CONTACT_ENRICHMENT = 'EVOLUTION_CONTACT_ENRICHMENT::%<contact_id>d'.freeze
+  EVOLUTION_LOST_MESSAGES_THROTTLE = 'EVOLUTION_LOST_MESSAGES_THROTTLE::%<channel_id>d'.freeze
   OPENAI_CONVERSATION_KEY = 'OPEN_AI_CONVERSATION_KEY::V1::%<event_name>s::%<conversation_id>d::%<updated_at>d'.freeze
 
   ## Sempahores / Locks

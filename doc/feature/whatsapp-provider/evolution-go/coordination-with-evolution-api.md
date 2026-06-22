@@ -4,7 +4,7 @@ Como o provider **`evolution_go`** se relaciona com **`evolution`** já em imple
 
 **Estado Node (jun/2026):** Fase 0–3 em `custom/app/services/custom/whatsapp/evolution/` — ver [../evolution-api/tasks.md](../evolution-api/tasks.md).
 
-**Estado Go:** somente documentação — ver [implementation-readiness.md](./implementation-readiness.md).
+**Estado Go:** somente documentação — ver [status.md](./status.md).
 
 ---
 
@@ -42,8 +42,26 @@ Como o provider **`evolution_go`** se relaciona com **`evolution`** já em imple
 | `Evolution::ApiClient` | Paths e auth diferentes |
 | `EvolutionNormalizer` | Evento `MESSAGES_UPSERT` vs `MESSAGE` |
 | `ConnectionService` | `set_webhook` vs connect body |
-| Wizard Vue | Campos `global_api_key` + token Go |
+| Componente wizard Vue raiz | Campos `global_api_key` + token Go distintos |
 | Fixtures | Pastas separadas |
+
+---
+
+## O que REUSAR no frontend (composable)
+
+Extrair de `EvolutionWhatsapp.vue` um composable **`useGatewayWhatsappWizard`**:
+
+| Lógica compartilhada | Evolution Node | Evolution Go |
+|---------------------|----------------|--------------|
+| Polling QR / status | ✅ | ✅ |
+| ActionCable connection | canal diferente | `evolution_go:connection:{id}` |
+| Stepper 3 passos | ✅ | ✅ |
+| Health check `server/ok` | opcional | **recomendado** Step 1 |
+| REST direto no browser | ❌ | ❌ — sempre via backend |
+
+Componentes finos: `EvolutionGoWhatsapp.vue` importa o composable + campos específicos (`global_api_key`, modo instância existente).
+
+Detalhe: [frontend-wizard-spec.md § Composable](./frontend-wizard-spec.md#composable-compartilhado).
 
 ---
 
@@ -95,17 +113,23 @@ Dois cards distintos:
 | Evolution API | `evolution` |
 | Evolution Go | `evolution_go` |
 
-Componentes separados: `EvolutionWhatsapp.vue` vs `EvolutionGoWhatsapp.vue`.
+Componentes separados: `EvolutionWhatsapp.vue` vs `EvolutionGoWhatsapp.vue` — lógica comum em `useGatewayWhatsappWizard` (ver acima).
 
 ---
 
 ## Ordem de implementação sugerida
 
-1. **Node** terminar E2E (webhook inbound + wizard QR) — [validation-checklist](../evolution-api/validation-checklist.md) §2–4
-2. **Go** spike fixtures
-3. **Go** Fase 1 reutilizando infra Fase 0 já validada pelo Node
+```
+I0 Fase 0 (registry) → I1 Fase 1 MVP
+                              │
+                              └── E1 E2E (paralelo) — fixtures reais
+```
 
-Implementar Go **antes** do Node terminar E2E é possível, mas aumenta risco de regressão no prepend compartilhado.
+1. **Fase 0** — [tasks.md](./tasks.md)
+2. **Node** E2E pendente — não bloqueia Go Fase 0
+3. **Go Fase 1** — contratos Postman/ADRs; fixtures refinadas no E2E
+
+Implementar prepend `WhatsappEventsJob` branch Go **com specs** — evita regressão no Node.
 
 ---
 
@@ -125,4 +149,4 @@ Implementar Go **antes** do Node terminar E2E é possível, mas aumenta risco de
 |--------|-----------|
 | Diferenças API | [differences-from-evolution-api.md](./differences-from-evolution-api.md) |
 | Node implementado | [../evolution-api/README.md](../evolution-api/README.md) |
-| Gaps doc Go | [gaps-and-improvements.md](./gaps-and-improvements.md) |
+| Status doc Go | [status.md](./status.md) |

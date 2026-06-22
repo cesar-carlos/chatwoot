@@ -27,7 +27,7 @@ module Custom::Whatsapp::Evolution::ProviderConfigDefaults
     'notify_send_errors_private' => true,
     'ignore_jids' => ['@g.us'],
     'ignore_status_broadcast' => true,
-    'ignore_from_me_echo' => true,
+    'ignore_from_me_echo' => false,
     'ignore_survey_links' => true,
     'format_group_messages' => false,
     'import_on_connect' => true,
