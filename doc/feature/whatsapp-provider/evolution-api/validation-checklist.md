@@ -157,6 +157,25 @@ No dashboard, responder na conversa criada no passo 2 — **E2E local:** `Whatsa
 
 ---
 
+## 5.1 Spike single-history (reopen conversa resolvida)
+
+Executar após conectar instância e com `lock_to_single_conversation: true` no inbox Evolution.
+
+1. Enviar mensagem inbound de contato de teste → conversa criada
+2. Resolver a conversa no dashboard
+3. Enviar nova mensagem inbound do **mesmo** contato
+4. Validar:
+   - [ ] **Mesma** `conversation_id` (sem nova row em `conversations`)
+   - [ ] Status `open` (ou `pending` se `conversation_pending: true`)
+   - [ ] Evento `conversation_opened` em `reporting_events` (quando status vira `open`)
+   - [ ] Com `conversation_pending: true`: 1º inbound pós-resolve → `pending` + `evolution_pending_since`; 2º inbound → `open`
+
+Com `lock_to_single_conversation: false`:
+
+- [ ] Passo 3 cria **nova** conversa (resolver ignora `resolved`)
+
+---
+
 ## 6. Proxy (Fase 2 — staging 2.3.7)
 
 ```bash

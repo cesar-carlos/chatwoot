@@ -4,10 +4,25 @@ module Custom::Conversations::ResolutionCycle
   def start_time(conversation)
     return conversation.created_at unless conversation.inbox.lock_to_single_conversation?
 
-    last_opened_event = conversation.reporting_events.where(
-      name: 'conversation_opened'
-    ).order(event_end_time: :desc).first
+    [
+      conversation.created_at,
+      last_opened_event_time(conversation),
+      evolution_pending_cycle_start(conversation)
+    ].compact.max
+  end
 
-    last_opened_event&.event_end_time || conversation.created_at
+  def last_opened_event_time(conversation)
+    conversation.reporting_events.where(
+      name: 'conversation_opened'
+    ).order(event_end_time: :desc).pick(:event_end_time)
+  end
+
+  def evolution_pending_cycle_start(conversation)
+    raw = conversation.additional_attributes&.[]('evolution_pending_since')
+    return if raw.blank?
+
+    Time.zone.parse(raw.to_s)
+  rescue ArgumentError, TypeError
+    nil
   end
 end

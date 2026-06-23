@@ -21,7 +21,11 @@ class Telegram::UpdateMessageService
   end
 
   def find_conversation
-    @conversation = @contact_inbox.conversations.last
+    # FORK: align conversation lookup with Conversations::Resolver
+    @conversation = Conversations::Resolver.new(
+      inbox: inbox,
+      contact_inbox: @contact_inbox
+    ).find || @contact_inbox.conversations.order(created_at: :desc).first
   end
 
   def find_message

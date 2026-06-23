@@ -3,7 +3,14 @@ module V2::Reports::ServiceSessions::MetricsHelper
   OPEN_SESSION_STARTED_AT_SQL = <<~SQL.squish.freeze
     CASE
       WHEN inboxes.lock_to_single_conversation
-        THEN COALESCE(recent_open_events.latest_opened_at, conversations.created_at)
+        THEN GREATEST(
+          conversations.created_at,
+          COALESCE(recent_open_events.latest_opened_at, conversations.created_at),
+          COALESCE(
+            NULLIF(conversations.additional_attributes->>'evolution_pending_since', '')::timestamptz,
+            conversations.created_at
+          )
+        )
       ELSE conversations.created_at
     END
   SQL

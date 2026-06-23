@@ -105,7 +105,7 @@ Decision: **Completed** — LINE and TikTok use `Conversations::Resolver` (TikTo
 
 ### ConversationBuilder (API/Widget)
 
-**Migrated to `Conversations::Resolver` (June 2026).** API/Widget paths now honor the inbox toggle the same way as channel services (non-resolved lookup when OFF; reuse resolved when ON).
+**Migrated to `Conversations::Resolver` (June 2026).** API channel (`ConversationBuilder`) and **Web Widget** (`Api::V1::Widget::BaseController`) honor the inbox toggle the same way as channel services (non-resolved lookup when OFF; reuse resolved when ON). Web Widget toggle exposed in standard Inbox Settings (`isAWebWidgetInbox`).
 
 ## Channel Matrix
 
@@ -122,7 +122,7 @@ Decision: **Completed** — LINE and TikTok use `Conversations::Resolver` (TikTo
 | Twitter DM | Channel-specific type filter (`direct_message`) | `app/services/twitter/direct_message_parser_service.rb` | Explicitly excluded from Phase 1 (channel-native behavior) | Low |
 | Twitter Tweet/thread | Thread routing by `tweet_id`/parent tweet | `app/services/twitter/tweet_parser_service.rb` | Explicitly excluded from Phase 1 (channel-native behavior) | Low |
 | Email | Email threading strategy | `app/services/mailbox/conversation_finder_strategies/*` | Keep as-is (out of scope) | — |
-| API/Widget | Respects flag via Resolver | `app/builders/conversation_builder.rb` | Completed (orchestration round 2) | Low |
+| API/Widget | Respects flag via Resolver | `app/builders/conversation_builder.rb`, `app/controllers/api/v1/widget/base_controller.rb` | Completed (widget migrated Jun/2026) | Low |
 | Voice (Enterprise) | Respects flag via Resolver | `enterprise/app/services/voice/inbound_call_builder.rb` | Completed (orchestration round 3) | Low |
 
 ## Report Impact and Per-Cycle Metrics
@@ -164,7 +164,7 @@ cycle_start = Custom::Conversations::ResolutionCycle.start_time(conversation)
 A **cycle** is the period between a conversation being opened (or reopened) and being resolved.
 
 - Cycle 1 start: `conversation.created_at`
-- Cycle N start: last `conversation_opened` reporting event's `event_end_time`
+- Cycle start = last `conversation_opened` reporting event's `event_end_time`, or `evolution_pending_since` when more recent (Evolution `conversation_pending`), or `conversation.created_at`
 
 The `conversation_opened` event already exists in `ReportingEventListener` and fires on every reopen. We use it as the cycle boundary marker.
 
@@ -235,7 +235,7 @@ Same builders and metrics as Agentes, grouped by label/inbox/team. Same fixes ap
 | 8 | Migrate LINE to resolver | `app/services/line/incoming_message_service.rb` | FORK marker |
 | 9 | Migrate TikTok to resolver | `app/services/tiktok/message_service.rb` + `messaging_helpers.rb` | FORK marker |
 | 9a | Migrate Facebook/Instagram to resolver | `app/builders/messages/facebook/message_builder.rb`, `app/builders/messages/instagram/base_message_builder.rb` | FORK marker |
-| 9b | Migrate ConversationBuilder to resolver | `app/builders/conversation_builder.rb` | FORK marker |
+| 9b | Migrate ConversationBuilder + Web Widget to resolver | `app/builders/conversation_builder.rb`, `app/controllers/api/v1/widget/base_controller.rb` | FORK marker |
 | 9c | Default new inboxes to single-history ON | `db/migrate/20260618120000_fork_default_lock_to_single_conversation_true.rb` | FORK migration (default only) |
 | 10 | `prepend_mod_with` hook on ReportingEventListener | `app/listeners/reporting_event_listener.rb` | FORK (1 line) |
 | 11 | `prepend_mod_with` hook on CsatSurveyService | `app/services/csat_survey_service.rb` | FORK (1 line) |
@@ -422,7 +422,7 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 
 ## Definition of Done
 
-- [x] `Conversations::Resolver` implemented (`#find`, `#perform`, `#resolve_or_create`) and used by SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, `ConversationBuilder`
+- [x] `Conversations::Resolver` implemented (`#find`, `#perform`, `#resolve_or_create`) and used by SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, `ConversationBuilder`, **Web Widget**
 - [x] Per-cycle `conversation_bot_handoff` metrics when single-history mode is ON
 - [x] `Custom::Conversations::ResolutionCycle` centralizes cycle boundary logic
 - [x] Per-cycle resolution time implemented via custom overlay
@@ -559,7 +559,7 @@ Channel unification, per-cycle bot handoff, UX, and default migration completed 
 - 2026-06-18: Engineering audit — fixed LINE/TikTok duplicate resolver logic, reporting `event.timestamp` + `safe_rollup` gaps, extracted `Custom::Conversations::ResolutionCycle`, added resolver `#find` with optional params. Focused validation: `53 examples, 0 failures`.
 - 2026-06-18: Worker 3 — automation warning banner on single-history toggle (uses existing automations store), `:single_history` factory trait, EN/PT-BR ops copy.
 - 2026-06-18: Orchestration round 2 — FB/IG and `ConversationBuilder` migrated to `Conversations::Resolver`; added `#resolve_or_create`; per-cycle `bot_handoff`; default ON migration for new inboxes; `ResolutionCycle` uses `reporting_events` association. Focused validation: `342 examples, 0 failures`.
-- 2026-06-21: Evolution WhatsApp — removed duplicate `provider_config.reopen_conversation` and `Custom::Conversations::Resolver` prepend; Evolution inboxes now use native `lock_to_single_conversation` only (Settings → Configurações).
+- 2026-06-23: Web Widget migrated to `Conversations::Resolver`; Web Widget toggle in Settings; `ResolutionCycle` uses `evolution_pending_since`; Telegram `UpdateMessageService` uses resolver `#find`; Evolution docs aligned (UI location, cache N/A, reopen E2E checklist).
 
 ## Existing Inbox Backfill Policy
 

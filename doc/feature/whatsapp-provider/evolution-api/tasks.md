@@ -130,6 +130,8 @@ T5 (specs) — ✅ ~42 examples em `spec/custom/` (Evolution provider) + Playwri
 
 **Revisão (2026-06-21):** removido `provider_config.reopen_conversation` (duplicava `lock_to_single_conversation`); UI e `Custom::Conversations::Resolver` prepend eliminados.
 
+**Revisão (2026-06-23):** docs alinhados com implementação — toggle reopen na `EvolutionSettingsPage` (seção Conversas); cache Redis Evolution N/A no provider nativo; `ResolutionCycle` considera `evolution_pending_since`; checklist §5.1 reopen E2E.
+
 **Revisão (2026-06-22 — auditoria doc+código):**
 
 | Item | Status |

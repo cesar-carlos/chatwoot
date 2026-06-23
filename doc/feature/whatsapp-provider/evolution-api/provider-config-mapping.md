@@ -96,6 +96,7 @@ Detalhes e comportamento: [inbox-business-rules.md](./inbox-business-rules.md)
 | `sign_msg`, `sign_delimiter` | `EvolutionService#send_message` |
 | `conversation_pending` | `IncomingMessageServiceHelpers` + `Custom::Message#reopen_resolved_conversation` |
 | Reabrir conversa resolvida | `inbox.lock_to_single_conversation` → `Conversations::Resolver` + `Message#reopen_conversation` |
+| Ciclo métrico (reporting/CSAT) | `Custom::Conversations::ResolutionCycle` — `conversation_opened`, `evolution_pending_since`, `created_at` |
 | `merge_brazil_contacts` | Normalizer + `ContactInboxBuilder` |
 | `mark_read_on_reply` | `EvolutionService` pós-envio → `markMessageAsRead` |
 | `sync_delete_to_whatsapp` | Listener `message_updated` |
