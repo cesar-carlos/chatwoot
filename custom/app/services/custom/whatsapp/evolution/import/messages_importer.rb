@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
-
 # rubocop:disable Metrics/ClassLength -- contact resolution + incoming/outgoing history paths
 class Custom::Whatsapp::Evolution::Import::MessagesImporter
   include Custom::Whatsapp::Evolution::Import::JidHelpers
