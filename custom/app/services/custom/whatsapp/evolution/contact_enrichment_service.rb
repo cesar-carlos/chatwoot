@@ -1,11 +1,42 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::ContactEnrichmentService
+  ENRICHMENT_COOLDOWN = 24.hours
   WHATSAPP_STATUS_KEY = 'whatsapp_status'
   WHATSAPP_BUSINESS_KEY = 'whatsapp_business'
   EVOLUTION_PUSH_NAME_KEY = 'evolution_push_name'
   EVOLUTION_REMOTE_JID_KEY = 'evolution_remote_jid'
   EVOLUTION_ENRICHED_AT_KEY = 'evolution_enriched_at'
+
+  def self.should_enqueue?(contact:, remote_jid: nil, push_name: nil, profile_pic_url: nil, force: false)
+    return true if ActiveModel::Type::Boolean.new.cast(force)
+
+    additional = contact.additional_attributes.to_h.stringify_keys
+    return true if remote_jid.to_s.present? && additional[EVOLUTION_REMOTE_JID_KEY] != remote_jid.to_s
+    return true if profile_pic_url.to_s.present? && !contact.avatar.attached?
+    return true if push_name_changed?(contact, push_name)
+
+    enrichment_stale?(contact)
+  end
+
+  def self.enrichment_stale?(contact)
+    enriched_at = contact.additional_attributes.to_h[EVOLUTION_ENRICHED_AT_KEY]
+    return true if enriched_at.blank?
+
+    Time.zone.parse(enriched_at) <= ENRICHMENT_COOLDOWN.ago
+  rescue ArgumentError
+    true
+  end
+
+  def self.push_name_changed?(contact, push_name)
+    value = push_name.to_s.strip
+    return false if value.blank?
+
+    additional = contact.additional_attributes.to_h.stringify_keys
+    current_name = contact.name.to_s.strip
+    previous_push_name = additional[EVOLUTION_PUSH_NAME_KEY].to_s.strip
+    value != current_name && value != previous_push_name
+  end
 
   def initialize(channel:, contact:, **options)
     @channel = channel
@@ -102,12 +133,7 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
   end
 
   def profile_fetch_needed?
-    enriched_at = contact.additional_attributes[EVOLUTION_ENRICHED_AT_KEY]
-    return true if enriched_at.blank?
-
-    Time.zone.parse(enriched_at) <= ContactEnrichmentJob::ENRICHMENT_COOLDOWN.ago
-  rescue ArgumentError
-    true
+    self.class.enrichment_stale?(contact)
   end
 
   def mark_enriched!

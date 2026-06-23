@@ -270,7 +270,7 @@ Fase 0 → ApiClient → ConnectionService → EvolutionService (sendText)
 
 ## Fixtures para specs
 
-Criados em `spec/fixtures/evolution/` (templates sintéticos). Ver [spec/fixtures/evolution/README.md](../../../spec/fixtures/evolution/README.md) — **substituir por capturas reais** do servidor Evolution antes de fechar Fase 1.
+Criados em `spec/fixtures/evolution/` (templates sintéticos). Ver [spec/fixtures/evolution/README.md](../../../../spec/fixtures/evolution/README.md) — **substituir por capturas reais** do servidor Evolution antes de fechar Fase 1.
 
 ```
 spec/fixtures/evolution/

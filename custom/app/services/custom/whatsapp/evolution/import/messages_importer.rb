@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 # rubocop:disable Metrics/ClassLength -- contact resolution + incoming/outgoing history paths
 class Custom::Whatsapp::Evolution::Import::MessagesImporter
   include Custom::Whatsapp::Evolution::Import::JidHelpers
@@ -53,7 +55,13 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
       return
     end
 
-    records.each { |record| import_message_record(record) }
+    known_source_ids = existing_source_ids_for(records)
+    records.each do |record|
+      source_id = extract_source_id(record)
+      next if source_id.blank? || known_source_ids.include?(source_id)
+
+      known_source_ids << source_id if import_message_record(record)
+    end
     advance_page_cursor!(parsed, jid_index, page, remote_jids.size)
   end
 
@@ -82,10 +90,9 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
   end
 
   def import_message_record(record)
+    return false unless record.is_a?(Hash)
+
     key = record['key'] || {}
-    source_id = key['id'].to_s
-    return if source_id.blank?
-    return if Message.exists?(source_id: source_id, inbox_id: runtime.inbox.id)
 
     if key['fromMe']
       import_outgoing_record(record)
@@ -128,6 +135,7 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
     )
     enqueue_outgoing_media_download!(message, message_data)
     runtime.increment_stat!(:messages_imported)
+    true
   end
 
   def outgoing_content(record, message_data = nil)
@@ -221,11 +229,12 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
 
   def stamp_imported_message!(source_id, raw_timestamp)
     message = Message.find_by(inbox_id: runtime.inbox.id, source_id: source_id)
-    return if message.blank?
+    return false if message.blank?
 
     timestamp = message_timestamp(raw_timestamp)
     backdate_imported_message!(message, timestamp)
     runtime.increment_stat!(:messages_imported)
+    true
   end
 
   def backdate_imported_message!(message, timestamp)
@@ -279,6 +288,18 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
       runtime: runtime,
       api_client: api_client
     )
+  end
+
+  def existing_source_ids_for(records)
+    source_ids = records.filter_map { |record| extract_source_id(record) }.uniq
+    return Set.new if source_ids.blank?
+
+    runtime.inbox.messages.where(source_id: source_ids).pluck(:source_id).to_set
+  end
+
+  def extract_source_id(record)
+    key = record.is_a?(Hash) ? (record['key'] || record[:key] || {}) : {}
+    key['id'] || key[:id]
   end
 end
 # rubocop:enable Metrics/ClassLength

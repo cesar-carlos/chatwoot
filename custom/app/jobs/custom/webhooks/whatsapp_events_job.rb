@@ -65,6 +65,8 @@ module Custom::Webhooks::WhatsappEventsJob
 
   def process_evolution_message_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
+      next unless data_item.is_a?(Hash)
+
       process_evolution_message_item(channel, params, data_item)
     end
   end
@@ -130,6 +132,8 @@ module Custom::Webhooks::WhatsappEventsJob
 
   def process_evolution_delete_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
+      next unless data_item.is_a?(Hash)
+
       process_evolution_mutation_event(channel, data_item) do
         Custom::Whatsapp::Evolution::MessageDeleteSyncService.new(channel: channel, data: data_item).perform
       end
@@ -138,6 +142,8 @@ module Custom::Webhooks::WhatsappEventsJob
 
   def process_evolution_edit_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
+      next unless data_item.is_a?(Hash)
+
       process_evolution_mutation_event(channel, data_item) do
         Custom::Whatsapp::Evolution::MessageEditSyncService.new(channel: channel, data: data_item).perform
       end

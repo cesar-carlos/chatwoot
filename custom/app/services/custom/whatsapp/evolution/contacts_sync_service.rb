@@ -11,7 +11,11 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
   end
 
   def perform
-    Array.wrap(@data).each { |record| sync_record(record.with_indifferent_access) }
+    Array.wrap(@data).each do |record|
+      next unless record.is_a?(Hash)
+
+      sync_record(record.with_indifferent_access)
+    end
   end
 
   private
@@ -56,6 +60,13 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
   end
 
   def enqueue_enrichment(contact, remote_jid, push_name, profile_pic_url)
+    return unless Custom::Whatsapp::Evolution::ContactEnrichmentService.should_enqueue?(
+      contact: contact,
+      remote_jid: remote_jid,
+      push_name: push_name,
+      profile_pic_url: profile_pic_url
+    )
+
     Custom::Whatsapp::Evolution::ContactEnrichmentJob.perform_later(
       channel.id,
       contact.id,
