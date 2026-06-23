@@ -2,6 +2,14 @@
 
 import getUuid from 'widget/helpers/uuid';
 import { MESSAGE_STATUS, MESSAGE_TYPE } from 'shared/constants/messages';
+import parsePhoneNumberFromString from 'libphonenumber-js';
+
+export const normalizeSharePhone = phone => {
+  if (!phone) return '';
+
+  const parsed = parsePhoneNumberFromString(phone);
+  return parsed?.isValid() ? parsed.format('E.164') : phone;
+};
 
 export default () => {
   if (!Array.prototype.last) {
@@ -72,7 +80,7 @@ export const createPendingMessage = data => {
       {
         id: tempMessageId,
         file_type: 'contact',
-        fallback_title: sharedContactPhone || '',
+        fallback_title: normalizeSharePhone(sharedContactPhone || ''),
         meta: sharedContactMeta || {},
       },
     ];

@@ -243,4 +243,50 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionService do
       )
     end
   end
+
+  describe '#send_message with contact attachment' do
+    let(:user) { create(:user, account: account) }
+    let(:contact_message) do
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        sender: user,
+        content: nil
+      )
+    end
+    let(:contact_response) do
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'key' => { 'id' => 'CONTACT123' } })
+    end
+
+    before do
+      contact_message.attachments.create!(
+        account_id: account.id,
+        file_type: :contact,
+        fallback_title: '+5511888888888',
+        meta: { firstName: 'Jane', lastName: 'Doe', companyName: 'Acme' }
+      )
+      allow(api_client).to receive(:send_contact).and_return(contact_response)
+      allow(api_client).to receive(:mark_message_as_read)
+    end
+
+    it 'sends contact via Evolution sendContact endpoint' do
+      expect(service.send_message('5511999999999', contact_message)).to eq('CONTACT123')
+      expect(api_client).to have_received(:send_contact).with(
+        hash_including(
+          number: '5511999999999',
+          contact: [
+            hash_including(
+              fullName: 'Jane Doe',
+              wuid: '5511888888888',
+              phoneNumber: '5511888888888',
+              organization: 'Acme'
+            )
+          ]
+        )
+      )
+    end
+  end
 end

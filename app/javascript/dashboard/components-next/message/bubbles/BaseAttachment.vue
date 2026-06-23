@@ -29,10 +29,14 @@ const senderName = computed(() => {
 });
 
 const senderLabel = computed(() => {
-  if (!props.senderTranslationKey || !senderName.value) return '';
+  if (!props.senderTranslationKey) return '';
 
   switch (props.senderTranslationKey) {
+    case 'CONVERSATION.SHARED_ATTACHMENT.CONTACT_OUTGOING':
+      return t('CONVERSATION.SHARED_ATTACHMENT.CONTACT_OUTGOING');
     case 'CONVERSATION.SHARED_ATTACHMENT.CONTACT':
+      if (!senderName.value) return '';
+
       return t('CONVERSATION.SHARED_ATTACHMENT.CONTACT', {
         sender: senderName.value,
       });
