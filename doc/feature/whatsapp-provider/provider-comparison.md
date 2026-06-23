@@ -144,11 +144,7 @@ apikey: <instance-token>
 
 - **REST** SaaS com `instanceId` + token por instância
 - **Fila interna** de envio — retorna ID imediato, entrega assíncrona
-- **4 webhooks HTTPS obrigatórios:**
-  - **Receive** — mensagens recebidas (e opcionalmente enviadas por você)
-  - **Delivery** — mensagem aceita pelo WhatsApp
-  - **Status** — `SENT`, `RECEIVED`, `READ`, `PLAYED`
-  - **Disconnected** — perda de sessão
+- **7 webhooks HTTPS** configuráveis (receive, delivery, status, disconnected, connected, presence, sent-by-me) — ver [z-api/webhook-events.md](./z-api/webhook-events.md)
 - **Não armazena mensagens** — mídia em storage Z-API por 30 dias
 
 ### Formato típico
@@ -176,7 +172,7 @@ apikey: <instance-token>
 | Interativos | ✅ botões, listas, CTA |
 | Grupos | ✅ (Chatwoot não modela) |
 | Rate limit API | Sem limite declarado — risco ban WhatsApp |
-| Chamadas | ❌ não na doc pública |
+| Chamadas | ⚠️ API documentada (SIP/voice) — fora escopo Chatwoot MVP |
 
 ### Notas para Chatwoot
 
@@ -185,6 +181,7 @@ apikey: <instance-token>
 - `source_id` = `messageId` / `ids[0]`
 - `provider_config`: `instance_id`, `instance_token`, `client_token` (conforme doc)
 - Bom para **SaaS gerenciado**; menos controle que Evolution self-host
+- Plano completo: [z-api/README.md](./z-api/README.md)
 
 ---
 
