@@ -6,7 +6,9 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
   def send_message(phone_number, message)
     @message = message
 
-    if message.attachments.present?
+    if contact_attachment?(message)
+      send_contact_card_message(phone_number, message) # FORK: share contact card
+    elsif message.attachments.present?
       send_attachment_message(phone_number, message)
     elsif input_select_items(message).present?
       send_input_select_message(phone_number, message)

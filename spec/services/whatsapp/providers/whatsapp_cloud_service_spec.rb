@@ -101,6 +101,40 @@ describe Whatsapp::Providers::WhatsappCloudService do
         expect(service.send_message('+123456789', message)).to eq 'message_id'
       end
 
+      it 'calls message endpoints for contact attachment messages' do
+        contact_message = create(
+          :message,
+          conversation: conversation,
+          message_type: :outgoing,
+          content: nil,
+          inbox: whatsapp_channel.inbox
+        )
+        contact_message.attachments.create!(
+          account_id: contact_message.account_id,
+          file_type: :contact,
+          fallback_title: '+918660944581',
+          meta: { firstName: 'Jane', lastName: 'Doe' }
+        )
+
+        stub_request(:post, 'https://graph.facebook.com/v13.0/123456789/messages')
+          .with(
+            body: hash_including({
+                                   messaging_product: 'whatsapp',
+                                   to: '+123456789',
+                                   type: 'contacts',
+                                   contacts: [
+                                     hash_including(
+                                       name: hash_including(formatted_name: 'Jane Doe', first_name: 'Jane', last_name: 'Doe'),
+                                       phones: [{ phone: '+918660944581', type: 'CELL' }]
+                                     )
+                                   ]
+                                 })
+          )
+          .to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+
+        expect(service.send_message('+123456789', contact_message)).to eq 'message_id'
+      end
+
       it 'calls message endpoints for audio voice message with voice flag' do
         attachment = message.attachments.new(account_id: message.account_id, file_type: :audio, meta: { 'is_voice_message' => true })
         attachment.file.attach(io: Rails.root.join('spec/assets/sample.ogg').open, filename: 'voice.ogg', content_type: 'audio/ogg')
