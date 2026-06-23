@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'set'
+
 class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   LOOKBACK_HOURS = 6
   PAGE_SIZE = 50
@@ -11,7 +13,7 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
     return unless sync_enabled?
     return unless connection_open?
 
-    missing_payloads.each { |payload| import_message(payload) }
+    reconcile_remote_messages!
   rescue StandardError => e
     Rails.logger.warn(
       "[EVOLUTION] lost messages reconciliation failed channel=#{channel.id}: #{e.message}"
@@ -38,35 +40,31 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
     channel.provider_config['connection_status'].to_s == 'open'
   end
 
-  def missing_payloads
-    remote_messages.reject { |entry| skip_reconciliation_entry?(entry) }
-  end
-
   def skip_reconciliation_entry?(entry)
-    key = entry['key'] || entry[:key] || {}
-    source_id = key['id'] || key[:id]
+    source_id = extract_source_id(entry)
     return true if source_id.blank?
-    return true if existing_source_ids.include?(source_id)
+    return true if known_source_ids.include?(source_id)
 
     false
   end
 
-  def remote_messages
-    messages = []
+  def reconcile_remote_messages!
     page = 1
 
     loop do
       records, total_pages = fetch_reconciliation_page(page)
       break if records.blank?
 
-      messages.concat(records)
+      records.each do |entry|
+        next if skip_reconciliation_entry?(entry)
+
+        known_source_ids << extract_source_id(entry) if import_message(entry)
+      end
       break if page >= MAX_PAGES
       break if total_pages.zero? || page >= total_pages
 
       page += 1
     end
-
-    messages
   end
 
   def fetch_reconciliation_page(page)
@@ -86,12 +84,12 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
     [Array.wrap(parsed.dig('messages', 'records')), parsed.dig('messages', 'pages').to_i]
   end
 
-  def existing_source_ids
-    @existing_source_ids ||= channel.inbox.messages
-                                    .where('created_at >= ?', LOOKBACK_HOURS.hours.ago)
-                                    .where.not(source_id: [nil, ''])
-                                    .pluck(:source_id)
-                                    .to_set
+  def known_source_ids
+    @known_source_ids ||= channel.inbox.messages
+                                 .where('created_at >= ?', LOOKBACK_HOURS.hours.ago)
+                                 .where.not(source_id: [nil, ''])
+                                 .pluck(:source_id)
+                                 .to_set
   end
 
   def lookback_timestamp
@@ -110,7 +108,7 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   end
 
   def import_phone_outgoing_message(data_item)
-    return if ignore_from_me_echo?
+    return false if ignore_from_me_echo?
 
     Custom::Whatsapp::Evolution::PhoneOutgoingSyncService.new(channel: channel, data: data_item).perform
   end
@@ -125,12 +123,13 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
       channel: channel,
       envelope: envelope
     ).perform
-    return if normalized.blank?
+    return false if normalized.blank?
 
     Whatsapp::IncomingMessageService.new(
       inbox: channel.inbox,
       params: normalized.merge(phone_number: channel.phone_number)
     ).perform
+    true
   end
 
   def api_client
@@ -139,5 +138,10 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
 
   def ignore_from_me_echo?
     ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['ignore_from_me_echo'])
+  end
+
+  def extract_source_id(entry)
+    key = entry.is_a?(Hash) ? (entry['key'] || entry[:key] || {}) : {}
+    key['id'] || key[:id]
   end
 end

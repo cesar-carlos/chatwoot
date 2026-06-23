@@ -205,13 +205,13 @@ flowchart TB
 
 ## Extension points no fork (merge-safe)
 
-O diretório `custom/` no fork já contém **`Custom::Whatsapp::Evolution::*`** (Evolution API Node, Fase 0–3). **Evolution Go** (`evolution_go`) está documentado mas sem código ainda — ver [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
+O diretório `custom/` no fork já contém **`Custom::Whatsapp::Evolution::*`** (Evolution API Node, com fluxo principal de mensagens/operação implementado). **Evolution Go** (`evolution_go`) está documentado, mas ainda sem código — ver [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
 
 | Mecanismo | Onde aplicar | Exemplo |
 |-----------|--------------|---------|
 | `custom/` overlay | Services, normalizers, Vue wizards | `Custom::Whatsapp::Providers::EvolutionService` |
 | Prepend direto / `prepend_mod_with` | Model, jobs | `Channel::Whatsapp.prepend`, `Webhooks::WhatsappEventsJob.prepend_mod_with` |
-| `# FORK:` mínimo | Constantes, imports UI | `PROVIDERS` (+ `evolution`, `evolution_go`), import cards em `Whatsapp.vue` |
+| `# FORK:` mínimo | Constantes, imports UI | `PROVIDERS` (+ `evolution` hoje), import/card do provider em `Whatsapp.vue` |
 | Registry (novo) | Dispatch provider | `MessagingProvider::Registry` em initializer `custom/` |
 
 Hooks **já presentes** no upstream (usar, não duplicar):
@@ -249,8 +249,8 @@ Enterprise adiciona voz via prepend em `WhatsappCloudService` — referência pa
 
 O padrão de provider existe para **envio** e validação, mas **recebimento** e features avançadas estão acoplados ao formato de payload (flat vs nested Meta) ou exclusivos do cloud. Um terceiro provider precisa de:
 
-1. **Registry** ou prepend em `provider_service` (hoje non-cloud → 360dialog incorretamente)
-2. **Normalizer** de webhook → formato flat
-3. **Bypass opcional** da janela 24h Chatwoot
+1. **Registry** ou prepend em `provider_service` para impedir fallback incorreto em 360dialog
+2. **Normalizer** de webhook para entregar payload flat ao `IncomingMessageService`
+3. **Bypass opcional** da janela 24h do Chatwoot quando o gateway não depender da regra Meta
 
 Não editar `WhatsappCloudService` / `IncomingMessageWhatsappCloudService`. Ver [implementation-decision-tree.md](./implementation-decision-tree.md).

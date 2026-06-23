@@ -142,5 +142,5 @@ Voz é projeto separado. Ver [whatsapp-voice/README.md](../whatsapp-voice/README
 
 | Provider | Documento específico |
 |----------|---------------------|
-| Evolution API (Node) | [evolution-api/feature-mapping.md](./evolution-api/feature-mapping.md) |
+| Evolution API (Node) | [evolution-api/implementation-plan.md](./evolution-api/implementation-plan.md) |
 | Evolution Go | [evolution-go/feature-mapping.md](./evolution-go/feature-mapping.md) |
