@@ -18,12 +18,12 @@ Inclui **proxy opcional no wizard** e regras de conversa essenciais — ver [bus
 | **Proxy** (seção colapsável) | `proxy_enabled: false` | ✅ Editar em settings (aba **WhatsApp**) |
 | QR + ActionCable | — | — |
 | `groups_ignore: true` | fixo no create | ✅ toggle UI |
-| Reabrir conversa resolvida | `inbox.lock_to_single_conversation` (Settings → Roteamento) | ✅ toggle nativo inbox |
+| Reabrir conversa resolvida | `inbox.lock_to_single_conversation` | Settings inbox Evolution (aba WhatsApp → Conversas) ou Settings genérico (demais canais) | ✅ toggle |
 | `send_templates_as_text: true` | — | — |
 | Filtros hardcoded | `@g.us`, `status@broadcast`, `fromMe` | ✅ `ignore_jids` UI |
 | `ignore_jids: ["@g.us"]` | em `provider_config` | ✅ editor textarea |
 
-**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `conversation_pending`, `convert_markdown_*`, `ignore_jids`, proxy completo, badge `connection_status`. Reabrir conversa: **Settings → Configurações** (`lock_to_single_conversation`), não nesta aba. Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
+**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `conversation_pending`, `convert_markdown_*`, `ignore_jids`, proxy completo, badge `connection_status`, **`lock_to_single_conversation`** (seção Conversas). Inboxes Evolution **não** exibem o toggle em Settings genérico (`Settings.vue` exclui `isEvolutionWhatsAppChannel`). Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
 
 **Campos em `provider_config` sem toggle na UI** (defaults ativos no código): `send_random_delay`, `ignore_survey_links`, `merge_brazil_contacts`, `read_status`, `sync_full_history`, `always_online`, `msg_call`, `mark_read_on_reply`, `sync_delete_to_whatsapp`, `notify_send_errors_private`.
 
@@ -201,9 +201,13 @@ Portadas de `ChatwootDto` — implementação no fork, **não** na Evolution.
 
 Com `conversation_pending: true`, o prepend `Custom::Message` chama `conversation.pending!` em vez de `open!` ao reabrir.
 
-### Cache ao resolver
+**Métricas por ciclo + `conversation_pending`:** quando ambos estão ON, `Custom::Conversations::ResolutionCycle` usa o mais recente entre `conversation_opened.event_end_time`, `evolution_pending_since` e `created_at` — o ciclo métrico começa no 1º inbound pós-resolve (pending), não só quando a conversa vira `open`. Ver [conversation-single-history-per-channel](../../conversation-single-history-per-channel/implementation-plan.md).
 
-Quando `lock_to_single_conversation: false` e conversa vai para `resolved`, Evolution limpa cache `createConversation-{identifier}` no webhook `conversation_status_changed` (~1290). **Portar** listener equivalente no fork.
+**UI:** `conversation_pending` exige `lock_to_single_conversation` habilitado para salvar (`EvolutionSettingsPage`).
+
+### Cache ao resolver (Evolution legado — não portado)
+
+Na integração Evolution→Chatwoot legada, quando `reopenConversation: false`, o SDK limpava cache Redis `createConversation-{identifier}` ao resolver. **No provider nativo fork isso não se aplica:** não há cache Redis Evolution-side; seleção de conversa é via `Conversations::Resolver` + DB (`implementation-analysis.md` §5). Nenhum listener adicional necessário.
 
 ---
 
@@ -325,8 +329,8 @@ Abas sugeridas:
 | Aba | Campos |
 |-----|--------|
 | **Conexão** | Status, reconectar (QR), logout, restart instance |
-| **WhatsApp** | groups_ignore, reject_call, msg_call, always_online, read_messages, read_status, sync_full_history, conversation_pending, outbound, filtros, proxy, import |
-| **Configurações** (inbox nativo) | `lock_to_single_conversation` — reabrir mesma conversa |
+| **WhatsApp** | groups_ignore, reject_call, msg_call, always_online, read_messages, read_status, sync_full_history, `lock_to_single_conversation`, conversation_pending, outbound, filtros, proxy, import |
+| **Configurações** (inbox nativo, **exceto Evolution**) | `lock_to_single_conversation` — reabrir mesma conversa (Web Widget, API, SMS, etc.) |
 | **Mensagens** | sign_msg, sign_delimiter, mark_read_on_reply, sync_delete_to_whatsapp, convert_markdown_outbound |
 | **Filtros** | ignore_jids (editor) |
 | **Proxy** | proxy_* |

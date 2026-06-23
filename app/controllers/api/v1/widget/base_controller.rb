@@ -17,11 +17,23 @@ class Api::V1::Widget::BaseController < ApplicationController
   end
 
   def conversation
-    @conversation ||= conversations.last
+    @conversation ||= resolve_widget_conversation
   end
 
   def create_conversation
-    ::Conversation.create!(conversation_params)
+    # FORK: honor inbox lock_to_single_conversation (single-history per channel)
+    Conversations::Resolver.new(
+      inbox: inbox,
+      contact_inbox: @contact_inbox,
+      conversation_params: conversation_params
+    ).perform
+  end
+
+  def resolve_widget_conversation
+    Conversations::Resolver.new(
+      inbox: inbox,
+      contact_inbox: @contact_inbox
+    ).find
   end
 
   def inbox

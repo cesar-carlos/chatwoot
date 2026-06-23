@@ -163,6 +163,8 @@ return contact_inbox.conversations.order(created_at: :desc).first if inbox.lock_
 
 Se `conversation_pending: true` (Fase 2): prepend `Custom::Message` chama `conversation.pending!` em vez de `open!` ao reabrir.
 
+**Métricas:** com `lock_to_single_conversation` + `conversation_pending` ON, `Custom::Conversations::ResolutionCycle` considera `evolution_pending_since` como candidato a início de ciclo (além de `conversation_opened` e `created_at`).
+
 ### `merge_brazil_contacts: true` (Fase 2)
 
 Portar lógica `mergeBrazilianContacts` (~499) no `ContactInboxBuilder` ou normalizer — normalizar `5511` vs `5511987654321` antes de lookup.
