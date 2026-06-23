@@ -8,7 +8,7 @@ Fonte curta de verdade para o estado da pasta `doc/feature/whatsapp-provider/` e
 |----------|-------|--------------|--------|----------|
 | Evolution API | `evolution` | ✅ | ✅ | Provider alternativo ativo no fork |
 | Evolution Go | `evolution_go` | ✅ | ❌ | Planejamento pronto, implementação não iniciada |
-| Z-API | — | ⚠️ comparação | ❌ | Sem plano de execução imediato |
+| Z-API | `zapi` | ✅ plano + Postman | ❌ | Documentação em `z-api/`; código após piloto estável |
 | NotificaMe | — | ⚠️ referência cruzada | ❌ | Mantido em pasta própria |
 
 ## O que existe hoje em código
