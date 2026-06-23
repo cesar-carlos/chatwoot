@@ -17,6 +17,7 @@ import {
 import {
   generateServiceSessionListURLParams,
   parseServiceSessionListURLParams,
+  parseServiceSessionEntityURLParams,
 } from './helpers/reportFilterHelper';
 
 const { t } = useI18n();
@@ -24,6 +25,7 @@ const route = useRoute();
 const router = useRouter();
 
 const LIST_PER_PAGE = 25;
+const entityUrlParams = parseServiceSessionEntityURLParams(route.query);
 
 const isLoading = ref(false);
 const summary = ref(null);
@@ -33,10 +35,10 @@ const filters = ref({
   since: null,
   until: null,
   businessHours: false,
-  inboxId: null,
-  teamId: null,
-  userIds: null,
-  labelIds: null,
+  inboxId: entityUrlParams.inbox_id,
+  teamId: entityUrlParams.team_id,
+  userIds: entityUrlParams.user_ids,
+  labelIds: entityUrlParams.label_ids,
 });
 const activeTab = ref('summary');
 
@@ -280,33 +282,51 @@ const escapeCsvValue = value => {
   return stringValue;
 };
 
+const SERVICE_SESSION_PRESERVED_QUERY_KEYS = [
+  'inbox_id',
+  'team_id',
+  'user_ids',
+  'label_ids',
+  'page',
+];
+
+const csvNameForRow = row => {
+  if (row?.id === 0) {
+    return t('SERVICE_SESSION_REPORTS.COMMON.UNASSIGNED_TEAM');
+  }
+
+  return row?.name || row?.title || '';
+};
+
+const csvValue = value => (value == null ? '' : String(value));
+
 const csvRowsForActiveTab = () => {
   if (activeTab.value === 'open') {
     return openRows.value.map(row => [
-      formatName(row.contact),
-      formatName(row.assignee),
-      formatName(row.inbox),
-      row.status || t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE'),
-      formatUnixTime(row.session_started_at),
+      csvNameForRow(row.contact),
+      csvNameForRow(row.assignee),
+      csvNameForRow(row.inbox),
+      csvValue(row.status),
+      csvValue(row.session_started_at),
     ]);
   }
 
   if (activeTab.value === 'closed') {
     return closedRows.value.map(row => [
-      formatName(row.contact),
-      formatName(row.assignee),
-      formatName(row.inbox),
-      formatSessionDuration(row),
-      formatUnixTime(row.resolved_at),
+      csvNameForRow(row.contact),
+      csvNameForRow(row.assignee),
+      csvNameForRow(row.inbox),
+      csvValue(row.session_duration),
+      csvValue(row.resolved_at),
     ]);
   }
 
   if (groupedRows.value.length) {
     return groupedRows.value.map(row => [
-      formatName(row),
-      formatCount(row.open_sessions_count),
-      formatCount(row.closed_sessions_count),
-      formatSeconds(row.avg_session_duration),
+      csvNameForRow(row),
+      csvValue(row.open_sessions_count),
+      csvValue(row.closed_sessions_count),
+      csvValue(row.avg_session_duration),
     ]);
   }
 
@@ -389,6 +409,7 @@ const downloadReports = () => {
     <ReportFilters
       :show-entity-filter="false"
       :show-group-by="false"
+      :preserve-query-keys="SERVICE_SESSION_PRESERVED_QUERY_KEYS"
       show-business-hours
       @filter-change="onFilterChange"
     />
