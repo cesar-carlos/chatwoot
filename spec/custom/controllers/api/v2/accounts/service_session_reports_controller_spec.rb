@@ -22,7 +22,8 @@ RSpec.describe 'Service Session Reports API', type: :request do
         {
           since: start_of_today.to_s,
           until: end_of_today.to_s,
-          business_hours: true
+          business_hours: true,
+          inbox_id: '42'
         }
       end
 
@@ -35,7 +36,7 @@ RSpec.describe 'Service Session Reports API', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
 
-      it 'calls SummaryBuilder and returns summary payload for admins' do
+      it 'calls SummaryBuilder with symbolized params for admins' do
         summary_builder = instance_double(V2::Reports::ServiceSessions::SummaryBuilder)
         allow(V2::Reports::ServiceSessions::SummaryBuilder).to receive(:new).and_return(summary_builder)
         allow(summary_builder).to receive(:build).and_return(
@@ -62,9 +63,10 @@ RSpec.describe 'Service Session Reports API', type: :request do
         expect(V2::Reports::ServiceSessions::SummaryBuilder).to have_received(:new).with(
           account: account,
           params: hash_including(
-            'since' => start_of_today.to_s,
-            'until' => end_of_today.to_s,
-            'business_hours' => true
+            since: start_of_today.to_s,
+            until: end_of_today.to_s,
+            business_hours: true,
+            inbox_id: '42'
           )
         )
         expect(summary_builder).to have_received(:build)
@@ -81,6 +83,16 @@ RSpec.describe 'Service Session Reports API', type: :request do
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(response.parsed_body['error']).to eq(I18n.t('errors.reports.date_range_too_long'))
+      end
+
+      it 'returns unprocessable_entity when since is after until' do
+        get "/api/v2/accounts/#{account.id}/service_session_reports/summary",
+            params: { since: end_of_today.to_s, until: start_of_today.to_s },
+            headers: admin.create_new_auth_token,
+            as: :json
+
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(response.parsed_body['error']).to eq(I18n.t('errors.reports.invalid_date_range'))
       end
     end
   end

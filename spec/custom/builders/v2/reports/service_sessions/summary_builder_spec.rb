@@ -120,6 +120,59 @@ RSpec.describe V2::Reports::ServiceSessions::SummaryBuilder do
 
         expect(report[:open_sessions_count]).to eq(0)
       end
+
+      it 'still includes the session in backlog aging metrics' do
+        report = builder.build
+
+        expect(report[:open_sessions_aging_buckets][:over_24h]).to eq(1)
+      end
+    end
+
+    context 'when inbox lock_to_single_conversation is disabled' do
+      let(:legacy_inbox) do
+        create(:inbox, account: account, lock_to_single_conversation: false)
+      end
+      let!(:reopened_conversation) do
+        create(
+          :conversation,
+          account: account,
+          inbox: legacy_inbox,
+          assignee: user,
+          status: :open,
+          created_at: 2.months.ago
+        )
+      end
+
+      before do
+        create(
+          :reporting_event,
+          account: account,
+          inbox: legacy_inbox,
+          conversation: reopened_conversation,
+          user: user,
+          name: 'conversation_opened',
+          value: 0,
+          event_start_time: 2.months.ago,
+          event_end_time: 2.months.ago
+        )
+        create(
+          :reporting_event,
+          account: account,
+          inbox: legacy_inbox,
+          conversation: reopened_conversation,
+          user: user,
+          name: 'conversation_opened',
+          value: 3600,
+          event_start_time: 1.week.ago,
+          event_end_time: 1.week.ago
+        )
+      end
+
+      it 'uses conversation created_at as cycle start for open session counts' do
+        report = builder.build
+
+        expect(report[:open_sessions_count]).to eq(0)
+      end
     end
   end
 end

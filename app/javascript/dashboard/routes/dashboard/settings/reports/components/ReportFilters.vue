@@ -40,6 +40,11 @@ const props = defineProps({
     type: Boolean,
     default: true,
   },
+  // FORK: preserve extra query params when updating date/business-hours filters
+  preserveQueryKeys: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const emit = defineEmits(['filterChange']);
@@ -177,7 +182,14 @@ const updateURLParams = () => {
     range: selectedDateRange.value,
   });
 
-  router.replace({ query: { ...params } });
+  const preservedParams = props.preserveQueryKeys.reduce((accumulator, key) => {
+    if (route.query[key] != null) {
+      accumulator[key] = route.query[key];
+    }
+    return accumulator;
+  }, {});
+
+  router.replace({ query: { ...preservedParams, ...params } });
 };
 
 const emitChange = () => {

@@ -208,9 +208,6 @@ onMounted(() => {
   store.dispatch('teams/get');
   store.dispatch('labels/get');
   initializeFromURL();
-  if (hasActiveFilters.value) {
-    emitChange();
-  }
 });
 </script>
 
