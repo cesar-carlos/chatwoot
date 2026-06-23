@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'set'
-
 class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   LOOKBACK_HOURS = 6
   PAGE_SIZE = 50
@@ -55,16 +53,26 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
       records, total_pages = fetch_reconciliation_page(page)
       break if records.blank?
 
-      records.each do |entry|
-        next if skip_reconciliation_entry?(entry)
-
-        known_source_ids << extract_source_id(entry) if import_message(entry)
-      end
-      break if page >= MAX_PAGES
-      break if total_pages.zero? || page >= total_pages
+      process_reconciliation_records(records)
+      break unless continue_reconciliation_pages?(page, total_pages)
 
       page += 1
     end
+  end
+
+  def process_reconciliation_records(records)
+    records.each do |entry|
+      next if skip_reconciliation_entry?(entry)
+
+      known_source_ids << extract_source_id(entry) if import_message(entry)
+    end
+  end
+
+  def continue_reconciliation_pages?(page, total_pages)
+    return false if page >= MAX_PAGES
+    return false if total_pages.zero?
+
+    page < total_pages
   end
 
   def fetch_reconciliation_page(page)
