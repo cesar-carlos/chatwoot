@@ -203,5 +203,38 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
   def api_client
     @api_client ||= Custom::Whatsapp::Evolution::ApiClient.for_channel(whatsapp_channel)
   end
+
+  # FORK: share contact card
+  def contact_attachment?(message)
+    message.attachments.one? && message.attachments.first.contact?
+  end
+
+  def send_contact_card_message(phone_number, message)
+    attachment = message.attachments.first
+    response = api_client.send_contact(
+      number: phone_number,
+      contact: [build_evolution_contact_payload(attachment)],
+      quoted: build_quoted_context(phone_number, message),
+      delay: outbound_delay
+    )
+    message_id = process_response(response, message)
+    mark_incoming_read_after_reply(phone_number, message) if message_id.present?
+    message_id
+  end
+
+  def build_evolution_contact_payload(attachment)
+    entry = Whatsapp::ContactMessagePayloadBuilder.build(attachment)
+    phone_digits = attachment.fallback_title.to_s.gsub(/\D/, '')
+    full_name = entry.dig(:name, :formatted_name).presence || phone_digits
+
+    payload = {
+      fullName: full_name,
+      wuid: phone_digits,
+      phoneNumber: phone_digits
+    }
+    company = entry.dig(:org, :company)
+    payload[:organization] = company if company.present?
+    payload
+  end
 end
 # rubocop:enable Metrics/ModuleLength

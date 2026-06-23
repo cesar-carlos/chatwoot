@@ -99,5 +99,28 @@ RSpec.describe Custom::Messages::SharedContactHandler do
         expect { attach_shared_contact }.to raise_error(StandardError, 'Invalid phone number')
       end
     end
+
+    context 'when user lacks share permission' do
+      let(:user) { create(:user, account: account) }
+
+      def attach_shared_contact
+        described_class.new(
+          account: account,
+          conversation: conversation,
+          params: params,
+          attachments: attachments,
+          user: user
+        ).attach_to(message)
+      end
+
+      before do
+        account_user = AccountUser.find_by(user: user, account: account)
+        allow(account_user).to receive(:permissions).and_return(['conversation_manage'])
+      end
+
+      it 'raises an error' do
+        expect { attach_shared_contact }.to raise_error(StandardError, 'Not authorized to share this contact')
+      end
+    end
   end
 end

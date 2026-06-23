@@ -23,7 +23,9 @@ const attachment = computed(() => {
 });
 
 const phoneNumber = computed(() => {
-  return attachment.value.fallbackTitle;
+  return (
+    attachment.value?.fallbackTitle ?? attachment.value?.fallback_title ?? ''
+  );
 });
 
 const contactName = computed(() => {
@@ -54,7 +56,7 @@ const showSaveAction = computed(
 
 const senderTranslationKey = computed(() =>
   variant.value === MESSAGE_VARIANTS.AGENT
-    ? ''
+    ? 'CONVERSATION.SHARED_ATTACHMENT.CONTACT_OUTGOING'
     : 'CONVERSATION.SHARED_ATTACHMENT.CONTACT'
 );
 
@@ -91,7 +93,7 @@ function openContactNewTab(contactId) {
 
 async function addContact() {
   try {
-    let contact = await filterContactByNumber(rawPhoneNumber);
+    let contact = await filterContactByNumber(rawPhoneNumber.value);
     if (!contact) {
       contact = await $store.dispatch('contacts/create', getContactObject());
       useAlert(t('CONTACT_FORM.SUCCESS_MESSAGE'));

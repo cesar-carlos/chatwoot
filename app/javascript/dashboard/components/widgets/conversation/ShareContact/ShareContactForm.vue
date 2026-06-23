@@ -19,6 +19,10 @@ const props = defineProps({
     type: [Number, String, null],
     default: null,
   },
+  isSharing: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(['select', 'quickShare']);
@@ -142,6 +146,7 @@ const onQuickShare = () => {
           v-if="conversationPhoneNumber"
           variant="ghost"
           size="xs"
+          :disabled="isSharing"
           :label="t('CONVERSATION.SHARE_CONTACT.MODAL.QUICK_SHARE')"
           @click="onQuickShare"
         />

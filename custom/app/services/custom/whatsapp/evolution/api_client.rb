@@ -160,6 +160,18 @@ class Custom::Whatsapp::Evolution::ApiClient
     post("/message/sendList/#{@instance_name}", body)
   end
 
+  # FORK: share contact card
+  def send_contact(number:, contact:, quoted: nil, delay: nil)
+    body = {
+      number: normalize_number(number),
+      contact: contact
+    }
+    body[:quoted] = quoted if quoted.present?
+    body[:delay] = delay if delay.present?
+
+    post("/message/sendContact/#{@instance_name}", body)
+  end
+
   def get_base64_from_media_message(message:, convert_to_mp4: false)
     body = { message: message }
     body[:convertToMp4] = true if convert_to_mp4

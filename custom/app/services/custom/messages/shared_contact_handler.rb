@@ -47,15 +47,21 @@ class Custom::Messages::SharedContactHandler
     contact
   end
 
-  def authorize_contact!(contact)
+  def authorize_contact!(_contact)
     return if @user.blank?
 
-    user_context = {
-      user: @user,
-      account: @account,
-      account_user: AccountUser.find_by(user: @user, account: @account)
-    }
-    raise StandardError, 'Not authorized to share this contact' unless ContactPolicy.new(user_context, contact).show?
+    account_user = AccountUser.find_by(user: @user, account: @account)
+    raise StandardError, 'Not authorized to share this contact' unless can_share_contact?(account_user)
+  end
+
+  def can_share_contact?(account_user)
+    return false if account_user.blank?
+
+    permissions = account_user.permissions.map(&:to_s)
+    return true if permissions.intersect?(%w[administrator agent])
+    return true if permissions.include?('contact_manage')
+
+    false
   end
 
   def build_attachment(message, contact)
