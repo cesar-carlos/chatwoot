@@ -8,7 +8,8 @@ Hoje o repositório tem um provider alternativo **implementado** e outros **apen
 |----------|-------|--------|
 | Evolution API (Node/Baileys) | `evolution` | ✅ código em `custom/` + specs |
 | Evolution Go (whatsmeow) | `evolution_go` | 📄 planejamento |
-| Z-API / NotificaMe / genéricos | — | 📄 comparação apenas |
+| Z-API | `zapi` | ✅ [z-api/](./z-api/) |
+| NotificaMe / genéricos | — | 📄 comparação apenas |
 
 Status consolidado: [STATUS.md](./STATUS.md)
 
