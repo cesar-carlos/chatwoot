@@ -225,6 +225,8 @@ Chamado em `EvolutionController#sanitized_job_payload` e no prepend `WhatsappEve
 
 Herda `Whatsapp::Providers::BaseService`. Registrado via `MessagingProvider::Registry`.
 
+Fixtures relacionadas: [spec/fixtures/evolution/README.md](../../../../spec/fixtures/evolution/README.md)
+
 ### API pública (contrato BaseService)
 
 | Método | Implementação |
@@ -592,7 +594,7 @@ spec/custom/
 └── jobs/webhooks/whatsapp_events_job_spec.rb  # prepend evolution
 ```
 
-Fixtures: [spec/fixtures/evolution/](../../../spec/fixtures/evolution/README.md)
+Fixtures: [spec/fixtures/evolution/](../../../../spec/fixtures/evolution/README.md)
 
 ---
 

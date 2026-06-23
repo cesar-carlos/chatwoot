@@ -3,7 +3,6 @@
 class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
   queue_as :low
 
-  ENRICHMENT_COOLDOWN = 24.hours
   DEDUP_TTL = 10.minutes.to_i
 
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
@@ -38,11 +37,6 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
   end
 
   def recently_enriched?(contact)
-    enriched_at = contact.additional_attributes['evolution_enriched_at']
-    return false if enriched_at.blank?
-
-    Time.zone.parse(enriched_at) > ENRICHMENT_COOLDOWN.ago
-  rescue ArgumentError
-    false
+    !Custom::Whatsapp::Evolution::ContactEnrichmentService.enrichment_stale?(contact)
   end
 end

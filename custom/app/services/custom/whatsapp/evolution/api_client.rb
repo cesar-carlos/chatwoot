@@ -5,6 +5,16 @@ class Custom::Whatsapp::Evolution::ApiClient
   REQUEST_TIMEOUT = 30
   OPEN_TIMEOUT = 10
   TEXT_BODY_VALIDATION_PATTERN = /text(?:message)?/i
+  NETWORK_ERRORS = [
+    HTTParty::Error,
+    SocketError,
+    EOFError,
+    Errno::ECONNREFUSED,
+    Errno::ECONNRESET,
+    Net::OpenTimeout,
+    Net::ReadTimeout,
+    Timeout::Error
+  ].freeze
 
   def self.for_channel(channel)
     config = channel.provider_config || {}
@@ -249,6 +259,11 @@ class Custom::Whatsapp::Evolution::ApiClient
     options[:open_timeout] = OPEN_TIMEOUT
 
     HTTParty.public_send(method, "#{@base_url}#{path}", options)
+  rescue *NETWORK_ERRORS => e
+    raise Custom::Whatsapp::Evolution::ApiError.new(
+      "Evolution API request failed: #{method.to_s.upcase} #{path}",
+      body: e.message
+    )
   end
 
   def normalize_number(phone)

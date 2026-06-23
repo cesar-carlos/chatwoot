@@ -37,6 +37,8 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
   def import_contacts_page(contacts, page)
     remote_jids = runtime.cursor[:remote_jids] || []
     contacts.each do |record|
+      next unless record.is_a?(Hash)
+
       remote_jids << record['remoteJid'] if record['remoteJid'].present?
       import_contact_record(record)
     end
@@ -83,6 +85,13 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
   end
 
   def enqueue_contact_enrichment(contact, remote_jid, push_name, profile_pic_url)
+    return unless Custom::Whatsapp::Evolution::ContactEnrichmentService.should_enqueue?(
+      contact: contact,
+      remote_jid: remote_jid,
+      push_name: push_name,
+      profile_pic_url: profile_pic_url
+    )
+
     Custom::Whatsapp::Evolution::ContactEnrichmentJob.perform_later(
       runtime.channel.id,
       contact.id,

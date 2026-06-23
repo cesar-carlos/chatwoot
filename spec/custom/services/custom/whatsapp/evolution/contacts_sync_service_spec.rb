@@ -55,4 +55,29 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactsSyncService do
     expect(account.contacts.count).to eq(0)
     expect(Custom::Whatsapp::Evolution::ContactEnrichmentJob).not_to have_received(:perform_later)
   end
+
+  it 'skips redundant enrichment jobs when the contact was enriched recently with the same payload' do
+    contact = create(
+      :contact,
+      account: account,
+      name: 'Matheus Teixeira',
+      phone_number: '+5566996971841',
+      additional_attributes: {
+        'evolution_remote_jid' => '556696971841@s.whatsapp.net',
+        'evolution_push_name' => 'Matheus Teixeira',
+        'evolution_enriched_at' => Time.current.utc.iso8601(3)
+      }
+    )
+    create(:contact_inbox, contact: contact, inbox: channel.inbox, source_id: '5566996971841')
+
+    described_class.new(
+      channel: channel,
+      data: {
+        'remoteJid' => '556696971841@s.whatsapp.net',
+        'pushName' => 'Matheus Teixeira'
+      }
+    ).perform
+
+    expect(Custom::Whatsapp::Evolution::ContactEnrichmentJob).not_to have_received(:perform_later)
+  end
 end

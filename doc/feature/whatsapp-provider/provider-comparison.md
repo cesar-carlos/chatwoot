@@ -232,7 +232,7 @@ Parametrizar por `provider_config['adapter']` se múltiplos gateways compartilha
 
 ## NotificaMe (fork BR)
 
-Plano detalhado em [notificame-whatsapp-integration/plano-geral.md](../notificame-whatsapp-integration/plano-geral.md).
+O plano detalhado do NotificaMe ainda não está versionado neste repositório.
 
 | Aspecto | Nota |
 |---------|------|

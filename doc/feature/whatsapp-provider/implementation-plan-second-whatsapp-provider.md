@@ -82,7 +82,7 @@ Providers gateway no fork (jun/2026):
 |----------|-----|---------------|
 | `evolution` (Node) | [evolution-api/](./evolution-api/README.md) | Fase 0–3 em `custom/` |
 | `evolution_go` (Go) | [evolution-go/](./evolution-go/README.md) | Somente documentação |
-| NotificaMe | [notificame-whatsapp-integration/](../notificame-whatsapp-integration/plano-geral.md) | Planejado |
+| NotificaMe | documentação ainda não versionada neste repositório | Planejado |
 
 Fase 0 (registry + prepends) é **compartilhada** entre `evolution` e `evolution_go` — ver [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
 

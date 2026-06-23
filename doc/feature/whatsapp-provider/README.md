@@ -1,101 +1,80 @@
-# WhatsApp Provider — Documentação
+# WhatsApp Provider — visão geral
 
-Esta pasta consolida análise e decisões para integrar **providers WhatsApp alternativos** (Evolution API, Z-API, NotificaMe, gateways Baileys) no fork Chatwoot — em contraste com a **Cloud API / WABA oficial** da Meta.
+Documentação do fork para providers WhatsApp alternativos em `Channel::Whatsapp`.
 
-Objetivo: orientar implementadores sobre **o que reusar**, **onde o código bloqueia**, **como adaptar com merge-safety** (`custom/`, `prepend_mod_with`, `# FORK:`) e **o que muda** ao abandonar a API oficial.
+Hoje o repositório tem um provider alternativo **implementado** e outros **apenas documentados**:
 
-**Status código + docs:** [STATUS.md](./STATUS.md)
+| Provider | Chave | Estado |
+|----------|-------|--------|
+| Evolution API (Node/Baileys) | `evolution` | ✅ código em `custom/` + specs |
+| Evolution Go (whatsmeow) | `evolution_go` | 📄 planejamento |
+| Z-API / NotificaMe / genéricos | — | 📄 comparação apenas |
 
----
+Status consolidado: [STATUS.md](./STATUS.md)
 
-## Estado dos providers (jun/2026)
+## Como usar esta pasta
 
-| Provider | Documentação | Código fork |
-|----------|--------------|-------------|
-| **Evolution API** (`evolution`) | [evolution-api/](./evolution-api/) | ✅ Fase 0–3 em `custom/` |
-| **Evolution Go** (`evolution_go`) | [evolution-go/](./evolution-go/) | ❌ planejamento |
-| Z-API, NotificaMe | comparação / pasta NotificaMe | ❌ |
+| Se você precisa... | Leia primeiro |
+|--------------------|---------------|
+| Entender o que já existe no código | [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) |
+| Ver o estado real por provider | [STATUS.md](./STATUS.md) |
+| Avaliar o que ainda bloqueia um novo provider | [gaps-and-blockers.md](./gaps-and-blockers.md) |
+| Implementar um novo provider | [implementation-decision-tree.md](./implementation-decision-tree.md) |
+| Seguir o plano estrutural do fork | [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) |
+| Comparar gateways | [provider-comparison.md](./provider-comparison.md) |
+| Ver paridade funcional | [feature-mapping.md](./feature-mapping.md) |
 
----
+## Estado atual do código
 
-## Por onde começar
+O fork já estendeu o fluxo padrão do Chatwoot para `evolution` sem alterar o caminho cloud:
 
-| Perfil | Documento |
-|--------|-----------|
-| **Implementador novo** | [implementation-decision-tree.md](./implementation-decision-tree.md) → [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) |
-| **Revisão técnica do código atual** | [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) → [gaps-and-blockers.md](./gaps-and-blockers.md) |
-| **Escolha de gateway** | [provider-comparison.md](./provider-comparison.md) |
-| **Provider Evolution API (piloto Node)** | [evolution-api/README.md](./evolution-api/README.md) → [evolution-api/implementation-plan.md](./evolution-api/implementation-plan.md) |
-| **Provider Evolution Go** | [evolution-go/README.md](./evolution-go/README.md) → [evolution-go/status.md](./evolution-go/status.md) |
-| **Checklist feature a feature** | [feature-mapping.md](./feature-mapping.md) |
+- `app/models/channel/whatsapp.rb`: `PROVIDERS` inclui `evolution`
+- `custom/lib/messaging_provider/registry.rb`: registry de providers alternativos
+- `custom/app/models/custom/channel/whatsapp.rb`: dispatch por registry + sync/mascara de config
+- `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb`: roteamento e normalização de webhooks Evolution
+- `custom/app/services/custom/conversations/message_window_service.rb`: bypass da janela de 24h para `evolution`
+- `custom/app/services/custom/whatsapp/evolution/`: adapter REST, normalizer, provisionamento, sync e import
+- `custom/app/javascript/dashboard/routes/dashboard/settings/inbox/channels/Evolution.vue`: wizard do provider
 
----
+Resumo importante:
 
-## Índice
+- Só `evolution` está ligado ao código hoje.
+- `evolution_go` ainda **não** está em `PROVIDERS`, no registry ou nas rotas.
+- Voz continua sendo assunto separado em `doc/feature/whatsapp-voice/`.
 
-| Documento | Conteúdo |
-|-----------|----------|
-| [STATUS.md](./STATUS.md) | **Revisão consolidada** — código vs documentação por provider |
-| [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) | Estado atual no código: providers, webhooks, incoming, frontend, extension points |
-| [gaps-and-blockers.md](./gaps-and-blockers.md) | **Lacunas que bloqueiam** providers alternativos + mitigações |
-| [feature-mapping.md](./feature-mapping.md) | Mapeamento feature oficial → implementação gateway |
-| [implementation-decision-tree.md](./implementation-decision-tree.md) | Árvore de decisão, fases, o que reusar vs criar |
-| [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) | Plano concreto, fases, critérios de done e estratégia de fork |
-| [provider-comparison.md](./provider-comparison.md) | Evolution API, Z-API, Baileys genérico, NotificaMe |
-| [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) | Restrições Meta evitadas vs riscos do gateway; impacto em voz |
-| [evolution-api/](./evolution-api/) | **Evolution API (Node/Baileys):** integração atual, APIs, webhooks, regras de negócio, plano de fases |
-| [evolution-go/](./evolution-go/) | **Evolution Go (whatsmeow):** integração Chatwoot — [status.md](./evolution-go/status.md), [implementation-plan.md](./evolution-go/implementation-plan.md) |
+## Estrutura da documentação
 
----
+### Base do fork
+
+| Documento | Papel |
+|-----------|-------|
+| [STATUS.md](./STATUS.md) | Fonte curta de verdade sobre código e próximos passos |
+| [architecture-current-whatsapp.md](./architecture-current-whatsapp.md) | Contratos e pontos de extensão do Chatwoot |
+| [gaps-and-blockers.md](./gaps-and-blockers.md) | Riscos e lacunas ainda abertas |
+| [implementation-decision-tree.md](./implementation-decision-tree.md) | Escolha da abordagem antes de codar |
+| [implementation-plan-second-whatsapp-provider.md](./implementation-plan-second-whatsapp-provider.md) | Plano estrutural para novos providers |
+| [provider-comparison.md](./provider-comparison.md) | Escolha de gateway |
+| [feature-mapping.md](./feature-mapping.md) | Mapa de features por capacidade |
+| [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md) | Trade-offs da API oficial vs não oficial |
+
+### Providers específicos
+
+| Pasta | Papel |
+|-------|-------|
+| [evolution-api/](./evolution-api/README.md) | Provider em produção no fork: contratos, operação, troubleshooting |
+| [evolution-go/](./evolution-go/README.md) | Provider planejado: decisões, contratos e plano antes do código |
 
 ## Relação com outras áreas
 
 | Área | Documento |
 |------|-----------|
-| Integração NotificaMe (mensagens) | [notificame-whatsapp-integration/plano-geral.md](../notificame-whatsapp-integration/plano-geral.md) |
-| Voz WhatsApp oficial (Meta Calling API) | [whatsapp-voice/README.md](../whatsapp-voice/README.md) |
-| Segundo provider de **chamadas** (se SDP disponível) | [whatsapp-voice/second-provider-strategy.md](../whatsapp-voice/second-provider-strategy.md) |
-| Twilio PSTN vs WhatsApp nativo | [whatsapp-voice/twilio-vs-whatsapp-native.md](../whatsapp-voice/twilio-vs-whatsapp-native.md) |
-| Disciplina de branch e merge (fork) | [fork-workflow.mdc](../../../.cursor/rules/fork-workflow.mdc) |
-| Inventário de divergências FORK | `bin/fork-inventory` → `doc/fork-divergences.txt` |
+| Voz WhatsApp oficial / segundo provider de voz | [../whatsapp-voice/README.md](../whatsapp-voice/README.md) |
+| Estratégia de voz não oficial | [../whatsapp-voice/second-provider-strategy.md](../whatsapp-voice/second-provider-strategy.md) |
+| Integração NotificaMe | documentação ainda não versionada neste repositório |
+| Regras do fork / merge safety | [../../../.cursor/rules/fork-workflow.mdc](../../../.cursor/rules/fork-workflow.mdc) |
 
----
+## Regra prática de manutenção
 
-## Visão geral (jun/2026)
-
-### Recomendação arquitetural
-
-1. **Mensagens:** estender `Channel::Whatsapp` com novo `provider` (padrão 360dialog), código em `custom/`, **normalizer de webhook** → payload flat → `IncomingMessageService`.
-2. **Voz:** canal **independente** para gateways (`Channel::WhatsappCallGateway` / tile `whatsapp_call_gateway`); Meta oficial usa `Channel::Whatsapp` + tile `whatsapp_call` — ver [whatsapp-voice/README.md](../whatsapp-voice/README.md).
-3. **Referência de contrato:** `WhatsappCloudService` + `IncomingMessageWhatsappCloudService` (oficial); `Whatsapp360DialogService` (segundo provider no mesmo model).
-4. **Não editar** serviços cloud existentes — adapters finos em `custom/`.
-5. **Whitelist de provider:** exige edição mínima com `# FORK:` em `Channel::Whatsapp::PROVIDERS`; prepend sozinho não altera a validação já carregada.
-
-### Extension points principais
-
-| # | Ponto | Mecanismo |
-|---|-------|-----------|
-| 1 | Whitelist de provider | `# FORK:` mínimo em `PROVIDERS` |
-| 2 | Webhook incoming | `Webhooks::WhatsappEventsJob.prepend` + `GatewayNormalizer` |
-| 3 | Dispatch de provider | `Channel::Whatsapp.prepend` + `MessagingProvider::Registry` |
-| 4 | Regras 24h/templates | `MessageWindowService.prepend` + capability por provider |
-
-### Principais lacunas no código
-
-- ✅ Mitigado para **`evolution`**: registry, prepends, webhook dedicado, bypass 24h
-- ❌ `evolution_go`, `zapi`, `notificame` ainda fora de `PROVIDERS`
-- ⚠️ Upstream ainda envia non-cloud → 360dialog **sem** prepend (gateways precisam registry)
-
-Detalhes: [gaps-and-blockers.md](./gaps-and-blockers.md) · [STATUS.md](./STATUS.md).
-
-### Restrições que desaparecem (e as que não desaparecem)
-
-- **Somem na API:** templates WABA, janela 24h Meta, embedded signup, Calling API enrollment
-- **Permanecem:** ToS WhatsApp, risco de ban, sessão/QR, compliance LGPD
-- **Chatwoot ainda pode impor:** janela 24h e templates via `SendOnWhatsappService` — bypass necessário no fork
-
-Ver [official-vs-unofficial-restrictions.md](./official-vs-unofficial-restrictions.md).
-
----
-
-*Última atualização: jun/2026 — Evolution Node em código; Evolution Go documentado; ver [STATUS.md](./STATUS.md).*
+- Atualize [STATUS.md](./STATUS.md) quando o código mudar de fase.
+- Atualize o `README.md` do provider ao abrir ou fechar uma frente de implementação.
+- Prefira ajustar o documento específico do provider em vez de repetir o mesmo contexto aqui.
