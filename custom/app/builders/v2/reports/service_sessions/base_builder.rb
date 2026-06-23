@@ -30,10 +30,19 @@ class V2::Reports::ServiceSessions::BaseBuilder
     ActiveModel::Type::Boolean.new.cast(params[:business_hours])
   end
 
+  def open_sessions_base_scope(apply_label_filter: true)
+    scope = account.conversations.where(status: [:open, :pending]).joins(:inbox)
+    apply_conversation_filters(scope, apply_label_filter: apply_label_filter)
+  end
+
   def open_sessions_scope(apply_label_filter: true)
-    scope = account.conversations.where(status: [:open, :pending])
-    scope = apply_conversation_filters(scope, apply_label_filter: apply_label_filter)
-    apply_open_date_filter(scope)
+    scope = open_sessions_base_scope(apply_label_filter: apply_label_filter).joins(open_cycle_join_sql)
+    apply_open_session_date_filter(scope)
+  end
+
+  # Snapshot of currently open sessions (entity filters only) for backlog aging metrics.
+  def open_sessions_snapshot_scope(apply_label_filter: true)
+    open_sessions_base_scope(apply_label_filter: apply_label_filter).joins(open_cycle_join_sql)
   end
 
   def closed_sessions_scope(apply_label_filter: true)
@@ -91,11 +100,9 @@ class V2::Reports::ServiceSessions::BaseBuilder
       .distinct
   end
 
-  def apply_open_date_filter(scope)
+  def apply_open_session_date_filter(scope)
     return scope if since_time.blank? && until_time.blank?
 
-    # FORK: align open-session date filter with cycle start (conversation_opened), not last activity.
-    scope = scope.joins(open_cycle_join_sql)
     session_time_sql = open_session_started_at_sql
 
     if since_time.present? && until_time.present?

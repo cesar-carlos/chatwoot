@@ -1,5 +1,12 @@
 module V2::Reports::ServiceSessions::MetricsHelper
-  OPEN_SESSION_STARTED_AT_SQL = 'COALESCE(recent_open_events.latest_opened_at, conversations.created_at)'.freeze
+  # FORK: align with Custom::Conversations::ResolutionCycle — cycle start only when lock is ON.
+  OPEN_SESSION_STARTED_AT_SQL = <<~SQL.squish.freeze
+    CASE
+      WHEN inboxes.lock_to_single_conversation
+        THEN COALESCE(recent_open_events.latest_opened_at, conversations.created_at)
+      ELSE conversations.created_at
+    END
+  SQL
   OPEN_SESSION_AGE_SECONDS_SQL = "EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - #{OPEN_SESSION_STARTED_AT_SQL}))".freeze
 
   private
@@ -18,7 +25,7 @@ module V2::Reports::ServiceSessions::MetricsHelper
   end
 
   def open_sessions_aging_stats
-    scope = open_sessions_scope.joins(open_cycle_join_sql)
+    scope = open_sessions_snapshot_scope
 
     avg_age_seconds, p95_age_seconds, over_24h, over_72h, over_7d = scope.unscope(:order).pick(
       Arel.sql("AVG(#{OPEN_SESSION_AGE_SECONDS_SQL})"),
