@@ -375,6 +375,7 @@ export default {
         this.isAWhatsAppChannel ||
         this.isAFacebookInbox ||
         this.isAPIInbox ||
+        this.isAWebWidgetInbox ||
         this.isAnInstagramChannel ||
         this.isALineChannel ||
         this.isATiktokChannel ||

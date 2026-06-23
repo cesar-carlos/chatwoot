@@ -209,6 +209,44 @@ RSpec.describe '/api/v1/widget/messages', type: :request do
         expect(response).to have_http_status(:success)
         expect(conversation.reload.open?).to be(true)
       end
+
+      context 'when lock_to_single_conversation is enabled' do
+        before { web_widget.inbox.update!(lock_to_single_conversation: true) }
+
+        it 'reopens the resolved conversation instead of creating a new one' do
+          conversation.update!(status: :resolved)
+          initial_count = contact.conversations.count
+
+          message_params = { content: 'hello again', timestamp: Time.current }
+          post api_v1_widget_messages_url,
+               params: { website_token: web_widget.website_token, message: message_params },
+               headers: { 'X-Auth-Token' => token },
+               as: :json
+
+          expect(response).to have_http_status(:success)
+          expect(contact.conversations.count).to eq(initial_count)
+          expect(conversation.reload).to be_open
+        end
+      end
+
+      context 'when lock_to_single_conversation is disabled' do
+        before { web_widget.inbox.update!(lock_to_single_conversation: false) }
+
+        it 'creates a new conversation after the previous one is resolved' do
+          conversation.update!(status: :resolved)
+
+          message_params = { content: 'hello again', timestamp: Time.current }
+          post api_v1_widget_messages_url,
+               params: { website_token: web_widget.website_token, message: message_params },
+               headers: { 'X-Auth-Token' => token },
+               as: :json
+
+          expect(response).to have_http_status(:success)
+          expect(contact.conversations.count).to eq(2)
+          expect(conversation.reload).to be_resolved
+          expect(contact.conversations.order(:id).last).to be_open
+        end
+      end
     end
   end
 
