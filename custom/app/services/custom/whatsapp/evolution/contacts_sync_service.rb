@@ -22,10 +22,6 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
 
   attr_reader :channel, :inbox, :config
 
-  def runtime
-    @runtime ||= Struct.new(:config).new(config)
-  end
-
   def sync_record(record)
     remote_jid = record[:remoteJid].to_s
     return if skip_remote_jid?(remote_jid)

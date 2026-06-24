@@ -154,6 +154,49 @@ T5 (specs) — ✅ ~42 examples em `spec/custom/` (Evolution provider) + Playwri
 | `ApiClient.for_channel` | ✅ |
 | `validate_provider_config?` exige `connectionState` → `open` | ✅ |
 
+**Revisão (2026-06-24 — auditoria completa):**
+
+| Item | Categoria | Status |
+|------|-----------|--------|
+| **Bug:** log `params[:instance]` no `WhatsappEventsJob` sempre vazio (controller envia `instance_name`) | bug | ✅ corrigido → `evolution_instance_name(params)` |
+| **Bug:** `MessageEditSyncService` — `source_id` sintético com timestamp criava duplicatas se mesmo webhook disparasse 2× em segundos diferentes | bug | ✅ corrigido → suffix estável `-edited` |
+| **Coupling:** `ConnectionEvents` usava `.send(:private_method)` em `ConnectionService` | acoplamento | ✅ corrigido → métodos `protected`; chamadas diretas |
+| **Duplicação:** `outgoing_content`, `outgoing_media_message?`, `media_caption`, `extract_fallback_text`, `message_timestamp`, `enqueue_outgoing_media_download!` copiados em `PhoneOutgoingSyncService` e `Import::MessagesImporter` | duplicação | ✅ extraído → `OutgoingMessageHelper` |
+| **God module:** `Custom::Message` misturava ciclo de conversa Evolution + sync delete + workflow rules (3 responsabilidades) | anti-pattern | ✅ dividido → `EvolutionConversationCycle` + `EvolutionDeleteSync` + `WorkflowRulesScheduler` |
+| **Doc:** `sign_delimiter` documentado como implementado mas nunca lido pelo código | doc gap | ✅ implementado em `EvolutionServiceOutbound#sign_delimiter` (jun/2026) |
+| **Doc:** lista de "sem toggle na UI" desatualizada — todos os campos agora expostos em `EvolutionSettingsPage.vue` | doc gap | ✅ atualizado em `inbox-business-rules.md` |
+| **Doc:** proxy documentado como "Fase 2" em `api-reference.md` mas implementado desde Fase 1 | doc gap | ✅ corrigido em `api-reference.md` |
+| **Doc:** ausência de aviso sobre suporte parcial a grupos (`groups_ignore: false`) | doc gap | ✅ adicionado em `inbox-business-rules.md` |
+
+**Revisão (2026-06-24 — continuação):**
+
+| Item | Categoria | Status |
+|------|-----------|--------|
+| `sign_delimiter` lido de `provider_config` em `EvolutionServiceOutbound` | funcionalidade | ✅ |
+| `ContactEnrichmentJob` — lock in-flight liberado no `ensure` (retries Sidekiq funcionam) | bug | ✅ |
+| `ContactEnrichmentService#fetch_and_apply_profile!` — não re-levanta após log (evita retry storm) | bug/perf | ✅ |
+| `should_enqueue?` antes de enfileirar enrichment no `IncomingMessageIdentifierHelper` | perf | ✅ |
+| `ContactsSyncService` — removido `runtime` Struct morto | cleanup | ✅ |
+| `LostMessagesReconciliationService` — `known_source_id?` lazy (sem carregar 6h de msgs em memória) | perf | ✅ |
+
+**Pontos abertos (não corrigidos nesta rodada):**
+
+| Item | Categoria | Risco |
+|------|-----------|-------|
+| ~~Suporte a grupos completo~~ | funcionalidade | ✅ `GroupContactService`, metadata, inbound/outbound/import |
+| ~~`validate_provider_config?` HTTP síncrono~~ | perf | ✅ cache 15s + rescues específicos |
+| ~~Specs ausentes (lista auditoria)~~ | cobertura | ✅ ampliado em `spec/custom/` (jun/2026) |
+
+**Revisão (2026-06-24 — plano melhorias Evolution):**
+
+| Item | Categoria | Status |
+|------|-----------|--------|
+| Fase 1: `validate_provider_config?` cache 15s; QR throttle 45s; quoted N+1; MediaPayload SSRF | perf/bug | ✅ |
+| Fase 2: `EvolutionMessageFilters` / `StatusMapper` / `PayloadBuilders`; `WebhookDispatcher` | refactor | ✅ |
+| Fase 3: `find_group_infos`, `GroupMetadataService`, `GroupContactService`, inbound/outbound/import grupos; UI aviso experimental | funcionalidade | ✅ |
+| Fase 4: specs `ApiClient`, `WebhookDispatcher`, grupos, jobs, `MediaAttachmentService`, `Broadcaster`, edit idempotency | cobertura | ✅ |
+| Fase 5: checklist §5.1 reopen, proxy §6, import staging, Playwright — ver `validation-checklist.md` §7 | validação | ⏸️ manual/staging |
+
 **Revisão (2026-06-21 — pós-produção):**
 
 | Item | Status |

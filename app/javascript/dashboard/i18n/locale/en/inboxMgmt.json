@@ -869,7 +869,8 @@
         "PROXY_SECTION": "Proxy",
         "GROUPS_IGNORE": {
           "LABEL": "Ignore groups",
-          "DESCRIPTION": "When enabled, group messages ({'@'}g.us) are not imported. Disable to receive group chats (requires format group messages for readability)."
+          "DESCRIPTION": "When enabled, group messages ({'@'}g.us) are not imported. Disable to receive group chats (requires format group messages for readability).",
+          "EXPERIMENTAL_WARNING": "Group support is experimental: one conversation per group, participant names are prefixed in message text, and some features (templates, calls) may not work in groups."
         },
         "REJECT_CALL": {
           "LABEL": "Reject calls",

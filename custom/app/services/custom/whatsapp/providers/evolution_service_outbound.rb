@@ -14,14 +14,14 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     sender_name = message.sender&.available_name
     return text if sender_name.blank?
 
-    "#{sender_name}:\n#{text}"
+    "#{sender_name}:#{sign_delimiter}#{text}"
   end
 
   def build_quoted_context(phone_number, message)
     reply_id = message.content_attributes[:in_reply_to_external_id]
     return nil if reply_id.blank?
 
-    original = message.conversation.messages.find_by(source_id: reply_id)
+    original = message.inbox.messages.find_by(source_id: reply_id)
     {
       key: {
         id: reply_id,
@@ -174,6 +174,10 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
 
   def sign_msg?
     ActiveModel::Type::Boolean.new.cast(provider_config['sign_msg'])
+  end
+
+  def sign_delimiter
+    provider_config['sign_delimiter'].presence || "\n"
   end
 
   def send_random_delay?

@@ -181,7 +181,7 @@ flowchart TB
 | # | Item | Status |
 |---|------|--------|
 | 3.0 | `Provisioner` — create/webhook/settings (fluxos avançados multi-step) | ✅ básico |
-| 3.1 | Botões/listas → `sendButtons` / `sendList` + mapear `input_select` | ⏸️ deferido |
+| 3.1 | Botões/listas → `sendButtons` / `sendList` + mapear `input_select` | ✅ |
 | 3.2 | Health: `connectionState` no settings ([decisions.md §18](./decisions.md)) | ✅ |
 | 3.3 | Alerta desconexão (`CONNECTION_UPDATE` → `close`) | ✅ |
 | 3.4 | Fluxo reconnect (QR novamente) | ✅ |

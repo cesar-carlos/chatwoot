@@ -77,3 +77,5 @@ class ContactInbox < ApplicationRecord
     validate_whatsapp_source_id if inbox.channel_type == 'Channel::Whatsapp'
   end
 end
+
+ContactInbox.prepend_mod_with('ContactInbox') # FORK: evolution group JID source_id

@@ -200,7 +200,7 @@ GET /settings/find/:instanceName
 
 Proxy afeta apenas o **socket Baileys** da instância (conexão WhatsApp Web) — não o tráfego Chatwoot ↔ Evolution REST.
 
-**Fase fork:** Fase 2 — UI no settings do inbox. Ver [inbox-business-rules.md §3](./inbox-business-rules.md) · [decisions.md §19](./decisions.md).
+**Fase fork:** Fase 1 (wizard) + Fase 2 (settings completo) — **implementado**. Ver [inbox-business-rules.md §3](./inbox-business-rules.md) · [decisions.md §19](./decisions.md).
 
 ### Set (por instância)
 
@@ -269,7 +269,7 @@ Retorna registro Prisma da instância. HTTP 404 se nunca configurado.
 | `proxy_username` | `username` |
 | `proxy_password` | `password` |
 
-`ConnectionService#sync_proxy!` ao salvar settings do inbox (Fase 2).
+`ConnectionService#sync_proxy!` ao salvar settings do inbox — **implementado** (Fase 1 wizard + Fase 2 settings).
 
 ---
 
@@ -463,6 +463,14 @@ Usado por `DeleteSyncService` quando `sync_delete_to_whatsapp: true` no inbox.
 | `POST /chat/fetchProfilePictureUrl/:instanceName` | `ContactEnrichmentService` |
 | `POST /chat/fetchProfile/:instanceName` | Idem |
 | `POST /chat/fetchBusinessProfile/:instanceName` | Idem |
+
+### Grupos (metadata)
+
+| Endpoint | Uso no fork |
+|----------|-------------|
+| `GET /group/findGroupInfos/:instanceName?groupJid={jid}` | `GroupMetadataService` — subject do grupo para nome do contato (`{subject} (GROUP)`); cache 1h |
+
+Query param validado contra Evolution **2.3.7** (`groupJid` URL-encoded). Fixture: `spec/fixtures/evolution/group_find_infos_response.json`.
 
 ---
 
