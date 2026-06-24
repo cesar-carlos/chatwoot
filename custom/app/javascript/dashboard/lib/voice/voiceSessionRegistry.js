@@ -2,7 +2,6 @@ import {
   useWhatsappCallSession,
   cleanupWhatsappSession,
 } from 'dashboard/composables/useWhatsappCallSession';
-import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
 import { teardownAllWavoipClients } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import {
   endActiveCall as endSdkActiveCall,
@@ -12,10 +11,20 @@ import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 
 export const VOICE_SESSION_REGISTRY = {
   [VOICE_CALL_PROVIDERS.WHATSAPP]: () => useWhatsappCallSession(),
-  [VOICE_CALL_PROVIDERS.WAVOIP]: () => useWavoipCallSession(),
 };
 
+let wavoipCallSession = null;
+
+/** Registered from WavoipConnectionHost (setup) — do not call useI18n outside setup. */
+export function registerWavoipCallSession(session) {
+  wavoipCallSession = session || null;
+}
+
 export function getBrowserVoiceSession(provider) {
+  if (provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+    return wavoipCallSession;
+  }
+
   const factory = VOICE_SESSION_REGISTRY[provider];
   if (!factory) return null;
   return factory();

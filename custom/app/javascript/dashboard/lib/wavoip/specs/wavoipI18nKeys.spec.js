@@ -1,0 +1,56 @@
+import { describe, expect, it } from 'vitest';
+import { createI18n } from 'vue-i18n';
+import en from 'dashboard/i18n/locale/en';
+import pt_BR from 'dashboard/i18n/locale/pt_BR';
+
+const messages = { en, pt_BR };
+const i18n = createI18n({
+  legacy: false,
+  locale: 'pt_BR',
+  fallbackLocale: 'en',
+  messages,
+});
+const { t } = i18n.global;
+
+const KEYS = [
+  'CONVERSATION.WAVOIP_CALL.CLIENT_UNAVAILABLE',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_NOT_READY',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_NOT_LINKED',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_DISCONNECTED',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_CONNECTING',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_HIBERNATING',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_WAITING_PAYMENT',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_INTEGRATION_ERROR',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_BUILDING',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_RESTARTING',
+  'CONVERSATION.WAVOIP_CALL.RECONNECTING',
+  'CONVERSATION.WAVOIP_CALL.DEVICE_RECONNECTING',
+  'CONVERSATION.WAVOIP_CALL.MIC_DEVICE',
+  'CONVERSATION.WAVOIP_CALL.SPEAKER_DEVICE',
+  'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE',
+  'CONVERSATION.WAVOIP_CALL.REJECTED_ELSEWHERE',
+  'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED',
+  'CONTACT_PANEL.CALL_FAILED',
+];
+
+describe('Wavoip i18n keys (pt_BR + en fallback)', () => {
+  KEYS.forEach(key => {
+    it(`compiles ${key}`, () => {
+      expect(() => t(key)).not.toThrow();
+    });
+  });
+
+  it('compiles START_CALL_DEVICE_FAILED with brace-heavy detail', () => {
+    expect(() =>
+      t('CONVERSATION.WAVOIP_CALL.START_CALL_DEVICE_FAILED', {
+        detail: 'reason {foo}; token bar',
+      })
+    ).not.toThrow();
+  });
+
+  it('compiles device panel status fallback pattern', () => {
+    expect(() =>
+      t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.OPEN', 'OPEN')
+    ).not.toThrow();
+  });
+});

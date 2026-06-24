@@ -33,14 +33,50 @@ vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
 }));
 
 import {
+  getBrowserVoiceSession,
+  registerWavoipCallSession,
   teardownBrowserVoiceSession,
   teardownWavoipActiveCall,
+  VOICE_SESSION_REGISTRY,
 } from '../voiceSessionRegistry';
+import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
 
 describe('voiceSessionRegistry', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setActivePinia(createPinia());
+  });
+
+  describe('getBrowserVoiceSession', () => {
+    it('returns the registered Wavoip session singleton', () => {
+      const session = { acceptIncomingCall: vi.fn() };
+      registerWavoipCallSession(session);
+
+      expect(getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP)).toBe(session);
+    });
+
+    it('returns null when no Wavoip session is registered', () => {
+      registerWavoipCallSession(null);
+      expect(getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP)).toBeNull();
+    });
+
+    it('never constructs useWavoipCallSession for Wavoip (useI18n must stay in setup)', () => {
+      registerWavoipCallSession(null);
+
+      expect(getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP)).toBeNull();
+      expect(useWavoipCallSession).not.toHaveBeenCalled();
+    });
+
+    it('does not register Wavoip in VOICE_SESSION_REGISTRY factories', () => {
+      expect(VOICE_SESSION_REGISTRY[VOICE_CALL_PROVIDERS.WAVOIP]).toBeUndefined();
+    });
+
+    it('clears the singleton when registerWavoipCallSession(null) is called', () => {
+      registerWavoipCallSession({ acceptIncomingCall: vi.fn() });
+      registerWavoipCallSession(null);
+
+      expect(getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP)).toBeNull();
+    });
   });
 
   describe('teardownWavoipActiveCall', () => {
