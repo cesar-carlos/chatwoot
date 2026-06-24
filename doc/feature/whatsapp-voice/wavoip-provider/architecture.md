@@ -75,7 +75,7 @@ Tabela sugerida: `channel_wavoip` (espelha padrão `channel_*`).
 | `account_id` | Conta |
 | `device_token` | Credencial dedicada; criptografar quando configurado |
 | `webhook_key` | Chave opaca rotacionável para resolver o canal |
-| `provider_config` (jsonb) | Preferências não secretas: `inbound_calls_enabled`, `id_session` |
+| `provider_config` (jsonb) | Preferências não secretas: `inbound_calls_enabled`, `incoming_call_include_administrators`, `incoming_call_offline_fallback`, `id_session`, `device_status`, `webhook_verified_at` |
 
 Métodos no model (apenas delegação — sem lógica pesada):
 
@@ -146,6 +146,8 @@ HANDLERS = {
 | `Calls::CallUpdateHandler` | Ignora regressão de status terminal | Aceitar chamada |
 | `Calls::MessageSyncService` | Bolha `voice_call` via `Voice::CallMessageBuilder` | WebRTC |
 | `Calls::Broadcaster` | ActionCable `voice_call.*` com `provider: wavoip` | — |
+| `Calls::IncomingCallRecipients` | Resolve agentes para cable + push (online → fallback configurável) | WebRTC |
+| `Calls::InboundPushService` | Notificação in-app `voice_call_incoming` | Usa `IncomingCallRecipients` |
 
 ### 3.4 Mapeamento status Wavoip → Chatwoot
 
@@ -172,13 +174,37 @@ Rotas `register_attempt` / `ack_accept` **adiadas**. `accepted_by_agent_id` via 
 
 Contrato por provider documentado em [webhook-contract §5](./webhook-contract.md#5-actioncable--contrato-por-provider). Wavoip **não** usa `voice_call.outbound_connected` nem SDP.
 
+**Destinatários inbound** — `Wavoip::Calls::IncomingCallRecipients` (usado por `Broadcaster` e `InboundPushService`):
+
+| Prioridade | Condição | Quem recebe |
+|------------|----------|-------------|
+| 1 | Há agentes **online** na lista de Agentes do inbox | `inbox.available_agents` (membros online) |
+| 2 | Ninguém online | Fallback `incoming_call_offline_fallback` em `provider_config` |
+
+Valores de `incoming_call_offline_fallback` (default: `assignee_or_inbox_members_and_administrators`):
+
+| Valor | Comportamento |
+|-------|---------------|
+| `none` | Não notifica |
+| `assignee` | Só o assignee da conversa |
+| `assignee_or_inbox_members` | Assignee; se ausente, todos os membros do inbox |
+| `assignee_or_inbox_members_and_administrators` | Assignee; se ausente, membros + admins (se `incoming_call_include_administrators` ≠ `false`) |
+
+`incoming_call_include_administrators` (default `true`): quando `false`, administradores **fora** da aba Agentes não recebem cable, push nem conexão SDK. Configurável em Settings → Chamadas → **Incoming call routing** ([inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings)).
+
+No browser, `wavoipInboxCallRouting.js` aplica a mesma regra em `useWavoipConnection`, `useWavoipCallSession` e `actionCable.js` (defesa em profundidade).
+
 ### 3.7 Serializer / API inbox
 
 | Campo | Exposição |
 |-------|-----------|
 | `device_token` | Somente admin inbox; listagem mascarada `••••{last4}` |
 | `webhook_key` | Nunca em listagens/logs; aparece somente na URL de configuração |
-| `webhook_url` | Read-only derivado de `phone_number` |
+| `webhook_url` | Read-only derivado de `webhook_key` |
+| `incoming_call_include_administrators` | Toggle de roteamento (todos os agentes do inbox) |
+| `incoming_call_offline_fallback` | Enum de fallback offline |
+| `current_user_inbox_member` | `true` se o usuário atual é membro da aba Agentes |
+| `provider_config` | Slice seguro: chaves de roteamento + `inbound_calls_enabled` |
 
 ---
 
@@ -256,6 +282,7 @@ export function useWavoipCallSession() {
 | `composables/wavoip/useWavoipNotifications.js` | ~100 | OS Notification quando aba sem foco |
 | `lib/wavoip/callStatusUI.js` | ~60 | Map SDK `CallStatus` → widget (não misturar com Rails) |
 | `lib/wavoip/wavoipDiagnosticsCollector.js` | ~120 | `iceDiagnostics`, `connectivityIssue`, `stats` (Fase 5) |
+| `lib/wavoip/wavoipInboxCallRouting.js` | ~30 | `shouldAgentReceiveWavoipCalls` — filtro SDK/cable por inbox |
 
 **Limite prático:** nenhum arquivo > ~200 linhas; extrair helpers para `lib/wavoip/`.
 

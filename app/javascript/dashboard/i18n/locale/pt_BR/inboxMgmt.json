@@ -416,6 +416,36 @@
           "ERROR_MESSAGE": "Não conseguimos criar o canal de voz"
         }
       },
+      "WAVOIP": {
+        "TITLE": "Wavoip Voice",
+        "DESC": "Conecte um token de dispositivo Wavoip para chamadas de voz no WhatsApp. Após criar a caixa de entrada, configure a URL do webhook no painel Wavoip.",
+        "INBOX_NAME": {
+          "LABEL": "Nome da caixa de entrada",
+          "PLACEHOLDER": "ex.: Suporte Chamadas",
+          "ERROR": "Informe o nome da caixa de entrada"
+        },
+        "PHONE_NUMBER": {
+          "LABEL": "Número comercial",
+          "PLACEHOLDER": "+5566999050319",
+          "HELP_TEXT": "Use o formato E.164: + seguido do código do país e do número (ex.: +5566999050319 para celular brasileiro). Deve corresponder ao número pareado no Wavoip.",
+          "ERROR": "Informe um número de telefone válido no formato E.164"
+        },
+        "DEVICE_TOKEN": {
+          "LABEL": "Token do dispositivo Wavoip",
+          "PLACEHOLDER": "Cole o token de app.wavoip.com",
+          "ERROR": "O token do dispositivo é obrigatório"
+        },
+        "INBOUND": {
+          "LABEL": "Permitir chamadas recebidas",
+          "DESCRIPTION": "Quando desativado, os agentes ainda podem fazer chamadas de saída."
+        },
+        "SETUP_NOTE": "Após a criação, copie a URL do webhook nas configurações da caixa de entrada para o painel Wavoip. A configuração permanece pendente até o primeiro evento de webhook ser recebido.",
+        "WEBHOOK_HINT": "Configure esta URL de webhook no Wavoip: {url}",
+        "SUBMIT_BUTTON": "Criar caixa de entrada Wavoip",
+        "API": {
+          "ERROR_MESSAGE": "Não foi possível criar a caixa de entrada Wavoip"
+        }
+      },
       "API_CHANNEL": {
         "TITLE": "Canal da API",
         "DESC": "Integre com canal API e comece a ajudar seus clientes.",
@@ -520,6 +550,10 @@
           "WHATSAPP_CALL": {
             "TITLE": "Chamada do WhatsApp",
             "DESCRIPTION": "Receba chamadas de voz no seu número do WhatsApp"
+          },
+          "WAVOIP": {
+            "TITLE": "Chamada Wavoip",
+            "DESCRIPTION": "Voz no WhatsApp via token de dispositivo Wavoip e webhook"
           },
           "EVOLUTION": {
             "TITLE": "Evolution API",
@@ -732,6 +766,124 @@
         "LABEL": "Mensagem de solicitação de permissão de chamada",
         "HELP_TEXT": "Exibido ao contato quando ele ainda não consentiu em receber chamadas. Deixe em branco para usar a mensagem padrão.",
         "PLACEHOLDER": "Gostaríamos de ligar para você em relação à sua conversa."
+      }
+    },
+    "WAVOIP_CALL": {
+      "PHONE_NUMBER": {
+        "LABEL": "Número comercial",
+        "HELP_TEXT": "Número WhatsApp conectado a este dispositivo Wavoip."
+      },
+      "WEBHOOK": {
+        "LABEL": "URL do webhook",
+        "HELP_TEXT": "Cole esta URL no painel Wavoip para que os eventos de chamada cheguem ao Chatwoot.",
+        "UNAVAILABLE": "A URL do webhook fica disponível para administradores após a criação da caixa de entrada.",
+        "REGENERATE": "Regenerar URL do webhook",
+        "REGENERATE_CONFIRM": "Regenerar invalida a URL atual do webhook no painel Wavoip. Atualize a URL lá antes do próximo evento de chamada.",
+        "REGENERATE_SUCCESS": "URL do webhook regenerada. Atualize-a no painel Wavoip.",
+        "CHECKLIST_TITLE": "Checklist do webhook",
+        "CHECKLIST_HELP": "Conclua estas etapas no painel Wavoip antes da primeira chamada ao vivo.",
+        "CHECKLIST_TOGGLE": "Ative o interruptor do webhook.",
+        "CHECKLIST_CALL_EVENT": "Selecione o evento CALL.",
+        "CHECKLIST_DEVICE_EVENT": "Selecione o evento DEVICE (opcional, mas recomendado).",
+        "CHECKLIST_URL": "Cole a URL do webhook acima e salve.",
+        "TEST": "Testar webhook",
+        "TEST_SUCCESS": "Teste de webhook recebido. O status deve aparecer como verificado.",
+        "TEST_PENDING": "Evento de teste enviado. Atualize a página se o status ainda estiver pendente."
+      },
+      "SETUP_STATUS": {
+        "LABEL": "Status do webhook",
+        "HELP_TEXT": "O Chatwoot verifica o webhook automaticamente quando o primeiro evento de chamada é recebido.",
+        "PENDING": "Aguardando o primeiro evento de webhook",
+        "VERIFIED": "Webhook verificado"
+      },
+      "HOW_IT_WORKS": {
+        "LABEL": "Como funciona",
+        "DESCRIPTION": "As chamadas são roteadas pelo seu dispositivo Wavoip. Os agentes atendem pelo navegador quando as chamadas recebidas estão habilitadas. Certifique-se de que o navegador do agente tenha permissão de microfone para este site."
+      },
+      "VOICE_DISABLED": {
+        "DESCRIPTION": "Chamadas de voz exigem um token de dispositivo configurado nesta caixa de entrada."
+      },
+      "DEVICE_STATUS": {
+        "LABEL": "Status do dispositivo",
+        "HELP_TEXT": "Status ao vivo do WhatsApp e WebSocket do seu dispositivo Wavoip.",
+        "WHATSAPP": "WhatsApp",
+        "WAKE_UP": "Acordar dispositivo",
+        "PAIRING_CODE": "Obter código de pareamento",
+        "PAIRING_CODE_LABEL": "Código de pareamento",
+        "QR_LABEL": "QR code",
+        "RESTRICTED": "Este dispositivo está temporariamente restrito para fazer chamadas.",
+        "PHONE_MISMATCH": "O número WhatsApp vinculado não corresponde ao número desta caixa de entrada.",
+        "OPEN": "Conectado",
+        "CONNECTING": "Conectando",
+        "HIBERNATING": "Em repouso",
+        "WAITING_PAYMENT": "Aguardando pagamento",
+        "EXTERNAL_INTEGRATION_ERROR": "Erro de integração",
+        "CLOSE": "Desconectado",
+        "BUILDING": "Inicializando",
+        "RESTARTING": "Reiniciando",
+        "LOADING": "Conectando ao dispositivo…",
+        "RESTART": "Reiniciar dispositivo",
+        "LOGOUT": "Desconectar WhatsApp",
+        "RESTART_CONFIRM": "Reiniciar o dispositivo Wavoip? O WhatsApp pode desconectar brevemente.",
+        "LOGOUT_CONFIRM": "Desconectar o WhatsApp deste dispositivo? Será necessário parear novamente.",
+        "LINKED_PHONE": "Número vinculado"
+      },
+      "QR_MODAL": {
+        "TITLE": "Vincular WhatsApp",
+        "DESCRIPTION": "Escaneie o QR code com o WhatsApp no celular para conectar este dispositivo da caixa de entrada.",
+        "LOADING": "Carregando QR code…",
+        "REFRESH": "Atualizar QR code",
+        "CONNECTED": "WhatsApp vinculado com sucesso.",
+        "SCAN_HINT": "Abra o WhatsApp → Aparelhos conectados → Conectar um aparelho e escaneie este código.",
+        "PAIRING_HINT": "Ou digite este código de pareamento no celular em vez de escanear.",
+        "PAIRING_CODE": "Código de pareamento: {code}",
+        "REFRESH_ERROR": "Não foi possível carregar o QR code. Tente atualizar.",
+        "STATUS": "Status do dispositivo: {status}"
+      },
+      "CONNECTION_STATUS": {
+        "LABEL": "WebSocket",
+        "CONNECTED": "Conectado",
+        "DISCONNECTED": "Desconectado",
+        "RECONNECTING": "Reconectando"
+      },
+      "DIAGNOSTICS": {
+        "COPY": "Copiar diagnóstico",
+        "COPIED": "Diagnóstico copiado para a área de transferência."
+      },
+      "ROUTING": {
+        "LABEL": "Roteamento de chamadas recebidas",
+        "DESCRIPTION": "Defina quais agentes recebem alertas de chamada recebida e o toque no navegador para esta caixa de entrada.",
+        "INCLUDE_ADMINISTRATORS": {
+          "LABEL": "Incluir administradores da conta",
+          "DESCRIPTION": "Quando ativado, administradores que não estão listados em Agentes também podem receber chamadas recebidas desta caixa de entrada.",
+          "DISABLED_HINT": "Não se aplica quando o fallback offline está definido como não notificar ninguém."
+        },
+        "NOTIFY_BUSY_AGENTS": {
+          "LABEL": "Notificar agentes ocupados",
+          "DESCRIPTION": "Quando nenhum agente estiver online, também tocar para agentes da caixa de entrada com status ocupado antes de aplicar o fallback offline."
+        },
+        "OFFLINE_FALLBACK": {
+          "LABEL": "Quando nenhum agente estiver online",
+          "DESCRIPTION": "Agentes online da caixa de entrada sempre recebem as chamadas primeiro. Esta configuração se aplica apenas quando nenhum deles está online.",
+          "OPTIONS": {
+            "NONE": "Não notificar ninguém",
+            "ASSIGNEE": "Notificar apenas o responsável pela conversa",
+            "ASSIGNEE_OR_TEAM_MEMBERS": "Notificar o responsável; caso contrário, membros do time",
+            "ASSIGNEE_OR_INBOX_MEMBERS": "Notificar o responsável; caso contrário, todos os agentes da caixa de entrada",
+            "ASSIGNEE_OR_INBOX_MEMBERS_AND_ADMINISTRATORS": "Notificar o responsável; caso contrário, agentes da caixa de entrada e administradores"
+          }
+        },
+        "RING_TIMEOUT": {
+          "LABEL": "Tempo para escalação do toque",
+          "DESCRIPTION": "Se ninguém atender neste tempo, notificar todos os agentes da caixa de entrada e administradores (quando habilitado).",
+          "OPTIONS": {
+            "0": "Desabilitado",
+            "30": "30 segundos",
+            "60": "60 segundos",
+            "90": "90 segundos",
+            "120": "120 segundos"
+          }
+        }
       }
     },
     "EVOLUTION": {
@@ -1533,6 +1685,7 @@
       "INSTAGRAM": "Instagram",
       "TIKTOK": "TikTok",
       "VOICE": "Voz",
+      "WAVOIP": "Wavoip",
       "EVOLUTION": "Evolution API"
     }
   }

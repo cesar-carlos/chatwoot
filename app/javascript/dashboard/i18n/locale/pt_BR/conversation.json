@@ -137,11 +137,23 @@
       "OUTGOING_CALL": "Chamada realizada",
       "CALL_IN_PROGRESS": "Chamada em andamento",
       "NO_ANSWER": "Sem resposta",
+      "NO_ANSWER_OUTBOUND_LABEL": "Sem resposta",
+      "NO_ANSWER_OUTBOUND_SUBTEXT": "O contato não atendeu",
       "MISSED_CALL": "Chamada perdida",
+      "MISSED_CALL_INBOUND_SUBTEXT": "Nenhum agente atendeu",
+      "MISSED_CALL_DECLINED_BY": "Recusada por {agentName}",
       "CALL_ENDED": "Chamada encerrada",
+      "HANDLED_BY": "Atendida por {agentName}",
       "NOT_ANSWERED_YET": "Ainda não respondido",
+      "CALLING": "Ligando…",
       "THEY_ANSWERED": "Eles responderam",
-      "YOU_ANSWERED": "Você respondeu"
+      "YOU_ANSWERED": "Você respondeu",
+      "AGENT_ANSWERED": "{agentName} atendeu",
+      "JOIN_CALL": "Entrar na chamada",
+      "CALL_BACK": "Ligar de volta",
+      "HANDLED_REMOTELY": "Atendida por outro agente",
+      "TRANSCRIPT_SHOW_MORE": "Mostrar mais",
+      "TRANSCRIPT_SHOW_LESS": "Mostrar menos"
     },
     "WAVOIP_CALL": {
       "HANDLED_REMOTELY": "Outro agente atendeu esta chamada.",
@@ -156,7 +168,21 @@
       "DEVICE_WAITING_PAYMENT": "A conta Wavoip precisa de pagamento. Regularize em app.wavoip.com.",
       "DEVICE_INTEGRATION_ERROR": "Erro de integração do dispositivo Wavoip. Verifique o status em app.wavoip.com.",
       "DEVICE_BUILDING": "O dispositivo Wavoip ainda está inicializando. Aguarde um momento e tente novamente.",
-      "DEVICE_RESTARTING": "O dispositivo Wavoip está reiniciando. Aguarde um momento e tente novamente."
+      "DEVICE_RESTARTING": "O dispositivo Wavoip está reiniciando. Aguarde um momento e tente novamente.",
+      "START_CALL_DEVICE_FAILED": "Não foi possível iniciar a chamada no dispositivo Wavoip: {detail}",
+      "RECONNECTING": "Reconectando áudio da chamada…",
+      "DEVICE_RECONNECTING": "Reconectando ao Wavoip…",
+      "MIC_DEVICE": "Microfone",
+      "SPEAKER_DEVICE": "Alto-falante"
+    },
+    "WAVOIP_CONNECTIVITY": {
+      "GENERIC": "Problema na conexão da chamada. Verifique sua rede e tente novamente.",
+      "STUN_UNREACHABLE": "Não foi possível alcançar o servidor STUN. Firewalls corporativos podem bloquear UDP.",
+      "ICE_CONNECTION_FAILED": "Falha na conexão de mídia. Tente outra rede ou contate o administrador.",
+      "SIGNALING_DISCONNECTED": "Sinalização da chamada desconectada. A chamada pode encerrar em breve.",
+      "ICE_GATHERING_TIMEOUT": "Tempo esgotado na coleta ICE. Verifique STUN/TURN ou tente outra rede.",
+      "NO_HOST_CANDIDATES": "Nenhum candidato de rede local. Verifique VPN ou configurações WebRTC do navegador.",
+      "SYMMETRIC_NAT_SUSPECTED": "NAT simétrico detectado. Um servidor TURN pode ser necessário."
     },
     "HEADER": {
       "RESOLVE_ACTION": "Resolver",

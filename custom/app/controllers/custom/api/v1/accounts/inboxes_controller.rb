@@ -291,7 +291,13 @@ module Custom::Api::V1::Accounts::InboxesController
     wavoip_params = params.require(:channel).permit(
       :phone_number,
       :device_token,
-      provider_config: [:inbound_calls_enabled]
+      provider_config: %i[
+        inbound_calls_enabled
+        incoming_call_include_administrators
+        incoming_call_offline_fallback
+        incoming_call_notify_busy_agents
+        ring_timeout_seconds
+      ]
     )
 
     Current.account.wavoip_channels.create!(wavoip_params)

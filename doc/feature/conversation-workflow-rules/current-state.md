@@ -151,6 +151,17 @@ Constantes em `app/javascript/dashboard/routes/dashboard/settings/automation/con
 | Template | `TemplateMessageSender` delegates to `MessageTemplates::Template::AutoResolve` |
 | Specs | `spec/custom/**` + extended legacy job specs |
 
+## Correções pós-reavaliação (jun/2026)
+
+| Área | Correção |
+|------|----------|
+| `ScopeMatcher` | Reescrito com `case/when` por trigger type — `pending_stale` e `customer_no_reply` estavam silenciosamente quebrados |
+| `useWorkflowRule.js` | `buildPayload` e `watch(trigger_type)`: `pending_stale` agora salva `statuses: ['pending']` (era `['open']`) |
+| `ScheduleOnMessageScheduler` | Chave Redis inclui epoch do `reference_time` — permite re-agendar novo episódio sem esperar TTL expirar |
+| `ScheduleOnMessageJob` | Aceita `reference_epoch:` para deletar a chave Redis correta no `ensure` |
+| Dead code | `ConversationWorkflowRuleExecution#already_executed?` removido — dedup usa insert-first |
+| `RuleExecutor` | Guards redundantes removidos de `conversation_eligible?`; `customer_waiting_on_agent_reply?` movido para `ScopeMatcher` |
+
 ---
 
 ## Deploy

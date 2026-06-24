@@ -87,7 +87,7 @@ stateDiagram-v2
 
 | Evento Chatwoot | Ação SDK |
 |-----------------|----------|
-| Agente marca **online** | Construir `Wavoip({ tokens, platform })`; a conexão inicia no construtor |
+| Agente marca **online** | Construir `Wavoip({ tokens, platform })` só para inboxes onde `shouldAgentReceiveWavoipCalls` é `true` |
 | Agente **offline** | `removeDevices([token])` e remover listeners |
 | Troca de conta / logout | Remover devices/listeners de todas as instâncias |
 | Navega para inbox não-Wavoip | Manter conexão se agente atende múltiplos inboxes Wavoip |
@@ -130,6 +130,7 @@ Camadas complementares:
 | Camada | Implementação |
 |--------|---------------|
 | **Ringtone** | Já em `FloatingCallWidget` (`RINGTONE_URL`) |
+| **Quem recebe o ring** | `wavoipInboxCallRouting.js` + `IncomingCallRecipients` (backend) — ver [inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings) |
 | **OS Notification (aba aberta, sem foco)** | `useWavoipNotifications.js` — espelhar Wavoip com `Notification` API |
 | **Web Push (aba fechada)** | Reusar `pushHelper.js` + VAPID — evento servidor no webhook `INCOMING_RING` |
 | **Permissão** | Pedir no gesto “Ficar online” ou toggle em perfil (como push existente) |
@@ -292,6 +293,7 @@ custom/app/javascript/dashboard/
   lib/wavoip/
     wavoipClientRegistry.js
     wavoipDiagnosticsCollector.js
+    wavoipInboxCallRouting.js
   composables/wavoip/
     useWavoipConnection.js
     useWavoipIncomingOffer.js
@@ -314,10 +316,10 @@ custom/app/javascript/dashboard/
 | Componente | Responsabilidade |
 |------------|------------------|
 | `Wavoip.vue` | Wizard de criação + alerta com URL do webhook pós-criação |
-| `WavoipCallingPage.vue` | Settings → Chamadas: URL read-only + status `wavoip_setup_pending` |
+| `WavoipCallingPage.vue` | Settings → Chamadas: device panel, inbound toggle, **roteamento inbound**, webhook, status |
 | `WavoipWebhookInstructions.vue` | Etapa pós-criação no wizard (copy URL, aguardar primeiro evento) |
 
-**Implementados:** `WavoipCallingPage.vue`, `WavoipDevicePanel.vue` (device status, QR, pairing, wakeUp, restart/logout, diagnostics).
+**Implementados:** `WavoipCallingPage.vue`, `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`.
 
 **Não implementados no MVP** (referenciados em docs antigos): `WavoipOnboardingChecklist.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
 

@@ -19,7 +19,12 @@ describe('wavoipSdkResult', () => {
   });
 
   it('unwraps pairingCode result shape', () => {
-    expect(unwrapWavoipSdkResult({ pairingCode: '1234-5678', err: null }, 'pairingCode')).toEqual({
+    expect(
+      unwrapWavoipSdkResult(
+        { pairingCode: '1234-5678', err: null },
+        'pairingCode'
+      )
+    ).toEqual({
       pairingCode: '1234-5678',
       err: null,
     });

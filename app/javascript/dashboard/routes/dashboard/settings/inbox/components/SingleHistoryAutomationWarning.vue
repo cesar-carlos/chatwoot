@@ -20,11 +20,17 @@ const props = defineProps({
 const { t } = useI18n();
 const router = useRouter();
 
-const { matchingRules, showAutomationWarning } =
+const { matchingRules, showAutomationWarning, isFetching } =
   useSingleHistoryAutomationWarning(toRef(() => props.inboxId));
 
+const isLoading = computed(
+  () => props.lockToSingleConversation && isFetching.value
+);
+
 const isVisible = computed(
-  () => props.lockToSingleConversation && showAutomationWarning.value
+  () =>
+    props.lockToSingleConversation &&
+    (isLoading.value || showAutomationWarning.value)
 );
 
 const warningMessage = computed(() => {
@@ -44,7 +50,21 @@ const goToAutomations = () => {
 
 <template>
   <div v-show="isVisible" class="mt-3 w-full">
+    <Banner v-if="isLoading" color="slate" class="w-full">
+      <div class="flex items-start gap-2">
+        <Icon
+          icon="i-lucide-loader-circle"
+          class="flex-shrink-0 size-4 mt-0.5 animate-spin"
+        />
+        <span>{{
+          $t(
+            'INBOX_MGMT.EDIT.LOCK_TO_SINGLE_CONVERSATION.AUTOMATION_WARNING_LOADING'
+          )
+        }}</span>
+      </div>
+    </Banner>
     <Banner
+      v-else
       color="amber"
       :action-label="
         $t(

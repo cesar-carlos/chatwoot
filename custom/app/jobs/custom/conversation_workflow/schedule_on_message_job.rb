@@ -1,7 +1,7 @@
 class Custom::ConversationWorkflow::ScheduleOnMessageJob < ApplicationJob
   queue_as :low
 
-  def perform(rule_id:, conversation_id: nil)
+  def perform(rule_id:, conversation_id: nil, reference_epoch: nil)
     rule = ConversationWorkflowRule.find_by(id: rule_id)
     return if rule.blank? || !rule.active?
 
@@ -11,11 +11,12 @@ class Custom::ConversationWorkflow::ScheduleOnMessageJob < ApplicationJob
       Custom::ConversationWorkflow::RuleExecutor.new(account: rule.account, rule: rule).perform
     end
   ensure
-    clear_schedule_slot!(rule_id, conversation_id) if conversation_id.present?
+    clear_schedule_slot!(rule_id, conversation_id, reference_epoch) if conversation_id.present?
   end
 
-  def clear_schedule_slot!(rule_id, conversation_id)
-    Redis::Alfred.delete("#{Custom::ConversationWorkflow::ScheduleOnMessageScheduler::REDIS_KEY_PREFIX}:#{rule_id}:#{conversation_id}")
+  def clear_schedule_slot!(rule_id, conversation_id, reference_epoch)
+    prefix = Custom::ConversationWorkflow::ScheduleOnMessageScheduler::REDIS_KEY_PREFIX
+    Redis::Alfred.delete("#{prefix}:#{rule_id}:#{conversation_id}:#{reference_epoch}")
   end
 
   private

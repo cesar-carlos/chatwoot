@@ -12,28 +12,32 @@ class Custom::ConversationWorkflow::ScheduleOnMessageScheduler
     return if @conversation.waiting_since.blank?
     return if @rule.first_response_overdue? && @conversation.first_reply_created_at.present?
 
-    wait_seconds = wait_seconds_until_threshold(reference_time: @conversation.waiting_since)
+    reference_time = @conversation.waiting_since
+    wait_seconds = wait_seconds_until_threshold(reference_time: reference_time)
     return if wait_seconds.nil?
 
-    return unless claim_schedule_slot!(wait_seconds)
+    epoch = reference_time.to_i
+    return unless claim_schedule_slot!(wait_seconds, epoch: epoch)
 
     Custom::ConversationWorkflow::ScheduleOnMessageJob
       .set(wait: wait_seconds.seconds)
-      .perform_later(conversation_id: @conversation.id, rule_id: @rule.id)
+      .perform_later(conversation_id: @conversation.id, rule_id: @rule.id, reference_epoch: epoch)
   end
 
   def perform_for_outgoing_message(message)
     return unless @rule.customer_no_reply?
     return unless message.outgoing?
 
-    wait_seconds = wait_seconds_until_threshold(reference_time: message.created_at)
+    reference_time = message.created_at
+    wait_seconds = wait_seconds_until_threshold(reference_time: reference_time)
     return if wait_seconds.nil?
 
-    return unless claim_schedule_slot!(wait_seconds)
+    epoch = reference_time.to_i
+    return unless claim_schedule_slot!(wait_seconds, epoch: epoch)
 
     Custom::ConversationWorkflow::ScheduleOnMessageJob
       .set(wait: wait_seconds.seconds)
-      .perform_later(conversation_id: @conversation.id, rule_id: @rule.id)
+      .perform_later(conversation_id: @conversation.id, rule_id: @rule.id, reference_epoch: epoch)
   end
 
   private
@@ -48,16 +52,16 @@ class Custom::ConversationWorkflow::ScheduleOnMessageScheduler
     remaining_minutes * 60
   end
 
-  def claim_schedule_slot!(wait_seconds)
+  def claim_schedule_slot!(wait_seconds, epoch:)
     Redis::Alfred.set(
-      redis_key,
+      redis_key(epoch),
       Time.current.to_i,
       nx: true,
       ex: wait_seconds + 60
     )
   end
 
-  def redis_key
-    "#{REDIS_KEY_PREFIX}:#{@rule.id}:#{@conversation.id}"
+  def redis_key(epoch)
+    "#{REDIS_KEY_PREFIX}:#{@rule.id}:#{@conversation.id}:#{epoch}"
   end
 end

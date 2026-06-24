@@ -92,6 +92,13 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
             respect_business_hours:
               rule.value.options?.respect_business_hours || false,
           };
+        } else if (triggerType === 'pending_stale') {
+          rule.value.options = {
+            statuses: ['pending'],
+            require_no_first_reply: false,
+            respect_business_hours:
+              rule.value.options?.respect_business_hours || false,
+          };
         } else {
           rule.value.options = {
             statuses: ['open'],
@@ -238,7 +245,14 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
       payload.resolve_on_match = false;
       payload.message = null;
       payload.options.require_no_first_reply = true;
+    } else if (payload.trigger_type === 'pending_stale') {
+      payload.ignore_waiting = false;
+      payload.resolve_on_match = false;
+      payload.message = null;
+      payload.options.require_no_first_reply = false;
+      payload.options.statuses = ['pending'];
     } else {
+      // unassigned_too_long, customer_no_reply
       payload.ignore_waiting = false;
       payload.resolve_on_match = false;
       payload.message = null;

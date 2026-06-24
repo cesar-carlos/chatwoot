@@ -173,6 +173,18 @@ if resource.channel_type == 'Channel::Wavoip' && resource.channel.respond_to?(:v
   json.voice_enabled resource.channel.voice_enabled?
   json.inbound_calls_enabled resource.channel.inbound_calls_enabled?
   json.wavoip_setup_pending resource.channel.setup_pending?
+  json.incoming_call_include_administrators resource.channel.incoming_call_include_administrators?
+  json.incoming_call_offline_fallback resource.channel.incoming_call_offline_fallback
+  json.incoming_call_notify_busy_agents resource.channel.incoming_call_notify_busy_agents?
+  json.ring_timeout_seconds resource.channel.ring_timeout_seconds
+  json.current_user_inbox_member resource.inbox_members.exists?(user_id: Current.user.id)
+  json.provider_config resource.channel.provider_config.slice(
+    'inbound_calls_enabled',
+    'incoming_call_include_administrators',
+    'incoming_call_offline_fallback',
+    'incoming_call_notify_busy_agents',
+    'ring_timeout_seconds'
+  )
   if Current.account_user&.administrator?
     json.wavoip_webhook_url resource.channel.webhook_url
     json.wavoip_device_token_configured resource.channel.device_token.present?
