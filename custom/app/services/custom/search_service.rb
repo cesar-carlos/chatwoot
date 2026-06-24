@@ -24,7 +24,7 @@ module Custom::SearchService
               .per(15)
   end
 
-  def filter_messages_with_gin # rubocop:disable Metrics/AbcSize
+  def filter_messages_with_gin # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     return filter_messages_with_like if Custom::MessageSearch::Unaccent.extension_enabled?
 
     base_query = message_base_query
@@ -38,9 +38,15 @@ module Custom::SearchService
                             .select('messages.id')
 
     transcription_ids = global_search_transcription_ids(base_query)
+    subject_ids = Custom::MessageSearch::MatchingIds.email_subject_match_ids(
+      base_query,
+      search_query,
+      unaccent_enabled: false
+    )
 
     base_query.where(id: content_ids)
               .or(base_query.where(id: transcription_ids))
+              .or(base_query.where(id: subject_ids))
               .reorder('created_at DESC')
               .page(params[:page])
               .per(15)

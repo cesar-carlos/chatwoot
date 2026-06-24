@@ -136,6 +136,29 @@ describe SearchService do
           expect(gin_results).to match_array(like_results)
           expect(gin_results).to include(message.id, message2.id, message3.id)
         end
+
+        it 'returns messages matching email subject with GIN search' do
+          allow(Custom::MessageSearch::Unaccent).to receive(:extension_enabled?).and_return(false)
+          allow(account).to receive(:feature_enabled?).and_call_original
+          allow(account).to receive(:feature_enabled?).with('search_with_gin').and_return(true)
+
+          email_message = create(
+            :message,
+            account: account,
+            inbox: inbox,
+            content: 'Please see attached',
+            content_attributes: { email: { subject: 'Invoice for March' } }
+          )
+
+          search_service = described_class.new(
+            current_user: user,
+            current_account: account,
+            params: { q: 'invoice' },
+            search_type: 'Message'
+          )
+
+          expect(search_service.perform[:messages].map(&:id)).to include(email_message.id)
+        end
       end
 
       # rubocop:disable RSpec/MultipleMemoizedHelpers

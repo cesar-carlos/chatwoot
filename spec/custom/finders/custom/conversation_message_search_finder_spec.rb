@@ -228,6 +228,36 @@ RSpec.describe Custom::ConversationMessageSearchFinder do
         expect(finder.matched_on_by_id[audio_message.id]).to eq('transcription')
       end
     end
+
+    context 'when query matches legacy transcribed_text key only' do
+      let(:query) { 'legacy' }
+      let!(:audio_message) do
+        create(
+          :message,
+          conversation: conversation,
+          account: account,
+          inbox: inbox,
+          content: '',
+          message_type: :incoming,
+          sender: contact
+        )
+      end
+
+      before do
+        audio_message.attachments.create!(
+          account: account,
+          file_type: :audio,
+          meta: { 'transcribed_text' => 'legacy voicemail transcript' }
+        )
+      end
+
+      it 'returns the audio message with matched_on transcription' do
+        results = finder.perform
+
+        expect(results.map(&:id)).to include(audio_message.id)
+        expect(finder.matched_on_by_id[audio_message.id]).to eq('transcription')
+      end
+    end
   end
 
   describe '#search_engine' do

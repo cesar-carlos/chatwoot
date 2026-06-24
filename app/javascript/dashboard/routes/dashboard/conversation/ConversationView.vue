@@ -12,6 +12,7 @@ import SidepanelSwitch from 'dashboard/components-next/Conversation/SidepanelSwi
 import ConversationSidebar from 'dashboard/components/widgets/conversation/ConversationSidebar.vue';
 // FORK: in-conversation message search
 import ConversationMessageSearchPanel from 'dashboard/components/widgets/conversation/ConversationMessageSearch/ConversationMessageSearchPanel.vue';
+import types from 'dashboard/store/mutation-types';
 
 export default {
   components: {
@@ -113,6 +114,8 @@ export default {
     conversationId(newId, oldId) {
       if (oldId && String(newId) !== String(oldId)) {
         this.updateUISettings({ is_message_search_panel_open: false });
+        // FORK: in-conversation message search
+        this.$store.commit(types.CLEAR_SEARCH_INJECTED, Number(oldId) || oldId);
       }
       this.fetchConversationIfUnavailable();
     },

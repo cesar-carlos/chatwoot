@@ -97,6 +97,13 @@ const actions = {
         id: data.conversationId,
         data: payload,
       });
+      // FORK: in-conversation message search — drop IDs loaded via normal pagination
+      if (payload.length) {
+        commit(types.DEREGISTER_SEARCH_INJECTED, {
+          id: data.conversationId,
+          messageIds: payload.map(message => message.id),
+        });
+      }
       if (!payload.length) {
         commit(types.SET_ALL_MESSAGES_LOADED, data.conversationId);
       }

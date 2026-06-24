@@ -48,7 +48,6 @@ A primeira entrega deve ser um único corte vertical pronto para uso. As etapas 
 - filtros por remetente/data;
 - atalhos globais;
 - buscas recentes;
-- painel lateral;
 - analytics;
 - mudanças na pesquisa global;
 - specs automatizadas, salvo solicitação explícita.
@@ -581,6 +580,13 @@ Imprimir checklist: `rake conversation_message_search:acceptance`
 - Rake `conversation_message_search:acceptance` (checklist §11)
 - GIN com fallback ILIKE em `to_tsquery` inválido; unaccent + `search_with_gin` → ILIKE unaccent
 - `SearchService` global: override `filter_messages_with_gin` com transcrição + fallback
+- OpenSearch: campo `deleted` no índice + filtro `deleted: false` na query
+- OpenSearch: transcrição unificada via `Custom::TranscriptionMetadata.read_text` no `SearchDataPresenter`
+- GIN global: assunto de e-mail em `filter_messages_with_gin`
+- Poda Vuex de mensagens injetadas (§8.1): `REGISTER/PRUNE/DEREGISTER/CLEAR_SEARCH_INJECTED`
+- `MatchedOn` com `fold_text` Ruby (sem round-trips DB)
+- Guard `MessagesView#onScrollToMessage` — não faz `scrollToBottom` se alvo ausente
+- Rake `conversation_message_search:reindex_hints`
 
 **Ainda pendente (validação operacional):**
 1. `rake conversation_message_search:explain[conversation_id,query]` em conversa grande (produção) — arquivar plano/tempo

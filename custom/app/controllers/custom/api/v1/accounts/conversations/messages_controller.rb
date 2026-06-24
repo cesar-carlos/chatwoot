@@ -25,6 +25,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     @search_engine = finder.search_engine
   end
 
+  # FORK: preserve existing content_attributes (email metadata, etc.) when marking deleted
   def destroy
     ActiveRecord::Base.transaction do
       merged_attrs = (message.content_attributes || {}).stringify_keys.merge('deleted' => true)
@@ -67,6 +68,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   end
 
   def increment_search_count(key)
+    # Redis/Memcached increment is atomic; read+write below is a dev/test fallback only.
     if Rails.cache.respond_to?(:increment)
       count = Rails.cache.increment(key, 1, expires_in: SEARCH_RATE_WINDOW)
       return count if count

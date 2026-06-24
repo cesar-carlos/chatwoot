@@ -16,6 +16,7 @@ import wootConstants from 'dashboard/constants/globals';
 import { BUS_EVENTS } from '../../../../shared/constants/busEvents';
 import { emitter } from 'shared/helpers/mitt';
 import { CONTENT_TYPES } from 'dashboard/components-next/message/constants.js';
+import { MAX_SEARCH_INJECTED_MESSAGES } from '../../../composables/fork/conversationSearchInjectedMessages';
 
 const state = {
   allConversations: [],
@@ -32,6 +33,8 @@ const state = {
   syncConversationsMessages: {},
   conversationFilters: {},
   copilotAssistant: {},
+  // FORK: in-conversation message search — IDs inserted via search jump (per conversation)
+  searchInjectedByConversationId: {},
 };
 
 const getConversationById = _state => conversationId => {
@@ -91,6 +94,9 @@ export const mutations = {
     }
   },
   [types.CLEAR_CURRENT_CHAT_WINDOW](_state) {
+    if (_state.selectedChatId && _state.searchInjectedByConversationId) {
+      delete _state.searchInjectedByConversationId[_state.selectedChatId];
+    }
     _state.selectedChatId = null;
   },
 
@@ -120,6 +126,72 @@ export const mutations = {
     });
     chat.messages = Array.from(messageMap.values()).sort(
       (left, right) => messageCreatedAt(left) - messageCreatedAt(right)
+    );
+  },
+
+  // FORK: in-conversation message search — registry and prune for injected messages
+  [types.REGISTER_SEARCH_INJECTED](_state, { id, messageIds }) {
+    if (!messageIds?.length) return;
+
+    const registry = _state.searchInjectedByConversationId[id] || [];
+    const seen = new Set(registry);
+    const next = [...registry];
+
+    messageIds.forEach(messageId => {
+      if (seen.has(messageId)) return;
+      seen.add(messageId);
+      next.push(messageId);
+    });
+
+    _state.searchInjectedByConversationId[id] = next;
+  },
+
+  [types.DEREGISTER_SEARCH_INJECTED](_state, { id, messageIds }) {
+    if (!messageIds?.length) return;
+
+    const registry = _state.searchInjectedByConversationId[id];
+    if (!registry?.length) return;
+
+    const remove = new Set(messageIds);
+    _state.searchInjectedByConversationId[id] = registry.filter(
+      messageId => !remove.has(messageId)
+    );
+  },
+
+  [types.CLEAR_SEARCH_INJECTED](_state, conversationId) {
+    if (conversationId) {
+      delete _state.searchInjectedByConversationId[conversationId];
+      return;
+    }
+
+    _state.searchInjectedByConversationId = {};
+  },
+
+  [types.PRUNE_SEARCH_INJECTED](_state, { id, protectedIds = [] }) {
+    const chat = getConversationById(_state)(id);
+    const registry = _state.searchInjectedByConversationId[id];
+    if (!chat || !registry?.length || registry.length <= MAX_SEARCH_INJECTED_MESSAGES) {
+      return;
+    }
+
+    const protectedSet = new Set(protectedIds);
+    const toRemove = [];
+
+    registry.forEach(messageId => {
+      if (registry.length - toRemove.length <= MAX_SEARCH_INJECTED_MESSAGES) return;
+      if (protectedSet.has(messageId)) return;
+
+      toRemove.push(messageId);
+    });
+
+    if (!toRemove.length) return;
+
+    const removeSet = new Set(toRemove);
+    chat.messages = (chat.messages || []).filter(
+      message => !removeSet.has(message.id)
+    );
+    _state.searchInjectedByConversationId[id] = registry.filter(
+      messageId => !removeSet.has(messageId)
     );
   },
 

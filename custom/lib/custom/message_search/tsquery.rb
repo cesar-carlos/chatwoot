@@ -7,7 +7,7 @@ module Custom::MessageSearch::Tsquery
     text.to_s.strip.split(/\s+/).filter_map do |term|
       sanitized = sanitize_term(term)
       sanitized.presence
-    end.join(' <-> ')
+    end.join(' & ')
   end
 
   def sanitize_term(term)

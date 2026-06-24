@@ -17,6 +17,7 @@ RSpec.describe Messages::SearchDataPresenter do
         conversation_id: message.conversation_id,
         message_type: message.message_type,
         private: message.private,
+        deleted: false,
         created_at: message.created_at,
         source_id: message.source_id,
         sender_id: message.sender_id,
@@ -33,7 +34,7 @@ RSpec.describe Messages::SearchDataPresenter do
 
     context 'with attachments' do
       before do
-        attachment = message.attachments.new(account_id: message.account_id, file_type: :image)
+        attachment = message.attachments.new(account_id: message.account_id, file_type: :audio)
         attachment.file.attach(io: Rails.root.join('spec/assets/avatar.png').open, filename: 'avatar.png', content_type: 'image/png')
         attachment.meta = { 'transcribed_text' => 'Hello world' }
       end
@@ -42,6 +43,34 @@ RSpec.describe Messages::SearchDataPresenter do
         attachments_data = presenter.search_data[:attachments]
         expect(attachments_data).to be_an(Array)
         expect(attachments_data.first).to include(transcribed_text: 'Hello world')
+      end
+    end
+
+    context 'with Groq transcription metadata only' do
+      before do
+        attachment = message.attachments.new(account_id: message.account_id, file_type: :audio)
+        attachment.file.attach(io: Rails.root.join('spec/assets/avatar.png').open, filename: 'avatar.png', content_type: 'image/png')
+        attachment.meta = {
+          'transcription' => {
+            'text' => 'Groq transcript text',
+            'state' => 'success'
+          }
+        }
+      end
+
+      it 'indexes transcription text via Custom::TranscriptionMetadata.read_text' do
+        attachments_data = presenter.search_data[:attachments]
+        expect(attachments_data.first).to include(transcribed_text: 'Groq transcript text')
+      end
+    end
+
+    context 'when message is deleted' do
+      before do
+        message.update!(content_attributes: { deleted: true })
+      end
+
+      it 'indexes deleted flag as true' do
+        expect(presenter.search_data[:deleted]).to be(true)
       end
     end
 

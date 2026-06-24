@@ -6,6 +6,10 @@ import { BUS_EVENTS } from 'shared/constants/busEvents';
 import types from 'dashboard/store/mutation-types';
 import { useAlert } from 'dashboard/composables';
 import MessageApi from 'dashboard/api/inbox/message';
+import {
+  collectVisibleMessageIds,
+  newMessageIds,
+} from 'dashboard/composables/fork/conversationSearchInjectedMessages';
 
 const HIGHLIGHT_CLASS = 'bg-n-alpha-1';
 const HIGHLIGHT_DURATION_MS = 1000;
@@ -15,13 +19,26 @@ const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const insertMessagesAround = (store, conversationId, messages) => {
+const insertMessagesAround = (store, conversationId, messages, targetMessageId) => {
   const chat = store.getters.getSelectedChat;
   if (!chat || chat.id !== conversationId) return;
+
+  const injectedIds = newMessageIds(chat.messages, messages);
 
   store.commit(types.INSERT_MESSAGES_AROUND, {
     id: conversationId,
     data: messages,
+  });
+
+  if (!injectedIds.length) return;
+
+  store.commit(types.REGISTER_SEARCH_INJECTED, {
+    id: conversationId,
+    messageIds: injectedIds,
+  });
+  store.commit(types.PRUNE_SEARCH_INJECTED, {
+    id: conversationId,
+    protectedIds: [targetMessageId, ...collectVisibleMessageIds()],
   });
 };
 
@@ -74,7 +91,12 @@ export const useScrollToConversationMessage = ({
       let messageElement = document.getElementById(`message${messageId}`);
 
       if (!messageElement) {
-        insertMessagesAround(store, conversationId, [selectedMessage]);
+        insertMessagesAround(
+          store,
+          conversationId,
+          [selectedMessage],
+          messageId
+        );
         await nextTick();
         messageElement = document.getElementById(`message${messageId}`);
       }
@@ -86,7 +108,12 @@ export const useScrollToConversationMessage = ({
             messageId
           );
           if (aroundMessages.length) {
-            insertMessagesAround(store, conversationId, aroundMessages);
+            insertMessagesAround(
+              store,
+              conversationId,
+              aroundMessages,
+              messageId
+            );
             await nextTick();
             messageElement = document.getElementById(`message${messageId}`);
           }
