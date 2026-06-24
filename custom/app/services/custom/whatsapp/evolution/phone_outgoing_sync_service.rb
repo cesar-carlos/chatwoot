@@ -76,14 +76,20 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
 
   def find_or_create_contact_inbox(key)
     remote_jid = key['remoteJid'].to_s
-    if Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid)
-      return Custom::Whatsapp::Evolution::GroupContactService.new(
-        channel: channel,
-        remote_jid: remote_jid,
-        push_name: data['pushName']
-      ).find_or_create_contact_inbox!
-    end
+    return group_contact_inbox(remote_jid) if Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid)
 
+    direct_contact_inbox(key)
+  end
+
+  def group_contact_inbox(remote_jid)
+    Custom::Whatsapp::Evolution::GroupContactService.new(
+      channel: channel,
+      remote_jid: remote_jid,
+      push_name: data['pushName']
+    ).find_or_create_contact_inbox!
+  end
+
+  def direct_contact_inbox(key)
     phone = jid_resolver.phone_from_message_key(key)
     return if phone.blank?
 

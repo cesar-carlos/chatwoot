@@ -4,6 +4,31 @@ Contratos públicos das classes do provider antes da implementação. Espelha [.
 
 ---
 
+## `Custom::Whatsapp::Zapi::ApiError`
+
+```ruby
+class Custom::Whatsapp::Zapi::ApiError < StandardError
+  attr_reader :status, :body, :base_message
+
+  def initialize(message = nil, status: nil, body: nil)
+    @status = status
+    @body = body
+    @base_message = message
+    super(log_message)
+  end
+
+  def log_message   # inclui status + body — para logs
+  def user_message  # mensagem amigável ao operador — em produção sem detalhe interno
+
+  def self.compose_message(message, status, body)
+  def self.extract_message(body)  # body é Hash (parsed JSON) ou string
+end
+```
+
+Elevar quando `response.code >= 400` no `ApiClient`. Propagar até `ConnectionService` / `ZapiService` que decidem logar ou traduzir para UI.
+
+---
+
 ## `Custom::Whatsapp::Zapi::ApiClient`
 
 ```ruby
@@ -42,6 +67,29 @@ def post(action, body)
 ```
 
 **Diferença vs Evolution:** auth no path + `Client-Token`; sem `global_api_key`; webhooks via PUT dedicados ou bulk.
+
+---
+
+## `Custom::Whatsapp::Zapi::ConnectionEvents`
+
+Responsável pelos **side-effects** dos eventos de conexão recebidos via webhook (análogo a `Evolution::ConnectionEvents`). Chamado dentro do `dispatch_zapi_event` do job prepend.
+
+```ruby
+# initialize(channel:)
+
+def handle_connected(payload)
+  # 1. channel.update provider_config: connection_status → connected
+  # 2. sync phone_number ← payload['phone']
+  # 3. ActionCable.server.broadcast "zapi:connection:{inbox.id}",
+  #      { connection_status: 'connected', phone_number: ... }
+
+def handle_disconnected(payload)
+  # 1. channel.update provider_config: connection_status → disconnected
+  # 2. ActionCable.server.broadcast "zapi:connection:{inbox.id}",
+  #      { connection_status: 'disconnected' }
+```
+
+> **Motivo de separar do normalizer:** o `ZapiNormalizer` só parseia — não tem referência ao `channel` nem a `ActionCable`. `ConnectionEvents` detém os side-effects de estado.
 
 ---
 
@@ -140,7 +188,16 @@ def authenticate_webhook!
 
   # Opcional: validar payload['instanceId'] == params[:instance_id]
 end
+
+private
+
+def sanitized_job_payload
+  # Strip Rails router metadata + query auth token (não persistir no job payload)
+  params.to_unsafe_hash.except('controller', 'action', 'instance_id', 'token')
+end
 ```
+
+> `instance_id` e `token` são adicionados de volta explicitamente via `.merge(instance_id: ..., channel_id: ...)`. Diferença de Evolution: sem campo `apikey` para remover — Z-API não embute credenciais no body do webhook.
 
 ---
 
@@ -162,9 +219,54 @@ end
 def zapi_envelope?(params)
   params[:type].present? && params[:instance_id].present?
 end
+
+# Router por payload['type']
+def dispatch_zapi_event(channel, params)
+  normalizer = Custom::Whatsapp::Webhooks::ZapiNormalizer.new
+  conn_events = Custom::Whatsapp::Zapi::ConnectionEvents.new(channel: channel)
+
+  case params[:type]
+  when 'ReceivedCallback'
+    return if normalizer.ignore?(params)
+    normalized = normalizer.normalize_received(params)
+    ::Whatsapp::IncomingMessageService.new(inbox: channel.inbox, params: normalized).perform
+  when 'MessageStatusCallback'
+    normalized = normalizer.normalize_status(params)
+    update_message_status(channel, normalized)
+  when 'DeliveryCallback'
+    handle_delivery(channel, params)          # log erro se params['error'].present?
+  when 'ConnectedCallback'
+    conn_events.handle_connected(params)
+  when 'DisconnectedCallback'
+    conn_events.handle_disconnected(params)
+  else
+    Rails.logger.debug { "[Zapi] ignored event type=#{params[:type]}" }
+  end
+end
 ```
 
-Router por `type` — ver [decisions.md §12](./decisions.md).
+> `DeliveryCallback` no MVP: logar `error` se presente (ex: `SHADOW_BAN`, número inexistente); status principal controlado por `MessageStatusCallback`.
+
+---
+
+## `ZapiConnectionChannel` (ActionCable)
+
+Espelha `EvolutionConnectionChannel`:
+
+```ruby
+class ZapiConnectionChannel < ApplicationCable::Channel
+  def subscribed
+    inbox = current_account.inboxes.find(params[:inbox_id])
+    channel = inbox.channel
+    reject and return unless channel.is_a?(Channel::Whatsapp) && channel.provider == 'zapi'
+    reject and return unless inbox_accessible?(inbox)
+
+    stream_from "zapi:connection:#{inbox.id}"
+  end
+end
+```
+
+Frontend `useZapiConnection.js` subscreve `zapi:connection:{inbox_id}` e reage a `connection_status` + `phone_number` para o Step 2 do wizard.
 
 ---
 

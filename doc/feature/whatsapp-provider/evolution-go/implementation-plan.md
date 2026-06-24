@@ -16,11 +16,13 @@ flowchart TB
     WIZ[Vue wizard Evolution Go]
     EGS[EvolutionGoService]
     CS[EvolutionGo ConnectionService]
+    AE[EvolutionGo ApiError]
     AC[EvolutionGo ApiClient]
     NORM[EvolutionGoNormalizer]
     REG[MessagingProvider::Registry]
-    PRE1[prepend Channel::Whatsapp]
-    PRE2[prepend WhatsappEventsJob]
+    CTRL[EvolutionGoController]
+    CH[EvolutionGoConnectionChannel AC]
+    PRE[prepend WhatsappEventsJob]
     PRE3[prepend MessageWindowService]
   end
 
@@ -32,10 +34,14 @@ flowchart TB
 
   WIZ --> CS
   CS --> AC --> INST
-  CS --> CONN
+  CS -->|POST connect webhookUrl| CONN
   REG --> EGS --> AC --> SEND
-  PRE1 --> REG
-  evogo -->|MESSAGE| PRE2 --> NORM --> IncomingMessageService
+  AC -->|raise| AE
+  evogo -->|MESSAGE webhook| CTRL --> PRE
+  PRE -->|MESSAGE| NORM --> IncomingMessageService
+  PRE -->|CONNECTION/QRCODE| CS
+  CS --> CH
+  PRE3 --> REG
   EGS --> SendOnWhatsappService
 ```
 
@@ -46,12 +52,16 @@ flowchart TB
 | # | Entrega | Local |
 |---|---------|-------|
 | 0.1 | `# FORK:` `PROVIDERS` inclui `evolution_go` | `app/models/channel/whatsapp.rb` |
-| 0.2 | Registry register `evolution_go` | `custom/config/initializers/messaging_provider_registry.rb` |
+| 0.2 | Registry `evolution_go` (formato posicional — igual evolution node) | `custom/config/initializers/messaging_provider_registry.rb` |
 | 0.3 | Capability `unlimited_session: true` | `custom/lib/messaging_provider/capabilities.rb` |
 | 0.4 | Prepend `MessageWindowService` | `custom/app/services/custom/conversations/message_window_service.rb` |
-| 0.5 | Rota + stub `EvolutionGoController` | `config/routes.rb`, `custom/.../evolution_go_controller.rb` |
+| 0.5 | Rota + stub `EvolutionGoController` | `config/routes.rb`, `custom/app/controllers/webhooks/evolution_go_controller.rb` |
+| 0.6 | Migration índice `instance_name` unique para `provider = 'evolution_go'` | `db/migrate/` |
+| 0.7 | **Fix prepend evolution node:** mudar `return` → `return super(params)` no guard `unless channel` — evita descarte silencioso de envelopes Go ([decisions.md §27](./decisions.md)) | `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` |
 
-**Critério:** `provider: 'evolution_go'` persiste; cloud inalterado.
+> **0.7 é pré-requisito para testar 0.5** — sem o fix, o prepend node intercepta e descarta todos os eventos evolution_go. Ver [coordination-with-evolution-api.md](./coordination-with-evolution-api.md).
+
+**Critério:** `provider: 'evolution_go'` persiste; cloud e evolution node inalterados; migration aplicada.
 
 ---
 
@@ -63,44 +73,67 @@ Contratos: [spec-design.md](./spec-design.md) · validação E2E: [validation-ch
 
 | # | Classe | Responsabilidade |
 |---|--------|------------------|
-| 1.1 | `Custom::Whatsapp::EvolutionGo::ApiClient` | HTTP; unwrap `{ data }`; dual auth keys |
-| 1.2 | `Custom::Whatsapp::EvolutionGo::ConnectionService` | create, connect (webhook), qr, status, ActionCable |
-| 1.3 | `Custom::Whatsapp::Providers::EvolutionGoService` | `send_message`, `process_response` |
-| 1.4 | `Custom::Whatsapp::Webhooks::EvolutionGoNormalizer` | `MESSAGE` → flat |
-| 1.5 | Rota `POST /webhooks/evolution_go/:instance_name` | |
-| 1.6 | `Custom::Webhooks::EvolutionGoController` | Auth `?token=` + enqueue |
+| 1.1 | `Custom::Whatsapp::EvolutionGo::ApiError` | Exceção tipada (`status`, `body`, `user_message`) — ver [error-handling.md](./error-handling.md) |
+| 1.2 | `Custom::Whatsapp::EvolutionGo::ApiClient` | HTTP; `unwrap { data }`; dual auth (global/instance); `dig_field` casing |
+| 1.3 | `Custom::Whatsapp::EvolutionGo::ConnectionService` | `provision_new_inbox!`, `connect_existing!`, `handle_event`, `sync_phone_number!`, `reconnect!`, `broadcast_connection_event` |
+| 1.4 | `Custom::Whatsapp::Providers::EvolutionGoService` | `send_message`, `process_response` → `data.Info.ID` |
+| 1.5 | `Custom::Whatsapp::Webhooks::EvolutionGoNormalizer` | `MESSAGE` → flat Chatwoot; filtros `fromMe`/`@g.us`/`status@broadcast` |
+| 1.6 | `Custom::Webhooks::EvolutionGoController` | `process_payload` com `evolution_go_instance_name:` (ADR §27) + `authenticate_webhook!` |
+| 1.7 | Prepend `WhatsappEventsJob` evolution_go | `evolution_go_envelope?` por `evolution_go_instance_name` — não ambíguo com node |
+| 1.8 | `EvolutionGoConnectionChannel` | ActionCable `evolution_go:connection:{inbox_id}` |
+
+### Separação de responsabilidades
+
+```
+EvolutionGoController → Job prepend → dispatch_evolution_go_event
+                                       ├── MESSAGE       → EvolutionGoNormalizer → IncomingMessageService
+                                       ├── READ_RECEIPT  → statuses[] (Fase 2)
+                                       ├── CONNECTION    → ConnectionService#handle_event → AC broadcast
+                                       ├── QRCODE        → ConnectionService#handle_event → AC broadcast
+                                       └── SEND_MESSAGE  → ignorar (echo outbound)
+```
+
+> ⚠️ **Isolamento de envelope (ADR §27):** `EvolutionGoController#sanitized_job_payload` injeta `evolution_go_instance_name:` e remove `instance` do payload bruto. Impede que o prepend evolution node intercepte eventos Go.
+
+---
 
 ### ConnectionService — fluxo criação inbox
 
 ```
-1. POST /instance/create (global key) → persist instance_token, instance_id
-2. Gerar webhook_secret no Chatwoot
-3. POST /instance/connect (instance token)
-   - webhookUrl com ?token=webhook_secret
-   - subscribe: MESSAGE, CONNECTION, QRCODE
-4. GET /instance/qr OU webhook QRCODE
-5. Poll GET /instance/status até connected + loggedIn
-6. Extrair myJid → channel.phone_number
-7. Broadcast ActionCable evolution_go:connection:{inbox_id}
+Modo A — Criar nova instância:
+1. POST /instance/create (global_api_key) → salvar instance_token, instance_id, instance_name
+2. Gerar webhook_token server-side
+3. POST /instance/connect (instance_token)
+   - webhookUrl: {FRONTEND_URL}/webhooks/evolution_go/{name}?token={webhook_token}
+   - subscribe: ["MESSAGE", "CONNECTION", "QRCODE"]
+4. GET /instance/qr → data.Qrcode (base64) para Step 3 wizard
+5. Poll GET /instance/status a cada 3s até Connected + LoggedIn
+6. Extrair JID → channel.phone_number (dig_field: jid, myJid, JID…)
+7. Broadcast ActionCable evolution_go:connection:{inbox_id} → sucesso wizard
+
+Modo B — Instância existente:
+1. Operador informa instance_name + instance_token
+2. Gerar webhook_token → connect (step 3 acima)
 ```
 
-### Frontend
+### Envio texto
+
+```
+POST /send/text
+{ "number": "5511999999999", "text": "Olá!" }
+→ source_id = response.dig('data', 'Info', 'ID') || response.dig('data', 'messageId')
+```
+
+### Frontend (wizard — 3 steps)
 
 | # | Entrega |
 |---|---------|
-| 1.7 | Card "Evolution Go" em `Whatsapp.vue` |
-| 1.8 | Wizard: base_url, global_api_key, instance_name; proxy opcional |
-| 1.9 | Step QR — ActionCable + polling |
-| 1.10 | `isEvolutionGoWhatsAppChannel` em `useInbox.js` |
-
-### Critérios de done
-
-- [ ] Inbox `provider: 'evolution_go'`
-- [ ] QR conecta; `connection_status` → `open`
-- [ ] Inbound/outbound texto
-- [ ] Sem janela 24h
-- [ ] `evolution` e cloud inalterados
-- [ ] Specs: normalizer, controller auth
+| 1.9 | Card "Evolution Go" em `Whatsapp.vue` (`// FORK:` import) |
+| 1.10 | `EvolutionGoWhatsapp.vue` — Step 1: `base_url`, `global_api_key` + `GET /server/ok` health check |
+| 1.11 | Step 2: `instance_name` (criar) ou `instance_token` (existente) + proxy opcional |
+| 1.12 | Step 3: QR / pairing code — ActionCable + polling 3s |
+| 1.13 | `useEvolutionGoConnection.js` composable |
+| 1.14 | `isEvolutionGoWhatsAppChannel` em `useInbox.js` — ocultar features cloud-only |
 
 ---
 
@@ -108,12 +141,13 @@ Contratos: [spec-design.md](./spec-design.md) · validação E2E: [validation-ch
 
 | # | Item |
 |---|------|
-| 2.1 | `send_attachment_message` → `/send/media` |
-| 2.2 | Mídia inbound no normalizer |
-| 2.3 | `READ_RECEIPT` → statuses |
-| 2.4 | Reply/quote no send |
-| 2.5 | `GET`+`PUT /instance/:id/advanced-settings` |
-| 2.6 | Proxy no create/settings |
+| 2.1 | `send_attachment_message` → `POST /send/media` |
+| 2.2 | Mídia inbound: `ApiClient#download_media` (`downloadimage` → fallback `downloadmedia`) |
+| 2.3 | `READ_RECEIPT` → `statuses[]` flat |
+| 2.4 | Reply/quote: `{ quoted: { messageId, participant } }` no send |
+| 2.5 | `GET`+`PUT /instance/:id/advanced-settings` (`sync_settings!`) |
+| 2.6 | `POST /message/markread` ao abrir conversa |
+| 2.7 | `DELETE /instance/proxy/{id}` + UI proxy delete |
 
 ---
 
@@ -121,10 +155,11 @@ Contratos: [spec-design.md](./spec-design.md) · validação E2E: [validation-ch
 
 | # | Item |
 |---|------|
-| 3.1 | Poll, location, contact, sticker |
-| 3.2 | Health badge via `/instance/status` |
-| 3.3 | Alerta desconexão (`CONNECTION`) |
-| 3.4 | Fluxo reconnect |
+| 3.1 | Poll, location, contact, sticker (`/send/*`) |
+| 3.2 | Health badge via `GET /instance/status` |
+| 3.3 | Alerta desconexão (`CONNECTION` close → broadcast + UI badge) |
+| 3.4 | Reconnect UI → `ConnectionService#reconnect!` (disconnect + connect com webhook) |
+| 3.5 | Typing: `POST /message/presence` |
 
 ---
 
@@ -140,14 +175,20 @@ Contratos: [spec-design.md](./spec-design.md) · validação E2E: [validation-ch
 
 ```
 custom/
+├── app/channels/
+│   └── evolution_go_connection_channel.rb
+├── app/controllers/webhooks/
+│   └── evolution_go_controller.rb
 ├── app/services/custom/whatsapp/
 │   ├── evolution_go/
+│   │   ├── api_error.rb
 │   │   ├── api_client.rb
 │   │   └── connection_service.rb
 │   ├── providers/evolution_go_service.rb
 │   └── webhooks/evolution_go_normalizer.rb
-├── app/controllers/custom/webhooks/evolution_go_controller.rb
-└── app/javascript/dashboard/... (wizard Evolution Go)
+└── app/javascript/dashboard/
+    ├── channels/EvolutionGoWhatsapp.vue
+    └── composables/useEvolutionGoConnection.js
 ```
 
 ### Upstream mínimo (`# FORK:`)
@@ -155,8 +196,9 @@ custom/
 | Arquivo | Mudança |
 |---------|---------|
 | `app/models/channel/whatsapp.rb` | `PROVIDERS` + `'evolution_go'` |
-| `config/routes.rb` | `/webhooks/evolution_go/:instance_name` |
-| `Whatsapp.vue` | Import card Evolution Go |
+| `config/routes.rb` | `POST /webhooks/evolution_go/:instance_name` |
+| `app/javascript/.../Whatsapp.vue` | Import card Evolution Go |
+| `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` | Fix `return` → `return super(params)` (Fase 0.7) |
 
 ---
 
@@ -164,16 +206,35 @@ custom/
 
 | Risco | Mitigação |
 |-------|-----------|
-| Paths divergentes | [postman-validation.md](./postman-validation.md); fallback no ApiClient |
-| Sem `apikey` no webhook | Auth por `?token=` — [decisions.md §2](./decisions.md) |
-| Licença Go | Pré-requisito operador — [troubleshooting.md](./troubleshooting.md) |
-| Confusão com `evolution` | Provider keys e UI distintos |
+| **Prepend collision com evolution node** | Fase 0.7 obrigatório; `EvolutionGoController` injeta `evolution_go_instance_name:` — ADR §27 |
+| Casing PascalCase vs camelCase nas respostas Go | `ApiClient#dig_field` aceita variantes — ADR §26 |
+| JID ausente em `GET /instance/status` | 4 fallbacks documentados em `api-reference.md` |
+| `POST /instance/reconnect` não reconfigura webhook | Usar sempre `connect` com `webhookUrl` + `subscribe` — ADR §23/§24 |
+| `advanced-settings` casing diverge Postman vs OpenAPI | `dig_field` na leitura; chaves OpenAPI na escrita — ADR §26 |
+| Licença Go obrigatória | Pré-requisito operador — [troubleshooting.md](./troubleshooting.md) |
+| Fixtures sintéticas podem diferir do payload real | E2E antes de specs definitivas — validation-checklist.md |
+
+---
+
+## Critérios de aceite Fase 1
+
+- [ ] Inbox `provider: 'evolution_go'` criado sem regredir evolution node e cloud
+- [ ] Fix Fase 0.7: prepend node chama `super` → eventos Go não descartados
+- [ ] QR conecta; `connection_status` → `open`; `phone_number` atualizado
+- [ ] Inbound texto → conversa no Chatwoot
+- [ ] Outbound texto → `source_id = data.Info.ID`
+- [ ] Sem janela 24h
+- [ ] Grupos ignorados (`@g.us`)
+- [ ] `evolution`, `evolution_go` e cloud coexistem no mesmo account
+- [ ] Specs: `EvolutionGoNormalizer`, `EvolutionGoController` auth, `ApiClient#dig_field`
 
 ---
 
 ## Ordem recomendada
 
 ```
-Fase 0 → ApiClient → ConnectionService → EvolutionGoService
-→ webhook + Normalizer → wizard → specs → E2E (validation-checklist)
+Fase 0 (0.1–0.7) → ApiError → ApiClient → ConnectionService
+→ EvolutionGoService → EvolutionGoNormalizer
+→ EvolutionGoController (ADR §27) → prepend job
+→ EvolutionGoConnectionChannel → wizard Vue → specs → E2E
 ```

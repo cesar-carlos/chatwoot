@@ -29,7 +29,7 @@ Configurar em `ConnectionService#connect` via body `webhookUrl` — **não** exi
 | Decisão | Valor |
 |---------|-------|
 | **Método primário** | Query `?token=` com secret gerado no create do inbox |
-| **Método secundário** | Header `Authorization: Bearer {webhook_secret}` se Evolution Go suportar headers custom no connect |
+| **Método secundário** | Header `Authorization: Bearer {webhook_token}` se Evolution Go suportar headers custom no connect |
 | **Envelope `apikey`** | **Não disponível** no body Go — diferente da Evolution API |
 
 ```ruby
@@ -38,7 +38,7 @@ def authenticate_webhook!
   channel = find_channel_by_instance_name(params[:instance_name])
   return head :not_found unless channel
 
-  secret = channel.provider_config['webhook_secret']
+  secret = channel.provider_config['webhook_token']
   token = params[:token].presence || request.headers['Authorization']&.remove(/^Bearer /)
 
   return head :unauthorized unless secret.present? &&
@@ -48,7 +48,7 @@ def authenticate_webhook!
 end
 ```
 
-Registrar URL completa: `#{FRONTEND_URL}/webhooks/evolution_go/#{name}?token=#{webhook_secret}`
+Registrar URL completa: `#{FRONTEND_URL}/webhooks/evolution_go/#{name}?token=#{webhook_token}`
 
 ---
 
@@ -181,7 +181,7 @@ Prepend deve expor `contact_sender_id` compatível com payload **já normalizado
 |-------|------------|
 | `global_api_key` | Write-only; GET masked |
 | `instance_token` | Write-only; GET masked |
-| `webhook_secret` | Gerado no create; nunca expor em logs |
+| `webhook_token` | Gerado no create; nunca expor em logs |
 | `proxy_password` | Write-only |
 
 ---
@@ -275,7 +275,7 @@ Detalhe: [business-rules-adaptation.md](./business-rules-adaptation.md)
 | Decisão | Valor |
 |---------|-------|
 | **Reconnect** | `POST /instance/connect` com `webhookUrl` + `subscribe` **sempre reenviados** |
-| **Fonte** | `provider_config.webhook_secret`, `instance_name`, array `subscribe` persistido |
+| **Fonte** | `provider_config.webhook_token`, `instance_name`, array `subscribe` persistido |
 | **Motivo** | Evolution Go não tem `POST /webhook/set` — connect é o único ponto de configuração |
 
 `ConnectionService#reconnect!` deve montar URL: `#{FRONTEND_URL}/webhooks/evolution_go/#{name}?token=#{secret}`.
@@ -327,6 +327,38 @@ Ver implementação sugerida em [spec-design.md § ApiClient](./spec-design.md).
 
 ---
 
+## 27. Prepend collision — envelope Go vs Node
+
+| Decisão | Valor |
+|---------|-------|
+| **Problema** | O prepend evolution Node detecta `evolution_envelope?` verificando `params[:event].present? && params[:instance_name ou :instance].present?`. Evolution Go usa o mesmo formato de envelope — sem isolamento, o prepend Node intercepta eventos Go e retorna `return` (não `super`), descartando-os silenciosamente |
+| **Solução** | `EvolutionGoController#sanitized_job_payload` injeta `:evolution_go_instance_name` em vez de `:instance_name` e **remove** o campo `instance` do raw payload antes de enfileirar |
+| **Detecção Go** | `evolution_go_envelope?(params)` usa `params[:evolution_go_instance_name].present?` — único e não ambíguo |
+| **Status** | **✅ Fechado** (24/jun/2026) |
+
+```ruby
+# EvolutionGoController
+def sanitized_job_payload
+  raw = params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
+  raw.delete('instance')   # remove campo ambíguo do envelope bruto
+  raw
+end
+
+def process_payload
+  Webhooks::WhatsappEventsJob.perform_later(
+    sanitized_job_payload.merge(
+      evolution_go_instance_name: params[:instance_name],
+      channel_id: @channel.id
+    )
+  )
+  head :ok
+end
+```
+
+**Também necessário:** atualizar o prepend evolution Node para usar `return super(params)` (não `return`) no guard de canal não encontrado — evita descarte silencioso em caso de envelope desconhecido futuro.
+
+---
+
 ## Histórico
 
 | Data | Decisão |
@@ -334,3 +366,4 @@ Ver implementação sugerida em [spec-design.md § ApiClient](./spec-design.md).
 | jun/2026 | Levantamento completo; provider `evolution_go` separado; webhook auth por query token |
 | jun/2026 | ADR §22 `global_api_key` fechado; §23 reconnect sempre reenvia webhook no connect |
 | 22/jun/2026 | Audit Postman MCP; §24 reconnect vs connect; §25 download mídia; §26 casing ApiClient |
+| 24/jun/2026 | ADR §27 prepend collision; fix EvolutionGoController envelope key; registry format |

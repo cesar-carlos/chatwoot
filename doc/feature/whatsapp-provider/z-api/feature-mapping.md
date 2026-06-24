@@ -76,7 +76,7 @@ Checklist feature a feature. Complementa [../feature-mapping.md](../feature-mapp
 | QR imagem | `GET .../qr-code/image` | 1 |
 | Pairing phone | `GET .../phone-code/{phone}` | 2 |
 | Disconnect | `GET .../disconnect` | 1 |
-| Connected event | `ConnectedCallback` | 2 |
+| Connected event | `ConnectedCallback` | 1 | `ConnectionEvents#handle_connected` — phone_number sync + AC broadcast |
 | Partners create | `POST /instances/integrator/on-demand` | 2 |
 
 ---

@@ -57,7 +57,7 @@ Campos: `address`, `port`, `username`, `password` (não `host`/`protocol` da Evo
 | Decisão | Valor |
 |---------|-------|
 | Eventos MVP | `MESSAGE`, `CONNECTION`, `QRCODE` |
-| Auth | `webhook_secret` na query string |
+| Auth | `webhook_token` na query string |
 | Retry Go | 5× / 30s — responder 200 rápido |
 
 ---

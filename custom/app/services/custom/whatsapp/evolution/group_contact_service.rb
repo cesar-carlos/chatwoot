@@ -46,7 +46,7 @@ class Custom::Whatsapp::Evolution::GroupContactService
 
   def display_name
     Custom::Whatsapp::Evolution::GroupMetadataService.new(channel: channel)
-                                                   .display_name(remote_jid, fallback: push_name)
+                                                     .display_name(remote_jid, fallback: push_name)
   end
 
   def find_or_create_group_contact!

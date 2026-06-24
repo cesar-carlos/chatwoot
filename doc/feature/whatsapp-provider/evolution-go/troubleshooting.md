@@ -77,13 +77,13 @@ Campo `phone` obrigatório — E.164 sem `+`.
 | `webhookUrl` no connect | `https://{FRONTEND_URL}/webhooks/evolution_go/{name}?token=...` |
 | `subscribe` inclui `MESSAGE` | Sim |
 | `FRONTEND_URL` público | Evolution Go alcança URL |
-| Auth | `?token=` = `webhook_secret` do channel |
+| Auth | `?token=` = `webhook_token` do channel |
 | Sidekiq | `WhatsappEventsJob` prepend rodando |
 | Filtros | `@g.us`, `fromMe` ignorados por design F1 |
 
 ### HTTP 401 no webhook
 
-- `webhook_secret` na URL ≠ `provider_config.webhook_secret`
+- `webhook_token` na URL ≠ `provider_config.webhook_token`
 - Token regenerado sem re-connect na Go
 
 ### HTTP 404
@@ -99,14 +99,14 @@ Campo `phone` obrigatório — E.164 sem `+`.
 | Causa | Ação |
 |-------|------|
 | Operador reconectou no painel Go sem `webhookUrl` | Usar botão **Reconnect** no Chatwoot — reenvia connect com URL + `subscribe` |
-| `webhook_secret` rotacionado | `ConnectionService#reconnect!` com novo secret + atualizar URL no Go |
+| `webhook_token` rotacionado | `ConnectionService#reconnect!` com novo secret + atualizar URL no Go |
 | `subscribe` sem `MESSAGE` | Garantir `["MESSAGE","CONNECTION","QRCODE"]` em todo connect |
 
 **Regra:** todo `POST /instance/connect` do fork deve incluir:
 
 ```json
 {
-  "webhookUrl": "https://{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_secret}",
+  "webhookUrl": "https://{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}",
   "subscribe": ["MESSAGE", "CONNECTION", "QRCODE"]
 }
 ```

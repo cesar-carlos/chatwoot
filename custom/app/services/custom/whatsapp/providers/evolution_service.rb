@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- Evolution provider orchestrates many message types
 class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
   include Custom::Whatsapp::Providers::EvolutionServiceOutbound
 
@@ -32,7 +33,7 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     true
   end
 
-  def validate_provider_config?
+  def validate_provider_config? # rubocop:disable Metrics/AbcSize -- cache + typed rescues for remote connection check
     config = whatsapp_channel.provider_config || {}
     return false if config['base_url'].blank? || config['instance_name'].blank? || config['api_key'].blank?
 
@@ -222,3 +223,4 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     Custom::Whatsapp::Evolution::ConnectionService::CONNECTION_STATE_CACHE_TTL
   end
 end
+# rubocop:enable Metrics/ClassLength

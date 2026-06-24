@@ -30,11 +30,14 @@ Backlog técnico ordenado. Status geral: [status.md](./status.md)
 
 ## Fase 1 — MVP
 
+- [ ] `Zapi::ApiError` (exceção tipada — base para ApiClient)
 - [ ] `Zapi::ApiClient`
-- [ ] `Zapi::ConnectionService` (webhooks + status + qr)
+- [ ] `Zapi::ConnectionService` (webhooks + status + qr + sync_phone_number)
+- [ ] `Zapi::ConnectionEvents` (side-effects Connected/Disconnected: DB + ActionCable)
+- [ ] `ZapiConnectionChannel` (ActionCable `zapi:connection:{inbox_id}`)
 - [ ] `ZapiService` send texto
-- [ ] `ZapiNormalizer` (Received + MessageStatus + Disconnected)
-- [ ] prepend `WhatsappEventsJob`
+- [ ] `ZapiNormalizer` (Received + MessageStatus + Delivery + Connected + Disconnected — só parse)
+- [ ] prepend `WhatsappEventsJob` — `dispatch_zapi_event` com router por `type`
 - [ ] `ZapiWhatsapp.vue` wizard (2 steps)
 - [ ] Settings card conexão
 - [ ] Specs normalizer + ApiClient
@@ -45,9 +48,9 @@ Backlog técnico ordenado. Status geral: [status.md](./status.md)
 
 - [ ] Mídia send + inbound download
 - [ ] `read-message` + status READ outbound
+- [ ] Reply/quote — `messageId` no `send-text`
 - [ ] `GET /contacts` import
-- [ ] Partners API no wizard
-- [ ] `ConnectedCallback` handling
+- [ ] Partners API no wizard (Step 1 alternativo)
 
 ---
 

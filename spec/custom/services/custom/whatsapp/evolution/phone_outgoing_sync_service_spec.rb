@@ -32,6 +32,12 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
     )
   end
 
+  def apply_provider_config!(channel, attrs)
+    channel.provider_config = channel.provider_config.merge(attrs)
+    channel.save!(validate: false)
+    channel.reload
+  end
+
   describe '#perform' do
     it 'creates an outgoing message for a phone-sent text' do
       expect { service.perform }.to change(Message, :count).by(1)
@@ -47,10 +53,7 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
     end
 
     it 'creates a group outgoing message using GroupContactService' do
-      channel.update_columns(
-        provider_config: channel.provider_config.merge('groups_ignore' => false, 'ignore_jids' => [])
-      )
-      channel.reload
+      apply_provider_config!(channel, 'groups_ignore' => false, 'ignore_jids' => [])
       group_data = data.merge(
         'key' => {
           'id' => 'GROUP-SENT-001',
