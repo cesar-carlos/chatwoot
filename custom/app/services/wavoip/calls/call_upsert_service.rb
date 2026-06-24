@@ -14,6 +14,7 @@ class Wavoip::Calls::CallUpsertService
   end
 
   def create!
+    return unless inbox.channel.voice_enabled?
     return if inbound_incoming_blocked?
 
     existing = find_call
@@ -29,6 +30,8 @@ class Wavoip::Calls::CallUpsertService
   end
 
   def update!
+    return unless inbox.channel.voice_enabled?
+
     call = find_call
     if call.blank?
       return if inbound_incoming_blocked?
@@ -57,7 +60,7 @@ class Wavoip::Calls::CallUpsertService
     mapped_status = status_mapper.to_call_status(event.external_status)
     return false if mapped_status.blank?
 
-    call.with_lock do
+    applied = call.with_lock do
       call.reload
       next false unless transition_allowed?(call, mapped_status)
 
@@ -72,17 +75,28 @@ class Wavoip::Calls::CallUpsertService
       )
       update_conversation(call)
       emit_broadcasts(call, mapped_status) if broadcast
+      true
     end
 
-    true
+    applied == true
   end
 
   def build_update_attrs(call, mapped_status)
-    return nil if mapped_status == call.status && event.duration_seconds.blank?
+    effective_status = contextual_terminal_status(call, mapped_status)
+    return nil if effective_status == call.status && event.duration_seconds.blank?
 
-    attrs = base_status_attrs(call, mapped_status)
-    attrs[:meta] = status_meta(call, mapped_status)
+    attrs = base_status_attrs(call, effective_status)
+    attrs[:meta] = status_meta(call, effective_status)
     attrs
+  end
+
+  # Wavoip sends ENDED for both answered and unanswered calls.
+  # If the call never reached in_progress, treat it as no_answer.
+  def contextual_terminal_status(call, mapped_status)
+    return mapped_status unless mapped_status == 'completed'
+    return mapped_status if call.in_progress? || call.started_at.present?
+
+    'no_answer'
   end
 
   def base_status_attrs(call, mapped_status)

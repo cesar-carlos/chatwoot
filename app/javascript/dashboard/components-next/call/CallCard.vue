@@ -33,6 +33,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isJoining: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 defineEmits([
@@ -189,6 +193,8 @@ const channelIcon = computed(() => {
             icon="i-ph-phone-bold"
             teal
             class="!rounded-full"
+            :is-loading="isJoining"
+            :disabled="isJoining"
             @click="$emit('accept')"
           />
 

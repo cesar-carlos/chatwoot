@@ -69,7 +69,7 @@ test.describe('Evolution inbox UI', () => {
     ).toBeVisible({ timeout: 60_000 });
   });
 
-  test('creates inbox and shows QR step', async ({ page, api }) => {
+  test('creates inbox and shows QR step', async ({ page }) => {
     // eslint-disable-next-line playwright/no-skipped-test -- requires Evolution credentials
     test.skip(
       !hasEvolutionCredentials(),

@@ -333,6 +333,7 @@ en:
       whatsapp_call:
         permission_requested: 'Sent a call permission request to %{contact_name}.'
         permission_granted: '%{contact_name} accepted the call permission request.'
+        permission_rejected: '%{contact_name} declined the call permission request.'
       csat:
         not_sent_due_to_messaging_window: 'CSAT survey not sent due to outgoing message restrictions'
       auto_resolve:
