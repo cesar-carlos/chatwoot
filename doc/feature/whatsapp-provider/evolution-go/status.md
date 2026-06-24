@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks). A Evolution Go é **infra externa** — o fork **não** provisiona nem sobe o servidor Go.
 
-**Última revisão:** 22/jun/2026 · **doc pronta para implementação**
+**Última revisão:** 24/jun/2026 · **doc pronta para implementação — ver `documentation-review.md` para gaps corrigidos**
 
 ---
 

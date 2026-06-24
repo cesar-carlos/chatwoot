@@ -4,6 +4,31 @@ Contratos públicos das classes do provider antes da implementação. Espelha [.
 
 ---
 
+## `Custom::Whatsapp::EvolutionGo::ApiError`
+
+```ruby
+class Custom::Whatsapp::EvolutionGo::ApiError < StandardError
+  attr_reader :status, :body, :base_message
+
+  def initialize(message = nil, status: nil, body: nil)
+    @status = status
+    @body = body
+    @base_message = message
+    super(log_message)
+  end
+
+  def log_message   # inclui status + body — para logs
+  def user_message  # versão amigável para UI — sem detalhe interno em produção
+
+  def self.compose_message(message, status, body)
+  def self.extract_message(body)  # dig('error', 'message') || body['message'] || body.to_s
+end
+```
+
+Elevar quando `response.code >= 400` no `ApiClient#raise_unless_success!`. Mensagens `error.message` do OpenAPI Go em `user_message` — ver [error-handling.md](./error-handling.md).
+
+---
+
 ## `Custom::Whatsapp::EvolutionGo::ApiClient`
 
 ```ruby
@@ -83,7 +108,7 @@ end
 ```ruby
 # initialize(channel) — Channel::Whatsapp provider evolution_go
 
-def provision_new_inbox!(params)  # create + generate webhook_secret + connect
+def provision_new_inbox!(params)  # create + generate webhook_token + connect
 def connect_existing!(params)     # token + instance_name informados (global_api_key opcional)
 def handle_event(envelope)        # CONNECTION, QRCODE webhooks
 def sync_phone_number!            # GET status → jid via ApiClient#dig_field
@@ -152,13 +177,39 @@ end
 
 ```ruby
 # before_action :authenticate_webhook!
-# POST create → WhatsappEventsJob.perform_later(params.merge(...))
+
+def process_payload
+  Webhooks::WhatsappEventsJob.perform_later(
+    sanitized_job_payload.merge(
+      evolution_go_instance_name: params[:instance_name],
+      channel_id: @channel.id
+    )
+  )
+  head :ok
+end
 
 def authenticate_webhook!
-  # lookup by instance_name
-  # validate ?token= vs webhook_secret
+  @channel = Channel::Whatsapp.where(provider: 'evolution_go')
+    .where("provider_config->>'instance_name' = ?", params[:instance_name]).first
+  return head :not_found unless @channel
+
+  secret = @channel.provider_config['webhook_token'].to_s.strip
+  token = params[:token].to_s.strip
+  return head :unauthorized unless secret.present? &&
+    ActiveSupport::SecurityUtils.secure_compare(token, secret)
+end
+
+private
+
+def sanitized_job_payload
+  # ⚠️ CRÍTICO: usar 'evolution_go_instance_name' NÃO ':instance_name'
+  # para evitar que o prepend evolution Node consuma este payload
+  # (ver decisions.md §27 + coordination-with-evolution-api.md § Prepend collision)
+  params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
 end
 ```
+
+> **Segurança de envelope:** o key `evolution_go_instance_name` em vez de `instance_name`/`instance` é intencional — impede que a detecção `evolution_envelope?` do prepend Node intercepte eventos Go. Ver [decisions.md §27](./decisions.md).
 
 ---
 
@@ -176,40 +227,90 @@ Retorna `true` se `server_ok` 2xx e `dig_field(status, 'connected', 'Connected')
 
 ---
 
+## `EvolutionGoConnectionChannel` (ActionCable)
+
+Espelha `EvolutionConnectionChannel` (implementado para evolution node):
+
+```ruby
+class EvolutionGoConnectionChannel < ApplicationCable::Channel
+  def subscribed
+    inbox = current_account.inboxes.find(params[:inbox_id])
+    channel = inbox.channel
+    reject and return unless channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'
+    reject and return unless inbox_accessible?(inbox)
+
+    stream_from "evolution_go:connection:#{inbox.id}"
+  end
+end
+```
+
+`ConnectionService#broadcast_connection_event` emite para `evolution_go:connection:{inbox.id}`. Frontend `useEvolutionGoConnection.js` subscreve para QR + connection status.
+
+---
+
 ## Registry
 
 ```ruby
 # custom/config/initializers/messaging_provider_registry.rb
-MessagingProvider::Registry.register('evolution_go') do |channel|
-  Custom::Whatsapp::Providers::EvolutionGoService.new(whatsapp_channel: channel)
-end
+# Formato idêntico ao do provider 'evolution' implementado — não usar bloco
+MessagingProvider::Registry.register(
+  'evolution_go',
+  Custom::Whatsapp::Providers::EvolutionGoService
+)
 ```
+
+> O format do registry usa a classe, não um bloco. Ver `custom/config/initializers/messaging_provider_registry.rb` para referência.
 
 ---
 
-## Prepend job (sketch)
+## Prepend job
+
+> **CRÍTICO — collision com evolution node:** O prepend evolution Node detecta `evolution_envelope?` verificando `params[:event].present? && params[:instance].present?`. Evolution Go tem o mesmo formato de envelope — sem cuidado, o prepend Node interceptaria e **descartaria** silenciosamente os eventos Go. Solução: o controller Go injeta `evolution_go_instance_name:` (não `:instance_name`/`:instance`), tornando o envelope invisível para `evolution_node_envelope?`. Ver [decisions.md §27](./decisions.md).
 
 ```ruby
-module Custom::Webhooks::WhatsappEventsJob
+module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   def perform(params = {})
+    params = params.with_indifferent_access
     return super(params) unless evolution_go_envelope?(params)
 
     channel = find_evolution_go_channel(params)
-    return unless channel
+    unless channel
+      Rails.logger.warn("[EVOLUTION_GO] unknown channel_id=#{params[:channel_id]}")
+      return super(params)  # propaga — não descarta silenciosamente
+    end
 
-    case params['event']
+    dispatch_evolution_go_event(channel, params)
+  end
+
+  private
+
+  def evolution_go_envelope?(params)
+    # Detectar pelo campo único injetado pelo EvolutionGoController
+    params[:evolution_go_instance_name].present? || params[:channel_id] && find_evolution_go_channel(params)
+  end
+
+  def find_evolution_go_channel(params)
+    channel_id = params[:channel_id]
+    Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution_go') if channel_id.present?
+  end
+
+  def dispatch_evolution_go_event(channel, params)
+    case params[:event]
     when 'MESSAGE'
-      normalized = Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
-        .new(channel, params).perform
+      normalized = Custom::Whatsapp::Webhooks::EvolutionGoNormalizer.new(channel, params).perform
       super(normalized.merge(phone_number: channel.phone_number)) if normalized.present?
     when 'CONNECTION', 'QRCODE'
       Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel).handle_event(params)
     when 'READ_RECEIPT'
       # Fase 2
+    when 'SEND_MESSAGE'
+      nil  # echo outbound — ignorar
     end
   end
 end
 ```
+
+> **`evolution_go_envelope?` simplificado:** a detecção primária é `params[:evolution_go_instance_name].present?` — injetado somente pelo `EvolutionGoController`. O `channel_id` lookup é fallback defensivo. Não usar `params[:event]` + `params[:instance]` como critério — ambíguo com evolution node.
 
 ---
 

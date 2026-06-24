@@ -56,25 +56,40 @@ class Custom::Whatsapp::Evolution::JidResolver
   end
 
   def recipient_id_for_status(remote_jid, key = nil)
-    key = key.with_indifferent_access if key.present?
-    jid = key.present? ? (key[:remoteJid] || remote_jid) : remote_jid
-    return Custom::Whatsapp::Evolution::GroupContactService.source_id_for(jid) if
-      Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid.to_s)
+    jid = status_remote_jid(remote_jid, key)
+    return group_recipient_id(jid) if group_jid?(jid)
 
+    status_recipient_from_jid(key, remote_jid)
+  end
+
+  def group_id_from_jid(jid)
+    jid.to_s.split('@').first if group_jid?(jid)
+  end
+
+  private
+
+  attr_reader :config
+
+  def group_jid?(jid)
+    Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid.to_s)
+  end
+
+  def group_recipient_id(jid)
+    Custom::Whatsapp::Evolution::GroupContactService.source_id_for(jid)
+  end
+
+  def status_remote_jid(remote_jid, key)
+    key = key.with_indifferent_access if key.present?
+    key.present? ? (key[:remoteJid] || remote_jid) : remote_jid
+  end
+
+  def status_recipient_from_jid(key, remote_jid)
     if key.present?
       phone_from_message_key(key) || group_id_from_jid(key[:remoteJid] || remote_jid)
     else
       phone_from_jid(resolve_message_jid({ remoteJid: remote_jid })) || group_id_from_jid(remote_jid)
     end
   end
-
-  def group_id_from_jid(jid)
-    jid.to_s.split('@').first if jid.to_s.end_with?('@g.us')
-  end
-
-  private
-
-  attr_reader :config
 
   def lid_addressing?(remote_jid, addressing_mode)
     remote_jid.to_s.end_with?('@lid') || addressing_mode.to_s == 'lid'

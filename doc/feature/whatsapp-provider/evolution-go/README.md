@@ -70,12 +70,13 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 
 | Documento | Papel |
 |-----------|-------|
-| [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) | Estratégia de coexistência com `evolution` |
+| [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) | Estratégia de coexistência com `evolution` — **inclui alerta prepend collision** |
 | [spec-design.md](./spec-design.md) | Contratos das classes previstas |
 | [postman-validation.md](./postman-validation.md) | Cruzamento de OpenAPI e Postman |
 | [documentation-links.md](./documentation-links.md) | Links oficiais |
 | [tasks.md](./tasks.md) | Backlog da implementação |
 | [troubleshooting.md](./troubleshooting.md) | Runbook planejado |
+| [documentation-review.md](./documentation-review.md) | Auditoria / revisão completa |
 
 ## Relação com a documentação pai
 

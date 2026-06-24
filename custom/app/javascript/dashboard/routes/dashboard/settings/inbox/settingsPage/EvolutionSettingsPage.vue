@@ -316,7 +316,9 @@ function importStatusLabel(status) {
         v-if="!state.groupsIgnore"
         class="text-sm text-n-amber-11 rounded-lg border border-n-amber-6 bg-n-amber-2 px-4 py-3 mb-4"
       >
-        {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.GROUPS_IGNORE.EXPERIMENTAL_WARNING') }}
+        {{
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.GROUPS_IGNORE.EXPERIMENTAL_WARNING')
+        }}
       </p>
       <SettingsToggleSection
         v-model="state.rejectCall"

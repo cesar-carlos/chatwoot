@@ -82,7 +82,7 @@ flowchart LR
 | `instance_name` | string | 1 | Nome instância | body `name` no create |
 | `instance_token` | string | 1 | Oculto / readonly | `data.token` do create |
 | `instance_id` | string | 1 | Debug readonly | `data.id` do create |
-| `webhook_secret` | string | 1 | Auto-gerado | query `?token=` na webhook URL |
+| `webhook_token` | string | 1 | Auto-gerado | query `?token=` na webhook URL |
 | `connection_status` | enum | 1 | Badge | `GET /instance/status` |
 | `phone_number` | channel | 1 | Após connect | `data` status / jid |
 
@@ -99,7 +99,7 @@ flowchart LR
 |-------|-------------------|
 | `global_api_key` | masked |
 | `instance_token` | masked |
-| `webhook_secret` | nunca expor |
+| `webhook_token` | nunca expor |
 | `proxy_password` | masked |
 
 Ver [decisions.md §14](./decisions.md).
@@ -187,7 +187,7 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 
 | Regra | Valor |
 |-------|-------|
-| URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_secret}` |
+| URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}` |
 | Registro | `POST /instance/connect` body `webhookUrl` |
 | Subscribe MVP | `["MESSAGE", "CONNECTION", "QRCODE"]` |
 | ActionCable | `evolution_go:connection:{inbox_id}` |

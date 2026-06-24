@@ -130,6 +130,23 @@ Diferenças **intencionais**:
 
 ---
 
+## Revisão 24/jun/2026 — gaps identificados e corrigidos
+
+Comparação com o código Evolution **implementado** (60+ arquivos em `custom/`).
+
+| # | Gap | Gravidade | Correção |
+|---|-----|-----------|---------|
+| G1 | `Custom::Whatsapp::Zapi::ApiError` ausente do spec-design e tasks | Alta | Adicionado ao `spec-design.md` (§ApiError) e `tasks.md` Fase 1 |
+| G2 | `ZapiConnectionChannel` (ActionCable) ausente | Alta | Adicionado ao `spec-design.md` e `tasks.md` Fase 1 |
+| G3 | `dispatch_zapi_event` no job prepend sem design detalhado | Alta | Router completo adicionado ao `spec-design.md` §PrependJob |
+| G4 | `sanitized_job_payload` no `ZapiController` não definido | Média | Implementação explícita adicionada ao `spec-design.md` |
+| G5 | `ConnectedCallback` marcada como Fase 2 em `feature-mapping.md` | Alta | Movida para Fase 1 (necessária para phone_number sync pós-QR) |
+| G6 | Separação normalizer vs side-effects não documentada | Média | `ConnectionEvents` adicionado ao spec-design e implementation-plan |
+
+**Diagrama de separação de responsabilidades** adicionado a `implementation-plan.md` §Fase 1.
+
+---
+
 ## Ordem recomendada antes do código
 
 1. Executar [validation-checklist.md](./validation-checklist.md) (1 instância Z-API)
@@ -144,3 +161,4 @@ Diferenças **intencionais**:
 | Data | Escopo |
 |------|--------|
 | 23/jun/2026 | Revisão completa inicial; correções `webhook_token`, QR polling, bulk webhook, reply |
+| 24/jun/2026 | Reavaliação cruzada com código Evolution implementado; gaps G1–G6 corrigidos (ver abaixo) |

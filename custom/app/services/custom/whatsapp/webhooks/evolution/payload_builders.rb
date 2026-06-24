@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ModuleLength -- one branch per Evolution message type
+# rubocop:disable Metrics/ModuleLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
 module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
   MESSAGE_TYPE_MAP = {
     'conversation' => 'text',
@@ -227,4 +227,4 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
     message.keys.any? { |key| key.end_with?('Message') } ? '[Unsupported message type]' : nil
   end
 end
-# rubocop:enable Metrics/ModuleLength
+# rubocop:enable Metrics/ModuleLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength

@@ -60,7 +60,7 @@ Modo **instância existente:** `global_api_key` opcional no Step 1 — obrigató
 **Backend (ao avançar):**
 
 1. `POST /instance/create` (se criar) → salvar `instance_token`, `instance_id`
-2. Gerar `webhook_secret` server-side
+2. Gerar `webhook_token` server-side
 3. `POST /instance/connect` com `webhookUrl` + `subscribe`
 
 ### Step 3 — Pairing
@@ -111,7 +111,7 @@ sequenceDiagram
   API->>CS: provision_new_inbox!
   CS->>GO: POST /instance/create (global key)
   GO-->>CS: instance_token, instance_id
-  CS->>CS: generate webhook_secret
+  CS->>CS: generate webhook_token
   CS->>GO: POST /instance/connect (webhookUrl + subscribe)
   CS-->>API: inbox_id, connection_status
   API-->>UI: 201 + inbox_id

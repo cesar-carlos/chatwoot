@@ -202,7 +202,9 @@ const stopRecorderAndUpload = async callId => {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[WebRTC] recording upload failed:', err);
-    useAlert(conversationI18n.CONVERSATION.VOICE_WIDGET.RECORDING_UPLOAD_FAILED);
+    useAlert(
+      conversationI18n.CONVERSATION.VOICE_WIDGET.RECORDING_UPLOAD_FAILED
+    );
   }
 };
 
