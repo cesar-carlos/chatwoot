@@ -84,7 +84,7 @@ RSpec.describe Wavoip::Webhooks::Handlers::RecordHandler do
     end.not_to have_enqueued_job(Wavoip::AttachRecordingJob)
   end
 
-  it 'skips when the call cannot be found' do
+  it 'skips when the call cannot be found and enqueues retry job' do
     missing_event = Voice::Dto::WebhookCallEvent.new(
       provider: :wavoip,
       external_call_id: 'missing_call',
@@ -103,6 +103,7 @@ RSpec.describe Wavoip::Webhooks::Handlers::RecordHandler do
 
     expect do
       described_class.new(inbox: inbox, event: missing_event).perform
-    end.not_to have_enqueued_job(Wavoip::AttachRecordingJob)
+    end.to have_enqueued_job(Wavoip::RetryRecordAttachmentJob)
+      .with(inbox.id, 'missing_call', record_url)
   end
 end

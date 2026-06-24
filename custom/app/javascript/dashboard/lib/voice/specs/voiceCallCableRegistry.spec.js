@@ -29,6 +29,20 @@ vi.mock('dashboard/composables', () => ({
   useAlert: vi.fn(),
 }));
 
+vi.mock('dashboard/composables/useCallSession', () => ({
+  isCallJoining: vi.fn(() => false),
+}));
+
+vi.mock('dashboard/store', () => ({
+  default: {
+    getters: {
+      getCurrentUserID: 99,
+    },
+  },
+}));
+
+import { useAlert } from 'dashboard/composables';
+import { isCallJoining } from 'dashboard/composables/useCallSession';
 import { wavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
 
 describe('wavoipVoiceCableHandlers', () => {
@@ -76,6 +90,91 @@ describe('wavoipVoiceCableHandlers', () => {
 
       expect(store.calls[0]?.callSid).toBe('cable_only_001');
       expect(store.calls[0]?.callId).toBe(77);
+      expect(store.calls[0]?.awaitingSdkOffer).toBe(true);
+    });
+  });
+
+  describe('onAccepted', () => {
+    beforeEach(() => {
+      isCallJoining.mockReturnValue(false);
+    });
+
+    it('dismisses ringing call when another agent accepted', () => {
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'acc_001',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onAccepted({
+        call_id: 'acc_001',
+        accepted_by_agent_id: 42,
+      });
+
+      expect(useAlert).toHaveBeenCalled();
+      expect(store.calls.some(c => c.callSid === 'acc_001')).toBe(false);
+    });
+
+    it('does not dismiss when the current user accepted', () => {
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'acc_self',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onAccepted({
+        call_id: 'acc_self',
+        accepted_by_agent_id: 99,
+      });
+
+      expect(useAlert).not.toHaveBeenCalled();
+      expect(store.calls.some(c => c.callSid === 'acc_self')).toBe(true);
+    });
+
+    it('does not dismiss while this tab is joining the call', () => {
+      isCallJoining.mockReturnValue(true);
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'acc_joining',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onAccepted({
+        call_id: 'acc_joining',
+        accepted_by_agent_id: 42,
+      });
+
+      expect(useAlert).not.toHaveBeenCalled();
+      expect(store.calls.some(c => c.callSid === 'acc_joining')).toBe(true);
+    });
+  });
+
+  describe('onEnded', () => {
+    it('removes the call from the store and alerts handled_remotely', () => {
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'end_001',
+        conversationId: 1,
+        inboxId: 2,
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onEnded({
+        call_id: 'end_001',
+        end_reason: 'handled_remotely',
+      });
+
+      expect(useAlert).toHaveBeenCalled();
+      expect(store.calls.some(c => c.callSid === 'end_001')).toBe(false);
     });
   });
 });

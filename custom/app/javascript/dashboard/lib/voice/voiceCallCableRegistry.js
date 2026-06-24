@@ -2,6 +2,7 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import { useAlert } from 'dashboard/composables';
 import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
+import store from 'dashboard/store';
 import { mapCableToStoreEntry } from 'customDashboard/lib/voice/callStoreMappers';
 import {
   endActiveCall as endSdkActiveCall,
@@ -13,30 +14,57 @@ import {
   pendingOffers,
 } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { flushAcceptedByRecording } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
+import { isCallJoining } from 'dashboard/composables/useCallSession';
+
+const currentUserId = () => store.getters.getCurrentUserID;
 
 export const wavoipVoiceCableHandlers = {
   onIncoming(data) {
-    const store = useCallsStore();
-    store.addCall(mapCableToStoreEntry(data));
-    flushAcceptedByRecording(data.call_id);
-
+    const callsStore = useCallsStore();
+    const existing = callsStore.calls.find(c => c.callSid === data.call_id);
     const offerEntry = pendingOffers.get(data.call_id);
-    if (offerEntry) {
-      store.addCall({
-        ...mapCableToStoreEntry(data),
-        wavoipOfferId: offerEntry.offer.id,
-      });
-    }
+
+    const entry = {
+      ...mapCableToStoreEntry(data),
+      awaitingSdkOffer: !offerEntry,
+      wavoipOfferId: offerEntry?.offer?.id || data.call_id,
+    };
+
+    callsStore.addCall(existing ? { ...existing, ...entry } : entry);
+    flushAcceptedByRecording(data.call_id);
   },
   onOutboundConnected() {},
   onOutboundAccepted(data) {
-    const store = useCallsStore();
-    if (!store.calls.some(c => c.callSid === data.call_id)) return;
-    store.setCallActive(data.call_id);
+    const callsStore = useCallsStore();
+    const callEntry = callsStore.calls.find(c => c.callSid === data.call_id);
+    if (!callEntry) return;
+    // Media is owned by peerAccept; cable only syncs UI when SDK session exists.
+    if (getActiveProviderCallId() === data.call_id) {
+      callsStore.setCallActive(data.call_id);
+    }
+  },
+  onAccepted(data) {
+    const callsStore = useCallsStore();
+    const callEntry = callsStore.calls.find(c => c.callSid === data.call_id);
+    if (!callEntry) return;
+
+    if (callEntry.isActive) return;
+    if (isCallJoining()) return;
+    if (getActiveProviderCallId() === data.call_id) return;
+    if (
+      data.accepted_by_agent_id &&
+      data.accepted_by_agent_id === currentUserId()
+    ) {
+      return;
+    }
+
+    useAlert(conversationI18n.CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE);
+    removePendingOffer(data.call_id);
+    callsStore.dismissCall(data.call_id);
   },
   onEnded(data) {
-    const store = useCallsStore();
-    const callEntry = store.calls.find(c => c.callSid === data.call_id);
+    const callsStore = useCallsStore();
+    const callEntry = callsStore.calls.find(c => c.callSid === data.call_id);
     if (!callEntry) return;
 
     if (data.end_reason === 'handled_remotely') {
@@ -52,7 +80,7 @@ export const wavoipVoiceCableHandlers = {
     }
 
     removePendingOffer(data.call_id);
-    store.removeCall(data.call_id);
+    callsStore.removeCall(data.call_id);
   },
 };
 

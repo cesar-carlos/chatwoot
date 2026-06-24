@@ -6,7 +6,7 @@ divergência de prioridade ou fase, este plano prevalece.
 
 **Reavaliado em:** 20 jun. 2026
 
-**Estado do código:** Fases 1–4 **code complete** + audit fixes (jun. 2026). E2E live de webhooks CALL pendente — ver [spike-notes.md](./spike-notes.md).
+**Estado do código:** Fases 1–4 + **conclusão A–E** (jun. 2026): multiagente `voice_call.accepted`, dismiss→reject, test webhook, RECORD retry specs. E2E live com `+5566999050312` — ver [spike-notes.md](./spike-notes.md).
 
 ## Doc status (Jun 2026)
 
@@ -25,7 +25,17 @@ divergência de prioridade ou fase, este plano prevalece.
 | **1 — Fundação** | ✅ Done | `Channel::Wavoip`, migration `channel_wavoip`, webhook `POST /webhooks/wavoip/:webhook_key`, tile `Wavoip.vue` |
 | **2 — Outbound** | ✅ Done | Composables SDK, `CallUpsertService`, outbound RINGING → ACTIVE em produção |
 | **3 — Inbound + registry** | ✅ Done | `voiceSessionRegistry`, `voiceCallCableRegistry`, `useCallSession` dispatch, `CallsController#update` |
-| **4 — Hardening** | ✅ Done | 76 RSpec + 21 Vitest; audit + optional improvements jun. 2026 |
+| **4 — Hardening** | ✅ Done | RSpec + Vitest; pós-MVP: device panel, `connectionStatusChanged`, cable/SDK reconcile, RECORD retry |
+
+### Conclusão A–E (Jun 2026)
+
+| Fase | Escopo | Status |
+|------|--------|--------|
+| **A** | P0 E2E: `startCall` unwrap, join fail dismiss, dismiss → SDK reject + `markDismissed` | ✅ |
+| **B** | Multiagente: `voice_call.accepted` PATCH/ACTIVE, `onAccepted` + `isJoining` guard | ✅ |
+| **C** | Backend: logging seguro, RECORD retry, push alinhado cable, HANDLED_REMOTELY stub | ✅ |
+| **D** | Settings: `WavoipDevicePanel`, test webhook, restricted gate, diagnostics, media/inbox | ✅ |
+| **E** | Specs + docs; E2E manual `+5566999050312` (Pass/Fail em spike-notes) | ⚠️ W1/I1 webhook **Pass**; O1/M1/D1/F1 browser _pending_ |
 
 ### Backend (`custom/`)
 

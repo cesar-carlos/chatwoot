@@ -7,7 +7,7 @@ class Wavoip::Calls::InboundPushService
     return unless call.incoming?
     return if conversation.blank?
 
-    inbox.members.find_each do |agent|
+    agents_for_notification.find_each do |agent|
       next if notification_recently_sent?(agent)
 
       NotificationBuilder.new(
@@ -24,6 +24,17 @@ class Wavoip::Calls::InboundPushService
 
   def conversation
     @conversation ||= call.conversation
+  end
+
+  def agents_for_notification
+    online = inbox.available_agents
+    return online if online.exists?
+
+    assignee = conversation.assignee
+    return User.where(id: assignee.id) if assignee.present?
+
+    user_ids = inbox.member_ids | inbox.account.administrators.ids
+    User.where(id: user_ids)
   end
 
   def notification_recently_sent?(user)

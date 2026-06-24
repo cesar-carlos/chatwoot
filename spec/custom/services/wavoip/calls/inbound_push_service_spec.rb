@@ -33,4 +33,17 @@ RSpec.describe Wavoip::Calls::InboundPushService do
       described_class.new(call: call, inbox: inbox).perform
     end.to change { agent.notifications.voice_call_incoming.count }.by(1)
   end
+
+  it 'falls back to assignee then members when no agents are online' do
+    offline_agent = create(:user, account: account, role: :agent)
+    create(:inbox_member, user: offline_agent, inbox: inbox)
+    offline_agent.notification_settings.find_by(account: account).update!(push_voice_call_incoming: true)
+    conversation.update!(assignee: offline_agent)
+
+    allow(inbox).to receive(:available_agents).and_return(User.none)
+
+    expect do
+      described_class.new(call: call, inbox: inbox).perform
+    end.to change { offline_agent.notifications.voice_call_incoming.count }.by(1)
+  end
 end

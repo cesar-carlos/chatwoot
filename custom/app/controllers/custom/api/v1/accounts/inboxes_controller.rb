@@ -21,6 +21,26 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: { wavoip_webhook_url: channel.webhook_url }
   end
 
+  def test_wavoip_webhook
+    authorize @inbox, :regenerate_wavoip_webhook_key?
+    channel = @inbox.channel
+    return head :not_found unless channel.is_a?(Channel::Wavoip)
+
+    Wavoip::ProcessWebhookJob.perform_now(
+      @inbox.id,
+      {
+        'type' => 'DEVICE',
+        'status' => 'open',
+        'phone' => channel.phone_number
+      }
+    )
+    @inbox.update_account_cache
+    render json: {
+      ok: true,
+      webhook_verified: channel.reload.webhook_verified?
+    }
+  end
+
   def evolution_connection
     authorize @inbox, :show?
     channel = @inbox.channel

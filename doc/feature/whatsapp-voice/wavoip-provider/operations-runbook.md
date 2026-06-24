@@ -181,6 +181,16 @@ account.enable_features!('channel_wavoip') # se flag fork ativa
 5. Agente B deve: widget sumir + alerta *Another agent answered this call*
 6. Registrar em [spike-notes.md](./spike-notes.md) (Pass/Fail)
 
+### E2E manual — `+5566999050312`
+
+| Flow | Steps |
+|------|-------|
+| Outbound | Agent online → conversation → call → `peerAccept` → end → `voice_call` bubble |
+| Inbound | Close app.wavoip.com → call from `+5566999050312` → widget Accept → audio |
+| Webhook | `WAVOIP_INBOX_ID=82 WAVOIP_TEST_PEER_PHONE=+5566999050312 bin/wavoip-pilot-verify` |
+
+Prerequisite: only one browser client per device token (close Wavoip panel during agent tests).
+
 ---
 
 ## Métricas e alertas (suporte)

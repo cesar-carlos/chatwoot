@@ -223,6 +223,40 @@ Persistir em `Call#meta['wavoip_call_type']`.
 
 ---
 
+### 7.4 `offer.accept()` return shape
+
+Doc: [Chamada Ativa](https://wavoip.gitbook.io/api/wavoip-api/chamadas/active.md)
+
+`offer.accept()` resolves to `{ call: CallActive, err }` — **not** a bare `CallActive`.
+
+Chatwoot normalizes via `unwrapWavoipSdkResult()` in `custom/.../lib/wavoip/wavoipSdkResult.js`:
+
+```javascript
+const { call, err } = unwrapWavoipSdkResult(await offer.accept());
+if (err || !call) throw new Error(err?.message || err);
+setActiveCall(call, { providerCallId: offer.id, inboxId });
+```
+
+`Device.connectionStatusChanged` (WebSocket) is tracked separately from `statusChanged` (WhatsApp) in `wavoipDeviceStatus.js` / `useWavoipConnection`.
+
+### 7.5 Multi-agente — `voice_call.accepted`
+
+Emitido por `Wavoip::Calls::Broadcaster#broadcast_agent_accepted` quando:
+
+- Agente aceita no browser → `PATCH /api/v1/accounts/:id/calls/:id`
+- Webhook inbound `ACTIVE` → `CallUpsertService#emit_broadcasts`
+
+Payload inclui `accepted_by_agent_id`. Handler `voiceCallCableRegistry.onAccepted` dispensa outras abas exceto a que aceitou (`getActiveProviderCallId` / `accepted_by_agent_id === currentUser`).
+
+### 7.6 Dismiss vs reject (inbound)
+
+| Ação UI | SDK | Efeito |
+|---------|-----|--------|
+| Recusar (phone-decline) | `offer.reject()` | Contato para de tocar |
+| Dismiss (✕) inbound Wavoip | `offer.reject()` via `dismissCall` | Mesmo que recusar — evita ring órfão |
+
+---
+
 ## 8. Tipos úteis (import)
 
 ```typescript

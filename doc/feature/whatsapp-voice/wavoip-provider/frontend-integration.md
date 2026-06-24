@@ -317,7 +317,9 @@ custom/app/javascript/dashboard/
 | `WavoipCallingPage.vue` | Settings → Chamadas: URL read-only + status `wavoip_setup_pending` |
 | `WavoipWebhookInstructions.vue` | Etapa pós-criação no wizard (copy URL, aguardar primeiro evento) |
 
-**Não implementados no MVP** (referenciados em docs antigos): `WavoipOnboardingChecklist.vue`, `WavoipDevicePanel.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
+**Implementados:** `WavoipCallingPage.vue`, `WavoipDevicePanel.vue` (device status, QR, pairing, wakeUp, restart/logout, diagnostics).
+
+**Não implementados no MVP** (referenciados em docs antigos): `WavoipOnboardingChecklist.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
 
 Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).
 

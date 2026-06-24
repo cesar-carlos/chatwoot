@@ -61,6 +61,24 @@ RSpec.describe 'Wavoip Inboxes API extensions', type: :request do
     end
   end
 
+  describe 'POST /api/v1/accounts/:account_id/inboxes/:id/test_wavoip_webhook' do
+    it 'processes a DEVICE fixture and marks webhook verified for administrator' do
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/test_wavoip_webhook",
+           headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['webhook_verified']).to be(true)
+      expect(channel.reload.webhook_verified?).to be(true)
+    end
+
+    it 'returns unauthorized for non-admin agent' do
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/test_wavoip_webhook",
+           headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe 'POST /api/v1/accounts/:account_id/inboxes/:id/set_inbound_calls' do
     it 'disables inbound calls for administrator on a Wavoip inbox' do
       post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/set_inbound_calls",

@@ -10,8 +10,25 @@ class Wavoip::ProcessWebhookJob < ApplicationJob
       return
     end
 
-    event_type = payload['type'].presence || payload[:type]
-    Rails.logger.info("[WAVOIP] processed inbox_id=#{inbox.id} event_type=#{event_type}")
-    Wavoip::Webhooks::Dispatcher.new(inbox: inbox, payload: payload).dispatch
+    normalized = payload.with_indifferent_access
+    result = Wavoip::Webhooks::Dispatcher.new(inbox: inbox, payload: payload).dispatch
+    Rails.logger.info(
+      "[WAVOIP] processed inbox_id=#{inbox.id} type=#{normalized[:type]} " \
+      "action=#{normalized[:action]} call_id=#{webhook_call_id(normalized)} " \
+      "status=#{normalized[:status]} outcome=#{outcome_for(result)}"
+    )
+  end
+
+  private
+
+  def webhook_call_id(payload)
+    payload[:id].presence || payload[:whatsapp_call_id]
+  end
+
+  def outcome_for(result)
+    return 'skipped' if result.nil?
+    return 'upserted' if result.is_a?(Call)
+
+    'processed'
   end
 end

@@ -11,6 +11,8 @@ import { useWavoipOutboundCall } from 'customDashboard/composables/wavoip/useWav
 import {
   useWavoipIncomingOffer,
   removePendingOffer,
+  waitForPendingOffer,
+  getPendingOffer,
 } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import {
   useWavoipActiveCall,
@@ -42,8 +44,12 @@ export function useWavoipCallSession() {
     await connectForInbox(inboxId);
     attachToInbox(inboxId);
 
+    if (!getPendingOffer(callId)) {
+      await waitForPendingOffer(callId);
+    }
+
     const sdkCall = await acceptOffer(callId);
-    setActiveCall(sdkCall, { providerCallId: callId });
+    setActiveCall(sdkCall, { providerCallId: callId, inboxId });
     removePendingOffer(callId);
     await recordAcceptedBy(callId);
     await flushAcceptedByRecording(callId);
@@ -72,8 +78,8 @@ export function useWavoipCallSession() {
     attachToInbox(inboxId);
   };
 
-  const syncWithAvailability = availability => {
-    syncConnections(availability);
+  const syncWithAvailability = async availability => {
+    await syncConnections(availability);
     if (availability === 'online') {
       const inboxes = store.getters['inboxes/getInboxes'] || [];
       inboxes

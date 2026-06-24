@@ -11,6 +11,7 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       Wavoip::Calls::Broadcaster,
       broadcast_incoming: nil,
       broadcast_accepted: nil,
+      broadcast_agent_accepted: nil,
       broadcast_ended: nil
     )
   end
@@ -119,7 +120,10 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       aggregate_failures do
         expect(call.status).to eq('in_progress')
         expect(call.started_at).to be_present
-        expect(broadcaster).to have_received(:broadcast_accepted).with(call)
+        expect(broadcaster).to have_received(:broadcast_agent_accepted).with(
+          call,
+          accepted_by_agent_id: call.accepted_by_agent_id
+        )
       end
     end
 
@@ -150,6 +154,20 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       end
     end
 
+    it 'creates handled_remotely stub when create returns blank on first HANDLED_REMOTELY' do
+      remote_event = build_event(action: :update, external_status: 'HANDLED_REMOTELY')
+      service = service_for(remote_event)
+      allow(service).to receive(:create!).and_return(nil)
+
+      call = service.update!
+
+      aggregate_failures do
+        expect(call.status).to eq('completed')
+        expect(call.end_reason).to eq('handled_remotely')
+        expect(broadcaster).to have_received(:broadcast_ended).with(call)
+      end
+    end
+
     it 'ignores REMOTE_CALL_IN_PROGRESS without changing status' do
       call = service_for(build_event).create!
       ignore_event = build_event(action: :update, external_status: 'REMOTE_CALL_IN_PROGRESS')
@@ -157,6 +175,18 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       result = service_for(ignore_event).update!
 
       expect(result.status).to eq(call.status)
+    end
+
+    it 'skips create on update when contact phone is missing (no peer on UPDATE)' do
+      channel.update!(phone_number: '+5511999999999')
+      event = build_event(
+        action: :update,
+        external_status: 'INCOMING_RING',
+        from_phone: nil,
+        to_phone: channel.phone_number
+      )
+
+      expect { service_for(event).update! }.not_to change(Call, :count)
     end
   end
 end
