@@ -35,7 +35,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['refresh', 'requestPairingCode']);
+const emit = defineEmits(['refresh', 'requestPairingCode', 'qrImageError']);
 
 const { t } = useI18n();
 
@@ -91,6 +91,7 @@ const showQrError = computed(
         :src="qrDataUrl"
         :alt="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.QR_LABEL')"
         class="w-56 h-56 object-contain"
+        @error="emit('qrImageError')"
       />
     </div>
 
