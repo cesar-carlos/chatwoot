@@ -13,6 +13,8 @@ import {
 } from 'dashboard/composables/useWhatsappCallSession';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
+import { useAlert } from 'dashboard/composables';
+import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 // FORK: Wavoip voice cable handlers (no SDP)
 import { VOICE_CALL_CABLE_HANDLERS } from 'customDashboard/lib/voice/voiceCallCableRegistry';
 // FORK: Evolution disconnect alert
@@ -68,6 +70,8 @@ class ActionCableConnector extends BaseActionCableConnector {
       'voice_call.outbound_connected': this.onVoiceCallOutboundConnected,
       'voice_call.outbound_accepted': this.onVoiceCallOutboundAccepted,
       'voice_call.ended': this.onVoiceCallEnded,
+      'voice_call.accepted': this.onVoiceCallAccepted,
+      'voice_call.permission_granted': this.onVoiceCallPermissionGranted,
       // FORK: Evolution WhatsApp disconnect
       'evolution.connection_closed': this.onEvolutionConnectionClosed,
     };
@@ -443,6 +447,26 @@ class ActionCableConnector extends BaseActionCableConnector {
       }
     }
     useCallsStore().removeCall(data.call_id);
+  };
+
+  // When another tab or agent accepts an inbound WhatsApp call, dismiss it from
+  // this tab's queue. We only dismiss if the call is still incoming here (not
+  // already active), so the accepting tab keeps its live session untouched.
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallAccepted = data => {
+    if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
+    const store = useCallsStore();
+    const call = store.calls.find(c => c.callSid === data.call_id);
+    if (!call || call.isActive) return;
+    store.dismissCall(data.call_id);
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallPermissionGranted = data => {
+    if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
+    useAlert(
+      conversationI18n.CONVERSATION.VOICE_WIDGET.PERMISSION_GRANTED
+    );
   };
 
   // eslint-disable-next-line class-methods-use-this

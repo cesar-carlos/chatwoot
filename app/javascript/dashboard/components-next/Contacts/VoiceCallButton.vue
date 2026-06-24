@@ -55,9 +55,14 @@ const hasVoiceInboxes = computed(() => voiceInboxes.value.length > 0);
 
 const shouldRender = computed(() => hasVoiceInboxes.value && !!props.phone);
 
-const isInitiatingCall = computed(() => {
-  return contactsUiFlags.value?.isInitiatingCall || false;
-});
+// Twilio sets isInitiatingCall via Vuex; WhatsApp/Wavoip are tracked locally.
+const twilioIsInitiating = computed(
+  () => contactsUiFlags.value?.isInitiatingCall || false
+);
+const isStartingCall = ref(false);
+const isInitiatingCall = computed(
+  () => isStartingCall.value || twilioIsInitiating.value
+);
 
 // Mirror the conversation-header button: block a new call whenever any provider
 // call is already active or ringing, otherwise starting a WhatsApp call here
@@ -172,24 +177,24 @@ const startCall = async (inboxId, conversationIdHint = null) => {
 
   const inbox = (inboxesList.value || []).find(i => i.id === inboxId);
   const provider = getVoiceCallProvider(inbox);
-  if (provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
-    try {
-      await startWhatsappCall(inboxId, conversationIdHint);
-    } catch (error) {
-      useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
-    }
-    return;
-  }
-  if (provider === VOICE_CALL_PROVIDERS.WAVOIP) {
-    try {
-      await startWavoipCall(inboxId, conversationIdHint);
-    } catch (error) {
-      useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
-    }
-    return;
-  }
+
+  // Twilio tracks its own loading state via Vuex; gate the local ref only for
+  // the browser-native providers so the spinner reflects the async init work.
+  const trackLocally =
+    provider === VOICE_CALL_PROVIDERS.WHATSAPP ||
+    provider === VOICE_CALL_PROVIDERS.WAVOIP;
+  if (trackLocally) isStartingCall.value = true;
 
   try {
+    if (provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
+      await startWhatsappCall(inboxId, conversationIdHint);
+      return;
+    }
+    if (provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+      await startWavoipCall(inboxId, conversationIdHint);
+      return;
+    }
+
     const response = await store.dispatch('contacts/initiateCall', {
       contactId: props.contactId,
       inboxId,
@@ -207,8 +212,9 @@ const startCall = async (inboxId, conversationIdHint = null) => {
     useAlert(t('CONTACT_PANEL.CALL_INITIATED'));
     navigateToConversation(response?.conversation_id);
   } catch (error) {
-    const apiError = error?.message;
-    useAlert(apiError || t('CONTACT_PANEL.CALL_FAILED'));
+    useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
+  } finally {
+    if (trackLocally) isStartingCall.value = false;
   }
 };
 

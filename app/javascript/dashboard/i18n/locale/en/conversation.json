@@ -429,7 +429,11 @@
       "MUTE": "Mute mic",
       "UNMUTE": "Unmute mic",
       "VIEW_CHAT_HISTORY": "View chat history",
-      "GO_TO_CONVERSATION": "Go to conversation thread"
+      "GO_TO_CONVERSATION": "Go to conversation thread",
+      "PERMISSION_GRANTED": "Contact has authorized WhatsApp calls — you can call them now.",
+      "UNKNOWN_CALLER": "Unknown caller",
+      "CUSTOMER_SUPPORT": "Customer support",
+      "RECORDING_UPLOAD_FAILED": "Call recording could not be saved. Please check your connection and try again."
     }
   },
   "EMAIL_TRANSCRIPT": {

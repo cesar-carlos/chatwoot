@@ -71,7 +71,8 @@ class Call < ApplicationRecord
 
   # Browser ↔ Meta WebRTC needs at least one STUN server to discover its public srflx candidate.
   def self.default_ice_servers
-    urls = ENV.fetch('VOICE_CALL_STUN_URLS', DEFAULT_STUN_URL).split(',').filter_map { |u| u.strip.presence }
+    raw = GlobalConfigService.load('VOICE_CALL_STUN_URLS', DEFAULT_STUN_URL)
+    urls = raw.to_s.split(',').filter_map { |u| u.strip.presence }
     [{ urls: urls }]
   end
 

@@ -5,23 +5,33 @@ class Whatsapp::CallPermissionReplyService
     return unless inbox.channel.voice_enabled?
 
     reply_data = extract_reply_data
-    return unless reply_data&.dig(:accepted)
+    return unless reply_data
 
     conversation = find_requesting_conversation(reply_data[:context_id])
     return unless conversation
 
     clear_permission_flag(conversation)
-    emit_permission_granted_activity(conversation)
-    broadcast_permission_granted(conversation.contact, conversation)
+
+    if reply_data[:accepted]
+      emit_permission_granted_activity(conversation)
+      broadcast_permission_granted(conversation.contact, conversation)
+    else
+      emit_permission_rejected_activity(conversation)
+    end
   end
 
   private
 
   def emit_permission_granted_activity(conversation)
-    content = I18n.t(
-      'conversations.activity.whatsapp_call.permission_granted',
-      contact_name: conversation.contact.name
-    )
+    emit_activity(conversation, 'conversations.activity.whatsapp_call.permission_granted')
+  end
+
+  def emit_permission_rejected_activity(conversation)
+    emit_activity(conversation, 'conversations.activity.whatsapp_call.permission_rejected')
+  end
+
+  def emit_activity(conversation, i18n_key)
+    content = I18n.t(i18n_key, contact_name: conversation.contact.name)
     ::Conversations::ActivityMessageJob.perform_later(
       conversation,
       { account_id: conversation.account_id, inbox_id: conversation.inbox_id, message_type: :activity, content: content }
