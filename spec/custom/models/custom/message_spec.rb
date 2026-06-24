@@ -79,5 +79,23 @@ RSpec.describe Message, type: :model do
 
       expect(conversation.reload).to be_pending
     end
+
+    it 'reopens resolved conversation as pending without lock_to_single when conversation_pending is enabled' do
+      inbox = build_evolution_inbox(account, provider_config: { 'conversation_pending' => true }, lock_to_single: false)
+      resolved_contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5511777777777')
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: resolved_contact_inbox,
+        status: :resolved
+      )
+
+      create(:message, account: account, inbox: inbox, conversation: conversation, message_type: :incoming)
+
+      expect(conversation.reload).to be_pending
+      expect(conversation.additional_attributes['evolution_pending_since']).to be_present
+    end
   end
 end

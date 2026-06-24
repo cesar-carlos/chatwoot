@@ -22,9 +22,13 @@ module Custom::Message::EvolutionConversationCycle
   end
 
   def reopen_evolution_without_single_history
-    return activate_from_snoozed! if conversation.snoozed?
-
-    open_evolution_pending_cycle_if_needed
+    if conversation.resolved?
+      reopen_resolved_conversation
+    elsif conversation.snoozed?
+      activate_from_snoozed!
+    elsif conversation.pending?
+      open_evolution_pending_cycle_if_needed
+    end
   end
 
   def reopen_inactive_conversation

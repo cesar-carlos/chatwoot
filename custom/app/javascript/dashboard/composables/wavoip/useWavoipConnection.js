@@ -20,12 +20,16 @@ import {
   clearWavoipDeviceStatus,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
+import { recordConnectivityIssue } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 
 const connectedInboxIds = new Set();
 const connectInboxPromises = new Map();
 const isConnecting = ref(false);
 
 const isWavoipInbox = inbox => inbox?.channel_type === INBOX_TYPES.WAVOIP;
+
+const isWavoipDeviceOpen = inbox =>
+  inbox?.provider_config?.device_status === 'open';
 
 const getAssignedWavoipInboxes = store => {
   const inboxes = store.getters['inboxes/getInboxes'] || [];
@@ -36,6 +40,9 @@ const getAssignedWavoipInboxes = store => {
       shouldAgentReceiveWavoipCalls(inbox, { isAdministrator })
   );
 };
+
+const getSdkConnectableWavoipInboxes = store =>
+  getAssignedWavoipInboxes(store).filter(isWavoipDeviceOpen);
 
 const wireDeviceListeners = (inboxId, client) => {
   const device = getPrimaryDevice(client);
@@ -151,6 +158,15 @@ export function useWavoipConnection() {
         wireDeviceListeners(inboxId, client);
         connectedInboxIds.add(inboxId);
         return client;
+      } catch (error) {
+        connectedInboxIds.delete(inboxId);
+        await disconnectWavoipInbox(inboxId);
+        recordConnectivityIssue(
+          inboxId,
+          null,
+          error?.message || 'SDK connect failed'
+        );
+        throw error;
       } finally {
         isConnecting.value = false;
         connectInboxPromises.delete(inboxId);
@@ -183,7 +199,7 @@ export function useWavoipConnection() {
       return;
     }
 
-    const wavoipInboxes = getAssignedWavoipInboxes(store);
+    const wavoipInboxes = getSdkConnectableWavoipInboxes(store);
     const targetIds = new Set(wavoipInboxes.map(inbox => inbox.id));
 
     await Promise.all(
@@ -192,7 +208,15 @@ export function useWavoipConnection() {
         .map(id => disconnectInbox(id))
     );
 
-    await Promise.all([...targetIds].map(id => connectInbox(id)));
+    await Promise.all(
+      [...targetIds].map(async id => {
+        try {
+          await connectInbox(id);
+        } catch (_) {
+          /* recorded in connectInbox */
+        }
+      })
+    );
   };
 
   const wakeUpInboxDevice = async inboxId => {
@@ -217,3 +241,10 @@ export function useWavoipConnection() {
 }
 
 export { teardownAllWavoipClients, ensureDeviceReadiness, getDeviceStatus };
+
+export function getWavoipSdkSyncKey(store) {
+  return getSdkConnectableWavoipInboxes(store)
+    .map(inbox => inbox.id)
+    .sort((a, b) => a - b)
+    .join(',');
+}

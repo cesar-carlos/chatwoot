@@ -41,7 +41,7 @@ RSpec.describe Api::V1::Accounts::CallsController, type: :request do
 
     it 'broadcasts voice_call.accepted when the agent accepts' do
       payloads = []
-      allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << payload }
+      allow(ActionCable.server).to receive(:broadcast) { |_stream, payload| payloads << payload }
 
       patch "/api/v1/accounts/#{account.id}/calls/#{call.id}",
             headers: agent.create_new_auth_token
