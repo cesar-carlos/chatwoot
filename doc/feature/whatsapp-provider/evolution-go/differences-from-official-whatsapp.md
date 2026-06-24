@@ -14,7 +14,7 @@ Provider `evolution_go` usa **whatsmeow** (WhatsApp Web) — não Graph API / WA
 | Templates WABA | Não existe | `sync_templates` noop; texto livre |
 | Embedded signup | Não existe | Wizard QR/pairing |
 | `phone_number_id` / WABA IDs | Não existe | `instance_name` + tokens |
-| HMAC webhook Meta | Não existe | `?token=webhook_secret` |
+| HMAC webhook Meta | Não existe | `?token=webhook_token` |
 | Calling API Meta | Não existe | Projeto voz separado |
 | Campanhas / CSAT cloud | Cloud only | Indisponível |
 | Health Meta | Cloud only | `GET /instance/status` |

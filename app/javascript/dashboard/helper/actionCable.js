@@ -464,9 +464,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallPermissionGranted = data => {
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    useAlert(
-      conversationI18n.CONVERSATION.VOICE_WIDGET.PERMISSION_GRANTED
-    );
+    useAlert(conversationI18n.CONVERSATION.VOICE_WIDGET.PERMISSION_GRANTED);
   };
 
   // eslint-disable-next-line class-methods-use-this

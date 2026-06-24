@@ -19,10 +19,12 @@ Não depende de servidor Go — registry e prepends:
 | # | Entrega |
 |---|---------|
 | 0.1 | `# FORK:` `evolution_go` em `PROVIDERS` |
-| 0.2 | Registry `evolution_go` |
+| 0.2 | Registry `evolution_go` — formato posicional (não bloco), igual ao evolution node |
 | 0.3 | Capability `unlimited_session` |
 | 0.4 | Prepend `MessageWindowService` |
 | 0.5 | Rota + controller stub `EvolutionGoController` |
+| 0.6 | Migration índice `instance_name` unique (`index_channel_whatsapp_evolution_go_instance_name`) |
+| 0.7 | **Fix prepend evolution node:** mudar `return` → `return super(params)` no guard `unless channel` do `WhatsappEventsJob` — evita descarte silencioso de envelopes Go ([decisions.md §27](./decisions.md)) |
 
 ---
 
@@ -30,12 +32,15 @@ Não depende de servidor Go — registry e prepends:
 
 | # | Entrega |
 |---|---------|
-| 1.1 | `EvolutionGo::ApiClient` |
-| 1.2 | `EvolutionGo::ConnectionService` |
-| 1.3 | `EvolutionGoService` + `EvolutionGoNormalizer` |
-| 1.4 | Webhook controller + prepend job |
-| 1.5 | Wizard Vue + card `Whatsapp.vue` |
-| 1.6 | Specs com fixtures (sintéticas ou E2E) |
+| 1.1 | `EvolutionGo::ApiError` (exceção tipada — ver [error-handling.md](./error-handling.md)) |
+| 1.2 | `EvolutionGo::ApiClient` |
+| 1.3 | `EvolutionGo::ConnectionService` |
+| 1.4 | `EvolutionGoService` + `EvolutionGoNormalizer` |
+| 1.5 | `EvolutionGoController` com `process_payload` + `sanitized_job_payload` (envelope key correto — §27) |
+| 1.6 | Prepend job evolution_go (`evolution_go_envelope?` por `evolution_go_instance_name`) |
+| 1.7 | `EvolutionGoConnectionChannel` (ActionCable `evolution_go:connection:{inbox_id}`) |
+| 1.8 | Wizard Vue + card `Whatsapp.vue` |
+| 1.9 | Specs com fixtures (sintéticas ou E2E) |
 
 **Pré-requisito operador:** instância Evolution Go acessível (`base_url`, `GLOBAL_API_KEY`, licença ativa).
 

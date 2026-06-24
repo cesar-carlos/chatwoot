@@ -12,7 +12,7 @@ Campos do inbox Chatwoot (`Channel::Whatsapp#provider_config`) mapeados para API
 
 | Grupo | Campos | Sync Evolution Go |
 |-------|--------|-------------------|
-| Conexão | `base_url`, `global_api_key`, `instance_token`, `instance_name`, `instance_id`, `connection_status`, `webhook_secret` | create/connect/status |
+| Conexão | `base_url`, `global_api_key`, `instance_token`, `instance_name`, `instance_id`, `connection_status`, `webhook_token` | create/connect/status |
 | WhatsApp settings | `ignore_groups`, `reject_call`, `msg_call`, `always_online`, `read_messages`, `ignore_status` | `advanced-settings` |
 | Proxy | `proxy_enabled`, `proxy_host`, `proxy_port`, `proxy_username`, `proxy_password` | create `proxy` object |
 | Conversas | `conversation_pending`, `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork |
@@ -31,7 +31,7 @@ Campos do inbox Chatwoot (`Channel::Whatsapp#provider_config`) mapeados para API
 | `instance_token` | Header em connect/send/status | Retorno de `POST /instance/create` → `data.token` |
 | `instance_name` | Body create `name` | Lookup webhook + índice único |
 | `instance_id` | `data.id` do create | UUID interno Go |
-| `webhook_secret` | Query `?token=` na URL | Gerado pelo Chatwoot no create inbox |
+| `webhook_token` | Query `?token=` na URL | Gerado pelo Chatwoot no create inbox |
 | `connection_status` | `GET /instance/status` | `open` / `close` / `connecting` |
 
 ### Segurança
@@ -40,7 +40,7 @@ Campos do inbox Chatwoot (`Channel::Whatsapp#provider_config`) mapeados para API
 |-------|---------------|
 | `global_api_key` | Write-only; GET masked; opcional se modo "instância existente" — ver [decisions.md §22](./decisions.md) |
 | `instance_token` | Write-only; GET masked |
-| `webhook_secret` | Nunca retornar em GET público |
+| `webhook_token` | Nunca retornar em GET público |
 | `proxy_password` | Write-only |
 
 ---
@@ -81,10 +81,10 @@ Sem `/proxy/set` — configurar no create ou advanced-settings.
 
 | Campo | Valor |
 |-------|-------|
-| URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_secret}` |
+| URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}` |
 | `subscribe` | `["MESSAGE", "CONNECTION", "QRCODE"]` (+ `READ_RECEIPT` Fase 2) — persistir para reconnect ([decisions.md §23](./decisions.md)) |
 
-Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_secret`.
+Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_token`.
 
 ---
 
@@ -124,7 +124,7 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 }
 ```
 
-`webhook_secret` gerado server-side no `ConnectionService` — não no form.
+`webhook_token` gerado server-side no `ConnectionService` — não no form.
 
 ---
 

@@ -1,6 +1,6 @@
 # Status — Z-API (`zapi`)
 
-**Última revisão:** 23/jun/2026 — [documentation-review.md](./documentation-review.md)
+**Última revisão:** 24/jun/2026 — [documentation-review.md](./documentation-review.md)
 
 ## Resumo
 

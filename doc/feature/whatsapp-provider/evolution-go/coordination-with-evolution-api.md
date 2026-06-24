@@ -92,15 +92,39 @@ end
 
 ## Job prepend — detecção de envelope
 
+> **⚠️ ALERTA CRÍTICO — prepend collision:** O prepend evolution Node (`Custom::Webhooks::WhatsappEventsJob`) detecta `evolution_envelope?` verificando `params[:event].present? && params[:instance_name ou :instance].present?`. Evolution Go tem **o mesmo formato de envelope**, então **sem isolamento o prepend Node consumiria e descartaria silenciosamente os eventos Go**, nunca chamando `super`.
+
+**Solução (ADR §27):**
+
+1. `EvolutionGoController#sanitized_job_payload` injeta `evolution_go_instance_name:` (não `instance_name:`) e remove o campo `instance` do payload bruto.
+2. O prepend evolution_go detecta por `params[:evolution_go_instance_name].present?` — campo injetado exclusivamente pelo controller Go.
+3. O prepend evolution node deve usar `return super(params)` (não `return`) quando o canal não é encontrado — tarefa I0.7 em [tasks.md](./tasks.md).
+
 ```ruby
+# EvolutionGoController (correto)
+def sanitized_job_payload
+  raw = params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
+  raw.delete('instance')   # remove campo ambíguo
+  raw
+end
+
+def process_payload
+  Webhooks::WhatsappEventsJob.perform_later(
+    sanitized_job_payload.merge(
+      evolution_go_instance_name: params[:instance_name],  # chave distinta!
+      channel_id: @channel.id
+    )
+  )
+  head :ok
+end
+
+# Prepend evolution_go
 def evolution_go_envelope?(params)
-  params['event'].in?(%w[MESSAGE CONNECTION QRCODE READ_RECEIPT SEND_MESSAGE]) &&
-    params['instance'].present? &&
-    !evolution_api_envelope?(params)  # não tem apikey body típico Node
+  params[:evolution_go_instance_name].present?
 end
 ```
 
-**Cuidado:** não rotear envelope Node para normalizer Go — testar com fixtures de ambos.
+**⚠️ NÃO usar** `params[:event].in?(%w[MESSAGE ...]) && params[:instance].present?` como critério — ambíguo com evolution node. Ver [decisions.md §27](./decisions.md).
 
 ---
 

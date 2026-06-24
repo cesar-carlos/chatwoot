@@ -23,7 +23,7 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactEnrichmentJob do
   before do
     allow(Custom::Whatsapp::Evolution::ContactEnrichmentService).to receive(:new).and_return(enrichment_service)
     allow(Custom::Whatsapp::Evolution::ContactEnrichmentService).to receive(:enrichment_stale?).and_return(true)
-    ::Redis::Alfred.delete(format(Redis::RedisKeys::EVOLUTION_CONTACT_ENRICHMENT, contact_id: contact.id))
+    Redis::Alfred.delete(format(Redis::RedisKeys::EVOLUTION_CONTACT_ENRICHMENT, contact_id: contact.id))
   end
 
   describe '#perform' do
@@ -32,12 +32,12 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactEnrichmentJob do
 
       expect(enrichment_service).to have_received(:perform)
       lock_key = format(Redis::RedisKeys::EVOLUTION_CONTACT_ENRICHMENT, contact_id: contact.id)
-      expect(::Redis::Alfred.get(lock_key)).to be_nil
+      expect(Redis::Alfred.get(lock_key)).to be_nil
     end
 
     it 'skips when lock is already held' do
       lock_key = format(Redis::RedisKeys::EVOLUTION_CONTACT_ENRICHMENT, contact_id: contact.id)
-      ::Redis::Alfred.set(lock_key, true, nx: true, ex: 120)
+      Redis::Alfred.set(lock_key, true, nx: true, ex: 120)
 
       described_class.perform_now(channel.id, contact.id, remote_jid: '5511999999999@s.whatsapp.net')
 

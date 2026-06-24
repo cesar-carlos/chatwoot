@@ -62,7 +62,7 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 |---------|--------------|
 | Rota Chatwoot | `POST /webhooks/evolution_go/:instance_name` |
 | Registro | `webhookUrl` no connect |
-| Auth | `?token=webhook_secret` |
+| Auth | `?token=webhook_token` |
 | Formato | `{ event, instance, data }` |
 | Job | prepend `WhatsappEventsJob` |
 | Mutex | Redis por inbox+sender (após normalizar) |

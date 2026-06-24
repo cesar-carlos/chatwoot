@@ -26,6 +26,12 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
     described_class.new(channel: channel, envelope: envelope).perform
   end
 
+  def apply_provider_config!(channel, attrs)
+    channel.provider_config = channel.provider_config.merge(attrs)
+    channel.save!(validate: false)
+    channel.reload
+  end
+
   describe '#perform' do
     it 'normalizes MESSAGES_UPSERT text from fixture' do
       envelope = load_fixture('messages_upsert_text')
@@ -115,14 +121,12 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
       allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new).and_return(
         instance_double(Custom::Whatsapp::Evolution::GroupMetadataService, display_name: 'Team (GROUP)')
       )
-      channel.update_columns(
-        provider_config: channel.provider_config.merge(
-          'groups_ignore' => false,
-          'ignore_jids' => [],
-          'format_group_messages' => true
-        )
+      apply_provider_config!(
+        channel,
+        'groups_ignore' => false,
+        'ignore_jids' => [],
+        'format_group_messages' => true
       )
-      channel.reload
       envelope = load_fixture('messages_upsert_group')
 
       result = normalize(envelope)
@@ -135,13 +139,11 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
     end
 
     it 'ignores remote jids matching ignore_jids patterns' do
-      channel.update_columns(
-        provider_config: channel.provider_config.merge(
-          'ignore_jids' => ['no-reply@'],
-          'groups_ignore' => false
-        )
+      apply_provider_config!(
+        channel,
+        'ignore_jids' => ['no-reply@'],
+        'groups_ignore' => false
       )
-      channel.reload
       envelope = load_fixture('messages_upsert_text')
       envelope['data']['key']['remoteJid'] = 'no-reply@newsletter'
       envelope['data']['key'].delete('remoteJidAlt')
