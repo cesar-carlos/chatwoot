@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
+import { useI18n } from 'vue-i18n';
 import { useCallSession } from 'dashboard/composables/useCallSession';
 import { setWhatsappCallMuted } from 'dashboard/composables/useWhatsappCallSession';
 import { useWavoipActiveCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
@@ -18,6 +19,7 @@ const RINGTONE_URL = '/audio/dashboard/ringtone.mp3';
 const route = useRoute();
 const router = useRouter();
 const store = useStore();
+const { t } = useI18n();
 
 const {
   activeCall,
@@ -121,7 +123,9 @@ const getCallInfo = call => {
   // there's always something to show.
   const locationParts = [city, country].filter(Boolean);
   const location =
-    locationParts.join(', ') || inbox?.name || 'Customer support';
+    locationParts.join(', ') ||
+    inbox?.name ||
+    t('CONVERSATION.VOICE_WIDGET.CUSTOMER_SUPPORT');
   return {
     conversation,
     inbox,
@@ -130,9 +134,9 @@ const getCallInfo = call => {
       sender?.name ||
       caller?.phone ||
       sender?.phone_number ||
-      'Unknown caller',
+      t('CONVERSATION.VOICE_WIDGET.UNKNOWN_CALLER'),
     phoneNumber: caller?.phone || sender?.phone_number || '',
-    inboxName: inbox?.name || 'Customer support',
+    inboxName: inbox?.name || t('CONVERSATION.VOICE_WIDGET.CUSTOMER_SUPPORT'),
     location,
     countryFlag: countryCodeToFlag(countryCode),
     hasLocation: locationParts.length > 0,
@@ -270,6 +274,7 @@ onBeforeUnmount(stopRingtone);
       :duration="hasActiveCall ? formattedCallDuration : ''"
       :is-muted="isMuted"
       :show-mute="hasActiveCall"
+      :is-joining="isJoining"
       @accept="handleJoinCall(primaryIncomingCall)"
       @reject="rejectIncomingCall(primaryIncomingCall?.callSid)"
       @dismiss="dismissCall(primaryIncomingCall?.callSid)"

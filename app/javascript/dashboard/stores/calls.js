@@ -2,6 +2,7 @@ import TwilioVoiceClient from 'dashboard/api/channel/voice/twilioVoiceClient';
 import { isBrowserVoiceProvider } from 'customDashboard/lib/voice/browserVoiceProviders';
 import { teardownBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { TERMINAL_STATUSES } from 'dashboard/helper/voice';
+import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { defineStore } from 'pinia';
 
 const teardownByProvider = call => {
@@ -31,7 +32,7 @@ export const useCallsStore = defineStore('calls', {
       const call = this.calls.find(c => c.callSid === callSid);
       // WhatsApp recordings live in the in-memory recorder until voice_call.ended
       // uploads them; tearing down here would race-wipe those chunks.
-      if (call?.provider === 'whatsapp') {
+      if (call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
         this.calls = this.calls.filter(c => c.callSid !== callSid);
         return;
       }

@@ -1,6 +1,8 @@
 import { readonly, ref } from 'vue';
 import Cookies from 'js-cookie';
 import { VOICE_CALL_OUTBOUND_INIT_STATUS } from 'dashboard/components-next/message/constants';
+import { useAlert } from 'dashboard/composables';
+import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 
 let callsAPI = null;
 let buildTerminatePath = (accountId, callId) =>
@@ -197,8 +199,10 @@ const stopRecorderAndUpload = async callId => {
   // Best-effort — the controller's idempotency guard handles a retry.
   try {
     await requireCallsAPI().uploadRecording(callId, blob);
-  } catch (_) {
-    /* noop */
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[WebRTC] recording upload failed:', err);
+    useAlert(conversationI18n.CONVERSATION.VOICE_WIDGET.RECORDING_UPLOAD_FAILED);
   }
 };
 
@@ -394,7 +398,10 @@ export function useWebRtcCallSession() {
       // the peer connection / mic must not stay live for the contact during it.
       await requireCallsAPI()
         .terminate(callId)
-        .catch(() => {});
+        .catch(err => {
+          // eslint-disable-next-line no-console
+          console.warn('[WebRTC] terminate request failed:', err);
+        });
       await stopRecorderAndUpload(callId);
     } finally {
       cleanup();
