@@ -828,7 +828,9 @@
         "RESTART_CONFIRM": "Restart the Wavoip device? WhatsApp may disconnect briefly.",
         "LOGOUT_CONFIRM": "Log out WhatsApp from this device? You will need to pair again.",
         "LINKED_PHONE": "Linked number",
-        "RECONNECT": "Reconnect (scan QR)"
+        "RECONNECT": "Reconnect (scan QR)",
+        "SERVICE_UNAVAILABLE": "The Wavoip device service is temporarily unavailable. Wait a few minutes and try again, or check the device in the Wavoip panel.",
+        "ACTION_FAILED": "Could not complete this device action. Try again or use Copy diagnostics for support."
       },
       "HEALTH": {
         "LOADING": "Checking connection…"

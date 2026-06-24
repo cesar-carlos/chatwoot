@@ -18,6 +18,7 @@ export function notifyIncomingWavoipOffer(offer, inbox) {
     inbox?.offer_notification_icon ||
     DEFAULT_ICON;
 
+  // eslint-disable-next-line no-new -- browser Notification API requires constructor side effect
   new Notification(peer.displayName || peer.phone || 'Incoming call', {
     tag: `chatwoot-wavoip-offer-${offer.id}`,
     body: peer.phone || '',
@@ -26,7 +27,8 @@ export function notifyIncomingWavoipOffer(offer, inbox) {
 }
 
 export function requestWavoipNotificationPermission() {
-  if (typeof Notification === 'undefined') return Promise.resolve('unsupported');
+  if (typeof Notification === 'undefined')
+    return Promise.resolve('unsupported');
   if (Notification.permission === 'granted') return Promise.resolve('granted');
   if (Notification.permission === 'denied') return Promise.resolve('denied');
   return Notification.requestPermission();

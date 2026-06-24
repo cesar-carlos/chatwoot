@@ -851,8 +851,12 @@ describe('#mutations', () => {
       expect(state.searchInjectedByConversationId[1]).toHaveLength(50);
       expect(state.searchInjectedByConversationId[1]).toContain(52);
       expect(state.searchInjectedByConversationId[1]).not.toContain(1);
-      expect(state.allConversations[0].messages.map(message => message.id)).not.toContain(1);
-      expect(state.allConversations[0].messages.map(message => message.id)).toContain(52);
+      expect(
+        state.allConversations[0].messages.map(message => message.id)
+      ).not.toContain(1);
+      expect(
+        state.allConversations[0].messages.map(message => message.id)
+      ).toContain(52);
     });
   });
 

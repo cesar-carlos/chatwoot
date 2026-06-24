@@ -22,11 +22,17 @@ export const clearRingingOutgoingCall = () => {
   ringingProviderCallId = null;
 };
 
-export const setRingingOutgoingCall = (sdkCall, { providerCallId, inboxId } = {}) => {
+export const setRingingOutgoingCall = (
+  sdkCall,
+  { providerCallId, inboxId } = {}
+) => {
   ringingSdkCall = sdkCall;
   ringingProviderCallId = providerCallId || null;
   if (inboxId) activeInboxId = inboxId;
-  wireCallDiagnostics(sdkCall, { inboxId: activeInboxId, callId: providerCallId });
+  wireCallDiagnostics(sdkCall, {
+    inboxId: activeInboxId,
+    callId: providerCallId,
+  });
 };
 
 export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
@@ -36,7 +42,10 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
   isMuted.value = false;
   mediaConnectionStatus.value = sdkCall?.connectionStatus || null;
 
-  wireCallDiagnostics(sdkCall, { inboxId: activeInboxId, callId: providerCallId });
+  wireCallDiagnostics(sdkCall, {
+    inboxId: activeInboxId,
+    callId: providerCallId,
+  });
 
   sdkCall?.on?.('connectionStatus', status => {
     mediaConnectionStatus.value = status;

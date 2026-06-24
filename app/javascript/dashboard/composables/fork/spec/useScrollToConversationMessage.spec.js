@@ -28,14 +28,17 @@ vi.mock('dashboard/composables', () => ({
   useAlert: vi.fn(),
 }));
 
-vi.mock('dashboard/composables/fork/conversationSearchInjectedMessages', () => ({
-  collectVisibleMessageIds: vi.fn(() => []),
-  newMessageIds: vi.fn((existing, incoming) =>
-    incoming
-      .map(message => message.id)
-      .filter(id => !(existing || []).some(message => message.id === id))
-  ),
-}));
+vi.mock(
+  'dashboard/composables/fork/conversationSearchInjectedMessages',
+  () => ({
+    collectVisibleMessageIds: vi.fn(() => []),
+    newMessageIds: vi.fn((existing, incoming) =>
+      incoming
+        .map(message => message.id)
+        .filter(id => !(existing || []).some(message => message.id === id))
+    ),
+  })
+);
 
 describe('useScrollToConversationMessage', () => {
   beforeEach(() => {
@@ -110,7 +113,9 @@ describe('useScrollToConversationMessage', () => {
 
   it('shows an alert when the message cannot be located', async () => {
     getSelectedChat.mockReturnValue({ id: 7, messages: [] });
-    MessageApi.getPreviousMessages = vi.fn().mockResolvedValue({ data: { payload: [] } });
+    MessageApi.getPreviousMessages = vi
+      .fn()
+      .mockResolvedValue({ data: { payload: [] } });
 
     const { scrollToMessage } = useScrollToConversationMessage({
       conversationId: ref(7),
