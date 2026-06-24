@@ -190,6 +190,13 @@ const actions = {
           id: data.conversationId,
           data: payload,
         });
+        // FORK: in-conversation message search — drop IDs loaded via normal pagination
+        if (payload.length) {
+          commit(types.DEREGISTER_SEARCH_INJECTED, {
+            id: data.conversationId,
+            messageIds: payload.map(message => message.id),
+          });
+        }
         // A short backward page means the start is reached; `after` requests only prove it when empty.
         const hasReachedFirstMessage = data.after
           ? !payload.length

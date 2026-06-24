@@ -58,6 +58,33 @@ namespace :conversation_message_search do
     end
   end
 
+  desc 'OpenSearch reindex hints after search index field changes'
+  task reindex_hints: :environment do
+    puts <<~HINTS
+      Conversation message search — OpenSearch reindex hints
+
+      New indexed fields (require reindex for existing documents):
+        - message_attributes.deleted (exclude deleted messages in queries)
+        - attachments.transcribed_text (unified via Custom::TranscriptionMetadata.read_text)
+
+      Prerequisites:
+        - ChatwootApp.advanced_search_allowed? => #{ChatwootApp.advanced_search_allowed?}
+        - Searchkick defined => #{defined?(Searchkick).present?}
+
+      Per account (enable advanced_search / advanced_search_indexing as needed):
+        bundle exec rails runner "Messages::ReindexService.new(account: Account.find(ACCOUNT_ID)).perform"
+
+      Or bulk (see enterprise/lib/tasks/search.rake and script/reindex_single_account.rb).
+
+      After reindex, verify deleted messages are excluded:
+        rake conversation_message_search:smoke[ACCOUNT_ID,CONV_DISPLAY_ID,query]
+    HINTS
+
+    unless ChatwootApp.advanced_search_allowed? && defined?(Searchkick)
+      puts 'OpenSearch is not available in this installation — SQL/ILIKE search is unaffected.'
+    end
+  end
+
   desc 'Print manual acceptance checklist (implementation-plan §11)'
   task acceptance: :environment do
     puts <<~CHECKLIST
@@ -82,6 +109,7 @@ namespace :conversation_message_search do
 
       Automated: rake conversation_message_search:smoke[ID,CONV_ID,query]
       Performance: rake conversation_message_search:explain[CONV_ID,query]
+      OpenSearch reindex: rake conversation_message_search:reindex_hints
     CHECKLIST
   end
 end

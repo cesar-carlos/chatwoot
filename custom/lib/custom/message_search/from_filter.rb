@@ -22,7 +22,8 @@ module Custom::MessageSearch::FromFilter
     conditions = {
       account_id: conversation.account_id,
       conversation_id: conversation.id,
-      message_type: searchable_message_types
+      message_type: searchable_message_types,
+      deleted: false
     }
 
     apply_opensearch_from!(conditions, from)

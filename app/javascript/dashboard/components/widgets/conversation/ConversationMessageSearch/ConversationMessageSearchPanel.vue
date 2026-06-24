@@ -100,7 +100,7 @@ watch(
       />
     </div>
 
-    <div class="flex flex-1 overflow-auto p-4">
+    <div class="flex flex-1 min-h-0 flex-col overflow-hidden p-4">
       <ConversationMessageSearchView
         v-if="currentChat?.id"
         ref="searchViewRef"
