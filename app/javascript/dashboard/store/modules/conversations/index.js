@@ -170,7 +170,11 @@ export const mutations = {
   [types.PRUNE_SEARCH_INJECTED](_state, { id, protectedIds = [] }) {
     const chat = getConversationById(_state)(id);
     const registry = _state.searchInjectedByConversationId[id];
-    if (!chat || !registry?.length || registry.length <= MAX_SEARCH_INJECTED_MESSAGES) {
+    if (
+      !chat ||
+      !registry?.length ||
+      registry.length <= MAX_SEARCH_INJECTED_MESSAGES
+    ) {
       return;
     }
 
@@ -178,7 +182,8 @@ export const mutations = {
     const toRemove = [];
 
     registry.forEach(messageId => {
-      if (registry.length - toRemove.length <= MAX_SEARCH_INJECTED_MESSAGES) return;
+      if (registry.length - toRemove.length <= MAX_SEARCH_INJECTED_MESSAGES)
+        return;
       if (protectedSet.has(messageId)) return;
 
       toRemove.push(messageId);

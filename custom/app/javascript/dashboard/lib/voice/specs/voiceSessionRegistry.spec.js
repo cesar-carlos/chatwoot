@@ -68,7 +68,9 @@ describe('voiceSessionRegistry', () => {
     });
 
     it('does not register Wavoip in VOICE_SESSION_REGISTRY factories', () => {
-      expect(VOICE_SESSION_REGISTRY[VOICE_CALL_PROVIDERS.WAVOIP]).toBeUndefined();
+      expect(
+        VOICE_SESSION_REGISTRY[VOICE_CALL_PROVIDERS.WAVOIP]
+      ).toBeUndefined();
     });
 
     it('clears the singleton when registerWavoipCallSession(null) is called', () => {

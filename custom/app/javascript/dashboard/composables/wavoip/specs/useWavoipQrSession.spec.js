@@ -37,12 +37,14 @@ vi.mock('customDashboard/lib/wavoip/wavoipDeviceReadiness', () => ({
 }));
 
 vi.mock('customDashboard/lib/wavoip/wavoipSdkResult', () => ({
-  unwrapWavoipSdkResult: (raw, key) => raw,
+  unwrapWavoipSdkResult: raw => raw,
 }));
 
 vi.mock('customDashboard/lib/wavoip/wavoipQrImage', () => ({
   buildQrDataUrl: vi.fn(async value => `data:image/png;base64,${value}`),
-  buildWavoipQrImageUrl: vi.fn(token => `https://devices.wavoip.com/${token}/qr`),
+  buildWavoipQrImageUrl: vi.fn(
+    token => `https://devices.wavoip.com/${token}/qr`
+  ),
   withCacheBust: vi.fn(url => `${url}?t=1`),
 }));
 
@@ -69,7 +71,9 @@ describe('useWavoipQrSession', () => {
       restart: vi.fn(async () => {}),
     };
 
-    getWavoipSdkBootstrap.mockResolvedValue({ data: { device_token: 'tok_1' } });
+    getWavoipSdkBootstrap.mockResolvedValue({
+      data: { device_token: 'tok_1' },
+    });
     connectInbox.mockResolvedValue({});
     getWavoipClient.mockReturnValue({});
     getPrimaryDevice.mockReturnValue(device);

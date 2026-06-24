@@ -8,12 +8,11 @@ import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceSt
 import { getWavoipClient } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { getPrimaryDevice } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import { exportWavoipDiagnostics } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
+import { formatWavoipDeviceActionError } from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
 import WavoipQrScanModal from 'customDashboard/components/wavoip/WavoipQrScanModal.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
-
-const POLL_MS = 5000;
 
 const props = defineProps({
   inbox: {
@@ -22,9 +21,12 @@ const props = defineProps({
   },
 });
 
+const POLL_MS = 5000;
+
 const { t } = useI18n();
 const store = useStore();
-const { connectInbox, wakeUpInboxDevice } = useWavoipConnection();
+const { connectInbox, disconnectInbox, wakeUpInboxDevice } =
+  useWavoipConnection();
 
 const inboxId = computed(() => props.inbox.id);
 const isLoading = ref(true);
@@ -83,12 +85,6 @@ function stopPolling() {
   }
 }
 
-function startPolling() {
-  if (isQrModalOpen.value) return;
-  stopPolling();
-  pollTimer = setInterval(refreshConnection, POLL_MS);
-}
-
 async function refreshConnection() {
   try {
     await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
@@ -97,6 +93,12 @@ async function refreshConnection() {
   } finally {
     isLoading.value = false;
   }
+}
+
+function startPolling() {
+  if (isQrModalOpen.value) return;
+  stopPolling();
+  pollTimer = setInterval(refreshConnection, POLL_MS);
 }
 
 function openQrModal({ fresh = false } = {}) {
@@ -136,6 +138,18 @@ watch(isConnected, connected => {
   }
 });
 
+async function releaseDeviceConnection() {
+  try {
+    await disconnectInbox(inboxId.value);
+  } catch {
+    /* noop */
+  }
+}
+
+function showDeviceActionError(error) {
+  useAlert(formatWavoipDeviceActionError(error, t));
+}
+
 const handleWakeUp = async () => {
   isWaking.value = true;
   try {
@@ -144,18 +158,22 @@ const handleWakeUp = async () => {
     if (!isConnected.value) {
       openQrModal({ fresh: true });
     }
+  } catch (error) {
+    showDeviceActionError(error);
+    await releaseDeviceConnection();
   } finally {
     isWaking.value = false;
   }
 };
 
 const handleRestart = async () => {
-  // eslint-disable-next-line no-alert
+  /* eslint-disable no-alert -- native confirm matches Evolution health actions */
   if (
     !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART_CONFIRM'))
   ) {
     return;
   }
+  /* eslint-enable no-alert */
 
   isRestarting.value = true;
   try {
@@ -165,18 +183,22 @@ const handleRestart = async () => {
       await device.restart();
     }
     openQrModal({ fresh: true });
+  } catch (error) {
+    showDeviceActionError(error);
+    await releaseDeviceConnection();
   } finally {
     isRestarting.value = false;
   }
 };
 
 const handleLogout = async () => {
-  // eslint-disable-next-line no-alert
+  /* eslint-disable no-alert -- native confirm matches Evolution health actions */
   if (
     !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM'))
   ) {
     return;
   }
+  /* eslint-enable no-alert */
 
   isLoggingOut.value = true;
   try {
@@ -187,6 +209,9 @@ const handleLogout = async () => {
     }
     await refreshConnection();
     openQrModal({ fresh: true });
+  } catch (error) {
+    showDeviceActionError(error);
+    await releaseDeviceConnection();
   } finally {
     isLoggingOut.value = false;
   }
