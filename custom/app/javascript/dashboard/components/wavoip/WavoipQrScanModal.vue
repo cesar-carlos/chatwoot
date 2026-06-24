@@ -8,7 +8,10 @@ import Button from 'dashboard/components-next/button/Button.vue';
 import WavoipQrDisplay from 'customDashboard/components/wavoip/WavoipQrDisplay.vue';
 import { useWavoipQrSession } from 'customDashboard/composables/wavoip/useWavoipQrSession';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
-import { formatWavoipDeviceActionError } from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
+import {
+  formatWavoipDeviceActionError,
+  isWavoipServiceUnavailableError,
+} from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
 
 const props = defineProps({
   inboxId: {
@@ -68,12 +71,19 @@ function cleanupSession() {
   }
 }
 
-function openModal() {
+async function openModal() {
   dialogRef.value?.open();
   if (sessionActive) return;
 
   sessionActive = true;
-  startSession({ fetchFreshQr: props.fetchFreshQr });
+  try {
+    await startSession({ fetchFreshQr: props.fetchFreshQr });
+  } catch (error) {
+    useAlert(formatWavoipDeviceActionError(error, t));
+    if (isWavoipServiceUnavailableError(error) && props.inboxId) {
+      disconnectInbox(props.inboxId).catch(() => {});
+    }
+  }
 }
 
 function closeModal() {
@@ -87,6 +97,9 @@ async function handleRefreshQr() {
     await refreshQr();
   } catch (error) {
     useAlert(formatWavoipDeviceActionError(error, t));
+    if (isWavoipServiceUnavailableError(error) && props.inboxId) {
+      disconnectInbox(props.inboxId).catch(() => {});
+    }
   }
 }
 

@@ -14,6 +14,7 @@ import {
 
 const QR_FALLBACK_MS = 10_000;
 const QR_EXPIRY_MS = 45_000;
+const STATUS_POLL_MS = 4_000;
 
 export function useWavoipQrSession({
   inboxId,
@@ -34,6 +35,8 @@ export function useWavoipQrSession({
   let deviceUnsubscribers = [];
   let fallbackTimer = null;
   let expiryTimer = null;
+  let statusPollTimer = null;
+  let sdkConnected = false;
   let sessionStartedConnected = false;
   let hasEmittedConnected = false;
   let cachedDeviceToken = null;
@@ -74,10 +77,52 @@ export function useWavoipQrSession({
     }
   }
 
+  function clearStatusPoll() {
+    if (statusPollTimer) {
+      clearInterval(statusPollTimer);
+      statusPollTimer = null;
+    }
+  }
+
   function stopSession() {
     clearDeviceListeners();
     clearFallbackTimer();
     clearExpiryTimer();
+    clearStatusPoll();
+  }
+
+  async function pollInboxStatus() {
+    const id = unref(inboxId);
+    if (!id || isConnected()) return;
+
+    try {
+      const { data } = await InboxesAPI.show(id);
+      applyStatus(data?.provider_config?.device_status);
+    } catch (_) {
+      /* keep last known state */
+    }
+  }
+
+  function startStatusPolling() {
+    clearStatusPoll();
+    pollInboxStatus();
+    statusPollTimer = setInterval(pollInboxStatus, STATUS_POLL_MS);
+  }
+
+  async function ensureSdkConnected() {
+    const id = unref(inboxId);
+    if (!id) return null;
+
+    if (sdkConnected) {
+      return getPrimaryDevice(getWavoipClient(id));
+    }
+
+    await connectInbox(id);
+    const device = getPrimaryDevice(getWavoipClient(id));
+    wireDeviceListeners(device);
+    syncFromDevice(device);
+    sdkConnected = true;
+    return device;
   }
 
   async function applyQrString(qrString) {
@@ -104,6 +149,7 @@ export function useWavoipQrSession({
       pairingCode.value = '';
       clearFallbackTimer();
       clearExpiryTimer();
+      clearStatusPoll();
       if (!sessionStartedConnected && !hasEmittedConnected) {
         hasEmittedConnected = true;
         onConnected?.();
@@ -125,11 +171,19 @@ export function useWavoipQrSession({
     }, QR_FALLBACK_MS);
   }
 
+  function applyFallbackQrImage() {
+    if (!cachedDeviceToken || isConnected()) return false;
+
+    qrDataUrl.value = withCacheBust(buildWavoipQrImageUrl(cachedDeviceToken));
+    qrRefreshError.value = false;
+    return true;
+  }
+
   function armQrExpiryTimer() {
     clearExpiryTimer();
     expiryTimer = setTimeout(() => {
       if (!isConnected()) {
-        refreshQr();
+        refreshQr({ soft: true }).catch(() => {});
       }
     }, QR_EXPIRY_MS);
   }
@@ -180,7 +234,7 @@ export function useWavoipQrSession({
     }
   }
 
-  async function refreshQr() {
+  async function refreshQr({ soft = true } = {}) {
     const id = unref(inboxId);
     if (!id || isRefreshing.value) return;
 
@@ -189,10 +243,19 @@ export function useWavoipQrSession({
     pairingCode.value = '';
 
     try {
-      const device = getPrimaryDevice(getWavoipClient(id));
+      if (soft) {
+        if (applyFallbackQrImage()) {
+          armQrExpiryTimer();
+          return;
+        }
+        throw new Error('Wavoip device token unavailable');
+      }
+
+      const device = await ensureSdkConnected();
       if (!device) {
+        if (applyFallbackQrImage()) return;
         qrRefreshError.value = true;
-        return;
+        throw new Error('Wavoip device unavailable');
       }
 
       if (device.status === 'hibernating') {
@@ -203,10 +266,8 @@ export function useWavoipQrSession({
 
       syncFromDevice(getPrimaryDevice(getWavoipClient(id)));
 
-      if (!isConnected() && !qrDataUrl.value && cachedDeviceToken) {
-        qrDataUrl.value = withCacheBust(
-          buildWavoipQrImageUrl(cachedDeviceToken)
-        );
+      if (!isConnected() && !qrDataUrl.value) {
+        applyFallbackQrImage();
       }
 
       if (!isConnected() && !qrDataUrl.value) {
@@ -216,8 +277,11 @@ export function useWavoipQrSession({
       if (!isConnected()) {
         armQrExpiryTimer();
       }
-    } catch (_) {
-      qrRefreshError.value = true;
+    } catch (error) {
+      if (!applyFallbackQrImage()) {
+        qrRefreshError.value = true;
+      }
+      throw error;
     } finally {
       isRefreshing.value = false;
     }
@@ -228,6 +292,7 @@ export function useWavoipQrSession({
     if (!id) return;
 
     hasEmittedConnected = false;
+    sdkConnected = false;
     isLoading.value = true;
     qrRefreshError.value = false;
 
@@ -235,24 +300,33 @@ export function useWavoipQrSession({
       const { data } = await InboxesAPI.getWavoipSdkBootstrap(id);
       cachedDeviceToken = data?.device_token || null;
 
-      await connectInbox(id);
-      const device = getPrimaryDevice(getWavoipClient(id));
-      wireDeviceListeners(device);
-      syncFromDevice(device);
-      sessionStartedConnected = isConnected();
-      hasEmittedConnected = sessionStartedConnected;
+      if (!cachedDeviceToken) {
+        throw new Error('Wavoip device token unavailable');
+      }
 
-      if (fetchFreshQr && !isConnected()) {
-        await refreshQr();
-      } else if (!isConnected() && !qrDataUrl.value) {
-        armFallbackTimer();
+      try {
+        const { data: inbox } = await InboxesAPI.show(id);
+        applyStatus(inbox?.provider_config?.device_status);
+        sessionStartedConnected = isConnected();
+        hasEmittedConnected = sessionStartedConnected;
+      } catch (_) {
+        whatsAppStatus.value = whatsAppStatus.value || 'connecting';
       }
 
       if (!isConnected()) {
+        applyFallbackQrImage();
+        startStatusPolling();
         armQrExpiryTimer();
       }
-    } catch (_) {
-      qrRefreshError.value = true;
+
+      if (fetchFreshQr && !isConnected()) {
+        await refreshQr({ soft: true });
+      }
+    } catch (error) {
+      if (!qrDataUrl.value) {
+        qrRefreshError.value = true;
+      }
+      throw error;
     } finally {
       isLoading.value = false;
     }
@@ -263,8 +337,10 @@ export function useWavoipQrSession({
     const phone = unref(phoneNumber);
     if (!id || !phone) return;
 
-    const device = getPrimaryDevice(getWavoipClient(id));
-    if (!device?.pairingCode) return;
+    const device = await ensureSdkConnected();
+    if (!device?.pairingCode) {
+      throw new Error('Wavoip device unavailable');
+    }
 
     const raw = await device.pairingCode(phone);
     const { pairingCode: code, err } = unwrapWavoipSdkResult(
@@ -285,6 +361,7 @@ export function useWavoipQrSession({
     linkedPhone.value = '';
     hasEmittedConnected = false;
     sessionStartedConnected = false;
+    sdkConnected = false;
   }
 
   return {

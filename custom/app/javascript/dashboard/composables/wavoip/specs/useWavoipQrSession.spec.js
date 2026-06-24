@@ -5,12 +5,14 @@ const {
   connectInbox,
   wakeUpInboxDevice,
   getWavoipSdkBootstrap,
+  getWavoipInboxShow,
   getWavoipClient,
   getPrimaryDevice,
 } = vi.hoisted(() => ({
   connectInbox: vi.fn(),
   wakeUpInboxDevice: vi.fn(),
   getWavoipSdkBootstrap: vi.fn(),
+  getWavoipInboxShow: vi.fn(),
   getWavoipClient: vi.fn(),
   getPrimaryDevice: vi.fn(),
 }));
@@ -18,6 +20,7 @@ const {
 vi.mock('dashboard/api/inboxes', () => ({
   default: {
     getWavoipSdkBootstrap: (...args) => getWavoipSdkBootstrap(...args),
+    show: (...args) => getWavoipInboxShow(...args),
   },
 }));
 
@@ -74,12 +77,15 @@ describe('useWavoipQrSession', () => {
     getWavoipSdkBootstrap.mockResolvedValue({
       data: { device_token: 'tok_1' },
     });
+    getWavoipInboxShow.mockResolvedValue({
+      data: { provider_config: { device_status: 'connecting' } },
+    });
     connectInbox.mockResolvedValue({});
     getWavoipClient.mockReturnValue({});
     getPrimaryDevice.mockReturnValue(device);
   });
 
-  it('loads QR data URL from the device seed on startSession', async () => {
+  it('loads fallback QR image on startSession without SDK connect', async () => {
     const onConnected = vi.fn();
     const session = useWavoipQrSession({
       inboxId: ref(9),
@@ -89,13 +95,16 @@ describe('useWavoipQrSession', () => {
 
     await session.startSession();
 
-    expect(connectInbox).toHaveBeenCalledWith(9);
-    expect(session.qrDataUrl.value).toBe('data:image/png;base64,seed-qr');
+    expect(connectInbox).not.toHaveBeenCalled();
+    expect(session.qrDataUrl.value).toBe(
+      'https://devices.wavoip.com/tok_1/qr?t=1'
+    );
     expect(session.whatsAppStatus.value).toBe('connecting');
     expect(onConnected).not.toHaveBeenCalled();
   });
 
-  it('fires onConnected when status becomes open', async () => {
+  it('fires onConnected when polled inbox status becomes open', async () => {
+    vi.useFakeTimers();
     const onConnected = vi.fn();
     const session = useWavoipQrSession({
       inboxId: ref(9),
@@ -104,19 +113,25 @@ describe('useWavoipQrSession', () => {
     });
 
     await session.startSession();
-    handlers.statusChanged('open');
+    getWavoipInboxShow.mockResolvedValue({
+      data: { provider_config: { device_status: 'open' } },
+    });
+
+    await vi.advanceTimersByTimeAsync(4000);
 
     expect(onConnected).toHaveBeenCalledTimes(1);
     expect(session.qrDataUrl.value).toBe('');
+    vi.useRealTimers();
   });
 
-  it('updates QR when qrCodeChanged fires', async () => {
+  it('updates QR when qrCodeChanged fires after SDK connect', async () => {
     const session = useWavoipQrSession({
       inboxId: ref(9),
       phoneNumber: ref('+5511999999999'),
     });
 
     await session.startSession();
+    await session.requestPairingCode();
     await handlers.qrCodeChanged('next-qr');
 
     expect(session.qrDataUrl.value).toBe('data:image/png;base64,next-qr');
@@ -129,13 +144,14 @@ describe('useWavoipQrSession', () => {
     });
 
     await session.startSession();
+    await session.requestPairingCode();
     session.stopSession();
 
     expect(handlers.qrCodeChanged).toBeUndefined();
     expect(handlers.statusChanged).toBeUndefined();
   });
 
-  it('requestPairingCode stores the SDK pairing code', async () => {
+  it('requestPairingCode connects SDK and stores the pairing code', async () => {
     const session = useWavoipQrSession({
       inboxId: ref(9),
       phoneNumber: ref('+5511999999999'),
@@ -144,6 +160,7 @@ describe('useWavoipQrSession', () => {
     await session.startSession();
     await session.requestPairingCode();
 
+    expect(connectInbox).toHaveBeenCalledWith(9);
     expect(device.pairingCode).toHaveBeenCalledWith('+5511999999999');
     expect(session.pairingCode.value).toBe('1234-5678');
   });

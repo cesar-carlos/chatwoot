@@ -81,6 +81,16 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.get(`${this.url}/${inboxId}/wavoip_sdk_bootstrap`);
   }
 
+  getWavoipDeviceStatus(inboxId, { force = false } = {}) {
+    return axios.get(`${this.url}/${inboxId}/wavoip_device_status`, {
+      params: force ? { force: true } : {},
+    });
+  }
+
+  postWavoipLogout(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/wavoip_logout`);
+  }
+
   regenerateWavoipWebhookKey(inboxId) {
     return axios.post(`${this.url}/${inboxId}/regenerate_wavoip_webhook_key`);
   }
