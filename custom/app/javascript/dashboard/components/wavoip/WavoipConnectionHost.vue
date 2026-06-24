@@ -3,11 +3,15 @@ import { watch, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
+import { registerWavoipCallSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { requestWavoipNotificationPermission } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 
 const store = useStore();
 const currentUserAvailability = useMapGetter('getCurrentUserAvailability');
-const { syncWithAvailability, cleanupSession } = useWavoipCallSession();
+const wavoipSession = useWavoipCallSession();
+const { syncWithAvailability, cleanupSession } = wavoipSession;
+
+registerWavoipCallSession(wavoipSession);
 
 watch(
   currentUserAvailability,
@@ -36,6 +40,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  registerWavoipCallSession(null);
   cleanupSession();
 });
 </script>
