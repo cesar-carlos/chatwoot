@@ -48,6 +48,7 @@ const {
   stopSession,
   requestPairingCode,
   refreshQr,
+  handleQrImageError,
   clearQrState,
 } = useWavoipQrSession({
   inboxId: toRef(props, 'inboxId'),
@@ -94,7 +95,7 @@ function closeModal() {
 
 async function handleRefreshQr() {
   try {
-    await refreshQr();
+    await refreshQr({ restart: true });
   } catch (error) {
     useAlert(formatWavoipDeviceActionError(error, t));
     if (isWavoipServiceUnavailableError(error) && props.inboxId) {
@@ -151,6 +152,7 @@ defineExpose({ open: openModal, close: closeModal });
       :show-refresh="false"
       @refresh="handleRefreshQr"
       @request-pairing-code="handlePairingCode"
+      @qr-image-error="handleQrImageError"
     />
 
     <p class="mt-2 text-center text-xs text-n-slate-10">

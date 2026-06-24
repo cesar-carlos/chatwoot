@@ -34,6 +34,19 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  def wavoip_qr
+    refresh = ActiveModel::Type::Boolean.new.cast(params[:refresh])
+    authorize @inbox, refresh ? :update? : :show?
+    channel = @inbox.channel
+    return head :not_found unless channel.is_a?(Channel::Wavoip)
+
+    payload = Wavoip::DeviceStatusService.new(channel: channel).qr_payload(refresh: refresh)
+    @inbox.update_account_cache if payload[:live]
+    render json: payload
+  rescue Wavoip::DeviceStatusService::ApiError => e
+    render json: { error: e.message }, status: :service_unavailable
+  end
+
   def regenerate_wavoip_webhook_key
     authorize @inbox, :regenerate_wavoip_webhook_key?
     channel = @inbox.channel

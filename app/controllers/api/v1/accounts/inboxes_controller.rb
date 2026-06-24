@@ -10,6 +10,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     show
     wavoip_sdk_bootstrap
     wavoip_device_status
+    wavoip_qr
     wavoip_logout
     regenerate_wavoip_webhook_key
     test_wavoip_webhook

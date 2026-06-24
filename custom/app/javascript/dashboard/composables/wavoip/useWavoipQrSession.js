@@ -4,15 +4,10 @@ import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoi
 import { getWavoipClient } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { getPrimaryDevice } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import { unwrapWavoipSdkResult } from 'customDashboard/lib/wavoip/wavoipSdkResult';
-import {
-  buildQrDataUrl,
-  buildWavoipQrImageUrl,
-  withCacheBust,
-} from 'customDashboard/lib/wavoip/wavoipQrImage';
+import { buildQrDataUrl } from 'customDashboard/lib/wavoip/wavoipQrImage';
 
 /* eslint-disable no-use-before-define -- QR expiry timer and session share refreshQr */
 
-const QR_FALLBACK_MS = 10_000;
 const QR_EXPIRY_MS = 45_000;
 const STATUS_POLL_MS = 4_000;
 
@@ -22,7 +17,7 @@ export function useWavoipQrSession({
   onConnected,
   onPhoneMismatch,
 }) {
-  const { connectInbox, wakeUpInboxDevice } = useWavoipConnection();
+  const { connectInbox } = useWavoipConnection();
 
   const whatsAppStatus = ref('');
   const qrDataUrl = ref('');
@@ -33,13 +28,11 @@ export function useWavoipQrSession({
   const qrRefreshError = ref(false);
 
   let deviceUnsubscribers = [];
-  let fallbackTimer = null;
   let expiryTimer = null;
   let statusPollTimer = null;
   let sdkConnected = false;
   let sessionStartedConnected = false;
   let hasEmittedConnected = false;
-  let cachedDeviceToken = null;
 
   function isConnected() {
     return whatsAppStatus.value === 'open';
@@ -63,13 +56,6 @@ export function useWavoipQrSession({
     deviceUnsubscribers = [];
   }
 
-  function clearFallbackTimer() {
-    if (fallbackTimer) {
-      clearTimeout(fallbackTimer);
-      fallbackTimer = null;
-    }
-  }
-
   function clearExpiryTimer() {
     if (expiryTimer) {
       clearTimeout(expiryTimer);
@@ -86,7 +72,6 @@ export function useWavoipQrSession({
 
   function stopSession() {
     clearDeviceListeners();
-    clearFallbackTimer();
     clearExpiryTimer();
     clearStatusPoll();
   }
@@ -96,8 +81,11 @@ export function useWavoipQrSession({
     if (!id || isConnected()) return;
 
     try {
-      const { data } = await InboxesAPI.show(id);
-      applyStatus(data?.provider_config?.device_status);
+      // force: false — uses 15-second server cache; DB status updated by webhook is still read
+      const { data } = await InboxesAPI.getWavoipDeviceStatus(id, {
+        force: false,
+      });
+      applyStatus(data?.device_status);
     } catch (_) {
       /* keep last known state */
     }
@@ -147,7 +135,6 @@ export function useWavoipQrSession({
     if (status === 'open') {
       qrDataUrl.value = '';
       pairingCode.value = '';
-      clearFallbackTimer();
       clearExpiryTimer();
       clearStatusPoll();
       if (!sessionStartedConnected && !hasEmittedConnected) {
@@ -162,28 +149,40 @@ export function useWavoipQrSession({
     }
   }
 
-  function armFallbackTimer() {
-    clearFallbackTimer();
-    fallbackTimer = setTimeout(() => {
-      if (isConnected() || qrDataUrl.value || !cachedDeviceToken) return;
-      qrDataUrl.value = withCacheBust(buildWavoipQrImageUrl(cachedDeviceToken));
+  async function applyQrPayload(data) {
+    if (data?.device_status) {
+      applyStatus(data.device_status);
+    }
+
+    if (isConnected()) return true;
+
+    if (data?.qr_code) {
+      await applyQrString(data.qr_code);
+      return Boolean(qrDataUrl.value);
+    }
+
+    if (data?.qrcode_base64) {
+      qrDataUrl.value = data.qrcode_base64;
       qrRefreshError.value = false;
-    }, QR_FALLBACK_MS);
+      return true;
+    }
+
+    return false;
   }
 
-  function applyFallbackQrImage() {
-    if (!cachedDeviceToken || isConnected()) return false;
+  async function fetchQrFromBackend({ refresh = false } = {}) {
+    const id = unref(inboxId);
+    if (!id) return false;
 
-    qrDataUrl.value = withCacheBust(buildWavoipQrImageUrl(cachedDeviceToken));
-    qrRefreshError.value = false;
-    return true;
+    const { data } = await InboxesAPI.getWavoipQr(id, { refresh });
+    return applyQrPayload(data);
   }
 
   function armQrExpiryTimer() {
     clearExpiryTimer();
     expiryTimer = setTimeout(() => {
       if (!isConnected()) {
-        refreshQr({ soft: true }).catch(() => {});
+        refreshQr({ restart: false }).catch(() => {});
       }
     }, QR_EXPIRY_MS);
   }
@@ -234,7 +233,7 @@ export function useWavoipQrSession({
     }
   }
 
-  async function refreshQr({ soft = true } = {}) {
+  async function refreshQr({ restart = false } = {}) {
     const id = unref(inboxId);
     if (!id || isRefreshing.value) return;
 
@@ -243,45 +242,17 @@ export function useWavoipQrSession({
     pairingCode.value = '';
 
     try {
-      if (soft) {
-        if (applyFallbackQrImage()) {
-          armQrExpiryTimer();
-          return;
-        }
-        throw new Error('Wavoip device token unavailable');
-      }
-
-      const device = await ensureSdkConnected();
-      if (!device) {
-        if (applyFallbackQrImage()) return;
+      const loaded = await fetchQrFromBackend({ refresh: restart });
+      if (!loaded && !isConnected()) {
         qrRefreshError.value = true;
-        throw new Error('Wavoip device unavailable');
-      }
-
-      if (device.status === 'hibernating') {
-        await wakeUpInboxDevice(id);
-      } else if (device.restart) {
-        await device.restart();
-      }
-
-      syncFromDevice(getPrimaryDevice(getWavoipClient(id)));
-
-      if (!isConnected() && !qrDataUrl.value) {
-        applyFallbackQrImage();
-      }
-
-      if (!isConnected() && !qrDataUrl.value) {
-        armFallbackTimer();
-      }
-
-      if (!isConnected()) {
+      } else if (!isConnected()) {
         armQrExpiryTimer();
       }
-    } catch (error) {
-      if (!applyFallbackQrImage()) {
+    } catch (_) {
+      if (!isConnected()) {
         qrRefreshError.value = true;
       }
-      throw error;
+      throw _;
     } finally {
       isRefreshing.value = false;
     }
@@ -297,39 +268,31 @@ export function useWavoipQrSession({
     qrRefreshError.value = false;
 
     try {
-      const { data } = await InboxesAPI.getWavoipSdkBootstrap(id);
-      cachedDeviceToken = data?.device_token || null;
-
-      if (!cachedDeviceToken) {
-        throw new Error('Wavoip device token unavailable');
-      }
-
-      try {
-        const { data: inbox } = await InboxesAPI.show(id);
-        applyStatus(inbox?.provider_config?.device_status);
-        sessionStartedConnected = isConnected();
-        hasEmittedConnected = sessionStartedConnected;
-      } catch (_) {
-        whatsAppStatus.value = whatsAppStatus.value || 'connecting';
-      }
+      // Single request: returns device_status + QR image together
+      await fetchQrFromBackend({ refresh: fetchFreshQr });
+      sessionStartedConnected = isConnected();
+      hasEmittedConnected = sessionStartedConnected;
 
       if (!isConnected()) {
-        applyFallbackQrImage();
+        if (!qrDataUrl.value) {
+          qrRefreshError.value = true;
+        }
         startStatusPolling();
         armQrExpiryTimer();
       }
-
-      if (fetchFreshQr && !isConnected()) {
-        await refreshQr({ soft: true });
-      }
     } catch (error) {
-      if (!qrDataUrl.value) {
+      if (!qrDataUrl.value && !isConnected()) {
         qrRefreshError.value = true;
       }
       throw error;
     } finally {
       isLoading.value = false;
     }
+  }
+
+  function handleQrImageError() {
+    qrDataUrl.value = '';
+    qrRefreshError.value = true;
   }
 
   async function requestPairingCode() {
@@ -378,6 +341,7 @@ export function useWavoipQrSession({
     stopSession,
     requestPairingCode,
     refreshQr,
+    handleQrImageError,
     clearQrState,
   };
 }

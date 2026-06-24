@@ -4,9 +4,6 @@ import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useStore } from 'dashboard/composables/store';
 import InboxesAPI from 'dashboard/api/inboxes';
-import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
-import { getWavoipClient } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
-import { getPrimaryDevice } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import { exportWavoipDiagnostics } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 import { formatWavoipDeviceActionError } from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
 import WavoipQrScanModal from 'customDashboard/components/wavoip/WavoipQrScanModal.vue';
@@ -25,8 +22,6 @@ const POLL_MS = 5000;
 
 const { t } = useI18n();
 const store = useStore();
-const { connectInbox, disconnectInbox, wakeUpInboxDevice } =
-  useWavoipConnection();
 
 const inboxId = computed(() => props.inbox.id);
 const isLoading = ref(true);
@@ -90,8 +85,10 @@ async function refreshConnection({ forceLiveCheck = false } = {}) {
 function startPolling() {
   if (isQrModalOpen.value) return;
   stopPolling();
+  // Regular poll uses cache (15s TTL); DB status updated by webhook still reflects correctly.
+  // Force live check only on mount and after user actions.
   pollTimer = setInterval(
-    () => refreshConnection({ forceLiveCheck: true }),
+    () => refreshConnection({ forceLiveCheck: false }),
     POLL_MS
   );
 }
@@ -133,14 +130,6 @@ watch(isConnected, connected => {
   }
 });
 
-async function releaseDeviceConnection() {
-  try {
-    await disconnectInbox(inboxId.value);
-  } catch {
-    /* noop */
-  }
-}
-
 function showDeviceActionError(error) {
   useAlert(formatWavoipDeviceActionError(error, t));
 }
@@ -148,14 +137,14 @@ function showDeviceActionError(error) {
 const handleWakeUp = async () => {
   isWaking.value = true;
   try {
-    await wakeUpInboxDevice(inboxId.value);
-    await refreshConnection();
+    // Calling all_info wakes a hibernating device (matches SDK wakeUp() internals).
+    // refreshConnection with forceLiveCheck does exactly that via the backend.
+    await refreshConnection({ forceLiveCheck: true });
     if (!isConnected.value) {
       openQrModal({ fresh: true });
     }
   } catch (error) {
     showDeviceActionError(error);
-    await releaseDeviceConnection();
   } finally {
     isWaking.value = false;
   }
@@ -172,15 +161,11 @@ const handleRestart = async () => {
 
   isRestarting.value = true;
   try {
-    await connectInbox(inboxId.value);
-    const device = getPrimaryDevice(getWavoipClient(inboxId.value));
-    if (device?.restart) {
-      await device.restart();
-    }
-    openQrModal({ fresh: true });
+    await InboxesAPI.getWavoipQr(inboxId.value, { refresh: true });
+    await refreshConnection({ forceLiveCheck: true });
+    openQrModal({ fresh: false });
   } catch (error) {
     showDeviceActionError(error);
-    await releaseDeviceConnection();
   } finally {
     isRestarting.value = false;
   }
