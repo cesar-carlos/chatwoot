@@ -198,9 +198,9 @@ Documentação completa reanalisada em jun/2026: [whatsapp-voice/README.md](../w
 | `voice_calling_supported?` | `channel/whatsapp.rb` | `false` (só `whatsapp_cloud`) |
 | `enable_voice_calling!` | idem | raise se não cloud |
 | Enterprise prepend | `WhatsappCloudService` | Graph `/calls` |
-| `useWhatsappCallSession` | frontend (~456 linhas) | `/whatsapp_calls` Meta |
-| `actionCable.js` | frontend | Filtra `provider === 'whatsapp'` |
-| `voice_call.permission_granted` | backend broadcast | **Sem handler FE** |
+| `useWhatsappCallSession` | frontend (wrapper ~33 linhas) | Core em `useWebRtcCallSession.js` |
+| `actionCable.js` | frontend | WhatsApp inline; Wavoip via registry |
+| `voice_call.permission_granted` | backend broadcast | ✅ Handler FE (toast jun. 2026) |
 
 **Conclusão:** mensagens gateway e voz são **projetos separados** no fork.
 

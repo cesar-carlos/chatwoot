@@ -100,13 +100,13 @@ necessário depois do spike.
 | 0.2.1 | Contrato `Voice::Provider::WhatsappCalling::Base` | `enterprise/.../whatsapp_calling/base.rb` | Métodos initiate/accept/reject/… |
 | 0.2.2 | `Voice::Provider::MetaCloud::Adapter` | `enterprise/.../meta_cloud/adapter.rb` | Move lógica do prepend |
 | 0.2.3 | Prepend delega ao adapter | `WhatsappCloudService` EE | Sem mudança de comportamento |
-| 0.2.4 | `Voice::OutboundWhatsappCallBuilder` | `enterprise/.../outbound_whatsapp_call_builder.rb` | Paridade com Twilio builder |
-| 0.2.5 | `Whatsapp::CallPermissionRequestService` | `enterprise/.../call_permission_request_service.rb` | Controller só rescue/render |
+| 0.2.4 | `Voice::OutboundWhatsappCallBuilder` | `enterprise/.../outbound_whatsapp_call_builder.rb` | ✅ Done (jun. 2026) |
+| 0.2.5 | `Whatsapp::CallPermissionRequestService` | `enterprise/.../call_permission_request_service.rb` | ✅ Done (jun. 2026) |
 | 0.2.6 | Specs espelhados | `spec/enterprise/services/...` | Builders + permission service |
 
 ### 0.3 Critérios de saída Fase 0
 
-- [ ] `useWhatsappCallSession.js` < 80 linhas (wrapper)
+- [x] `useWhatsappCallSession.js` < 80 linhas (wrapper) — ~33 linhas (jun. 2026)
 - [ ] Zero regressão Meta inbound/outbound em staging
 - [ ] `rg isWhatsappCall` — branching reduzido a registry
 - [ ] Novo provider WebRTC = novo wrapper + entrada no registry (sem copiar WebRTC core)

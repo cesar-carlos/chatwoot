@@ -59,6 +59,7 @@ Registry (`lib/voice/`), composables (`composables/wavoip/`), `WavoipConnectionH
 
 - [x] `WavoipCallingPage` — lê `wavoip_webhook_url` / `wavoip_setup_pending` com fallbacks camelCase
 - [x] **Audit fixes (20 jun. 2026):** `source_id` digits-only via `prepend_mod_with` em `Voice::InboundCallBuilder`; teardown SDK scoped por call; guard `inbound_calls_enabled` server-side; `channel_wavoip` em `voice_enabled?`; idempotência `CallUpsertService`; rotação de webhook key; specs Dispatcher/ConversationLinker/DeviceHandler
+- [x] **Audit fixes (24 jun. 2026):** `apply_status!` retorno correto; guard `voice_enabled?` no upsert; `ENDED`→`no_answer` se nunca `in_progress`; `accepted_by_agent_id` com `with_lock` no PATCH; reply rejeitada limpa flags
 
 ---
 
