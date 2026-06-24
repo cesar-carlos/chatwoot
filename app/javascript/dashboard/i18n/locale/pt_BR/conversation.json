@@ -419,8 +419,17 @@
       "NOT_ANSWERED_YET": "Ainda não respondido",
       "HANDLED_IN_ANOTHER_TAB": "Sendo atendida em outra aba",
       "REJECT_CALL": "Recusar",
+      "DISMISS_CALL": "Dispensar",
       "JOIN_CALL": "Entrar na chamada",
-      "END_CALL": "Encerrar chamada"
+      "END_CALL": "Encerrar chamada",
+      "MUTE": "Silenciar microfone",
+      "UNMUTE": "Ativar microfone",
+      "VIEW_CHAT_HISTORY": "Ver histórico do chat",
+      "GO_TO_CONVERSATION": "Ir para a conversa",
+      "PERMISSION_GRANTED": "O contato autorizou chamadas pelo WhatsApp — você já pode ligar.",
+      "UNKNOWN_CALLER": "Chamador desconhecido",
+      "CUSTOMER_SUPPORT": "Suporte ao cliente",
+      "RECORDING_UPLOAD_FAILED": "Não foi possível salvar a gravação da chamada. Verifique sua conexão e tente novamente."
     }
   },
   "EMAIL_TRANSCRIPT": {
