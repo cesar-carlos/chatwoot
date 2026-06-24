@@ -76,7 +76,7 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 | Causa | Ação |
 |-------|------|
-| Device não `open` | No MVP, parear/reativar em app.wavoip.com; painel completo é pós-MVP |
+| Device não `open` | Settings → Chamadas → escanear **QR code** ou usar **Get pairing code** no painel do device |
 | `hibernating` | Clicar **Acordar** (`wakeUp`) |
 | `WAITING_PAYMENT` | Regularizar conta em app.wavoip.com |
 | `EXTERNAL_INTEGRATION_ERROR` | Verificar integração Evolution/gateway no Wavoip |
@@ -87,11 +87,17 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 | Causa | Ação |
 |-------|------|
-| Agente offline / aba fechada | Ficar online e manter o dashboard aberto; push pós-MVP apenas avisa |
+| Agente offline / aba fechada | Ficar **online** e manter o dashboard aberto; push in-app segue as regras de roteamento |
+| Agente não listado na aba **Agentes** | Adicionar na aba Agentes do inbox |
+| Device `close` / não vinculado | Settings → Chamadas → escanear QR ou pairing code (`WavoipDevicePanel`) |
+| Admin fora da lista de Agentes | Settings → Chamadas → ligar **Include account administrators**, ou adicionar como agente |
+| `incoming_call_offline_fallback: none` e ninguém online | Ajustar **When no agent is online** em Settings → Chamadas |
 | `inbound_calls_enabled: false` | Settings inbox → habilitar inbound |
 | Token errado / outro inbox | Conferir token em app.wavoip.com/devices |
 | Aba sem foco, sem permissão Notification | Permitir notificações no browser |
 | iOS Safari | Instalar PWA ou manter aba aberta |
+
+Ver roteamento completo: [inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings) · [architecture.md §3.6](./architecture.md#36-actioncable).
 
 ### Webhook não chega
 

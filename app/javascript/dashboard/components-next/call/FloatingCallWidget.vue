@@ -47,7 +47,8 @@ const isWhatsappActive = computed(
 const isWavoipActive = computed(
   () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
 );
-const { setMuted: setWavoipMuted, mediaConnectionStatus } = useWavoipActiveCall();
+const { setMuted: setWavoipMuted, mediaConnectionStatus } =
+  useWavoipActiveCall();
 const { refreshDevices, setInputDevice, setOutputDevice } = useWavoipMedia();
 
 const primaryIncomingCall = computed(() =>
@@ -83,10 +84,7 @@ const deviceConnectionStatus = computed(() => {
 });
 
 const connectionBannerMessage = computed(() => {
-  if (
-    isWavoipActive.value &&
-    mediaConnectionStatus.value === 'reconnecting'
-  ) {
+  if (isWavoipActive.value && mediaConnectionStatus.value === 'reconnecting') {
     return t('CONVERSATION.WAVOIP_CALL.RECONNECTING');
   }
   if (deviceConnectionStatus.value === 'reconnecting') {
@@ -333,7 +331,9 @@ onBeforeUnmount(stopRingtone);
       class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-3 py-2 flex flex-col gap-2 text-xs"
     >
       <label v-if="inputDevices.length" class="flex flex-col gap-1">
-        <span class="text-n-slate-11">{{ t('CONVERSATION.WAVOIP_CALL.MIC_DEVICE') }}</span>
+        <span class="text-n-slate-11">{{
+          t('CONVERSATION.WAVOIP_CALL.MIC_DEVICE')
+        }}</span>
         <select
           class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
           :value="activeInputId || ''"
@@ -349,7 +349,9 @@ onBeforeUnmount(stopRingtone);
         </select>
       </label>
       <label v-if="outputDevices.length" class="flex flex-col gap-1">
-        <span class="text-n-slate-11">{{ t('CONVERSATION.WAVOIP_CALL.SPEAKER_DEVICE') }}</span>
+        <span class="text-n-slate-11">{{
+          t('CONVERSATION.WAVOIP_CALL.SPEAKER_DEVICE')
+        }}</span>
         <select
           class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
           :value="activeOutputId || ''"

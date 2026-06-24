@@ -27,6 +27,25 @@ class Channel::Wavoip < ApplicationRecord
     provider_config['inbound_calls_enabled'] != false
   end
 
+  def incoming_call_include_administrators?
+    provider_config['incoming_call_include_administrators'] != false
+  end
+
+  def incoming_call_offline_fallback
+    fallback = provider_config['incoming_call_offline_fallback'].to_s
+    return fallback if Wavoip::Calls::IncomingCallRecipients::OFFLINE_FALLBACKS.include?(fallback)
+
+    'assignee_or_inbox_members_and_administrators'
+  end
+
+  def incoming_call_notify_busy_agents?
+    provider_config['incoming_call_notify_busy_agents'] == true
+  end
+
+  def ring_timeout_seconds
+    provider_config['ring_timeout_seconds'].to_i
+  end
+
   def webhook_url
     base = ENV.fetch('FRONTEND_URL', 'http://localhost:3000')
     "#{base}/webhooks/wavoip/#{webhook_key}"

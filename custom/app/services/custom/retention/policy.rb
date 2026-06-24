@@ -88,7 +88,7 @@ class Custom::Retention::Policy
     def quarantined_attachment_ids(account_id: nil)
       scope = AttachmentRetentionFailure.where('failure_count >= ?', max_failure_attempts)
       scope = scope.where(account_id: account_id) if account_id.present?
-      scope.pluck(:attachment_id)
+      scope.select(:attachment_id)
     end
 
     private

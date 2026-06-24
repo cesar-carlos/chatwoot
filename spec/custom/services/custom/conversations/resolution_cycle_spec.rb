@@ -63,6 +63,28 @@ RSpec.describe Custom::Conversations::ResolutionCycle do
       it 'falls back to created_at when no cycle markers exist' do
         expect(described_class.start_time(conversation)).to be_within(1.second).of(conversation.created_at)
       end
+
+      it 'ignores conversation_opened events with nil event_end_time' do
+        create(
+          :reporting_event,
+          account: account,
+          inbox: inbox,
+          conversation: conversation,
+          name: 'conversation_opened',
+          event_end_time: nil
+        )
+        valid_opened_at = 2.hours.ago.change(usec: 0)
+        create(
+          :reporting_event,
+          account: account,
+          inbox: inbox,
+          conversation: conversation,
+          name: 'conversation_opened',
+          event_end_time: valid_opened_at
+        )
+
+        expect(described_class.start_time(conversation)).to be_within(1.second).of(valid_opened_at)
+      end
     end
   end
 end

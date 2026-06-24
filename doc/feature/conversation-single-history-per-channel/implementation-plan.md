@@ -423,7 +423,8 @@ config.eager_load_paths += Dir["#{Rails.root}/custom/app/**"]  # FORK: custom ov
 ## Definition of Done
 
 - [x] `Conversations::Resolver` implemented (`#find`, `#perform`, `#resolve_or_create`) and used by SMS, Twilio, WhatsApp, Telegram, LINE, TikTok, Facebook, Instagram, `ConversationBuilder`, **Web Widget**
-- [x] Per-cycle `conversation_bot_handoff` metrics when single-history mode is ON
+- [x] Per-cycle `bot_handoff` metrics when single-history mode is ON
+- [x] Per-cycle `bot_handoffs_count` in `BotMetricsBuilder` when single-history mode is ON
 - [x] `Custom::Conversations::ResolutionCycle` centralizes cycle boundary logic
 - [x] Per-cycle resolution time implemented via custom overlay
 - [x] Per-cycle first response implemented (reset `first_reply_created_at` on reopen)
@@ -521,7 +522,10 @@ Channel unification, per-cycle bot handoff, UX, and default migration completed 
 
 ### Operational status (pending to execute pilot)
 
-- [ ] Run baseline SQL for selected pilot inboxes (pre window)
+- [x] Pilot metrics export script (`bin/fork-pilot-single-history-metrics.sh` + `pilot-tracker.md`)
+- [x] Dev baseline sample exported (`tmp/pilot_dev_baseline.csv`, account 1, inboxes 1,2,4)
+- [x] Controlled reopen flow validated on dev (toggle ON inbox reuses conversation; toggle OFF creates new)
+- [ ] Run baseline SQL for selected pilot inboxes (pre window) in staging/production
 - [ ] Execute pilot activation runbook inbox-by-inbox
 - [ ] Run post window SQL and compare pre/post
 - [ ] Confirm go/no-go criteria and thresholds
@@ -560,6 +564,7 @@ Channel unification, per-cycle bot handoff, UX, and default migration completed 
 - 2026-06-18: Worker 3 — automation warning banner on single-history toggle (uses existing automations store), `:single_history` factory trait, EN/PT-BR ops copy.
 - 2026-06-18: Orchestration round 2 — FB/IG and `ConversationBuilder` migrated to `Conversations::Resolver`; added `#resolve_or_create`; per-cycle `bot_handoff`; default ON migration for new inboxes; `ResolutionCycle` uses `reporting_events` association. Focused validation: `342 examples, 0 failures`.
 - 2026-06-23: Web Widget migrated to `Conversations::Resolver`; Web Widget toggle in Settings; `ResolutionCycle` uses `evolution_pending_since`; Telegram `UpdateMessageService` uses resolver `#find`; Evolution docs aligned (UI location, cache N/A, reopen E2E checklist).
+- 2026-06-24: Completion pass — `bot_handoffs_count` cycle-aware in `Custom::V2::Reports::BotMetricsBuilder`; association scope fix in custom `ReportingEventListener`; nil `event_end_time` guard in `ResolutionCycle`; automation warning loading state; pilot metrics script (`bin/fork-pilot-single-history-metrics.sh`) and tracker (`pilot-tracker.md`).
 
 ## Existing Inbox Backfill Policy
 

@@ -7,6 +7,7 @@ import {
   clearAcceptedByQueue,
 } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
+import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 import { useWavoipOutboundCall } from 'customDashboard/composables/wavoip/useWavoipOutboundCall';
 import {
   useWavoipIncomingOffer,
@@ -82,8 +83,13 @@ export function useWavoipCallSession() {
     await syncConnections(availability);
     if (availability === 'online') {
       const inboxes = store.getters['inboxes/getInboxes'] || [];
+      const isAdministrator = store.getters.getCurrentRole === 'administrator';
       inboxes
-        .filter(inbox => inbox.channel_type === 'Channel::Wavoip')
+        .filter(
+          inbox =>
+            inbox.channel_type === 'Channel::Wavoip' &&
+            shouldAgentReceiveWavoipCalls(inbox, { isAdministrator })
+        )
         .forEach(inbox => attachToInbox(inbox.id));
     }
   };

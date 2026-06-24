@@ -19,6 +19,7 @@ import {
   setWavoipWhatsAppStatus,
   clearWavoipDeviceStatus,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 
 const connectedInboxIds = new Set();
 const connectInboxPromises = new Map();
@@ -28,7 +29,12 @@ const isWavoipInbox = inbox => inbox?.channel_type === INBOX_TYPES.WAVOIP;
 
 const getAssignedWavoipInboxes = store => {
   const inboxes = store.getters['inboxes/getInboxes'] || [];
-  return inboxes.filter(isWavoipInbox);
+  const isAdministrator = store.getters.getCurrentRole === 'administrator';
+  return inboxes.filter(
+    inbox =>
+      isWavoipInbox(inbox) &&
+      shouldAgentReceiveWavoipCalls(inbox, { isAdministrator })
+  );
 };
 
 const wireDeviceListeners = (inboxId, client) => {

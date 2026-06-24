@@ -47,7 +47,7 @@ export const useConversationCardFork = ({
     showAssignmentButton.value ? 'ltr:pr-24 rtl:pl-24' : ''
   );
 
-  const cardBottomPaddingClass = 'pb-3';
+  const cardBottomPaddingClass = 'pb-2.5';
 
   const fastAssign = e => {
     // FORK: assignme - Prevent card navigation on button click and guard against concurrent requests.

@@ -12,9 +12,9 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 | Múltiplas ações | ✅ `Custom::ConversationWorkflow::ActionService` |
 | Gatilho “agente não respondeu” (`waiting_since`) | ✅ `agent_no_reply` + flag `conversation_agent_no_reply_rules` |
 | Gatilhos estendidos (jun/2026) | ✅ `first_response_overdue`, `unassigned_too_long`, `pending_stale`, `customer_no_reply` |
-| Eventos sintéticos na Automação | ✅ Fase 4 |
+| Eventos sintéticos na Automação (6 eventos) | ✅ Fase 4 — `conversation_inactivity_threshold`, `conversation_agent_no_reply`, `conversation_first_response_overdue`, `conversation_unassigned_too_long`, `conversation_pending_stale`, `conversation_customer_no_reply` |
 | Business hours | ✅ `BusinessHoursElapsedCalculator` (opt-in por regra) |
-| Job per-message | ✅ `ScheduleOnMessageJob` + `ScheduleOnMessageScheduler` (delay desde `waiting_since`, dedup Redis) |
+| Job per-message | ✅ `ScheduleOnMessageJob` + `ScheduleOnMessageScheduler` (dedup Redis por epoch — previne re-agendamento no mesmo episódio) |
 
 ---
 

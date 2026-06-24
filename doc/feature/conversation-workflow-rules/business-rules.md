@@ -142,8 +142,8 @@ Usar **`ConversationWorkflow::ActionService`** (não `ActionService` direto):
 
 ### 3.3 Whitelist
 
-| Ação | Inatividade | Agente não respondeu |
-|------|:-----------:|:--------------------:|
+| Ação | Inatividade | Todos os outros |
+|------|:-----------:|:---------------:|
 | `add_label` / `remove_label` | ✓ | ✓ |
 | `add_private_note` | ✓ | ✓ |
 | `send_message` | ✓ | ✓ |
@@ -152,9 +152,13 @@ Usar **`ConversationWorkflow::ActionService`** (não `ActionService` direto):
 | `send_webhook_event` | ✓ | ✓ |
 | `send_email_to_team` / `send_email_transcript` | ✓ | ✓ |
 | `change_priority` | ✓ | ✓ |
-| `send_attachment` | ✓ | opcional |
-| `resolve_conversation` | ✓ | opcional |
+| `send_attachment` | ✗ (log warning) | ✗ (log warning) |
+| `resolve_conversation` | ✗ (usar `resolve_on_match`) | ✓ |
 | `snooze` / `open` / `pending` | ✗ | ✗ |
+
+> **Nota:** `conversation_inactivity` resolve via flag `resolve_on_match: true` no modelo, não via ação — mantém a distinção semântica entre "template + resolve" do legacy e ações avulsas. O model exclui `resolve_conversation` da whitelist para inatividade (`actions_attributes`).
+
+> **`send_attachment`:** bloqueado na UI via `DISALLOWED_ACTIONS`; no backend, loga `warning` e retorna sem enviar.
 
 ### 3.4 Ordem — `conversation_inactivity`
 

@@ -49,15 +49,31 @@ RSpec.describe Wavoip::Calls::Broadcaster do
     expect(payloads.first.last[:event]).to eq('voice_call.incoming')
   end
 
-  it 'broadcasts voice_call.accepted with accepted_by_agent_id' do
+  it 'broadcasts voice_call.accepted on account stream' do
     broadcaster = described_class.new(inbox: inbox)
     payloads = []
     allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
 
     broadcaster.broadcast_agent_accepted(call, accepted_by_agent_id: online_agent.id)
 
+    expect(payloads.first.first).to eq("account_#{account.id}")
     expect(payloads.first.last[:event]).to eq('voice_call.accepted')
     expect(payloads.first.last[:data][:accepted_by_agent_id]).to eq(online_agent.id)
     expect(payloads.first.last[:data][:call_id]).to eq('broadcast_test_001')
+  end
+
+  it 'broadcasts escalated ring to broad fallback recipients' do
+    admin = create(:user, :administrator, account: account)
+    create(:inbox_member, inbox: inbox, user: offline_agent)
+    broadcaster = described_class.new(inbox: inbox)
+    payloads = []
+    allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
+
+    broadcaster.broadcast_escalated_ring(call)
+
+    streams = payloads.map(&:first)
+    expect(streams).to include(online_agent.pubsub_token, offline_agent.pubsub_token, admin.pubsub_token)
+    expect(payloads.first.last[:event]).to eq('voice_call.incoming')
+    expect(payloads.first.last[:data][:escalated]).to be(true)
   end
 end

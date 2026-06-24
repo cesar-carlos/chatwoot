@@ -49,7 +49,7 @@ module Custom::ReportingEventListener
   private
 
   def bot_handoff_already_recorded?(conversation, cycle_start_time)
-    scope = ReportingEvent.where(conversation_id: conversation.id, name: 'conversation_bot_handoff')
+    scope = conversation.reporting_events.where(name: 'conversation_bot_handoff')
     scope = scope.where(event_start_time: cycle_start_time) if conversation.inbox.lock_to_single_conversation?
     scope.exists?
   end

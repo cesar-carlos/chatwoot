@@ -26,7 +26,11 @@ export function setWavoipConnectionStatus(inboxId, status) {
   ensureEntry(inboxId).connectionStatus.value = status;
 }
 
-export function setWavoipRestricted(inboxId, restricted, restrictedUntil = null) {
+export function setWavoipRestricted(
+  inboxId,
+  restricted,
+  restrictedUntil = null
+) {
   const entry = ensureEntry(inboxId);
   entry.isRestricted.value = restricted;
   entry.restrictedUntil.value = restrictedUntil;

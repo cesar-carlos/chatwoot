@@ -179,7 +179,7 @@ Fases A–E do plano de conclusão aplicadas:
 - `connectionStatusChanged` vs WhatsApp `statusChanged`
 - `WavoipDevicePanel` (QR, pairing, wakeUp, diagnostics)
 - `useWavoipNotifications`, `useWavoipMedia`, RECORD retry job
-- Broadcaster → online inbox members first
+- `IncomingCallRecipients` → online inbox members first; offline fallback configurável (Settings → Chamadas)
 
 ### Bug fixed (settings tab, Jun 2026)
 

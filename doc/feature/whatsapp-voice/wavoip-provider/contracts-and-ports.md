@@ -458,7 +458,8 @@ Separado de `Wavoip::Calls::StatusMapper` (webhook). **Dois mappers, duas fontes
 | `CallUpdateHandler` | 100 | Application | `offer.accept` |
 | `ConversationLinker` | 40 | → EE core | Lógica de conversa duplicada |
 | `StatusMapper` | 60 | Port impl | Broadcast |
-| `Broadcaster` | 80 | Port impl | Webhook parse |
+| `Broadcaster` | 80 | Port impl; delega destinatários a `IncomingCallRecipients` | Webhook parse |
+| `IncomingCallRecipients` | ~70 | Resolve users/pubsub_tokens (online + fallback) | — |
 | `useWavoipCallSession` | 60 | Facade | Lógica SDK inline |
 | `useWavoipIncomingOffer` | 150 | Adapter | Outbound |
 | `wavoipSdkPort` | 40 | Infrastructure | UI |

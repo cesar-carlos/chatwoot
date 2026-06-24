@@ -17,15 +17,29 @@ class Wavoip::Calls::Broadcaster
     Wavoip::InboundCallPushJob.perform_later(call.id)
   end
 
+  def broadcast_escalated_ring(call)
+    contact = call.contact
+    streams = escalated_streams(call)
+    return if streams.blank?
+
+    broadcast(
+      call,
+      'voice_call.incoming',
+      streams: streams,
+      caller: { name: contact.name, phone: contact.phone_number, avatar: contact.avatar_url },
+      escalated: true
+    )
+    Wavoip::InboundCallPushJob.perform_later(call.id)
+  end
+
   def broadcast_accepted(call)
-    broadcast(call, 'voice_call.outbound_accepted', streams: agent_streams(call))
+    broadcast(call, 'voice_call.outbound_accepted')
   end
 
   def broadcast_agent_accepted(call, accepted_by_agent_id:)
     broadcast(
       call,
       'voice_call.accepted',
-      streams: agent_streams(call),
       accepted_by_agent_id: accepted_by_agent_id
     )
   end
@@ -45,14 +59,17 @@ class Wavoip::Calls::Broadcaster
   attr_reader :inbox
 
   def agent_streams(call)
-    online = inbox.available_agents.pluck('users.pubsub_token').compact
-    return online if online.present?
+    Wavoip::Calls::IncomingCallRecipients.new(
+      inbox: inbox,
+      conversation: call.conversation
+    ).pubsub_tokens
+  end
 
-    token = call.conversation.assignee&.pubsub_token
-    return [token] if token.present?
-
-    user_ids = inbox.member_ids | inbox.account.administrators.ids
-    User.where(id: user_ids).pluck(:pubsub_token).compact
+  def escalated_streams(call)
+    Wavoip::Calls::IncomingCallRecipients.new(
+      inbox: inbox,
+      conversation: call.conversation
+    ).escalated_pubsub_tokens
   end
 
   def broadcast(call, event, streams: account_streams, **extra)

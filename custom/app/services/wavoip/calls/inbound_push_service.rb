@@ -27,14 +27,10 @@ class Wavoip::Calls::InboundPushService
   end
 
   def agents_for_notification
-    online = inbox.available_agents
-    return online if online.exists?
-
-    assignee = conversation.assignee
-    return User.where(id: assignee.id) if assignee.present?
-
-    user_ids = inbox.member_ids | inbox.account.administrators.ids
-    User.where(id: user_ids)
+    Wavoip::Calls::IncomingCallRecipients.new(
+      inbox: inbox,
+      conversation: conversation
+    ).users
   end
 
   def notification_recently_sent?(user)

@@ -99,7 +99,7 @@ correlação SDK/webhook e da extensão dos acoplamentos frontend.
 | **Produção piloto** | Account 2, inbox 42, device `556697193168` (`open`) |
 | Pacote npm | `@wavoip/wavoip-api@2.5.0` |
 
-**Pós-MVP (inalterado):** UI RECORD, push offline, métricas. Rotação de webhook key na UI — ✅ implementada (`WavoipCallingPage`).
+**Pós-MVP:** UI RECORD, push offline, métricas. Rotação de webhook key — ✅ (`WavoipCallingPage`). Roteamento inbound configurável — ✅ ([inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings)).
 
 Contexto geral: [../README.md](../README.md) ·
 [../architecture-and-flow.md](../architecture-and-flow.md) ·

@@ -34,7 +34,7 @@ divergência de prioridade ou fase, este plano prevalece.
 | **A** | P0 E2E: `startCall` unwrap, join fail dismiss, dismiss → SDK reject + `markDismissed` | ✅ |
 | **B** | Multiagente: `voice_call.accepted` PATCH/ACTIVE, `onAccepted` + `isJoining` guard | ✅ |
 | **C** | Backend: logging seguro, RECORD retry, push alinhado cable, HANDLED_REMOTELY stub | ✅ |
-| **D** | Settings: `WavoipDevicePanel`, test webhook, restricted gate, diagnostics, media/inbox | ✅ |
+| **D** | Settings: `WavoipDevicePanel`, test webhook, restricted gate, diagnostics, **roteamento inbound configurável** | ✅ |
 | **E** | Specs + docs; E2E manual `+5566999050312` (Pass/Fail em spike-notes) | ⚠️ W1/I1 webhook **Pass**; O1/M1/D1/F1 browser _pending_ |
 
 ### Backend (`custom/`)
@@ -45,7 +45,7 @@ divergência de prioridade ou fase, este plano prevalece.
 | Webhook ingress | `custom/app/controllers/webhooks/wavoip_controller.rb` |
 | Job | `custom/app/jobs/wavoip/process_webhook_job.rb` |
 | Pipeline | `custom/app/services/wavoip/webhooks/{dispatcher,payload_normalizer,handlers/*}` |
-| Call persistence | `custom/app/services/wavoip/calls/{call_upsert_service,conversation_linker,broadcaster,status_mapper}` |
+| Call persistence | `custom/app/services/wavoip/calls/{call_upsert_service,conversation_linker,broadcaster,incoming_call_recipients,inbound_push_service,status_mapper}` |
 | Accept audit | `custom/app/controllers/api/v1/accounts/calls_controller.rb` |
 | Inbox create | `custom/app/controllers/custom/api/v1/accounts/inboxes_controller.rb` (prepend) |
 
@@ -274,6 +274,8 @@ enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
 | Seleção de mic/speaker | O browser default cobre o happy path |
 | Refactor `useWebRtcCallSession` Meta | Beneficia Meta-like/CPaaS, não Wavoip |
 | Adapter/builders Meta | Trilha separada; não bloquear entrega Wavoip |
+
+**Concluído pós-MVP (jun. 2026):** roteamento inbound configurável por inbox (`incoming_call_include_administrators`, `incoming_call_offline_fallback`) — ver [inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings).
 
 ## Status e normalização
 

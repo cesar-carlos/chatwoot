@@ -67,7 +67,7 @@ Webhook `DEVICE` usa subset legado (`open`/`close` → futuro `connected`/`disco
 | Evento | Payload | Onde usar |
 |--------|---------|-----------|
 | `statusChanged` | `DeviceStatus` | `WavoipCallingPage` indicador |
-| `qrCodeChanged` | `string \| undefined` | Modal QR no settings (se pareamento no Chatwoot) |
+| `qrCodeChanged` | `string \| undefined` | `WavoipQrDisplay` em Settings — `buildQrDataUrl()` via pacote `qrcode`; fallback `devices.wavoip.com/.../qr-image` |
 | `contactChanged` | `Contact \| undefined` | Validar `phone` do inbox vs `contact.phone` |
 
 ### 2.3 Métodos do dispositivo

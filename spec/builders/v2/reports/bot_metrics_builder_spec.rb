@@ -125,6 +125,22 @@ RSpec.describe V2::Reports::BotMetricsBuilder do
         expect(metrics[:conversation_count]).to eq(1)
         expect(metrics[:resolution_rate]).to eq(200)
       end
+
+      context 'with multiple bot handoff cycles on the same conversation' do
+        before do
+          create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_handoff',
+                                   conversation_id: multi_cycle_conversation.id, created_at: 2.days.ago)
+          create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_handoff',
+                                   conversation_id: multi_cycle_conversation.id, created_at: 1.day.ago)
+        end
+
+        it 'counts each bot handoff cycle for the same conversation' do
+          metrics = bot_metrics_builder.metrics
+
+          expect(metrics[:conversation_count]).to eq(1)
+          expect(metrics[:handoff_rate]).to eq(200)
+        end
+      end
     end
 
     context 'when lock_to_single_conversation is disabled' do
@@ -146,6 +162,22 @@ RSpec.describe V2::Reports::BotMetricsBuilder do
 
         expect(metrics[:conversation_count]).to eq(1)
         expect(metrics[:resolution_rate]).to eq(100)
+      end
+
+      context 'with multiple bot handoff events on the same conversation' do
+        before do
+          create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_handoff',
+                                   conversation_id: multi_event_conversation.id, created_at: 2.days.ago)
+          create(:reporting_event, account_id: inbox.account.id, name: 'conversation_bot_handoff',
+                                   conversation_id: multi_event_conversation.id, created_at: 1.day.ago)
+        end
+
+        it 'keeps distinct conversation counting for bot handoffs on legacy inboxes' do
+          metrics = bot_metrics_builder.metrics
+
+          expect(metrics[:conversation_count]).to eq(1)
+          expect(metrics[:handoff_rate]).to eq(100)
+        end
       end
     end
   end

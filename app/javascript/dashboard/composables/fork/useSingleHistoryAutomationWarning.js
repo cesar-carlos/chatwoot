@@ -46,6 +46,10 @@ export const useSingleHistoryAutomationWarning = inboxId => {
     }
   });
 
+  const isFetching = computed(
+    () => store.getters['automations/getUIFlags'].isFetching
+  );
+
   const matchingRules = computed(() => {
     if (!inboxId.value) return [];
 
@@ -60,5 +64,6 @@ export const useSingleHistoryAutomationWarning = inboxId => {
   return {
     matchingRules,
     showAutomationWarning,
+    isFetching,
   };
 };
