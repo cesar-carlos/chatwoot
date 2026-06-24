@@ -302,6 +302,7 @@ Rails.application.routes.draw do
             # FORK: Wavoip SDK bootstrap — agents only via inbox policy
             get :wavoip_sdk_bootstrap, on: :member
             get :wavoip_device_status, on: :member
+            get :wavoip_qr, on: :member
             post :wavoip_logout, on: :member
             post :regenerate_wavoip_webhook_key, on: :member
             post :test_wavoip_webhook, on: :member

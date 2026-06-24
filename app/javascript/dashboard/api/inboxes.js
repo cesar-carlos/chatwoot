@@ -87,6 +87,12 @@ class Inboxes extends CacheEnabledApiClient {
     });
   }
 
+  getWavoipQr(inboxId, { refresh = false } = {}) {
+    return axios.get(`${this.url}/${inboxId}/wavoip_qr`, {
+      params: refresh ? { refresh: true } : {},
+    });
+  }
+
   postWavoipLogout(inboxId) {
     return axios.post(`${this.url}/${inboxId}/wavoip_logout`);
   }
