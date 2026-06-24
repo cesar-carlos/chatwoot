@@ -7,6 +7,8 @@ import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import WavoipQrDisplay from 'customDashboard/components/wavoip/WavoipQrDisplay.vue';
 import { useWavoipQrSession } from 'customDashboard/composables/wavoip/useWavoipQrSession';
+import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
+import { formatWavoipDeviceActionError } from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
 
 const props = defineProps({
   inboxId: {
@@ -28,6 +30,7 @@ const emit = defineEmits(['connected', 'sessionActive']);
 const isOpen = defineModel({ type: Boolean, default: false });
 
 const { t } = useI18n();
+const { disconnectInbox } = useWavoipConnection();
 const dialogRef = ref(null);
 let sessionActive = false;
 
@@ -60,6 +63,9 @@ function cleanupSession() {
   sessionActive = false;
   stopSession();
   clearQrState();
+  if (props.inboxId) {
+    disconnectInbox(props.inboxId).catch(() => {});
+  }
 }
 
 function openModal() {
@@ -80,9 +86,7 @@ async function handleRefreshQr() {
   try {
     await refreshQr();
   } catch (error) {
-    useAlert(
-      error?.message || t('INBOX_MGMT.WAVOIP_CALL.QR_MODAL.REFRESH_ERROR')
-    );
+    useAlert(formatWavoipDeviceActionError(error, t));
   }
 }
 
@@ -90,9 +94,7 @@ async function handlePairingCode() {
   try {
     await requestPairingCode();
   } catch (error) {
-    useAlert(
-      error?.message || t('INBOX_MGMT.WAVOIP_CALL.QR_MODAL.REFRESH_ERROR')
-    );
+    useAlert(formatWavoipDeviceActionError(error, t));
   }
 }
 

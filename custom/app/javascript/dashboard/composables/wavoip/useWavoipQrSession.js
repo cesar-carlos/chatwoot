@@ -10,6 +10,8 @@ import {
   withCacheBust,
 } from 'customDashboard/lib/wavoip/wavoipQrImage';
 
+/* eslint-disable no-use-before-define -- QR expiry timer and session share refreshQr */
+
 const QR_FALLBACK_MS = 10_000;
 const QR_EXPIRY_MS = 45_000;
 
@@ -178,6 +180,49 @@ export function useWavoipQrSession({
     }
   }
 
+  async function refreshQr() {
+    const id = unref(inboxId);
+    if (!id || isRefreshing.value) return;
+
+    isRefreshing.value = true;
+    qrRefreshError.value = false;
+    pairingCode.value = '';
+
+    try {
+      const device = getPrimaryDevice(getWavoipClient(id));
+      if (!device) {
+        qrRefreshError.value = true;
+        return;
+      }
+
+      if (device.status === 'hibernating') {
+        await wakeUpInboxDevice(id);
+      } else if (device.restart) {
+        await device.restart();
+      }
+
+      syncFromDevice(getPrimaryDevice(getWavoipClient(id)));
+
+      if (!isConnected() && !qrDataUrl.value && cachedDeviceToken) {
+        qrDataUrl.value = withCacheBust(
+          buildWavoipQrImageUrl(cachedDeviceToken)
+        );
+      }
+
+      if (!isConnected() && !qrDataUrl.value) {
+        armFallbackTimer();
+      }
+
+      if (!isConnected()) {
+        armQrExpiryTimer();
+      }
+    } catch (_) {
+      qrRefreshError.value = true;
+    } finally {
+      isRefreshing.value = false;
+    }
+  }
+
   async function startSession({ fetchFreshQr = false } = {}) {
     const id = unref(inboxId);
     if (!id) return;
@@ -222,52 +267,16 @@ export function useWavoipQrSession({
     if (!device?.pairingCode) return;
 
     const raw = await device.pairingCode(phone);
-    const { pairingCode: code, err } = unwrapWavoipSdkResult(raw, 'pairingCode');
+    const { pairingCode: code, err } = unwrapWavoipSdkResult(
+      raw,
+      'pairingCode'
+    );
     if (err) {
-      throw new Error(typeof err === 'string' ? err : err?.message || 'Pairing failed');
+      throw new Error(
+        typeof err === 'string' ? err : err?.message || 'Pairing failed'
+      );
     }
     pairingCode.value = code || '';
-  }
-
-  async function refreshQr() {
-    const id = unref(inboxId);
-    if (!id || isRefreshing.value) return;
-
-    isRefreshing.value = true;
-    qrRefreshError.value = false;
-    pairingCode.value = '';
-
-    try {
-      const device = getPrimaryDevice(getWavoipClient(id));
-      if (!device) {
-        qrRefreshError.value = true;
-        return;
-      }
-
-      if (device.status === 'hibernating') {
-        await wakeUpInboxDevice(id);
-      } else if (device.restart) {
-        await device.restart();
-      }
-
-      syncFromDevice(getPrimaryDevice(getWavoipClient(id)));
-
-      if (!isConnected() && !qrDataUrl.value && cachedDeviceToken) {
-        qrDataUrl.value = withCacheBust(buildWavoipQrImageUrl(cachedDeviceToken));
-      }
-
-      if (!isConnected() && !qrDataUrl.value) {
-        armFallbackTimer();
-      }
-
-      if (!isConnected()) {
-        armQrExpiryTimer();
-      }
-    } catch (_) {
-      qrRefreshError.value = true;
-    } finally {
-      isRefreshing.value = false;
-    }
   }
 
   function clearQrState() {

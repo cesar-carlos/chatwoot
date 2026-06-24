@@ -316,7 +316,9 @@ defineExpose({ prepareOpen, close, focusSearchInput });
     </div>
 
     <div v-if="showResults" class="flex flex-col flex-1 min-h-0 gap-2">
-      <p class="text-sm text-n-slate-11 flex-shrink-0">{{ resultsCountLabel }}</p>
+      <p class="text-sm text-n-slate-11 flex-shrink-0">
+        {{ resultsCountLabel }}
+      </p>
 
       <div
         ref="resultsContainerRef"

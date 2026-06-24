@@ -4,7 +4,11 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
-import { setActiveCall, setRingingOutgoingCall, clearRingingOutgoingCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import {
+  setActiveCall,
+  setRingingOutgoingCall,
+  clearRingingOutgoingCall,
+} from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import { getWavoipClientEntry } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { wavoipDeviceErrorKey } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import {

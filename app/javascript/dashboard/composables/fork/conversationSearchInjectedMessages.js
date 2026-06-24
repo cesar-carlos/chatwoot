@@ -19,7 +19,9 @@ export const collectVisibleMessageIds = () => {
 };
 
 export const newMessageIds = (existingMessages, incomingMessages) => {
-  const existingIds = new Set((existingMessages || []).map(message => message.id));
+  const existingIds = new Set(
+    (existingMessages || []).map(message => message.id)
+  );
   return (incomingMessages || [])
     .map(message => message.id)
     .filter(id => !existingIds.has(id));

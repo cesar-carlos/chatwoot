@@ -19,7 +19,12 @@ const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const insertMessagesAround = (store, conversationId, messages, targetMessageId) => {
+const insertMessagesAround = (
+  store,
+  conversationId,
+  messages,
+  targetMessageId
+) => {
   const chat = store.getters.getSelectedChat;
   if (!chat || chat.id !== conversationId) return;
 
