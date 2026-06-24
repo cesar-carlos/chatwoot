@@ -7,6 +7,9 @@ RSpec.describe Custom::Whatsapp::Evolution::MediaPayload do
     it 'rejects localhost and private network hosts' do
       expect(described_class.publicly_accessible_url?('http://localhost:3000/files/1')).to be(false)
       expect(described_class.publicly_accessible_url?('http://192.168.1.10/files/1')).to be(false)
+      expect(described_class.publicly_accessible_url?('http://169.254.169.254/latest/meta-data')).to be(false)
+      expect(described_class.publicly_accessible_url?('http://[::1]/files/1')).to be(false)
+      expect(described_class.publicly_accessible_url?('http://app.internal/files/1')).to be(false)
     end
 
     it 'accepts public hosts' do

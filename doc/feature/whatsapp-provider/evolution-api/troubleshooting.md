@@ -54,6 +54,8 @@ Operações disponíveis no dashboard (**Settings → WhatsApp → Evolution** t
 
 **Fluxo reconnect:** `ConnectionService#reconnect!` → `connect` → atualiza `last_qr_base64` → UI exibe QR no **modal** (`EvolutionQrScanModal`). Polling a cada **5s** na aba health e **3s** no modal até `connection_status: open`. QR expira em ~45s — refresh automático ou botão **Atualizar QR**.
 
+**Throttle de API:** `refresh_connection_status!` usa cache de **15s** por channel; `fetch_qr_if_needed!` não chama Evolution novamente se já há QR em `provider_config` ou se um fetch ocorreu nos últimos **45s** (alinhado ao modal). Health page e `GET evolution_connection` respeitam esses caches — polling agressivo não deve gerar storm na Evolution API.
+
 **Logout:** confirmação via modal na UI (`woot-confirm-modal`). Após logout, status → `close`; escanear QR novamente para reconectar.
 
 **Restart:** útil após alterar proxy ou sessão presa em `connecting`. Pode exigir novo QR.

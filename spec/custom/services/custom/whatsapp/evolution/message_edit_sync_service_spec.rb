@@ -47,4 +47,16 @@ RSpec.describe Custom::Whatsapp::Evolution::MessageEditSyncService do
     expect(message.content_attributes['edited']).to be(true)
     expect(message.content_attributes['edited_at']).to be_present
   end
+
+  it 'uses a stable -edited suffix when creating a fallback edited message' do
+    service = described_class.new(channel: channel, data: {})
+    payload = service.send(
+      :build_upsert_payload,
+      { id: 'MSG-EDIT-2', remoteJid: '5511999999999@s.whatsapp.net', fromMe: false },
+      'edited body',
+      nil
+    )
+
+    expect(payload.dig(:key, :id)).to eq('MSG-EDIT-2-edited')
+  end
 end

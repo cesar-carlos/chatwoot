@@ -36,8 +36,17 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     config = whatsapp_channel.provider_config || {}
     return false if config['base_url'].blank? || config['instance_name'].blank? || config['api_key'].blank?
 
-    connection_open?(api_client.connection_state)
-  rescue StandardError
+    cached = Rails.cache.read(connection_validation_cache_key)
+    return cached unless cached.nil?
+
+    open = connection_open?(api_client.connection_state)
+    Rails.cache.write(connection_validation_cache_key, open, expires_in: connection_validation_cache_ttl)
+    open
+  rescue Custom::Whatsapp::Evolution::ApiError => e
+    Rails.logger.warn("[EVOLUTION] validate_provider_config failed channel=#{whatsapp_channel.id}: #{e.message}")
+    false
+  rescue Timeout::Error, Errno::ECONNREFUSED, Errno::ETIMEDOUT, SocketError => e
+    Rails.logger.warn("[EVOLUTION] validate_provider_config network error channel=#{whatsapp_channel.id}: #{e.message}")
     false
   end
 
@@ -203,5 +212,13 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
 
     state = response.parsed_response.dig('instance', 'state') || response.parsed_response['state']
     state.to_s == 'open'
+  end
+
+  def connection_validation_cache_key
+    "evolution:connection_validation:#{whatsapp_channel.id}"
+  end
+
+  def connection_validation_cache_ttl
+    Custom::Whatsapp::Evolution::ConnectionService::CONNECTION_STATE_CACHE_TTL
   end
 end

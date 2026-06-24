@@ -1,0 +1,22 @@
+{
+  "id": "120363123456789012@g.us",
+  "subject": "Support Team",
+  "subjectOwner": "5511999999999@s.whatsapp.net",
+  "subjectTime": 1718880000,
+  "size": 12,
+  "creation": 1718800000,
+  "owner": "5511999999999@s.whatsapp.net",
+  "desc": "Internal support group",
+  "restrict": false,
+  "announce": false,
+  "participants": [
+    {
+      "id": "5511999999999@s.whatsapp.net",
+      "admin": "superadmin"
+    },
+    {
+      "id": "5511777777777@s.whatsapp.net",
+      "admin": null
+    }
+  ]
+}

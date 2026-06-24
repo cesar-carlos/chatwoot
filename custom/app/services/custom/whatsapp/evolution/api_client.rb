@@ -229,6 +229,10 @@ class Custom::Whatsapp::Evolution::ApiClient
     post("/chat/fetchProfile/#{@instance_name}", { number: profile_lookup_number(number) })
   end
 
+  def find_group_infos(group_jid:)
+    get("/group/findGroupInfos/#{@instance_name}?groupJid=#{CGI.escape(group_jid.to_s)}")
+  end
+
   def fetch_business_profile(number:)
     post("/chat/fetchBusinessProfile/#{@instance_name}", { number: profile_lookup_number(number) })
   end

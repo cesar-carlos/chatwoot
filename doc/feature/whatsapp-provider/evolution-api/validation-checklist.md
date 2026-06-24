@@ -221,7 +221,11 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
 | 3 outbound Chatwoot | ✅ | `source_id` = `key.id`, sem WAID |
 | 4 conexão UI | ✅ | Modal + health; Playwright + RSpec `evolution_validation_checklist_spec.rb`; rake `evolution:validate_checklist` |
 | 5 regressão | ✅ | bypass 24h; sem cloud/default no DB |
-| 6 proxy | ⏸️ | Opcional — não executado |
+| 6 proxy | ⏸️ | Opcional — spike staging pendente (§6); código implementado |
+| §5.1 reopen conversa resolvida | ⏸️ | Spec `evolution_conversation_cycle`; validação manual staging |
+| Grupos (`groups_ignore: false`) | ✅ | `GroupContactService` + fixtures `messages_upsert_group.json` |
+| Import completo (`import_messages: true`) | ⏸️ | Job + specs unitários; E2E staging pendente |
+| Playwright CI `EVOLUTION_*` | ✅ estrutura | Credenciais reais no `.env` do operador |
 | Bug Fase 1 | ✅ | `disable_chatwoot_integration` body completo |
 
 ### Notas operacionais E2E local
