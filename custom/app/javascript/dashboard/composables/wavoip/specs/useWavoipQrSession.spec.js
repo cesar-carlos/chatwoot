@@ -2,13 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 
 const {
-  connectForInbox,
+  connectInbox,
   wakeUpInboxDevice,
   getWavoipSdkBootstrap,
   getWavoipClient,
   getPrimaryDevice,
 } = vi.hoisted(() => ({
-  connectForInbox: vi.fn(),
+  connectInbox: vi.fn(),
   wakeUpInboxDevice: vi.fn(),
   getWavoipSdkBootstrap: vi.fn(),
   getWavoipClient: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock('dashboard/api/inboxes', () => ({
 
 vi.mock('customDashboard/composables/wavoip/useWavoipConnection', () => ({
   useWavoipConnection: () => ({
-    connectForInbox,
+    connectInbox,
     wakeUpInboxDevice,
   }),
 }));
@@ -70,7 +70,7 @@ describe('useWavoipQrSession', () => {
     };
 
     getWavoipSdkBootstrap.mockResolvedValue({ data: { device_token: 'tok_1' } });
-    connectForInbox.mockResolvedValue({});
+    connectInbox.mockResolvedValue({});
     getWavoipClient.mockReturnValue({});
     getPrimaryDevice.mockReturnValue(device);
   });
@@ -85,7 +85,7 @@ describe('useWavoipQrSession', () => {
 
     await session.startSession();
 
-    expect(connectForInbox).toHaveBeenCalledWith(9);
+    expect(connectInbox).toHaveBeenCalledWith(9);
     expect(session.qrDataUrl.value).toBe('data:image/png;base64,seed-qr');
     expect(session.whatsAppStatus.value).toBe('connecting');
     expect(onConnected).not.toHaveBeenCalled();

@@ -78,6 +78,11 @@ export const channelActions = {
       throw error;
     }
   },
+  fetchInboxItem: async ({ commit }, inboxId) => {
+    const response = await InboxesAPI.show(inboxId);
+    commit(types.default.SET_INBOXES_ITEM, response.data);
+    return response.data;
+  },
   fetchEvolutionConnection: async (_ctx, inboxId) => {
     const response = await InboxesAPI.getEvolutionConnection(inboxId);
     return response.data;

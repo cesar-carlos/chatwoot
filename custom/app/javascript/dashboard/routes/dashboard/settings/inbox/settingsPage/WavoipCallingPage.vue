@@ -123,7 +123,7 @@ export default {
       this.isTogglingInbound = true;
       try {
         await InboxesAPI.setInboundCalls(this.inbox.id, newValue);
-        await this.$store.dispatch('inboxes/get', this.inbox.id);
+        await this.$store.dispatch('inboxes/fetchInboxItem', this.inbox.id);
         useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
       } catch (_) {
         this.inboundCallsEnabled = previousValue;
@@ -153,7 +153,7 @@ export default {
             },
           },
         });
-        await this.$store.dispatch('inboxes/get', this.inbox.id);
+        await this.$store.dispatch('inboxes/fetchInboxItem', this.inbox.id);
         useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
       } catch (_) {
         useAlert(this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
@@ -223,7 +223,7 @@ export default {
       this.isTestingWebhook = true;
       try {
         const { data } = await InboxesAPI.testWavoipWebhook(this.inbox.id);
-        await this.$store.dispatch('inboxes/get', this.inbox.id);
+        await this.$store.dispatch('inboxes/fetchInboxItem', this.inbox.id);
         if (data?.webhook_verified) {
           useAlert(this.$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST_SUCCESS'));
         } else {
@@ -250,7 +250,7 @@ export default {
         );
         this.webhookUrl =
           data?.wavoip_webhook_url || data?.wavoipWebhookUrl || '';
-        await this.$store.dispatch('inboxes/get', this.inbox.id);
+        await this.$store.dispatch('inboxes/fetchInboxItem', this.inbox.id);
         useAlert(this.$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.REGENERATE_SUCCESS'));
       } catch (_) {
         useAlert(this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));

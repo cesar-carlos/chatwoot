@@ -2,16 +2,18 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
+import { useStore } from 'dashboard/composables/store';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
-import { useWavoipQrSession } from 'customDashboard/composables/wavoip/useWavoipQrSession';
 import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { getWavoipClient } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { getPrimaryDevice } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import { exportWavoipDiagnostics } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
-import WavoipQrDisplay from 'customDashboard/components/wavoip/WavoipQrDisplay.vue';
+import WavoipQrScanModal from 'customDashboard/components/wavoip/WavoipQrScanModal.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+
+const POLL_MS = 5000;
 
 const props = defineProps({
   inbox: {
@@ -21,47 +23,38 @@ const props = defineProps({
 });
 
 const { t } = useI18n();
-const { wakeUpInboxDevice } = useWavoipConnection();
+const store = useStore();
+const { connectInbox, wakeUpInboxDevice } = useWavoipConnection();
 
 const inboxId = computed(() => props.inbox.id);
-
-const {
-  whatsAppStatus,
-  qrDataUrl,
-  pairingCode,
-  linkedPhone,
-  isLoading,
-  isRefreshing,
-  qrRefreshError,
-  needsQr,
-  startSession,
-  stopSession,
-  requestPairingCode,
-  refreshQr,
-  clearQrState,
-} = useWavoipQrSession({
-  inboxId: computed(() => props.inbox.id),
-  phoneNumber: computed(() => props.inbox.phone_number),
-  onConnected: () => {
-    useAlert(t('INBOX_MGMT.WAVOIP_CALL.QR_MODAL.CONNECTED'));
-  },
-  onPhoneMismatch: () => {
-    useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.PHONE_MISMATCH'));
-  },
-});
-
+const isLoading = ref(true);
 const isWaking = ref(false);
 const isRestarting = ref(false);
 const isLoggingOut = ref(false);
+const isQrModalOpen = ref(false);
+const qrModalFetchFresh = ref(false);
+let pollTimer = null;
+
+const whatsAppStatus = computed(
+  () => props.inbox.provider_config?.device_status || 'connecting'
+);
+
+const isConnected = computed(() => whatsAppStatus.value === 'open');
+
+const linkedPhone = computed(() =>
+  isConnected.value ? props.inbox.phone_number || '' : ''
+);
 
 const connectionStatus = computed(() => {
   const entry = getWavoipDeviceStatus(inboxId.value);
   return entry.connectionStatus.value;
 });
+
 const isRestricted = computed(() => {
   const entry = getWavoipDeviceStatus(inboxId.value);
   return entry.isRestricted.value;
 });
+
 const restrictedUntil = computed(() => {
   const entry = getWavoipDeviceStatus(inboxId.value);
   return entry.restrictedUntil.value;
@@ -77,53 +70,101 @@ const connectionLabel = computed(() => {
   return t(`INBOX_MGMT.WAVOIP_CALL.CONNECTION_STATUS.${key}`, key);
 });
 
-const showQrSection = computed(
-  () => needsQr() || Boolean(qrDataUrl.value) || Boolean(pairingCode.value)
+const showConnectionStatus = computed(() => Boolean(connectionStatus.value));
+
+const isBusy = computed(
+  () => isWaking.value || isRestarting.value || isLoggingOut.value
 );
 
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function startPolling() {
+  if (isQrModalOpen.value) return;
+  stopPolling();
+  pollTimer = setInterval(refreshConnection, POLL_MS);
+}
+
+async function refreshConnection() {
+  try {
+    await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
+  } catch {
+    // keep last known state
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+function openQrModal({ fresh = false } = {}) {
+  stopPolling();
+  qrModalFetchFresh.value = fresh;
+  isQrModalOpen.value = true;
+}
+
+function onQrSessionActive(active) {
+  if (active) {
+    stopPolling();
+  } else if (!isConnected.value) {
+    startPolling();
+  }
+}
+
+async function onQrConnected() {
+  await refreshConnection();
+  isQrModalOpen.value = false;
+}
+
 watch(inboxId, () => {
-  stopSession();
-  clearQrState();
-  startSession();
+  stopPolling();
+  isLoading.value = true;
+  refreshConnection().then(() => {
+    if (!isConnected.value && !isQrModalOpen.value) {
+      startPolling();
+    }
+  });
+});
+
+watch(isConnected, connected => {
+  if (connected) {
+    stopPolling();
+  } else if (!isQrModalOpen.value) {
+    startPolling();
+  }
 });
 
 const handleWakeUp = async () => {
   isWaking.value = true;
   try {
     await wakeUpInboxDevice(inboxId.value);
-    await refreshQr();
+    await refreshConnection();
+    if (!isConnected.value) {
+      openQrModal({ fresh: true });
+    }
   } finally {
     isWaking.value = false;
   }
 };
 
-const handlePairingCode = async () => {
-  try {
-    await requestPairingCode();
-  } catch (error) {
-    useAlert(error?.message || t('INBOX_MGMT.WAVOIP_CALL.QR_MODAL.REFRESH_ERROR'));
-  }
-};
-
-const handleRefreshQr = async () => {
-  try {
-    await refreshQr();
-  } catch (error) {
-    useAlert(error?.message || t('INBOX_MGMT.WAVOIP_CALL.QR_MODAL.REFRESH_ERROR'));
-  }
-};
-
 const handleRestart = async () => {
   // eslint-disable-next-line no-alert
-  if (!window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART_CONFIRM'))) {
+  if (
+    !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART_CONFIRM'))
+  ) {
     return;
   }
-  const device = getPrimaryDevice(getWavoipClient(inboxId.value));
-  if (!device?.restart) return;
+
   isRestarting.value = true;
   try {
-    await device.restart();
-    await refreshQr();
+    await connectInbox(inboxId.value);
+    const device = getPrimaryDevice(getWavoipClient(inboxId.value));
+    if (device?.restart) {
+      await device.restart();
+    }
+    openQrModal({ fresh: true });
   } finally {
     isRestarting.value = false;
   }
@@ -131,16 +172,21 @@ const handleRestart = async () => {
 
 const handleLogout = async () => {
   // eslint-disable-next-line no-alert
-  if (!window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM'))) {
+  if (
+    !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM'))
+  ) {
     return;
   }
-  const device = getPrimaryDevice(getWavoipClient(inboxId.value));
-  if (!device?.logout) return;
+
   isLoggingOut.value = true;
   try {
-    await device.logout();
-    clearQrState();
-    await refreshQr();
+    await connectInbox(inboxId.value);
+    const device = getPrimaryDevice(getWavoipClient(inboxId.value));
+    if (device?.logout) {
+      await device.logout();
+    }
+    await refreshConnection();
+    openQrModal({ fresh: true });
   } finally {
     isLoggingOut.value = false;
   }
@@ -153,12 +199,12 @@ const copyDiagnostics = async () => {
 };
 
 onMounted(() => {
-  startSession();
+  refreshConnection();
+  startPolling();
 });
 
 onBeforeUnmount(() => {
-  stopSession();
-  clearQrState();
+  stopPolling();
 });
 </script>
 
@@ -168,9 +214,12 @@ onBeforeUnmount(() => {
       :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LABEL')"
       :help-text="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.HELP_TEXT')"
     >
-      <div v-if="isLoading" class="flex items-center gap-2 text-sm text-n-slate-11">
+      <div
+        v-if="isLoading"
+        class="flex items-center gap-2 text-sm text-n-slate-11"
+      >
         <Spinner class="size-4" />
-        <span>{{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOADING') }}</span>
+        <span>{{ $t('INBOX_MGMT.WAVOIP_CALL.HEALTH.LOADING') }}</span>
       </div>
       <div v-else class="flex flex-col gap-2 text-sm">
         <div>
@@ -179,13 +228,13 @@ onBeforeUnmount(() => {
           </span>
           <span class="font-medium">{{ statusLabel }}</span>
         </div>
-        <div v-if="linkedPhone && whatsAppStatus === 'open'">
+        <div v-if="linkedPhone">
           <span class="text-n-slate-11">
             {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LINKED_PHONE') }}:
           </span>
           <span class="font-medium">{{ linkedPhone }}</span>
         </div>
-        <div>
+        <div v-if="showConnectionStatus">
           <span class="text-n-slate-11">
             {{ $t('INBOX_MGMT.WAVOIP_CALL.CONNECTION_STATUS.LABEL') }}:
           </span>
@@ -198,11 +247,19 @@ onBeforeUnmount(() => {
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <NextButton
+          v-if="!isConnected"
+          sm
+          :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RECONNECT')"
+          :disabled="isBusy"
+          @click="openQrModal({ fresh: true })"
+        />
+        <NextButton
           sm
           faded
           slate
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAKE_UP')"
           :is-loading="isWaking"
+          :disabled="isBusy"
           @click="handleWakeUp"
         />
         <NextButton
@@ -211,6 +268,7 @@ onBeforeUnmount(() => {
           slate
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART')"
           :is-loading="isRestarting"
+          :disabled="isBusy"
           @click="handleRestart"
         />
         <NextButton
@@ -219,6 +277,7 @@ onBeforeUnmount(() => {
           slate
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT')"
           :is-loading="isLoggingOut"
+          :disabled="isBusy"
           @click="handleLogout"
         />
         <NextButton
@@ -231,22 +290,14 @@ onBeforeUnmount(() => {
       </div>
     </SettingsFieldSection>
 
-    <SettingsFieldSection
-      v-if="showQrSection"
-      :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.QR_LABEL')"
-      :help-text="$t('INBOX_MGMT.WAVOIP_CALL.QR_MODAL.SCAN_HINT')"
-    >
-      <WavoipQrDisplay
-        :status="whatsAppStatus"
-        :qr-data-url="qrDataUrl"
-        :pairing-code="pairingCode"
-        :is-loading="isLoading"
-        :is-refreshing="isRefreshing"
-        :qr-refresh-error="qrRefreshError"
-        @refresh="handleRefreshQr"
-        @request-pairing-code="handlePairingCode"
-      />
-    </SettingsFieldSection>
+    <WavoipQrScanModal
+      v-model="isQrModalOpen"
+      :inbox-id="inbox.id"
+      :phone-number="inbox.phone_number"
+      :fetch-fresh-qr="qrModalFetchFresh"
+      @connected="onQrConnected"
+      @session-active="onQrSessionActive"
+    />
 
     <SettingsFieldSection
       :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_TITLE')"
@@ -255,7 +306,9 @@ onBeforeUnmount(() => {
       <ul class="list-disc ps-5 text-sm text-n-slate-11 space-y-1">
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_TOGGLE') }}</li>
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_CALL_EVENT') }}</li>
-        <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_DEVICE_EVENT') }}</li>
+        <li>
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_DEVICE_EVENT') }}
+        </li>
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_URL') }}</li>
       </ul>
     </SettingsFieldSection>

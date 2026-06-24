@@ -827,7 +827,11 @@
         "LOGOUT": "Logout WhatsApp",
         "RESTART_CONFIRM": "Restart the Wavoip device? WhatsApp may disconnect briefly.",
         "LOGOUT_CONFIRM": "Log out WhatsApp from this device? You will need to pair again.",
-        "LINKED_PHONE": "Linked number"
+        "LINKED_PHONE": "Linked number",
+        "RECONNECT": "Reconnect (scan QR)"
+      },
+      "HEALTH": {
+        "LOADING": "Checking connection…"
       },
       "QR_MODAL": {
         "TITLE": "Link WhatsApp",
@@ -839,7 +843,9 @@
         "PAIRING_HINT": "Or enter this pairing code on your phone instead of scanning.",
         "PAIRING_CODE": "Pairing code: {code}",
         "REFRESH_ERROR": "Could not load the QR code. Try refreshing.",
-        "STATUS": "Device status: {status}"
+        "STATUS": "Device status: {status}",
+        "CLOSE": "Close",
+        "EXPIRES_HINT": "QR codes expire after about 45 seconds. A new code is fetched automatically, or tap Refresh QR."
       },
       "CONNECTION_STATUS": {
         "LABEL": "WebSocket",

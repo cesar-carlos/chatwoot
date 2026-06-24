@@ -179,7 +179,8 @@ if resource.channel_type == 'Channel::Wavoip' && resource.channel.respond_to?(:v
     'incoming_call_include_administrators',
     'incoming_call_offline_fallback',
     'incoming_call_notify_busy_agents',
-    'ring_timeout_seconds'
+    'ring_timeout_seconds',
+    'device_status'
   )
   if Current.account_user&.administrator?
     json.wavoip_webhook_url resource.channel.webhook_url
