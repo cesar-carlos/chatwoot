@@ -826,7 +826,11 @@
         "LOGOUT": "Desconectar WhatsApp",
         "RESTART_CONFIRM": "Reiniciar o dispositivo Wavoip? O WhatsApp pode desconectar brevemente.",
         "LOGOUT_CONFIRM": "Desconectar o WhatsApp deste dispositivo? Será necessário parear novamente.",
-        "LINKED_PHONE": "Número vinculado"
+        "LINKED_PHONE": "Número vinculado",
+        "RECONNECT": "Reconectar (escanear QR)"
+      },
+      "HEALTH": {
+        "LOADING": "Verificando conexão…"
       },
       "QR_MODAL": {
         "TITLE": "Vincular WhatsApp",
@@ -838,7 +842,9 @@
         "PAIRING_HINT": "Ou digite este código de pareamento no celular em vez de escanear.",
         "PAIRING_CODE": "Código de pareamento: {code}",
         "REFRESH_ERROR": "Não foi possível carregar o QR code. Tente atualizar.",
-        "STATUS": "Status do dispositivo: {status}"
+        "STATUS": "Status do dispositivo: {status}",
+        "CLOSE": "Fechar",
+        "EXPIRES_HINT": "Os QR codes expiram em cerca de 45 segundos. Um novo código é obtido automaticamente ou toque em Atualizar QR code."
       },
       "CONNECTION_STATUS": {
         "LABEL": "WebSocket",
