@@ -798,6 +798,78 @@ describe('#mutations', () => {
     });
   });
 
+  describe('#REGISTER_SEARCH_INJECTED', () => {
+    it('tracks newly injected message ids in order', () => {
+      const state = {
+        allConversations: [{ id: 1, messages: [] }],
+        searchInjectedByConversationId: {},
+      };
+
+      mutations[types.REGISTER_SEARCH_INJECTED](state, {
+        id: 1,
+        messageIds: [10, 11],
+      });
+
+      expect(state.searchInjectedByConversationId[1]).toEqual([10, 11]);
+    });
+  });
+
+  describe('#DEREGISTER_SEARCH_INJECTED', () => {
+    it('removes ids loaded via normal pagination', () => {
+      const state = {
+        allConversations: [{ id: 1, messages: [] }],
+        searchInjectedByConversationId: { 1: [10, 11, 12] },
+      };
+
+      mutations[types.DEREGISTER_SEARCH_INJECTED](state, {
+        id: 1,
+        messageIds: [11],
+      });
+
+      expect(state.searchInjectedByConversationId[1]).toEqual([10, 12]);
+    });
+  });
+
+  describe('#PRUNE_SEARCH_INJECTED', () => {
+    it('removes oldest injected messages above the limit while protecting targets', () => {
+      const registry = Array.from({ length: 52 }, (_, index) => index + 1);
+      const messages = registry.map(id => ({
+        id,
+        created_at: `2024-01-01T${String(id).padStart(2, '0')}:00:00Z`,
+      }));
+
+      const state = {
+        allConversations: [{ id: 1, messages }],
+        searchInjectedByConversationId: { 1: registry },
+      };
+
+      mutations[types.PRUNE_SEARCH_INJECTED](state, {
+        id: 1,
+        protectedIds: [52],
+      });
+
+      expect(state.searchInjectedByConversationId[1]).toHaveLength(50);
+      expect(state.searchInjectedByConversationId[1]).toContain(52);
+      expect(state.searchInjectedByConversationId[1]).not.toContain(1);
+      expect(state.allConversations[0].messages.map(message => message.id)).not.toContain(1);
+      expect(state.allConversations[0].messages.map(message => message.id)).toContain(52);
+    });
+  });
+
+  describe('#CLEAR_SEARCH_INJECTED', () => {
+    it('clears registry for a conversation', () => {
+      const state = {
+        allConversations: [],
+        searchInjectedByConversationId: { 1: [10], 2: [20] },
+      };
+
+      mutations[types.CLEAR_SEARCH_INJECTED](state, 1);
+
+      expect(state.searchInjectedByConversationId[1]).toBeUndefined();
+      expect(state.searchInjectedByConversationId[2]).toEqual([20]);
+    });
+  });
+
   describe('#ASSIGN_AGENT', () => {
     it('should assign agent to the correct conversation by ID', () => {
       const assignee = { id: 1, name: 'Agent' };

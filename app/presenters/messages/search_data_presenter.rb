@@ -25,6 +25,7 @@ class Messages::SearchDataPresenter < SimpleDelegator
       conversation_id: conversation_id,
       message_type: message_type,
       private: private,
+      deleted: deleted.present?,
       created_at: created_at,
       source_id: source_id,
       sender_id: sender_id,
@@ -34,7 +35,10 @@ class Messages::SearchDataPresenter < SimpleDelegator
 
   def attachment_data
     attachments.filter_map do |a|
-      { transcribed_text: a.meta&.dig('transcribed_text') }
+      text = Custom::TranscriptionMetadata.read_text(a).presence
+      next if text.blank?
+
+      { transcribed_text: text }
     end.presence
   end
 

@@ -226,7 +226,7 @@ defineExpose({ prepareOpen, close, focusSearchInput });
   <div
     ref="panelRef"
     data-message-search-panel
-    class="flex flex-col gap-4 w-full"
+    class="flex flex-col gap-4 w-full flex-1 min-h-0 h-full"
   >
     <label class="sr-only" for="conversation-message-search-input">
       {{ t('CONVERSATION.MESSAGE_SEARCH.PLACEHOLDER') }}
@@ -315,12 +315,12 @@ defineExpose({ prepareOpen, close, focusSearchInput });
       </p>
     </div>
 
-    <div v-if="showResults" class="flex flex-col gap-2">
-      <p class="text-sm text-n-slate-11">{{ resultsCountLabel }}</p>
+    <div v-if="showResults" class="flex flex-col flex-1 min-h-0 gap-2">
+      <p class="text-sm text-n-slate-11 flex-shrink-0">{{ resultsCountLabel }}</p>
 
       <div
         ref="resultsContainerRef"
-        class="flex flex-col gap-2 max-h-[min(50vh,24rem)] overflow-y-auto"
+        class="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto"
         role="listbox"
         :aria-label="t('CONVERSATION.MESSAGE_SEARCH.PANEL_TITLE')"
       >
@@ -345,7 +345,10 @@ defineExpose({ prepareOpen, close, focusSearchInput });
         </div>
       </div>
 
-      <p v-if="hitMaxResults" class="text-xs text-center text-n-slate-11">
+      <p
+        v-if="hitMaxResults"
+        class="text-xs text-center text-n-slate-11 flex-shrink-0"
+      >
         {{ t('CONVERSATION.MESSAGE_SEARCH.MAX_RESULTS') }}
       </p>
     </div>

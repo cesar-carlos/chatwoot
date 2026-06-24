@@ -4,7 +4,7 @@ module Custom::MessageSearch::MatchedOn
   def compute(messages, query)
     by_id = {}
     cache = {}
-    needle = Custom::MessageSearch::Unaccent.normalize_text(query.to_s.strip, cache: cache)
+    needle = Custom::MessageSearch::Unaccent.fold_text(query.to_s.strip, cache: cache)
     return by_id if needle.blank?
 
     messages.each do |message|
@@ -14,14 +14,18 @@ module Custom::MessageSearch::MatchedOn
   end
 
   def matched_on_for(message, needle, cache)
-    content_match = Custom::MessageSearch::Unaccent.normalize_text(message.content.to_s, cache: cache).include?(needle)
+    normalized = lambda do |text|
+      Custom::MessageSearch::Unaccent.fold_text(text, cache: cache)
+    end
+
+    content_match = normalized.call(message.content.to_s).include?(needle)
     subject = message.content_attributes&.dig('email', 'subject').to_s
-    subject_match = Custom::MessageSearch::Unaccent.normalize_text(subject, cache: cache).include?(needle)
+    subject_match = normalized.call(subject).include?(needle)
     transcription_match = message.attachments.any? do |attachment|
       next false unless attachment.file_type == 'audio'
 
       text = Custom::TranscriptionMetadata.read_text(attachment).to_s
-      Custom::MessageSearch::Unaccent.normalize_text(text, cache: cache).include?(needle)
+      normalized.call(text).include?(needle)
     end
 
     return 'content' if content_match || subject_match

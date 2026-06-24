@@ -76,11 +76,12 @@ Fluxo ao clicar num resultado:
 
 | Item | Prioridade | Notas |
 |------|------------|-------|
-| OpenSearch: `deleted` só pós-filtro Ruby | P2 | Página pode ter <15 resultados |
-| `MessagesView` fallback `scrollToBottom` | P2 | Upstream; fora do painel de busca |
+| Reindex OpenSearch após campo `deleted` | P2 | `rake conversation_message_search:reindex_hints` |
 | Erros API do controller em inglês | P3 | Frontend mapeia 422 principais |
 | Specs OpenSearch reais (sem stub) | P3 | Requer cluster em CI |
-| Excluir `deleted` do índice Searchkick | P3 | Melhoria de índice |
+| Excluir `deleted` do índice na origem (skip callback) | P3 | Filtro `where` já resolve páginas curtas |
+
+**Resolvido nesta rodada:** OpenSearch `deleted` na query; `MessagesView` sem fallback `scrollToBottom`; poda Vuex §8.1; GIN global com assunto de e-mail.
 
 ---
 
@@ -89,11 +90,12 @@ Fluxo ao clicar num resultado:
 | Suite | Cobertura |
 |-------|-----------|
 | `spec/custom/.../messages_search_spec.rb` | API |
-| `spec/custom/finders/..._finder_spec.rb` | Finder SQL + OpenSearch stub |
-| `spec/custom/lib/custom/message_search/` | `ContentAttributes` |
-| Vitest `composables/fork/spec/` | Erros, painel, busca, helpers store |
+| `spec/custom/finders/..._finder_spec.rb` | Finder SQL + OpenSearch stub + `transcribed_text` legado |
+| `spec/presenters/messages/search_data_presenter_spec.rb` | `deleted`, transcrição Groq |
+| `spec/custom/lib/custom/message_search/` | `ContentAttributes`, `Tsquery` |
+| Vitest `composables/fork/spec/` | Erros, painel, busca, scroll, mutations poda |
 
-Comandos: `rake conversation_message_search:acceptance` · `rake conversation_message_search:smoke[...]`
+Comandos: `rake conversation_message_search:acceptance` · `rake conversation_message_search:smoke[...]` · `rake conversation_message_search:reindex_hints`
 
 ---
 

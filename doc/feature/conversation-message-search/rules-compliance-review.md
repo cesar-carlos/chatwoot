@@ -315,9 +315,9 @@ Duplica `SearchService`. Aceitável no MVP; **P2** extrair para `Search::DEFAULT
 - [x] Documentar mutation fork `INSERT_MESSAGES_AROUND`
 - [x] Documentar armadilha camelCase + `MessageContent` para áudio
 - [x] Documentar decisões D17–D19 (privadas, deletadas, OpenSearch)
-- [ ] Implementar código (Fase A)
-- [ ] Implementar Fase B (scroll robusto)
-- [ ] Implementar Fase C (polish UX)
+- [x] Implementar código (Fase A)
+- [x] Implementar Fase B (scroll robusto)
+- [x] Implementar Fase C (polish UX)
 
 ---
 
@@ -327,15 +327,15 @@ Duplica `SearchService`. Aceitável no MVP; **P2** extrair para `Search::DEFAULT
 
 ### 9.1 Estado real
 
-Nenhum artefato da feature foi encontrado no código. Apenas documentação e infraestrutura **relacionada mas distinta** (pesquisa global, transcrição Groq).
+Feature **implementada** no fork (`custom/` + integração frontend). Atualização pós-correções (poda Vuex, OpenSearch `deleted`, guard `MessagesView`).
 
 | Artefato planejado | Encontrado |
 |--------------------|------------|
-| `Custom::ConversationMessageSearchFinder` | ❌ |
-| `Custom::Messages::ConversationSearchService` | ❌ |
-| `MessagesController#search` + rota | ❌ |
-| `ConversationMessageSearch/*` (Vue) | ❌ |
-| Item em `MoreActions.vue` | ❌ |
+| `Custom::ConversationMessageSearchFinder` | ✅ |
+| `MessagesController#search` + rota | ✅ |
+| `ConversationMessageSearch/*` (Vue) | ✅ |
+| Item em `MoreActions.vue` + painel lateral | ✅ |
+| `INSERT_MESSAGES_AROUND` + poda §8.1 | ✅ |
 | `conversationSearch.js` (store) | ✅ — **pesquisa global**, não in-conversation |
 
 ### 9.2 Veredito pós-reavaliação

@@ -38,8 +38,10 @@ Planejamento para busca no contexto da conversa aberta, incluindo **texto e tran
 |--------|-------------------|
 | Backend (`custom/` finder, controller, rota) | ✅ Implementado |
 | Frontend (painel lateral, composables, API) | ✅ Implementado |
-| Specs RSpec + Vitest | ✅ Implementado (API, finder, lib, composables) |
+| Specs RSpec + Vitest | ✅ Implementado (API, finder, presenter, poda Vuex, scroll) |
 | Baseline `EXPLAIN ANALYZE` (dev local) | ✅ Documentado em `implementation-plan.md` §6.1.1 |
+| Poda mensagens injetadas (50) | ✅ `searchInjectedByConversationId` + mutations fork |
+| OpenSearch `deleted` + transcrição unificada | ✅ Código; reindex via `rake conversation_message_search:reindex_hints` |
 | `EXPLAIN` em conversa grande (produção) | ⏳ `rake conversation_message_search:explain` |
 | Matriz de aceite §11 | ⏳ `rake conversation_message_search:acceptance` + teste manual |
 
