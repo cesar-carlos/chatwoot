@@ -231,7 +231,10 @@ const canJoinCall = computed(() => {
 
 const recordingAttachment = computed(() => {
   if (audioAttachment.value) return audioAttachment.value;
-  const url = call.value?.recordingUrl;
+  const url =
+    call.value?.recordingUrl ||
+    contentAttributes?.value?.data?.recording_url ||
+    contentAttributes?.value?.data?.record_url;
   if (!url) return null;
   return {
     dataUrl: url,

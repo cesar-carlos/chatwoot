@@ -148,6 +148,39 @@ Spike scripts (gitignored): `tmp/wavoip-final-e2e.mjs`, `tmp/wavoip-outbound-g02
 
 **Phase 4 code complete:** outbound connected live; **live Wavoip webhook delivery is the remaining pilot gate.**
 
+### E2E roteiro — `+5566999050312` (Jun 2026)
+
+**Inbox piloto:** `WAVOIP_INBOX_ID=2` (`+556697193168`). Verificação automatizada: `WAVOIP_INBOX_ID=2 bin/wavoip-pilot-verify`.
+
+| # | Cenário | Passos | Critério | Pass/Fail |
+|---|---------|--------|----------|-----------|
+| O1 | Outbound | Agent online → conversa → ligar | `peerAccept`, áudio bidirecional, bolha `voice_call`, webhook ACTIVE/ENDED | _pending (browser)_ |
+| I1 | Inbound | Fechar app.wavoip.com → ligar de `+5566999050312` | Widget + SDK `offer` → Accept → `PATCH /calls/:id` | **Pass** webhook row (24 jun); _pending_ browser/SDK |
+| M1 | Multi-agente | 2 agentes online | B recebe toast; widget some via `voice_call.accepted` + SDK `acceptedElsewhere` | _pending (browser)_ |
+| D1 | Dismiss ✕ inbound | Agent dismiss sem aceitar | SDK `reject`; contato para de tocar | _pending (browser)_ |
+| F1 | Accept falha | Timeout / erro no Accept | Widget some; sem ring preso | _pending (browser)_ |
+| W1 | Webhook | Toggle ON no painel Wavoip | Settings **Webhook verified**; botão **Test webhook** em settings | **Pass** (24 jun, `bin/wavoip-pilot-verify`) |
+
+`bin/wavoip-pilot-verify` simula inbound CALL com peer `+5566999050312` (env `WAVOIP_TEST_PEER_PHONE`). Checks in-process: W1 DEVICE + I1 CALL row. HTTP curl pode retornar 401 se o host exigir auth — usar job in-process ou painel **Test webhook**.
+
+### Conclusão implementação (Jun 2026)
+
+Fases A–E do plano de conclusão aplicadas:
+
+- P0: `startCall` unwrap, join fail dismiss, dismiss inbound → SDK reject
+- Multiagente: `voice_call.accepted` no PATCH + inbound ACTIVE; `onAccepted` sem race
+- Backend: logging seguro, RECORD retry, push só online agents
+- Settings: `WavoipDevicePanel` reativo, test webhook, restart/logout, diagnostics completos
+
+### Melhorias pós-MVP aplicadas (Jun 2026)
+
+- `offer.accept()` unwrap `{ call, err }`
+- Cable/SDK reconcile (`awaitingSdkOffer`, `waitForPendingOffer`)
+- `connectionStatusChanged` vs WhatsApp `statusChanged`
+- `WavoipDevicePanel` (QR, pairing, wakeUp, diagnostics)
+- `useWavoipNotifications`, `useWavoipMedia`, RECORD retry job
+- Broadcaster → online inbox members first
+
 ### Bug fixed (settings tab, Jun 2026)
 
 `WavoipCallingPage.vue` now reads `wavoip_webhook_url` / `wavoip_setup_pending` with camelCase fallbacks (`wavoipWebhookUrl`, `wavoipSetupPending`). Settings → Chamadas shows the webhook URL for admins. Post-creation alert in `Wavoip.vue` remains the primary copy path during inbox setup.
@@ -167,9 +200,7 @@ Fixture (simulated, prior run): [fixtures/call_create_outbound_live_e2e.json](./
 WAVOIP_INBOX_ID=42 bin/wavoip-pilot-verify
 ```
 
-Registra: feature flags, webhook URL, `device_token` configurado, inbound toggle, contagem de calls, smoke HTTP 202/401.
+Registra: feature flags, webhook URL, `device_token` configurado, inbound toggle, contagem de calls, smoke HTTP 202/401, **simulated inbound CALL** com peer `+5566999050312` (`WAVOIP_TEST_PEER_PHONE`).
 
 **Rotação `device_token`:** gerar novo token em app.wavoip.com → Settings inbox → salvar → recarregar dashboard.
-
-**Pós-MVP entregue (código):** RECORD attachment service, Web Push via `InboundCallPushJob`, `useWebRtcCallSession` extraído, hardening `CallsController`, specs bootstrap/rotate.
 

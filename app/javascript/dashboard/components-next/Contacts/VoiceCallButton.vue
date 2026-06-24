@@ -23,6 +23,7 @@ import {
   ensureVoiceConversation,
   findVoiceConversationId,
 } from 'customDashboard/lib/voice/ensureVoiceConversation';
+import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -68,6 +69,9 @@ const isStartingCall = ref(false);
 const isInitiatingCall = computed(
   () => isStartingCall.value || twilioIsInitiating.value
 );
+
+const isWavoipInboxRestricted = inboxId =>
+  getWavoipDeviceStatus(inboxId).isRestricted.value;
 
 // Mirror the conversation-header button: block a new call whenever any provider
 // call is already active or ringing, otherwise starting a WhatsApp call here
@@ -194,6 +198,13 @@ const startCall = async (inboxId, conversationIdHint = null) => {
 
   const inbox = (inboxesList.value || []).find(i => i.id === inboxId);
   const provider = getVoiceCallProvider(inbox);
+  if (
+    provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+    isWavoipInboxRestricted(inboxId)
+  ) {
+    useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
+    return;
+  }
 
   // Twilio tracks its own loading state via Vuex; gate the local ref only for
   // the browser-native providers so the spinner reflects the async init work.

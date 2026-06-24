@@ -15,7 +15,7 @@ class Wavoip::Calls::ConversationLinker
 
     Voice::InboundCallBuilder.perform!(
       inbox: inbox,
-      from_number: contact_phone_for(event),
+      from_number: contact_phone_for(event, inbox_phone: inbox.channel.phone_number),
       call_sid: event.external_call_id,
       provider: :wavoip,
       extra_meta: extra_meta
@@ -30,16 +30,13 @@ class Wavoip::Calls::ConversationLinker
     }.compact
   end
 
-  def self.contact_phone_for(event)
+  def self.contact_phone_for(event, inbox_phone: nil)
     phone = event.from_phone.presence || event.to_phone
-    normalize_e164(phone)
+    Wavoip::PhoneNormalizer.normalize(phone, inbox_phone: inbox_phone)
   end
 
-  def self.normalize_e164(phone)
-    return if phone.blank?
-
-    phone = phone.to_s
-    phone.start_with?('+') ? phone : "+#{phone}"
+  def self.normalize_e164(phone, inbox_phone: nil)
+    Wavoip::PhoneNormalizer.normalize(phone, inbox_phone: inbox_phone)
   end
 
   def initialize(inbox:, event:)
@@ -82,7 +79,7 @@ class Wavoip::Calls::ConversationLinker
   end
 
   def contact_phone
-    self.class.contact_phone_for(event)
+    self.class.contact_phone_for(event, inbox_phone: inbox.channel.phone_number)
   end
 
   def ensure_contact_inbox!

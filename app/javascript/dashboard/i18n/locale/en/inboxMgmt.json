@@ -779,7 +779,16 @@
         "UNAVAILABLE": "Webhook URL is available to administrators after the inbox is created.",
         "REGENERATE": "Regenerate webhook URL",
         "REGENERATE_CONFIRM": "Regenerating invalidates the current webhook URL in the Wavoip dashboard. Update the URL there before the next call event.",
-        "REGENERATE_SUCCESS": "Webhook URL regenerated. Update it in the Wavoip dashboard."
+        "REGENERATE_SUCCESS": "Webhook URL regenerated. Update it in the Wavoip dashboard.",
+        "CHECKLIST_TITLE": "Webhook checklist",
+        "CHECKLIST_HELP": "Complete these steps in the Wavoip dashboard before your first live call.",
+        "CHECKLIST_TOGGLE": "Enable the webhook toggle.",
+        "CHECKLIST_CALL_EVENT": "Select the CALL event.",
+        "CHECKLIST_DEVICE_EVENT": "Select the DEVICE event (optional but recommended).",
+        "CHECKLIST_URL": "Paste the webhook URL above and save.",
+        "TEST": "Test webhook",
+        "TEST_SUCCESS": "Webhook test received. Status should show as verified.",
+        "TEST_PENDING": "Test event sent. Refresh the page if status is still pending."
       },
       "SETUP_STATUS": {
         "LABEL": "Webhook status",
@@ -793,6 +802,40 @@
       },
       "VOICE_DISABLED": {
         "DESCRIPTION": "Voice calling requires a configured device token on this inbox."
+      },
+      "DEVICE_STATUS": {
+        "LABEL": "Device status",
+        "HELP_TEXT": "Live WhatsApp and WebSocket status from your Wavoip device.",
+        "WHATSAPP": "WhatsApp",
+        "WAKE_UP": "Wake device",
+        "PAIRING_CODE": "Get pairing code",
+        "PAIRING_CODE_LABEL": "Pairing code",
+        "QR_LABEL": "QR code",
+        "RESTRICTED": "This device is temporarily restricted from placing calls.",
+        "PHONE_MISMATCH": "Linked WhatsApp number does not match this inbox phone number.",
+        "OPEN": "Connected",
+        "CONNECTING": "Connecting",
+        "HIBERNATING": "Hibernating",
+        "WAITING_PAYMENT": "Waiting for payment",
+        "EXTERNAL_INTEGRATION_ERROR": "Integration error",
+        "CLOSE": "Disconnected",
+        "BUILDING": "Building",
+        "RESTARTING": "Restarting",
+        "LOADING": "Connecting to device…",
+        "RESTART": "Restart device",
+        "LOGOUT": "Logout WhatsApp",
+        "RESTART_CONFIRM": "Restart the Wavoip device? WhatsApp may disconnect briefly.",
+        "LOGOUT_CONFIRM": "Log out WhatsApp from this device? You will need to pair again."
+      },
+      "CONNECTION_STATUS": {
+        "LABEL": "WebSocket",
+        "CONNECTED": "Connected",
+        "DISCONNECTED": "Disconnected",
+        "RECONNECTING": "Reconnecting"
+      },
+      "DIAGNOSTICS": {
+        "COPY": "Copy diagnostics",
+        "COPIED": "Diagnostics copied to clipboard."
       }
     },
     "EVOLUTION": {

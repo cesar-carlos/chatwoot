@@ -11,6 +11,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     show
     wavoip_sdk_bootstrap
     regenerate_wavoip_webhook_key
+    test_wavoip_webhook
     evolution_connection
     evolution_reconnect
     evolution_logout

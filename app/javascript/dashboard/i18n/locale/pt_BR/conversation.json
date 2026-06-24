@@ -141,6 +141,21 @@
       "THEY_ANSWERED": "Eles responderam",
       "YOU_ANSWERED": "Você respondeu"
     },
+    "WAVOIP_CALL": {
+      "HANDLED_REMOTELY": "Outro agente atendeu esta chamada.",
+      "ACCEPTED_ELSEWHERE": "Outro agente atendeu esta chamada.",
+      "REJECTED_ELSEWHERE": "Esta chamada foi recusada por outro agente.",
+      "CLIENT_UNAVAILABLE": "Não foi possível conectar ao Wavoip. Verifique o token do dispositivo nas configurações da caixa de entrada.",
+      "DEVICE_NOT_READY": "O dispositivo Wavoip não está pronto para chamadas. Tente novamente em instantes.",
+      "DEVICE_NOT_LINKED": "Vincule o WhatsApp ao dispositivo Wavoip em app.wavoip.com antes de ligar.",
+      "DEVICE_DISCONNECTED": "Não foi possível conectar ao Wavoip (falha no WebSocket). Verifique o token, sua rede e se o dispositivo aparece como conectado em app.wavoip.com.",
+      "DEVICE_CONNECTING": "O dispositivo Wavoip ainda está conectando. Conclua o pareamento do WhatsApp em app.wavoip.com e tente novamente.",
+      "DEVICE_HIBERNATING": "O dispositivo Wavoip está em repouso. Acorde-o em app.wavoip.com e tente novamente.",
+      "DEVICE_WAITING_PAYMENT": "A conta Wavoip precisa de pagamento. Regularize em app.wavoip.com.",
+      "DEVICE_INTEGRATION_ERROR": "Erro de integração do dispositivo Wavoip. Verifique o status em app.wavoip.com.",
+      "DEVICE_BUILDING": "O dispositivo Wavoip ainda está inicializando. Aguarde um momento e tente novamente.",
+      "DEVICE_RESTARTING": "O dispositivo Wavoip está reiniciando. Aguarde um momento e tente novamente."
+    },
     "HEADER": {
       "RESOLVE_ACTION": "Resolver",
       "REOPEN_ACTION": "Reabrir",

@@ -159,7 +159,31 @@
     "WAVOIP_CALL": {
       "HANDLED_REMOTELY": "Another agent answered this call.",
       "ACCEPTED_ELSEWHERE": "Another agent answered this call.",
-      "REJECTED_ELSEWHERE": "This call was declined by another agent."
+      "REJECTED_ELSEWHERE": "This call was declined by another agent.",
+      "CLIENT_UNAVAILABLE": "Could not connect to Wavoip. Check the device token in inbox settings.",
+      "DEVICE_NOT_READY": "Wavoip device is not ready for calls. Try again in a moment.",
+      "DEVICE_NOT_LINKED": "Link WhatsApp to your Wavoip device at app.wavoip.com before calling.",
+      "DEVICE_DISCONNECTED": "Could not connect to Wavoip (WebSocket failed). Check the device token, your network, and that app.wavoip.com shows the device as connected.",
+      "DEVICE_CONNECTING": "Wavoip device is still connecting. Complete WhatsApp pairing in app.wavoip.com, then try again.",
+      "DEVICE_HIBERNATING": "Wavoip device is asleep. Wake it up in app.wavoip.com, then try again.",
+      "DEVICE_WAITING_PAYMENT": "Wavoip account requires payment. Resolve billing at app.wavoip.com.",
+      "DEVICE_INTEGRATION_ERROR": "Wavoip device integration error. Check the device status in app.wavoip.com.",
+      "DEVICE_BUILDING": "Wavoip device is still initializing. Wait a moment and try again.",
+      "DEVICE_RESTARTING": "Wavoip device is restarting. Wait a moment and try again.",
+      "START_CALL_DEVICE_FAILED": "Could not start the call on Wavoip device: {detail}",
+      "RECONNECTING": "Reconnecting call audio…",
+      "DEVICE_RECONNECTING": "Reconnecting to Wavoip…",
+      "MIC_DEVICE": "Microphone",
+      "SPEAKER_DEVICE": "Speaker"
+    },
+    "WAVOIP_CONNECTIVITY": {
+      "GENERIC": "Call connection issue. Check your network and try again.",
+      "STUN_UNREACHABLE": "Could not reach STUN server. Corporate firewalls may block UDP.",
+      "ICE_CONNECTION_FAILED": "Media connection failed. Try another network or contact your admin.",
+      "SIGNALING_DISCONNECTED": "Call signaling disconnected. The call may end shortly.",
+      "ICE_GATHERING_TIMEOUT": "ICE gathering timed out. Check STUN/TURN or try another network.",
+      "NO_HOST_CANDIDATES": "No local network candidates. Check VPN or browser WebRTC settings.",
+      "SYMMETRIC_NAT_SUSPECTED": "Symmetric NAT detected. A TURN server may be required."
     },
     "HEADER": {
       "RESOLVE_ACTION": "Resolve",

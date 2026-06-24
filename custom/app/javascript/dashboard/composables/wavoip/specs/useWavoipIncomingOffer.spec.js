@@ -20,6 +20,18 @@ vi.mock('dashboard/composables', () => ({
   useAlert: (...args) => mockAlert(...args),
 }));
 
+vi.mock('vuex', () => ({
+  useStore: () => ({
+    getters: {
+      'inboxes/getInbox': () => null,
+    },
+  }),
+}));
+
+vi.mock('customDashboard/composables/wavoip/useWavoipNotifications', () => ({
+  notifyIncomingWavoipOffer: vi.fn(),
+}));
+
 vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
   getWavoipClient: vi.fn(() => mockClient),
   registerOfferUnsubscriber: vi.fn(),
@@ -98,16 +110,30 @@ describe('useWavoipIncomingOffer', () => {
     attachToInbox(3);
 
     const offer = createOffer('offer_actions');
+    const activeCall = { id: 'offer_actions', mute: vi.fn(), unmute: vi.fn() };
+    offer.accept.mockResolvedValue({ call: activeCall, err: null });
     offerHandlers.offer(offer);
 
-    await acceptOffer(offer.id);
+    const call = await acceptOffer(offer.id);
     expect(offer.accept).toHaveBeenCalled();
+    expect(call).toBe(activeCall);
 
     const rejectOfferObj = createOffer('offer_reject');
     offerHandlers.offer(rejectOfferObj);
     await rejectOffer(rejectOfferObj.id);
     expect(rejectOfferObj.reject).toHaveBeenCalled();
     expect(pendingOffers.has(rejectOfferObj.id)).toBe(false);
+  });
+
+  it('throws when accept returns err', async () => {
+    const { attachToInbox, acceptOffer } = useWavoipIncomingOffer();
+    attachToInbox(4);
+
+    const offer = createOffer('offer_err');
+    offer.accept.mockResolvedValue({ call: null, err: 'busy' });
+    offerHandlers.offer(offer);
+
+    await expect(acceptOffer(offer.id)).rejects.toThrow('busy');
   });
 
   it('exposes removePendingOffer helper', () => {

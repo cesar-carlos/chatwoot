@@ -42,6 +42,22 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
       expect(event.direction).to eq(:outgoing)
     end
 
+    it 'falls back to id when whatsapp_call_id is absent' do
+      event = normalize(
+        {
+          'type' => 'CALL',
+          'action' => 'create',
+          'id' => 'legacy_call_id_001',
+          'status' => 'INCOMING_RING',
+          'direction' => 'INCOMING',
+          'phone' => '+5511999999999',
+          'peer' => { 'phone' => '+5511888888888' }
+        }
+      )
+
+      expect(event.external_call_id).to eq('legacy_call_id_001')
+    end
+
     it 'uses the last duplicate type field after JSON.parse (official CALL quirk)' do
       raw = '{"type":"RECORD","whatsapp_call_id":"dup_001","action":"CREATE","status":"INCOMING_RING",' \
             '"direction":"INCOMING","phone":"+5511999999999","type":"CALL"}'
@@ -89,6 +105,20 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
 
     it 'returns nil for unknown event types' do
       expect(normalize({ 'type' => 'UNKNOWN' })).to be_nil
+    end
+
+    it 'does not use inbox phone as contact on CALL UPDATE without peer' do
+      payload = {
+        'type' => 'CALL',
+        'action' => 'UPDATE',
+        'id' => 'wavoip_update_no_peer',
+        'status' => 'ACTIVE',
+        'direction' => 'INCOMING',
+        'phone' => '+5511999999999'
+      }
+      event = normalize(payload)
+
+      expect(event.from_phone).to be_nil
     end
   end
 end

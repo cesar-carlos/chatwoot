@@ -13,7 +13,12 @@ import {
 import { handleVoiceCallCreated } from 'dashboard/helper/voice';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 // FORK: Wavoip voice session registry (factory wired in Phase 2)
-import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
+import {
+  getBrowserVoiceSession,
+  teardownWavoipActiveCall,
+} from 'customDashboard/lib/voice/voiceSessionRegistry';
+import { removePendingOffer } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
+import { isWavoipInboxRestricted } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import {
   CONTENT_TYPES,
   VOICE_CALL_DIRECTION,
@@ -42,6 +47,8 @@ let storedCallsStoreRef = null;
 // see one in-flight join, not two unrelated isJoining refs.
 const globalIsJoining = ref(false);
 const globalIsJoiningReadonly = readonly(globalIsJoining);
+
+export const isCallJoining = () => globalIsJoining.value;
 
 const handleBeforeUnloadGlobal = event => {
   const store = storedCallsStoreRef;
@@ -165,6 +172,10 @@ const buildCallActions = ({
       }
 
       if (isWavoipCall(call)) {
+        if (isWavoipInboxRestricted(call.inboxId)) {
+          useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
+          return null;
+        }
         const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
         await session?.connectForInbox?.(call.inboxId);
         await session?.acceptIncomingCall?.({
@@ -210,8 +221,14 @@ const buildCallActions = ({
       }
       // eslint-disable-next-line no-console
       console.error('Failed to join call:', error);
-      // Drop any half-built WebRTC state so the next click starts fresh.
-      cleanupWhatsappSession();
+      if (isWavoipCall(call)) {
+        teardownWavoipActiveCall();
+        removePendingOffer(callSid);
+        markDismissed(callSid);
+        callsStore.dismissCall(callSid);
+      } else {
+        cleanupWhatsappSession();
+      }
       return null;
     } finally {
       globalIsJoining.value = false;
@@ -257,7 +274,16 @@ const buildCallActions = ({
     }
   };
 
-  const dismissCall = callSid => {
+  const dismissCall = async callSid => {
+    const call = findCall(callSid);
+    if (
+      isWavoipCall(call) &&
+      call?.callDirection === VOICE_CALL_DIRECTION.INCOMING &&
+      !call?.isActive
+    ) {
+      await rejectIncomingCall(callSid);
+      return;
+    }
     markDismissed(callSid);
     callsStore.dismissCall(callSid);
   };

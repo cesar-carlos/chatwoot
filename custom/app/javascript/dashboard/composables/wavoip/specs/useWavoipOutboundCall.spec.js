@@ -4,13 +4,19 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 
 const connectForInbox = vi.fn();
-const ensureDeviceReady = vi.fn();
+const ensureDeviceReadiness = vi.fn();
 const getWavoipClientEntry = vi.fn();
+
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({
+    t: key => key,
+  }),
+}));
 
 vi.mock('customDashboard/composables/wavoip/useWavoipConnection', () => ({
   useWavoipConnection: () => ({
     connectForInbox,
-    ensureDeviceReady,
+    ensureDeviceReadiness,
   }),
 }));
 
@@ -20,6 +26,8 @@ vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
 
 vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
   setActiveCall: vi.fn(),
+  setRingingOutgoingCall: vi.fn(),
+  clearRingingOutgoingCall: vi.fn(),
 }));
 
 const createOutgoingCall = id => {
@@ -39,7 +47,7 @@ describe('useWavoipOutboundCall', () => {
   beforeEach(async () => {
     vi.resetModules();
     connectForInbox.mockReset();
-    ensureDeviceReady.mockReset();
+    ensureDeviceReadiness.mockReset();
     getWavoipClientEntry.mockReset();
     setActivePinia(createPinia());
     ({ useWavoipOutboundCall } = await import('../useWavoipOutboundCall'));
@@ -52,7 +60,7 @@ describe('useWavoipOutboundCall', () => {
     };
 
     connectForInbox.mockResolvedValue(client);
-    ensureDeviceReady.mockResolvedValue(true);
+    ensureDeviceReadiness.mockResolvedValue({ ready: true, status: 'open' });
     getWavoipClientEntry.mockReturnValue({ token: 'device-token' });
 
     const { initiateOutboundCall } = useWavoipOutboundCall();
@@ -93,7 +101,7 @@ describe('useWavoipOutboundCall', () => {
     };
 
     connectForInbox.mockResolvedValue(client);
-    ensureDeviceReady.mockResolvedValue(true);
+    ensureDeviceReadiness.mockResolvedValue({ ready: true, status: 'open' });
     getWavoipClientEntry.mockReturnValue({ token: 'device-token' });
 
     const { initiateOutboundCall } = useWavoipOutboundCall();
@@ -112,6 +120,27 @@ describe('useWavoipOutboundCall', () => {
     await first;
   });
 
+  it('unwraps legacy startCall return shape (bare CallOutgoing)', async () => {
+    const outgoingCall = createOutgoingCall('out_legacy');
+    outgoingCall.end = vi.fn();
+    const client = {
+      startCall: vi.fn().mockResolvedValue(outgoingCall),
+    };
+
+    connectForInbox.mockResolvedValue(client);
+    ensureDeviceReadiness.mockResolvedValue({ ready: true, status: 'open' });
+    getWavoipClientEntry.mockReturnValue({ token: 'device-token' });
+
+    const { initiateOutboundCall } = useWavoipOutboundCall();
+    const result = await initiateOutboundCall(99, {
+      inboxId: 3,
+      toPhone: '+5566999050312',
+    });
+
+    expect(result.call_id).toBe('out_legacy');
+    expect(useCallsStore().calls[0]?.callSid).toBe('out_legacy');
+  });
+
   it('throws when the client cannot be created', async () => {
     connectForInbox.mockResolvedValue(null);
 
@@ -119,6 +148,6 @@ describe('useWavoipOutboundCall', () => {
 
     await expect(
       initiateOutboundCall(1, { inboxId: 2, toPhone: '+15550001111' })
-    ).rejects.toThrow('Wavoip client unavailable');
+    ).rejects.toThrow('CONVERSATION.WAVOIP_CALL.CLIENT_UNAVAILABLE');
   });
 });
