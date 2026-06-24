@@ -22,6 +22,14 @@ export async function disconnectWavoipInbox(inboxId) {
     }
   });
 
+  entry.deviceUnsubscribers?.forEach(unsub => {
+    try {
+      unsub();
+    } catch (_) {
+      /* noop */
+    }
+  });
+
   try {
     entry.client?.removeDevices?.([entry.token]);
   } catch (_) {
@@ -45,6 +53,7 @@ export async function connectWavoipInbox(inboxId, deviceToken) {
     token: deviceToken,
     inboxId,
     offerUnsubscribers: [],
+    deviceUnsubscribers: [],
   });
   return client;
 }
@@ -53,6 +62,12 @@ export function registerOfferUnsubscriber(inboxId, unsubscribe) {
   const entry = clients.get(inboxId);
   if (!entry || !unsubscribe) return;
   entry.offerUnsubscribers.push(unsubscribe);
+}
+
+export function registerDeviceUnsubscriber(inboxId, unsubscribe) {
+  const entry = clients.get(inboxId);
+  if (!entry || !unsubscribe) return;
+  entry.deviceUnsubscribers.push(unsubscribe);
 }
 
 export async function teardownAllWavoipClients() {

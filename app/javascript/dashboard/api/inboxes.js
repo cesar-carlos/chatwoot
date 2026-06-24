@@ -85,6 +85,10 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.post(`${this.url}/${inboxId}/regenerate_wavoip_webhook_key`);
   }
 
+  testWavoipWebhook(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/test_wavoip_webhook`);
+  }
+
   // FORK: Evolution connection / QR polling
   getEvolutionConnection(inboxId) {
     return axios.get(`${this.url}/${inboxId}/evolution_connection`);

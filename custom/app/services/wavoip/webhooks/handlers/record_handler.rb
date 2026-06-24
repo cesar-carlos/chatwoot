@@ -5,7 +5,14 @@ class Wavoip::Webhooks::Handlers::RecordHandler < Wavoip::Webhooks::Handlers::Ba
     return if event.record_url.blank? || event.external_call_id.blank?
 
     call = Wavoip::Calls::CallLookup.find(inbox: inbox, provider_call_id: event.external_call_id)
-    return if call.blank?
+    if call.blank?
+      Wavoip::RetryRecordAttachmentJob.perform_later(
+        inbox.id,
+        event.external_call_id,
+        event.record_url
+      )
+      return
+    end
 
     meta = (call.meta || {}).dup
     return if meta['record_url'] == event.record_url

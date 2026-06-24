@@ -39,6 +39,19 @@ RSpec.describe Api::V1::Accounts::CallsController, type: :request do
       expect(response.parsed_body['accepted_by_agent_id']).to eq(agent.id)
     end
 
+    it 'broadcasts voice_call.accepted when the agent accepts' do
+      payloads = []
+      allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << payload }
+
+      patch "/api/v1/accounts/#{account.id}/calls/#{call.id}",
+            headers: agent.create_new_auth_token
+
+      accepted = payloads.find { |p| p[:event] == 'voice_call.accepted' }
+      expect(accepted).to be_present
+      expect(accepted[:data][:accepted_by_agent_id]).to eq(agent.id)
+      expect(accepted[:data][:call_id]).to eq(call.provider_call_id)
+    end
+
     it 'does not overwrite an existing accepted_by_agent_id' do
       call.update!(accepted_by_agent_id: other_agent.id)
 

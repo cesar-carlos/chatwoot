@@ -454,6 +454,12 @@ class ActionCableConnector extends BaseActionCableConnector {
   // already active), so the accepting tab keeps its live session untouched.
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallAccepted = data => {
+    if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+      VOICE_CALL_CABLE_HANDLERS[VOICE_CALL_PROVIDERS.WAVOIP]?.onAccepted?.(
+        data
+      );
+      return;
+    }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
     const store = useCallsStore();
     const call = store.calls.find(c => c.callSid === data.call_id);

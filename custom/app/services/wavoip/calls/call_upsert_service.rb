@@ -14,8 +14,20 @@ class Wavoip::Calls::CallUpsertService
   end
 
   def create!
-    return unless inbox.channel.voice_enabled?
-    return if inbound_incoming_blocked?
+    unless inbox.channel.voice_enabled?
+      Rails.logger.warn("[WAVOIP] Skipped create: voice disabled inbox_id=#{inbox.id}")
+      return
+    end
+    if inbound_incoming_blocked?
+      Rails.logger.warn("[WAVOIP] Skipped create: inbound blocked inbox_id=#{inbox.id}")
+      return
+    end
+    if invalid_contact_phone_for_create?
+      Rails.logger.warn(
+        "[WAVOIP] Skipped create: missing or inbox peer phone inbox_id=#{inbox.id} call_id=#{event.external_call_id}"
+      )
+      return
+    end
 
     existing = find_call
     if existing
@@ -30,13 +42,25 @@ class Wavoip::Calls::CallUpsertService
   end
 
   def update!
-    return unless inbox.channel.voice_enabled?
+    unless inbox.channel.voice_enabled?
+      Rails.logger.warn("[WAVOIP] Skipped update: voice disabled inbox_id=#{inbox.id}")
+      return
+    end
 
     call = find_call
     if call.blank?
       return if inbound_incoming_blocked?
 
       call = create!
+      if call.blank? && event.external_status.to_s.upcase == 'HANDLED_REMOTELY'
+        call = create_handled_remotely_stub!
+        if call.blank?
+          Rails.logger.warn(
+            "[WAVOIP] HANDLED_REMOTELY without call row inbox_id=#{inbox.id} call_id=#{event.external_call_id}"
+          )
+        end
+      end
+      return if call.blank?
     end
 
     return call unless apply_status!(call, broadcast: true)
@@ -56,13 +80,37 @@ class Wavoip::Calls::CallUpsertService
     event.direction == :incoming && !inbox.channel.inbound_calls_enabled?
   end
 
+  def invalid_contact_phone_for_create?
+    phone = Wavoip::Calls::ConversationLinker.contact_phone_for(
+      event,
+      inbox_phone: inbox.channel.phone_number
+    )
+    return true if phone.blank?
+
+    inbox_digits = inbox.channel.phone_number.to_s.gsub(/\D/, '')
+    phone_digits = phone.to_s.gsub(/\D/, '')
+    phone_digits.present? && phone_digits == inbox_digits
+  end
+
   def apply_status!(call, broadcast:)
     mapped_status = status_mapper.to_call_status(event.external_status)
-    return false if mapped_status.blank?
+    if mapped_status.blank?
+      Rails.logger.warn(
+        "[WAVOIP] Ignored status inbox_id=#{inbox.id} call_id=#{event.external_call_id} " \
+        "external_status=#{event.external_status}"
+      )
+      return false
+    end
 
     applied = call.with_lock do
       call.reload
-      next false unless transition_allowed?(call, mapped_status)
+      unless transition_allowed?(call, mapped_status)
+        Rails.logger.warn(
+          "[WAVOIP] Blocked transition inbox_id=#{inbox.id} call_id=#{event.external_call_id} " \
+          "from=#{call.status} to=#{mapped_status}"
+        )
+        next false
+      end
 
       attrs = build_update_attrs(call, mapped_status)
       next false if attrs.blank?
@@ -94,6 +142,7 @@ class Wavoip::Calls::CallUpsertService
   # If the call never reached in_progress, treat it as no_answer.
   def contextual_terminal_status(call, mapped_status)
     return mapped_status unless mapped_status == 'completed'
+    return mapped_status if event.external_status.to_s.upcase == 'HANDLED_REMOTELY'
     return mapped_status if call.in_progress? || call.started_at.present?
 
     'no_answer'
@@ -129,7 +178,14 @@ class Wavoip::Calls::CallUpsertService
     if mapped_status == 'ringing' && call.incoming?
       broadcaster.broadcast_incoming(call)
     elsif mapped_status == 'in_progress'
-      broadcaster.broadcast_accepted(call)
+      if call.incoming?
+        broadcaster.broadcast_agent_accepted(
+          call,
+          accepted_by_agent_id: call.accepted_by_agent_id
+        )
+      else
+        broadcaster.broadcast_accepted(call)
+      end
     elsif status_mapper.terminal?(mapped_status)
       broadcaster.broadcast_ended(call)
     end
@@ -152,5 +208,35 @@ class Wavoip::Calls::CallUpsertService
     config = (channel.provider_config || {}).dup
     config['webhook_verified_at'] = Time.current.iso8601
     channel.update!(provider_config: config)
+  end
+
+  def create_handled_remotely_stub!
+    return if event.external_call_id.blank?
+    return if invalid_contact_phone_for_create?
+
+    call = Wavoip::Calls::ConversationLinker.link_inbound!(inbox: inbox, event: event)
+    call.update!(
+      status: 'completed',
+      end_reason: 'handled_remotely',
+      meta: (call.meta || {}).merge(
+        'wavoip_status' => event.external_status,
+        'ended_at' => Time.zone.now.to_i
+      )
+    )
+    Voice::CallMessageBuilder.new(call).update_status!(
+      status: call.status,
+      agent: nil,
+      duration_seconds: call.duration_seconds
+    )
+    update_conversation(call)
+    broadcaster.broadcast_ended(call)
+    mark_webhook_verified!
+    call
+  rescue StandardError => e
+    Rails.logger.warn(
+      "[WAVOIP] HANDLED_REMOTELY stub failed inbox_id=#{inbox.id} " \
+      "call_id=#{event.external_call_id}: #{e.message}"
+    )
+    nil
   end
 end

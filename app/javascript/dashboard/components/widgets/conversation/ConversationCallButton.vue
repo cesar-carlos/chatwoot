@@ -12,6 +12,7 @@ import {
 } from 'dashboard/components-next/message/constants';
 import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
 import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
+import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useAccount } from 'dashboard/composables/useAccount';
@@ -50,8 +51,14 @@ const isWavoipVoiceInbox = computed(
   () => voiceCallProvider.value === VOICE_CALL_PROVIDERS.WAVOIP
 );
 
+const isWavoipRestricted = computed(() => {
+  if (!isWavoipVoiceInbox.value || !props.inbox?.id) return false;
+  return getWavoipDeviceStatus(props.inbox.id).isRestricted.value;
+});
+
 const isCallButtonDisabled = computed(() => {
   if (callsStore.hasActiveCall || callsStore.hasIncomingCall) return true;
+  if (isWavoipRestricted.value) return true;
   if (isWhatsappVoiceInbox.value) {
     return whatsappCallSession.isInitiating.value;
   }

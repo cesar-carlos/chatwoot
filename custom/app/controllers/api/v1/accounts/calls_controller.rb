@@ -19,6 +19,10 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
           agent: Current.user,
           duration_seconds: @call.duration_seconds
         )
+        Wavoip::Calls::Broadcaster.new(inbox: @call.inbox).broadcast_agent_accepted(
+          @call.reload,
+          accepted_by_agent_id: Current.user.id
+        )
       end
     end
 

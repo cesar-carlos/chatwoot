@@ -3,6 +3,7 @@ import { watch, onMounted, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
+import { requestWavoipNotificationPermission } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 
 const store = useStore();
 const currentUserAvailability = useMapGetter('getCurrentUserAvailability');
@@ -10,7 +11,10 @@ const { syncWithAvailability, cleanupSession } = useWavoipCallSession();
 
 watch(
   currentUserAvailability,
-  availability => {
+  async availability => {
+    if (availability === 'online') {
+      await requestWavoipNotificationPermission();
+    }
     syncWithAvailability(availability);
   },
   { immediate: true }

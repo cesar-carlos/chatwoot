@@ -37,7 +37,7 @@ class Wavoip::Webhooks::PayloadNormalizer
   def call_event_attributes
     {
       provider: PROVIDER,
-      external_call_id: payload[:whatsapp_call_id].to_s,
+      external_call_id: external_call_id_from_payload,
       action: webhook_action,
       external_status: payload[:status].to_s,
       direction: map_direction(payload[:direction]),
@@ -57,13 +57,16 @@ class Wavoip::Webhooks::PayloadNormalizer
   end
 
   def call_from_phone
-    normalize_phone(peer_phone || payload[:phone])
+    return normalize_phone(peer_phone) if peer_phone.present?
+    return normalize_phone(payload[:phone]) if webhook_action == :create
+
+    nil
   end
 
   def normalize_record_event
     Voice::Dto::WebhookCallEvent.new(
       provider: PROVIDER,
-      external_call_id: payload[:whatsapp_call_id].to_s,
+      external_call_id: external_call_id_from_payload,
       action: :update,
       external_status: 'RECORD',
       direction: nil,
@@ -118,11 +121,12 @@ class Wavoip::Webhooks::PayloadNormalizer
     payload.dig(:peer, :display_name) || payload.dig(:peer, 'display_name')
   end
 
-  def normalize_phone(phone)
-    return if phone.blank?
+  def external_call_id_from_payload
+    (payload[:whatsapp_call_id].presence || payload[:id]).to_s
+  end
 
-    phone = phone.to_s
-    phone.start_with?('+') ? phone : "+#{phone}"
+  def normalize_phone(phone)
+    Wavoip::PhoneNormalizer.normalize(phone, inbox_phone: payload[:phone])
   end
 
   def parse_duration(value)

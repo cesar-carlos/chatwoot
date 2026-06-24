@@ -6,6 +6,11 @@ import { useI18n } from 'vue-i18n';
 import { useCallSession } from 'dashboard/composables/useCallSession';
 import { setWhatsappCallMuted } from 'dashboard/composables/useWhatsappCallSession';
 import { useWavoipActiveCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import {
+  useWavoipMedia,
+  getWavoipMediaForInbox,
+} from 'customDashboard/composables/wavoip/useWavoipMedia';
+import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import TwilioVoiceClient from 'dashboard/api/channel/voice/twilioVoiceClient';
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
@@ -42,11 +47,75 @@ const isWhatsappActive = computed(
 const isWavoipActive = computed(
   () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
 );
-const { setMuted: setWavoipMuted } = useWavoipActiveCall();
+const { setMuted: setWavoipMuted, mediaConnectionStatus } = useWavoipActiveCall();
+const { refreshDevices, setInputDevice, setOutputDevice } = useWavoipMedia();
 
 const primaryIncomingCall = computed(() =>
   hasActiveCall.value ? null : incomingCalls.value[0] || null
 );
+
+const activeMediaInboxId = computed(() => activeCall.value?.inboxId);
+const activeMedia = computed(() =>
+  activeMediaInboxId.value
+    ? getWavoipMediaForInbox(activeMediaInboxId.value)
+    : null
+);
+const inputDevices = computed(
+  () => activeMedia.value?.inputDevices.value || []
+);
+const outputDevices = computed(
+  () => activeMedia.value?.outputDevices.value || []
+);
+const activeInputId = computed(
+  () => activeMedia.value?.activeInputId.value || ''
+);
+const activeOutputId = computed(
+  () => activeMedia.value?.activeOutputId.value || ''
+);
+
+const bannerInboxId = computed(
+  () => activeCall.value?.inboxId || primaryIncomingCall.value?.inboxId
+);
+
+const deviceConnectionStatus = computed(() => {
+  if (!bannerInboxId.value) return null;
+  return getWavoipDeviceStatus(bannerInboxId.value).connectionStatus.value;
+});
+
+const connectionBannerMessage = computed(() => {
+  if (
+    isWavoipActive.value &&
+    mediaConnectionStatus.value === 'reconnecting'
+  ) {
+    return t('CONVERSATION.WAVOIP_CALL.RECONNECTING');
+  }
+  if (deviceConnectionStatus.value === 'reconnecting') {
+    return t('CONVERSATION.WAVOIP_CALL.DEVICE_RECONNECTING');
+  }
+  if (deviceConnectionStatus.value === 'disconnected') {
+    return t('CONVERSATION.WAVOIP_CALL.DEVICE_DISCONNECTED');
+  }
+  return null;
+});
+
+watch(
+  () => [bannerInboxId.value, isWavoipActive.value],
+  ([inboxId, wavoipActive]) => {
+    if (inboxId && wavoipActive) refreshDevices(inboxId);
+  }
+);
+
+const handleInputDeviceChange = event => {
+  const inboxId = activeCall.value?.inboxId;
+  if (!inboxId) return;
+  setInputDevice(inboxId, event.target.value);
+};
+
+const handleOutputDeviceChange = event => {
+  const inboxId = activeCall.value?.inboxId;
+  if (!inboxId) return;
+  setOutputDevice(inboxId, event.target.value);
+};
 
 const stackedIncomingCalls = computed(() =>
   hasActiveCall.value ? incomingCalls.value : incomingCalls.value.slice(1)
@@ -252,6 +321,51 @@ onBeforeUnmount(stopRingtone);
     v-if="incomingCalls.length || hasActiveCall"
     class="fixed ltr:right-4 rtl:left-4 bottom-4 z-50 flex flex-col gap-3 w-[400px]"
   >
+    <div
+      v-if="connectionBannerMessage"
+      class="rounded-lg border border-n-ruby-6 bg-n-ruby-2 px-3 py-2 text-xs text-n-ruby-11"
+    >
+      {{ connectionBannerMessage }}
+    </div>
+
+    <div
+      v-if="isWavoipActive && (inputDevices.length || outputDevices.length)"
+      class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-3 py-2 flex flex-col gap-2 text-xs"
+    >
+      <label v-if="inputDevices.length" class="flex flex-col gap-1">
+        <span class="text-n-slate-11">{{ t('CONVERSATION.WAVOIP_CALL.MIC_DEVICE') }}</span>
+        <select
+          class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
+          :value="activeInputId || ''"
+          @change="handleInputDeviceChange"
+        >
+          <option
+            v-for="device in inputDevices"
+            :key="device.deviceId"
+            :value="device.deviceId"
+          >
+            {{ device.label || device.deviceId }}
+          </option>
+        </select>
+      </label>
+      <label v-if="outputDevices.length" class="flex flex-col gap-1">
+        <span class="text-n-slate-11">{{ t('CONVERSATION.WAVOIP_CALL.SPEAKER_DEVICE') }}</span>
+        <select
+          class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
+          :value="activeOutputId || ''"
+          @change="handleOutputDeviceChange"
+        >
+          <option
+            v-for="device in outputDevices"
+            :key="device.deviceId"
+            :value="device.deviceId"
+          >
+            {{ device.label || device.deviceId }}
+          </option>
+        </select>
+      </label>
+    </div>
+
     <!-- Stacked incoming calls (shown above the primary card) -->
     <CallCard
       v-for="call in stackedIncomingCalls"

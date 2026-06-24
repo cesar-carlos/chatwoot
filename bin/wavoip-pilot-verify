@@ -4,43 +4,106 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-INBOX_ID="${WAVOIP_INBOX_ID:-42}"
+INBOX_ID="${WAVOIP_INBOX_ID:-2}"
 FRONTEND_URL="${FRONTEND_URL:-$(bundle exec rails runner "puts ENV.fetch('FRONTEND_URL', 'http://localhost:3000')")}"
+TEST_PEER_PHONE="${WAVOIP_TEST_PEER_PHONE:-+5566999050312}"
 
 echo "== Wavoip pilot verify (inbox_id=${INBOX_ID}) =="
 
-bundle exec rails runner "
-inbox = Inbox.find_by(id: ${INBOX_ID})
+INBOX_ID="${INBOX_ID}" TEST_PEER_PHONE="${TEST_PEER_PHONE}" bundle exec rails runner - <<'RUBY'
+inbox_id = ENV.fetch('INBOX_ID').to_i
+test_peer = ENV.fetch('TEST_PEER_PHONE')
+inbox = Inbox.find_by(id: inbox_id)
 abort 'Inbox not found' unless inbox
+
 channel = inbox.channel
 abort 'Not a Wavoip inbox' unless channel.is_a?(Channel::Wavoip)
 
 account = inbox.account
-puts \"Account: \#{account.id} channel_voice=\#{account.feature_enabled?('channel_voice')} channel_wavoip=\#{account.feature_enabled?('channel_wavoip')}\"
-puts \"Channel phone: \#{channel.phone_number}\"
-puts \"Device token configured: \#{channel.device_token.present?}\"
-puts \"Inbound enabled: \#{channel.inbound_calls_enabled?}\"
-puts \"Webhook verified: \#{channel.webhook_verified?}\"
-puts \"Webhook URL: \#{channel.webhook_url}\"
-puts \"Calls (wavoip): \#{Call.where(inbox_id: inbox.id, provider: :wavoip).count}\"
-"
+puts "Account: #{account.id} channel_voice=#{account.feature_enabled?('channel_voice')} channel_wavoip=#{account.feature_enabled?('channel_wavoip')}"
+puts "Channel phone: #{channel.phone_number}"
+puts "Device token configured: #{channel.device_token.present?}"
+puts "Inbound enabled: #{channel.inbound_calls_enabled?}"
+puts "Webhook verified: #{channel.webhook_verified?}"
+puts "Webhook URL: #{channel.webhook_url}"
+puts "Calls (wavoip): #{Call.where(inbox_id: inbox.id, provider: :wavoip).count}"
+
+pass = []
+fail = []
+
+# W1 — DEVICE webhook (in-process, no HTTP dependency)
+Wavoip::ProcessWebhookJob.perform_now(
+  inbox.id,
+  { 'type' => 'DEVICE', 'status' => 'open', 'action' => 'UPDATE', 'phone' => channel.phone_number }
+)
+channel.reload
+if channel.webhook_verified?
+  pass << 'W1 webhook_verified (DEVICE job)'
+else
+  fail << 'W1 webhook_verified (DEVICE job)'
+end
+
+# I1 partial — inbound CALL create for test peer
+call_id = "pilot_inbound_#{Time.now.to_i}"
+Wavoip::ProcessWebhookJob.perform_now(
+  inbox.id,
+  {
+    'type' => 'CALL',
+    'action' => 'create',
+    'whatsapp_call_id' => call_id,
+    'status' => 'INCOMING_RING',
+    'direction' => 'incoming',
+    'peer' => { 'phone' => test_peer, 'display_name' => 'Pilot Test' },
+    'phone' => channel.phone_number
+  }
+)
+call = Call.find_by(inbox_id: inbox.id, provider: :wavoip, provider_call_id: call_id)
+if call&.incoming? && call.status == 'ringing'
+  pass << "I1 webhook inbound CALL row (peer #{test_peer})"
+else
+  fail << "I1 webhook inbound CALL row (peer #{test_peer})"
+end
+
+puts ''
+puts '== Automated checks (in-process) =='
+pass.each { |item| puts "PASS  #{item}" }
+fail.each { |item| puts "FAIL  #{item}" }
+abort "Automated checks failed: #{fail.join(', ')}" if fail.any?
+
+puts ''
+puts "Webhook key: #{channel.webhook_key}"
+RUBY
 
 WEBHOOK_KEY=$(bundle exec rails runner "puts Inbox.find(${INBOX_ID}).channel.webhook_key" 2>/dev/null || true)
 if [[ -n "${WEBHOOK_KEY}" ]]; then
   echo ""
-  echo "== Webhook endpoint =="
-  STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/${WEBHOOK_KEY}" \
+  echo "== Webhook endpoint (HTTP) =="
+  STATUS=$(curl -sL -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/${WEBHOOK_KEY}" \
     -H "Content-Type: application/json" \
     -d '{"type":"DEVICE","status":"open"}' || echo "000")
-  echo "POST /webhooks/wavoip/{key} => HTTP ${STATUS} (expect 202)"
-  INVALID=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/invalid-key" \
+  echo "POST /webhooks/wavoip/{key} DEVICE => HTTP ${STATUS} (expect 202; skip if app not running)"
+  INVALID=$(curl -sL -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/invalid-key" \
     -H "Content-Type: application/json" -d '{}' || echo "000")
   echo "POST invalid key => HTTP ${INVALID} (expect 401)"
+
+  echo ""
+  echo "== Simulated inbound CALL via HTTP (peer ${TEST_PEER_PHONE}) =="
+  INBOUND_PAYLOAD=$(cat <<EOF
+{"type":"CALL","action":"create","whatsapp_call_id":"pilot_http_$(date +%s)","status":"INCOMING_RING","direction":"incoming","peer":{"phone":"${TEST_PEER_PHONE}","display_name":"Pilot Test"},"phone":"$(bundle exec rails runner "puts Inbox.find(${INBOX_ID}).channel.phone_number" 2>/dev/null || echo '+5566997193168')"}
+EOF
+)
+  INBOUND_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/${WEBHOOK_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "${INBOUND_PAYLOAD}" || echo "000")
+  echo "POST inbound CALL create => HTTP ${INBOUND_STATUS} (expect 202; skip if app not running)"
 fi
 
 echo ""
-echo "== Manual E2E (see doc/feature/whatsapp-voice/wavoip-provider/spike-notes.md) =="
-echo "1. Wavoip panel: webhook ON, events CALL + DEVICE"
-echo "2. Outbound call -> Sidekiq ProcessWebhookJob + new Call row"
-echo "3. Inbound call -> widget + webhook INCOMING_RING"
-echo "4. Two agents online -> G0.4 acceptedElsewhere"
+echo "== Manual E2E (browser + real phone; see spike-notes.md) =="
+echo "1. Wavoip panel: webhook ON, events CALL + DEVICE; close panel during agent tests"
+echo "2. Agent Online in Chatwoot dashboard (mic permission granted)"
+echo "3. O1 Outbound to ${TEST_PEER_PHONE} -> peerAccept -> end -> voice_call bubble"
+echo "4. I1 Inbound from ${TEST_PEER_PHONE} -> SDK offer + widget -> accept -> PATCH /calls/:id"
+echo "5. M1 Two agents online -> acceptedElsewhere / voice_call.accepted"
+echo "6. D1 Dismiss inbound -> SDK reject stops ring"
+echo "7. F1 Accept failure -> widget dismissed"

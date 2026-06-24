@@ -3,6 +3,7 @@ import { useAlert } from 'dashboard/composables';
 import InboxesAPI from 'dashboard/api/inboxes';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import SettingsToggleSection from 'dashboard/components-next/Settings/SettingsToggleSection.vue';
+import WavoipDevicePanel from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipDevicePanel.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
@@ -10,6 +11,7 @@ export default {
   components: {
     SettingsFieldSection,
     SettingsToggleSection,
+    WavoipDevicePanel,
     NextButton,
     Spinner,
   },
@@ -24,6 +26,7 @@ export default {
       inboundCallsEnabled: this.inbox.inbound_calls_enabled !== false,
       isTogglingInbound: false,
       isRegeneratingWebhook: false,
+      isTestingWebhook: false,
       webhookUrl:
         this.inbox.wavoip_webhook_url || this.inbox.wavoipWebhookUrl || '',
     };
@@ -82,6 +85,23 @@ export default {
         this.isTogglingInbound = false;
       }
     },
+    async testWebhook() {
+      if (this.isTestingWebhook) return;
+      this.isTestingWebhook = true;
+      try {
+        const { data } = await InboxesAPI.testWavoipWebhook(this.inbox.id);
+        await this.$store.dispatch('inboxes/get', this.inbox.id);
+        if (data?.webhook_verified) {
+          useAlert(this.$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST_SUCCESS'));
+        } else {
+          useAlert(this.$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST_PENDING'));
+        }
+      } catch (_) {
+        useAlert(this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
+      } finally {
+        this.isTestingWebhook = false;
+      }
+    },
     async regenerateWebhookKey() {
       if (this.isRegeneratingWebhook) return;
       // eslint-disable-next-line no-alert
@@ -116,6 +136,8 @@ export default {
     </p>
 
     <template v-if="voiceEnabled">
+      <WavoipDevicePanel :inbox="inbox" />
+
       <div
         class="relative"
         :class="{ 'pointer-events-none opacity-60': isTogglingInbound }"
@@ -144,7 +166,15 @@ export default {
       <p v-else class="text-sm text-n-slate-11">
         {{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.UNAVAILABLE') }}
       </p>
-      <div v-if="webhookUrl" class="mt-3">
+      <div v-if="webhookUrl" class="mt-3 flex flex-wrap gap-2">
+        <NextButton
+          faded
+          slate
+          sm
+          :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST')"
+          :is-loading="isTestingWebhook"
+          @click="testWebhook"
+        />
         <NextButton
           faded
           slate
