@@ -64,7 +64,7 @@ class Custom::Whatsapp::Evolution::MessageEditSyncService
     formatted_body = apply_inbound_formatting(body)
     {
       key: {
-        id: "#{key[:id]}-edited-#{Time.current.to_i}",
+        id: "#{key[:id]}-edited",
         fromMe: key[:fromMe] == true,
         remoteJid: remote_jid,
         participant: key[:participant]

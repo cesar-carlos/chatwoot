@@ -57,6 +57,10 @@ class Custom::Whatsapp::Evolution::JidResolver
 
   def recipient_id_for_status(remote_jid, key = nil)
     key = key.with_indifferent_access if key.present?
+    jid = key.present? ? (key[:remoteJid] || remote_jid) : remote_jid
+    return Custom::Whatsapp::Evolution::GroupContactService.source_id_for(jid) if
+      Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid.to_s)
+
     if key.present?
       phone_from_message_key(key) || group_id_from_jid(key[:remoteJid] || remote_jid)
     else

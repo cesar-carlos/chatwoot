@@ -23,9 +23,9 @@ Inclui **proxy opcional no wizard** e regras de conversa essenciais — ver [bus
 | Filtros hardcoded | `@g.us`, `status@broadcast`, `fromMe` | ✅ `ignore_jids` UI |
 | `ignore_jids: ["@g.us"]` | em `provider_config` | ✅ editor textarea |
 
-**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `sign_delimiter`, `reject_call`, `read_messages`, `conversation_pending`, `convert_markdown_*`, `ignore_jids`, proxy completo, badge `connection_status`, **`lock_to_single_conversation`** (seção Conversas). Inboxes Evolution **não** exibem o toggle em Settings genérico (`Settings.vue` exclui `isEvolutionWhatsAppChannel`). Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
+**Fase 2 UI (implementada — T2):** aba **WhatsApp** em Settings do inbox Evolution (`EvolutionSettingsPage.vue`) — `groups_ignore`, `sign_msg`, `reject_call`, `read_messages`, `conversation_pending`, `convert_markdown_*`, `ignore_jids`, proxy completo, badge `connection_status`, **`lock_to_single_conversation`** (seção Conversas) + `send_random_delay`, `mark_read_on_reply`, `notify_send_errors_private`, `sync_delete_to_whatsapp`, `merge_brazil_contacts`, `ignore_survey_links`, `read_status`, `sync_full_history`, `always_online`, `msg_call`. Inboxes Evolution **não** exibem o toggle em Settings genérico (`Settings.vue` exclui `isEvolutionWhatsAppChannel`). Sync ao salvar via `ConnectionService#sync_settings!` / `#sync_proxy!`. `api_key` e `proxy_password` masked no GET.
 
-**Campos em `provider_config` sem toggle na UI** (defaults ativos no código): `send_random_delay`, `ignore_survey_links`, `merge_brazil_contacts`, `read_status`, `sync_full_history`, `always_online`, `msg_call`, `mark_read_on_reply`, `sync_delete_to_whatsapp`, `notify_send_errors_private`.
+**Campos em `provider_config` sem toggle na UI** (gerenciados automaticamente pelo código): `send_templates_as_text`, `instance_name`, `instance_id`, `connection_status`, `last_qr_*`, `last_sender`, `webhook_token`, `import_*` (runtime), `format_group_messages`.
 
 **Fase 3 (implementada):** reconnect QR (modal), logout/restart, alerta desconexão, `merge_brazil_contacts` no normalizer.  
 **Fase 4 (parcial):** import via `ImportService` + job; UI import em `EvolutionSettingsPage`; auto-enqueue ao conectar se `import_contacts`/`import_messages` habilitados.
@@ -144,6 +144,23 @@ Regras aplicadas no **socket Baileys** — sincronizar via `POST /settings/set/:
 
 **Recomendação UI:** ao ativar "Ignorar grupos", setar `groups_ignore: true` **e** incluir `@g.us` em `ignore_jids`.
 
+### Suporte a grupos (`groups_ignore: false`)
+
+Quando `groups_ignore: false`, mensagens de grupo (`@g.us`) entram no pipeline com modelo dedicado:
+
+| Aspecto | Comportamento |
+|--------|----------------|
+| **Contato da conversa** | `identifier` = JID completo do grupo (ex: `120363123456789012@g.us`); `phone_number` = `nil`; nome = `"{subject} (GROUP)"` via `GroupMetadataService` |
+| **ContactInbox `source_id`** | JID completo do grupo — usado também no outbound |
+| **Participante** | `GroupParticipantService` cria/atualiza contato opcional do `participant` JID para enriquecimento |
+| **Corpo da mensagem** | Com `format_group_messages: true`, prefixo `**{pushName}:**` no texto |
+| **Status/delivery** | `recipient_id` usa JID do grupo em updates de status |
+| **Import / phone sync** | `MessagesImporter` e `PhoneOutgoingSyncService` usam `GroupContactService` quando `remoteJid` termina em `@g.us` |
+
+**Defaults:** `groups_ignore: true` permanece o default seguro. A UI exibe aviso experimental ao desligar "Ignore groups".
+
+**API:** `GET /group/findGroupInfos/{instance}?groupJid={jid}` — metadata cacheada 1h por grupo/inbox.
+
 ---
 
 ## 3. Proxy
@@ -216,7 +233,7 @@ Na integração Evolution→Chatwoot legada, quando `reopenConversation: false`,
 | Campo | Tipo | Default | Fase | Label UI | O que faz | Ref. Evolution |
 |-------|------|---------|------|----------|-----------|----------------|
 | `sign_msg` | boolean | **`false`** | 2 | Sign messages with agent name | Prefixa `*Nome do agente:*` antes do texto | `receiveWebhook` ~1432–1438 |
-| `sign_delimiter` | string | `\n` | 2 | Signature delimiter | Separador entre nome e corpo (`\n` ou custom) | ~1432 |
+| `sign_delimiter` | string | `\n` | 2 | Signature delimiter | Separador entre nome do agente e corpo (`EvolutionServiceOutbound#sign_delimiter`; default `\n`) | ~1432 |
 | `mark_read_on_reply` | boolean | `false` | 2 | Mark last incoming as read when agent replies | Após envio agente, marca última msg WA como lida | `CHATWOOT.MESSAGE_READ` env ~1518 |
 | `sync_delete_to_whatsapp` | boolean | `false` | 3 | Delete message on WhatsApp when deleted in Chatwoot | `message_updated` + `content_attributes.deleted` | `CHATWOOT.MESSAGE_DELETE` · ~1322 |
 | `convert_markdown_outbound` | boolean | `true` | 2 | Convert Chatwoot markdown to WhatsApp format | `*`→`_`, `**`→`*`, etc. | ~1310–1315 |

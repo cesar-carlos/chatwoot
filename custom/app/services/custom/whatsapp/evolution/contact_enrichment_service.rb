@@ -129,7 +129,6 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
     fetch_profile_picture!(number) unless contact.avatar.attached?
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION] contact enrichment failed for contact #{contact.id}: #{e.message}")
-    raise
   end
 
   def profile_fetch_needed?

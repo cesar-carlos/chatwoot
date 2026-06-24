@@ -41,7 +41,7 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   def skip_reconciliation_entry?(entry)
     source_id = extract_source_id(entry)
     return true if source_id.blank?
-    return true if known_source_ids.include?(source_id)
+    return true if known_source_id?(source_id)
 
     false
   end
@@ -93,11 +93,15 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   end
 
   def known_source_ids
-    @known_source_ids ||= channel.inbox.messages
-                                 .where('created_at >= ?', LOOKBACK_HOURS.hours.ago)
-                                 .where.not(source_id: [nil, ''])
-                                 .pluck(:source_id)
-                                 .to_set
+    @known_source_ids ||= Set.new
+  end
+
+  def known_source_id?(source_id)
+    return true if known_source_ids.include?(source_id)
+
+    exists = channel.inbox.messages.exists?(source_id: source_id)
+    known_source_ids << source_id if exists
+    exists
   end
 
   def lookback_timestamp

@@ -124,7 +124,7 @@ Payload único — referência `whatsapp.baileys.service.ts` ~1353:
 |------|-------------|---------------------|
 | Contato normal | `5511...@s.whatsapp.net` | Dígitos antes de `@` |
 | LID | `xxx@lid` + `remoteJidAlt` | Usar `remoteJidAlt` se JID termina `@lid` **ou** `addressingMode === 'lid'` |
-| Grupo | `120363...@g.us` | Ver `ignore_jids` / `groups_ignore` |
+| Grupo | `120363...@g.us` | `wa_id` = JID completo do grupo; contato sem `phone_number`; ver `GroupContactService` |
 | Status | `status@broadcast` | **Ignorar** |
 | Echo `fromMe: true` | — | Ignorar ou tratar para evitar duplicação com outbound |
 

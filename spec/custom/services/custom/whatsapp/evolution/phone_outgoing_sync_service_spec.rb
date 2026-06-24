@@ -46,6 +46,32 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
       end
     end
 
+    it 'creates a group outgoing message using GroupContactService' do
+      channel.update_columns(
+        provider_config: channel.provider_config.merge('groups_ignore' => false, 'ignore_jids' => [])
+      )
+      channel.reload
+      group_data = data.merge(
+        'key' => {
+          'id' => 'GROUP-SENT-001',
+          'fromMe' => true,
+          'remoteJid' => '120363123456789012@g.us',
+          'participant' => '5511999999999@s.whatsapp.net'
+        }
+      )
+      allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new).and_return(
+        instance_double(Custom::Whatsapp::Evolution::GroupMetadataService, display_name: 'Team (GROUP)')
+      )
+
+      expect do
+        described_class.new(channel: channel, data: group_data).perform
+      end.to change(Message, :count).by(1)
+
+      contact_inbox = ContactInbox.last
+      expect(contact_inbox.source_id).to eq('120363123456789012@g.us')
+      expect(contact_inbox.contact.phone_number).to be_nil
+    end
+
     it 'skips duplicate Chatwoot outbound echoes by source_id' do
       contact = create(:contact, account: account, phone_number: '+5566996971841')
       contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
@@ -65,6 +91,13 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
 
     it 'enqueues async media download for phone-sent media' do
       media_data = data.merge(
+        'messageType' => 'imageMessage',
+        'key' => {
+          'id' => 'PHONE-SENT-MEDIA-001',
+          'fromMe' => true,
+          'remoteJid' => '556696971841@s.whatsapp.net',
+          'remoteJidAlt' => '556696971841@s.whatsapp.net'
+        },
         'message' => {
           'imageMessage' => {
             'caption' => 'Photo from phone',

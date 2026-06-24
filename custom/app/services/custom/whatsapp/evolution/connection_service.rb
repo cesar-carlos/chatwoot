@@ -2,6 +2,7 @@
 
 class Custom::Whatsapp::Evolution::ConnectionService
   CONNECTION_STATE_CACHE_TTL = 15.seconds
+  QR_FETCH_CACHE_TTL = 45.seconds
 
   pattr_initialize [:channel!]
 
@@ -107,6 +108,42 @@ class Custom::Whatsapp::Evolution::ConnectionService
     }
   end
 
+  protected
+
+  def update_connection_status(state)
+    invalidate_connection_state_cache!
+    previous_status = provider_config['connection_status']
+    update_runtime_config!('connection_status' => state)
+    return unless state == 'open'
+
+    phone = phone_from_sender(provider_config['last_sender'])
+    update_phone_number!(phone) if phone.present? && placeholder_phone?(channel.phone_number)
+    maybe_enqueue_history_import!(previous_status, state)
+  end
+
+  def extract_phone_number(envelope)
+    sender = envelope[:sender].presence || envelope.dig(:data, :sender)
+    return if sender.blank?
+
+    update_runtime_config!('last_sender' => sender)
+    return unless envelope.dig(:data, :state) == 'open'
+
+    phone = phone_from_sender(sender)
+    update_phone_number!(phone) if phone.present?
+  end
+
+  def update_provider_config!(attrs)
+    attrs = attrs.stringify_keys
+    merged = provider_config.merge(attrs)
+    channel.provider_config = merged
+
+    if Custom::Whatsapp::Evolution::ProviderConfig.runtime_only?(attrs)
+      persist_provider_config!(merged)
+    else
+      channel.save!
+    end
+  end
+
   private
 
   def provisioner
@@ -163,28 +200,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
     ActiveModel::Type::Boolean.new.cast(provider_config['proxy_enabled'])
   end
 
-  def update_connection_status(state)
-    invalidate_connection_state_cache!
-    previous_status = provider_config['connection_status']
-    update_runtime_config!('connection_status' => state)
-    return unless state == 'open'
-
-    phone = phone_from_sender(provider_config['last_sender'])
-    update_phone_number!(phone) if phone.present? && placeholder_phone?(channel.phone_number)
-    maybe_enqueue_history_import!(previous_status, state)
-  end
-
-  def extract_phone_number(envelope)
-    sender = envelope[:sender].presence || envelope.dig(:data, :sender)
-    return if sender.blank?
-
-    update_runtime_config!('last_sender' => sender)
-    return unless envelope.dig(:data, :state) == 'open'
-
-    phone = phone_from_sender(sender)
-    update_phone_number!(phone) if phone.present?
-  end
-
   def phone_from_sender(sender)
     digits = sender.to_s.split('@').first
     return if digits.blank?
@@ -194,18 +209,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
 
   def placeholder_phone?(phone)
     phone.to_s.start_with?('+55000')
-  end
-
-  def update_provider_config!(attrs)
-    attrs = attrs.stringify_keys
-    merged = provider_config.merge(attrs)
-    channel.provider_config = merged
-
-    if Custom::Whatsapp::Evolution::ProviderConfig.runtime_only?(attrs)
-      persist_provider_config!(merged)
-    else
-      channel.save!
-    end
   end
 
   def update_runtime_config!(attrs)
@@ -266,8 +269,10 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def fetch_qr_if_needed!
     return if provider_config['connection_status'].to_s == 'open'
     return if provider_config['last_qr_base64'].present?
+    return if Rails.cache.read(qr_fetch_cache_key).present?
 
     fetch_qr_code
+    Rails.cache.write(qr_fetch_cache_key, true, expires_in: QR_FETCH_CACHE_TTL)
   rescue Custom::Whatsapp::Evolution::ApiError => e
     Rails.logger.warn "[EVOLUTION] fetch_qr_if_needed failed channel=#{channel.id}: #{e.message}"
   end
@@ -276,7 +281,12 @@ class Custom::Whatsapp::Evolution::ConnectionService
     "evolution:connection_state_refresh:#{channel.id}"
   end
 
+  def qr_fetch_cache_key
+    "evolution:qr_fetch_throttle:#{channel.id}"
+  end
+
   def invalidate_connection_state_cache!
     Rails.cache.delete(connection_state_cache_key)
+    Rails.cache.delete(qr_fetch_cache_key)
   end
 end

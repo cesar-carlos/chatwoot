@@ -33,8 +33,8 @@ class Custom::Whatsapp::Evolution::ConnectionEvents
   def handle_connection_update_event(envelope)
     state = envelope.dig(:data, :state)
     previous_status = provider_config['connection_status']
-    connection_service.send(:update_connection_status, state)
-    connection_service.send(:extract_phone_number, envelope)
+    connection_service.update_connection_status(state)
+    connection_service.extract_phone_number(envelope)
     broadcast_connection_event(connection_event_payload(state))
     notify_disconnection!(previous_status, state)
   end
@@ -50,7 +50,7 @@ class Custom::Whatsapp::Evolution::ConnectionEvents
     attrs = qrcode_storage_attrs(qrcode)
     return if attrs.blank?
 
-    connection_service.send(:update_provider_config!, attrs)
+    connection_service.update_provider_config!(attrs)
     broadcast_connection_event(qrcode_broadcast_payload(attrs))
   end
 

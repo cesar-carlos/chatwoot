@@ -3,6 +3,8 @@
 # Syncs WhatsApp messages sent from the connected phone (Baileys fromMe UPSERT)
 # as outgoing Chatwoot messages. Skips duplicates when Chatwoot already has source_id.
 class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
+  include Custom::Whatsapp::Evolution::OutgoingMessageHelper
+
   pattr_initialize [:channel!, :data!]
 
   def perform
@@ -72,32 +74,16 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
     )
   end
 
-  def outgoing_content(record, message_data)
-    return extract_fallback_text(record) if message_data.blank?
-
-    message_data.dig(:text, :body) || media_caption(message_data) || extract_fallback_text(record)
-  end
-
-  def outgoing_media_message?(message_data)
-    return false if message_data.blank?
-
-    type = message_data[:type].to_s
-    %w[image video audio document sticker].include?(type) && message_data[type.to_sym].present?
-  end
-
-  def media_caption(message_data)
-    type = message_data[:type].to_s
-    return unless %w[image video audio document sticker].include?(type)
-
-    message_data[type.to_sym]&.dig(:caption)
-  end
-
-  def extract_fallback_text(record)
-    message = record['message'] || {}
-    message['conversation'] || message.dig('extendedTextMessage', 'text')
-  end
-
   def find_or_create_contact_inbox(key)
+    remote_jid = key['remoteJid'].to_s
+    if Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid)
+      return Custom::Whatsapp::Evolution::GroupContactService.new(
+        channel: channel,
+        remote_jid: remote_jid,
+        push_name: data['pushName']
+      ).find_or_create_contact_inbox!
+    end
+
     phone = jid_resolver.phone_from_message_key(key)
     return if phone.blank?
 
@@ -143,28 +129,6 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
       created_at: timestamp,
       updated_at: timestamp
     }
-  end
-
-  def enqueue_outgoing_media_download!(message, message_data)
-    return unless outgoing_media_message?(message_data)
-
-    type = message_data[:type].to_s
-    attachment_payload = message_data[type.to_sym]
-    return if attachment_payload.blank?
-
-    Custom::Whatsapp::Evolution::MediaDownloadJob.perform_later(
-      channel.id,
-      message.id,
-      attachment_payload.deep_stringify_keys,
-      type
-    )
-  end
-
-  def message_timestamp(value)
-    seconds = value.to_i
-    return Time.zone.at(seconds) if seconds.positive?
-
-    Time.current
   end
 
   def jid_resolver

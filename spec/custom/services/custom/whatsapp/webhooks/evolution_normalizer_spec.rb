@@ -112,27 +112,36 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
     end
 
     it 'normalizes group messages when groups_ignore is disabled' do
-      channel.update!(
-        provider_config: channel.provider_config.merge('groups_ignore' => false, 'ignore_jids' => [])
+      allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new).and_return(
+        instance_double(Custom::Whatsapp::Evolution::GroupMetadataService, display_name: 'Team (GROUP)')
       )
+      channel.update_columns(
+        provider_config: channel.provider_config.merge(
+          'groups_ignore' => false,
+          'ignore_jids' => [],
+          'format_group_messages' => true
+        )
+      )
+      channel.reload
       envelope = load_fixture('messages_upsert_group')
 
       result = normalize(envelope)
 
       aggregate_failures do
-        expect(result.dig(:contacts, 0, :wa_id)).to eq('120363123456789012')
+        expect(result.dig(:contacts, 0, :wa_id)).to eq('120363123456789012@g.us')
         expect(result.dig(:messages, 0, :text, :body)).to include('**Group Member:**')
         expect(result.dig(:messages, 0, :text, :body)).to include('Hello group')
       end
     end
 
     it 'ignores remote jids matching ignore_jids patterns' do
-      channel.update!(
+      channel.update_columns(
         provider_config: channel.provider_config.merge(
           'ignore_jids' => ['no-reply@'],
           'groups_ignore' => false
         )
       )
+      channel.reload
       envelope = load_fixture('messages_upsert_text')
       envelope['data']['key']['remoteJid'] = 'no-reply@newsletter'
       envelope['data']['key'].delete('remoteJidAlt')
