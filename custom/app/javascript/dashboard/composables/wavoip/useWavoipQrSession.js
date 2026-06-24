@@ -11,6 +11,7 @@ import {
 } from 'customDashboard/lib/wavoip/wavoipQrImage';
 
 const QR_FALLBACK_MS = 10_000;
+const QR_EXPIRY_MS = 45_000;
 
 export function useWavoipQrSession({
   inboxId,
@@ -18,7 +19,7 @@ export function useWavoipQrSession({
   onConnected,
   onPhoneMismatch,
 }) {
-  const { connectForInbox, wakeUpInboxDevice } = useWavoipConnection();
+  const { connectInbox, wakeUpInboxDevice } = useWavoipConnection();
 
   const whatsAppStatus = ref('');
   const qrDataUrl = ref('');
@@ -30,6 +31,8 @@ export function useWavoipQrSession({
 
   let deviceUnsubscribers = [];
   let fallbackTimer = null;
+  let expiryTimer = null;
+  let sessionStartedConnected = false;
   let hasEmittedConnected = false;
   let cachedDeviceToken = null;
 
@@ -38,7 +41,10 @@ export function useWavoipQrSession({
   }
 
   function needsQr() {
-    return ['close', 'connecting'].includes(whatsAppStatus.value) || Boolean(qrDataUrl.value);
+    return (
+      ['close', 'connecting'].includes(whatsAppStatus.value) ||
+      Boolean(qrDataUrl.value)
+    );
   }
 
   function clearDeviceListeners() {
@@ -59,9 +65,17 @@ export function useWavoipQrSession({
     }
   }
 
+  function clearExpiryTimer() {
+    if (expiryTimer) {
+      clearTimeout(expiryTimer);
+      expiryTimer = null;
+    }
+  }
+
   function stopSession() {
     clearDeviceListeners();
     clearFallbackTimer();
+    clearExpiryTimer();
   }
 
   async function applyQrString(qrString) {
@@ -87,7 +101,8 @@ export function useWavoipQrSession({
       qrDataUrl.value = '';
       pairingCode.value = '';
       clearFallbackTimer();
-      if (!hasEmittedConnected) {
+      clearExpiryTimer();
+      if (!sessionStartedConnected && !hasEmittedConnected) {
         hasEmittedConnected = true;
         onConnected?.();
       }
@@ -106,6 +121,15 @@ export function useWavoipQrSession({
       qrDataUrl.value = withCacheBust(buildWavoipQrImageUrl(cachedDeviceToken));
       qrRefreshError.value = false;
     }, QR_FALLBACK_MS);
+  }
+
+  function armQrExpiryTimer() {
+    clearExpiryTimer();
+    expiryTimer = setTimeout(() => {
+      if (!isConnected()) {
+        refreshQr();
+      }
+    }, QR_EXPIRY_MS);
   }
 
   function wireDeviceListeners(device) {
@@ -129,10 +153,11 @@ export function useWavoipQrSession({
     deviceUnsubscribers.push(
       device.on('contactChanged', contact => {
         linkedPhone.value = contact?.phone || '';
+        const expectedPhone = unref(phoneNumber);
         if (
           contact?.phone &&
-          phoneNumber &&
-          contact.phone !== phoneNumber &&
+          expectedPhone &&
+          contact.phone !== expectedPhone &&
           onPhoneMismatch
         ) {
           onPhoneMismatch(contact.phone);
@@ -153,7 +178,7 @@ export function useWavoipQrSession({
     }
   }
 
-  async function startSession() {
+  async function startSession({ fetchFreshQr = false } = {}) {
     const id = unref(inboxId);
     if (!id) return;
 
@@ -165,15 +190,21 @@ export function useWavoipQrSession({
       const { data } = await InboxesAPI.getWavoipSdkBootstrap(id);
       cachedDeviceToken = data?.device_token || null;
 
-      await connectForInbox(id);
+      await connectInbox(id);
       const device = getPrimaryDevice(getWavoipClient(id));
-      const wasConnected = device?.status === 'open';
       wireDeviceListeners(device);
       syncFromDevice(device);
-      hasEmittedConnected = wasConnected;
+      sessionStartedConnected = isConnected();
+      hasEmittedConnected = sessionStartedConnected;
 
-      if (!isConnected() && !qrDataUrl.value) {
+      if (fetchFreshQr && !isConnected()) {
+        await refreshQr();
+      } else if (!isConnected() && !qrDataUrl.value) {
         armFallbackTimer();
+      }
+
+      if (!isConnected()) {
+        armQrExpiryTimer();
       }
     } catch (_) {
       qrRefreshError.value = true;
@@ -228,6 +259,10 @@ export function useWavoipQrSession({
       if (!isConnected() && !qrDataUrl.value) {
         armFallbackTimer();
       }
+
+      if (!isConnected()) {
+        armQrExpiryTimer();
+      }
     } catch (_) {
       qrRefreshError.value = true;
     } finally {
@@ -240,6 +275,7 @@ export function useWavoipQrSession({
     pairingCode.value = '';
     linkedPhone.value = '';
     hasEmittedConnected = false;
+    sessionStartedConnected = false;
   }
 
   return {

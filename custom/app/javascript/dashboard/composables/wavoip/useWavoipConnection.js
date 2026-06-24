@@ -204,6 +204,7 @@ export function useWavoipConnection() {
 
   return {
     isConnecting: readonly(isConnecting),
+    connectInbox,
     connectForInbox,
     disconnectInbox,
     syncConnections,

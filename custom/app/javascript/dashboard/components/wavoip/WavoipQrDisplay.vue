@@ -56,7 +56,6 @@ const showLoading = computed(
 
 const showQrError = computed(
   () =>
-    props.showRefresh &&
     !showQr.value &&
     !showLoading.value &&
     !props.pairingCode &&
@@ -109,6 +108,7 @@ const showQrError = computed(
     >
       <p>{{ $t('INBOX_MGMT.WAVOIP_CALL.QR_MODAL.REFRESH_ERROR') }}</p>
       <NextButton
+        v-if="showRefresh"
         sm
         faded
         slate
