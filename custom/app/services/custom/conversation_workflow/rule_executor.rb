@@ -52,19 +52,13 @@ class Custom::ConversationWorkflow::RuleExecutor
     Custom::ConversationWorkflow::AutomationEventDispatcher.new(rule: @rule, conversation: conversation).perform
   end
 
-  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- one guard per trigger type
   def conversation_eligible?(conversation)
     return false unless Custom::ConversationWorkflow::ScopeMatcher.new(rule: @rule, conversation: conversation).matches?
     return false if @rule.conversation_inactivity? && conversation.last_activity_at.blank?
-    return false if @rule.first_response_overdue? && conversation.first_reply_created_at.present?
-    return false if @rule.unassigned_too_long? && conversation.assignee_id.present?
-    return false if @rule.pending_stale? && !conversation.pending?
-    return false if @rule.customer_no_reply? && !customer_waiting_on_agent_reply?(conversation)
     return false unless Custom::ConversationWorkflow::ThresholdMatcher.new(rule: @rule, conversation: conversation).matched?
 
     true
   end
-  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def execute_pipeline(conversation)
     Current.executed_by = @rule
@@ -101,11 +95,6 @@ class Custom::ConversationWorkflow::RuleExecutor
     return dedup[:last_activity_epoch] if attribute == :last_activity_at
 
     nil
-  end
-
-  def customer_waiting_on_agent_reply?(conversation)
-    last_message = conversation.messages.where(message_type: %i[incoming outgoing]).order(created_at: :desc).first
-    last_message&.outgoing?
   end
 
   def create_activity_message(conversation)

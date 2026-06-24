@@ -79,7 +79,9 @@ describe('useCallSession Wavoip registry integration', () => {
       inboxId: 5,
       conversationId: 1,
     });
-    expect(store.calls.find(c => c.callSid === 'reg_join_1')?.isActive).toBe(true);
+    expect(store.calls.find(c => c.callSid === 'reg_join_1')?.isActive).toBe(
+      true
+    );
   });
 
   it('rejectIncomingCall uses the pre-registered Wavoip session singleton', async () => {

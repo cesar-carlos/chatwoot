@@ -108,7 +108,20 @@ No painel Wavoip: além da URL, **ativar o toggle** do webhook e selecionar even
 Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/webhook-beta.md) ·
 contrato auth [webhook-contract.md](./webhook-contract.md).
 
-### 3.5 Seção — Notificações do agente (opcional, colapsada)
+### 3.6 Seção — Roteamento de chamadas inbound (Settings)
+
+Configurável na tab **Chamadas** (`WavoipCallingPage.vue`), seção **Incoming call routing**. Persistido em `provider_config` via `PATCH /inboxes/:id` (`channel.provider_config` merge).
+
+| Campo UI (i18n) | `provider_config` key | Default | Comportamento |
+|-----------------|----------------------|---------|---------------|
+| **Include account administrators** | `incoming_call_include_administrators` | `true` | `false` = só agentes listados na aba Agentes recebem ring/cable/push/SDK |
+| **When no agent is online** | `incoming_call_offline_fallback` | `assignee_or_inbox_members_and_administrators` | Ver tabela em [architecture.md §3.6](./architecture.md#36-actioncable) |
+
+**Regra operacional:** com administradores desligados e fallback `assignee_or_inbox_members`, apenas agentes **online** listados na aba Agentes tocam em condições normais. A atribuição automática de conversas (`enable_auto_assignment`) é independente.
+
+Lógica centralizada em `custom/app/services/wavoip/calls/incoming_call_recipients.rb`.
+
+### 3.7 Seção — Notificações do agente (opcional, colapsada)
 
 Comportamento espelhado da [doc de notificações push](https://wavoip.gitbook.io/api/webphone/recursos/notificacoes-push.md), implementado no Chatwoot (`useWavoipNotifications`), não no webphone.
 
@@ -280,15 +293,20 @@ Após `POST /inboxes` bem-sucedido:
 
 ## 7. Settings (edição posterior)
 
-No MVP, a tab **Chamadas** (`WavoipCallingPage.vue`) expõe URL read-only e status de setup
-(`wavoip_setup_pending`). Pareamento completo e painel de device ficam pós-MVP.
+A tab **Chamadas** (`WavoipCallingPage.vue`) expõe painel de device, inbound toggle, **roteamento de chamadas inbound**, **pareamento QR escaneável** (`WavoipDevicePanel` + `WavoipQrDisplay`), webhook (URL, teste, rotação) e status de setup.
+
+**Pareamento WhatsApp:** em Settings → Chamadas, quando o device está `close` ou `connecting`, o admin vê um **QR escaneável** (renderizado via `qrcode` a partir do evento SDK `qrCodeChanged`, com fallback para `https://devices.wavoip.com/{token}/whatsapp/qr-image`). Alternativa: botão **Get pairing code**. O wizard de criação (`Wavoip.vue`) continua exigindo apenas o device token — o QR não aparece no passo de criação.
 
 | Campo API | Significado |
 |-----------|-------------|
-| `wavoip_webhook_url` | URL read-only derivada de `webhook_key` |
+| `wavoip_webhook_url` | URL read-only derivada de `webhook_key` (admin) |
 | `wavoip_setup_pending` | `true` até primeiro webhook válido |
 | `wavoip_device_token_configured` | `device_token` presente (sem expor valor) |
 | `inbound_calls_enabled` | Toggle de chamadas recebidas |
+| `incoming_call_include_administrators` | Incluir admins da conta fora da aba Agentes |
+| `incoming_call_offline_fallback` | Fallback quando ninguém online (ver §3.6) |
+| `current_user_inbox_member` | Membro da aba Agentes para o usuário atual |
+| `provider_config` | Slice com chaves de roteamento (merge seguro no PATCH) |
 
 Checklist de onboarding (semáforo): ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo) — verificação manual via Settings e painel Wavoip; não há componente dedicado no MVP.
 
@@ -298,6 +316,7 @@ Campos editáveis:
 |-------|----------------------|
 | `phone_number` | Não (recreate inbox) |
 | `device_token` | Sim (rotacionar token) |
+| Roteamento inbound (§3.6) | Sim (Settings → Chamadas) |
 | toggles e notification | Sim |
 | `webhook_key` | Rotação por ação dedicada; nunca aceitar valor escolhido pelo cliente |
 | `wavoip_webhook_url` | Read-only na API (derivada da chave) |
@@ -347,6 +366,11 @@ Chaves sugeridas:
         "NOTIFICATIONS": {
           "TITLE": "Agent notifications",
           "ENABLED": "Notify when tab is in background"
+        },
+        "ROUTING": {
+          "LABEL": "Incoming call routing",
+          "INCLUDE_ADMINISTRATORS": { "LABEL": "Include account administrators" },
+          "OFFLINE_FALLBACK": { "LABEL": "When no agent is online" }
         },
         "SUBMIT_BUTTON": "Create Wavoip inbox",
         "API": { "ERROR_MESSAGE": "Could not create the Wavoip inbox" }

@@ -14,7 +14,7 @@ module Custom::Conversations::ResolutionCycle
   def last_opened_event_time(conversation)
     conversation.reporting_events.where(
       name: 'conversation_opened'
-    ).order(event_end_time: :desc).pick(:event_end_time)
+    ).where.not(event_end_time: nil).order(event_end_time: :desc).pick(:event_end_time)
   end
 
   def evolution_pending_cycle_start(conversation)

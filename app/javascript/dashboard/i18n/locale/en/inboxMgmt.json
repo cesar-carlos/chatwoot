@@ -697,6 +697,7 @@
         "ENABLED_DESCRIPTION": "When a contact messages again, the previous conversation will be reopened.",
         "DISABLED_DESCRIPTION": "A new conversation will be created each time after the previous one is resolved.",
         "AUTOMATION_WARNING": "This inbox has {count} active automation rule(s) triggered on conversation creation ({ruleNames}). With single-history mode, returning contacts reopen existing conversations instead of creating new ones, so these rules may run less often. Review your automations before saving.",
+        "AUTOMATION_WARNING_LOADING": "Checking automation rules for this inbox...",
         "AUTOMATION_WARNING_ACTION": "Review automations"
       },
       "ENABLE_HMAC": {
@@ -825,7 +826,20 @@
         "RESTART": "Restart device",
         "LOGOUT": "Logout WhatsApp",
         "RESTART_CONFIRM": "Restart the Wavoip device? WhatsApp may disconnect briefly.",
-        "LOGOUT_CONFIRM": "Log out WhatsApp from this device? You will need to pair again."
+        "LOGOUT_CONFIRM": "Log out WhatsApp from this device? You will need to pair again.",
+        "LINKED_PHONE": "Linked number"
+      },
+      "QR_MODAL": {
+        "TITLE": "Link WhatsApp",
+        "DESCRIPTION": "Scan the QR code with WhatsApp on your phone to connect this inbox device.",
+        "LOADING": "Loading QR code…",
+        "REFRESH": "Refresh QR code",
+        "CONNECTED": "WhatsApp linked successfully.",
+        "SCAN_HINT": "Open WhatsApp → Linked devices → Link a device, then scan this code.",
+        "PAIRING_HINT": "Or enter this pairing code on your phone instead of scanning.",
+        "PAIRING_CODE": "Pairing code: {code}",
+        "REFRESH_ERROR": "Could not load the QR code. Try refreshing.",
+        "STATUS": "Device status: {status}"
       },
       "CONNECTION_STATUS": {
         "LABEL": "WebSocket",
@@ -836,6 +850,41 @@
       "DIAGNOSTICS": {
         "COPY": "Copy diagnostics",
         "COPIED": "Diagnostics copied to clipboard."
+      },
+      "ROUTING": {
+        "LABEL": "Incoming call routing",
+        "DESCRIPTION": "Control which agents receive incoming call alerts and browser ringing for this inbox.",
+        "INCLUDE_ADMINISTRATORS": {
+          "LABEL": "Include account administrators",
+          "DESCRIPTION": "When enabled, administrators who are not listed under Agents can also receive incoming calls for this inbox.",
+          "DISABLED_HINT": "Not applicable when offline fallback is set to don't notify anyone."
+        },
+        "NOTIFY_BUSY_AGENTS": {
+          "LABEL": "Notify busy agents",
+          "DESCRIPTION": "When no agent is online, also ring inbox agents who are set to busy before applying the offline fallback."
+        },
+        "OFFLINE_FALLBACK": {
+          "LABEL": "When no agent is online",
+          "DESCRIPTION": "Online inbox agents always receive calls first. This setting applies only when none of them are online.",
+          "OPTIONS": {
+            "NONE": "Don't notify anyone",
+            "ASSIGNEE": "Notify conversation assignee only",
+            "ASSIGNEE_OR_TEAM_MEMBERS": "Notify assignee, otherwise team members",
+            "ASSIGNEE_OR_INBOX_MEMBERS": "Notify assignee, otherwise all inbox agents",
+            "ASSIGNEE_OR_INBOX_MEMBERS_AND_ADMINISTRATORS": "Notify assignee, otherwise inbox agents and administrators"
+          }
+        },
+        "RING_TIMEOUT": {
+          "LABEL": "Ring escalation timeout",
+          "DESCRIPTION": "If no agent answers within this time, notify all inbox agents and administrators (when enabled).",
+          "OPTIONS": {
+            "0": "Disabled",
+            "30": "30 seconds",
+            "60": "60 seconds",
+            "90": "90 seconds",
+            "120": "120 seconds"
+          }
+        }
       }
     },
     "EVOLUTION": {

@@ -186,7 +186,7 @@ watch(
         :count="unreadCount"
       />
     </div>
-    <div class="px-0 py-2.5 flex-1 min-w-0 border-line">
+    <div class="px-0 py-2 flex-1 min-w-0 border-line">
       <div
         v-if="showMetaSection"
         class="flex items-center min-w-0 gap-1"

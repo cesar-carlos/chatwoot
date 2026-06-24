@@ -1,5 +1,5 @@
 class Custom::Retention::MessagePostPurgeService
-  pattr_initialize [:message!, :account!, :run_id!]
+  pattr_initialize [:message, :account!, :run_id!]
 
   def perform
     notify_update

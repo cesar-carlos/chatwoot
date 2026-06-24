@@ -49,7 +49,9 @@ Política de tempo de vida para anexos de conversa (`Attachment` + Active Storag
 custom/app/services/custom/retention/
   policy.rb
   purge_message_attachments_service.rb
+  message_post_purge_service.rb
   record_purge_event_service.rb
+  attachment_failure_tracker.rb
   operational_alert.rb
 custom/app/jobs/custom/retention/
   scheduler_job.rb
