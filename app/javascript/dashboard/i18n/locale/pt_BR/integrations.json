@@ -3,7 +3,7 @@
     "SHOPIFY": {
       "DELETE": {
         "TITLE": "Delete Shopify Integration",
-        "MESSAGE": "Are you sure you want to delete the Shopify integration?"
+        "MESSAGE": "Tem certeza de que deseja excluir a integração com o Shopify?"
       },
       "STORE_URL": {
         "TITLE": "Connect Shopify Store",
@@ -786,19 +786,19 @@
       "CREATE": {
         "TITLE": "Create Custom Tool",
         "SUCCESS_MESSAGE": "Custom tool created successfully",
-        "ERROR_MESSAGE": "Failed to create custom tool"
+        "ERROR_MESSAGE": "Falha ao criar ferramenta personalizada"
       },
       "EDIT": {
         "TITLE": "Edit Custom Tool",
         "SUCCESS_MESSAGE": "Custom tool updated successfully",
-        "ERROR_MESSAGE": "Failed to update custom tool"
+        "ERROR_MESSAGE": "Falha ao atualizar ferramenta personalizada"
       },
       "DELETE": {
         "TITLE": "Delete Custom Tool",
         "DESCRIPTION": "Tem certeza que deseja excluir está ferramenta customizável? Está ação não pode ser desfeita.",
         "CONFIRM": "Sim, excluir",
         "SUCCESS_MESSAGE": "Custom tool deleted successfully",
-        "ERROR_MESSAGE": "Failed to delete custom tool"
+        "ERROR_MESSAGE": "Falha ao excluir ferramenta personalizada"
       },
       "FORM": {
         "TITLE": {
