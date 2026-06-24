@@ -2,7 +2,7 @@
 
 Documentação do stack **WhatsApp Cloud Calling** (Meta Graph API + WebRTC browser↔Meta) no Chatwoot Enterprise. Para Twilio PSTN ou gateways não oficiais, ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) e [second-provider-strategy.md](./second-provider-strategy.md).
 
-**Última reanálise:** jun/2026 (reavaliação arquitetural completa).
+**Última reanálise:** 24 jun. 2026 (sync pós-refactors outbound/permission + handlers FE).
 
 ---
 
@@ -42,12 +42,13 @@ O recurso permite que **agentes atendam e façam chamadas de voz pelo WhatsApp**
 
 | Aspecto | Twilio (PSTN) | WhatsApp (Meta Calling) |
 |---------|---------------|-------------------------|
-| Adapter | `Voice::Provider::Twilio::Adapter` | Métodos no prepend `WhatsappCloudService` (sem adapter dedicado) |
-| Outbound | `Voice::OutboundCallBuilder` + `Contacts::CallsController` | `WhatsappCallsController#create_outbound_call` inline |
+| Adapter | `Voice::Provider::Twilio::Adapter` | Métodos no prepend `WhatsappCloudService` (sem adapter dedicado — pendente `MetaCloud::Adapter`) |
+| Outbound | `Voice::OutboundCallBuilder` + `Contacts::CallsController` | `Voice::OutboundWhatsappCallBuilder` + `WhatsappCallsController#initiate` |
+| Permissão outbound | N/A | `Whatsapp::CallPermissionRequestService` (throttle + template) |
 | Sinalização | TwiML + conferência server-side | SDP browser ↔ Meta |
 | API REST | `/contacts/:id/calls` | `/whatsapp_calls/*` |
 
-Não é bug — outbound WhatsApp exige `sdp_offer` do browser antes do `Call.create!`. Ainda assim, extrair `Voice::OutboundWhatsappCallBuilder` alinha o padrão e facilita testes.
+Outbound WhatsApp exige `sdp_offer` do browser antes do `Call.create!` — o builder encapsula Meta API + transaction com `CallMessageBuilder`.
 
 ---
 
@@ -86,8 +87,8 @@ sequenceDiagram
     Note over Agent,Contact: OUTBOUND CALL
     Agent->>Agent: prepareOutboundOffer (SDP offer)
     Agent->>CW: POST /whatsapp_calls/initiate
+    CW->>CW: Voice::OutboundWhatsappCallBuilder
     CW->>Meta: POST /{phone_id}/calls action=connect
-    CW->>CW: Call.create! direction=outgoing
     Meta->>CW: Webhook connect (SDP answer)
     CW->>Cable: voice_call.outbound_connected
     Agent->>Agent: setRemoteDescription(answer)
@@ -117,11 +118,12 @@ flowchart LR
     end
 
     subgraph Outbound
-        L[Agent UI] --> M[useWhatsappCallSession]
+        L[Agent UI] --> M[useWebRtcCallSession via useWhatsappCallSession]
         M --> N[WhatsappCallsController#initiate]
-        N --> O[Meta POST /calls]
-        G --> P[outbound_connected / outbound_accepted]
-        P --> M
+        N --> O[OutboundWhatsappCallBuilder]
+        O --> P[Meta POST /calls]
+        G --> Q[outbound_connected / outbound_accepted]
+        Q --> M
     end
 ```
 
@@ -214,7 +216,7 @@ Rotas em `config/routes.rb` (condicionadas `ChatwootApp.enterprise?`):
 | `POST` | `/whatsapp_calls/:id/terminate` | Encerrar (agent hangup) |
 | `POST` | `/whatsapp_calls/:id/upload_recording` | Blob `recording` (multipart) |
 
-Controller: `enterprise/app/controllers/api/v1/accounts/whatsapp_calls_controller.rb`.
+Controller: `enterprise/app/controllers/api/v1/accounts/whatsapp_calls_controller.rb` (~119 linhas — delega outbound ao builder e permissão ao service).
 
 Respostas de permissão outbound (HTTP **422**):
 
@@ -304,15 +306,15 @@ Race handling no frontend:
 
 Erro Meta `138006` (`Voice::CallErrors::NO_CALL_PERMISSION_CODE`):
 
-1. Envia `call_permission_request` interativo
+1. `Whatsapp::CallPermissionRequestService` envia template `call_permission_request` (throttle 5 min)
 2. Grava `call_permission_request_message_id` na conversa
 3. HTTP 422 `{ status: 'permission_requested' | 'permission_pending' }`
 
 Quando contato aceita → webhook `call_permission_reply` → `Whatsapp::CallPermissionReplyService`:
 
-- Limpa flags na conversa
-- Activity message `permission_granted`
-- Broadcast `voice_call.permission_granted` — **sem handler registrado em `actionCable.js` hoje**
+- Limpa flags na conversa (aceite **e** rejeição)
+- Activity message `permission_granted` ou `permission_rejected`
+- Broadcast `voice_call.permission_granted` → toast no FE (`onVoiceCallPermissionGranted`)
 
 ### 6.4 Encerramento
 
@@ -363,9 +365,10 @@ Montagem global: `Dashboard.vue` renderiza `FloatingCallWidget` quando há call 
 
 | Módulo | Função |
 |--------|--------|
-| `useWhatsappCallSession.js` | WebRTC, recorder, race buffers, beacon terminate |
-| `useCallSession.js` | Orquestrador Twilio + WhatsApp; timer global; seed de calls após refresh |
-| `calls.js` (Pinia) | Estado calls; `teardownByProvider` |
+| `useWebRtcCallSession.js` | Core WebRTC: RTCPeerConnection, recorder, race buffers, beacon terminate — API injetável |
+| `useWhatsappCallSession.js` | Wrapper fino (~33 linhas) → `WhatsappCallsAPI` |
+| `useCallSession.js` | Orquestrador Twilio + WhatsApp + Wavoip; timer global; seed de calls após refresh |
+| `stores/calls.js` (Pinia) | Estado calls; `teardownByProvider`; usa `VOICE_CALL_PROVIDERS` |
 | `voice.js` | Sync `message.created` → store |
 
 API client: `api/channel/whatsapp/whatsappCallsAPI.js`
@@ -376,12 +379,12 @@ Registrados em `actionCable.js`:
 
 | Evento | Handler | Filtros |
 |--------|---------|---------|
-| `voice_call.incoming` | `onVoiceCallIncoming` | `provider === whatsapp`, agente `availability === online` |
-| `voice_call.outbound_connected` | `onVoiceCallOutboundConnected` | SDP answer |
+| `voice_call.incoming` | `onVoiceCallIncoming` | WhatsApp: `provider === whatsapp`, agente online; Wavoip: registry |
+| `voice_call.outbound_connected` | `onVoiceCallOutboundConnected` | SDP answer (WhatsApp only) |
 | `voice_call.outbound_accepted` | `onVoiceCallOutboundAccepted` | `armOutboundRecorder` + `setCallActive` |
-| `voice_call.ended` | `onVoiceCallEnded` | Teardown só se `isLocalWhatsappCall` |
-| `voice_call.accepted` | — | **Não registrado no FE** (inbound pickup confirmado server-side) |
-| `voice_call.permission_granted` | — | **Não registrado no FE** |
+| `voice_call.ended` | `onVoiceCallEnded` | Teardown só se `isLocalWhatsappCall` (WhatsApp) ou owner Wavoip |
+| `voice_call.accepted` | `onVoiceCallAccepted` | Descarta incoming em outros tabs quando outro agente aceita |
+| `voice_call.permission_granted` | `onVoiceCallPermissionGranted` | Toast — contato autorizou chamadas outbound |
 
 ### Detecção de provider
 
@@ -402,8 +405,8 @@ Comentário no código convida novos providers — sem registry formal.
 | Model `Call` | — | `enterprise/app/models/call.rb` |
 | Meta Calls API | Hook prepend (vazio OSS) | `enterprise/.../whatsapp_cloud_service.rb` |
 | Webhook call routing | Hook prepend | `enterprise/.../whatsapp_events_job.rb` |
-| Serviços call | — | `IncomingCallService`, `CallService`, `CallPermissionReplyService` |
-| Voice builders | — | `InboundCallBuilder`, `CallMessageBuilder`, `OutboundCallBuilder` |
+| Serviços call | — | `IncomingCallService`, `CallService`, `CallPermissionReplyService`, `CallPermissionRequestService` |
+| Voice builders | — | `InboundCallBuilder`, `CallMessageBuilder`, `OutboundCallBuilder`, `OutboundWhatsappCallBuilder` |
 | Controllers | — | `WhatsappCallsController`, extensão `InboxesController` |
 | Rotas `/whatsapp_calls` | — | Condicionadas `ChatwootApp.enterprise?` |
 | Message ↔ Call | — | `Enterprise::Message` (`has_one :call`) |
@@ -487,29 +490,27 @@ sessão/eventos antes da integração final com widget/store.
 
 ### Código
 
-- **`voice_call.permission_granted`** e **`voice_call.accepted`** sem handlers FE
 - **`Call.transcript`** existe no model — sem pipeline WhatsApp
-- **TURN** não default — só STUN (`VOICE_CALL_STUN_URLS`); NAT corporativo pode falhar
+- **TURN** não default — STUN via `GlobalConfigService.load('VOICE_CALL_STUN_URLS')`; NAT corporativo pode falhar sem TURN
 - **`disable_voice_calling!`** não desliga calling na Meta (`calling.status` permanece `ENABLED`)
 - Locks Redis + `call.with_lock` para races webhook/agente
-- **`useWhatsappCallSession.js` (~456 linhas)** — WebRTC + recorder + API + beacon num módulo
-- **`useCallSession.js` (~320 linhas)** — branching `isWhatsappCall` sem registry formal
-- **Outbound WhatsApp** sem `OutboundCallBuilder` (lógica no controller)
-- **Permissão outbound** (~70 linhas) em `WhatsappCallsController#render_permission_request`
+- **`useWebRtcCallSession.js` (~480 linhas)** — WebRTC + recorder + API + beacon num módulo (extraído de `useWhatsappCallSession`)
+- **`useCallSession.js` (~365 linhas)** — branching por provider; Wavoip usa registry parcial
 - **Sem testes FE** para race buffers (`pendingOutboundAnswers`), beacon terminate, fluxo 422 permission
 - **Model `Call`** mistura meta Twilio (`conference_sid`) e WhatsApp (`sdp_*` em `meta` jsonb)
+- **Post-refresh widget seeding** — `FloatingCallWidget` só monta quando store já tem call; ringing em messages hidratadas pode não seedar (edge case documentado)
 
 ### Scorecard vs rules do projeto
 
 | Rule (`architecture.mdc` / `chatwoot-core.mdc`) | Status |
 |-------------------------------------------------|--------|
-| Controllers finos → services | **OK** (permissão outbound é exceção) |
+| Controllers finos → services | **OK** — outbound e permissão extraídos (jun. 2026) |
 | Uma ação por service | **OK** |
 | HTTP só na camada provider | **OK** |
-| Vue: lógica em composables | **OK**, mas composable WhatsApp grande |
+| Vue: lógica em composables | **OK** — `useWebRtcCallSession` extraído; wrapper WhatsApp fino |
 | `components-next/` para UI | **OK** |
-| Evitar god class | **Backend OK**; **FE em risco** |
-| Evitar shotgun surgery | **Presente** em `useCallSession` + `actionCable.js` |
+| Evitar god class | **Backend OK**; **FE** — core WebRTC ainda concentrado em `useWebRtcCallSession` |
+| Evitar shotgun surgery | **Parcial** — Wavoip registry; WhatsApp ainda inline em `actionCable.js` |
 | Fork: EE + `custom/` | **OK** — sem FORK em voz upstream (exceto `Conversations::Resolver` no builder) |
 
 ### Relação com providers alternativos
@@ -547,30 +548,17 @@ O prepend de `WhatsappCloudService` delega ao adapter (ou o channel expõe `what
 
 **Contrato sugerido:** `Voice::Provider::WhatsappCalling::Base` — ver [second-provider-strategy.md](./second-provider-strategy.md).
 
-#### B. `Voice::OutboundWhatsappCallBuilder`
+#### B. `Voice::OutboundWhatsappCallBuilder` ✅ **Implementado**
 
-Espelhar `Voice::OutboundCallBuilder` (Twilio), mas com SDP do browser:
+`enterprise/app/services/voice/outbound_whatsapp_call_builder.rb` — Meta `initiate_call` → `Call.create!` → `CallMessageBuilder` em transaction.
 
-```ruby
-# enterprise/app/services/voice/outbound_whatsapp_call_builder.rb
-class Voice::OutboundWhatsappCallBuilder
-  def self.perform!(conversation:, agent:, sdp_offer:)
-    # provider_service.initiate_call → Call.create! → CallMessageBuilder → message_id
-  end
-end
-```
+`WhatsappCallsController#initiate`: authorize → builder → render.
 
-`WhatsappCallsController#initiate` fica: authorize → builder → render.
+#### C. `Whatsapp::CallPermissionRequestService` ✅ **Implementado**
 
-#### C. `Whatsapp::CallPermissionRequestService`
+`enterprise/app/services/whatsapp/call_permission_request_service.rb` — throttle 5 min, `conversation.with_lock`, template, activity, WAMID.
 
-Mover de `WhatsappCallsController#render_permission_request`:
-
-- throttle 5 min
-- `conversation.with_lock`
-- `send_call_permission_request` + activity message + `additional_attributes`
-
-Controller: `rescue_from NoCallPermission` → `service.perform!` → render 422.
+Controller: `rescue_from NoCallPermission` → `handle_no_call_permission` → service → render 422.
 
 #### D. `IncomingCallService` (opcional P3)
 
@@ -580,12 +568,12 @@ Controller: `rescue_from NoCallPermission` → `service.perform!` → render 422
 
 ### 13.2 Frontend
 
-#### A. `useWebRtcCallSession(callsAPI)` (P0)
+#### A. `useWebRtcCallSession(callsAPI)` ✅ **Implementado**
 
 ```
 app/javascript/dashboard/composables/useWebRtcCallSession.js   # RTCPeerConnection, recorder, race buffers — API injetável
-app/javascript/dashboard/composables/useWhatsappCallSession.js # thin wrapper → WhatsappCallsAPI
-custom/.../useWavoipCallSession.js                           # thin wrapper → WavoipCallsAPI (fork)
+app/javascript/dashboard/composables/useWhatsappCallSession.js # thin wrapper (~33 linhas) → WhatsappCallsAPI
+custom/.../useWavoipCallSession.js                           # thin wrapper → Wavoip SDK (fork)
 ```
 
 Interface mínima do `callsAPI`:
@@ -625,11 +613,10 @@ onVoiceCallIncoming = data => {
 };
 ```
 
-#### D. Handler `voice_call.permission_granted` (P2)
+#### D. Handler `voice_call.permission_granted` + `voice_call.accepted` ✅ **Implementado**
 
-- Registrar em `actionCable.js`
-- Toast/banner: "Contato autorizou chamadas — pode ligar novamente"
-- Opcional: limpar estado `permission_pending` na conversa ativa
+- `onVoiceCallPermissionGranted` — toast via `useAlert` + i18n `VOICE_WIDGET.PERMISSION_GRANTED`
+- `onVoiceCallAccepted` — descarta incoming em outros tabs quando outro agente aceita (multi-tab sync)
 
 #### E. Testes Vitest (P2)
 
@@ -686,15 +673,15 @@ Referências: [Meta Calling docs](https://developers.facebook.com/docs/whatsapp/
 | `Whatsapp::IncomingCallService` | Webhooks connect/terminate/status | Handlers opcionais (§13.1.D) |
 | `Whatsapp::CallService` | accept / reject / terminate (agente) | Injetar adapter |
 | `Whatsapp::CallPermissionReplyService` | Opt-in outbound (reply webhook) | — |
-| `Whatsapp::CallPermissionRequestService` | — | **Extrair** do controller (§13.1.C) |
+| `Whatsapp::CallPermissionRequestService` | Opt-in outbound (138006) | ✅ Implementado |
 | `Voice::InboundCallBuilder` | Contact/Conversation/Call/Message inbound | Reuso Wavoip ✅ |
 | `Voice::OutboundCallBuilder` | Outbound Twilio | — |
-| `Voice::OutboundWhatsappCallBuilder` | — | **Criar** (§13.1.B) |
+| `Voice::OutboundWhatsappCallBuilder` | Outbound WhatsApp com SDP browser | ✅ Implementado |
 | `Voice::CallMessageBuilder` | Bolha voice_call | — |
-| `Voice::Provider::MetaCloud::Adapter` | — | **Criar** (§13.1.A) |
+| `Voice::Provider::MetaCloud::Adapter` | — | **Pendente** (§13.1.A) |
 | `Channel::Whatsapp` | `voice_enabled?`, enable/disable | `whatsapp_calling_adapter` dispatch |
 | `Enterprise::Whatsapp::Providers::WhatsappCloudService` | Graph API calls | Delegar ao adapter |
-| `Api::V1::Accounts::WhatsappCallsController` | REST | Afinar com builders/services |
-| `useWebRtcCallSession` | — | **Extrair** do WhatsApp session (§13.2.A) |
-| `useWhatsappCallSession` | WebRTC browser (wrapper) | Thin após extração |
-| `useCallSession` | Orquestrador Twilio + WhatsApp | Registry (§13.2.B) |
+| `Api::V1::Accounts::WhatsappCallsController` | REST | Fino — delega builder/services |
+| `useWebRtcCallSession` | Core WebRTC browser | ✅ Implementado |
+| `useWhatsappCallSession` | Wrapper WhatsApp | ✅ Thin wrapper |
+| `useCallSession` | Orquestrador multi-provider | Registry parcial (Wavoip) |
