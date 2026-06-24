@@ -11,6 +11,29 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: { device_token: channel.device_token }
   end
 
+  def wavoip_device_status
+    authorize @inbox, :show?
+    channel = @inbox.channel
+    return head :not_found unless channel.is_a?(Channel::Wavoip)
+
+    force = ActiveModel::Type::Boolean.new.cast(params[:force])
+    payload = Wavoip::DeviceStatusService.new(channel: channel).connection_payload(force: force)
+    @inbox.update_account_cache if payload[:live]
+    render json: payload
+  end
+
+  def wavoip_logout
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless channel.is_a?(Channel::Wavoip)
+
+    Wavoip::DeviceStatusService.new(channel: channel).logout!
+    @inbox.update_account_cache
+    render json: Wavoip::DeviceStatusService.new(channel: channel.reload).connection_payload(force: true)
+  rescue Wavoip::DeviceStatusService::ApiError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def regenerate_wavoip_webhook_key
     authorize @inbox, :regenerate_wavoip_webhook_key?
     channel = @inbox.channel

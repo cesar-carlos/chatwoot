@@ -829,6 +829,7 @@
         "LOGOUT_CONFIRM": "Desconectar o WhatsApp deste dispositivo? Será necessário parear novamente.",
         "LINKED_PHONE": "Número vinculado",
         "RECONNECT": "Reconectar (escanear QR)",
+        "STATUS_STALE": "Não foi possível verificar com a Wavoip agora — o status abaixo pode estar desatualizado. Use Reconectar para escanear o QR code.",
         "SERVICE_UNAVAILABLE": "O serviço do dispositivo Wavoip está temporariamente indisponível. Aguarde alguns minutos e tente novamente, ou verifique o dispositivo no painel Wavoip.",
         "ACTION_FAILED": "Não foi possível concluir esta ação no dispositivo. Tente novamente ou use Copiar diagnóstico para suporte."
       },
@@ -969,7 +970,8 @@
         "PROXY_SECTION": "Proxy",
         "GROUPS_IGNORE": {
           "LABEL": "Ignorar grupos",
-          "DESCRIPTION": "Não processar mensagens de grupo ({'@'}g.us) no socket Baileys."
+          "DESCRIPTION": "Não processar mensagens de grupo ({'@'}g.us) no socket Baileys.",
+          "EXPERIMENTAL_WARNING": "O suporte a grupos é experimental: uma conversa por grupo, nomes dos participantes são prefixados no texto da mensagem, e alguns recursos (templates, chamadas) podem não funcionar em grupos."
         },
         "REJECT_CALL": {
           "LABEL": "Rejeitar chamadas",
@@ -1004,7 +1006,7 @@
         },
         "IGNORE_STATUS_BROADCAST": {
           "LABEL": "Ignorar status do WhatsApp",
-          "DESCRIPTION": "Não importar atualizações de status (status@broadcast)."
+          "DESCRIPTION": "Não importar atualizações de status (status{'@'}broadcast)."
         },
         "SIGN_MSG": {
           "LABEL": "Assinar mensagens com nome do agente",

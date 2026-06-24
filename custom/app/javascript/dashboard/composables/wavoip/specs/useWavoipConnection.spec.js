@@ -33,13 +33,29 @@ vi.mock('customDashboard/lib/wavoip/wavoipDeviceStatus', () => ({
   clearWavoipDeviceStatus: (...args) => clearWavoipDeviceStatus(...args),
 }));
 
+vi.mock('customDashboard/lib/wavoip/wavoipDiagnosticsCollector', () => ({
+  recordConnectivityIssue: vi.fn(),
+}));
+
 vi.mock('vuex', () => ({
   useStore: () => ({
     getters: {
       'inboxes/getInboxes': [
-        { id: 21, channel_type: INBOX_TYPES.WAVOIP },
+        {
+          id: 21,
+          channel_type: INBOX_TYPES.WAVOIP,
+          current_user_inbox_member: true,
+          provider_config: { device_status: 'open' },
+        },
         { id: 22, channel_type: 'Channel::Whatsapp' },
+        {
+          id: 23,
+          channel_type: INBOX_TYPES.WAVOIP,
+          current_user_inbox_member: true,
+          provider_config: { device_status: 'close' },
+        },
       ],
+      getCurrentRole: 'agent',
     },
   }),
 }));
@@ -105,7 +121,7 @@ describe('useWavoipConnection', () => {
     expect(connectWavoipInbox).not.toHaveBeenCalled();
   });
 
-  it('syncs connections for assigned Wavoip inboxes when online', async () => {
+  it('syncs connections only for open Wavoip inboxes when online', async () => {
     const client = createOpenDeviceClient();
     getWavoipSdkBootstrap.mockResolvedValue({
       data: { device_token: 'token-sync' },
@@ -118,6 +134,7 @@ describe('useWavoipConnection', () => {
 
     expect(connectWavoipInbox).toHaveBeenCalledWith(21, 'token-sync');
     expect(connectWavoipInbox).not.toHaveBeenCalledWith(22, expect.anything());
+    expect(connectWavoipInbox).not.toHaveBeenCalledWith(23, expect.anything());
   });
 
   it('tears down clients when availability is offline', async () => {

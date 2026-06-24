@@ -10,6 +10,8 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   before_action :check_authorization, except: %i[
     show
     wavoip_sdk_bootstrap
+    wavoip_device_status
+    wavoip_logout
     regenerate_wavoip_webhook_key
     test_wavoip_webhook
     evolution_connection

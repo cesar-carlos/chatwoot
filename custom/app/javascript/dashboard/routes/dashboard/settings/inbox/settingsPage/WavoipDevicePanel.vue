@@ -3,8 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useStore } from 'dashboard/composables/store';
+import InboxesAPI from 'dashboard/api/inboxes';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
-import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { getWavoipClient } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { getPrimaryDevice } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import { exportWavoipDiagnostics } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
@@ -35,6 +35,7 @@ const isRestarting = ref(false);
 const isLoggingOut = ref(false);
 const isQrModalOpen = ref(false);
 const qrModalFetchFresh = ref(false);
+const statusVerifiedLive = ref(false);
 let pollTimer = null;
 
 const whatsAppStatus = computed(
@@ -47,32 +48,14 @@ const linkedPhone = computed(() =>
   isConnected.value ? props.inbox.phone_number || '' : ''
 );
 
-const connectionStatus = computed(() => {
-  const entry = getWavoipDeviceStatus(inboxId.value);
-  return entry.connectionStatus.value;
-});
-
-const isRestricted = computed(() => {
-  const entry = getWavoipDeviceStatus(inboxId.value);
-  return entry.isRestricted.value;
-});
-
-const restrictedUntil = computed(() => {
-  const entry = getWavoipDeviceStatus(inboxId.value);
-  return entry.restrictedUntil.value;
-});
-
 const statusLabel = computed(() => {
   const key = (whatsAppStatus.value || 'unknown').toUpperCase();
   return t(`INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.${key}`, key);
 });
 
-const connectionLabel = computed(() => {
-  const key = (connectionStatus.value || 'unknown').toUpperCase();
-  return t(`INBOX_MGMT.WAVOIP_CALL.CONNECTION_STATUS.${key}`, key);
-});
-
-const showConnectionStatus = computed(() => Boolean(connectionStatus.value));
+const showStaleStatusHint = computed(
+  () => !isLoading.value && !statusVerifiedLive.value
+);
 
 const isBusy = computed(
   () => isWaking.value || isRestarting.value || isLoggingOut.value
@@ -85,7 +68,16 @@ function stopPolling() {
   }
 }
 
-async function refreshConnection() {
+async function refreshConnection({ forceLiveCheck = false } = {}) {
+  try {
+    const { data } = await InboxesAPI.getWavoipDeviceStatus(inboxId.value, {
+      force: forceLiveCheck,
+    });
+    statusVerifiedLive.value = data?.live === true;
+  } catch {
+    statusVerifiedLive.value = false;
+  }
+
   try {
     await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
   } catch {
@@ -98,7 +90,10 @@ async function refreshConnection() {
 function startPolling() {
   if (isQrModalOpen.value) return;
   stopPolling();
-  pollTimer = setInterval(refreshConnection, POLL_MS);
+  pollTimer = setInterval(
+    () => refreshConnection({ forceLiveCheck: true }),
+    POLL_MS
+  );
 }
 
 function openQrModal({ fresh = false } = {}) {
@@ -123,7 +118,7 @@ async function onQrConnected() {
 watch(inboxId, () => {
   stopPolling();
   isLoading.value = true;
-  refreshConnection().then(() => {
+  refreshConnection({ forceLiveCheck: true }).then(() => {
     if (!isConnected.value && !isQrModalOpen.value) {
       startPolling();
     }
@@ -192,6 +187,11 @@ const handleRestart = async () => {
 };
 
 const handleLogout = async () => {
+  if (!isConnected.value) {
+    openQrModal({ fresh: true });
+    return;
+  }
+
   /* eslint-disable no-alert -- native confirm matches Evolution health actions */
   if (
     !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM'))
@@ -202,16 +202,11 @@ const handleLogout = async () => {
 
   isLoggingOut.value = true;
   try {
-    await connectInbox(inboxId.value);
-    const device = getPrimaryDevice(getWavoipClient(inboxId.value));
-    if (device?.logout) {
-      await device.logout();
-    }
-    await refreshConnection();
+    await InboxesAPI.postWavoipLogout(inboxId.value);
+    await refreshConnection({ forceLiveCheck: true });
     openQrModal({ fresh: true });
   } catch (error) {
     showDeviceActionError(error);
-    await releaseDeviceConnection();
   } finally {
     isLoggingOut.value = false;
   }
@@ -224,7 +219,7 @@ const copyDiagnostics = async () => {
 };
 
 onMounted(() => {
-  refreshConnection();
+  refreshConnection({ forceLiveCheck: true });
   startPolling();
 });
 
@@ -259,15 +254,8 @@ onBeforeUnmount(() => {
           </span>
           <span class="font-medium">{{ linkedPhone }}</span>
         </div>
-        <div v-if="showConnectionStatus">
-          <span class="text-n-slate-11">
-            {{ $t('INBOX_MGMT.WAVOIP_CALL.CONNECTION_STATUS.LABEL') }}:
-          </span>
-          <span class="font-medium">{{ connectionLabel }}</span>
-        </div>
-        <p v-if="isRestricted" class="text-n-ruby-11">
-          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED') }}
-          <span v-if="restrictedUntil">({{ restrictedUntil }})</span>
+        <p v-if="showStaleStatusHint" class="text-n-amber-11">
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.STATUS_STALE') }}
         </p>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
@@ -297,6 +285,7 @@ onBeforeUnmount(() => {
           @click="handleRestart"
         />
         <NextButton
+          v-if="isConnected"
           sm
           faded
           slate
