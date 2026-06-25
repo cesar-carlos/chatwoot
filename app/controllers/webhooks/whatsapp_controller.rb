@@ -38,7 +38,12 @@ class Webhooks::WhatsappController < ActionController::API
     return false unless whatsapp_channel.provider == 'whatsapp_cloud'
     return true if channel_meta_app_secrets(whatsapp_channel).present?
 
-    whatsapp_channel.provider_config['source'] == 'embedded_signup'
+    # For embedded_signup channels, only enforce HMAC verification when
+    # WHATSAPP_APP_SECRET is actually configured. Self-hosted instances using
+    # third-party embedded-signup providers (e.g. NotificaMe) do not have
+    # access to the Meta App Secret, so verification must be opt-in.
+    whatsapp_channel.provider_config['source'] == 'embedded_signup' &&
+      GlobalConfigService.load('WHATSAPP_APP_SECRET', nil).present?
   end
 
   def whatsapp_business_payload_channel
