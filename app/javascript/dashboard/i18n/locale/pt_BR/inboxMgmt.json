@@ -1155,6 +1155,16 @@
           "SANDBOX": "Sandbox",
           "LIVE": "Em tempo real"
         }
+      },
+      "WEBHOOK": {
+        "TITLE": "Configuração do Webhook",
+        "DESCRIPTION": "O URL do Webhook é necessário na sua conta do WhatsApp Business para receber mensagens dos clientes",
+        "ACTION_REQUIRED": "Webhook não configurado",
+        "REGISTER_BUTTON": "Registrar Webhook",
+        "REGISTER_SUCCESS": "Webhook registrado com sucesso",
+        "REGISTER_ERROR": "Falha ao registrar o webhook. Por favor, tente novamente.",
+        "CONFIGURED_SUCCESS": "Webhook configurado com sucesso",
+        "URL_MISMATCH": "URL do Webhook não corresponde"
       }
     },
     "SETTINGS": "Configurações",
