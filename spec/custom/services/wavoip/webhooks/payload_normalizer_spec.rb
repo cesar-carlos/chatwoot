@@ -155,5 +155,26 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
         expect(event.peer_name).to eq('Peer Name')
       end
     end
+
+    it 'leaves direction nil and logs on CREATE when direction is missing' do
+      payload = {
+        'type' => 'CALL',
+        'action' => 'CREATE',
+        'whatsapp_call_id' => 'missing_direction_001',
+        'status' => 'INCOMING_RING',
+        'peer' => { 'phone' => '+5511888888888' }
+      }
+
+      expect(Rails.logger).to receive(:warn).with(
+        '[WAVOIP] CALL CREATE missing direction call_id=missing_direction_001'
+      )
+
+      event = normalize(payload)
+
+      aggregate_failures do
+        expect(event.direction).to be_nil
+        expect(event.from_phone).to eq('+5511888888888')
+      end
+    end
   end
 end

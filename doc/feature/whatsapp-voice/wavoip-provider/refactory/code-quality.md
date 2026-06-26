@@ -240,6 +240,7 @@ end
 
 > **Status (26 jun. 2026):** ✅ Implementado — `OnlineStatusTracker.get_users_with_status`
 > faz `hmget` apenas para `recipients_base_scope.ids` (após interseção com presença).
+> Presença verificada por `zscore` nos candidatos (não carrega ZSET inteiro da conta).
 > Usado em `online_member_users` e `busy_agents`.
 
 **Categoria:** Performance  

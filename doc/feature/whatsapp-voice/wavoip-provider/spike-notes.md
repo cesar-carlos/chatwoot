@@ -195,6 +195,12 @@ Fases A–E do plano de conclusão aplicadas:
 
 Fixture (simulated, prior run): [fixtures/call_create_outbound_live_e2e.json](./fixtures/call_create_outbound_live_e2e.json)
 
+### Escalação (`escalated: true`)
+
+`broadcast_escalated_ring` envia `voice_call.incoming` com `escalated: true` no payload. O frontend
+não consome esse flag; após dismiss local (`isCallDismissed`), re-rings de escalação são ignorados
+no cable handler (`voiceCallCableRegistry.onIncoming`).
+
 ---
 
 ## Re-spike automatizado (Jun 2026)

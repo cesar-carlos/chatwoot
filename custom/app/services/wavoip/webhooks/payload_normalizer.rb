@@ -132,7 +132,18 @@ class Wavoip::Webhooks::PayloadNormalizer
     case value.to_s.upcase
     when 'INCOMING' then :incoming
     when 'OUTGOING', 'OUTCOMING' then :outgoing
+    else
+      log_unknown_direction if value.blank? && webhook_action == :create
+      nil
     end
+  end
+
+  def log_unknown_direction
+    return if Rails.env.production?
+
+    Rails.logger.warn(
+      "[WAVOIP] CALL CREATE missing direction call_id=#{external_call_id_from_payload}"
+    )
   end
 
   def map_call_type(value)

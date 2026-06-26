@@ -7,7 +7,10 @@ esperados em produção não são tratados corretamente.
 
 ## GAP-01 · `offline_fallback: 'none'` não bloqueia a escalação por timeout
 
-**Severidade:** Alta  
+> **Status (26 jun. 2026):** Corrigido — `escalated_users` retorna `User.none` quando
+> `incoming_call_offline_fallback == 'none'` (`incoming_call_recipients.rb`).
+
+**Severidade:** Alta (histórico)  
 **Arquivos:**
 - `custom/app/services/wavoip/calls/incoming_call_recipients.rb`
 - `custom/app/services/wavoip/calls/broadcaster.rb`

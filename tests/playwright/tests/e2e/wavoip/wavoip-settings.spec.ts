@@ -3,17 +3,17 @@ import { Login } from '@components/ui';
 import { accountIdFromUrl } from '@utils/auth';
 
 const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@chatwoot.com';
-const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'Password123@#';
+const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '';
 const WAVOIP_INBOX_ID = process.env.WAVOIP_INBOX_ID || '';
 
 test.describe('Wavoip inbox settings', () => {
   test.describe.configure({ timeout: 120_000 });
 
   test.beforeEach(() => {
-    // eslint-disable-next-line playwright/no-skipped-test -- requires WAVOIP_INBOX_ID
+    // eslint-disable-next-line playwright/no-skipped-test -- requires WAVOIP_INBOX_ID and credentials
     test.skip(
-      !WAVOIP_INBOX_ID,
-      'Set WAVOIP_INBOX_ID in tests/playwright/.env'
+      !WAVOIP_INBOX_ID || !TEST_PASSWORD,
+      'Set WAVOIP_INBOX_ID and TEST_USER_PASSWORD in tests/playwright/.env'
     );
   });
 

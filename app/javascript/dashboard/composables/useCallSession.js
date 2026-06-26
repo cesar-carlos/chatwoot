@@ -32,6 +32,8 @@ const isWavoipCall = call => call?.provider === VOICE_CALL_PROVIDERS.WAVOIP;
 // Dismissed call sids must not be re-seeded by the conversation-load watcher.
 // Lives at module scope so all consumers share the same set.
 const dismissedCallSids = new Set();
+export const isCallDismissed = callSid =>
+  callSid ? dismissedCallSids.has(callSid) : false;
 const markDismissed = callSid => {
   if (callSid) dismissedCallSids.add(callSid);
 };

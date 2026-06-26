@@ -114,6 +114,15 @@ Ver roteamento completo: [inbox-setup.md §3.6](./inbox-setup.md#36-seção--rot
 
 Ver logs: `Wavoip::ProcessWebhookJob` (sem payload em produção). Nginx: `grep webhooks/wavoip` (ver seção acima).
 
+### Segurança do webhook
+
+| Item | Detalhe |
+|------|---------|
+| Autenticação | Chave opaca em `channel_wavoip.webhook_key` no path (`/webhooks/wavoip/{key}`) — sem HMAC de body no MVP |
+| Risco | URL completa vazada (logs, Referer, painel Wavoip) permite forjar POSTs até rotação da key |
+| Mitigação | Rate limit ~120 POST/min por key (`rack_attack`); rotacionar key em Settings → Chamadas após incidente |
+| Resposta | HTTP 202 imediato; processamento assíncrono via Sidekiq |
+
 ### Áudio mudo / ICE falhou
 
 | `connectivityIssue` | Ação |

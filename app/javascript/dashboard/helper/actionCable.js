@@ -17,7 +17,7 @@ import { useAlert } from 'dashboard/composables';
 import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 // FORK: Wavoip voice cable handlers (no SDP)
 import { createWavoipVoiceCableHandlers } from 'customDashboard/lib/voice/voiceCallCableRegistry';
-import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
+import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 // FORK: Evolution disconnect alert
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -296,16 +296,20 @@ class ActionCableConnector extends BaseActionCableConnector {
   onVoiceCallIncoming = data => {
     if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
       const availability = this.app.$store.getters.getCurrentUserAvailability;
-      if (availability !== 'online') return;
       const inbox = this.app.$store.getters['inboxes/getInbox']?.(
         data.inbox_id
       );
       const isAdministrator =
         this.app.$store.getters.getCurrentRole === 'administrator';
-      if (inbox && !shouldAgentReceiveWavoipCalls(inbox, { isAdministrator })) {
+      if (
+        !shouldReceiveWavoipInboundRing({
+          inbox,
+          isAdministrator,
+          availability,
+        })
+      ) {
         return;
       }
-      if (inbox?.inbound_calls_enabled === false) return;
       this.wavoipVoiceCableHandlers().onIncoming?.(data);
       return;
     }
