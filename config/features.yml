@@ -1,4 +1,6 @@
 # DO NOT change the order of features EVER
+# Maximum catalog size: 64 entries (accounts.feature_flags is a signed 64-bit bitmask).
+# Runbook: doc/feature/enterprise-enablement/feature-flags-runbook.md
 ############################################
 # name:               the name to be used internally in the code
 # display_name:       the name to be used in the UI

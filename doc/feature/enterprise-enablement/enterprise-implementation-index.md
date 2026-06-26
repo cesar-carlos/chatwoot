@@ -3,6 +3,12 @@
 **Data:** 2026-02-25  
 **Status:** ✅ COMPLETO
 
+## Feature flags
+
+- Runbook operacional: [`feature-flags-runbook.md`](feature-flags-runbook.md)
+- Limite de catálogo: 64 features (`config/features.yml`)
+- Armazenamento escalável: `accounts.enabled_features_data` via `Accounts::FeatureStore`
+
 ## 📁 Arquivos Modificados
 
 ### 1. Controller Enterprise (1 arquivo)
