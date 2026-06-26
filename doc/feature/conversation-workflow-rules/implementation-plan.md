@@ -61,18 +61,25 @@ Evoluir Fluxos de Conversa de config global para **regras multi-inbox** com dois
 
 ```mermaid
 flowchart TB
-  UI["Fluxos de Conversa"] --> API["CRUD rules"]
+  UI1["Regras de conversa\n(/settings/conversation-rules)"] --> API["CRUD rules"]
+  UI2["Fluxo de Conversa (legacy)\n(/settings/conversation-workflow)"] --> MIGRATE["POST migrate_legacy"]
   API --> DB[(conversation_workflow_rules)]
-  CRON["TriggerScheduledItemsJob"] --> SCH["ConversationWorkflow::SchedulerJob"]
-  SCH --> LEGACY{workflow_rules_migrated_at?}
+  CRON["TriggerScheduledItemsJob (*/5 * * * *)"] --> SCH["Custom::ConversationWorkflow::SchedulerJob"]
+  MSG["Message after_create_commit"] --> SMS["ScheduleOnMessageScheduler\n(Redis, dedup por epoch)"]
+  SMS --> SMJOB["ScheduleOnMessageJob (delayed)"]
+  SCH --> AP["AccountProcessor\n(feature flag gate)"]
+  SMJOB --> EXEC
+  AP --> LEGACY{workflow_rules_migrated?}
   LEGACY -->|sim| SKIP[Skip ResolutionJob]
   LEGACY -->|não| OLD[ResolutionJob legacy]
-  SCH --> EXEC["RuleExecutor"]
-  EXEC --> SCOPE["InactivityScope | AgentNoReplyScope"]
-  SCOPE --> COND["ConditionsFilterService"]
-  COND --> DEDUP["executions dedup"]
-  DEDUP --> ACT["ConversationWorkflow::ActionService"]
-  ACT --> RES["ResolveService Fase 4"]
+  AP --> EXEC["RuleExecutor"]
+  EXEC --> SCOPE["6 Scopes (SQL pre-filter)"]
+  SCOPE --> MATCH["ScopeMatcher + ThresholdMatcher\n(+ BusinessHoursElapsedCalculator)"]
+  MATCH --> COND["ConditionsFilter → ConditionsFilterService"]
+  COND --> DEDUP["claim_execution! (RecordNotUnique)"]
+  DEDUP --> ACT["ActionService < AutomationRules::ActionService"]
+  ACT --> RES["Custom::Conversations::ResolveService\n(skip_required_attributes)"]
+  DEDUP --> DISP["AutomationEventDispatcher\n(eventos sintéticos)"]
 ```
 
 ---
@@ -134,45 +141,85 @@ CREATE INDEX idx_conv_workflow_inactivity
 
 | Arquivo | Responsabilidade |
 |---------|------------------|
-| `models/custom/conversation_workflow_rule.rb` | Validações, enums |
-| `models/custom/conversation_workflow_rule_execution.rb` | Dedup |
-| `services/custom/conversation_workflow/action_service.rb` | **Wrapper** ActionService |
-| `services/custom/conversation_workflow/scopes/inactivity_scope.rb` | |
-| `services/custom/conversation_workflow/scopes/agent_no_reply_scope.rb` | |
-| `services/custom/conversation_workflow/rule_executor.rb` | Orquestração |
-| `services/custom/conversation_workflow/conditions_filter.rb` | Delega ConditionsFilterService |
-| `jobs/custom/conversation_workflow/scheduler_job.rb` | |
-| `controllers/.../conversation_workflow_rules_controller.rb` | CRUD |
-| `policies/.../conversation_workflow_rule_policy.rb` | administrator |
+| `custom/app/models/conversation_workflow_rule.rb` | Validações, 6 enums trigger_type, whitelist de ações/condições |
+| `custom/app/models/conversation_workflow_rule_execution.rb` | Dedup — `record!` com índices parciais únicos |
+| `custom/app/models/custom/account.rb` | `has_many :conversation_workflow_rules`, `workflow_rules_migrated?` |
+| `custom/app/models/custom/message.rb` | Hook `after_create_commit` → `WorkflowRulesScheduler` |
+| `custom/app/models/custom/message/workflow_rules_scheduler.rb` | Fan-out incoming/outgoing para `ScheduleOnMessageScheduler` |
+| `custom/app/services/custom/conversation_workflow/account_processor.rb` | Itera regras ativas da conta com gate de feature flag |
+| `custom/app/services/custom/conversation_workflow/rule_executor.rb` | Orquestração: scope → match → claim → pipeline → audit → events |
+| `custom/app/services/custom/conversation_workflow/action_service.rb` | Subclass de `AutomationRules::ActionService`; webhook prefix `workflow_rule.*` |
+| `custom/app/services/custom/conversation_workflow/scope_matcher.rb` | Elegibilidade por conversa pós-SQL (status, waiting_since, inbox_ids, etc.) |
+| `custom/app/services/custom/conversation_workflow/threshold_matcher.rb` | Checagem de duration (calendar ou business hours) |
+| `custom/app/services/custom/conversation_workflow/reference_timestamp.rb` | Timestamp de referência e atributos de dedup por trigger type |
+| `custom/app/services/custom/conversation_workflow/conditions_filter.rb` | Wrapper de `AutomationRules::ConditionsFilterService` |
+| `custom/app/services/custom/conversation_workflow/conditions_rule_adapter.rb` | Duck-typing de regra como AutomationRule para filtro de condições |
+| `custom/app/services/custom/conversation_workflow/template_message_sender.rb` | Envia template via `MessageTemplates::Template::AutoResolve` |
+| `custom/app/services/custom/conversation_workflow/migrate_legacy_service.rb` | Migração one-shot de `auto_resolve_*` → regra inatividade |
+| `custom/app/services/custom/conversation_workflow/preview_count_service.rb` | `POST preview_count` — contagem de elegíveis sem salvar regra |
+| `custom/app/services/custom/conversation_workflow/automation_event_dispatcher.rb` | Dispara eventos sintéticos para `AutomationRule`s na Automação |
+| `custom/app/services/custom/conversation_workflow/business_hours_elapsed_calculator.rb` | Minutos úteis entre dois timestamps via `inbox.working_hours` |
+| `custom/app/services/custom/conversation_workflow/schedule_on_message_scheduler.rb` | Agendamento Redis per-message com dedup por epoch de referência |
+| `custom/app/services/custom/conversation_workflow/scopes/inactivity_scope.rb` | Open; cutoff em `last_activity_at` |
+| `custom/app/services/custom/conversation_workflow/scopes/agent_no_reply_scope.rb` | `waiting_since` não nulo; statuses configuráveis |
+| `custom/app/services/custom/conversation_workflow/scopes/first_response_overdue_scope.rb` | `first_reply_created_at IS NULL`; tem `waiting_since` |
+| `custom/app/services/custom/conversation_workflow/scopes/unassigned_too_long_scope.rb` | Open, sem assignee; cutoff em `created_at` |
+| `custom/app/services/custom/conversation_workflow/scopes/pending_stale_scope.rb` | Pending; cutoff em `last_activity_at` |
+| `custom/app/services/custom/conversation_workflow/scopes/customer_no_reply_scope.rb` | Última mensagem outgoing; subquery de idade da msg |
+| `custom/app/services/custom/conversations/resolve_service.rb` | Resolve com `skip_required_attributes: true` para sistema |
+| `custom/app/jobs/custom/conversation_workflow/scheduler_job.rb` | Cron job (`scheduled_jobs`) → `AccountProcessor` |
+| `custom/app/jobs/custom/conversation_workflow/schedule_on_message_job.rb` | Job por mensagem com delay; limpa chave Redis no `ensure` |
+| `custom/app/controllers/api/v1/accounts/conversation_workflow_rules_controller.rb` | CRUD + `reorder`, `migrate_legacy`, `preview_count` |
+| `custom/app/policies/conversation_workflow_rule_policy.rb` | Todas as ações requerem `administrator` |
+| `lib/tasks/conversation_workflow.rake` | `conversation_workflow:migrate_legacy` |
 
-### `ConversationWorkflow::ActionService` (obrigatório)
+### `Custom::ConversationWorkflow::ActionService` (obrigatório)
 
 ```ruby
-class ConversationWorkflow::ActionService < ActionService
-  def initialize(rule, account, conversation)
-    super(conversation)
-    @rule = rule
-    @account = account
-    Current.executed_by = rule
+class Custom::ConversationWorkflow::ActionService < AutomationRules::ActionService
+  def perform
+    @rule.actions.each do |action|
+      @conversation.reload
+      action = action.with_indifferent_access
+      dispatch_action(action)
+    rescue StandardError => e
+      ChatwootExceptionTracker.new(e, account: @account).capture_exception
+    end
+  end
+
+  private
+
+  def dispatch_action(action)
+    case action[:action_name]
+    when 'send_message'
+      send_message([action[:action_params]&.first, action[:counts_as_agent_reply]])
+    when 'resolve_conversation'
+      Custom::Conversations::ResolveService.new(conversation: @conversation, skip_required_attributes: true).perform
+    else
+      send(action[:action_name], action[:action_params])
+    end
   end
 
   def send_message(message)
+    content, counts_as_reply = parse_send_message_args(message)
     params = {
-      content: message[0],
+      content: content,
       private: false,
       content_attributes: {
         conversation_workflow_rule_id: @rule.id,
-        counts_as_agent_reply: message[1] # opt-in
+        counts_as_agent_reply: counts_as_reply == true
       }
     }
     Messages::MessageBuilder.new(nil, @conversation, params).perform
-    clear_waiting_since_if_counts_as_reply!(message[1])
+    clear_waiting_since_if_counts_as_reply!(counts_as_reply)
   end
-  # demais ações delegam super com marcação workflow_rule_id onde aplicável
-ensure
-  Current.reset
+  # send_webhook_event: prefix "workflow_rule.<trigger_type>"
+  # send_attachment: loga warning e retorna sem enviar
+  # Current.executed_by = @rule é setado por RuleExecutor#execute_pipeline (não aqui)
 end
 ```
+
+**Nota:** `Current.executed_by = @rule` e `Current.reset` são responsabilidade do `RuleExecutor#execute_pipeline` (bloco `ensure`), não do `ActionService`. O executor chama `ActionService.new(@rule, @account, conversation).perform` dentro desse bloco.
 
 ### `# FORK:` upstream
 
@@ -181,12 +228,33 @@ end
 # FORK: Custom::ConversationWorkflow::SchedulerJob.perform_later
 
 # app/jobs/account/conversations_resolution_scheduler_job.rb
-# FORK: skip accounts where settings['workflow_rules_migrated_at'].present?
+# FORK: skip se account.workflow_rules_migrated?
+
+# app/jobs/conversations/resolution_job.rb
+# FORK: early return se account.workflow_rules_migrated?
+
+# config/routes.rb
+# FORK: resources :conversation_workflow_rules (+ reorder, migrate_legacy, preview_count)
+
+# config/features.yml
+# FORK: conversation_agent_no_reply_rules flag
+
+# app/services/message_templates/template/auto_resolve.rb
+# FORK: optional message: override para workflow template reuse
+
+# app/javascript/dashboard/routes/dashboard/settings/settings.routes.js
+# FORK: import + spread conversationRules.routes
+
+# app/javascript/dashboard/components-next/sidebar/Sidebar.vue
+# FORK: entrada "Regras de conversa" (conversation_rules_index, feature-flag gated)
+
+# app/javascript/dashboard/routes/dashboard/settings/automation/constants.js
+# FORK: eventos sintéticos conversation_inactivity_threshold, conversation_agent_no_reply, etc.
 ```
 
 ### Feature flags
 
-Registrar em `custom/config/features.yml` (ou `InstallationConfig`):
+Registrar em `config/features.yml`:
 
 ```yaml
 - name: conversation_agent_no_reply_rules
@@ -200,17 +268,32 @@ Registrar em `custom/config/features.yml` (ou `InstallationConfig`):
 
 | Arquivo | Responsabilidade |
 |---------|------------------|
-| `ConversationWorkflowRulesList.vue` | Lista, toggle, ordem |
-| `ConversationWorkflowRuleForm.vue` | Trigger, duration, inboxes, conditions, actions |
-| Reutilizar | `AutomationActionInput`, `ConditionRow`, `DurationInput`, `MultiSelect` |
-| Fase 2.5 | Badge link → fila Não atendidas + count preview |
+| `conversationRules/index.vue` | Página principal: lista, tabs por trigger, form inline, feature-flag gate |
+| `conversationRules/conversationRules.routes.js` | Rota `/settings/conversation-rules` → `conversation_rules_index` |
+| `conversationRules/constants.js` | Tipos de trigger (6), `DEFAULT_WORKFLOW_RULE`, `DISALLOWED_ACTIONS` |
+| `conversationRules/components/ConversationRulesList.vue` | Draggable rows, banners legacy/migrate, modais toggle/delete, reorder API |
+| `conversationRules/components/ConversationRuleForm.vue` | Seções: Identificação, Gatilho, Escopo, Condições, Ações; `DurationInput` com unidade; validação inline |
+| `conversationRules/components/ConversationRuleRow.vue` | Row com edit/clone/toggle/delete |
+| `conversationRules/components/TriggerCardSelector.vue` | Cards selecionáveis por trigger type (6 tipos) |
+| `conversationRules/components/DurationPresets.vue` | Botões de preset de duração rápida |
+| `conversationRules/components/ConversationRulesEmptyState.vue` | Empty state quando não há regras |
+| `conversationRules/components/ConversationRulesFeatureDisabled.vue` | Card exibido quando ambas feature flags estão off |
+| `conversationRules/components/FormSection.vue` | Wrapper de seção para o form |
+| `conversationRules/components/FormSwitchRow.vue` | Toggle row helper |
+| `conversationRules/helpers/durationHelper.js` | Conversão de unidade de duração (`inferDurationUnit`, etc.) |
+| `conversationRules/helpers/i18nHelper.js` | `getTieredSlaExample(tm)` — evita bug de `t(returnObjects)` |
+| `conversationRules/helpers/triggerHelper.js` | `isInactivityTrigger`, `filterRulesByTab`, `getAvailableTriggers` |
+| `api/conversationWorkflowRules.js` | API client: CRUD + `migrateLegacy`, `previewCount`, `reorder` |
+| `composables/useWorkflowRule.js` | Estado do form, validação, watchers de trigger_type, `buildPayload` |
+| Reutilizar | `ConditionRow` (automação), `AutomationActionInput` |
 
-**Ação `send_message`:** checkbox “Conta como resposta do agente” → `counts_as_agent_reply`.
+**Ação `send_message`:** checkbox "Conta como resposta do agente" → `counts_as_agent_reply`.
 
-Integração:
+FORK no frontend:
 
 ```javascript
-// FORK: conversationWorkflow/index.vue — RulesList + manter RequiredAttributes
+// FORK: conversationRules/index.vue — mount rules list (feature-flag gated)
+// FORK: conversationWorkflow/index.vue — legacy AutoResolve + Required Attributes only
 ```
 
 ---
