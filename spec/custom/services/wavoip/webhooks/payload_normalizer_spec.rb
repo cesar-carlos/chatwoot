@@ -120,5 +120,40 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
 
       expect(event.from_phone).to be_nil
     end
+
+    it 'normalizes inbound CALL CREATE from live caller/receiver fixture' do
+      event = normalize(load_fixture('call_create_incoming_live_caller_receiver'))
+
+      aggregate_failures do
+        expect(event.direction).to eq(:incoming)
+        expect(event.external_status).to eq('INCOMING_RING')
+        expect(event.from_phone).to eq('+5566999050312')
+        expect(event.to_phone).to eq('+5566997193168')
+        expect(event.peer_name).to be_nil
+      end
+    end
+
+    it 'normalizes outbound CALL CREATE from live caller/receiver fixture' do
+      event = normalize(load_fixture('call_create_outcoming_live_caller_receiver'))
+
+      aggregate_failures do
+        expect(event.direction).to eq(:outgoing)
+        expect(event.external_status).to eq('CALLING')
+        expect(event.from_phone).to eq('+556692341814')
+        expect(event.to_phone).to eq('+5566999050312')
+      end
+    end
+
+    it 'prefers peer.phone over caller/receiver when both are present' do
+      payload = load_fixture('call_create_incoming_live_caller_receiver').merge(
+        'peer' => { 'phone' => '+5511888888888', 'display_name' => 'Peer Name' }
+      )
+      event = normalize(payload)
+
+      aggregate_failures do
+        expect(event.from_phone).to eq('+5511888888888')
+        expect(event.peer_name).to eq('Peer Name')
+      end
+    end
   end
 end

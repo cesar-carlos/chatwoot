@@ -63,6 +63,32 @@ class OnlineStatusTracker
     user_ids.map.with_index { |id, index| [id, (user_availabilities[index] || get_availability_from_db(account_id, id))] }.to_h
   end
 
+  # Returns { user_id => status } for the given user_ids that are present and match status.
+  def self.get_users_with_status(account_id, user_ids:, status:)
+    return {} if user_ids.blank?
+
+    candidate_ids = present_candidate_user_ids(account_id, user_ids)
+    return {} if candidate_ids.blank?
+
+    build_status_map(account_id, candidate_ids, status)
+  end
+
+  def self.present_candidate_user_ids(account_id, user_ids)
+    present_ids = get_available_user_ids(account_id).map(&:to_i)
+    user_ids.map(&:to_i) & present_ids
+  end
+  private_class_method :present_candidate_user_ids
+
+  def self.build_status_map(account_id, candidate_ids, status)
+    ids = candidate_ids.map(&:to_s)
+    statuses = ::Redis::Alfred.hmget(status_key(account_id), ids)
+    ids.each_with_index.with_object({}) do |(id, index), result|
+      availability = statuses[index] || get_availability_from_db(account_id, id)
+      result[id] = availability if availability == status
+    end
+  end
+  private_class_method :build_status_map
+
   def self.get_availability_from_db(account_id, user_id)
     availability = Account.find(account_id).account_users.find_by(user_id: user_id).availability
     set_status(account_id, user_id, availability)

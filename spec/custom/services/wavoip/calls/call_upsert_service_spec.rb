@@ -102,6 +102,29 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
 
       expect(channel.reload.webhook_verified?).to be(true)
     end
+
+    it 'creates a call from the live caller/receiver outbound fixture without skipping' do
+      channel.update!(phone_number: '+5566999050312')
+      payload = JSON.parse(file_fixture('wavoip/call_create_outcoming_live_caller_receiver.json').read)
+      event = Wavoip::Webhooks::PayloadNormalizer.new(payload).normalize
+
+      expect { service_for(event).create! }
+        .to change(Call, :count).by(1)
+    end
+
+    it 'creates a call from the live caller/receiver inbound fixture without skipping' do
+      channel.update!(phone_number: '+5566997193168')
+      payload = JSON.parse(file_fixture('wavoip/call_create_incoming_live_caller_receiver.json').read)
+      event = Wavoip::Webhooks::PayloadNormalizer.new(payload).normalize
+
+      call = service_for(event).create!
+
+      aggregate_failures do
+        expect(call).to be_present
+        expect(call.incoming?).to be(true)
+        expect(call.status).to eq('ringing')
+      end
+    end
   end
 
   describe '#update!' do

@@ -42,7 +42,7 @@ class Wavoip::Webhooks::PayloadNormalizer
       external_status: payload[:status].to_s,
       direction: map_direction(payload[:direction]),
       from_phone: call_from_phone,
-      to_phone: normalize_phone(payload[:phone]),
+      to_phone: call_to_phone,
       peer_name: peer_display_name,
       duration_seconds: parse_duration(payload[:duration]),
       session_id: payload[:id_session],
@@ -58,9 +58,38 @@ class Wavoip::Webhooks::PayloadNormalizer
 
   def call_from_phone
     return normalize_phone(peer_phone) if peer_phone.present?
+
+    contact = contact_phone_from_caller_receiver
+    return contact if contact.present?
+
     return normalize_phone(payload[:phone]) if webhook_action == :create
 
     nil
+  end
+
+  def call_to_phone
+    return normalize_phone(payload[:phone]) if payload[:phone].present?
+
+    inbox_side = inbox_phone_from_caller_receiver
+    normalize_phone(inbox_side) if inbox_side.present?
+  end
+
+  def contact_phone_from_caller_receiver
+    case map_direction(payload[:direction])
+    when :incoming
+      normalize_phone(payload[:caller]) if payload[:caller].present?
+    when :outgoing
+      normalize_phone(payload[:receiver]) if payload[:receiver].present?
+    end
+  end
+
+  def inbox_phone_from_caller_receiver
+    case map_direction(payload[:direction])
+    when :incoming
+      payload[:receiver]
+    when :outgoing
+      payload[:caller]
+    end
   end
 
   def normalize_record_event
@@ -126,7 +155,11 @@ class Wavoip::Webhooks::PayloadNormalizer
   end
 
   def normalize_phone(phone)
-    Wavoip::PhoneNormalizer.normalize(phone, inbox_phone: payload[:phone])
+    Wavoip::PhoneNormalizer.normalize(phone, inbox_phone: inbox_phone_hint)
+  end
+
+  def inbox_phone_hint
+    payload[:phone].presence || payload[:caller].presence || payload[:receiver].presence
   end
 
   def parse_duration(value)
