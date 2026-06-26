@@ -14,7 +14,7 @@ class Custom::ConversationWorkflow::PreviewCountService
     scope = scope.limit(PREVIEW_LIMIT + 1)
     count = 0
     scope.find_each do |conversation|
-      next unless executor_for(rule).eligible?(conversation)
+      next unless executor_for(rule).fully_eligible?(conversation)
 
       count += 1
       break if count > PREVIEW_LIMIT
