@@ -1,0 +1,18 @@
+class ForkRetryBackfillEnabledFeaturesDataOnAccounts < ActiveRecord::Migration[7.1]
+  disable_ddl_transaction!
+
+  def up
+    Account.reset_column_information
+    return unless Account.column_names.include?('enabled_features_data')
+
+    Account.find_each(batch_size: 100) do |account|
+      next if account.enabled_features_data.present?
+
+      Accounts::FeatureStore.new(account).backfill_from_bitmask!
+      account.update_columns(
+        enabled_features_data: account.enabled_features_data,
+        updated_at: Time.current
+      )
+    end
+  end
+end

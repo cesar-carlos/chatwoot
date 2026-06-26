@@ -29,7 +29,11 @@ module Enterprise::Account
 
   # Auto-sync advanced_assignment with assignment_v2 when features are bulk-updated via admin UI
   def selected_feature_flags=(features)
-    super
+    if defined?(Accounts::FeatureStore) && Accounts::FeatureStore.jsonb_column_available?
+      Accounts::FeatureStore.new(self).bulk_set(features)
+    else
+      super
+    end
     sync_assignment_features
   end
 
