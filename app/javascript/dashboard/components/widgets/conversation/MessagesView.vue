@@ -346,8 +346,9 @@ export default {
           this.isProgrammaticScroll = true;
           messageElement.scrollIntoView({ behavior: 'smooth' });
           this.fetchPreviousMessages();
+        } else {
+          this.scrollToBottom();
         }
-        // FORK: do not scrollToBottom when target message is missing
       });
       this.makeMessagesRead();
     },
