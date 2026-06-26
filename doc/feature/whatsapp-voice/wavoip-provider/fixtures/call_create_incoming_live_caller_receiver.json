@@ -1,0 +1,14 @@
+{
+  "type": "CALL",
+  "action": "CREATE",
+  "whatsapp_call_id": "pilot_inbound_caller_receiver_001",
+  "status": "INCOMING_RING",
+  "direction": "INCOMING",
+  "caller": "5566999050312",
+  "receiver": "5566997193168",
+  "id_session": 8758847,
+  "duration": 0,
+  "transport": "WSS",
+  "is_contact": true,
+  "_note": "Derived from live OUTCOMING shape for inbound E2E tests. caller=external peer, receiver=inbox."
+}

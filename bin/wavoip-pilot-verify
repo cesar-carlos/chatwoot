@@ -43,7 +43,7 @@ else
   fail << 'W1 webhook_verified (DEVICE job)'
 end
 
-# I1 partial — inbound CALL create for test peer
+# I1 partial — inbound CALL create for test peer (peer format)
 call_id = "pilot_inbound_#{Time.now.to_i}"
 Wavoip::ProcessWebhookJob.perform_now(
   inbox.id,
@@ -62,6 +62,50 @@ if call&.incoming? && call.status == 'ringing'
   pass << "I1 webhook inbound CALL row (peer #{test_peer})"
 else
   fail << "I1 webhook inbound CALL row (peer #{test_peer})"
+end
+
+# I2 — inbound CALL create with live caller/receiver format
+i2_call_id = "pilot_inbound_caller_receiver_#{Time.now.to_i}"
+receiver_digits = channel.phone_number.to_s.gsub(/\D/, '')
+caller_digits = test_peer.to_s.gsub(/\D/, '')
+Wavoip::ProcessWebhookJob.perform_now(
+  inbox.id,
+  {
+    'type' => 'CALL',
+    'action' => 'CREATE',
+    'whatsapp_call_id' => i2_call_id,
+    'status' => 'INCOMING_RING',
+    'direction' => 'INCOMING',
+    'caller' => caller_digits,
+    'receiver' => receiver_digits
+  }
+)
+i2_call = Call.find_by(inbox_id: inbox.id, provider: :wavoip, provider_call_id: i2_call_id)
+if i2_call&.incoming? && i2_call.status == 'ringing'
+  pass << 'I2 inbound CALL row (caller/receiver format)'
+else
+  fail << 'I2 inbound CALL row (caller/receiver format)'
+end
+
+# O2 — outbound CALL create with live caller/receiver format (no skip)
+o2_call_id = "pilot_outbound_caller_receiver_#{Time.now.to_i}"
+Wavoip::ProcessWebhookJob.perform_now(
+  inbox.id,
+  {
+    'type' => 'CALL',
+    'action' => 'CREATE',
+    'whatsapp_call_id' => o2_call_id,
+    'status' => 'CALLING',
+    'direction' => 'OUTCOMING',
+    'caller' => receiver_digits,
+    'receiver' => caller_digits
+  }
+)
+o2_call = Call.find_by(inbox_id: inbox.id, provider: :wavoip, provider_call_id: o2_call_id)
+if o2_call&.outgoing? && o2_call.status == 'ringing'
+  pass << 'O2 outbound CALL row (caller/receiver format)'
+else
+  fail << 'O2 outbound CALL row (caller/receiver format)'
 end
 
 puts ''
@@ -87,15 +131,17 @@ if [[ -n "${WEBHOOK_KEY}" ]]; then
   echo "POST invalid key => HTTP ${INVALID} (expect 401)"
 
   echo ""
-  echo "== Simulated inbound CALL via HTTP (peer ${TEST_PEER_PHONE}) =="
+  echo "== Simulated inbound CALL via HTTP (caller/receiver ${TEST_PEER_PHONE}) =="
+  CHANNEL_PHONE=$(bundle exec rails runner "puts Inbox.find(${INBOX_ID}).channel.phone_number.gsub(/\\D/, '')" 2>/dev/null || echo '5566997193168')
+  CALLER_DIGITS=$(echo "${TEST_PEER_PHONE}" | tr -d '+ -')
   INBOUND_PAYLOAD=$(cat <<EOF
-{"type":"CALL","action":"create","whatsapp_call_id":"pilot_http_$(date +%s)","status":"INCOMING_RING","direction":"incoming","peer":{"phone":"${TEST_PEER_PHONE}","display_name":"Pilot Test"},"phone":"$(bundle exec rails runner "puts Inbox.find(${INBOX_ID}).channel.phone_number" 2>/dev/null || echo '+5566997193168')"}
+{"type":"CALL","action":"CREATE","whatsapp_call_id":"pilot_http_caller_receiver_$(date +%s)","status":"INCOMING_RING","direction":"INCOMING","caller":"${CALLER_DIGITS}","receiver":"${CHANNEL_PHONE}"}
 EOF
 )
   INBOUND_STATUS=$(curl -sL -o /dev/null -w "%{http_code}" -X POST "${FRONTEND_URL}/webhooks/wavoip/${WEBHOOK_KEY}" \
     -H "Content-Type: application/json" \
     -d "${INBOUND_PAYLOAD}" || echo "000")
-  echo "POST inbound CALL create => HTTP ${INBOUND_STATUS} (expect 202; skip if app not running)"
+  echo "POST inbound CALL (caller/receiver) => HTTP ${INBOUND_STATUS} (expect 202; skip if app not running)"
 fi
 
 echo ""

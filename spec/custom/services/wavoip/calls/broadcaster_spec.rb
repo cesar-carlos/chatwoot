@@ -34,6 +34,9 @@ RSpec.describe Wavoip::Calls::Broadcaster do
     allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
       { online_agent.id.to_s => 'online' }
     )
+    allow(OnlineStatusTracker).to receive(:get_users_with_status)
+      .with(account.id, user_ids: kind_of(Array), status: 'online')
+      .and_return({ online_agent.id.to_s => 'online' })
   end
 
   it 'broadcasts incoming to online inbox members before assignee fallback' do
@@ -47,6 +50,24 @@ RSpec.describe Wavoip::Calls::Broadcaster do
     expect(streams).to include(online_agent.pubsub_token)
     expect(streams).not_to include(offline_agent.pubsub_token)
     expect(payloads.first.last[:event]).to eq('voice_call.incoming')
+  end
+
+  it 'includes online administrators in the initial ring when configured' do
+    admin = create(:user, :administrator, account: account)
+    channel.update!(
+      provider_config: channel.provider_config.merge('incoming_call_include_administrators' => true)
+    )
+    allow(OnlineStatusTracker).to receive(:get_users_with_status)
+      .with(account.id, user_ids: kind_of(Array), status: 'online')
+      .and_return({ admin.id.to_s => 'online' })
+
+    broadcaster = described_class.new(inbox: inbox)
+    payloads = []
+    allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
+
+    broadcaster.broadcast_incoming(call)
+
+    expect(payloads.map(&:first)).to include(admin.pubsub_token)
   end
 
   it 'broadcasts voice_call.accepted on account stream' do

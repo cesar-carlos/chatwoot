@@ -1,0 +1,13 @@
+{
+  "type": "CALL",
+  "action": "CREATE",
+  "whatsapp_call_id": "3528B6CDB8D38FDA799C4AEA28E9BDC5",
+  "status": "CALLING",
+  "direction": "OUTCOMING",
+  "caller": "5566999050312",
+  "receiver": "556692341814",
+  "id_session": 8758847,
+  "duration": 0,
+  "transport": "WSS",
+  "is_contact": true
+}

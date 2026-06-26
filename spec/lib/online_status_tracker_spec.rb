@@ -54,4 +54,43 @@ describe OnlineStatusTracker do
       expect(Redis::Alfred.zscore(format(Redis::Alfred::ONLINE_PRESENCE_CONTACTS, account_id: account.id), offline_contact.id)).to be_nil
     end
   end
+
+  context 'when get_users_with_status' do
+    before do
+      described_class.update_presence(account.id, 'User', user1.id)
+      described_class.update_presence(account.id, 'User', user2.id)
+      described_class.set_status(account.id, user1.id, 'online')
+      described_class.set_status(account.id, user2.id, 'busy')
+    end
+
+    it 'returns only matching users from the provided ids' do
+      result = described_class.get_users_with_status(
+        account.id,
+        user_ids: [user1.id, user2.id, user3.id],
+        status: 'online'
+      )
+
+      expect(result).to eq({ user1.id.to_s => 'online' })
+    end
+
+    it 'returns busy users when requested' do
+      result = described_class.get_users_with_status(
+        account.id,
+        user_ids: [user1.id, user2.id],
+        status: 'busy'
+      )
+
+      expect(result).to eq({ user2.id.to_s => 'busy' })
+    end
+
+    it 'returns an empty hash when no candidates are present' do
+      result = described_class.get_users_with_status(
+        account.id,
+        user_ids: [user3.id],
+        status: 'online'
+      )
+
+      expect(result).to eq({})
+    end
+  end
 end

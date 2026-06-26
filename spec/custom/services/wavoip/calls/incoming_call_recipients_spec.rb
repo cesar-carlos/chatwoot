@@ -21,9 +21,12 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
     create(:inbox_member, inbox: inbox, user: offline_member)
     online_agent.account_users.find_by(account: account).update!(availability: :online)
     offline_member.account_users.find_by(account: account).update!(availability: :offline)
-    allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-      { online_agent.id.to_s => 'online' }
-    )
+    allow(OnlineStatusTracker).to receive(:get_users_with_status)
+      .with(account.id, user_ids: kind_of(Array), status: 'online')
+      .and_return({ online_agent.id.to_s => 'online' })
+    allow(OnlineStatusTracker).to receive(:get_users_with_status)
+      .with(account.id, user_ids: kind_of(Array), status: 'busy')
+      .and_return({})
   end
 
   it 'returns online inbox members when any are online' do
@@ -32,9 +35,9 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
 
   context 'when include_administrators is enabled and an administrator is online' do
     before do
-      allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-        { admin.id.to_s => 'online' }
-      )
+      allow(OnlineStatusTracker).to receive(:get_users_with_status)
+        .with(account.id, user_ids: kind_of(Array), status: 'online')
+        .and_return({ admin.id.to_s => 'online' })
     end
 
     it 'includes the online administrator in the initial ring' do
@@ -51,9 +54,9 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
       channel.update!(
         provider_config: channel.provider_config.merge('incoming_call_include_administrators' => false)
       )
-      allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-        { admin.id.to_s => 'online' }
-      )
+      allow(OnlineStatusTracker).to receive(:get_users_with_status)
+        .with(account.id, user_ids: kind_of(Array), status: 'online')
+        .and_return({ admin.id.to_s => 'online' })
     end
 
     it 'does not include the administrator in the initial ring' do
@@ -63,7 +66,9 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
 
   context 'when no agents are online' do
     before do
-      allow(OnlineStatusTracker).to receive(:get_available_users).and_return({})
+      allow(OnlineStatusTracker).to receive(:get_users_with_status)
+        .with(account.id, user_ids: kind_of(Array), status: 'online')
+        .and_return({})
     end
 
     it 'defaults to assignee then inbox members and administrators' do
@@ -144,9 +149,14 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
       channel.update!(
         provider_config: channel.provider_config.merge('incoming_call_notify_busy_agents' => true)
       )
-      allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-        { busy_agent.id.to_s => 'busy' }
-      )
+      allow(OnlineStatusTracker).to receive(:get_users_with_status)
+        .with(account.id, user_ids: kind_of(Array), status: 'online')
+        .and_return({})
+      allow(OnlineStatusTracker).to receive(:get_users_with_status)
+        .with(account.id, user_ids: kind_of(Array), status: 'busy')
+        .and_return(
+          { busy_agent.id.to_s => 'busy' }
+        )
     end
 
     it 'returns busy inbox members before offline fallback' do
@@ -155,21 +165,29 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
 
     it 'ignores busy agents who are not inbox members or administrators' do
       non_member_busy = create(:user, account: account, role: :agent)
-      allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-        {
-          busy_agent.id.to_s => 'busy',
-          non_member_busy.id.to_s => 'busy'
-        }
-      )
+      allow(OnlineStatusTracker).to receive(:get_users_with_status)
+        .with(account.id, user_ids: kind_of(Array), status: 'online')
+        .and_return({})
+      allow(OnlineStatusTracker).to receive(:get_users_with_status)
+        .with(account.id, user_ids: kind_of(Array), status: 'busy')
+        .and_return(
+          {
+            busy_agent.id.to_s => 'busy',
+            non_member_busy.id.to_s => 'busy'
+          }
+        )
 
       expect(recipients.users.pluck(:id)).to eq([busy_agent.id])
     end
 
     context 'when include_administrators is enabled and an administrator is busy' do
       before do
-        allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-          { admin.id.to_s => 'busy' }
-        )
+        allow(OnlineStatusTracker).to receive(:get_users_with_status)
+          .with(account.id, user_ids: kind_of(Array), status: 'online')
+          .and_return({})
+        allow(OnlineStatusTracker).to receive(:get_users_with_status)
+          .with(account.id, user_ids: kind_of(Array), status: 'busy')
+          .and_return({ admin.id.to_s => 'busy' })
       end
 
       it 'includes the busy administrator before falling back to offline recipients' do
@@ -185,9 +203,12 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
             'incoming_call_include_administrators' => false
           )
         )
-        allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-          { admin.id.to_s => 'busy' }
-        )
+        allow(OnlineStatusTracker).to receive(:get_users_with_status)
+          .with(account.id, user_ids: kind_of(Array), status: 'online')
+          .and_return({})
+        allow(OnlineStatusTracker).to receive(:get_users_with_status)
+          .with(account.id, user_ids: kind_of(Array), status: 'busy')
+          .and_return({ admin.id.to_s => 'busy' })
       end
 
       it 'does not include the busy administrator' do
@@ -221,9 +242,12 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
         channel.update!(
           provider_config: channel.provider_config.merge('incoming_call_notify_busy_agents' => true)
         )
-        allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
-          { busy_agent.id.to_s => 'busy' }
-        )
+        allow(OnlineStatusTracker).to receive(:get_users_with_status)
+          .with(account.id, user_ids: kind_of(Array), status: 'online')
+          .and_return({})
+        allow(OnlineStatusTracker).to receive(:get_users_with_status)
+          .with(account.id, user_ids: kind_of(Array), status: 'busy')
+          .and_return({ busy_agent.id.to_s => 'busy' })
       end
 
       it 'returns busy inbox members before broad fallback' do

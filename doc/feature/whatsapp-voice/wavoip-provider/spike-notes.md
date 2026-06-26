@@ -150,18 +150,22 @@ Spike scripts (gitignored): `tmp/wavoip-final-e2e.mjs`, `tmp/wavoip-outbound-g02
 
 ### E2E roteiro — `+5566999050312` (Jun 2026)
 
-**Inbox piloto:** `WAVOIP_INBOX_ID=2` (`+556697193168`). Verificação automatizada: `WAVOIP_INBOX_ID=2 bin/wavoip-pilot-verify`.
+**Inbox piloto (dev):** `WAVOIP_INBOX_ID=106` (`+5566999050312`). Verificação: `WAVOIP_INBOX_ID=106 WAVOIP_TEST_PEER_PHONE=+5566999050312 bin/wavoip-pilot-verify`.
+
+Fixtures live: [call_create_incoming_live_caller_receiver.json](./fixtures/call_create_incoming_live_caller_receiver.json), [call_create_outcoming_live_caller_receiver.json](./fixtures/call_create_outcoming_live_caller_receiver.json).
 
 | # | Cenário | Passos | Critério | Pass/Fail |
 |---|---------|--------|----------|-----------|
 | O1 | Outbound | Agent online → conversa → ligar | `peerAccept`, áudio bidirecional, bolha `voice_call`, webhook ACTIVE/ENDED | _pending (browser)_ |
-| I1 | Inbound | Fechar app.wavoip.com → ligar de `+5566999050312` | Widget + SDK `offer` → Accept → `PATCH /calls/:id` | **Pass** webhook row (24 jun); _pending_ browser/SDK |
+| I1 | Inbound (peer) | Fechar app.wavoip.com → ligar de `+5566999050312` | Widget + SDK `offer` → Accept → `PATCH /calls/:id` | **Pass** webhook row (peer format) |
+| I2 | Inbound (caller/receiver) | `bin/wavoip-pilot-verify` ou POST com payload live | `Call` ringing sem log `Skipped create` | **Pass** (automated) |
+| O2 | Outbound webhook | POST OUTCOMING CALLING caller/receiver | `Call` outgoing ringing | **Pass** (automated) |
 | M1 | Multi-agente | 2 agentes online | B recebe toast; widget some via `voice_call.accepted` + SDK `acceptedElsewhere` | _pending (browser)_ |
 | D1 | Dismiss ✕ inbound | Agent dismiss sem aceitar | SDK `reject`; contato para de tocar | _pending (browser)_ |
 | F1 | Accept falha | Timeout / erro no Accept | Widget some; sem ring preso | _pending (browser)_ |
-| W1 | Webhook | Toggle ON no painel Wavoip | Settings **Webhook verified**; botão **Test webhook** em settings | **Pass** (24 jun, `bin/wavoip-pilot-verify`) |
+| W1 | Webhook | Toggle ON no painel Wavoip + evento **CALL** | Settings **Webhook verified**; histórico Wavoip mostra linha **CALL** (não só DEVICE) | _pending live panel_ |
 
-`bin/wavoip-pilot-verify` simula inbound CALL com peer `+5566999050312` (env `WAVOIP_TEST_PEER_PHONE`). Checks in-process: W1 DEVICE + I1 CALL row. HTTP curl pode retornar 401 se o host exigir auth — usar job in-process ou painel **Test webhook**.
+`bin/wavoip-pilot-verify`: checks in-process W1 + I1 (peer) + I2/O2 (caller/receiver). HTTP curl usa payload caller/receiver (expect 202).
 
 ### Conclusão implementação (Jun 2026)
 

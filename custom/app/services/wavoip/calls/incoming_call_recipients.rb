@@ -68,10 +68,11 @@ class Wavoip::Calls::IncomingCallRecipients
   end
 
   def online_member_users
-    online_ids = OnlineStatusTracker.get_available_users(inbox.account_id)
-                                    .select { |_key, value| value == 'online' }
-                                    .keys
-                                    .map(&:to_i)
+    online_ids = OnlineStatusTracker.get_users_with_status(
+      inbox.account_id,
+      user_ids: recipients_base_scope.ids,
+      status: 'online'
+    ).keys.map(&:to_i)
     recipients_base_scope.where(id: online_ids)
   end
 
@@ -124,10 +125,11 @@ class Wavoip::Calls::IncomingCallRecipients
   end
 
   def busy_agents
-    busy_ids = OnlineStatusTracker.get_available_users(inbox.account_id)
-                                  .select { |_key, value| value == 'busy' }
-                                  .keys
-                                  .map(&:to_i)
+    busy_ids = OnlineStatusTracker.get_users_with_status(
+      inbox.account_id,
+      user_ids: recipients_base_scope.ids,
+      status: 'busy'
+    ).keys.map(&:to_i)
     recipients_base_scope.where(id: busy_ids)
   end
 
