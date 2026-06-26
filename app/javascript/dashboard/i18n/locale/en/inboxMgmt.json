@@ -900,6 +900,8 @@
           "DESCRIPTION": "If no agent answers within this time, notify all inbox agents and administrators (when enabled).",
           "OPTIONS": {
             "0": "Disabled",
+            "10": "10 seconds",
+            "20": "20 seconds",
             "30": "30 seconds",
             "60": "60 seconds",
             "90": "90 seconds",

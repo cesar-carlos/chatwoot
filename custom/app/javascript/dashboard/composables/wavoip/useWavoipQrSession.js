@@ -274,7 +274,11 @@ export function useWavoipQrSession({
       hasEmittedConnected = sessionStartedConnected;
 
       if (!isConnected()) {
-        if (!qrDataUrl.value) {
+        // Only flag an error when the device is closed (disconnected) and we
+        // have no QR to show. A 'connecting' status without QR is a normal
+        // transitional state — the QR will arrive via polling or the expiry
+        // refresh, so show a waiting spinner instead of an error.
+        if (!qrDataUrl.value && whatsAppStatus.value !== 'connecting') {
           qrRefreshError.value = true;
         }
         startStatusPolling();
@@ -327,6 +331,10 @@ export function useWavoipQrSession({
     sdkConnected = false;
   }
 
+  function hasSdkConnection() {
+    return sdkConnected;
+  }
+
   return {
     whatsAppStatus,
     qrDataUrl,
@@ -337,6 +345,7 @@ export function useWavoipQrSession({
     qrRefreshError,
     isConnected,
     needsQr,
+    hasSdkConnection,
     startSession,
     stopSession,
     requestPairingCode,
