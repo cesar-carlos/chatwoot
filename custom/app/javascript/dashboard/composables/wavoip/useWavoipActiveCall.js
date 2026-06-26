@@ -62,6 +62,12 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
 
 export const getActiveProviderCallId = () => activeProviderCallId;
 
+export const getRingingProviderCallId = () => ringingProviderCallId;
+
+export const isWavoipSdkCallOwned = callSid =>
+  !!callSid &&
+  (activeProviderCallId === callSid || ringingProviderCallId === callSid);
+
 export const endActiveCall = async callIdOverride => {
   const targetId =
     callIdOverride || activeProviderCallId || ringingProviderCallId;

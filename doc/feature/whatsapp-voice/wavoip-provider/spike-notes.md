@@ -156,7 +156,7 @@ Fixtures live: [call_create_incoming_live_caller_receiver.json](./fixtures/call_
 
 | # | Cenário | Passos | Critério | Pass/Fail |
 |---|---------|--------|----------|-----------|
-| O1 | Outbound | Agent online → conversa → ligar | `peerAccept`, áudio bidirecional, bolha `voice_call`, webhook ACTIVE/ENDED | _pending (browser)_ |
+| O1 | Outbound | Agent online → conversa → ligar | Widget permanece até `peerAccept` / `peerReject` / `unanswered` / hangup do agente; depois `peerAccept`, áudio bidirecional, bolha `voice_call`, webhook ACTIVE/ENDED | _pending (browser)_ |
 | I1 | Inbound (peer) | Fechar app.wavoip.com → ligar de `+5566999050312` | Widget + SDK `offer` → Accept → `PATCH /calls/:id` | **Pass** webhook row (peer format) |
 | I2 | Inbound (caller/receiver) | `bin/wavoip-pilot-verify` ou POST com payload live | `Call` ringing sem log `Skipped create` | **Pass** (automated) |
 | O2 | Outbound webhook | POST OUTCOMING CALLING caller/receiver | `Call` outgoing ringing | **Pass** (automated) |

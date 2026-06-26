@@ -3,6 +3,7 @@ import { isBrowserVoiceProvider } from 'customDashboard/lib/voice/browserVoicePr
 import { teardownBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { TERMINAL_STATUSES } from 'dashboard/helper/voice';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
+import { isWavoipSdkCallOwned } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import { defineStore } from 'pinia';
 
 const teardownByProvider = call => {
@@ -34,6 +35,14 @@ export const useCallsStore = defineStore('calls', {
       // uploads them; tearing down here would race-wipe those chunks.
       if (call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
         this.calls = this.calls.filter(c => c.callSid !== callSid);
+        return;
+      }
+
+      if (
+        call?.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+        call?.callDirection === 'outbound' &&
+        isWavoipSdkCallOwned(callSid)
+      ) {
         return;
       }
 

@@ -227,5 +227,23 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
 
       expect { service_for(event).update! }.not_to change(Call, :count)
     end
+
+    it 'defers broadcast_ended when outbound ENDED arrives while still ringing' do
+      channel.update!(phone_number: '+5566999050312')
+      payload = JSON.parse(file_fixture('wavoip/call_create_outcoming_live_caller_receiver.json').read)
+      create_event = Wavoip::Webhooks::PayloadNormalizer.new(payload).normalize
+      call = service_for(create_event).create!
+
+      ended_event = Wavoip::Webhooks::PayloadNormalizer.new(
+        payload.merge('action' => 'UPDATE', 'status' => 'ENDED', 'duration' => 0)
+      ).normalize
+      service_for(ended_event).update!
+
+      aggregate_failures do
+        expect(call.reload.status).to eq('no_answer')
+        expect(call.started_at).to be_nil
+        expect(broadcaster).not_to have_received(:broadcast_ended)
+      end
+    end
   end
 end

@@ -108,8 +108,12 @@ class Wavoip::Calls::CallStatusApplier
     elsif mapped_status == 'in_progress'
       broadcast_in_progress(call)
     elsif status_mapper.terminal?(mapped_status)
-      broadcaster.broadcast_ended(call)
+      broadcaster.broadcast_ended(call) unless defer_outbound_ended_broadcast?(call)
     end
+  end
+
+  def defer_outbound_ended_broadcast?(call)
+    call.outgoing? && call.started_at.blank?
   end
 
   def broadcast_in_progress(call)
