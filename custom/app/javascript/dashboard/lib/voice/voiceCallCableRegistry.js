@@ -6,6 +6,7 @@ import {
   endActiveCall as endSdkActiveCall,
   clearActiveCall as clearSdkActiveCall,
   getActiveProviderCallId,
+  isWavoipSdkCallOwned,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import {
   removePendingOffer,
@@ -76,6 +77,14 @@ export const createWavoipVoiceCableHandlers = t => ({
     if (isLocalOwner) {
       endSdkActiveCall();
       clearSdkActiveCall();
+    }
+
+    if (
+      callEntry.callDirection === 'outbound' &&
+      !callEntry.isActive &&
+      isWavoipSdkCallOwned(data.call_id)
+    ) {
+      return;
     }
 
     removePendingOffer(data.call_id);
