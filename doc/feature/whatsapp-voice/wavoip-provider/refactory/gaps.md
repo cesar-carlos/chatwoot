@@ -5,6 +5,35 @@ esperados em produção não são tratados corretamente.
 
 ---
 
+## GAP-OUTBOUND-01 · Widget outbound some enquanto SDK ainda toca
+
+> **Status (26 jun. 2026):** Corrigido — outbound browser trata o SDK como fonte da verdade
+> para o widget; backend adia `broadcast_ended` quando a call nunca entrou em `in_progress`.
+
+**Severidade:** Alta  
+**Arquivos:**
+- `custom/app/javascript/dashboard/composables/wavoip/useWavoipActiveCall.js`
+- `custom/app/javascript/dashboard/lib/voice/voiceCallCableRegistry.js`
+- `app/javascript/dashboard/stores/calls.js`
+- `custom/app/services/wavoip/calls/call_status_applier.rb`
+
+### Descrição
+
+Ao iniciar ligação outbound pelo SDK, o widget mostrava "Chamada realizada" e sumia
+imediatamente enquanto o cliente continuava recebendo o toque. O backend/webhook emitia
+status terminal (`no_answer` / `completed`) e `voice_call.ended` antes do SDK encerrar a
+sessão (`peerAccept`, `peerReject`, `unanswered`, `ended`).
+
+### Correção
+
+**Frontend:** `isWavoipSdkCallOwned(callSid)` — ignora `removeCall` em `onEnded` e
+`handleCallStatusChanged` quando outbound ainda está em ringing e o SDK possui a sessão.
+
+**Backend:** `defer_outbound_ended_broadcast?` — persiste timeline no DB mas não emite
+`broadcast_ended` para outbound com `started_at` em branco.
+
+---
+
 ## GAP-01 · `offline_fallback: 'none'` não bloqueia a escalação por timeout
 
 > **Status (26 jun. 2026):** Corrigido — `escalated_users` retorna `User.none` quando

@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useCallsStore } from 'dashboard/stores/calls';
 
-const { pendingOffers, removePendingOffer } = vi.hoisted(() => {
+const { pendingOffers, removePendingOffer, isWavoipSdkCallOwned } = vi.hoisted(() => {
   const offers = new Map();
   return {
     pendingOffers: offers,
     removePendingOffer: callId => offers.delete(callId),
+    isWavoipSdkCallOwned: vi.fn(() => false),
   };
 });
 
@@ -14,6 +15,7 @@ vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
   endActiveCall: vi.fn(),
   clearActiveCall: vi.fn(),
   getActiveProviderCallId: vi.fn(() => null),
+  isWavoipSdkCallOwned,
 }));
 
 vi.mock('customDashboard/composables/wavoip/useWavoipIncomingOffer', () => ({
@@ -182,6 +184,10 @@ describe('wavoipVoiceCableHandlers', () => {
   });
 
   describe('onEnded', () => {
+    beforeEach(() => {
+      isWavoipSdkCallOwned.mockReturnValue(false);
+    });
+
     it('removes the call from the store and alerts handled_remotely', () => {
       const store = useCallsStore();
       store.addCall({
@@ -198,6 +204,25 @@ describe('wavoipVoiceCableHandlers', () => {
 
       expect(useAlert).toHaveBeenCalled();
       expect(store.calls.some(c => c.callSid === 'end_001')).toBe(false);
+    });
+
+    it('keeps outbound ringing call when SDK still owns the session', () => {
+      isWavoipSdkCallOwned.mockImplementation(callId => callId === 'out_ring_001');
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'out_ring_001',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'outbound',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onEnded({
+        call_id: 'out_ring_001',
+        end_reason: 'no_answer',
+      });
+
+      expect(store.calls.some(c => c.callSid === 'out_ring_001')).toBe(true);
     });
   });
 });
