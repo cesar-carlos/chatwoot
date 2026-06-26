@@ -20,6 +20,8 @@ Componentes em `conversationRules/components/`:
 - `ConversationRulesList.vue` — draggable rows, legacy/migrate banners, modals
 - `ConversationRuleForm.vue` — seções (Identificação, Gatilho, Escopo, Condições, Ações)
 - `ConversationRuleRow.vue`, `ConversationRulesEmptyState.vue`, `ConversationRulesFeatureDisabled.vue`
+- `TriggerCardSelector.vue` — cards selecionáveis por trigger type (6 tipos)
+- `DurationPresets.vue` — botões de preset de duração rápida
 - `FormSection.vue`, `FormSwitchRow.vue`
 
 ---
@@ -32,8 +34,8 @@ Componentes em `conversationRules/components/`:
 | Gatilhos (6 tipos) | `conversation_inactivity`, `agent_no_reply`, `first_response_overdue`, `unassigned_too_long`, `pending_stale`, `customer_no_reply` |
 | UX gatilhos | Cards selecionáveis, labels contextuais de duração, presets, preview `POST preview_count`, abas na lista |
 | Página rules | `app/javascript/dashboard/routes/dashboard/settings/conversationRules/index.vue` |
-| Rules list + row + form | `conversationRules/components/ConversationRulesList.vue`, `ConversationRuleRow.vue`, `ConversationRuleForm.vue` |
-| Helpers / form UI | `conversationRules/helpers/durationHelper.js`, `i18nHelper.js`, `FormSection.vue`, `FormSwitchRow.vue`, `ConversationRulesEmptyState.vue`, `ConversationRulesFeatureDisabled.vue` |
+| Rules list + row + form | `conversationRules/components/ConversationRulesList.vue`, `ConversationRuleRow.vue`, `ConversationRuleForm.vue`, `TriggerCardSelector.vue`, `DurationPresets.vue` |
+| Helpers / form UI | `conversationRules/helpers/durationHelper.js`, `i18nHelper.js`, `triggerHelper.js`, `FormSection.vue`, `FormSwitchRow.vue`, `ConversationRulesEmptyState.vue`, `ConversationRulesFeatureDisabled.vue` |
 | **Fluxo de Conversa (legacy)** | `/accounts/:accountId/settings/conversation-workflow` |
 | Página legacy | `app/javascript/dashboard/routes/dashboard/settings/conversationWorkflow/index.vue` |
 | Auto-resolve (legacy) | `app/javascript/dashboard/routes/dashboard/settings/account/components/AutoResolve.vue` (oculto após migração; banner → conversation-rules) |
@@ -61,22 +63,32 @@ Componentes em `conversationRules/components/`:
 |------|---------|
 | Model | `custom/app/models/conversation_workflow_rule.rb` |
 | Executions (dedup) | `custom/app/models/conversation_workflow_rule_execution.rb` |
+| Account mixin | `custom/app/models/custom/account.rb` — `has_many`, `workflow_rules_migrated?` |
+| Message hook | `custom/app/models/custom/message.rb` + `custom/app/models/custom/message/workflow_rules_scheduler.rb` |
 | Scheduler | `custom/app/jobs/custom/conversation_workflow/scheduler_job.rb` |
-| Per-message | `custom/app/jobs/custom/conversation_workflow/schedule_on_message_job.rb` |
-| Per-message scheduler | `schedule_on_message_scheduler.rb` — incoming (`agent_no_reply`, `first_response_overdue`) + outgoing (`customer_no_reply`) |
+| Per-message job | `custom/app/jobs/custom/conversation_workflow/schedule_on_message_job.rb` |
+| Per-message scheduler | `custom/app/services/custom/conversation_workflow/schedule_on_message_scheduler.rb` — incoming (`agent_no_reply`, `first_response_overdue`) + outgoing (`customer_no_reply`); dedup Redis por epoch |
 | Preview API | `POST /conversation_workflow_rules/preview_count` |
+| Account processor | `custom/app/services/custom/conversation_workflow/account_processor.rb` — itera regras com gate de feature flag |
 | Executor | `custom/app/services/custom/conversation_workflow/rule_executor.rb` |
-| Action wrapper | `custom/app/services/custom/conversation_workflow/action_service.rb` |
-| Scopes | `scopes/inactivity_scope.rb`, `scopes/agent_no_reply_scope.rb` |
-| Conditions | `conditions_filter.rb` → `AutomationRules::ConditionsFilterService` |
-| Business hours | `business_hours_elapsed_calculator.rb` |
+| Action wrapper | `custom/app/services/custom/conversation_workflow/action_service.rb` — `< AutomationRules::ActionService`; webhook prefix `workflow_rule.*` |
+| Scope matcher | `custom/app/services/custom/conversation_workflow/scope_matcher.rb` — elegibilidade por conversa pós-SQL |
+| Threshold matcher | `custom/app/services/custom/conversation_workflow/threshold_matcher.rb` — duration calendar ou business hours |
+| Reference timestamp | `custom/app/services/custom/conversation_workflow/reference_timestamp.rb` — timestamp de referência + atributos de dedup por trigger |
+| Conditions filter | `custom/app/services/custom/conversation_workflow/conditions_filter.rb` → `AutomationRules::ConditionsFilterService` |
+| Conditions adapter | `custom/app/services/custom/conversation_workflow/conditions_rule_adapter.rb` — duck-typing de regra como AutomationRule |
+| Template sender | `custom/app/services/custom/conversation_workflow/template_message_sender.rb` — `MessageTemplates::Template::AutoResolve` |
+| Migrate legacy | `custom/app/services/custom/conversation_workflow/migrate_legacy_service.rb` |
+| Preview count | `custom/app/services/custom/conversation_workflow/preview_count_service.rb` |
+| Business hours | `custom/app/services/custom/conversation_workflow/business_hours_elapsed_calculator.rb` — minutos úteis via `inbox.working_hours` |
+| Automation events | `custom/app/services/custom/conversation_workflow/automation_event_dispatcher.rb` — eventos sintéticos |
+| Scopes (6) | `custom/app/services/custom/conversation_workflow/scopes/` — `inactivity_scope.rb`, `agent_no_reply_scope.rb`, `first_response_overdue_scope.rb`, `unassigned_too_long_scope.rb`, `pending_stale_scope.rb`, `customer_no_reply_scope.rb` |
 | Resolve | `custom/app/services/custom/conversations/resolve_service.rb` |
-| Automation events | `automation_event_dispatcher.rb` |
 | API | `custom/app/controllers/api/v1/accounts/conversation_workflow_rules_controller.rb` |
 | Policy | `custom/app/policies/conversation_workflow_rule_policy.rb` |
 | Rake migrate | `lib/tasks/conversation_workflow.rake` (`conversation_workflow:migrate_legacy`) |
 
-**Scheduler:** `TriggerScheduledItemsJob` (cron `*/5 * * * *`) → `Custom::ConversationWorkflow::SchedulerJob` + legacy `Account::ConversationsResolutionSchedulerJob` (skip se migrado).
+**Scheduler:** `TriggerScheduledItemsJob` (cron `*/5 * * * *`) → `Custom::ConversationWorkflow::SchedulerJob` → `AccountProcessor` → `RuleExecutor` (+ legacy `Account::ConversationsResolutionSchedulerJob`, skip se migrado).
 
 **Feature flags:** `auto_resolve_conversations`, `conversation_agent_no_reply_rules`.
 
@@ -124,15 +136,17 @@ Constantes em `app/javascript/dashboard/routes/dashboard/settings/automation/con
 | Arquivo | Alteração |
 |---------|-----------|
 | `app/jobs/trigger_scheduled_items_job.rb` | `Custom::ConversationWorkflow::SchedulerJob.perform_later` |
-| `app/jobs/account/conversations_resolution_scheduler_job.rb` | skip se `workflow_rules_migrated_at` |
-| `app/jobs/conversations/resolution_job.rb` | early return se migrado |
-| `config/routes.rb` | `conversation_workflow_rules` CRUD |
-| `config/features.yml` | `conversation_agent_no_reply_rules` |
-| `conversationWorkflow/index.vue` | legacy AutoResolve + Required Attributes only |
-| `conversationRules/index.vue` | mount rules list (feature-flag gated) |
-| `settings.routes.js` | `// FORK:` import + spread `conversationRules.routes` |
-| `Sidebar.vue` | `// FORK:` sidebar entry **Regras de conversa** |
-| `app/services/message_templates/template/auto_resolve.rb` | optional `message:` for workflow template reuse |
+| `app/jobs/account/conversations_resolution_scheduler_job.rb` | skip se `account.workflow_rules_migrated?` |
+| `app/jobs/conversations/resolution_job.rb` | early return se `account.workflow_rules_migrated?` |
+| `config/routes.rb` | `resources :conversation_workflow_rules` (+ `reorder`, `migrate_legacy`, `preview_count`) |
+| `config/features.yml` | flag `conversation_agent_no_reply_rules` |
+| `app/services/message_templates/template/auto_resolve.rb` | optional `message:` override para reuso do template |
+| `app/javascript/dashboard/helper/featureHelper.js` | entrada `conversation_rules` (feature helper) |
+| `app/javascript/dashboard/routes/dashboard/settings/automation/constants.js` | eventos sintéticos (`conversation_inactivity_threshold`, `conversation_agent_no_reply`, etc.) |
+| `app/javascript/dashboard/routes/dashboard/settings/settings.routes.js` | import + spread `conversationRules.routes` |
+| `app/javascript/dashboard/components-next/sidebar/Sidebar.vue` | entrada **Regras de conversa** (`conversation_rules_index`, feature-flag gated) |
+| `app/javascript/dashboard/routes/dashboard/settings/conversationWorkflow/index.vue` | legacy AutoResolve + Required Attributes only |
+| `app/javascript/dashboard/routes/dashboard/settings/conversationRules/index.vue` | mount rules list (feature-flag gated) |
 
 ---
 

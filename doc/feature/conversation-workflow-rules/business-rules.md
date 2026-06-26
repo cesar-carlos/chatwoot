@@ -122,7 +122,7 @@ Duração **não** é condição AND — pertence ao gatilho.
 
 ### 3.1 Executor
 
-Usar **`ConversationWorkflow::ActionService`** (não `ActionService` direto):
+Usar **`Custom::ConversationWorkflow::ActionService`** (não `AutomationRules::ActionService` direto):
 
 - `Current.executed_by = workflow_rule`
 - Mensagens: `content_attributes: { conversation_workflow_rule_id: id }`
@@ -217,7 +217,7 @@ Usar **`ConversationWorkflow::ActionService`** (não `ActionService` direto):
 | Required attributes | Fase 4: backend via `ResolveService`; sistema usa `skip_required_attributes` |
 | Captain pending job | Escopo separado — não alterar Fase 1–3 |
 | SLA Enterprise | **Distinto** — SLA = compromisso contratual (prazos, métricas, políticas Enterprise); workflow = automação operacional por regra de conta. Não compartilham tabela nem scheduler. |
-| Business hours | Fase 4 — pausar contagem via `inbox.working_hours` |
+| Business hours | Implementado — `BusinessHoursElapsedCalculator`; pausar contagem via `inbox.working_hours` (opt-in `respect_business_hours` por regra) |
 
 ---
 
