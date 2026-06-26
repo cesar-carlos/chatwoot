@@ -108,14 +108,15 @@
   display_name: Custom Tools
   enabled: false
   premium: true
-- name: message_reply_to
-  display_name: Message Reply To
+# FORK: repurposed deprecated message_reply_to slot (keeps feature_flags within bigint capacity)
+- name: channel_wavoip
+  display_name: Wavoip Voice Channel
   enabled: false
-  deprecated: true
-- name: insert_article_in_reply
-  display_name: Insert Article in Reply
-  enabled: false
-  deprecated: true
+  premium: true
+# FORK: repurposed deprecated insert_article_in_reply slot
+- name: conversation_agent_no_reply_rules
+  display_name: Agent No Reply Workflow Rules
+  enabled: true
 - name: inbox_view
   display_name: Inbox View
   enabled: false
@@ -237,15 +238,6 @@
   display_name: Required Conversation Attributes
   enabled: false
   premium: true
-# FORK: Wavoip voice channel pilot flag
-- name: channel_wavoip
-  display_name: Wavoip Voice Channel
-  enabled: false
-  premium: true
-# FORK: agent no reply workflow rules feature flag
-- name: conversation_agent_no_reply_rules
-  display_name: Agent No Reply Workflow Rules
-  enabled: true
 - name: advanced_assignment
   display_name: Advanced Assignment
   enabled: false

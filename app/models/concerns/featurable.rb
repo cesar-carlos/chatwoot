@@ -8,6 +8,11 @@ module Featurable
 
   FEATURE_LIST = YAML.safe_load(Rails.root.join('config/features.yml').read).freeze
 
+  # feature_flags is a signed 64-bit integer; FlagShihTzu cannot address more than 64 flags.
+  if FEATURE_LIST.size > 64
+    raise "Too many features in config/features.yml (#{FEATURE_LIST.size}). Maximum is 64."
+  end
+
   FEATURES = FEATURE_LIST.each_with_object({}) do |feature, result|
     result[result.keys.size + 1] = "feature_#{feature['name']}".to_sym
   end
