@@ -32,7 +32,6 @@ class Wavoip::Calls::CallStatusApplier
   end
 
   def apply_locked!(call, mapped_status, broadcast:)
-    call.reload
     unless transition_allowed?(call, mapped_status)
       Rails.logger.warn(
         "[WAVOIP] Blocked transition inbox_id=#{inbox.id} call_id=#{event.external_call_id} " \
@@ -56,7 +55,7 @@ class Wavoip::Calls::CallStatusApplier
       agent: call.accepted_by_agent,
       duration_seconds: call.duration_seconds
     )
-    update_conversation(call)
+    call.sync_conversation_call_attributes!
   end
 
   def build_update_attrs(call, mapped_status)
@@ -96,7 +95,8 @@ class Wavoip::Calls::CallStatusApplier
   def transition_allowed?(call, mapped_status)
     return true unless call.terminal?
     return false if mapped_status == 'ringing'
-    return false if mapped_status == 'in_progress' && call.status != mapped_status
+    return false if mapped_status == 'in_progress'
+    return false if status_mapper.terminal?(mapped_status) && mapped_status != call.status
 
     true
   end
@@ -121,14 +121,5 @@ class Wavoip::Calls::CallStatusApplier
     else
       broadcaster.broadcast_accepted(call)
     end
-  end
-
-  def update_conversation(call)
-    call.conversation.update!(
-      additional_attributes: (call.conversation.additional_attributes || {}).merge(
-        'call_status' => call.display_status,
-        'call_direction' => call.direction_label
-      )
-    )
   end
 end

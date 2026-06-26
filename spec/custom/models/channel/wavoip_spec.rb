@@ -17,6 +17,29 @@ RSpec.describe Channel::Wavoip do
     it 'generates a webhook_key on create' do
       expect(channel.webhook_key).to be_present
     end
+
+    it 'rejects ring_timeout_seconds above 300' do
+      channel.provider_config = channel.provider_config.merge('ring_timeout_seconds' => 301)
+
+      expect(channel).not_to be_valid
+      expect(channel.errors[:ring_timeout_seconds_value]).to be_present
+    end
+
+    it 'allows ring_timeout_seconds up to 300' do
+      channel.provider_config = channel.provider_config.merge('ring_timeout_seconds' => 300)
+
+      expect(channel).to be_valid
+    end
+
+    it 'rejects include_administrators when offline fallback is none' do
+      channel.provider_config = channel.provider_config.merge(
+        'incoming_call_offline_fallback' => 'none',
+        'incoming_call_include_administrators' => true
+      )
+
+      expect(channel).not_to be_valid
+      expect(channel.errors[:provider_config]).to be_present
+    end
   end
 
   describe '#voice_enabled?' do
@@ -33,10 +56,18 @@ RSpec.describe Channel::Wavoip do
 
   describe '#webhook_url' do
     it 'embeds the opaque webhook_key without exposing device_token' do
-      url = channel.webhook_url
+      with_modified_env FRONTEND_URL: 'https://app.chatwoot.com' do
+        url = channel.webhook_url
 
-      expect(url).to include(channel.webhook_key)
-      expect(url).not_to include(channel.device_token)
+        expect(url).to include(channel.webhook_key)
+        expect(url).not_to include(channel.device_token)
+      end
+    end
+
+    it 'returns nil when FRONTEND_URL is not configured' do
+      with_modified_env FRONTEND_URL: nil do
+        expect(channel.webhook_url).to be_nil
+      end
     end
   end
 

@@ -1,4 +1,4 @@
-import { readonly, ref } from 'vue';
+import { computed, readonly, ref } from 'vue';
 import { useStore } from 'vuex';
 import InboxesAPI from 'dashboard/api/inboxes';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
@@ -6,6 +6,7 @@ import {
   connectWavoipInbox,
   disconnectWavoipInbox,
   getWavoipClient,
+  getWavoipClientEntry,
   teardownAllWavoipClients,
   registerDeviceUnsubscriber,
 } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
@@ -24,7 +25,9 @@ import { recordConnectivityIssue } from 'customDashboard/lib/wavoip/wavoipDiagno
 
 const connectedInboxIds = new Set();
 const connectInboxPromises = new Map();
-const isConnecting = ref(false);
+const sdkBootstrapTokens = new Map();
+const connectingCount = ref(0);
+const isConnecting = computed(() => connectingCount.value > 0);
 
 const isWavoipInbox = inbox => inbox?.channel_type === INBOX_TYPES.WAVOIP;
 
@@ -89,20 +92,27 @@ async function waitForDeviceOpen(device, timeoutMs = 30_000) {
   return new Promise(resolve => {
     let settled = false;
     let timer;
-    let unsubscribe;
+    let unsubscribeFn;
 
-    const finish = result => {
+    let handler;
+
+    function finish(result) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      unsubscribe?.();
+      if (typeof unsubscribeFn === 'function') {
+        unsubscribeFn();
+      } else {
+        device.off?.('statusChanged', handler);
+      }
       resolve(result);
+    }
+
+    handler = status => {
+      if (status === 'open') finish(true);
     };
 
-    unsubscribe = device.on?.('statusChanged', status => {
-      if (status === 'open') finish(true);
-    });
-
+    unsubscribeFn = device.on?.('statusChanged', handler);
     timer = setTimeout(() => finish(device.status === 'open'), timeoutMs);
   });
 }
@@ -137,29 +147,23 @@ async function ensureDeviceReady(client) {
 export function useWavoipConnection() {
   const store = useStore();
 
-  const connectInbox = async inboxId => {
-    if (!inboxId) return null;
-
-    if (connectedInboxIds.has(inboxId)) {
-      return getWavoipClient(inboxId);
-    }
+  const establishInboxConnection = async (inboxId, token) => {
+    if (!token) return null;
 
     const inFlight = connectInboxPromises.get(inboxId);
     if (inFlight) return inFlight;
 
     const promise = (async () => {
-      isConnecting.value = true;
+      connectingCount.value += 1;
       try {
-        const { data } = await InboxesAPI.getWavoipSdkBootstrap(inboxId);
-        const token = data?.device_token;
-        if (!token) return null;
-
+        sdkBootstrapTokens.set(inboxId, token);
         const client = await connectWavoipInbox(inboxId, token);
         wireDeviceListeners(inboxId, client);
         connectedInboxIds.add(inboxId);
         return client;
       } catch (error) {
         connectedInboxIds.delete(inboxId);
+        sdkBootstrapTokens.delete(inboxId);
         await disconnectWavoipInbox(inboxId);
         recordConnectivityIssue(
           inboxId,
@@ -168,13 +172,34 @@ export function useWavoipConnection() {
         );
         throw error;
       } finally {
-        isConnecting.value = false;
+        connectingCount.value = Math.max(0, connectingCount.value - 1);
         connectInboxPromises.delete(inboxId);
       }
     })();
 
     connectInboxPromises.set(inboxId, promise);
     return promise;
+  };
+
+  const connectInbox = async inboxId => {
+    if (!inboxId) return null;
+
+    if (connectedInboxIds.has(inboxId)) {
+      const existingEntry = getWavoipClientEntry(inboxId);
+      const { data } = await InboxesAPI.getWavoipSdkBootstrap(inboxId);
+      const freshToken = data?.device_token;
+      if (freshToken) sdkBootstrapTokens.set(inboxId, freshToken);
+      if (freshToken && existingEntry?.token === freshToken) {
+        return existingEntry.client;
+      }
+      connectedInboxIds.delete(inboxId);
+      connectInboxPromises.delete(inboxId);
+      if (existingEntry) await disconnectWavoipInbox(inboxId);
+      return establishInboxConnection(inboxId, freshToken);
+    }
+
+    const { data } = await InboxesAPI.getWavoipSdkBootstrap(inboxId);
+    return establishInboxConnection(inboxId, data?.device_token);
   };
 
   const connectForInbox = async inboxId => {
@@ -187,6 +212,7 @@ export function useWavoipConnection() {
   const disconnectInbox = async inboxId => {
     connectedInboxIds.delete(inboxId);
     connectInboxPromises.delete(inboxId);
+    sdkBootstrapTokens.delete(inboxId);
     await disconnectWavoipInbox(inboxId);
     clearWavoipDeviceStatus(inboxId);
   };
@@ -195,6 +221,7 @@ export function useWavoipConnection() {
     if (availability !== 'online') {
       connectedInboxIds.clear();
       connectInboxPromises.clear();
+      sdkBootstrapTokens.clear();
       await teardownAllWavoipClients();
       return;
     }
@@ -244,7 +271,13 @@ export { teardownAllWavoipClients, ensureDeviceReadiness, getDeviceStatus };
 
 export function getWavoipSdkSyncKey(store) {
   return getSdkConnectableWavoipInboxes(store)
-    .map(inbox => inbox.id)
-    .sort((a, b) => a - b)
+    .map(inbox => {
+      const token =
+        sdkBootstrapTokens.get(inbox.id) ??
+        getWavoipClientEntry(inbox.id)?.token ??
+        '';
+      return `${inbox.id}:${token}`;
+    })
+    .sort((a, b) => a.localeCompare(b))
     .join(',');
 }

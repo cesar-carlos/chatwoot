@@ -23,20 +23,23 @@ todos os services/jobs Wavoip e da página de configuração `WavoipCallingPage.
 
 ## Resumo executivo
 
-| Categoria | Itens | Severidade máxima |
-|-----------|-------|-------------------|
-| Bugs | 5 | Alta (deadlock no accept) |
-| Gaps | 11 | Alta (`none` não bloqueia escalação) |
-| Qualidade/Perf | 14 | Média |
-| **Total** | **30** | — |
+| Categoria | Itens | Status |
+|-----------|-------|--------|
+| Bugs | 5 | ✅ Concluído |
+| Gaps | 11 | ✅ Concluído |
+| Qualidade/Perf | 14 | ✅ Concluído |
+| **Total** | **30/30** | **Refatoração concluída** |
 
-### Top 5 — corrigir antes do piloto em produção
+Todas as fases R1, R2 e R3 foram implementadas conforme [plan.md](./plan.md).
+Suite de regressão: 104 RSpec + 83 Vitest (Wavoip custom).
 
-1. **[BUG-01]** `removePendingOffer` não rejeita promises em espera → `acceptIncomingCall` trava indefinidamente.
-2. **[GAP-01]** `offline_fallback: 'none'` não bloqueia a escalação por timeout → contradição direta com o que o admin configurou.
-3. **[GAP-02]** `accepted_by_agent_id` pode não ser persistido sem nenhum erro visível.
-4. **[BUG-02]** Alertas de chamada em inglês hardcoded para usuários em qualquer idioma.
-5. **[GAP-03]** Token rotacionado não reconecta o SDK até reload da página.
+### Top 5 — corrigidos (R1)
+
+1. **[BUG-01]** `removePendingOffer` rejeita promises em espera — `acceptIncomingCall` não trava mais.
+2. **[GAP-01]** `offline_fallback: 'none'` bloqueia escalação por timeout (incl. `EscalateRingJob`).
+3. **[GAP-02]** `accepted_by_agent_id` com retry exponencial (3 tentativas) e aviso em falha final.
+4. **[BUG-02]** Alertas de chamada usam i18n do idioma ativo do usuário.
+5. **[GAP-03]** Token rotacionado força reconexão do SDK sem reload de página.
 
 ---
 

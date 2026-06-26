@@ -19,9 +19,13 @@ import { wireCallDiagnostics } from 'customDashboard/lib/wavoip/wavoipCallDiagno
 
 const isInitiating = ref(false);
 
-const wireOutgoingEvents = (call, inboxId) => {
+const wireOutgoingEvents = (call, inboxId, translateFn) => {
   setRingingOutgoingCall(call, { providerCallId: call.id, inboxId });
-  wireCallDiagnostics(call, { inboxId, callId: call.id });
+  wireCallDiagnostics(call, {
+    inboxId,
+    callId: call.id,
+    translateFn,
+  });
 
   call.on?.('peerAccept', activeCall => {
     clearRingingOutgoingCall();
@@ -75,7 +79,7 @@ export function useWavoipOutboundCall() {
         throw new Error(formatWavoipStartCallError(err, t));
       }
 
-      wireOutgoingEvents(call, inboxId);
+      wireOutgoingEvents(call, inboxId, t);
 
       const providerCallId = call.id;
       useCallsStore().addCall({

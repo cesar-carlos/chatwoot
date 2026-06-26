@@ -61,9 +61,9 @@ Bloqueadores funcionais e regressions de UX visíveis por usuário final.
 - Adicionar spec Vitest: simula `waitForPendingOffer` + `removePendingOffer` concorrente, verifica que a promise rejeita (não pende)
 
 **Critério de pronto:**
-- [ ] `removePendingOffer` rejeita a promise em espera
-- [ ] Spec `useWavoipIncomingOffer.spec.js` cobre o cenário concorrente
-- [ ] `acceptIncomingCall` trata o `reject` sem travar a UI
+- [x] `removePendingOffer` rejeita a promise em espera
+- [x] Spec `useWavoipIncomingOffer.spec.js` cobre o cenário concorrente
+- [x] `acceptIncomingCall` trata o `reject` sem travar a UI
 
 ---
 
@@ -77,9 +77,9 @@ Bloqueadores funcionais e regressions de UX visíveis por usuário final.
 - Adicionar spec RSpec: inbox com `offline_fallback: 'none'` + `ring_timeout_seconds: 60` → `escalated_pubsub_tokens` deve retornar `[]`
 
 **Critério de pronto:**
-- [ ] `escalated_users` respeita `'none'`
-- [ ] Spec cobre: `none` → escalação vazia; qualquer outro fallback → escalação não vazia
-- [ ] Spec de integração: `EscalateRingJob` + `incoming_call_offline_fallback: 'none'` → nenhum broadcast
+- [x] `escalated_users` respeita `'none'`
+- [x] Spec cobre: `none` → escalação vazia; qualquer outro fallback → escalação não vazia
+- [x] Spec de integração: `EscalateRingJob` + `incoming_call_offline_fallback: 'none'` → nenhum broadcast
 
 ---
 
@@ -92,9 +92,9 @@ Bloqueadores funcionais e regressions de UX visíveis por usuário final.
 - Após todas as tentativas falharem, emitir `console.warn` com callSid e dbCallId
 
 **Critério de pronto:**
-- [ ] Retry até 3x com backoff exponencial
-- [ ] Falha final loga aviso (não silenciosa)
-- [ ] Spec: mock de `CallsAPI.recordAccept` falhando 2x e sucedendo na 3ª
+- [x] Retry até 3x com backoff exponencial
+- [x] Falha final loga aviso (não silenciosa)
+- [x] Spec: mock de `CallsAPI.recordAccept` falhando 2x e sucedendo na 3ª
 
 ---
 
@@ -109,8 +109,8 @@ Bloqueadores funcionais e regressions de UX visíveis por usuário final.
 - `wavoipCallDiagnostics.js`: receber `translateFn` opcional como parâmetro de `wireCallDiagnostics`; chamadores passam `t` de seus contextos
 
 **Critério de pronto:**
-- [ ] Nenhum import direto de `dashboard/i18n/locale/en/` em arquivos de runtime
-- [ ] Alertas exibem o idioma ativo do usuário
+- [x] Nenhum import direto de `dashboard/i18n/locale/en/` em arquivos de runtime
+- [x] Alertas exibem o idioma ativo do usuário
 
 ---
 
@@ -123,8 +123,8 @@ Bloqueadores funcionais e regressions de UX visíveis por usuário final.
 - Em `syncConnections`, para inboxes em `connectedInboxIds`, verificar se o token do registry bate com o da inbox. Se divergir, desconectar e reconectar
 
 **Critério de pronto:**
-- [ ] Mudança de `device_token` na prop da inbox força reconexão do SDK sem reload de página
-- [ ] Spec: simula inbox com token A conectado → token muda para B → `syncConnections` reconecta com B
+- [x] Mudança de `device_token` na prop da inbox força reconexão do SDK sem reload de página
+- [x] Spec: simula inbox com token A conectado → token muda para B → `syncConnections` reconecta com B
 
 ---
 
@@ -150,8 +150,8 @@ end
 ```
 
 **Critério de pronto:**
-- [ ] Múltiplos INCOMING_RING para o mesmo call → exatamente 1 job agendado
-- [ ] Spec: 3 chamadas a `schedule` → `EscalateRingJob` enfileirado 1x
+- [x] Múltiplos INCOMING_RING para o mesmo call → exatamente 1 job agendado
+- [x] Spec: 3 chamadas a `schedule` → `EscalateRingJob` enfileirado 1x
 
 ---
 
@@ -164,9 +164,9 @@ de telefone sem `+` do Wavoip adequadamente, documentar o comportamento atual co
 limitação explícita com um TODO rastreável.
 
 **Critério de pronto:**
-- [ ] Número sem `+` chegando via inbox não-brasileiro não recebe prefixo `+55`
-- [ ] Spec: inbox BR + número US sem `+` → não prefixado com 55
-- [ ] Spec: inbox BR + número BR sem `+` (11 dígitos) → prefixado com 55
+- [x] Número sem `+` chegando via inbox não-brasileiro não recebe prefixo `+55`
+- [x] Spec: inbox BR + número US sem `+` → não prefixado com 55
+- [x] Spec: inbox BR + número BR sem `+` (11 dígitos) → prefixado com 55
 
 ---
 
@@ -176,8 +176,8 @@ Consolidar em `Channel::Wavoip#mark_webhook_verified!` (com `with_lock`) e
 `Call#sync_conversation_call_attributes!`.
 
 **Critério de pronto:**
-- [ ] Nenhuma cópia duplicada nos serviços
-- [ ] Specs existentes passam sem alteração
+- [x] Nenhuma cópia duplicada nos serviços
+- [x] Specs existentes passam sem alteração
 
 ---
 
@@ -191,7 +191,7 @@ end
 ```
 
 **Critério de pronto:**
-- [ ] 1 query SQL em vez de 2 para o caminho do assignee
+- [x] 1 query SQL em vez de 2 para o caminho do assignee
 
 ---
 
@@ -201,8 +201,8 @@ Mover para `:default`. Criar `Wavoip::ProcessRecordWebhookJob` (ou usar o já ex
 `AttachRecordingJob`) para o processamento de `RECORD` na fila `:low`.
 
 **Critério de pronto:**
-- [ ] Eventos `CALL` e `DEVICE` processados na fila `:default`
-- [ ] Eventos `RECORD` permanecem em fila de menor prioridade
+- [x] Eventos `CALL` e `DEVICE` processados na fila `:default`
+- [x] Eventos `RECORD` permanecem em fila de menor prioridade
 
 ---
 
@@ -233,9 +233,10 @@ Itens de baixo risco, alta legibilidade e pequenas melhorias de UX.
 | QC-14 | `test_wavoip_webhook` usar `perform_later` em vez de `perform_now` |
 
 **Critério de pronto para R3:**
-- [ ] Todos os lints passam (Rubocop + ESLint)
-- [ ] Specs existentes verdes
-- [ ] Spec novo para cada item que alterou comportamento observável
+- [x] Rubocop passa nos paths Wavoip Ruby (`custom/app/services/wavoip/`, jobs, model, specs)
+- [x] ESLint passa nos paths Wavoip custom JS (`npx eslint custom/.../wavoip`, `custom/.../voice`)
+- [x] Specs existentes verdes (104 RSpec + 83 Vitest no escopo Wavoip custom)
+- [x] Spec novo para cada item que alterou comportamento observável
 
 ---
 
@@ -262,33 +263,33 @@ R3 — batch único de PR pequenos por arquivo
 
 | ID | Status | PR / Commit |
 |----|--------|-------------|
-| BUG-01 | 🔲 Pendente | — |
-| GAP-01 | 🔲 Pendente | — |
-| GAP-02 | 🔲 Pendente | — |
-| BUG-02 | 🔲 Pendente | — |
-| GAP-03 | 🔲 Pendente | — |
-| BUG-03 | 🔲 Pendente | — |
-| GAP-04 | 🔲 Pendente | — |
-| QC-01 | 🔲 Pendente | — |
-| QC-02 | 🔲 Pendente | — |
-| QC-06 | 🔲 Pendente | — |
-| QC-08 | 🔲 Pendente | — |
-| GAP-07 | 🔲 Pendente | — |
-| GAP-08 | 🔲 Pendente | — |
-| GAP-09 | 🔲 Pendente | — |
-| GAP-10 | 🔲 Pendente | — |
-| GAP-05 | 🔲 Pendente | — |
-| GAP-06 | 🔲 Pendente | — |
-| GAP-11 | 🔲 Pendente | — |
-| BUG-04 | 🔲 Pendente | — |
-| BUG-05 | 🔲 Pendente | — |
-| QC-03 | 🔲 Pendente | — |
-| QC-04 | 🔲 Pendente | — |
-| QC-05 | 🔲 Pendente | — |
-| QC-07 | 🔲 Pendente | — |
-| QC-09 | 🔲 Pendente | — |
-| QC-10 | 🔲 Pendente | — |
-| QC-11 | 🔲 Pendente | — |
-| QC-12 | 🔲 Pendente | — |
-| QC-13 | 🔲 Pendente | — |
-| QC-14 | 🔲 Pendente | — |
+| BUG-01 | ✅ Concluído | — |
+| GAP-01 | ✅ Concluído | — |
+| GAP-02 | ✅ Concluído | — |
+| BUG-02 | ✅ Concluído | — |
+| GAP-03 | ✅ Concluído | — |
+| BUG-03 | ✅ Concluído | — |
+| GAP-04 | ✅ Concluído | — |
+| QC-01 | ✅ Concluído | — |
+| QC-02 | ✅ Concluído | — |
+| QC-06 | ✅ Concluído | — |
+| QC-08 | ✅ Concluído | — |
+| GAP-07 | ✅ Concluído | — |
+| GAP-08 | ✅ Concluído | — |
+| GAP-09 | ✅ Concluído | — |
+| GAP-10 | ✅ Concluído | — |
+| GAP-05 | ✅ Concluído | — |
+| GAP-06 | ✅ Concluído | — |
+| GAP-11 | ✅ Concluído | — |
+| BUG-04 | ✅ Concluído | — |
+| BUG-05 | ✅ Concluído | — |
+| QC-03 | ✅ Concluído | — |
+| QC-04 | ✅ Concluído | — |
+| QC-05 | ✅ Concluído | — |
+| QC-07 | ✅ Concluído | — |
+| QC-09 | ✅ Concluído | — |
+| QC-10 | ✅ Concluído | — |
+| QC-11 | ✅ Concluído | — |
+| QC-12 | ✅ Concluído | — |
+| QC-13 | ✅ Concluído | — |
+| QC-14 | ✅ Concluído | — |

@@ -40,9 +40,9 @@ class Wavoip::Calls::HandledRemotelyStubService
       agent: nil,
       duration_seconds: call.duration_seconds
     )
-    update_conversation(call)
+    call.sync_conversation_call_attributes!
     broadcaster.broadcast_ended(call)
-    mark_webhook_verified!
+    inbox.channel.mark_webhook_verified!
     call
   end
 
@@ -51,24 +51,5 @@ class Wavoip::Calls::HandledRemotelyStubService
       'wavoip_status' => event.external_status,
       'ended_at' => Time.zone.now.to_i
     )
-  end
-
-  def update_conversation(call)
-    call.conversation.update!(
-      additional_attributes: (call.conversation.additional_attributes || {}).merge(
-        'call_status' => call.display_status,
-        'call_direction' => call.direction_label
-      )
-    )
-  end
-
-  def mark_webhook_verified!
-    channel = inbox.channel
-    return unless channel.is_a?(Channel::Wavoip)
-    return if channel.webhook_verified?
-
-    config = (channel.provider_config || {}).dup
-    config['webhook_verified_at'] = Time.current.iso8601
-    channel.update!(provider_config: config)
   end
 end

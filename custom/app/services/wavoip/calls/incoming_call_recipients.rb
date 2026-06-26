@@ -11,7 +11,7 @@ class Wavoip::Calls::IncomingCallRecipients
 
   OFFLINE_FALLBACK_RESOLVERS = {
     'none' => :none_scope,
-    'assignee' => :assignee_with_inbox_fallback,
+    'assignee' => :assignee_only_scope,
     'assignee_or_team_members' => :assignee_with_team_fallback,
     'assignee_or_inbox_members' => :assignee_with_inbox_fallback,
     'assignee_or_inbox_members_and_administrators' => :assignee_with_broad_fallback
@@ -40,6 +40,13 @@ class Wavoip::Calls::IncomingCallRecipients
   end
 
   def escalated_users
+    return User.none if offline_fallback == 'none'
+
+    if channel.incoming_call_notify_busy_agents?
+      busy = busy_agents
+      return busy if busy.exists?
+    end
+
     broad_fallback_scope
   end
 
@@ -60,6 +67,10 @@ class Wavoip::Calls::IncomingCallRecipients
     User.none
   end
 
+  def assignee_only_scope
+    assignee_scope
+  end
+
   def assignee_with_inbox_fallback
     assignee_or_fallback(inbox_member_scope)
   end
@@ -73,7 +84,8 @@ class Wavoip::Calls::IncomingCallRecipients
   end
 
   def assignee_or_fallback(fallback_scope)
-    assignee_scope.exists? ? assignee_scope : fallback_scope
+    scope = assignee_scope
+    scope.exists? ? scope : fallback_scope
   end
 
   def assignee_scope
@@ -95,7 +107,12 @@ class Wavoip::Calls::IncomingCallRecipients
   end
 
   def busy_agents
+    member_ids = inbox.member_ids
+    return User.none if member_ids.empty?
+
+    member_id_strings = member_ids.map(&:to_s)
     busy_ids = OnlineStatusTracker.get_available_users(inbox.account_id)
+                                  .slice(*member_id_strings)
                                   .select { |_key, value| value == 'busy' }
                                   .keys
                                   .map(&:to_i)

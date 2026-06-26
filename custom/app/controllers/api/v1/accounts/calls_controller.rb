@@ -19,7 +19,6 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
 
   def record_agent_acceptance!
     @call.with_lock do
-      @call.reload
       next if @call.accepted_by_agent_id.present?
 
       @call.update!(accepted_by_agent_id: Current.user.id)

@@ -42,4 +42,16 @@ RSpec.describe Wavoip::EscalateRingJob do
 
     expect(Wavoip::Calls::Broadcaster).not_to have_received(:new)
   end
+
+  it 'does not broadcast when offline fallback is none' do
+    channel.update!(
+      provider_config: channel.provider_config.merge('incoming_call_offline_fallback' => 'none')
+    )
+    payloads = []
+    allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
+
+    described_class.perform_now(call.id)
+
+    expect(payloads).to be_empty
+  end
 end

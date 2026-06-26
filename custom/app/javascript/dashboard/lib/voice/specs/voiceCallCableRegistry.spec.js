@@ -43,7 +43,10 @@ vi.mock('dashboard/store', () => ({
 
 import { useAlert } from 'dashboard/composables';
 import { isCallJoining } from 'dashboard/composables/useCallSession';
-import { wavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
+import { createWavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
+
+const t = key => key;
+const wavoipVoiceCableHandlers = createWavoipVoiceCableHandlers(t);
 
 describe('wavoipVoiceCableHandlers', () => {
   beforeEach(() => {

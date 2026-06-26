@@ -1,4 +1,5 @@
 import { createWavoipClient } from 'customDashboard/lib/wavoip/wavoipSdkPort';
+import { clearWavoipMediaForInbox } from 'customDashboard/composables/wavoip/useWavoipMedia';
 
 const clients = new Map();
 
@@ -36,6 +37,7 @@ export async function disconnectWavoipInbox(inboxId) {
     /* noop */
   }
 
+  clearWavoipMediaForInbox(inboxId);
   clients.delete(inboxId);
 }
 

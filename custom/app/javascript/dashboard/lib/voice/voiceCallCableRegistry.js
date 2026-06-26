@@ -1,7 +1,5 @@
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useAlert } from 'dashboard/composables';
-import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
-import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import store from 'dashboard/store';
 import { mapCableToStoreEntry } from 'customDashboard/lib/voice/callStoreMappers';
 import {
@@ -18,7 +16,7 @@ import { isCallJoining } from 'dashboard/composables/useCallSession';
 
 const currentUserId = () => store.getters.getCurrentUserID;
 
-export const wavoipVoiceCableHandlers = {
+export const createWavoipVoiceCableHandlers = t => ({
   onIncoming(data) {
     const callsStore = useCallsStore();
     const existing = callsStore.calls.find(c => c.callSid === data.call_id);
@@ -33,7 +31,6 @@ export const wavoipVoiceCableHandlers = {
     callsStore.addCall(existing ? { ...existing, ...entry } : entry);
     flushAcceptedByRecording(data.call_id);
   },
-  onOutboundConnected() {},
   onOutboundAccepted(data) {
     const callsStore = useCallsStore();
     const callEntry = callsStore.calls.find(c => c.callSid === data.call_id);
@@ -58,7 +55,7 @@ export const wavoipVoiceCableHandlers = {
       return;
     }
 
-    useAlert(conversationI18n.CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE);
+    useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE'));
     removePendingOffer(data.call_id);
     callsStore.dismissCall(data.call_id);
   },
@@ -68,7 +65,7 @@ export const wavoipVoiceCableHandlers = {
     if (!callEntry) return;
 
     if (data.end_reason === 'handled_remotely') {
-      useAlert(conversationI18n.CONVERSATION.WAVOIP_CALL.HANDLED_REMOTELY);
+      useAlert(t('CONVERSATION.WAVOIP_CALL.HANDLED_REMOTELY'));
     }
 
     const isLocalOwner =
@@ -82,8 +79,4 @@ export const wavoipVoiceCableHandlers = {
     removePendingOffer(data.call_id);
     callsStore.removeCall(data.call_id);
   },
-};
-
-export const VOICE_CALL_CABLE_HANDLERS = {
-  [VOICE_CALL_PROVIDERS.WAVOIP]: wavoipVoiceCableHandlers,
-};
+});

@@ -41,6 +41,7 @@ import {
   pendingOffers,
   removePendingOffer,
   useWavoipIncomingOffer,
+  waitForPendingOffer,
 } from '../useWavoipIncomingOffer';
 
 const createOffer = id => {
@@ -140,5 +141,11 @@ describe('useWavoipIncomingOffer', () => {
     pendingOffers.set('tmp', { offer: { id: 'tmp' }, inboxId: 1 });
     removePendingOffer('tmp');
     expect(pendingOffers.has('tmp')).toBe(false);
+  });
+
+  it('rejects waitForPendingOffer when offer is removed', async () => {
+    const pending = waitForPendingOffer('call-1');
+    removePendingOffer('call-1');
+    await expect(pending).rejects.toThrow('Offer cancelled');
   });
 });

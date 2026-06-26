@@ -1,4 +1,5 @@
 import { useStore } from 'vuex';
+import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { useCallsStore } from 'dashboard/stores/calls';
 import CallsAPI from 'customDashboard/api/calls';
 import {
@@ -87,7 +88,7 @@ export function useWavoipCallSession() {
       inboxes
         .filter(
           inbox =>
-            inbox.channel_type === 'Channel::Wavoip' &&
+            inbox.channel_type === INBOX_TYPES.WAVOIP &&
             shouldAgentReceiveWavoipCalls(inbox, { isAdministrator })
         )
         .forEach(inbox => attachToInbox(inbox.id));

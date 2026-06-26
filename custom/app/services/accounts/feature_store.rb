@@ -37,9 +37,7 @@ class Accounts::FeatureStore
     feature_name = feature_name.to_s
     data = jsonb_data
 
-    if data.key?(feature_name)
-      return ActiveModel::Type::Boolean.new.cast(data[feature_name])
-    end
+    return ActiveModel::Type::Boolean.new.cast(data[feature_name]) if data.key?(feature_name)
 
     return false if self.class.jsonb_primary?
 

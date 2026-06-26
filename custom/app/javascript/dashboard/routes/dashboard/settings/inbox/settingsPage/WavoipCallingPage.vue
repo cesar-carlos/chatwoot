@@ -136,7 +136,10 @@ export default {
       if (this.isSavingRouting) return;
       this.isSavingRouting = true;
       try {
-        const existing = { ...(this.inbox.provider_config || {}) };
+        await this.$store.dispatch('inboxes/fetchInboxItem', this.inbox.id);
+        const serverInbox =
+          this.$store.getters['inboxes/getInbox'](this.inbox.id) || this.inbox;
+        const existing = { ...(serverInbox.provider_config || {}) };
         await this.$store.dispatch('inboxes/updateInbox', {
           id: this.inbox.id,
           formData: false,
@@ -192,16 +195,23 @@ export default {
     },
     async handleOfflineFallbackChange(newValue) {
       const previousValue = this.offlineFallback;
+      const previousIncludeAdmins = this.includeAdministrators;
       this.offlineFallback = newValue;
+      const includeAdmins =
+        newValue === 'none' ? false : this.includeAdministrators;
+      if (newValue === 'none') {
+        this.includeAdministrators = false;
+      }
       try {
         await this.saveCallRouting({
-          incoming_call_include_administrators: this.includeAdministrators,
+          incoming_call_include_administrators: includeAdmins,
           incoming_call_offline_fallback: newValue,
           incoming_call_notify_busy_agents: this.notifyBusyAgents,
           ring_timeout_seconds: this.ringTimeoutSeconds,
         });
       } catch (_) {
         this.offlineFallback = previousValue;
+        this.includeAdministrators = previousIncludeAdmins;
       }
     },
     async handleRingTimeoutChange(newValue) {

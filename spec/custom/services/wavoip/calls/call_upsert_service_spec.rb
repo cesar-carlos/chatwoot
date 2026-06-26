@@ -141,6 +141,18 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       expect(broadcaster).not_to have_received(:broadcast_incoming)
     end
 
+    it 'no-ops transitions between different terminal statuses' do
+      service_for(build_event).create!
+      service_for(build_event(action: :update, external_status: 'ACTIVE')).update!
+      service_for(build_event(action: :update, external_status: 'ENDED', duration_seconds: 30)).update!
+
+      late_no_answer = build_event(action: :update, external_status: 'NOT_ANSWERED')
+      result = service_for(late_no_answer).update!
+
+      expect(result.status).to eq('completed')
+      expect(broadcaster).to have_received(:broadcast_ended).once
+    end
+
     it 'records handled_remotely end reason and completes the call' do
       service_for(build_event).create!
       remote_event = build_event(action: :update, external_status: 'HANDLED_REMOTELY')

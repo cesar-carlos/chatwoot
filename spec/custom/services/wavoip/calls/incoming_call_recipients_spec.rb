@@ -78,13 +78,13 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
       expect(recipients.users.pluck(:id)).to eq([offline_member.id])
     end
 
-    it 'degrades to inbox members when offline fallback is assignee and assignee is absent' do
+    it 'does not notify anyone when offline fallback is assignee and assignee is absent' do
       conversation.update!(assignee: nil)
       channel.update!(
         provider_config: channel.provider_config.merge('incoming_call_offline_fallback' => 'assignee')
       )
 
-      expect(recipients.users.pluck(:id)).to contain_exactly(online_agent.id, offline_member.id)
+      expect(recipients.users).to be_empty
     end
 
     it 'notifies inbox members when offline fallback is assignee_or_inbox_members and assignee is absent' do
@@ -126,6 +126,18 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
     it 'returns busy inbox members before offline fallback' do
       expect(recipients.users.pluck(:id)).to eq([busy_agent.id])
     end
+
+    it 'ignores busy agents who are not inbox members' do
+      non_member_busy = create(:user, account: account, role: :agent)
+      allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
+        {
+          busy_agent.id.to_s => 'busy',
+          non_member_busy.id.to_s => 'busy'
+        }
+      )
+
+      expect(recipients.users.pluck(:id)).to eq([busy_agent.id])
+    end
   end
 
   describe '#escalated_users' do
@@ -135,6 +147,32 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
         offline_member.id,
         admin.id
       )
+    end
+
+    it 'returns no users when offline fallback is none' do
+      channel.update!(
+        provider_config: channel.provider_config.merge('incoming_call_offline_fallback' => 'none')
+      )
+
+      expect(recipients.escalated_users).to be_empty
+    end
+
+    context 'when notify_busy_agents is enabled' do
+      let!(:busy_agent) { create(:user, account: account, role: :agent) }
+
+      before do
+        create(:inbox_member, inbox: inbox, user: busy_agent)
+        channel.update!(
+          provider_config: channel.provider_config.merge('incoming_call_notify_busy_agents' => true)
+        )
+        allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
+          { busy_agent.id.to_s => 'busy' }
+        )
+      end
+
+      it 'returns busy inbox members before broad fallback' do
+        expect(recipients.escalated_users.pluck(:id)).to eq([busy_agent.id])
+      end
     end
   end
 end
