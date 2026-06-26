@@ -24,7 +24,7 @@ class Wavoip::Calls::IncomingCallRecipients
   end
 
   def users
-    online = inbox.available_agents
+    online = online_member_users
     return online if online.exists?
 
     if channel.incoming_call_notify_busy_agents?
@@ -57,6 +57,23 @@ class Wavoip::Calls::IncomingCallRecipients
   private
 
   attr_reader :inbox, :conversation, :channel
+
+  # Unified scope of everyone eligible to receive call notifications.
+  # When `incoming_call_include_administrators` is enabled, account admins are
+  # included from the very first ring — not only as an offline fallback.
+  def recipients_base_scope
+    user_ids = inbox.member_ids.dup
+    user_ids |= channel.account.administrators.ids if channel.incoming_call_include_administrators?
+    User.where(id: user_ids)
+  end
+
+  def online_member_users
+    online_ids = OnlineStatusTracker.get_available_users(inbox.account_id)
+                                    .select { |_key, value| value == 'online' }
+                                    .keys
+                                    .map(&:to_i)
+    recipients_base_scope.where(id: online_ids)
+  end
 
   def offline_recipients
     resolver = OFFLINE_FALLBACK_RESOLVERS.fetch(offline_fallback, :assignee_with_broad_fallback)
@@ -107,22 +124,15 @@ class Wavoip::Calls::IncomingCallRecipients
   end
 
   def busy_agents
-    member_ids = inbox.member_ids
-    return User.none if member_ids.empty?
-
-    member_id_strings = member_ids.map(&:to_s)
     busy_ids = OnlineStatusTracker.get_available_users(inbox.account_id)
-                                  .slice(*member_id_strings)
                                   .select { |_key, value| value == 'busy' }
                                   .keys
                                   .map(&:to_i)
-    inbox_member_scope.where(id: busy_ids)
+    recipients_base_scope.where(id: busy_ids)
   end
 
   def broad_fallback_scope
-    user_ids = inbox.member_ids.dup
-    user_ids |= channel.account.administrators.ids if channel.incoming_call_include_administrators?
-    User.where(id: user_ids)
+    recipients_base_scope
   end
 
   def offline_fallback

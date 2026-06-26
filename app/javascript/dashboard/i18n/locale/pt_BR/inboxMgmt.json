@@ -888,6 +888,8 @@
           "DESCRIPTION": "Se ninguém atender neste tempo, notificar todos os agentes da caixa de entrada e administradores (quando habilitado).",
           "OPTIONS": {
             "0": "Desabilitado",
+            "10": "10 segundos",
+            "20": "20 segundos",
             "30": "30 segundos",
             "60": "60 segundos",
             "90": "90 segundos",
