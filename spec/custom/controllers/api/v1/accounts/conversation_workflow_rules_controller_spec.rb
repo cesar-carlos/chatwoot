@@ -12,7 +12,8 @@ RSpec.describe 'Api::V1::Accounts::ConversationWorkflowRulesController', type: :
         account: account,
         name: 'Test',
         trigger_type: :conversation_inactivity,
-        duration_minutes: 60
+        duration_minutes: 60,
+        resolve_on_match: true
       )
 
       get base_url, headers: headers
@@ -63,14 +64,16 @@ RSpec.describe 'Api::V1::Accounts::ConversationWorkflowRulesController', type: :
         name: 'First',
         trigger_type: :conversation_inactivity,
         duration_minutes: 60,
-        position: 0
+        position: 0,
+        resolve_on_match: true
       )
       second_rule = ConversationWorkflowRule.create!(
         account: account,
         name: 'Second',
         trigger_type: :conversation_inactivity,
         duration_minutes: 120,
-        position: 1
+        position: 1,
+        resolve_on_match: true
       )
 
       post "#{base_url}/reorder",

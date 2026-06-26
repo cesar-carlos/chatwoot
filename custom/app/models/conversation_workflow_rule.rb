@@ -25,6 +25,7 @@ class ConversationWorkflowRule < ApplicationRecord
   validate :query_operator_presence
   validate :query_operator_value
   validate :inbox_ids_belong_to_account
+  validate :actions_or_outcome_present
 
   scope :active, -> { where(active: true) }
   scope :ordered, -> { order(position: :asc, id: :asc) }
@@ -100,5 +101,15 @@ class ConversationWorkflowRule < ApplicationRecord
     return if account.inboxes.where(id: ids).count == ids.uniq.size
 
     errors.add(:inbox_ids, 'must belong to the account')
+  end
+
+  def actions_or_outcome_present
+    if conversation_inactivity?
+      return if actions.present? || resolve_on_match? || message.present?
+
+      errors.add(:base, 'Inactivity rules require at least one outcome (actions, resolve_on_match, or message)')
+    elsif actions.blank?
+      errors.add(:actions, 'must include at least one action')
+    end
   end
 end

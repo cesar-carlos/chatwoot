@@ -11,11 +11,10 @@ RSpec.describe Custom::ConversationWorkflow::ScopeMatcher do
 
   describe '#matches?' do
     it 'matches open inactivity conversations in allowed inbox' do
-      rule = ConversationWorkflowRule.create!(
+      rule = create_workflow_rule!(
         account: account,
         name: 'Inactivity',
         trigger_type: :conversation_inactivity,
-        duration_minutes: 60,
         inbox_ids: [inbox.id]
       )
       conversation = create(:conversation, account: account, inbox: inbox, status: :open)
@@ -24,11 +23,10 @@ RSpec.describe Custom::ConversationWorkflow::ScopeMatcher do
     end
 
     it 'rejects inactivity when inbox is filtered out' do
-      rule = ConversationWorkflowRule.create!(
+      rule = create_workflow_rule!(
         account: account,
         name: 'Inactivity',
         trigger_type: :conversation_inactivity,
-        duration_minutes: 60,
         inbox_ids: [other_inbox.id]
       )
       conversation = create(:conversation, account: account, inbox: inbox, status: :open)
@@ -37,11 +35,10 @@ RSpec.describe Custom::ConversationWorkflow::ScopeMatcher do
     end
 
     it 'matches pending agent no reply when status allowed' do
-      rule = ConversationWorkflowRule.create!(
+      rule = create_workflow_rule!(
         account: account,
         name: 'No reply',
         trigger_type: :agent_no_reply,
-        duration_minutes: 60,
         options: { 'statuses' => %w[pending] }
       )
       conversation = create(
@@ -56,11 +53,10 @@ RSpec.describe Custom::ConversationWorkflow::ScopeMatcher do
     end
 
     it 'rejects agent no reply when first reply exists and required' do
-      rule = ConversationWorkflowRule.create!(
+      rule = create_workflow_rule!(
         account: account,
         name: 'No reply',
         trigger_type: :agent_no_reply,
-        duration_minutes: 60,
         options: { 'require_no_first_reply' => true }
       )
       conversation = create(
