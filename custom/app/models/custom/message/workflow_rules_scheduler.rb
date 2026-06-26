@@ -13,6 +13,7 @@ module Custom::Message::WorkflowRulesScheduler
 
   def schedule_workflow_rules_on_outgoing
     return if history_import_message?
+    return if workflow_generated_message?
 
     account = conversation&.account
     return if account.blank?
@@ -60,5 +61,9 @@ module Custom::Message::WorkflowRulesScheduler
   def feature_enabled_for_trigger?(account, rule)
     flag = Custom::ConversationWorkflow::AccountProcessor::FEATURE_FLAG_BY_TRIGGER[rule.trigger_type]
     flag.blank? || account.feature_enabled?(flag)
+  end
+
+  def workflow_generated_message?
+    content_attributes['conversation_workflow_rule_id'].present?
   end
 end

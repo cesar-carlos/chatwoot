@@ -14,11 +14,10 @@ RSpec.describe Custom::ConversationWorkflow::ScheduleOnMessageJob do
     )
   end
   let(:rule) do
-    ConversationWorkflowRule.create!(
+    create_workflow_rule!(
       account: account,
       name: 'Agent no reply',
       trigger_type: :agent_no_reply,
-      duration_minutes: 60,
       active: true
     )
   end
@@ -44,10 +43,11 @@ RSpec.describe Custom::ConversationWorkflow::ScheduleOnMessageJob do
   end
 
   it 'clears the redis schedule slot after running' do
-    key = "#{Custom::ConversationWorkflow::ScheduleOnMessageScheduler::REDIS_KEY_PREFIX}:#{rule.id}:#{conversation.id}"
+    epoch = conversation.waiting_since.to_i
+    key = "#{Custom::ConversationWorkflow::ScheduleOnMessageScheduler::REDIS_KEY_PREFIX}:#{rule.id}:#{conversation.id}:#{epoch}"
     Redis::Alfred.set(key, Time.current.to_i)
 
-    described_class.perform_now(rule_id: rule.id, conversation_id: conversation.id)
+    described_class.perform_now(rule_id: rule.id, conversation_id: conversation.id, reference_epoch: epoch)
 
     expect(Redis::Alfred.exists?(key)).to be(false)
   end
@@ -76,11 +76,10 @@ RSpec.describe Custom::ConversationWorkflow::ScheduleOnMessageScheduler do
     )
   end
   let(:rule) do
-    ConversationWorkflowRule.create!(
+    create_workflow_rule!(
       account: account,
       name: 'Agent no reply',
       trigger_type: :agent_no_reply,
-      duration_minutes: 60,
       active: true
     )
   end
@@ -93,8 +92,9 @@ RSpec.describe Custom::ConversationWorkflow::ScheduleOnMessageScheduler do
   end
 
   after do
+    epoch = conversation.waiting_since&.to_i
     Redis::Alfred.delete(
-      "#{Custom::ConversationWorkflow::ScheduleOnMessageScheduler::REDIS_KEY_PREFIX}:#{rule.id}:#{conversation.id}"
+      "#{Custom::ConversationWorkflow::ScheduleOnMessageScheduler::REDIS_KEY_PREFIX}:#{rule.id}:#{conversation.id}:#{epoch}"
     )
   end
 
@@ -104,6 +104,7 @@ RSpec.describe Custom::ConversationWorkflow::ScheduleOnMessageScheduler do
       conversation.update_column(:waiting_since, 50.minutes.ago)
       # rubocop:enable Rails/SkipsModelValidations
       conversation.reload
+      epoch = conversation.waiting_since.to_i
 
       described_class.new(rule: rule, conversation: conversation).perform
 
@@ -112,7 +113,8 @@ RSpec.describe Custom::ConversationWorkflow::ScheduleOnMessageScheduler do
       )
       expect(Custom::ConversationWorkflow::ScheduleOnMessageJob).to have_received(:perform_later).with(
         conversation_id: conversation.id,
-        rule_id: rule.id
+        rule_id: rule.id,
+        reference_epoch: epoch
       )
     end
   end
@@ -129,6 +131,14 @@ RSpec.describe Custom::ConversationWorkflow::ScheduleOnMessageScheduler do
 
       expect(Custom::ConversationWorkflow::ScheduleOnMessageJob).to have_received(:perform_later).once
     end
+  end
+
+  it 'does not schedule when respect_business_hours is enabled' do
+    rule.update!(options: { 'respect_business_hours' => true })
+
+    described_class.new(rule: rule, conversation: conversation).perform
+
+    expect(Custom::ConversationWorkflow::ScheduleOnMessageJob).not_to have_received(:perform_later)
   end
 end
 # rubocop:enable RSpec/MultipleDescribes

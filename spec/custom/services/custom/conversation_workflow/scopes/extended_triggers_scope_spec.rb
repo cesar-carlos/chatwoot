@@ -5,11 +5,10 @@ RSpec.describe Custom::ConversationWorkflow::Scopes::UnassignedTooLongScope do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:rule) do
-    ConversationWorkflowRule.create!(
+    create_workflow_rule!(
       account: account,
       name: 'Unassigned',
       trigger_type: :unassigned_too_long,
-      duration_minutes: 60,
       active: true
     )
   end
@@ -27,12 +26,12 @@ RSpec.describe Custom::ConversationWorkflow::Scopes::FirstResponseOverdueScope d
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:rule) do
-    ConversationWorkflowRule.create!(
+    create_workflow_rule!(
       account: account,
       name: 'Never attended',
       trigger_type: :first_response_overdue,
-      duration_minutes: 30,
-      active: true
+      active: true,
+      duration_minutes: 30
     )
   end
 

@@ -5,11 +5,10 @@ RSpec.describe ConversationWorkflowRuleExecution do
   let(:inbox) { create(:inbox, account: account) }
   let(:conversation) { create(:conversation, account: account, inbox: inbox) }
   let(:rule) do
-    ConversationWorkflowRule.create!(
+    create_workflow_rule!(
       account: account,
       name: 'Inactivity',
-      trigger_type: :conversation_inactivity,
-      duration_minutes: 60
+      trigger_type: :conversation_inactivity
     )
   end
 
@@ -41,21 +40,44 @@ RSpec.describe ConversationWorkflowRuleExecution do
     end
   end
 
-  describe '.already_executed?' do
-    it 'returns true when waiting_since epoch matches' do
+  describe '.release!' do
+    it 'removes execution by waiting_since epoch' do
+      agent_rule = create_workflow_rule!(
+        account: account,
+        trigger_type: :agent_no_reply
+      )
+      conversation.update!(waiting_since: 1.hour.ago)
       described_class.record!(
-        rule: rule,
+        rule: agent_rule,
         conversation: conversation,
-        waiting_since_epoch: 1_700_000_000
+        waiting_since_epoch: conversation.waiting_since.to_i
       )
 
-      expect(
-        described_class.already_executed?(
-          rule: rule,
-          conversation: conversation,
-          waiting_since_epoch: 1_700_000_000
-        )
-      ).to be(true)
+      described_class.release!(rule: agent_rule, conversation: conversation)
+
+      expect(described_class.count).to eq(0)
+    end
+  end
+
+  describe '.clear_unassigned_too_long_for!' do
+    let(:unassigned_rule) do
+      create_workflow_rule!(
+        account: account,
+        name: 'Unassigned',
+        trigger_type: :unassigned_too_long
+      )
+    end
+
+    it 'removes executions for unassigned_too_long rules on the conversation' do
+      described_class.record!(
+        rule: unassigned_rule,
+        conversation: conversation,
+        last_activity_epoch: conversation.created_at.to_i
+      )
+
+      described_class.clear_unassigned_too_long_for!(conversation: conversation)
+
+      expect(described_class.count).to eq(0)
     end
   end
 end

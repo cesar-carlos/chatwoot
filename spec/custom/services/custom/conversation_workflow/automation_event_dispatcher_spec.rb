@@ -15,11 +15,10 @@ RSpec.describe Custom::ConversationWorkflow::AutomationEventDispatcher do
     )
   end
   let(:workflow_rule) do
-    ConversationWorkflowRule.create!(
+    create_workflow_rule!(
       account: account,
       name: 'Inactivity rule',
-      trigger_type: :conversation_inactivity,
-      duration_minutes: 60
+      trigger_type: :conversation_inactivity
     )
   end
 

@@ -9,6 +9,7 @@ class Custom::ConversationWorkflow::ScheduleOnMessageScheduler
 
   def perform
     return unless ConversationWorkflowRule.schedulable_on_incoming?(@rule.trigger_type)
+    return if @rule.respect_business_hours?
     return if @conversation.waiting_since.blank?
     return if @rule.first_response_overdue? && @conversation.first_reply_created_at.present?
 
@@ -26,6 +27,7 @@ class Custom::ConversationWorkflow::ScheduleOnMessageScheduler
 
   def perform_for_outgoing_message(message)
     return unless @rule.customer_no_reply?
+    return if @rule.respect_business_hours?
     return unless message.outgoing?
 
     reference_time = message.created_at

@@ -26,6 +26,11 @@ class Custom::ConversationWorkflow::RuleExecutor
     conversation_eligible?(conversation)
   end
 
+  def fully_eligible?(conversation)
+    conversation_eligible?(conversation) &&
+      Custom::ConversationWorkflow::ConditionsFilter.new(@rule, conversation).perform
+  end
+
   private
 
   def base_scope
@@ -47,7 +52,14 @@ class Custom::ConversationWorkflow::RuleExecutor
     return unless Custom::ConversationWorkflow::ConditionsFilter.new(@rule, conversation).perform
     return unless claim_execution!(conversation)
 
-    execute_pipeline(conversation)
+    begin
+      execute_pipeline(conversation)
+    rescue StandardError => e
+      ConversationWorkflowRuleExecution.release!(rule: @rule, conversation: conversation)
+      ChatwootExceptionTracker.new(e, account: @account).capture_exception
+      return
+    end
+
     create_activity_message(conversation)
     Custom::ConversationWorkflow::AutomationEventDispatcher.new(rule: @rule, conversation: conversation).perform
   end

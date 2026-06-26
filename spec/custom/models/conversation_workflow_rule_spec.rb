@@ -26,6 +26,16 @@ RSpec.describe ConversationWorkflowRule do
       rule = build_rule(inbox_ids: [other_inbox.id])
       expect(rule).not_to be_valid
     end
+
+    it 'requires at least one outcome for inactivity rules' do
+      rule = build_rule(resolve_on_match: false, message: '', actions: [])
+      expect(rule).not_to be_valid
+    end
+
+    it 'requires actions for non-inactivity triggers' do
+      rule = build_rule(trigger_type: :agent_no_reply, actions: [])
+      expect(rule).not_to be_valid
+    end
   end
 
   describe '#actions_attributes' do
@@ -42,14 +52,7 @@ RSpec.describe ConversationWorkflowRule do
 
   def build_rule(overrides = {})
     described_class.new(
-      {
-        account: account,
-        name: 'Test rule',
-        duration_minutes: 60,
-        trigger_type: :conversation_inactivity,
-        conditions: [],
-        actions: []
-      }.merge(overrides)
+      build_workflow_rule_attrs(overrides).merge(account: account)
     )
   end
 end
