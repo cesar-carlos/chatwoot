@@ -8,6 +8,7 @@ import types from 'dashboard/store/mutation-types';
 import store from 'dashboard/store';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
+import { isWavoipSdkCallOwned } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 
 export const TERMINAL_STATUSES = [
   'completed',
@@ -196,7 +197,13 @@ export function handleVoiceCallUpdated(
       currentUserId,
     })
   ) {
-    callsStore.removeCall(callSid);
+    // Outbound Wavoip messages are created with a null sender (accepted_by_agent
+    // is not set at call-creation time), so shouldShowCall always returns false
+    // for every agent. The SDK is the source of truth for whether the session is
+    // still live; don't yank the widget while the SDK is still ringing.
+    if (!isWavoipSdkCallOwned(callSid)) {
+      callsStore.removeCall(callSid);
+    }
     return;
   }
 
