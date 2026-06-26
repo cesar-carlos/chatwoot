@@ -19,3 +19,18 @@ export function shouldAgentReceiveWavoipCalls(inbox, { isAdministrator }) {
     inbox.incomingCallIncludeAdministrators;
   return includeAdmins !== false;
 }
+
+export function shouldReceiveWavoipInboundRing({
+  inbox,
+  isAdministrator,
+  availability,
+  inboundOnly = true,
+}) {
+  if (inboundOnly && availability !== 'online') return false;
+  if (inbox && !shouldAgentReceiveWavoipCalls(inbox, { isAdministrator })) {
+    return false;
+  }
+  if (inbox?.inbound_calls_enabled === false) return false;
+
+  return true;
+}
