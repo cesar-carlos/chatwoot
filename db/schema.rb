@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_22_140000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_26_121300) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -74,6 +74,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_22_140000) do
     t.integer "status", default: 0
     t.jsonb "internal_attributes", default: {}, null: false
     t.jsonb "settings", default: {}
+    t.jsonb "enabled_features_data", default: {}, null: false
     t.index ["status"], name: "index_accounts_on_status"
   end
 

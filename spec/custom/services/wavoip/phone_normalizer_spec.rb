@@ -13,10 +13,16 @@ RSpec.describe Wavoip::PhoneNormalizer do
     expect(described_class.normalize('55669999050312')).to eq('+55669999050312')
   end
 
-  it 'infers +55 for 10-11 digit BR mobiles when inbox is Brazilian' do
+  it 'infers +55 for 11-digit BR mobiles when inbox is Brazilian' do
     expect(
       described_class.normalize('66999050312', inbox_phone: brazil_inbox_phone)
     ).to eq('+5566999050312')
+  end
+
+  it 'does not prefix +55 for US numbers on a Brazilian inbox' do
+    expect(
+      described_class.normalize('2125551234', inbox_phone: brazil_inbox_phone)
+    ).to eq('+12125551234')
   end
 
   it 'does not infer +55 when inbox is not Brazilian' do

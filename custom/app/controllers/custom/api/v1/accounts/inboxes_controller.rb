@@ -62,7 +62,7 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless channel.is_a?(Channel::Wavoip)
 
-    Wavoip::ProcessWebhookJob.perform_now(
+    Wavoip::ProcessWebhookJob.perform_later(
       @inbox.id,
       {
         'type' => 'DEVICE',
@@ -70,10 +70,9 @@ module Custom::Api::V1::Accounts::InboxesController
         'phone' => channel.phone_number
       }
     )
-    @inbox.update_account_cache
     render json: {
       ok: true,
-      webhook_verified: channel.reload.webhook_verified?
+      webhook_verified: channel.webhook_verified?
     }
   end
 

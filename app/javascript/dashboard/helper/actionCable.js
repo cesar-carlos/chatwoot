@@ -16,7 +16,7 @@ import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constant
 import { useAlert } from 'dashboard/composables';
 import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 // FORK: Wavoip voice cable handlers (no SDP)
-import { VOICE_CALL_CABLE_HANDLERS } from 'customDashboard/lib/voice/voiceCallCableRegistry';
+import { createWavoipVoiceCableHandlers } from 'customDashboard/lib/voice/voiceCallCableRegistry';
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 // FORK: Evolution disconnect alert
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
@@ -29,6 +29,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   constructor(app, pubsubToken) {
     const { websocketURL = '' } = window.chatwootConfig || {};
     super(app, pubsubToken, websocketURL);
+    this.app = app;
     this.CancelTyping = [];
     this.lastUnreadCountsFetchAt = null;
     this.unreadCountsFetchTimer = null;
@@ -66,6 +67,12 @@ class ActionCableConnector extends BaseActionCableConnector {
       // FORK: Evolution WhatsApp disconnect
       'evolution.connection_closed': this.onEvolutionConnectionClosed,
     };
+  }
+
+  // eslint-disable-next-line class-methods-use-this
+  wavoipVoiceCableHandlers() {
+    const t = this.app.$i18n?.global?.t;
+    return createWavoipVoiceCableHandlers(t || (key => key));
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -299,9 +306,7 @@ class ActionCableConnector extends BaseActionCableConnector {
         return;
       }
       if (inbox?.inbound_calls_enabled === false) return;
-      VOICE_CALL_CABLE_HANDLERS[VOICE_CALL_PROVIDERS.WAVOIP]?.onIncoming?.(
-        data
-      );
+      this.wavoipVoiceCableHandlers().onIncoming?.(data);
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
@@ -346,9 +351,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallOutboundAccepted = data => {
     if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
-      VOICE_CALL_CABLE_HANDLERS[
-        VOICE_CALL_PROVIDERS.WAVOIP
-      ]?.onOutboundAccepted?.(data);
+      this.wavoipVoiceCableHandlers().onOutboundAccepted?.(data);
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
@@ -361,7 +364,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallEnded = async data => {
     if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
-      VOICE_CALL_CABLE_HANDLERS[VOICE_CALL_PROVIDERS.WAVOIP]?.onEnded?.(data);
+      this.wavoipVoiceCableHandlers().onEnded?.(data);
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
@@ -387,9 +390,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallAccepted = data => {
     if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
-      VOICE_CALL_CABLE_HANDLERS[VOICE_CALL_PROVIDERS.WAVOIP]?.onAccepted?.(
-        data
-      );
+      this.wavoipVoiceCableHandlers().onAccepted?.(data);
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
@@ -413,7 +414,10 @@ class ActionCableConnector extends BaseActionCableConnector {
 }
 
 export default {
-  init(store, pubsubToken) {
-    return new ActionCableConnector({ $store: store }, pubsubToken);
+  init(store, pubsubToken, i18n) {
+    return new ActionCableConnector(
+      { $store: store, $i18n: i18n },
+      pubsubToken
+    );
   },
 };

@@ -6,6 +6,7 @@
 #  auto_resolve_duration :integer
 #  custom_attributes     :jsonb
 #  domain                :string(100)
+#  enabled_features_data :jsonb            not null
 #  feature_flags         :bigint           default(0), not null
 #  internal_attributes   :jsonb            not null
 #  limits                :jsonb

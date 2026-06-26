@@ -6,6 +6,7 @@ const connectWavoipInbox = vi.fn();
 const disconnectWavoipInbox = vi.fn();
 const teardownAllWavoipClients = vi.fn();
 const getWavoipClient = vi.fn();
+const getWavoipClientEntry = vi.fn();
 
 vi.mock('dashboard/api/inboxes', () => ({
   default: {
@@ -18,6 +19,7 @@ vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
   disconnectWavoipInbox: (...args) => disconnectWavoipInbox(...args),
   teardownAllWavoipClients: (...args) => teardownAllWavoipClients(...args),
   getWavoipClient: (...args) => getWavoipClient(...args),
+  getWavoipClientEntry: (...args) => getWavoipClientEntry(...args),
   registerDeviceUnsubscriber: vi.fn(),
 }));
 
@@ -60,8 +62,9 @@ vi.mock('vuex', () => ({
   }),
 }));
 
-import { useWavoipConnection } from '../useWavoipConnection';
-
+let useWavoipConnection;
+let getWavoipSdkSyncKey;
+let ensureDeviceReadiness;
 let connectionStatusHandler;
 
 const createOpenDeviceClient = () => ({
@@ -81,7 +84,10 @@ const createOpenDeviceClient = () => ({
 });
 
 describe('useWavoipConnection', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules();
+    ({ useWavoipConnection, getWavoipSdkSyncKey, ensureDeviceReadiness } =
+      await import('../useWavoipConnection'));
     connectionStatusHandler = undefined;
     setWavoipConnectionStatus.mockReset();
     setWavoipWhatsAppStatus.mockReset();
@@ -92,6 +98,7 @@ describe('useWavoipConnection', () => {
     disconnectWavoipInbox.mockReset();
     teardownAllWavoipClients.mockReset();
     getWavoipClient.mockReset();
+    getWavoipClientEntry.mockReset();
   });
 
   it('connects an inbox using the bootstrap device token', async () => {
@@ -158,5 +165,123 @@ describe('useWavoipConnection', () => {
     expect(setWavoipConnectionStatus).toHaveBeenCalledWith(31, 'connected');
     connectionStatusHandler?.('reconnecting');
     expect(setWavoipConnectionStatus).toHaveBeenCalledWith(31, 'reconnecting');
+  });
+
+  it('reconnects when bootstrap token changes for an already-connected inbox', async () => {
+    const client = createOpenDeviceClient();
+    getWavoipSdkBootstrap
+      .mockResolvedValueOnce({ data: { device_token: 'token-a' } })
+      .mockResolvedValueOnce({ data: { device_token: 'token-b' } });
+    connectWavoipInbox.mockResolvedValue(client);
+    getWavoipClient.mockReturnValue(null);
+    getWavoipClientEntry.mockReturnValue({
+      client,
+      token: 'token-a',
+    });
+
+    const { connectForInbox, syncConnections } = useWavoipConnection();
+    await connectForInbox(21);
+
+    expect(connectWavoipInbox).toHaveBeenCalledWith(21, 'token-a');
+
+    await syncConnections('online');
+
+    expect(disconnectWavoipInbox).toHaveBeenCalledWith(21);
+    expect(connectWavoipInbox).toHaveBeenCalledWith(21, 'token-b');
+  });
+
+  it('includes bootstrap tokens in the SDK sync key', async () => {
+    const client = createOpenDeviceClient();
+    getWavoipSdkBootstrap.mockResolvedValue({
+      data: { device_token: 'token-sync-key' },
+    });
+    connectWavoipInbox.mockResolvedValue(client);
+    getWavoipClient.mockReturnValue(null);
+    getWavoipClientEntry.mockReturnValue({
+      client,
+      token: 'token-sync-key',
+    });
+
+    const { connectForInbox } = useWavoipConnection();
+    await connectForInbox(21);
+
+    const store = {
+      getters: {
+        'inboxes/getInboxes': [
+          {
+            id: 21,
+            channel_type: INBOX_TYPES.WAVOIP,
+            current_user_inbox_member: true,
+            provider_config: { device_status: 'open' },
+          },
+        ],
+        getCurrentRole: 'agent',
+      },
+    };
+
+    expect(getWavoipSdkSyncKey(store)).toBe('21:token-sync-key');
+  });
+
+  it('keeps isConnecting true until all concurrent connections finish', async () => {
+    const client = createOpenDeviceClient();
+    let resolveFirst;
+    let resolveSecond;
+
+    getWavoipSdkBootstrap.mockResolvedValue({
+      data: { device_token: 'token-concurrent' },
+    });
+    connectWavoipInbox
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveFirst = () => resolve(client);
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            resolveSecond = () => resolve(client);
+          })
+      );
+    getWavoipClient.mockReturnValue(null);
+
+    const { connectInbox, isConnecting } = useWavoipConnection();
+    const first = connectInbox(41);
+    const second = connectInbox(42);
+
+    await Promise.resolve();
+    expect(isConnecting.value).toBe(true);
+
+    resolveFirst();
+    await first;
+    expect(isConnecting.value).toBe(true);
+
+    resolveSecond();
+    await second;
+    expect(isConnecting.value).toBe(false);
+  });
+
+  it('removes statusChanged listener via device.off when on returns no unsubscribe', async () => {
+    const listeners = new Map();
+    const device = {
+      status: 'connecting',
+      on: (event, handler) => {
+        listeners.set(event, handler);
+      },
+      off: (event, handler) => {
+        if (listeners.get(event) === handler) listeners.delete(event);
+      },
+    };
+    const client = {
+      getDevices: () => [device],
+    };
+
+    const readiness = ensureDeviceReadiness(client);
+    listeners.get('statusChanged')?.('open');
+    device.status = 'open';
+    const result = await readiness;
+
+    expect(result).toEqual({ ready: true, status: 'open' });
+    expect(listeners.has('statusChanged')).toBe(false);
   });
 });

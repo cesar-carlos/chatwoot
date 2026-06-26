@@ -29,6 +29,7 @@ export const removePendingOffer = callId => {
   if (waiter) {
     clearTimeout(waiter.timer);
     offerWaiters.delete(callId);
+    waiter.reject(new Error('Offer cancelled'));
   }
 };
 

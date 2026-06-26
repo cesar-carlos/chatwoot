@@ -10,7 +10,6 @@ class Wavoip::DeviceStatusService
 
   def connection_payload(force: false)
     live = refresh_device_status!(force: force)
-    channel.reload
     config = channel.provider_config || {}
 
     {
@@ -149,7 +148,13 @@ class Wavoip::DeviceStatusService
     channel.update!(provider_config: config)
 
     contact_phone = result.dig('contact', 'phone').presence
-    channel.update!(phone_number: contact_phone) if contact_phone.present?
+    return if contact_phone.blank? || contact_phone == channel.phone_number
+
+    Rails.logger.info(
+      "[WAVOIP] Atualizando phone_number channel=#{channel.id} " \
+      "de=#{channel.phone_number} para=#{contact_phone}"
+    )
+    channel.update!(phone_number: contact_phone)
   end
 
   def device_base_url(token)
