@@ -10,6 +10,7 @@ RSpec.describe Wavoip::Calls::StatusMapper do
       'INCOMING_RING' => 'ringing',
       'OUTGOING_RING' => 'ringing',
       'OUTGOING_CALLING' => 'ringing',
+      'CALLING' => 'ringing',
       'CONNECTING' => 'ringing',
       'ACTIVE' => 'in_progress',
       'ENDED' => 'completed',

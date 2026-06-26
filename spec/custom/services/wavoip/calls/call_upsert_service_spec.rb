@@ -108,8 +108,12 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       payload = JSON.parse(file_fixture('wavoip/call_create_outcoming_live_caller_receiver.json').read)
       event = Wavoip::Webhooks::PayloadNormalizer.new(payload).normalize
 
-      expect { service_for(event).create! }
+      call = nil
+      expect { call = service_for(event).create! }
         .to change(Call, :count).by(1)
+
+      expect(call.status).to eq('ringing')
+      expect(broadcaster).not_to have_received(:broadcast_incoming)
     end
 
     it 'creates a call from the live caller/receiver inbound fixture without skipping' do

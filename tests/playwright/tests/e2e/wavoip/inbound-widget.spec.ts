@@ -1,10 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { Login } from '@components/ui';
 import { Auth, WavoipWebhookApi } from '@components/api';
 import { accountIdFromUrl } from '@utils/auth';
 
 const TEST_EMAIL = process.env.TEST_USER_EMAIL || 'admin@chatwoot.com';
-const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || 'Password123@#';
+const TEST_PASSWORD = process.env.TEST_USER_PASSWORD || '';
 const WEBHOOK_KEY = process.env.WAVOIP_WEBHOOK_KEY || '';
 const TEST_PEER_PHONE = process.env.WAVOIP_TEST_PEER_PHONE || '+5566999050312';
 const INBOX_PHONE = process.env.WAVOIP_INBOX_PHONE || '';
@@ -40,10 +40,10 @@ test.describe('Wavoip inbound call widget', () => {
   test.describe.configure({ timeout: 120_000 });
 
   test.beforeEach(() => {
-    // eslint-disable-next-line playwright/no-skipped-test -- requires WAVOIP_WEBHOOK_KEY and WAVOIP_INBOX_PHONE
+    // eslint-disable-next-line playwright/no-skipped-test -- requires Wavoip env vars and credentials
     test.skip(
-      !WEBHOOK_KEY || !INBOX_PHONE,
-      'Set WAVOIP_WEBHOOK_KEY and WAVOIP_INBOX_PHONE in tests/playwright/.env'
+      !WEBHOOK_KEY || !INBOX_PHONE || !TEST_PASSWORD,
+      'Set WAVOIP_WEBHOOK_KEY, WAVOIP_INBOX_PHONE and TEST_USER_PASSWORD in tests/playwright/.env'
     );
   });
 
@@ -60,21 +60,14 @@ test.describe('Wavoip inbound call widget', () => {
     await setAvailabilityOnline(request, accountId);
 
     const receiverDigits = digitsOnly(INBOX_PHONE);
-
-    const webhookApi = new WavoipWebhookApi(
-      request,
-      process.env.BASE_URL || 'http://localhost:3000'
-    );
-    await webhookApi.postCall(
-      WEBHOOK_KEY,
-      webhookApi.buildInboundCallerReceiverPayload({
-        callerDigits: TEST_PEER_PHONE,
-        receiverDigits,
-      })
-    );
-
-    await expect(page.getByText('Incoming call').first()).toBeVisible({
-      timeout: 45_000,
+    const baseURL = process.env.BASE_URL || 'http://localhost:3000';
+    const webhookApi = new WavoipWebhookApi(request, baseURL);
+    const payload = webhookApi.buildInboundCallerReceiverPayload({
+      callerDigits: TEST_PEER_PHONE,
+      receiverDigits,
     });
+
+    await webhookApi.postCall(WEBHOOK_KEY, payload);
+    await webhookApi.waitForInboundWidget(page, payload.whatsapp_call_id);
   });
 });

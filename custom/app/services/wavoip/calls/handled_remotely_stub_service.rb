@@ -26,7 +26,7 @@ class Wavoip::Calls::HandledRemotelyStubService
   attr_reader :inbox, :event, :broadcaster, :invalid_contact_phone
 
   def link_stub_call
-    Wavoip::Calls::ConversationLinker.link_inbound!(inbox: inbox, event: event)
+    Wavoip::Calls::ConversationLinker.link!(inbox: inbox, event: event)
   end
 
   def finalize_stub(call)

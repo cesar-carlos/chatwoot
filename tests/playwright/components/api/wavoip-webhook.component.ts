@@ -1,4 +1,4 @@
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, Page, expect } from '@playwright/test';
 
 export type WavoipCallWebhookPayload = {
   type: 'CALL';
@@ -58,5 +58,28 @@ export class WavoipWebhookApi {
       caller: options.callerDigits.replace(/\D/g, ''),
       receiver: options.receiverDigits.replace(/\D/g, ''),
     };
+  }
+
+  /**
+   * Polls for the inbound call widget after webhook POST (202).
+   * Sidekiq must process Wavoip::ProcessWebhookJob before ActionCable delivers the event.
+   */
+  async waitForInboundWidget(
+    page: Page,
+    whatsappCallId: string,
+    options?: { timeoutMs?: number }
+  ) {
+    const timeout = options?.timeoutMs ?? 45_000;
+
+    await expect
+      .poll(
+        async () => page.getByText('Incoming call').first().isVisible(),
+        {
+          message: `Inbound widget not visible after webhook (call_id=${whatsappCallId}). Is Sidekiq running?`,
+          timeout,
+          intervals: [500, 1_000, 2_000, 3_000],
+        }
+      )
+      .toBe(true);
   }
 }

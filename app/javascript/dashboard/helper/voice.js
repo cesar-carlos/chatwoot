@@ -5,6 +5,9 @@ import {
 import { MESSAGE_TYPE } from 'shared/constants/messages';
 import { useCallsStore } from 'dashboard/stores/calls';
 import types from 'dashboard/store/mutation-types';
+import store from 'dashboard/store';
+import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
+import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 
 export const TERMINAL_STATUSES = [
   'completed',
@@ -26,6 +29,8 @@ const dismissedCallSids = new Set();
 export const markCallDismissed = callSid => {
   if (callSid) dismissedCallSids.add(callSid);
 };
+export const isCallDismissed = callSid =>
+  callSid ? dismissedCallSids.has(callSid) : false;
 
 // Which Twilio call (if any) this tab is actively joining/owns. Must be set
 // synchronously BEFORE the join API call — mirrors useWhatsappCallSession's
@@ -156,6 +161,18 @@ export function handleVoiceCallCreated(
   }
 
   if (!shouldRingInbound(callDirection, currentUserAvailability)) return;
+
+  if (
+    provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+    callDirection === 'inbound' &&
+    !shouldReceiveWavoipInboundRing({
+      inbox: store.getters['inboxes/getInbox']?.(inboxId),
+      isAdministrator: store.getters.getCurrentRole === 'administrator',
+      availability: currentUserAvailability,
+    })
+  ) {
+    return;
+  }
 
   const callsStore = useCallsStore();
   callsStore.addCall({

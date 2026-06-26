@@ -67,13 +67,21 @@ class Wavoip::Calls::IncomingCallRecipients
     User.where(id: user_ids)
   end
 
+  def recipient_user_ids
+    @recipient_user_ids ||= recipients_base_scope.pluck(:id)
+  end
+
+  def recipients_scope
+    @recipients_scope ||= recipients_base_scope
+  end
+
   def online_member_users
     online_ids = OnlineStatusTracker.get_users_with_status(
       inbox.account_id,
-      user_ids: recipients_base_scope.ids,
+      user_ids: recipient_user_ids,
       status: 'online'
     ).keys.map(&:to_i)
-    recipients_base_scope.where(id: online_ids)
+    recipients_scope.where(id: online_ids)
   end
 
   def offline_recipients
@@ -127,10 +135,10 @@ class Wavoip::Calls::IncomingCallRecipients
   def busy_agents
     busy_ids = OnlineStatusTracker.get_users_with_status(
       inbox.account_id,
-      user_ids: recipients_base_scope.ids,
+      user_ids: recipient_user_ids,
       status: 'busy'
     ).keys.map(&:to_i)
-    recipients_base_scope.where(id: busy_ids)
+    recipients_scope.where(id: busy_ids)
   end
 
   def broad_fallback_scope

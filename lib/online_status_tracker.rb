@@ -74,10 +74,22 @@ class OnlineStatusTracker
   end
 
   def self.present_candidate_user_ids(account_id, user_ids)
-    present_ids = get_available_user_ids(account_id).map(&:to_i)
-    user_ids.map(&:to_i) & present_ids
+    normalized_ids = user_ids.map(&:to_i).uniq
+    return [] if normalized_ids.blank?
+
+    always_on_ids = always_present_user_ids(account_id, normalized_ids)
+    normalized_ids.select do |user_id|
+      always_on_ids.include?(user_id) || get_presence(account_id, 'User', user_id)
+    end
   end
   private_class_method :present_candidate_user_ids
+
+  def self.always_present_user_ids(account_id, user_ids)
+    Account.find(account_id).account_users
+           .where(user_id: user_ids, auto_offline: false)
+           .pluck(:user_id)
+  end
+  private_class_method :always_present_user_ids
 
   def self.build_status_map(account_id, candidate_ids, status)
     ids = candidate_ids.map(&:to_s)

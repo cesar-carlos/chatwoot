@@ -31,6 +31,7 @@ vi.mock('dashboard/composables', () => ({
 
 vi.mock('dashboard/composables/useCallSession', () => ({
   isCallJoining: vi.fn(() => false),
+  isCallDismissed: vi.fn(() => false),
 }));
 
 vi.mock('dashboard/store', () => ({
@@ -42,7 +43,7 @@ vi.mock('dashboard/store', () => ({
 }));
 
 import { useAlert } from 'dashboard/composables';
-import { isCallJoining } from 'dashboard/composables/useCallSession';
+import { isCallDismissed, isCallJoining } from 'dashboard/composables/useCallSession';
 import { createWavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
 
 const t = key => key;
@@ -55,6 +56,25 @@ describe('wavoipVoiceCableHandlers', () => {
   });
 
   describe('onIncoming', () => {
+    beforeEach(() => {
+      isCallDismissed.mockReturnValue(false);
+    });
+
+    it('does not re-add a call the agent dismissed locally', () => {
+      isCallDismissed.mockReturnValue(true);
+      const store = useCallsStore();
+
+      wavoipVoiceCableHandlers.onIncoming({
+        call_id: 'dismissed_001',
+        id: 88,
+        conversation_id: 12,
+        inbox_id: 2,
+        provider: 'wavoip',
+      });
+
+      expect(store.calls).toHaveLength(0);
+    });
+
     it('merges pending SDK offer when cable arrives after offer', () => {
       const store = useCallsStore();
       pendingOffers.set('race_001', {

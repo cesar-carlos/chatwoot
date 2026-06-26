@@ -12,12 +12,14 @@ import {
   pendingOffers,
 } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { flushAcceptedByRecording } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
-import { isCallJoining } from 'dashboard/composables/useCallSession';
+import { isCallJoining, isCallDismissed } from 'dashboard/composables/useCallSession';
 
 const currentUserId = () => store.getters.getCurrentUserID;
 
 export const createWavoipVoiceCableHandlers = t => ({
   onIncoming(data) {
+    if (isCallDismissed(data.call_id)) return;
+
     const callsStore = useCallsStore();
     const existing = callsStore.calls.find(c => c.callSid === data.call_id);
     const offerEntry = pendingOffers.get(data.call_id);

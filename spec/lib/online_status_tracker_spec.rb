@@ -92,5 +92,18 @@ describe OnlineStatusTracker do
 
       expect(result).to eq({})
     end
+
+    it 'includes auto_offline false users without redis presence' do
+      user3.account_users.first.update!(auto_offline: false)
+      described_class.set_status(account.id, user3.id, 'online')
+
+      result = described_class.get_users_with_status(
+        account.id,
+        user_ids: [user3.id],
+        status: 'online'
+      )
+
+      expect(result).to eq({ user3.id.to_s => 'online' })
+    end
   end
 end

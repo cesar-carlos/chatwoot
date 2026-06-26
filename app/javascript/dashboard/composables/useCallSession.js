@@ -12,10 +12,13 @@ import {
 } from 'dashboard/composables/useWhatsappCallSession';
 import {
   handleVoiceCallCreated,
+  isCallDismissed,
   markCallDismissed,
   markLocalCall,
   clearLocalCall,
 } from 'dashboard/helper/voice';
+
+export { isCallDismissed };
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 // FORK: Wavoip voice session registry (factory wired in Phase 2)
 import {
