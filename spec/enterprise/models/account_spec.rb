@@ -346,4 +346,30 @@ RSpec.describe Account, type: :model do
       end
     end
   end
+
+  describe 'assignment feature sync' do
+    let(:account) { create(:account) }
+
+    before do
+      allow(ChatwootApp).to receive(:self_hosted_enterprise?).and_return(true)
+    end
+
+    it 'enables advanced_assignment when assignment_v2 is set' do
+      account.selected_feature_flags = [:feature_assignment_v2]
+      account.save!
+
+      expect(account.feature_enabled?('assignment_v2')).to be(true)
+      expect(account.feature_enabled?('advanced_assignment')).to be(true)
+    end
+
+    it 'disables advanced_assignment when assignment_v2 is cleared' do
+      account.enable_features('assignment_v2', 'advanced_assignment')
+      account.save!
+
+      account.selected_feature_flags = []
+      account.save!
+
+      expect(account.feature_enabled?('advanced_assignment')).to be(false)
+    end
+  end
 end

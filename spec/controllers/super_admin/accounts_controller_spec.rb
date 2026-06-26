@@ -74,6 +74,64 @@ RSpec.describe 'Super Admin accounts API', type: :request do
     end
   end
 
+  describe 'PATCH /super_admin/accounts/{account_id}' do
+    let(:update_params) do
+      {
+        account: {
+          name: account.name,
+          locale: account.locale,
+          status: account.status,
+          limits: { agents: '', inboxes: '' }
+        },
+        enabled_features: enabled_features,
+        commit: 'Update Account'
+      }
+    end
+
+    let(:enabled_features) { {} }
+
+    before do
+      sign_in(super_admin, scope: :super_admin)
+    end
+
+    context 'when enabling assignment_v2' do
+      let(:enabled_features) { { 'feature_assignment_v2' => 'true' } }
+
+      it 'updates successfully' do
+        patch "/super_admin/accounts/#{account.id}", params: update_params
+
+        expect(response).to have_http_status(:redirect)
+        expect(account.reload.feature_enabled?('assignment_v2')).to be(true)
+      end
+    end
+
+    context 'when enabling custom_tools' do
+      let(:enabled_features) { { 'feature_custom_tools' => 'true' } }
+
+      it 'updates successfully' do
+        patch "/super_admin/accounts/#{account.id}", params: update_params
+
+        expect(response).to have_http_status(:redirect)
+        expect(account.reload.feature_enabled?('custom_tools')).to be(true)
+      end
+    end
+
+    context 'when disabling a previously enabled feature' do
+      before do
+        account.enable_features!('custom_tools')
+      end
+
+      let(:enabled_features) { {} }
+
+      it 'clears the feature flag' do
+        patch "/super_admin/accounts/#{account.id}", params: update_params
+
+        expect(response).to have_http_status(:redirect)
+        expect(account.reload.feature_enabled?('custom_tools')).to be(false)
+      end
+    end
+  end
+
   describe 'DELETE /super_admin/accounts/{account_id}' do
     context 'when it is an unauthenticated user' do
       it 'returns unauthorized' do

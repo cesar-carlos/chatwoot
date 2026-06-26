@@ -1,0 +1,32 @@
+name: Feature Catalog Check
+
+on:
+  pull_request:
+    paths:
+      - 'config/features.yml'
+      - 'app/models/concerns/featurable.rb'
+      - 'custom/app/services/accounts/feature_store.rb'
+      - 'custom/app/models/custom/concerns/featurable.rb'
+      - 'db/migrate/*feature_flags*'
+      - 'spec/models/concerns/featurable_spec.rb'
+      - 'spec/migrations/**'
+      - 'lib/tasks/features.rake'
+
+jobs:
+  feature_catalog_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.4.4'
+          bundler-cache: true
+
+      - name: Verify feature catalog size
+        run: bundle exec rails chatwoot:features:verify_catalog
+
+      - name: Run feature flag specs
+        run: |
+          bundle exec rspec spec/models/concerns/featurable_spec.rb spec/migrations/

@@ -3,6 +3,17 @@
 </div>
 <div class="field-unit__field feature-container">
   <% regular_features, premium_features = SuperAdmin::AccountFeaturesHelper.filtered_features(field.data).partition { |key_array, _val| !SuperAdmin::AccountFeaturesHelper.account_premium_features.include?(key_array.first) } %>
+  <% assignment_v2_enabled = field.data['assignment_v2'] %>
+  <% auto_advanced_assignment = assignment_v2_enabled && ChatwootApp.self_hosted_enterprise? %>
+
+  <% if ChatwootApp.self_hosted_enterprise? %>
+    <p class="text-gray-400 text-xs italic mb-4">
+      Enabling Assignment V2 automatically enables Advanced Assignment on self-hosted enterprise accounts.
+    </p>
+    <% if auto_advanced_assignment %>
+      <%= hidden_field_tag 'enabled_features[feature_advanced_assignment]', true %>
+    <% end %>
+  <% end %>
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     <% regular_features.each do |key_array, val| %>
@@ -19,6 +30,8 @@
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     <% premium_features.each do |key_array, val| %>
       <% feature_key, display_name = key_array %>
+      <% checked = val || (feature_key == 'advanced_assignment' && auto_advanced_assignment) %>
+      <% should_disable = ChatwootHub.pricing_plan == 'community' || (feature_key == 'advanced_assignment' && auto_advanced_assignment) %>
       <div class="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm outline outline-1 outline-n-container">
         <div class="flex items-center gap-2">
           <span class="text-amber-500">
@@ -26,8 +39,7 @@
           </span>
           <span class="text-sm text-slate-700"><%= display_name %></span>
         </div>
-        <% should_disable = ChatwootHub.pricing_plan == 'community' %>
-        <span><%= check_box "enabled_features", "feature_#{feature_key}", { checked: val, disabled: should_disable, class: "h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-600" }, true, false %></span>
+        <span><%= check_box "enabled_features", "feature_#{feature_key}", { checked: checked, disabled: should_disable, class: "h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-600" }, true, false %></span>
       </div>
     <% end %>
   </div>
