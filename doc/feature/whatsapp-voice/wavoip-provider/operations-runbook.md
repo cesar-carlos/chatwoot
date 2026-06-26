@@ -87,6 +87,8 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 | Causa | Ação |
 |-------|------|
+| **Histórico Wavoip só mostra DEVICE (sem CALL)** | Painel → Webhook → habilitar evento **CALL** no device correto; fechar app.wavoip.com no celular durante teste |
+| **Log `Skipped create: missing or inbox peer phone`** | Payload live usa `caller`/`receiver` (não `peer`) — corrigido em `PayloadNormalizer` (Jun 2026); confirmar deploy |
 | Agente offline / aba fechada | Ficar **online** e manter o dashboard aberto; push in-app segue as regras de roteamento |
 | Agente não listado na aba **Agentes** | Adicionar na aba Agentes do inbox |
 | Device `close` / não vinculado | Settings → Chamadas → escanear QR ou pairing code (`WavoipDevicePanel`) |
@@ -169,7 +171,7 @@ account.enable_features!('channel_wavoip') # se flag fork ativa
 
 | # | Verificação | Comando / ação |
 |---|-------------|----------------|
-| 1 | Smoke automatizado | `bin/wavoip-pilot-verify` (env `WAVOIP_INBOX_ID`) |
+| 1 | Smoke automatizado | `WAVOIP_INBOX_ID=106 WAVOIP_TEST_PEER_PHONE=+5566999050312 bin/wavoip-pilot-verify` (W1 + I1 + I2 + O2) |
 | 2 | Webhook live (não curl) | `grep 'POST /webhooks/wavoip/' /var/log/nginx/chatwoot_access_443.log \| grep -v curl` |
 | 3 | Sidekiq processa CALL | Logs `[WAVOIP] processed inbox_id=… event_type=CALL` |
 | 4 | Outbound E2E | SDK RINGING → ACTIVE + `Call` + `voice_call` no DB |
@@ -192,8 +194,9 @@ account.enable_features!('channel_wavoip') # se flag fork ativa
 | Flow | Steps |
 |------|-------|
 | Outbound | Agent online → conversation → call → `peerAccept` → end → `voice_call` bubble |
-| Inbound | Close app.wavoip.com → call from `+5566999050312` → widget Accept → audio |
-| Webhook | `WAVOIP_INBOX_ID=82 WAVOIP_TEST_PEER_PHONE=+5566999050312 bin/wavoip-pilot-verify` |
+| Inbound | Close app.wavoip.com → call from `+5566999050312` → confirm **CALL** line in Wavoip history (not only DEVICE) → widget Accept → audio |
+| Webhook | `WAVOIP_INBOX_ID=106 WAVOIP_TEST_PEER_PHONE=+5566999050312 bin/wavoip-pilot-verify` |
+| Playwright | `cd tests/playwright && pnpm playwright:run tests/e2e/wavoip` (env: `WAVOIP_WEBHOOK_KEY`, `WAVOIP_INBOX_ID`, `WAVOIP_INBOX_PHONE`) |
 
 Prerequisite: only one browser client per device token (close Wavoip panel during agent tests).
 

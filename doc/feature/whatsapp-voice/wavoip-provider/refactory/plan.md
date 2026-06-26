@@ -286,7 +286,7 @@ R3 — batch único de PR pequenos por arquivo
 | QC-03 | ✅ Concluído | — |
 | QC-04 | ✅ Concluído | — |
 | QC-05 | ✅ Concluído | — |
-| QC-07 | ⚠️ Reaberto | Pré-filtro removido pelo GAP-ADMIN fix; otimização via `hmget` pendente |
+| QC-07 | ✅ Concluído | `OnlineStatusTracker.get_users_with_status` + `hmget` limitado a `recipients_base_scope.ids` |
 | QC-09 | ✅ Concluído | — |
 | QC-10 | ✅ Concluído | — |
 | QC-11 | ✅ Concluído | — |
@@ -303,3 +303,5 @@ R3 — batch único de PR pequenos por arquivo
 | BUG-QR-01 | `WavoipQrScanModal.cleanupSession` desconectava o SDK incondicionalmente, mesmo quando a sessão de QR nunca o usou — interrompia a conexão do `WavoipConnectionHost` | ✅ Corrigido |
 | BUG-QR-02 | `startSession` marcava `qrRefreshError=true` quando status era `connecting` e QR ainda não estava pronto — estado de transição normal exibia mensagem de erro | ✅ Corrigido |
 | BUG-QR-03 | `WavoipQrDisplay.showLoading` não cobria o estado `connecting` sem QR — tela ficava vazia em vez de exibir spinner de espera | ✅ Corrigido |
+| BUG-WEBHOOK-01 | Payload live Wavoip usa `caller`/`receiver` em vez de `peer.phone` → `Skipped create: missing or inbox peer phone`; inbound sem `Call` nem broadcast | ✅ Corrigido (`PayloadNormalizer#contact_phone_from_caller_receiver`) |
+| E2E-01 | Suite RSpec (`inbound_webhook_flow_spec`) + Playwright (`tests/e2e/wavoip`) + `bin/wavoip-pilot-verify` I2/O2 | ✅ Concluído |

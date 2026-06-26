@@ -238,12 +238,9 @@ end
 
 ## QC-07 · `busy_agents` carrega todos os usuários da conta do Redis para Ruby
 
-> **Nota (26 jun. 2026):** O pré-filtro `.slice(*member_id_strings)` que existia em uma
-> versão intermediária foi **removido** pela correção do GAP-ADMIN (`recipients_base_scope`),
-> pois o escopo elegível passou a incluir administradores além dos membros da inbox — e não
-> é possível pré-filtrar o Redis por um conjunto dinâmico sem uma query SQL adicional.
-> O código atual volta ao estado original sem pré-filtro. A otimização via
-> `OnlineStatusTracker.get_busy_users` descrita abaixo ainda é a solução correta.
+> **Status (26 jun. 2026):** ✅ Implementado — `OnlineStatusTracker.get_users_with_status`
+> faz `hmget` apenas para `recipients_base_scope.ids` (após interseção com presença).
+> Usado em `online_member_users` e `busy_agents`.
 
 **Categoria:** Performance  
 **Arquivo:** `custom/app/services/wavoip/calls/incoming_call_recipients.rb`
