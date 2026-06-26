@@ -1,4 +1,5 @@
 import { readonly, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { wireCallDiagnostics } from 'customDashboard/lib/wavoip/wavoipCallDiagnostics';
 
 let activeSdkCall = null;
@@ -6,6 +7,7 @@ let activeProviderCallId = null;
 let activeInboxId = null;
 let ringingSdkCall = null;
 let ringingProviderCallId = null;
+let activeCallTranslateFn = null;
 const isMuted = ref(false);
 const mediaConnectionStatus = ref(null);
 
@@ -20,6 +22,7 @@ export const clearActiveCall = () => {
 export const clearRingingOutgoingCall = () => {
   ringingSdkCall = null;
   ringingProviderCallId = null;
+  activeInboxId = null;
 };
 
 export const setRingingOutgoingCall = (
@@ -32,6 +35,7 @@ export const setRingingOutgoingCall = (
   wireCallDiagnostics(sdkCall, {
     inboxId: activeInboxId,
     callId: providerCallId,
+    translateFn: activeCallTranslateFn,
   });
 };
 
@@ -45,6 +49,7 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
   wireCallDiagnostics(sdkCall, {
     inboxId: activeInboxId,
     callId: providerCallId,
+    translateFn: activeCallTranslateFn,
   });
 
   sdkCall?.on?.('connectionStatus', status => {
@@ -76,6 +81,9 @@ export const endActiveCall = async callIdOverride => {
 };
 
 export function useWavoipActiveCall() {
+  const { t } = useI18n();
+  activeCallTranslateFn = t;
+
   const setMuted = muted => {
     isMuted.value = muted;
     if (!activeSdkCall) return false;

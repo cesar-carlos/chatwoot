@@ -31,7 +31,7 @@ class Wavoip::Calls::CallUpsertService
     end
 
     call = Wavoip::Calls::ConversationLinker.link!(inbox: inbox, event: event)
-    mark_webhook_verified!
+    inbox.channel.mark_webhook_verified!
     status_applier.apply!(call, broadcast: true)
     call
   end
@@ -92,16 +92,6 @@ class Wavoip::Calls::CallUpsertService
       broadcaster: broadcaster,
       invalid_contact_phone: method(:invalid_contact_phone_for_create?)
     )
-  end
-
-  def mark_webhook_verified!
-    channel = inbox.channel
-    return unless channel.is_a?(Channel::Wavoip)
-    return if channel.webhook_verified?
-
-    config = (channel.provider_config || {}).dup
-    config['webhook_verified_at'] = Time.current.iso8601
-    channel.update!(provider_config: config)
   end
 
   def log_skip_create(reason)

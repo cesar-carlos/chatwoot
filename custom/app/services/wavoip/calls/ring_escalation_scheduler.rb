@@ -10,6 +10,10 @@ class Wavoip::Calls::RingEscalationScheduler
     timeout = inbox.channel.ring_timeout_seconds
     return unless timeout.positive?
 
+    lock_key = "wavoip:escalate_lock:#{call.id}"
+    return if Rails.cache.read(lock_key)
+
+    Rails.cache.write(lock_key, true, expires_in: (timeout + 5).seconds)
     Wavoip::EscalateRingJob.set(wait: timeout.seconds).perform_later(call.id)
   end
 

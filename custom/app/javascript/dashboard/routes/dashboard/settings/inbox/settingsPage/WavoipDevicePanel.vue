@@ -204,8 +204,11 @@ const copyDiagnostics = async () => {
 };
 
 onMounted(() => {
-  refreshConnection({ forceLiveCheck: true });
-  startPolling();
+  refreshConnection({ forceLiveCheck: true }).then(() => {
+    if (!isConnected.value && !isQrModalOpen.value) {
+      startPolling();
+    }
+  });
 });
 
 onBeforeUnmount(() => {

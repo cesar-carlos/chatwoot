@@ -62,12 +62,22 @@ RSpec.describe 'Wavoip Inboxes API extensions', type: :request do
   end
 
   describe 'POST /api/v1/accounts/:account_id/inboxes/:id/test_wavoip_webhook' do
-    it 'processes a DEVICE fixture and marks webhook verified for administrator' do
-      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/test_wavoip_webhook",
-           headers: admin.create_new_auth_token
+    include ActiveJob::TestHelper
+
+    it 'enqueues a DEVICE fixture webhook test job for administrator' do
+      expect do
+        post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/test_wavoip_webhook",
+             headers: admin.create_new_auth_token
+      end.to have_enqueued_job(Wavoip::ProcessWebhookJob).with(
+        inbox.id,
+        hash_including('type' => 'DEVICE', 'status' => 'open')
+      )
 
       expect(response).to have_http_status(:ok)
-      expect(response.parsed_body['webhook_verified']).to be(true)
+      expect(response.parsed_body['ok']).to be(true)
+      expect(response.parsed_body['webhook_verified']).to be(false)
+
+      perform_enqueued_jobs
       expect(channel.reload.webhook_verified?).to be(true)
     end
 

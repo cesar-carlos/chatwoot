@@ -19,6 +19,10 @@ export function getWavoipMediaForInbox(inboxId) {
   return ensureMediaState(inboxId);
 }
 
+export function clearWavoipMediaForInbox(inboxId) {
+  mediaByInbox.delete(inboxId);
+}
+
 export function useWavoipMedia(inboxId = null) {
   const state = inboxId ? ensureMediaState(inboxId) : null;
 
