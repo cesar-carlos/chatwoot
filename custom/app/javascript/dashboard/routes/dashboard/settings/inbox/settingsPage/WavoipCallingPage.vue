@@ -81,7 +81,7 @@ export default {
       }));
     },
     ringTimeoutOptions() {
-      return [0, 30, 60, 90, 120].map(value => ({
+      return [0, 10, 20, 30, 60, 90, 120].map(value => ({
         value,
         label: this.$t(
           `INBOX_MGMT.WAVOIP_CALL.ROUTING.RING_TIMEOUT.OPTIONS.${value}`

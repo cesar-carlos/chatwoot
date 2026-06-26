@@ -44,6 +44,7 @@ const {
   isLoading,
   isRefreshing,
   qrRefreshError,
+  hasSdkConnection,
   startSession,
   stopSession,
   requestPairingCode,
@@ -65,9 +66,14 @@ const {
 
 function cleanupSession() {
   sessionActive = false;
+  // Check SDK usage BEFORE clearQrState resets the flag.
+  const hadSdkConnection = hasSdkConnection();
   stopSession();
   clearQrState();
-  if (props.inboxId) {
+  // Only disconnect if this QR session itself opened the SDK connection
+  // (e.g. pairing-code path). Avoids disrupting the connection managed
+  // by WavoipConnectionHost when the user only scanned a QR.
+  if (props.inboxId && hadSdkConnection) {
     disconnectInbox(props.inboxId).catch(() => {});
   }
 }

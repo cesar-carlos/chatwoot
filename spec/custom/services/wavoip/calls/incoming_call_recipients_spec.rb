@@ -27,11 +27,38 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
   end
 
   it 'returns online inbox members when any are online' do
-    allow(inbox).to receive(:available_agents).and_return(
-      User.where(id: online_agent.id)
-    )
-
     expect(recipients.users.pluck(:id)).to eq([online_agent.id])
+  end
+
+  context 'when include_administrators is enabled and an administrator is online' do
+    before do
+      allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
+        { admin.id.to_s => 'online' }
+      )
+    end
+
+    it 'includes the online administrator in the initial ring' do
+      expect(recipients.users.pluck(:id)).to include(admin.id)
+    end
+
+    it 'does not include offline inbox members' do
+      expect(recipients.users.pluck(:id)).not_to include(online_agent.id, offline_member.id)
+    end
+  end
+
+  context 'when include_administrators is disabled and only the administrator is online' do
+    before do
+      channel.update!(
+        provider_config: channel.provider_config.merge('incoming_call_include_administrators' => false)
+      )
+      allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
+        { admin.id.to_s => 'online' }
+      )
+    end
+
+    it 'does not include the administrator in the initial ring' do
+      expect(recipients.users.pluck(:id)).not_to include(admin.id)
+    end
   end
 
   context 'when no agents are online' do
@@ -117,7 +144,6 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
       channel.update!(
         provider_config: channel.provider_config.merge('incoming_call_notify_busy_agents' => true)
       )
-      allow(inbox).to receive(:available_agents).and_return(User.none)
       allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
         { busy_agent.id.to_s => 'busy' }
       )
@@ -127,7 +153,7 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
       expect(recipients.users.pluck(:id)).to eq([busy_agent.id])
     end
 
-    it 'ignores busy agents who are not inbox members' do
+    it 'ignores busy agents who are not inbox members or administrators' do
       non_member_busy = create(:user, account: account, role: :agent)
       allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
         {
@@ -137,6 +163,36 @@ RSpec.describe Wavoip::Calls::IncomingCallRecipients do
       )
 
       expect(recipients.users.pluck(:id)).to eq([busy_agent.id])
+    end
+
+    context 'when include_administrators is enabled and an administrator is busy' do
+      before do
+        allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
+          { admin.id.to_s => 'busy' }
+        )
+      end
+
+      it 'includes the busy administrator before falling back to offline recipients' do
+        expect(recipients.users.pluck(:id)).to include(admin.id)
+      end
+    end
+
+    context 'when include_administrators is disabled and only the administrator is busy' do
+      before do
+        channel.update!(
+          provider_config: channel.provider_config.merge(
+            'incoming_call_notify_busy_agents' => true,
+            'incoming_call_include_administrators' => false
+          )
+        )
+        allow(OnlineStatusTracker).to receive(:get_available_users).and_return(
+          { admin.id.to_s => 'busy' }
+        )
+      end
+
+      it 'does not include the busy administrator' do
+        expect(recipients.users.pluck(:id)).not_to include(admin.id)
+      end
     end
   end
 

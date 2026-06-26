@@ -47,12 +47,14 @@ const statusLabel = computed(() =>
 
 const showQr = computed(() => Boolean(props.qrDataUrl));
 
-const showLoading = computed(
-  () =>
-    (props.isLoading || props.isRefreshing) &&
-    !showQr.value &&
-    !props.pairingCode
-);
+const showLoading = computed(() => {
+  if (showQr.value || props.pairingCode) return false;
+  if (props.isLoading || props.isRefreshing) return true;
+  // Device is initialising (connecting) but has not produced a QR image yet.
+  // This is a normal transitional state — show a waiting spinner rather than
+  // an empty area or an error panel.
+  return props.status === 'connecting' && !props.qrRefreshError;
+});
 
 const showQrError = computed(
   () =>

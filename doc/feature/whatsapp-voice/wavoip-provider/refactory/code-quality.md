@@ -238,8 +238,15 @@ end
 
 ## QC-07 · `busy_agents` carrega todos os usuários da conta do Redis para Ruby
 
+> **Nota (26 jun. 2026):** O pré-filtro `.slice(*member_id_strings)` que existia em uma
+> versão intermediária foi **removido** pela correção do GAP-ADMIN (`recipients_base_scope`),
+> pois o escopo elegível passou a incluir administradores além dos membros da inbox — e não
+> é possível pré-filtrar o Redis por um conjunto dinâmico sem uma query SQL adicional.
+> O código atual volta ao estado original sem pré-filtro. A otimização via
+> `OnlineStatusTracker.get_busy_users` descrita abaixo ainda é a solução correta.
+
 **Categoria:** Performance  
-**Arquivo:** `custom/app/services/wavoip/calls/incoming_call_recipients.rb` (linhas 97–103)
+**Arquivo:** `custom/app/services/wavoip/calls/incoming_call_recipients.rb`
 
 ### Descrição
 
@@ -249,7 +256,7 @@ def busy_agents
                                 .select { |_key, value| value == 'busy' }
                                 .keys
                                 .map(&:to_i)
-  inbox_member_scope.where(id: busy_ids)
+  recipients_base_scope.where(id: busy_ids)
 end
 ```
 
@@ -258,31 +265,35 @@ tamanho. O filtro por `'busy'` e o `map(&:to_i)` são feitos em Ruby. Para conta
 centenas de agentes, isso carrega e processa toda a estrutura Redis em memória a cada
 chamada entrante.
 
-### Correção
+### Correção pendente
 
 Adicionar método `get_busy_users(account_id, user_ids:)` ao `OnlineStatusTracker` que
-receba os IDs de inbox members e filtre direto no Redis (via `HMGET` ou scan limitado):
+receba os IDs elegíveis e filtre direto no Redis (via `HMGET`):
 
 ```ruby
 def busy_agents
-  member_ids = inbox.member_ids
-  return User.none if member_ids.empty?
+  eligible_ids = recipients_base_scope.ids   # 1 query SQL
+  return User.none if eligible_ids.empty?
 
-  busy_ids = OnlineStatusTracker.get_busy_users(inbox.account_id, user_ids: member_ids)
-  User.where(id: busy_ids)
+  busy_ids = OnlineStatusTracker.get_busy_users(inbox.account_id, user_ids: eligible_ids)
+  recipients_base_scope.where(id: busy_ids)
 end
 ```
 
-Enquanto `OnlineStatusTracker` não tiver esse método, ao menos limitar o Hash ao conjunto
-de inbox members antes do `select`:
-
 ```ruby
-all_statuses = OnlineStatusTracker.get_available_users(inbox.account_id)
-member_id_strings = inbox.member_ids.map(&:to_s)
-busy_ids = all_statuses.slice(*member_id_strings)
-                        .select { |_, v| v == 'busy' }
-                        .keys.map(&:to_i)
+# online_status_tracker.rb
+def self.get_busy_users(account_id, user_ids:)
+  return [] if user_ids.empty?
+  key = "online_status_#{account_id}"
+  statuses = redis.hmget(key, *user_ids.map(&:to_s))
+  user_ids.zip(statuses)
+           .select { |_, status| status == 'busy' }
+           .map { |id, _| id.to_i }
+end
 ```
+
+Esta abordagem substitui o `hgetall` por `hmget` limitado ao conjunto elegível,
+eliminando a carga de toda a hash do Redis.
 
 ---
 

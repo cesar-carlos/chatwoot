@@ -286,10 +286,20 @@ R3 — batch único de PR pequenos por arquivo
 | QC-03 | ✅ Concluído | — |
 | QC-04 | ✅ Concluído | — |
 | QC-05 | ✅ Concluído | — |
-| QC-07 | ✅ Concluído | — |
+| QC-07 | ⚠️ Reaberto | Pré-filtro removido pelo GAP-ADMIN fix; otimização via `hmget` pendente |
 | QC-09 | ✅ Concluído | — |
 | QC-10 | ✅ Concluído | — |
 | QC-11 | ✅ Concluído | — |
 | QC-12 | ✅ Concluído | — |
 | QC-13 | ✅ Concluído | — |
 | QC-14 | ✅ Concluído | — |
+
+### Correções identificadas em revisão pós-implementação (26 jun. 2026)
+
+| ID | Descrição | Status |
+|----|-----------|--------|
+| BUG-POS-01 | `IncomingCallRecipients#users` retornava `InboxMember` em vez de `User` → `pluck(:pubsub_token)` lançava `PG::UndefinedColumn`; nenhum broadcast ActionCable chegava aos agentes online | ✅ Corrigido |
+| GAP-ADMIN | Administradores online/busy não recebiam o toque inicial quando `include_administrators=true` — só apareciam no fallback offline; introduzido `recipients_base_scope` | ✅ Corrigido |
+| BUG-QR-01 | `WavoipQrScanModal.cleanupSession` desconectava o SDK incondicionalmente, mesmo quando a sessão de QR nunca o usou — interrompia a conexão do `WavoipConnectionHost` | ✅ Corrigido |
+| BUG-QR-02 | `startSession` marcava `qrRefreshError=true` quando status era `connecting` e QR ainda não estava pronto — estado de transição normal exibia mensagem de erro | ✅ Corrigido |
+| BUG-QR-03 | `WavoipQrDisplay.showLoading` não cobria o estado `connecting` sem QR — tela ficava vazia em vez de exibir spinner de espera | ✅ Corrigido |

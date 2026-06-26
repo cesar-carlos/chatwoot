@@ -351,36 +351,17 @@ end
 
 ## GAP-08 · `incoming_call_notify_busy_agents` não se aplica à escalação
 
+> **Status: ✅ Implementado** — `escalated_users` já verifica `incoming_call_notify_busy_agents?`
+> antes de `broad_fallback_scope`. Spec de cobertura em
+> `spec/custom/services/wavoip/calls/incoming_call_recipients_spec.rb`.
+
 **Severidade:** Baixa  
 **Arquivo:** `custom/app/services/wavoip/calls/incoming_call_recipients.rb`
 
-### Descrição
+### Descrição (original)
 
-A opção "Notificar agentes ocupados" é verificada apenas no método `users` (toque inicial):
-
-```ruby
-def users
-  online = inbox.available_agents
-  return online if online.exists?
-
-  if channel.incoming_call_notify_busy_agents?
-    busy = busy_agents
-    return busy if busy.exists?
-  end
-
-  offline_recipients
-end
-```
-
-`escalated_users` não consulta `incoming_call_notify_busy_agents?` — vai direto para
-`broad_fallback_scope`. Isso cria inconsistência: o admin ativou a opção de notificar
-ocupados (sinal de que prefere notificar a equipe presente mesmo que ocupada), mas a
-escalação ignora essa preferência e notifica o escopo mais amplo independentemente.
-
-### Correção
-
-`escalated_users` pode respeitar a preferência de agentes ocupados para priorizar
-quem já está "no plantão":
+A opção "Notificar agentes ocupados" deveria ser verificada também na escalação. O código
+implementado respeita essa preferência:
 
 ```ruby
 def escalated_users
@@ -394,6 +375,63 @@ def escalated_users
   broad_fallback_scope
 end
 ```
+
+---
+
+## GAP-ADMIN · Administradores online não recebiam o toque inicial
+
+> **Status: ✅ Corrigido** — `recipients_base_scope` introduzido em 26 jun. 2026.
+> Specs em `spec/custom/services/wavoip/calls/incoming_call_recipients_spec.rb`.
+
+**Severidade:** Alta (comportamento divergia da intenção da configuração)  
+**Arquivo:** `custom/app/services/wavoip/calls/incoming_call_recipients.rb`
+
+### Descrição
+
+Quando `incoming_call_include_administrators = true`, os administradores eram incluídos
+apenas em `broad_fallback_scope` (fallback offline / escalação) — nunca na prioridade 1
+(online) nem na prioridade 2 (busy). Um administrador conectado e disponível não recebia
+a notificação de chamada entrante, contradizendo diretamente a intenção da configuração.
+
+A raiz do problema era que `online_member_users` e `busy_agents` usavam `inbox_member_scope`
+(`User.where(id: inbox.member_ids)`) como escopo base, que exclui administradores que não
+são membros explícitos da inbox.
+
+### Correção
+
+Introduzido `recipients_base_scope` como ponto único de verdade para o conjunto de
+destinatários elegíveis. Todos os métodos de prioridade passam a usar este escopo:
+
+```ruby
+# Scope unificado: membros da inbox + admins (quando configurado)
+def recipients_base_scope
+  user_ids = inbox.member_ids.dup
+  user_ids |= channel.account.administrators.ids if channel.incoming_call_include_administrators?
+  User.where(id: user_ids)
+end
+
+def online_member_users   # prioridade 1: online
+  online_ids = OnlineStatusTracker.get_available_users(inbox.account_id)
+                                  .select { |_key, value| value == 'online' }
+                                  .keys.map(&:to_i)
+  recipients_base_scope.where(id: online_ids)
+end
+
+def busy_agents           # prioridade 2: busy (quando notify_busy_agents=true)
+  busy_ids = OnlineStatusTracker.get_available_users(inbox.account_id)
+                                .select { |_key, value| value == 'busy' }
+                                .keys.map(&:to_i)
+  recipients_base_scope.where(id: busy_ids)
+end
+
+def broad_fallback_scope  # prioridade 3: todos elegíveis (fallback offline)
+  recipients_base_scope
+end
+```
+
+**Efeito colateral no QC-07:** a introdução de `recipients_base_scope` removeu o
+pré-filtro `.slice(*member_id_strings)` que havia sido aplicado em QC-07. Ver nota em
+`code-quality.md#qc-07`.
 
 ---
 
