@@ -145,6 +145,16 @@ const shouldGroupWithNext = (current, next) => {
 };
 
 /**
+ * Determines if a message is unread based on the firstUnreadId
+ * @param {Object} message - The message to check
+ * @returns {boolean} - Whether the message is unread
+ */
+const isMessageUnread = message => {
+  if (!props.firstUnreadId) return false;
+  return message.id >= props.firstUnreadId;
+};
+
+/**
  * Gets the message that was replied to
  * @param {Object} parentMessage - The message containing the reply reference
  * @returns {Object|null} - The message being replied to, or null if not found
@@ -195,6 +205,9 @@ const getInReplyToMessage = parentMessage => {
       <Message
         v-else
         v-bind="entry.message"
+        :class="
+          isMessageUnread(entry.message) ? 'message--unread' : 'message--read'
+        "
         :is-email-inbox="isAnEmailChannel"
         :in-reply-to="getInReplyToMessage(entry.message)"
         :group-with-next="
