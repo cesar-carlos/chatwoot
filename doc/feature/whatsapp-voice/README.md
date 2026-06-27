@@ -2,7 +2,7 @@
 
 Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp** no Chatwoot Enterprise (WhatsApp Cloud Calling API + WebRTC browser↔Meta). O objetivo é orientar implementação, extensão com providers alternativos e decisões de arquitetura no fork.
 
-**Última reanálise:** 24 jun. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
+**Última reanálise:** 27 jun. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
 
 ---
 
@@ -229,8 +229,9 @@ Itens levantados na reanálise — checklist de implementação futura vs. concl
 | G8 | `PATCH` `accepted_by_agent_id` pós-accept Wavoip | Fork `custom/` | ✅ **Done** — `with_lock` (jun. 2026) |
 | G9 | Wavoip `apply_status!` return + `voice_enabled?` guard + `ENDED`→`no_answer` | Fork `custom/` | ✅ **Done** (jun. 2026) |
 | G10 | UX: loading states, i18n fallbacks, recording upload toast | Meta FE | ✅ **Done** (jun. 2026) |
+| G11 | UX ringtone Wavoip: reject silencia local, mute persistente, CALLER_ENDED | Wavoip FE | ✅ **Done** (27 jun. 2026) |
 
-**Status código (24 jun. 2026):** stack Meta + refactors P1/P2 concluídos; **Wavoip fases 1–4 code-complete** em `custom/` — E2E live de webhooks ainda pendente (ver [spike-notes](./wavoip-provider/spike-notes.md)).
+**Status código (27 jun. 2026):** stack Meta + refactors P1/P2 concluídos; **Wavoip fases 1–4 code-complete** em `custom/` — refactory R1–R3 concluído; inbound operacional em produção.
 
 ### Wavoip — doc status (Jun 2026)
 
