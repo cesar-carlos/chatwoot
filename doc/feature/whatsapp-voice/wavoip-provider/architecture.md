@@ -305,8 +305,12 @@ if (channelType === 'Channel::Wavoip') return VOICE_CALL_PROVIDERS.WAVOIP;
 
 ### 5.4 `FloatingCallWidget` e bolha
 
-- Mute: `isBrowserVoiceProvider(activeCall.provider)` → delegar handler do registry
-- Ringtone existente — sem FORK se usar helper compartilhado
+- Mute mic: `isBrowserVoiceProvider(activeCall.provider)` → delegar handler do registry
+- **Ringtone inbound** (`FloatingCallWidget.vue` + `useCallSession.js`):
+  - Loop em `ringtone.mp3` enquanto há chamada inbound não atendida
+  - **Silêncio imediato ao rejeitar/dismissar:** `ringtoneSilencedCallSids` em `useCallSession.js` — só afeta o agente local; outros dispositivos continuam tocando
+  - **Preferência persistente:** `useCallRingtonePreference.js` — botão bell no `CallCard` grava `call_ringtone_muted_{userId}` no `localStorage`; quando ativo, só aviso visual (sem som) em chamadas futuras
+  - **Caller encerrou:** SDK (`unanswered`/`ended`) e cable (`onEnded`) disparam toast `CALLER_ENDED` e removem a entrada do store
 - Bolha `VoiceCall.vue`: ver [frontend-integration §12](./frontend-integration.md#12-bolha-voicecallvue) — sem join SDP para Wavoip
 
 ---
@@ -329,10 +333,11 @@ sequenceDiagram
   WH->>WH: ConversationLinker + Call + Message
   WH->>UI: ActionCable voice_call.incoming
   SDK->>UI: calls store (offer local)
+  Note over UI: reconcile callSid + wavoipOfferId
   Note over UI: Agente clica Aceitar
   UI->>SDK: offer.accept()
   W->>WH: CALL UPDATE ACTIVE
-  WH->>UI: voice_call.ended later
+  Note over UI: Chamador desliga → SDK ended/unanswered ou cable onEnded → CALLER_ENDED
 ```
 
 ### 6.2 Outbound

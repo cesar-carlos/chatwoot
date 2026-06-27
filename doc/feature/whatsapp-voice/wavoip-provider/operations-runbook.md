@@ -101,6 +101,17 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
 Ver roteamento completo: [inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings) · [architecture.md §3.6](./architecture.md#36-actioncable).
 
+### Toque continua após rejeitar ou após chamador desligar
+
+| Sintoma | Causa provável | Comportamento esperado (27 jun. 2026) |
+|---------|----------------|--------------------------------------|
+| Agente rejeitou mas ainda ouve o toque | Deploy antigo sem `silenceCallRingtone` | Ao rejeitar (✕) ou recusar, o som para **imediatamente** neste browser; outros agentes/dispositivos continuam tocando até alguém atender ou o chamador desligar |
+| Toque não para quando chamador desliga | IDs cable (`whatsapp_call_id`) ≠ SDK (`Offer.id`) sem reconciliação | Corrigido: `wavoipOfferId` + `onEnded`/`unanswered`/`ended` removem a entrada e param o ringtone; toast **"O chamador encerrou a ligação"** |
+| Agente quer só aviso visual (sem som) | Preferência não configurada | Clicar no ícone **bell** no card de chamada incoming — preferência salva em `localStorage` por usuário |
+| Bell silenciado mas ainda vê o card | Comportamento correto | Mute do bell afeta **som**, não a notificação visual |
+
+Ver [frontend-integration.md §6.4](./frontend-integration.md#64-ringtone-e-preferências-do-agente).
+
 ### Webhook não chega
 
 | Causa | Ação |
