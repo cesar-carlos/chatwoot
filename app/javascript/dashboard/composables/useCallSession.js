@@ -38,6 +38,19 @@ const markDismissed = callSid => {
   if (callSid) dismissedCallSids.add(callSid);
 };
 
+// Tracks calls this agent silenced locally by rejecting/dismissing. The call
+// may linger in the store (and in other agents' tabs) while the SDK or backend
+// finishes processing the reject — this set stops the ringtone immediately for
+// the agent who pressed reject, without touching any other behaviour.
+const ringtoneSilencedCallSids = new Set();
+export const isCallRingtoneSilenced = callSid =>
+  callSid ? ringtoneSilencedCallSids.has(callSid) : false;
+const silenceCallRingtone = (callSid, call) => {
+  if (callSid) ringtoneSilencedCallSids.add(callSid);
+  // Also silence by wavoipOfferId so aliased entries are covered.
+  if (call?.wavoipOfferId) ringtoneSilencedCallSids.add(call.wavoipOfferId);
+};
+
 // Globals attached once across all useCallSession() consumers — bubbles in a
 // long thread call this composable many times, and a per-instance Timer +
 // window listener stack would multiply work.
@@ -242,6 +255,9 @@ const buildCallActions = ({
   // disappearing while the backend still rings.
   const rejectIncomingCall = async callSid => {
     const call = findCall(callSid);
+    // Silence the ringtone for this agent immediately — before the async SDK
+    // reject so there's no audible gap while the provider round-trips.
+    silenceCallRingtone(callSid, call);
     try {
       if (isWhatsappCall(call) && call?.callId) {
         if (call.callDirection === VOICE_CALL_DIRECTION.OUTBOUND) {
@@ -278,6 +294,7 @@ const buildCallActions = ({
 
   const dismissCall = async callSid => {
     const call = findCall(callSid);
+    silenceCallRingtone(callSid, call);
     if (
       isWavoipCall(call) &&
       call?.callDirection === VOICE_CALL_DIRECTION.INCOMING &&

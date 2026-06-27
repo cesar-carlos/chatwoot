@@ -1,9 +1,13 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
-import { useCallSession } from 'dashboard/composables/useCallSession';
+import {
+  useCallSession,
+  isCallRingtoneSilenced,
+} from 'dashboard/composables/useCallSession';
+import { useCallRingtonePreference } from 'dashboard/composables/useCallRingtonePreference';
 import { setWhatsappCallMuted } from 'dashboard/composables/useWhatsappCallSession';
 import { useWavoipActiveCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import {
@@ -37,6 +41,13 @@ const {
   dismissCall,
   formattedCallDuration,
 } = useCallSession();
+
+const { isRingtoneMuted, initPreference, toggleRingtoneMute } =
+  useCallRingtonePreference();
+
+onMounted(() => {
+  initPreference();
+});
 
 // Mute routes by provider: WhatsApp toggles the local mic track, Twilio uses
 // the Voice SDK connection's native mute. Both surface the same button.
@@ -293,10 +304,18 @@ const stopRingtone = () => {
   ringtone.currentTime = 0;
 };
 
-const ringingInbound = computed(() =>
-  incomingCalls.value.some(
-    call => call.callDirection !== VOICE_CALL_DIRECTION.OUTBOUND
-  )
+// Returns true only for calls this agent hasn't silenced locally. When the
+// agent presses reject/dismiss the SID is added to ringtoneSilencedCallSids
+// immediately (before the async provider round-trip), so the audio stops right
+// away. Other agents and devices are unaffected.
+const shouldRingForCall = call =>
+  call.callDirection !== VOICE_CALL_DIRECTION.OUTBOUND &&
+  !isCallRingtoneSilenced(call.callSid) &&
+  !isCallRingtoneSilenced(call.wavoipOfferId);
+
+const ringingInbound = computed(
+  () =>
+    !isRingtoneMuted.value && incomingCalls.value.some(shouldRingForCall)
 );
 
 watch(
@@ -375,9 +394,11 @@ onBeforeUnmount(stopRingtone);
       :call="call"
       :state="stackedCardState(call)"
       :call-info="getCallInfo(call)"
+      :is-ringtone-muted="isRingtoneMuted"
       @accept="handleJoinCall(call)"
       @reject="rejectIncomingCall(call.callSid)"
       @dismiss="dismissCall(call.callSid)"
+      @toggle-ringtone-mute="toggleRingtoneMute"
       @go-to-conversation="goToConversation(call)"
     />
 
@@ -391,9 +412,11 @@ onBeforeUnmount(stopRingtone);
       :is-muted="isMuted"
       :show-mute="hasActiveCall"
       :is-joining="isJoining"
+      :is-ringtone-muted="isRingtoneMuted"
       @accept="handleJoinCall(primaryIncomingCall)"
       @reject="rejectIncomingCall(primaryIncomingCall?.callSid)"
       @dismiss="dismissCall(primaryIncomingCall?.callSid)"
+      @toggle-ringtone-mute="toggleRingtoneMute"
       @end="handleEndCall"
       @toggle-mute="toggleMute"
       @go-to-conversation="goToConversation(activeCall || primaryIncomingCall)"

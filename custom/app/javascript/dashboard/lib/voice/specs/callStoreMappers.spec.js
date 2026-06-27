@@ -6,6 +6,7 @@ import {
   mapWavoipOfferToStoreEntry,
   mergeStoreEntries,
   reconcileWavoipStoreEntry,
+  findWavoipCallForOffer,
 } from '../callStoreMappers';
 
 describe('callStoreMappers', () => {
@@ -111,6 +112,28 @@ describe('callStoreMappers', () => {
       expect(merged.callId).toBe(88);
       expect(merged.conversationId).toBe(15);
       expect(merged.caller).toEqual(cableFirst.caller);
+    });
+  });
+
+  describe('findWavoipCallForOffer', () => {
+    it('matches awaiting cable row when SDK offer id differs from webhook call_id', () => {
+      const calls = [
+        {
+          callSid: 'webhook_call_id',
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          awaitingSdkOffer: true,
+          inboxId: 106,
+          isActive: false,
+        },
+      ];
+
+      const match = findWavoipCallForOffer(
+        calls,
+        { id: 'sdk_offer_id' },
+        106
+      );
+
+      expect(match?.callSid).toBe('webhook_call_id');
     });
   });
 
