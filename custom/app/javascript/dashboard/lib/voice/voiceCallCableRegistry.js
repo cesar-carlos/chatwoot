@@ -64,11 +64,23 @@ export const createWavoipVoiceCableHandlers = t => ({
   },
   onEnded(data) {
     const callsStore = useCallsStore();
-    const callEntry = callsStore.calls.find(c => c.callSid === data.call_id);
+    const callEntry = callsStore.calls.find(
+      c =>
+        c.callSid === data.call_id || c.wavoipOfferId === data.call_id
+    );
     if (!callEntry) return;
 
     if (data.end_reason === 'handled_remotely') {
       useAlert(t('CONVERSATION.WAVOIP_CALL.HANDLED_REMOTELY'));
+    } else if (
+      !callEntry.isActive &&
+      callEntry.callDirection !== 'outbound' &&
+      (data.end_reason === 'no_answer' ||
+        data.status === 'no_answer' ||
+        data.status === 'missed' ||
+        data.status === 'completed')
+    ) {
+      useAlert(t('CONVERSATION.WAVOIP_CALL.CALLER_ENDED'));
     }
 
     const isLocalOwner =
@@ -87,7 +99,12 @@ export const createWavoipVoiceCableHandlers = t => ({
       return;
     }
 
-    removePendingOffer(data.call_id);
-    callsStore.removeCall(data.call_id);
+    const callSids = new Set(
+      [data.call_id, callEntry.callSid, callEntry.wavoipOfferId].filter(Boolean)
+    );
+    callSids.forEach(callSid => {
+      removePendingOffer(callSid);
+      callsStore.removeCall(callSid);
+    });
   },
 });

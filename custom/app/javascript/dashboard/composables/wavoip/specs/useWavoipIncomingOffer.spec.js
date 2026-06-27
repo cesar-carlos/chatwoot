@@ -26,6 +26,11 @@ vi.mock('vuex', () => ({
       'inboxes/getInbox': () => null,
     },
   }),
+  createStore: vi.fn(() => ({
+    getters: {},
+    dispatch: vi.fn(),
+    commit: vi.fn(),
+  })),
 }));
 
 vi.mock('customDashboard/composables/wavoip/useWavoipNotifications', () => ({
@@ -147,5 +152,34 @@ describe('useWavoipIncomingOffer', () => {
     const pending = waitForPendingOffer('call-1');
     removePendingOffer('call-1');
     await expect(pending).rejects.toThrow('Offer cancelled');
+  });
+
+  it('dismisses webhook and SDK rows when caller ends with mismatched ids', () => {
+    const { attachToInbox } = useWavoipIncomingOffer();
+    const store = useCallsStore();
+    attachToInbox(106);
+
+    store.addCall({
+      callSid: 'webhook_call_id',
+      callId: 22,
+      inboxId: 106,
+      provider: 'wavoip',
+      callDirection: 'incoming',
+      awaitingSdkOffer: true,
+    });
+
+    const offer = createOffer('sdk_offer_id');
+    offerHandlers.offer(offer);
+    offer.trigger('ended');
+
+    expect(mockTranslate).toHaveBeenCalledWith(
+      'CONVERSATION.WAVOIP_CALL.CALLER_ENDED'
+    );
+    expect(mockAlert).toHaveBeenCalledWith(
+      'CONVERSATION.WAVOIP_CALL.CALLER_ENDED'
+    );
+    expect(store.calls).toHaveLength(0);
+    expect(pendingOffers.has('sdk_offer_id')).toBe(false);
+    expect(pendingOffers.has('webhook_call_id')).toBe(false);
   });
 });
