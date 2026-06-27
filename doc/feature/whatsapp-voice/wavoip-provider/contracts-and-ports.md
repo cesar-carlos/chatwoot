@@ -374,39 +374,22 @@ Shape **único** para `FloatingCallWidget`:
  */
 ```
 
-Mappers em `custom/.../lib/voice/callStoreMappers.js` (**pendente implementação** — backlog W-F2):
+Mappers em `custom/.../lib/voice/callStoreMappers.js` (**implementado** — inclui reconciliação cable/SDK):
 
 ```javascript
-export function mapCableToStoreEntry(data) {
-  return {
-    callSid: data.call_id,
-    callId: data.id,
-    provider: data.provider,
-    conversationId: data.conversation_id,
-    inboxId: data.inbox_id,
-    callDirection: 'inbound',
-    caller: data.caller,
-  };
-}
+export function mapCableToStoreEntry(data) { /* ... */ }
+export function mapWavoipOfferToStoreEntry(offer, { inboxId, conversationId }) { /* ... */ }
+export function mergeStoreEntries(existing, incoming) { /* ... */ }
+export function reconcileWavoipStoreEntry(existing, incoming) { /* ... */ }
 
-export function mapWavoipOfferToStoreEntry(offer, { inboxId, conversationId }) {
-  return {
-    callSid: offer.id,
-    provider: 'wavoip',
-    wavoipOfferId: offer.id,
-    callDirection: 'inbound',
-    inboxId,
-    conversationId,
-    phone: offer.peer?.phone,
-    name: offer.peer?.displayName,
-  };
-}
+/** Match cable + SDK rows when whatsapp_call_id and Offer.id diverge. */
+export function findWavoipCallForOffer(calls, offer, inboxId) { /* ... */ }
 ```
 
 | Origem | Mapper |
 |--------|--------|
-| ActionCable `voice_call.incoming` | `mapCableToStoreEntry(data)` |
-| SDK `on('offer')` | `mapWavoipOfferToStoreEntry(offer, { inboxId, conversationId })` |
+| ActionCable `voice_call.incoming` | `mapCableToStoreEntry(data)` — preserva `callSid` do webhook |
+| SDK `on('offer')` | `mapWavoipOfferToStoreEntry` + `reconcileWavoipStoreEntry` via `findWavoipCallForOffer` |
 | `message.created` voice_call | `handleVoiceCallCreated` (existente) |
 
 **Reconciliação:** a chave de merge depende do gate de correlação do spike. Só usar

@@ -3,10 +3,14 @@
 Comportamentos errados observados diretamente no código. Nenhum depende de condição externa
 para se manifestar — são reproduzíveis na sequência de eventos esperada do produto.
 
+**Status (27 jun. 2026):** os 5 itens abaixo foram **corrigidos** no código. Este documento
+permanece como registro histórico do problema e da correção aplicada.
+
 ---
 
 ## BUG-01 · Deadlock em `acceptIncomingCall` quando offer é removida antes de chegar
 
+**Status:** ✅ Corrigido (R1 — jun. 2026)  
 **Severidade:** Alta  
 **Arquivo:** `custom/app/javascript/dashboard/composables/wavoip/useWavoipIncomingOffer.js`
 
@@ -58,6 +62,7 @@ no chamador (`useCallSession.js`); o `reject` é propagado corretamente.
 
 ## BUG-02 · Alertas de chamada em inglês hardcoded para qualquer idioma
 
+**Status:** ✅ Corrigido (R1 — jun. 2026)  
 **Severidade:** Média  
 **Arquivos:**
 - `custom/app/javascript/dashboard/lib/voice/voiceCallCableRegistry.js`
@@ -109,6 +114,7 @@ Chamadores em `useWavoipActiveCall.js` e `useWavoipOutboundCall.js` passam `tran
 
 ## BUG-03 · Múltiplos `EscalateRingJob` por retransmissão de INCOMING_RING
 
+**Status:** ✅ Corrigido (R2 — jun. 2026)  
 **Severidade:** Média  
 **Arquivo:** `custom/app/services/wavoip/calls/ring_escalation_scheduler.rb`
 
@@ -154,6 +160,7 @@ Opção B — `sidekiq-unique-jobs` com `lock: :until_executed` no job (prefere 
 
 ## BUG-04 · `isConnecting` fica `false` prematuramente em conexões concorrentes
 
+**Status:** ✅ Corrigido (R3 — jun. 2026)  
 **Severidade:** Baixa  
 **Arquivo:** `custom/app/javascript/dashboard/composables/wavoip/useWavoipConnection.js`
 
@@ -195,6 +202,7 @@ Ou tornar `isConnecting` um `ref` por inbox (Map de inbox → bool).
 
 ## BUG-05 · `activeInboxId` não é limpo ao cancelar chamada de saída
 
+**Status:** ✅ Corrigido (R3 — jun. 2026)  
 **Severidade:** Baixa  
 **Arquivo:** `custom/app/javascript/dashboard/composables/wavoip/useWavoipActiveCall.js`
 

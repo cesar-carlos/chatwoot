@@ -129,7 +129,7 @@ Camadas complementares:
 
 | Camada | Implementação |
 |--------|---------------|
-| **Ringtone** | Já em `FloatingCallWidget` (`RINGTONE_URL`) |
+| **Ringtone** | `FloatingCallWidget` (`RINGTONE_URL`) — ver §6.4 |
 | **Quem recebe o ring** | `wavoipInboxCallRouting.js` + `IncomingCallRecipients` (backend) — ver [inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings) |
 | **OS Notification (aba aberta, sem foco)** | `useWavoipNotifications.js` — espelhar Wavoip com `Notification` API |
 | **Web Push (aba fechada)** | Reusar `pushHelper.js` + VAPID — evento servidor no webhook `INCOMING_RING` |
@@ -154,6 +154,24 @@ export async function notifyIncomingOffer(offer) {
 - **iOS Safari:** `Notification` só em PWA instalada — igual Wavoip doc.
 - **Sem aceitar pela notification** — clique foca aba; aceitar no widget (mesma limitação Wavoip).
 - **Chamadas perdidas in-memory no webphone** — Chatwoot persiste via webhook + conversa.
+
+### 6.4 Ringtone e preferências do agente
+
+Comportamento implementado em `FloatingCallWidget.vue`, `CallCard.vue`, `useCallSession.js` e
+`useCallRingtonePreference.js` (upstream — compartilhado por todos os providers de voz no widget).
+
+| Comportamento | Implementação |
+|---------------|---------------|
+| Tocar enquanto inbound não atendida | `ringingInbound` watcher em `FloatingCallWidget` |
+| Parar ao aceitar / encerrar todas | Watcher desliga quando `!ringingInbound \|\| hasActiveCall` |
+| **Rejeitar (✕) ou recusar** | `silenceCallRingtone(callSid, call)` em `rejectIncomingCall` / `dismissCall` **antes** do round-trip SDK — som para na hora **só neste agente**; outros dispositivos/agentes continuam tocando |
+| **Chamador desligou** | SDK `offer.on('unanswered'/'ended')` + cable `onEnded` → toast `CONVERSATION.WAVOIP_CALL.CALLER_ENDED` + dismiss no store |
+| **Silenciar toque (bell)** | Botão no `CallCard` (incoming only) → `toggleRingtoneMute` → `localStorage` key `call_ringtone_muted_{userId}` |
+| Preferência persistente | Próximas chamadas: aviso visual sem áudio até o agente reativar o bell |
+
+Reconciliação de IDs (`whatsapp_call_id` ≠ `Offer.id`): `callStoreMappers.findWavoipCallForOffer`,
+campo `wavoipOfferId` no store, aliases em `pendingOffers` — necessário para parar ringtone e
+dismiss corretos quando cable e SDK usam IDs diferentes.
 
 ---
 
@@ -222,10 +240,13 @@ Manter paridade com WhatsApp/Twilio para o widget:
 | Método `useCallSession` | Wavoip |
 |-------------------------|--------|
 | `joinCall` | `offer.accept()` ou noop se já ativa |
-| `rejectIncomingCall` | `offer.reject()` |
+| `rejectIncomingCall` | `silenceCallRingtone` → `offer.reject()` → dismiss local |
 | `endCall` | `callActive.end()` |
-| `dismissCall` | reject + limpar store |
+| `dismissCall` | inbound Wavoip: `silenceCallRingtone` → reject; demais: dismiss store |
 | `formattedCallDuration` | Timer global existente |
+
+Export auxiliar: `isCallRingtoneSilenced(callSid)` — usado pelo `FloatingCallWidget` para
+suprimir áudio sem remover a notificação visual.
 
 Não duplicar timer — reusar `globalDurationTimer` em `useCallSession.js`.
 
@@ -236,9 +257,13 @@ Não duplicar timer — reusar `globalDurationTimer` em `useCallSession.js`.
 Chaves novas — seguir rule `chatwoot-core`: **somente `en`** em arquivos upstream; traduções `pt_BR` etc. só em `custom/` se o fork mantiver:
 
 - `INBOX_MGMT.WAVOIP_CALL.*` — tile e settings (`en/inboxMgmt.json`)
-- `CONVERSATION.WAVOIP_CALL_*` — erros outbound
+- `CONVERSATION.WAVOIP_CALL.*` — erros outbound, `CALLER_ENDED`, `ACCEPTED_ELSEWHERE`, etc.
+- `CONVERSATION.VOICE_WIDGET.MUTE_RINGTONE` / `UNMUTE_RINGTONE` — preferência de toque no widget
 - `WAVOIP_CONNECTIVITY.*` — issues de rede
 - `WAVOIP_ONBOARDING.*` — checklist semáforo
+
+Cable handlers usam `createWavoipVoiceCableHandlers(t)` em `voiceCallCableRegistry.js` — `t`
+injetado de `actionCable.js` para respeitar o idioma ativo (não importar JSON `en` diretamente).
 
 Usar `replaceInstallationName` se strings mencionarem produto.
 
@@ -290,6 +315,7 @@ custom/app/javascript/dashboard/
     browserVoiceProviders.js
     voiceCallCableRegistry.js
     voiceSessionRegistry.js
+    callStoreMappers.js          # mapCable + mapOffer + findWavoipCallForOffer
   lib/wavoip/
     wavoipClientRegistry.js
     wavoipDiagnosticsCollector.js
@@ -301,14 +327,16 @@ custom/app/javascript/dashboard/
     useWavoipActiveCall.js
     useWavoipCallSession.js
     useWavoipNotifications.js
+  components/wavoip/WavoipConnectionHost.vue
   routes/dashboard/settings/inbox/channels/Wavoip.vue
-  routes/dashboard/settings/inbox/channels/wavoip/
-    WavoipInboxIdentityFields.vue
-    WavoipDeviceFields.vue
-    WavoipCallBehaviorFields.vue
-    WavoipWebhookInstructions.vue
-    WavoipNotificationFields.vue
   routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue
+
+app/javascript/dashboard/          # upstream — widget de voz compartilhado
+  composables/useCallRingtonePreference.js
+  composables/useCallSession.js    # ringtoneSilencedCallSids, reject/dismiss
+  components-next/call/
+    FloatingCallWidget.vue
+    CallCard.vue                   # botão bell mute ringtone (incoming)
 ```
 
 **Componentes de setup (existentes):**
