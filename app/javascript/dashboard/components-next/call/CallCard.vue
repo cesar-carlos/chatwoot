@@ -37,6 +37,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isRingtoneMuted: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 defineEmits([
@@ -46,6 +50,7 @@ defineEmits([
   'toggleMute',
   'goToConversation',
   'dismiss',
+  'toggleRingtoneMute',
 ]);
 
 const { t } = useI18n();
@@ -184,6 +189,21 @@ const channelIcon = computed(() => {
             :color="isMuted ? 'amber' : 'teal'"
             class="!rounded-full"
             @click="$emit('toggleMute')"
+          />
+
+          <!-- Mute ringtone (incoming only) -->
+          <NextButton
+            v-if="isIncoming"
+            v-tooltip.top="
+              isRingtoneMuted
+                ? $t('CONVERSATION.VOICE_WIDGET.UNMUTE_RINGTONE')
+                : $t('CONVERSATION.VOICE_WIDGET.MUTE_RINGTONE')
+            "
+            :icon="isRingtoneMuted ? 'i-ph-bell-slash-bold' : 'i-ph-bell-bold'"
+            :variant="isRingtoneMuted ? 'faded' : 'ghost'"
+            :color="isRingtoneMuted ? 'amber' : 'slate'"
+            class="!rounded-full"
+            @click="$emit('toggleRingtoneMute')"
           />
 
           <!-- Accept call (incoming only) -->

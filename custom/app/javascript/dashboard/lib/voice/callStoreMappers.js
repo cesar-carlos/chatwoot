@@ -52,3 +52,24 @@ export function reconcileWavoipStoreEntry(existing, incoming) {
   if (!existing) return incoming;
   return mergeStoreEntries(existing, incoming);
 }
+
+/** Match cable + SDK rows when whatsapp_call_id and Offer.id diverge. */
+export function findWavoipCallForOffer(calls, offer, inboxId) {
+  if (!offer?.id) return null;
+
+  return (
+    calls.find(
+      c =>
+        c.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+        (c.callSid === offer.id || c.wavoipOfferId === offer.id)
+    ) ||
+    calls.find(
+      c =>
+        c.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+        c.awaitingSdkOffer &&
+        c.inboxId === inboxId &&
+        !c.isActive
+    ) ||
+    null
+  );
+}

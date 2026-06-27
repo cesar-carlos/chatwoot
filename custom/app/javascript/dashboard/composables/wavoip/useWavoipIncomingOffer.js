@@ -4,6 +4,7 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import { useAlert } from 'dashboard/composables';
 import { notifyIncomingWavoipOffer } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import {
+  findWavoipCallForOffer,
   mapWavoipOfferToStoreEntry,
   reconcileWavoipStoreEntry,
 } from 'customDashboard/lib/voice/callStoreMappers';
@@ -17,14 +18,26 @@ const pendingOffers = new Map();
 const boundInboxIds = new Set();
 const offerWaiters = new Map();
 
-const storeOffer = (offer, inboxId) => {
-  pendingOffers.set(offer.id, { offer, inboxId });
+const storeOffer = (offer, inboxId, aliasCallSids = []) => {
+  const entry = { offer, inboxId };
+  pendingOffers.set(offer.id, entry);
+  aliasCallSids.forEach(callSid => {
+    if (callSid && callSid !== offer.id) pendingOffers.set(callSid, entry);
+  });
 };
 
 export const getPendingOffer = callId => pendingOffers.get(callId)?.offer;
 
 export const removePendingOffer = callId => {
-  pendingOffers.delete(callId);
+  const entry = pendingOffers.get(callId);
+  if (entry) {
+    [...pendingOffers.entries()]
+      .filter(([, value]) => value === entry)
+      .forEach(([key]) => pendingOffers.delete(key));
+  } else {
+    pendingOffers.delete(callId);
+  }
+
   const waiter = offerWaiters.get(callId);
   if (waiter) {
     clearTimeout(waiter.timer);
@@ -33,12 +46,31 @@ export const removePendingOffer = callId => {
   }
 };
 
-const resolveOfferWaiters = offer => {
-  const waiter = offerWaiters.get(offer.id);
-  if (!waiter) return;
-  clearTimeout(waiter.timer);
-  offerWaiters.delete(offer.id);
-  waiter.resolve(offer);
+const resolveOfferWaiters = (offer, extraCallIds = []) => {
+  [...new Set([offer.id, ...extraCallIds])].forEach(callId => {
+    const waiter = offerWaiters.get(callId);
+    if (!waiter) return;
+    clearTimeout(waiter.timer);
+    offerWaiters.delete(callId);
+    waiter.resolve(offer);
+  });
+};
+
+const dismissOfferFromStore = (offer, { alertKey, t } = {}) => {
+  if (alertKey && t) useAlert(t(alertKey));
+
+  const callsStore = useCallsStore();
+  const callSids = new Set([offer.id]);
+  callsStore.calls.forEach(call => {
+    if (call.callSid === offer.id || call.wavoipOfferId === offer.id) {
+      callSids.add(call.callSid);
+    }
+  });
+
+  callSids.forEach(callSid => {
+    removePendingOffer(callSid);
+    callsStore.dismissCall(callSid);
+  });
 };
 
 export const waitForPendingOffer = (callId, timeoutMs = 10_000) => {
@@ -55,55 +87,53 @@ export const waitForPendingOffer = (callId, timeoutMs = 10_000) => {
   });
 };
 
-const reconcileAwaitingSdkOffer = (offer, inboxId) => {
+const mergeIncomingOffer = (offer, inboxId) => {
   const callsStore = useCallsStore();
-  const existing = callsStore.calls.find(
-    c =>
-      c.callSid === offer.id ||
-      c.wavoipOfferId === offer.id ||
-      (c.awaitingSdkOffer && c.callSid === offer.id)
-  );
-  if (!existing) return;
-
-  const mapped = mapWavoipOfferToStoreEntry(offer, {
-    inboxId,
-    conversationId: existing.conversationId,
-  });
-  callsStore.addCall({
-    ...reconcileWavoipStoreEntry(existing, mapped),
-    awaitingSdkOffer: false,
-  });
-};
-
-const upsertIncomingOffer = (offer, inboxId) => {
-  const callsStore = useCallsStore();
-  const existing = callsStore.calls.find(
-    c => c.callSid === offer.id || c.wavoipOfferId === offer.id
-  );
+  const existing = findWavoipCallForOffer(callsStore.calls, offer, inboxId);
   const mapped = mapWavoipOfferToStoreEntry(offer, {
     inboxId,
     conversationId: existing?.conversationId,
   });
   const merged = reconcileWavoipStoreEntry(existing, mapped);
-  callsStore.addCall({ ...merged, awaitingSdkOffer: false });
+
+  callsStore.addCall({
+    ...merged,
+    // Keep webhook call_id as callSid when cable arrived first.
+    callSid: existing?.callSid || merged.callSid,
+    wavoipOfferId: offer.id,
+    awaitingSdkOffer: false,
+  });
+
+  if (existing && existing.callSid !== offer.id) {
+    callsStore.dismissCall(offer.id);
+  }
 };
 
 const wireOfferEvents = (offer, t) => {
-  const dismiss = () => {
-    removePendingOffer(offer.id);
-    useCallsStore().dismissCall(offer.id);
-  };
-
   offer.on?.('acceptedElsewhere', () => {
-    useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE'));
-    dismiss();
+    dismissOfferFromStore(offer, {
+      alertKey: 'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE',
+      t,
+    });
   });
   offer.on?.('rejectedElsewhere', () => {
-    useAlert(t('CONVERSATION.WAVOIP_CALL.REJECTED_ELSEWHERE'));
-    dismiss();
+    dismissOfferFromStore(offer, {
+      alertKey: 'CONVERSATION.WAVOIP_CALL.REJECTED_ELSEWHERE',
+      t,
+    });
   });
-  offer.on?.('unanswered', dismiss);
-  offer.on?.('ended', dismiss);
+  offer.on?.('unanswered', () => {
+    dismissOfferFromStore(offer, {
+      alertKey: 'CONVERSATION.WAVOIP_CALL.CALLER_ENDED',
+      t,
+    });
+  });
+  offer.on?.('ended', () => {
+    dismissOfferFromStore(offer, {
+      alertKey: 'CONVERSATION.WAVOIP_CALL.CALLER_ENDED',
+      t,
+    });
+  });
 };
 
 const bindOfferListener = (inboxId, t, store) => {
@@ -113,11 +143,15 @@ const bindOfferListener = (inboxId, t, store) => {
 
   const handler = offer => {
     if (!offer?.id) return;
-    storeOffer(offer, inboxId);
-    resolveOfferWaiters(offer);
+    const callsStore = useCallsStore();
+    const existing = findWavoipCallForOffer(callsStore.calls, offer, inboxId);
+    const aliasCallSids =
+      existing && existing.callSid !== offer.id ? [existing.callSid] : [];
+
+    storeOffer(offer, inboxId, aliasCallSids);
+    resolveOfferWaiters(offer, aliasCallSids);
     wireOfferEvents(offer, t);
-    reconcileAwaitingSdkOffer(offer, inboxId);
-    upsertIncomingOffer(offer, inboxId);
+    mergeIncomingOffer(offer, inboxId);
     const inbox = store?.getters?.['inboxes/getInbox']?.(inboxId);
     notifyIncomingWavoipOffer(offer, inbox);
   };

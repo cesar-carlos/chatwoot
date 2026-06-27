@@ -206,6 +206,29 @@ describe('wavoipVoiceCableHandlers', () => {
       expect(store.calls.some(c => c.callSid === 'end_001')).toBe(false);
     });
 
+    it('alerts and clears inbound ring when caller hangs up before answer', () => {
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'webhook_call_id',
+        wavoipOfferId: 'sdk_offer_id',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onEnded({
+        call_id: 'webhook_call_id',
+        end_reason: 'no_answer',
+        status: 'no_answer',
+      });
+
+      expect(useAlert).toHaveBeenCalledWith(
+        'CONVERSATION.WAVOIP_CALL.CALLER_ENDED'
+      );
+      expect(store.calls).toHaveLength(0);
+    });
+
     it('keeps outbound ringing call when SDK still owns the session', () => {
       isWavoipSdkCallOwned.mockImplementation(callId => callId === 'out_ring_001');
       const store = useCallsStore();
