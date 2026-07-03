@@ -249,7 +249,7 @@ Reutilizar **com payload normalizado**:
 - [x] Registry + prepends Fase 0
 - [x] Normalizer + webhook route
 - [x] Bypass 24h + templates noop
-- [ ] E2E webhook inbound + wizard QR — [validation-checklist](./evolution-api/validation-checklist.md) §2–4
+- [ ] E2E webhook inbound + wizard QR — [validation-checklist](./evolution-api/validation-checklist.md) §2–4 (correções de confiabilidade 2026-07-03 prontas; smoke manual pendente)
 
 ### Evolution Go (`evolution_go`)
 

@@ -98,4 +98,56 @@ RSpec.describe Custom::Whatsapp::Evolution::LostMessagesReconciliationService do
     expect(Whatsapp::IncomingMessageService).to have_received(:new).once
     expect(incoming_service).to have_received(:perform).once
   end
+
+  it 'wraps inbound reconciliation imports with MessageMutex' do
+    payload = {
+      'key' => {
+        'id' => 'EVO-MUTEX-1',
+        'remoteJid' => '5511888888888@s.whatsapp.net',
+        'fromMe' => false
+      },
+      'messageType' => 'conversation',
+      'message' => { 'conversation' => 'mutex test' },
+      'pushName' => 'Bob',
+      'messageTimestamp' => Time.current.to_i
+    }
+    normalized_payload = {
+      contacts: [{ profile: { name: 'Bob' }, wa_id: '5511888888888' }],
+      messages: [{ from: '5511888888888', id: 'EVO-MUTEX-1', timestamp: Time.current.to_i.to_s, type: 'text', text: { body: 'mutex test' } }]
+    }
+    normalizer = instance_double(Custom::Whatsapp::Webhooks::EvolutionNormalizer, perform: normalized_payload)
+    incoming_service = instance_double(Whatsapp::IncomingMessageService, perform: true)
+
+    allow(api_client).to receive(:find_messages).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'messages' => {
+            'records' => [payload],
+            'pages' => 1
+          }
+        }
+      )
+    )
+    allow(Custom::Whatsapp::Webhooks::EvolutionNormalizer).to receive(:new).and_return(normalizer)
+    allow(Whatsapp::IncomingMessageService).to receive(:new).and_return(incoming_service)
+    allow(Custom::Whatsapp::Evolution::MessageMutex).to receive(:with_lock).and_call_original
+
+    described_class.new(channel: channel).perform
+
+    expect(Custom::Whatsapp::Evolution::MessageMutex).to have_received(:with_lock).with(
+      channel,
+      '5511888888888'
+    )
+  end
+
+  it 're-raises LockAcquisitionError so the job can retry' do
+    allow(Custom::Whatsapp::Evolution::MessageMutex).to receive(:with_lock)
+      .and_raise(MutexApplicationJob::LockAcquisitionError, 'lock busy')
+
+    expect do
+      described_class.new(channel: channel).perform
+    end.to raise_error(MutexApplicationJob::LockAcquisitionError, 'lock busy')
+  end
 end

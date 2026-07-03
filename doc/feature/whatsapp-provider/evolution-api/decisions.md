@@ -165,30 +165,26 @@ Outbound já cria mensagem com `source_id` no Chatwoot; processar echo duplicari
 
 ## 12. Mutex no job (album / concorrência)
 
-O prepend `WhatsappEventsJob` deve expor `contact_sender_id` compatível com payload **já normalizado** (chaves top-level `contacts` + `messages`), igual ao 360dialog — não passar envelope Evolution cru para `super`.
+| Decisão | Valor |
+|---------|-------|
+| **Dispatcher** | `WebhookDispatcher` normaliza cada item e chama `MessageMutex.with_lock` antes de `IncomingMessageService` / `PhoneOutgoingSyncService` |
+| **Helper compartilhado** | `Custom::Whatsapp::Evolution::MessageMutex` — Redis `WHATSAPP_MESSAGE_MUTEX` (mesma chave do job upstream) |
+| **Reconciliação** | `LostMessagesReconciliationService` reutiliza `MessageMutex` — não bypassa dedup outbound |
+| **sender_id** | Contato inbound: `messages[0].from`; outbound phone: `key.remoteJid`; mutações: `remoteJid` ou `id` |
+
+O prepend `WhatsappEventsJob` **delega** para `WebhookDispatcher` — não mantém `case params[:event]` inline (ver §16).
 
 ```ruby
-def perform(params = {})
-  params = params.with_indifferent_access
-  return super(params) unless evolution_envelope?(params)
-
-  params = params.merge(event: Custom::Whatsapp::Evolution::EventNames.normalize(params[:event]))
-
-  channel = find_evolution_channel(params)
-  return unless channel
-
-  case params[:event]
-  when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
-    Array.wrap(params[:data]).each do |data_item|
-      normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer
-        .new(channel: channel, envelope: params.merge(data: data_item)).perform
-      next if normalized.blank?
-
-      super(normalized.merge(phone_number: channel.phone_number))
+# Resumo — webhook_dispatcher.rb
+def process_message_item(channel, params, data_item)
+  # … normalizer …
+    with_message_lock(channel, sender_id) do
+      Custom::Whatsapp::Evolution::InboundMessageProcessor.process(channel, flat_params)
     end
-  when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
-  end
+end
+
+def with_message_lock(channel, sender_id, &)
+  Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id, &)
 end
 ```
 
@@ -231,10 +227,14 @@ Documentar fixture `messages_upsert_batch.json` quando capturado no [validation-
 
 | Opção | Prós | Contras | Decisão |
 |-------|------|---------|---------|
-| **A** — Prepend `WhatsappEventsJob` | Reusa pipeline 360dialog; menos rotas | Risco de regressão cloud/default se detecção falhar | **✅ MVP** |
+| **A** — Prepend `WhatsappEventsJob` + **`WebhookDispatcher`** | Reusa pipeline 360dialog; roteamento isolado em service testável | `InboundMessageProcessor` chama `IncomingMessageService` diretamente (sem `job.send`) | **✅ MVP** |
 | **B** — `EvolutionWebhookJob` dedicado | Isolamento total (padrão Wavoip) | Duplica roteamento de status/contacts | Reavaliar se prepend gerar bugs |
 
-Implementar **A** na Fase 0–1. Se testes de regressão falharem, migrar para **B** sem mudar normalizer.
+Implementar **A** na Fase 0–1. O prepend detecta envelope Evolution, normaliza `event`, resolve channel e chama `WebhookDispatcher#dispatch` — **sem** `case event` inline no job.
+
+Eventos suportados no dispatcher: `MESSAGES_UPSERT`, `MESSAGES_UPDATE`, `MESSAGES_DELETE`, `MESSAGES_EDITED`, `CONTACTS_*`, `CONNECTION_UPDATE`, `QRCODE_UPDATED`. Demais eventos: log `[EVOLUTION] unhandled event=… instance=…` (`instance_name` com fallback `instance`).
+
+Se testes de regressão falharem, migrar para **B** sem mudar normalizer.
 
 ---
 

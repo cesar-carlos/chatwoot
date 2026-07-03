@@ -297,37 +297,63 @@ Ver [decisions.md §14](./decisions.md) · [troubleshooting.md](./troubleshootin
 
 ---
 
-## Prepend `WhatsappEventsJob` — pseudocódigo
+## Pipeline inbound (código real)
+
+Fluxo após `POST /webhooks/evolution/:instance_name`:
+
+```
+EvolutionController → WhatsappEventsJob (prepend) → WebhookDispatcher
+  ├─ MESSAGES_UPSERT / MESSAGES_UPDATE → EvolutionNormalizer → MessageMutex → IncomingMessageService
+  │     └─ fromMe: true → PhoneOutgoingSyncService (ou skip se ignore_from_me_echo)
+  ├─ MESSAGES_DELETE → MessageDeleteSyncService (mutex)
+  ├─ MESSAGES_EDITED → MessageEditSyncService (mutex)
+  ├─ CONTACTS_UPSERT / CONTACTS_UPDATE → ContactsSyncJob (async)
+  ├─ CONNECTION_UPDATE / QRCODE_UPDATED → ConnectionService#handle_event
+  └─ outro evento → log warn com instance_name
+```
+
+**Arquivos:** `custom/app/controllers/webhooks/evolution_controller.rb`, `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb`, `custom/app/services/custom/whatsapp/evolution/webhook_dispatcher.rb`.
+
+O prepend do job **não** normaliza inline — delega para `WebhookDispatcher#dispatch(channel, params)` após `EventNames.normalize` e lookup do channel por `instance_name`.
+
+### Mutex e dedup
+
+| Camada | Mecanismo |
+|--------|-----------|
+| Webhook inbound | `MessageMutex.with_lock(channel, sender_id)` — Redis `WHATSAPP_MESSAGE_MUTEX` por inbox + remetente |
+| Mensagem inbound | `IncomingMessageBaseService` — lock por `source_id` |
+| Reconciliação perdidas | `LostMessagesReconciliationService` — mesmo `MessageMutex` |
+| Outbound phone | `PhoneOutgoingSyncService` — `MessageDedupLock`; lock ocupado propaga `LockAcquisitionError` para retry do job |
+
+### Mídia inbound
+
+Normalizer enfileira `MediaDownloadJob` → `MediaAttachmentService`. Lock Redis por `message_id` liberado em `ensure`; HTTP não-2xx levanta `ApiError` (retry do job).
+
+### Status deferido
+
+`MESSAGES_UPDATE` pode chegar antes da mensagem existir no Chatwoot — `DeferredStatusJob` retenta até 6×; exaustão loga `[EVOLUTION] deferred status dropped …`.
+
+---
+
+## Prepend `WhatsappEventsJob` — referência (não duplicar lógica aqui)
 
 ```ruby
-# custom/app/jobs/custom/webhooks/whatsapp_events_job.rb
+# custom/app/jobs/custom/webhooks/whatsapp_events_job.rb (resumo)
 def perform(params = {})
   params = params.with_indifferent_access
   return super(params) unless evolution_envelope?(params)
 
   params = params.merge(event: Custom::Whatsapp::Evolution::EventNames.normalize(params[:event]))
-
   channel = find_evolution_channel(params)
   return unless channel
 
-  case params[:event]
-  when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
-    Array.wrap(params[:data]).each do |data_item|
-      normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer
-        .new(channel: channel, envelope: params.merge(data: data_item)).perform
-      if normalized.blank?
-        log_normalizer_skipped(params[:event], data_item) # [EVOLUTION] normalizer skipped …
-        next
-      end
-      process_events(channel, normalized.merge(phone_number: channel.phone_number))
-    end
-  when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
-    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
-  end
+  Custom::Whatsapp::Evolution::WebhookDispatcher.new.dispatch(channel, params)
 end
 ```
 
-**Nota:** o job upstream recebe `params` do controller WhatsApp — pode ser necessário rota dedicada ou aceitar envelope Evolution no mesmo endpoint com detecção por formato (`params['event'].present?`).
+Roteamento de eventos, `fromMe`, DELETE/EDIT e mutex: ver `webhook_dispatcher.rb` — **não** reimplementar no job.
+
+**Nota:** o job upstream ainda expõe `process_events` (privado) usado pelo dispatcher após normalização.
 
 ---
 

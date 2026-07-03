@@ -9,6 +9,7 @@ class Custom::Whatsapp::Evolution::MediaDownloadJob < ApplicationJob
   discard_on ArgumentError
 
   def perform(channel_id, message_id, attachment_payload, message_type)
+    @media_lock_acquired = false
     channel = Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution')
     message = Message.find_by(id: message_id)
     return if channel.blank? || message.blank?
@@ -21,12 +22,22 @@ class Custom::Whatsapp::Evolution::MediaDownloadJob < ApplicationJob
       attachment_payload: attachment_payload.with_indifferent_access,
       message_type: message_type
     ).perform
+  ensure
+    release_media_lock!(message_id) if message_id.present? && @media_lock_acquired
   end
 
   private
 
   def acquire_media_lock!(message_id)
-    key = format(Redis::RedisKeys::EVOLUTION_MEDIA_DOWNLOAD_LOCK, message_id: message_id)
-    ::Redis::Alfred.set(key, true, nx: true, ex: MEDIA_LOCK_TTL)
+    @media_lock_acquired = ::Redis::Alfred.set(media_lock_key(message_id), true, nx: true, ex: MEDIA_LOCK_TTL)
+  end
+
+  def release_media_lock!(message_id)
+    ::Redis::Alfred.delete(media_lock_key(message_id))
+    @media_lock_acquired = false
+  end
+
+  def media_lock_key(message_id)
+    format(Redis::RedisKeys::EVOLUTION_MEDIA_DOWNLOAD_LOCK, message_id: message_id)
   end
 end

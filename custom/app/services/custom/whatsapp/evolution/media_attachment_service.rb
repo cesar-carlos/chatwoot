@@ -27,7 +27,13 @@ class Custom::Whatsapp::Evolution::MediaAttachmentService
 
   def attach_from_evolution_message!(evolution_message)
     response = api_client.get_base64_from_media_message(message: evolution_message)
-    return unless response.success?
+    unless response.success?
+      raise Custom::Whatsapp::Evolution::ApiError.new(
+        'Failed to download Evolution media',
+        status: response.code,
+        body: response.parsed_response
+      )
+    end
 
     tempfile = build_tempfile(response.parsed_response)
     return if tempfile.blank?

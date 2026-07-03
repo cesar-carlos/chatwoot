@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::WebhookDispatcher
-  MESSAGE_LOCK_TTL = 30.seconds
-
-  pattr_initialize [:job!]
-
   def dispatch(channel, params)
     case params[:event]
     when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
@@ -18,8 +14,9 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
     when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
       Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
     else
+      instance_name = params[:instance_name].presence || params[:instance]
       Rails.logger.warn(
-        "[EVOLUTION] unhandled event=#{params[:event]} instance=#{params[:instance]}"
+        "[EVOLUTION] unhandled event=#{params[:event]} instance=#{instance_name}"
       )
     end
   end
@@ -50,7 +47,7 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
     flat_params = normalized.merge(phone_number: channel.phone_number)
     sender_id = contact_sender_id(flat_params)
     with_message_lock(channel, sender_id) do
-      job.send(:process_events, channel, flat_params)
+      Custom::Whatsapp::Evolution::InboundMessageProcessor.process(channel, flat_params)
     end
   end
 
@@ -93,14 +90,7 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
   end
 
   def with_message_lock(channel, sender_id, &)
-    return yield if sender_id.blank?
-
-    key = format(
-      ::Redis::Alfred::WHATSAPP_MESSAGE_MUTEX,
-      inbox_id: channel.inbox.id,
-      sender_id: sender_id
-    )
-    job.send(:with_lock, key, MESSAGE_LOCK_TTL, &)
+    Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id, &)
   end
 
   def message_key(data_item)

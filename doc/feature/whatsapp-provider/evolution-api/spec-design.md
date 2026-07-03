@@ -438,17 +438,30 @@ end
 
 ---
 
-## 6. Prepend `Webhooks::WhatsappEventsJob`
+## 6. `WebhookDispatcher` + prepend `Webhooks::WhatsappEventsJob`
 
-**Arquivo:** `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb`
+**Dispatcher:** `custom/app/services/custom/whatsapp/evolution/webhook_dispatcher.rb`
 
-Ver pseudocódigo em [decisions.md §12](./decisions.md#12-mutex-no-job-album--concorrência) e [webhook-events.md](./webhook-events.md).
+| Evento | Ação |
+|--------|------|
+| `MESSAGES_UPSERT` / `MESSAGES_UPDATE` | `EvolutionNormalizer` → `MessageMutex` → `IncomingMessageService` (ou `PhoneOutgoingSyncService` se `fromMe`) |
+| `MESSAGES_DELETE` | `MessageDeleteSyncService` (mutex) |
+| `MESSAGES_EDITED` | `MessageEditSyncService` (mutex) |
+| `CONTACTS_UPSERT` / `CONTACTS_UPDATE` | `ContactsSyncJob` |
+| `CONNECTION_UPDATE` / `QRCODE_UPDATED` | `ConnectionService#handle_event` |
+| Outros | `Rails.logger.warn` com `instance_name` |
 
-Adicionalmente:
+**Job prepend:** `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` — `EventNames.normalize`, lookup channel, `WebhookDispatcher.new.dispatch(channel, params)`.
 
-- `EventNames.normalize` no início do `perform`
+Adicionalmente no pipeline:
+
 - `log_normalizer_skipped` quando normalizer retorna `nil` (filtros inbound, tipo não suportado)
-- Mutex Redis por `sender_id` em mensagens Evolution (`EVOLUTION_MESSAGE_LOCK_TTL`)
+- `MessageMutex` compartilhado com `LostMessagesReconciliationService`
+- `RemoteJidFilter` centraliza `skip_remote_jid?` (normalizer, import, phone outgoing)
+- Status antes da mensagem existir → `DeferredStatusJob` (retry + log na exaustão)
+- Mídia: `MediaDownloadJob` libera lock Redis em `ensure`; `MediaAttachmentService` levanta `ApiError` em HTTP erro
+- Import histórico: lock Redis atômico `evolution:import:{channel_id}` em `ImportService`
+- Grupos: hot path usa cache + fallback (`pushName` / JID); cache miss enfileira `GroupMetadataFetchJob`
 
 ---
 
@@ -538,18 +551,31 @@ end
 
 ## 11. Frontend (Vue) — contrato mínimo
 
-Não é classe Ruby; interface entre wizard e API interna do fork.
+Não é classe Ruby; interface entre wizard, health page e API interna do fork.
 
-### Composable `useEvolutionChannel.js`
+### Detecção de canal Evolution
 
-| Export | Tipo | Uso |
-|--------|------|-----|
-| `isEvolutionWhatsAppChannel(channel)` | `boolean` | Gates UI |
-| `evolutionCapabilities` | `object` | Esconder cloud-only |
-| `connectionStatus` | `ref` | `open` / `connecting` / `close` |
-| `qrCodeBase64` | `ref` | Step QR |
-| `provisionInstance(payload)` | `async fn` | POST API interna create inbox |
-| `refreshQr()` | `async fn` | Poll connect |
+| Export | Arquivo | Uso |
+|--------|---------|-----|
+| `isEvolutionWhatsAppChannel(channel)` | `dashboard/mixins/inboxMixin.js` | Gates UI (settings, cloud-only) |
+
+### Composables reais
+
+| Composable | Arquivo | Responsabilidade |
+|------------|---------|------------------|
+| `useEvolutionQrSession` | `custom/.../composables/evolution/useEvolutionQrSession.js` | Polling 3s, expiry QR ~45s, `qrRefreshError` em falhas de rede, `evolution_reconnect` |
+| `useEvolutionConnectionCable` | `custom/.../composables/evolution/useEvolutionConnectionCable.js` | Subscribe `EvolutionConnectionChannel`; `subscribeEvolutionConnection` imperativo para callers legados |
+| `useEvolutionHealthConnection` | `custom/.../composables/evolution/useEvolutionHealthConnection.js` | Health page: polling 5s, cable, reconnect/logout/restart, flag `staleData` |
+
+### Componentes
+
+| Componente | Notas |
+|------------|-------|
+| `EvolutionQrScanModal.vue` | `onUnmounted` limpa polling/cable; prop `cableManagedExternally` evita subscription duplicada quando o pai já inscrito |
+| `EvolutionHealthPage.vue` | Composition API + `useEvolutionHealthConnection` |
+| `EvolutionSettingsPage.vue` | Settings + import; health embutida |
+
+Registry cable: `custom/.../lib/evolution/evolutionCableRegistry.js` — `acquireEvolutionConnectionCable` dedupe por `inboxId` (ref-count de listeners).
 
 ### API interna Rails (implementado)
 
@@ -579,6 +605,26 @@ Canal: `EvolutionConnectionChannel` — payload plano: `connection_status`, `qrc
 ```
 
 **Diferença da Evolution legada:** sem `chatwoot-import-helper.ts` / SQL no Postgres Chatwoot.
+
+Lock Redis `EVOLUTION_IMPORT_LOCK` impede dois `ImportJob` simultâneos; `import_failed_at` separado de `import_completed_at`.
+
+---
+
+## Classes auxiliares (stubs)
+
+| Classe | Arquivo | Papel |
+|--------|---------|-------|
+| `JidResolver` | `custom/.../jid_resolver.rb` | Normaliza JIDs Baileys (PN/LID, grupo) |
+| `MediaDecoder` | `custom/.../media_decoder.rb` | Decodifica base64/mimetype para attachment |
+| `ApiError` | `custom/.../api_error.rb` | Erros HTTP Evolution; `user_message` para API |
+| `MessageMutex` | `custom/.../message_mutex.rb` | Lock Redis por inbox + sender |
+| `InboundMessageProcessor` | `custom/.../inbound_message_processor.rb` | Normalized inbound params → `IncomingMessageService` |
+| `RemoteJidFilter` | `custom/.../remote_jid_filter.rb` | `skip_remote_jid?` compartilhado |
+| `MessageDeleteSyncService` | `custom/.../message_delete_sync_service.rb` | DELETE webhook → mensagem Chatwoot |
+| `MessageEditSyncService` | `custom/.../message_edit_sync_service.rb` | EDIT webhook → atualiza conteúdo |
+| `GroupMetadataFetchJob` | `custom/.../group_metadata_fetch_job.rb` | Popula cache de nome de grupo (async) |
+| `MediaDownloadJob` | `custom/.../media_download_job.rb` | Download mídia inbound async |
+| `DeferredStatusJob` | `custom/.../deferred_status_job.rb` | Status MESSAGES_UPDATE antes da mensagem existir |
 
 ---
 

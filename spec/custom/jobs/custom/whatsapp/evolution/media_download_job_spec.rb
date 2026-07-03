@@ -76,4 +76,16 @@ RSpec.describe Custom::Whatsapp::Evolution::MediaDownloadJob, type: :job do
 
     described_class.perform_now(channel.id, message.id, attachment_payload, 'image')
   end
+
+  it 'releases the media lock after a service failure so retries can run' do
+    allow(service).to receive(:perform).and_raise(StandardError, 'download failed')
+    lock_key = format(Redis::RedisKeys::EVOLUTION_MEDIA_DOWNLOAD_LOCK, message_id: message.id)
+
+    expect do
+      described_class.perform_now(channel.id, message.id, attachment_payload, 'image')
+    end.to raise_error(StandardError, 'download failed')
+
+    expect(Redis::Alfred.get(lock_key)).to be_nil
+    expect(Redis::Alfred.set(lock_key, true, nx: true, ex: 60)).to be(true)
+  end
 end

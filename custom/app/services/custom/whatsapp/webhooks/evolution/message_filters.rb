@@ -8,27 +8,13 @@ module Custom::Whatsapp::Webhooks::Evolution::MessageFilters
     remote_jid = key['remoteJid'].to_s
 
     ignored_from_me_echo?(key) ||
-      ignored_status_broadcast?(remote_jid) ||
-      ignored_group_message?(remote_jid) ||
-      ignore_jid?(remote_jid)
+      Custom::Whatsapp::Evolution::RemoteJidFilter.skip_remote_jid?(remote_jid, config)
   end
 
   def ignored_from_me_echo?(key)
     return false if import_mode
 
     ActiveModel::Type::Boolean.new.cast(config['ignore_from_me_echo']) && key['fromMe']
-  end
-
-  def ignored_status_broadcast?(remote_jid)
-    remote_jid == 'status@broadcast' && config['ignore_status_broadcast'] != false
-  end
-
-  def ignored_group_message?(remote_jid)
-    remote_jid.end_with?('@g.us') && config['groups_ignore'] != false
-  end
-
-  def ignore_jid?(remote_jid)
-    Array(config['ignore_jids']).any? { |pattern| remote_jid.include?(pattern.to_s) }
   end
 
   def ignore_survey_link?(body)

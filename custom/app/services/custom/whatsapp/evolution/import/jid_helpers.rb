@@ -8,11 +8,7 @@ module Custom::Whatsapp::Evolution::Import::JidHelpers
   end
 
   def skip_remote_jid?(remote_jid)
-    return true if remote_jid.blank?
-    return true if remote_jid == 'status@broadcast' && runtime.config['ignore_status_broadcast'] != false
-    return true if remote_jid.end_with?('@g.us') && runtime.config['groups_ignore'] != false
-
-    Array(runtime.config['ignore_jids']).any? { |pattern| remote_jid.include?(pattern.to_s) }
+    Custom::Whatsapp::Evolution::RemoteJidFilter.skip_remote_jid?(remote_jid, runtime.config)
   end
 
   def phone_from_jid(jid)
