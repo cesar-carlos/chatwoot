@@ -2,14 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useCallsStore } from 'dashboard/stores/calls';
 
-const { pendingOffers, removePendingOffer, isWavoipSdkCallOwned } = vi.hoisted(() => {
-  const offers = new Map();
-  return {
-    pendingOffers: offers,
-    removePendingOffer: callId => offers.delete(callId),
-    isWavoipSdkCallOwned: vi.fn(() => false),
-  };
-});
+const { pendingOffers, removePendingOffer, isWavoipSdkCallOwned } = vi.hoisted(
+  () => {
+    const offers = new Map();
+    return {
+      pendingOffers: offers,
+      removePendingOffer: callId => offers.delete(callId),
+      isWavoipSdkCallOwned: vi.fn(() => false),
+    };
+  }
+);
 
 vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
   endActiveCall: vi.fn(),
@@ -45,7 +47,10 @@ vi.mock('dashboard/store', () => ({
 }));
 
 import { useAlert } from 'dashboard/composables';
-import { isCallDismissed, isCallJoining } from 'dashboard/composables/useCallSession';
+import {
+  isCallDismissed,
+  isCallJoining,
+} from 'dashboard/composables/useCallSession';
 import { createWavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
 
 const t = key => key;
@@ -230,7 +235,9 @@ describe('wavoipVoiceCableHandlers', () => {
     });
 
     it('keeps outbound ringing call when SDK still owns the session', () => {
-      isWavoipSdkCallOwned.mockImplementation(callId => callId === 'out_ring_001');
+      isWavoipSdkCallOwned.mockImplementation(
+        callId => callId === 'out_ring_001'
+      );
       const store = useCallsStore();
       store.addCall({
         callSid: 'out_ring_001',

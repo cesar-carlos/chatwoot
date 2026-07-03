@@ -88,7 +88,7 @@ Registry (`lib/voice/`), composables (`composables/wavoip/`), `WavoipConnectionH
 | Credencial SDK | Coluna dedicada e criptografada quando a criptografia do Chatwoot estiver configurada |
 | MVP | Inbox + outbound + inbound + histórico + aceite auditável |
 | Pós-MVP | Pareamento completo, push com aba fechada, gravação e diagnóstico avançado |
-| Pacote | Começar com versão exata validada no spike; em 19 jun. 2026 a versão publicada é `2.5.0` |
+| Pacote | Versão pinada `2.6.1` (jul. 2026); `activeCalls` / `activeCallsChanged` integrados no FE |
 
 ## O que mudou após a reavaliação
 
@@ -113,7 +113,7 @@ Nenhuma implementação de produto começa sem registrar estes resultados em
 
 | Gate | Evidência necessária | Se falhar |
 |------|----------------------|-----------|
-| G0.1 SDK | `2.5.0` instala, conecta e faz áudio bidirecional | Reavaliar versão/API |
+| G0.1 SDK | `2.6.1` instala, conecta e faz áudio bidirecional | Reavaliar versão/API |
 | G0.2 IDs | `Offer.id`/`CallOutgoing.id` correlaciona de forma determinística com `whatsapp_call_id` | Definir endpoint de correlação ou não seguir |
 | G0.3 Webhook bruto | Capturar bytes reais de `CALL`, `RECORD` e `DEVICE`; confirmar como o `type` duplicado chega | Normalizer só após contrato real |
 | G0.4 Multiagente | Duas sessões recebem offer e `acceptedElsewhere`/`rejectedElsewhere` funciona | Limitar a um agente por inbox ou não seguir |
@@ -146,7 +146,7 @@ autorização, inbox, contato, conversa, `Call`, mensagem e broadcasts auxiliare
 **Duração:** 2–4 dias. **Status:** ✅ concluído — `go com restrições` ([spike-notes.md](./spike-notes.md)).
 
 - [x] Criar página/fixture de laboratório fora do fluxo de produção.
-- [x] Instalar exatamente `@wavoip/wavoip-api@2.5.0`.
+- [x] Instalar `@wavoip/wavoip-api@2.6.1` (atualizado jul. 2026).
 - [x] Validar outbound, inbound, mute, end e áudio bidirecional.
 - [x] Capturar payload HTTP bruto antes de `JSON.parse`.
 - [x] Comparar IDs SDK ↔ webhook e ordem temporal dos eventos.

@@ -9,10 +9,12 @@ class ForkRetryBackfillEnabledFeaturesDataOnAccounts < ActiveRecord::Migration[7
       next if account.enabled_features_data.present?
 
       Accounts::FeatureStore.new(account).backfill_from_bitmask!
+      # rubocop:disable Rails/SkipsModelValidations
       account.update_columns(
         enabled_features_data: account.enabled_features_data,
         updated_at: Time.current
       )
+      # rubocop:enable Rails/SkipsModelValidations
     end
   end
 end

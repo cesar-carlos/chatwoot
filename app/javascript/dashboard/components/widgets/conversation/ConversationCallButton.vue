@@ -12,7 +12,10 @@ import {
 } from 'dashboard/components-next/message/constants';
 import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
 import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
-import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+import {
+  getWavoipDeviceStatus,
+  isWavoipDeviceAtChannelCapacity,
+} from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useAccount } from 'dashboard/composables/useAccount';
@@ -51,6 +54,11 @@ const isWavoipVoiceInbox = computed(
   () => voiceCallProvider.value === VOICE_CALL_PROVIDERS.WAVOIP
 );
 
+const isWavoipAtCapacity = computed(() => {
+  if (!isWavoipVoiceInbox.value || !props.inbox?.id) return false;
+  return isWavoipDeviceAtChannelCapacity(props.inbox.id);
+});
+
 const isWavoipRestricted = computed(() => {
   if (!isWavoipVoiceInbox.value || !props.inbox?.id) return false;
   return getWavoipDeviceStatus(props.inbox.id).isRestricted.value;
@@ -58,7 +66,7 @@ const isWavoipRestricted = computed(() => {
 
 const isCallButtonDisabled = computed(() => {
   if (callsStore.hasActiveCall || callsStore.hasIncomingCall) return true;
-  if (isWavoipRestricted.value) return true;
+  if (isWavoipRestricted.value || isWavoipAtCapacity.value) return true;
   if (isWhatsappVoiceInbox.value) {
     return whatsappCallSession.isInitiating.value;
   }
@@ -143,6 +151,11 @@ const startTwilioCall = async () => {
 const startWavoipCall = async () => {
   const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
   if (!session || session.isInitiating?.value) return;
+
+  if (isWavoipAtCapacity.value) {
+    useAlert(t('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL'));
+    return;
+  }
 
   const toPhone = props.chat?.meta?.sender?.phone_number;
   if (!toPhone) {

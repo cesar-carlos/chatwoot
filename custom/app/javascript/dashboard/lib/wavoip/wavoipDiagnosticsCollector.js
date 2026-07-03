@@ -1,4 +1,8 @@
+import { getWavoipClientEntry } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
+import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+
 const MAX_ENTRIES = 50;
+const WAVOIP_SDK_VERSION = '2.6.1';
 
 const iceDiagnostics = [];
 const connectivityIssues = [];
@@ -26,13 +30,32 @@ export function recordCallStats(inboxId, callId, stats) {
   pushEntry(callStats, { inboxId, callId, stats });
 }
 
+function buildDeviceSnapshot(inboxId) {
+  if (!inboxId) return null;
+
+  const status = getWavoipDeviceStatus(inboxId);
+  const entry = getWavoipClientEntry(inboxId);
+
+  return {
+    whatsAppStatus: status.whatsAppStatus.value,
+    connectionStatus: status.connectionStatus.value,
+    activeCalls: status.activeCalls.value,
+    numChannels: status.numChannels.value,
+    isRestricted: status.isRestricted.value,
+    restrictedUntil: status.restrictedUntil.value,
+    sdkConnected: Boolean(entry),
+  };
+}
+
 export function exportWavoipDiagnostics({ inboxId, callId } = {}) {
   return JSON.stringify(
     {
       generatedAt: new Date().toISOString(),
       platform: 'chatwoot',
+      sdkVersion: WAVOIP_SDK_VERSION,
       inboxId,
       wavoipCallId: callId,
+      device: buildDeviceSnapshot(inboxId),
       recentIceDiagnostics: iceDiagnostics.slice(-10),
       recentIssues: connectivityIssues.slice(-10),
       recentErrors: callErrors.slice(-10),

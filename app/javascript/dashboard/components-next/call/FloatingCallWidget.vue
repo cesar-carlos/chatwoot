@@ -314,8 +314,7 @@ const shouldRingForCall = call =>
   !isCallRingtoneSilenced(call.wavoipOfferId);
 
 const ringingInbound = computed(
-  () =>
-    !isRingtoneMuted.value && incomingCalls.value.some(shouldRingForCall)
+  () => !isRingtoneMuted.value && incomingCalls.value.some(shouldRingForCall)
 );
 
 watch(

@@ -18,7 +18,8 @@ class ForkRemapFeatureFlagsAfterDeprecatedRemoval < ActiveRecord::Migration[7.1]
     conversation_required_attributes advanced_assignment
   ].freeze
 
-  NEW_FEATURE_NAMES = OLD_FEATURE_NAMES - %w[whatsapp_embedded_signup quoted_email_reply]
+  REMOVED_FEATURE_NAMES = %w[whatsapp_embedded_signup quoted_email_reply].freeze
+  NEW_FEATURE_NAMES = OLD_FEATURE_NAMES - REMOVED_FEATURE_NAMES
 
   def up
     Account.find_each(batch_size: 100) do |account|
@@ -26,7 +27,9 @@ class ForkRemapFeatureFlagsAfterDeprecatedRemoval < ActiveRecord::Migration[7.1]
       new_flags = encode_feature_flags(enabled_by_name, NEW_FEATURE_NAMES)
       next if new_flags == account.feature_flags
 
+      # rubocop:disable Rails/SkipsModelValidations
       account.update_columns(feature_flags: new_flags, updated_at: Time.current)
+      # rubocop:enable Rails/SkipsModelValidations
     end
 
     cleanup_installation_defaults
@@ -51,7 +54,7 @@ class ForkRemapFeatureFlagsAfterDeprecatedRemoval < ActiveRecord::Migration[7.1]
     return if config&.value.blank?
 
     config.value = config.value.reject do |feature|
-      %w[whatsapp_embedded_signup quoted_email_reply].include?(feature['name'])
+      REMOVED_FEATURE_NAMES.include?(feature['name'])
     end
     config.save!
     GlobalConfig.clear_cache

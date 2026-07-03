@@ -127,11 +127,7 @@ describe('callStoreMappers', () => {
         },
       ];
 
-      const match = findWavoipCallForOffer(
-        calls,
-        { id: 'sdk_offer_id' },
-        106
-      );
+      const match = findWavoipCallForOffer(calls, { id: 'sdk_offer_id' }, 106);
 
       expect(match?.callSid).toBe('webhook_call_id');
     });

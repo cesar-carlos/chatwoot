@@ -3,6 +3,8 @@
 Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp** no Chatwoot Enterprise (WhatsApp Cloud Calling API + WebRTC browser↔Meta). O objetivo é orientar implementação, extensão com providers alternativos e decisões de arquitetura no fork.
 
 **Última reanálise:** 27 jun. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
+**Revisão pontual:** 03 jul. 2026 — ações de botão do `WavoipDevicePanel` (ver
+[refactory/bugs.md#bug-06](./wavoip-provider/refactory/bugs.md#bug-06--botão-acordar-dispositivo-nunca-chama-devicewakeup-do-sdk)).
 
 ---
 
