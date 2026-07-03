@@ -23,7 +23,10 @@ import {
   ensureVoiceConversation,
   findVoiceConversationId,
 } from 'customDashboard/lib/voice/ensureVoiceConversation';
-import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+import {
+  getWavoipDeviceStatus,
+  isWavoipDeviceAtChannelCapacity,
+} from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -69,6 +72,9 @@ const isStartingCall = ref(false);
 const isInitiatingCall = computed(
   () => isStartingCall.value || twilioIsInitiating.value
 );
+
+const isWavoipInboxAtCapacity = inboxId =>
+  isWavoipDeviceAtChannelCapacity(inboxId);
 
 const isWavoipInboxRestricted = inboxId =>
   getWavoipDeviceStatus(inboxId).isRestricted.value;
@@ -203,6 +209,13 @@ const startCall = async (inboxId, conversationIdHint = null) => {
     isWavoipInboxRestricted(inboxId)
   ) {
     useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
+    return;
+  }
+  if (
+    provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+    isWavoipInboxAtCapacity(inboxId)
+  ) {
+    useAlert(t('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL'));
     return;
   }
 

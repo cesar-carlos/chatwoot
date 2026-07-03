@@ -65,7 +65,7 @@ export async function createWavoipClient(options) {
 
 | `WebphoneSettings` | Onde no Chatwoot |
 |--------------------|------------------|
-| `callSettings.displayName` | Recurso do webphone; não está no contrato `startCall` da API 2.5.0 |
+| `callSettings.displayName` | Recurso do webphone; não está no contrato `startCall` da API 2.6.1 |
 | `platform` | `'chatwoot'` fixo |
 | `theme` / `widget.*` | N/A — UI Chatwoot |
 | Tokens `localStorage` | **Evitar** — token vem do servidor por inbox |
@@ -347,7 +347,7 @@ app/javascript/dashboard/          # upstream — widget de voz compartilhado
 | `WavoipCallingPage.vue` | Settings → Chamadas: device panel, inbound toggle, **roteamento inbound**, webhook, status |
 | `WavoipWebhookInstructions.vue` | Etapa pós-criação no wizard (copy URL, aguardar primeiro evento) |
 
-**Implementados:** `WavoipCallingPage.vue`, `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`.
+**Implementados:** `WavoipCallingPage.vue`, `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics, **activeCalls v2.6.1**), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`.
 
 **Não implementados no MVP** (referenciados em docs antigos): `WavoipOnboardingChecklist.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
 

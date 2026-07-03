@@ -14,7 +14,7 @@
 
 | Gate | Result | Evidence |
 |------|--------|----------|
-| **G0.1 SDK** | ✅ Pass | `@wavoip/wavoip-api@2.5.0`; device `open` via `statusChanged`; `contact.phone` = `556697193168`. |
+| **G0.1 SDK** | ✅ Pass | `@wavoip/wavoip-api@2.6.1`; device `open` via `statusChanged`; `contact.phone` = `556697193168`. |
 | **G0.2 IDs** | ⚠️ Partial | Live SDK ids captured (`4BD9D82E…`, `9E144343…`, prior `521F44B4…`). **No live CALL webhook** during any call window. Simulated curl with SDK id → Call + voice_call created; pipeline works when bytes arrive. |
 | **G0.3 Webhook bruto** | ⚠️ Partial | Public `POST {FRONTEND_URL}/webhooks/wavoip/{key}` → **202** (curl). **Zero** nginx POSTs from Wavoip origins during live calls (21:03–21:05 UTC). |
 | **G0.4 Multiagente** | ❌ Not tested | Two-agent `acceptedElsewhere` not exercised. |

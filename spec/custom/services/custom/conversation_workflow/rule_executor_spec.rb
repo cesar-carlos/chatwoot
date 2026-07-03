@@ -62,4 +62,12 @@ RSpec.describe Custom::ConversationWorkflow::RuleExecutor do
     expect(executed_by).to eq(rule)
     expect(Current.executed_by).to be_nil
   end
+
+  it 'releases dedup when resolve fails' do
+    allow(Custom::Conversations::ResolveService).to receive(:new).and_raise(StandardError, 'resolve failed')
+
+    expect do
+      executor.perform_for_conversation(conversation)
+    end.not_to change(ConversationWorkflowRuleExecution, :count)
+  end
 end

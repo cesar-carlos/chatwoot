@@ -12,21 +12,24 @@ module Custom::Message::WorkflowRulesScheduler
   end
 
   def schedule_workflow_rules_on_outgoing
-    return if history_import_message?
-    return if workflow_generated_message?
+    return if history_import_message? || workflow_generated_message?
 
     account = conversation&.account
     return if account.blank?
 
     account.conversation_workflow_rules.active.customer_no_reply.find_each do |rule|
-      next unless account.feature_enabled?('auto_resolve_conversations')
-      next if rule.inbox_ids.present? && Array(rule.inbox_ids).exclude?(conversation.inbox_id)
-
-      Custom::ConversationWorkflow::ScheduleOnMessageScheduler.new(
-        rule: rule,
-        conversation: conversation
-      ).perform_for_outgoing_message(self)
+      schedule_outgoing_workflow_rule(account, rule)
     end
+  end
+
+  def schedule_outgoing_workflow_rule(account, rule)
+    return unless account.feature_enabled?('auto_resolve_conversations')
+    return if rule.inbox_ids.present? && Array(rule.inbox_ids).exclude?(conversation.inbox_id)
+
+    Custom::ConversationWorkflow::ScheduleOnMessageScheduler.new(
+      rule: rule,
+      conversation: conversation
+    ).perform_for_outgoing_message(self)
   end
 
   def schedule_workflow_rules_for(trigger_check)
