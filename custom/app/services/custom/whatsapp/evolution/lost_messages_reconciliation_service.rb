@@ -12,6 +12,8 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
     return unless connection_open?
 
     reconcile_remote_messages!
+  rescue MutexApplicationJob::LockAcquisitionError
+    raise
   rescue StandardError => e
     Rails.logger.warn(
       "[EVOLUTION] lost messages reconciliation failed channel=#{channel.id}: #{e.message}"
@@ -122,7 +124,12 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
   def import_phone_outgoing_message(data_item)
     return false if ignore_from_me_echo?
 
-    Custom::Whatsapp::Evolution::PhoneOutgoingSyncService.new(channel: channel, data: data_item).perform
+    key = data_item['key'] || data_item[:key] || {}
+    sender_id = key['remoteJid'] || key[:remoteJid] || key['id'] || key[:id]
+    Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id) do
+      Custom::Whatsapp::Evolution::PhoneOutgoingSyncService.new(channel: channel, data: data_item).perform
+    end
+    true
   end
 
   def import_inbound_message(data_item)
@@ -137,10 +144,13 @@ class Custom::Whatsapp::Evolution::LostMessagesReconciliationService
     ).perform
     return false if normalized.blank?
 
-    Whatsapp::IncomingMessageService.new(
-      inbox: channel.inbox,
-      params: normalized.merge(phone_number: channel.phone_number)
-    ).perform
+    sender_id = normalized.dig(:messages, 0, :from) || normalized.dig('messages', 0, 'from')
+    Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id) do
+      Whatsapp::IncomingMessageService.new(
+        inbox: channel.inbox,
+        params: normalized.merge(phone_number: channel.phone_number)
+      ).perform
+    end
     true
   end
 

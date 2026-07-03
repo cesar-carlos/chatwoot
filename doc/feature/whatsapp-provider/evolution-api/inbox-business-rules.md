@@ -159,7 +159,7 @@ Quando `groups_ignore: false`, mensagens de grupo (`@g.us`) entram no pipeline c
 
 **Defaults:** `groups_ignore: true` permanece o default seguro. A UI exibe aviso experimental ao desligar "Ignore groups".
 
-**API:** `GET /group/findGroupInfos/{instance}?groupJid={jid}` — metadata cacheada 1h por grupo/inbox.
+**API:** `GET /group/findGroupInfos/{instance}?groupJid={jid}` — metadata cacheada 1h por grupo/inbox. **Hot path webhook:** apenas cache + fallback (`pushName` / JID); cache miss enfileira `GroupMetadataFetchJob` — o nome exibido pode atualizar na mensagem seguinte (não bloqueia o webhook).
 
 ---
 

@@ -18,7 +18,7 @@ module Custom::Webhooks::WhatsappEventsJob
       return
     end
 
-    Custom::Whatsapp::Evolution::WebhookDispatcher.new(job: self).dispatch(channel, params)
+    Custom::Whatsapp::Evolution::WebhookDispatcher.new.dispatch(channel, params)
   end
 
   private

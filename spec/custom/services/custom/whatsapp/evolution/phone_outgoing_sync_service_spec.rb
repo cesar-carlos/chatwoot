@@ -114,5 +114,15 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
         media_service.perform
       end.to have_enqueued_job(Custom::Whatsapp::Evolution::MediaDownloadJob)
     end
+
+    it 'raises LockAcquisitionError when the dedup lock is busy' do
+      dedup_lock = instance_double(Whatsapp::MessageDedupLock, acquire!: false)
+      allow(Whatsapp::MessageDedupLock).to receive(:new).with('PHONE-SENT-MSG-001').and_return(dedup_lock)
+
+      expect { service.perform }.to raise_error(
+        MutexApplicationJob::LockAcquisitionError,
+        /dedup lock busy/
+      )
+    end
   end
 end

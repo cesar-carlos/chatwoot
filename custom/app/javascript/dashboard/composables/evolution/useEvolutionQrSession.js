@@ -89,6 +89,8 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
       .catch(error => {
         if (isInboxNotFoundError(error)) {
           handleInboxNotFound();
+        } else {
+          qrRefreshError.value = true;
         }
       })
       .finally(() => {

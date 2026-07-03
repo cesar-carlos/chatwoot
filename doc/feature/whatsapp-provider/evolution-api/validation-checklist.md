@@ -235,6 +235,18 @@ curl -sS -X POST "${BASE_URL}/proxy/set/${INSTANCE}" \
 3. **`phone_number` UNIQUE:** uma instância open compartilha o número `+5566981128433` no channel.
 4. **Wizard QR / scan real:** modal abre após create; Playwright `evolution-inbox-create.spec.ts` (UI) + `evolution_validation_checklist_spec.rb` (RSpec). Smoke manual: `bundle exec rake evolution:validate_checklist` com `EVOLUTION_*` e `FRONTEND_URL`.
 
+### Revisão confiabilidade (2026-07-03)
+
+Correções de mídia, import lock, mutex reconciliação e frontend QR/health cobertas por specs unitários (`spec/custom/` + composables JS). Re-smoke manual recomendado quando Evolution estiver disponível:
+
+| Checklist | Foco pós-fix |
+|-----------|----------------|
+| §2 inbound | Mensagem com mídia → anexo aparece ou job retenta (`MediaDownloadJob` + `ApiError`) |
+| §3 outbound | Texto + mídia sem duplicata (`PhoneOutgoingSync` + dedup lock) |
+| §4 UI | Modal QR para polling/cable ao navegar fora; health page `staleData` em falha de rede |
+
+**Run specs:** `bundle exec rspec spec/custom/jobs/custom/whatsapp/evolution/ spec/custom/services/custom/whatsapp/evolution/` · `npm run test -- --run custom/app/javascript/dashboard/composables/evolution/specs/`
+
 ## Automação Playwright (`tests/playwright/`)
 
 | Spec | Cobertura |

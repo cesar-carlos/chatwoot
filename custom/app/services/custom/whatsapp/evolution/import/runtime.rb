@@ -61,7 +61,8 @@ class Custom::Whatsapp::Evolution::Import::Runtime
       'import_stats' => {},
       'import_error' => nil,
       'import_started_at' => nil,
-      'import_completed_at' => nil
+      'import_completed_at' => nil,
+      'import_failed_at' => nil
     )
   end
 
@@ -70,6 +71,7 @@ class Custom::Whatsapp::Evolution::Import::Runtime
       'import_status' => 'running',
       'import_started_at' => Time.current.iso8601,
       'import_error' => nil,
+      'import_failed_at' => nil,
       'import_cursor' => cursor.presence || { 'phase' => import_contacts? ? 'contacts' : 'messages' }
     )
   end
@@ -86,7 +88,7 @@ class Custom::Whatsapp::Evolution::Import::Runtime
     persist_runtime!(
       'import_status' => 'failed',
       'import_error' => error.message,
-      'import_completed_at' => Time.current.iso8601
+      'import_failed_at' => Time.current.iso8601
     )
     Rails.logger.error "[EVOLUTION] import failed for channel #{channel.id}: #{error.message}"
   end

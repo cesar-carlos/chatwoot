@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch, toRef, nextTick } from 'vue';
+import { computed, ref, watch, toRef, nextTick, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -16,6 +16,10 @@ const props = defineProps({
     default: null,
   },
   fetchFreshQr: {
+    type: Boolean,
+    default: false,
+  },
+  cableManagedExternally: {
     type: Boolean,
     default: false,
   },
@@ -87,9 +91,13 @@ function openModal() {
   if (sessionActive) return;
 
   sessionActive = true;
-  unsubscribeCable = subscribeEvolutionConnection(props.inboxId, applyPayload, {
-    store,
-  });
+  if (!props.cableManagedExternally) {
+    unsubscribeCable = subscribeEvolutionConnection(
+      props.inboxId,
+      applyPayload,
+      { store }
+    );
+  }
   startSession({ fetchFreshQr: props.fetchFreshQr });
 }
 
@@ -127,7 +135,11 @@ watch(isOpen, open => {
   emit('sessionActive', open);
 });
 
-defineExpose({ open: openModal, close: closeModal });
+onUnmounted(() => {
+  cleanupSession();
+});
+
+defineExpose({ open: openModal, close: closeModal, applyPayload });
 </script>
 
 <template>
@@ -165,7 +177,7 @@ defineExpose({ open: openModal, close: closeModal });
       >
         <img
           :src="qrcodeBase64"
-          alt="WhatsApp QR Code"
+          :alt="t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.QR_ALT')"
           class="w-56 h-56 object-contain"
         />
       </div>

@@ -207,3 +207,23 @@ T5 (specs) — ✅ ~42 examples em `spec/custom/` (Evolution provider) + Playwri
 | Segurança webhook (`apikey` fora do job Sidekiq; `ApiError#user_message`) | ✅ |
 | Playwright `tests/playwright/` (API + UI create) | ✅ estrutura; credenciais reais no `.env` |
 | Specs `spec/custom/` Evolution | ✅ ~42 examples |
+
+**Revisão (2026-07-03 — confiabilidade Evolution API):**
+
+| Item | Categoria | Status |
+|------|-----------|--------|
+| `MediaDownloadJob` — release lock Redis em `ensure` | bug P0 | ✅ |
+| `MediaAttachmentService` — `ApiError` em HTTP não-2xx | bug P0 | ✅ |
+| `ImportService` — lock Redis atômico (`EVOLUTION_IMPORT_LOCK`) | concorrência | ✅ |
+| `MessageMutex` + reconciliação perdidas | dedup | ✅ |
+| `GroupMetadataFetchJob` — metadata grupo fora do hot path | perf | ✅ |
+| Cache `connection_validation` invalida em disconnect | cache | ✅ |
+| `WebhookDispatcher` log `instance_name`; `import_failed_at` | observabilidade | ✅ |
+| `PhoneOutgoingSync` `LockAcquisitionError`; `DeferredStatusJob` log exaustão | retry | ✅ |
+| `RemoteJidFilter`; `contacts_importer` parsing defensivo | refactor | ✅ |
+| `InboundMessageProcessor` desacopla dispatcher do job | refactor | ✅ |
+| `evolutionCableRegistry` dedupe por inboxId | frontend | ✅ |
+| Frontend: `EvolutionHealthPage` composable, QR modal cleanup, cable unificado, i18n | UX | ✅ |
+| Docs: `webhook-events.md`, `decisions.md` §12/16, `spec-design.md` §6/11 | docs | ✅ |
+| Specs ampliados (import lock, dispatcher, connection, reconciliation, deferred, JS cable/QR) | cobertura | ✅ |
+| Smoke E2E checklist §2–4 (webhook inbound, QR, mídia outbound) | validação manual | ⏸️ requer Evolution + QR scan |

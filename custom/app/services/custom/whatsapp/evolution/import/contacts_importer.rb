@@ -20,7 +20,7 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
       response,
       'Failed to fetch Evolution contacts'
     )
-    contacts = Array.wrap(response.parsed_response)
+    contacts = extract_contacts_records(response.parsed_response)
     if contacts.blank?
       advance_to_messages_phase!
       return
@@ -122,5 +122,11 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
       runtime: runtime,
       api_client: api_client
     )
+  end
+
+  def extract_contacts_records(parsed)
+    return Array.wrap(parsed) unless parsed.is_a?(Hash)
+
+    Array.wrap(parsed.dig('contacts', 'records') || parsed['records'] || parsed['contacts'] || parsed)
   end
 end

@@ -58,5 +58,28 @@ RSpec.describe Custom::Whatsapp::Evolution::ImportService do
       expect(api_client).not_to receive(:find_contacts)
       described_class.new(channel: channel.reload).perform
     end
+
+    it 'skips import when another worker holds the Redis lock' do
+      lock_key = format(Redis::RedisKeys::EVOLUTION_IMPORT_LOCK, channel_id: channel.id)
+      Redis::Alfred.set(lock_key, true, nx: true, ex: described_class::IMPORT_LOCK_TTL)
+
+      expect(api_client).not_to receive(:find_contacts)
+      service.perform
+    ensure
+      Redis::Alfred.delete(lock_key)
+    end
+
+    it 'marks import_failed_at and releases the import lock when import raises' do
+      lock_key = format(Redis::RedisKeys::EVOLUTION_IMPORT_LOCK, channel_id: channel.id)
+      allow(api_client).to receive(:find_contacts).and_raise(StandardError, 'import boom')
+
+      service.perform
+
+      channel.reload
+      expect(channel.provider_config['import_status']).to eq('failed')
+      expect(channel.provider_config['import_failed_at']).to be_present
+      expect(channel.provider_config['import_completed_at']).to be_nil
+      expect(Redis::Alfred.get(lock_key)).to be_nil
+    end
   end
 end

@@ -39,4 +39,17 @@ RSpec.describe Custom::Whatsapp::Evolution::DeferredStatusJob, type: :job do
 
     expect(message.reload.status).to eq('delivered')
   end
+
+  it 'logs when deferred status retries are exhausted' do
+    allow(Whatsapp::IncomingMessageService).to receive(:new).and_raise(StandardError, 'message not found')
+    allow(Rails.logger).to receive(:warn)
+
+    perform_enqueued_jobs(only: described_class) do
+      described_class.perform_later(inbox.id, { 'id' => 'MISSING', 'status' => 'delivered' })
+    end
+
+    expect(Rails.logger).to have_received(:warn).with(
+      a_string_matching(/\[EVOLUTION\] deferred status dropped inbox=#{inbox.id}/)
+    )
+  end
 end

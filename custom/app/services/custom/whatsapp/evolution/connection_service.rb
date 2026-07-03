@@ -114,6 +114,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
     invalidate_connection_state_cache!
     previous_status = provider_config['connection_status']
     update_runtime_config!('connection_status' => state)
+    invalidate_connection_validation_cache! unless state.to_s == 'open'
     return unless state == 'open'
 
     phone = phone_from_sender(provider_config['last_sender'])
@@ -288,5 +289,9 @@ class Custom::Whatsapp::Evolution::ConnectionService
   def invalidate_connection_state_cache!
     Rails.cache.delete(connection_state_cache_key)
     Rails.cache.delete(qr_fetch_cache_key)
+  end
+
+  def invalidate_connection_validation_cache!
+    Rails.cache.delete("evolution:connection_validation:#{channel.id}")
   end
 end

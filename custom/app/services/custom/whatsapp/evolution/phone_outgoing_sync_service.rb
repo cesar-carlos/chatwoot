@@ -44,14 +44,14 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
 
   def skip_sync?(key)
     source_id = key['id'].to_s
-    source_id.blank? ||
-      duplicate_message?(source_id) ||
-      !acquire_dedup_lock!(source_id) ||
-      skip_remote_jid?(key['remoteJid'].to_s)
-  end
+    return true if source_id.blank?
+    return true if duplicate_message?(source_id)
+    return true if skip_remote_jid?(key['remoteJid'].to_s)
 
-  def acquire_dedup_lock!(source_id)
-    Whatsapp::MessageDedupLock.new(source_id).acquire!
+    return false if Whatsapp::MessageDedupLock.new(source_id).acquire!
+
+    raise MutexApplicationJob::LockAcquisitionError,
+          "Evolution phone outgoing dedup lock busy for source_id=#{source_id}"
   end
 
   def duplicate_message?(source_id)
@@ -59,11 +59,7 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
   end
 
   def skip_remote_jid?(remote_jid)
-    return true if remote_jid.blank?
-    return true if remote_jid == 'status@broadcast' && config['ignore_status_broadcast'] != false
-    return true if remote_jid.end_with?('@g.us') && config['groups_ignore'] != false
-
-    Array(config['ignore_jids']).any? { |pattern| remote_jid.include?(pattern.to_s) }
+    Custom::Whatsapp::Evolution::RemoteJidFilter.skip_remote_jid?(remote_jid, config)
   end
 
   def normalizer
