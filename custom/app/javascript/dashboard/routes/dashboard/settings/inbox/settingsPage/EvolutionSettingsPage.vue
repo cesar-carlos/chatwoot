@@ -26,12 +26,24 @@ const { t } = useI18n();
 const store = useStore();
 const isSaving = ref(false);
 
-const proxyProtocolOptions = [
-  { value: 'http', label: 'HTTP' },
-  { value: 'https', label: 'HTTPS' },
-  { value: 'socks4', label: 'SOCKS4' },
-  { value: 'socks5', label: 'SOCKS5' },
-];
+const proxyProtocolOptions = computed(() => [
+  {
+    value: 'http',
+    label: t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.PROTOCOL.HTTP'),
+  },
+  {
+    value: 'https',
+    label: t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.PROTOCOL.HTTPS'),
+  },
+  {
+    value: 'socks4',
+    label: t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.PROTOCOL.SOCKS4'),
+  },
+  {
+    value: 'socks5',
+    label: t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.PROTOCOL.SOCKS5'),
+  },
+]);
 
 function loadState() {
   const config = props.inbox.provider_config || {};
@@ -559,6 +571,7 @@ function importStatusLabel(status) {
           }}
         </p>
         <p v-if="importStatus.error" class="text-n-ruby-11">
+          {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.ERROR_LABEL') }}:
           {{ importStatus.error }}
         </p>
       </div>

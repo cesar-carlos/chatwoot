@@ -123,4 +123,91 @@ RSpec.describe Custom::Whatsapp::Evolution::ConnectionService do
       expect(channel.provider_config['connection_status']).to eq('open')
     end
   end
+
+  describe '#update_connection_status' do
+    it 'invalidates connection validation cache when status is not open' do
+      cache_key = "evolution:connection_validation:#{channel.id}"
+      Rails.cache.write(cache_key, true, expires_in: 15.seconds)
+
+      service.send(:update_connection_status, 'close')
+
+      expect(Rails.cache.read(cache_key)).to be_nil
+    end
+  end
+
+  describe '#reconnect!' do
+    let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
+
+    before do
+      allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).and_return(api_client)
+    end
+
+    it 'requests a fresh QR code and marks the channel as connecting' do
+      connect_response = instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'base64' => 'data:image/png;base64,abc' }
+      )
+      allow(api_client).to receive(:connect).and_return(connect_response)
+
+      service.reconnect!
+
+      channel.reload
+      expect(channel.provider_config['connection_status']).to eq('connecting')
+      expect(api_client).to have_received(:connect)
+    end
+  end
+
+  describe '#logout!' do
+    let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
+
+    before do
+      allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).and_return(api_client)
+    end
+
+    it 'logs out the remote instance and marks the channel as closed' do
+      logout_response = instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'status' => 'SUCCESS' }
+      )
+      allow(api_client).to receive(:logout_instance).and_return(logout_response)
+
+      service.logout!
+
+      channel.reload
+      expect(channel.provider_config['connection_status']).to eq('close')
+      expect(api_client).to have_received(:logout_instance)
+    end
+  end
+
+  describe '#restart!' do
+    let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
+
+    before do
+      allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).and_return(api_client)
+    end
+
+    it 'restarts the remote instance and fetches a new QR code' do
+      restart_response = instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'status' => 'SUCCESS' }
+      )
+      connect_response = instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'base64' => 'data:image/png;base64,xyz' }
+      )
+      allow(api_client).to receive(:restart_instance).and_return(restart_response)
+      allow(api_client).to receive(:connect).and_return(connect_response)
+
+      service.restart!
+
+      channel.reload
+      expect(channel.provider_config['connection_status']).to eq('connecting')
+      expect(api_client).to have_received(:restart_instance)
+      expect(api_client).to have_received(:connect)
+    end
+  end
 end

@@ -77,4 +77,20 @@ describe('useEvolutionQrSession', () => {
     expect(onConnected).toHaveBeenCalledTimes(1);
     stopSession();
   });
+
+  it('sets qrRefreshError when polling hits a non-404 network error', async () => {
+    const store = createStore();
+    store.dispatch.mockRejectedValue({
+      response: { status: 500 },
+    });
+    const { qrRefreshError, refreshConnection, stopSession } =
+      useEvolutionQrSession({
+        inboxId: 1,
+        store,
+      });
+
+    await refreshConnection();
+    expect(qrRefreshError.value).toBe(true);
+    stopSession();
+  });
 });

@@ -219,7 +219,11 @@ async function createChannel() {
       v-else
       class="flex flex-col items-center max-w-md mx-auto text-center gap-6"
     >
-      <img :src="evolutionLogo" alt="Evolution API" class="size-16" />
+      <img
+        :src="evolutionLogo"
+        :alt="t('INBOX_MGMT.ADD.EVOLUTION.LOGO_ALT')"
+        class="size-16"
+      />
       <div>
         <h2 class="text-lg font-medium text-n-slate-12">
           {{ t('INBOX_MGMT.ADD.EVOLUTION.CONNECT.TITLE') }}

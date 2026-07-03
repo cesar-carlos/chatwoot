@@ -3,6 +3,8 @@
 class Custom::Whatsapp::Evolution::LostMessagesReconciliationJob < ApplicationJob
   queue_as :low
 
+  retry_on MutexApplicationJob::LockAcquisitionError, wait: 5.seconds, attempts: 3
+
   THROTTLE_TTL = 30.minutes.to_i
 
   def perform

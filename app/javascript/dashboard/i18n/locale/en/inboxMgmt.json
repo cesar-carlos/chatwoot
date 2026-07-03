@@ -414,6 +414,7 @@
       "EVOLUTION": {
         "TITLE": "Evolution API",
         "DESC": "Connect WhatsApp through your Evolution API instance (Baileys). Scan the QR code to link your number.",
+        "LOGO_ALT": "Evolution API",
         "INBOX_NAME": {
           "LABEL": "Inbox Name",
           "PLACEHOLDER": "e.g. WhatsApp Support",
@@ -937,7 +938,8 @@
           "RESTART_CONFIRM": "Restart the Evolution instance? The session may disconnect briefly and a new QR code may be required.",
           "LOGOUT_CONFIRM": "Log out this WhatsApp session? You will need to scan a new QR code to reconnect.",
           "ACTION_SUCCESS": "Evolution instance updated.",
-          "DISCONNECTED_ALERT": "WhatsApp disconnected for inbox \"{inbox}\". Open inbox settings to reconnect."
+          "DISCONNECTED_ALERT": "WhatsApp disconnected for inbox \"{inbox}\". Open inbox settings to reconnect.",
+          "STALE_DATA": "Could not refresh connection status. The information shown may be outdated."
         },
         "QR_MODAL": {
           "TITLE": "Scan QR code",
@@ -949,7 +951,8 @@
           "REFRESH": "Refresh QR",
           "REFRESH_ERROR": "Could not refresh the QR code. Try again.",
           "CLOSE": "Close",
-          "CONNECTED": "WhatsApp connected successfully."
+          "CONNECTED": "WhatsApp connected successfully.",
+          "QR_ALT": "WhatsApp QR code"
         },
         "WHATSAPP_BEHAVIOR_SECTION": "WhatsApp behavior",
         "CONVERSATION_SECTION": "Conversations",
@@ -977,6 +980,7 @@
           "RUN": "Run import now",
           "RUN_SUCCESS": "Historical import started in the background.",
           "RUN_ERROR": "Could not start historical import.",
+          "ERROR_LABEL": "Import error",
           "STATUS_LABEL": "Import status",
           "STATS_CONTACTS": "{count} contacts processed",
           "STATS_MESSAGES": "{count} messages imported",
@@ -1105,7 +1109,11 @@
             "LABEL": "Port"
           },
           "PROTOCOL": {
-            "LABEL": "Protocol"
+            "LABEL": "Protocol",
+            "HTTP": "HTTP",
+            "HTTPS": "HTTPS",
+            "SOCKS4": "SOCKS4",
+            "SOCKS5": "SOCKS5"
           },
           "USERNAME": {
             "LABEL": "Username"

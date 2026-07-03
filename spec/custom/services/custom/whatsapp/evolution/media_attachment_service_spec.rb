@@ -62,4 +62,24 @@ RSpec.describe Custom::Whatsapp::Evolution::MediaAttachmentService do
 
     expect(message.attachments.count).to eq(0)
   end
+
+  it 'raises ApiError when Evolution returns a non-success HTTP response' do
+    allow(api_client).to receive(:get_base64_from_media_message).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: false,
+        code: 500,
+        parsed_response: { 'message' => 'server error' }
+      )
+    )
+
+    expect do
+      described_class.new(
+        channel: channel,
+        message: message,
+        attachment_payload: { _evolution_message: evolution_message },
+        message_type: 'image'
+      ).perform
+    end.to raise_error(Custom::Whatsapp::Evolution::ApiError)
+  end
 end
