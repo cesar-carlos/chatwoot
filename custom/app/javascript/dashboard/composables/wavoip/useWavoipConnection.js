@@ -13,11 +13,14 @@ import {
 import {
   getPrimaryDevice,
   getDeviceStatus,
+  syncDeviceChannelStats,
+  wakeDeviceIfNeeded,
 } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import {
   setWavoipConnectionStatus,
   setWavoipRestricted,
   setWavoipWhatsAppStatus,
+  setWavoipActiveCalls,
   clearWavoipDeviceStatus,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
@@ -54,6 +57,7 @@ const wireDeviceListeners = (inboxId, client) => {
   setWavoipWhatsAppStatus(inboxId, device.status);
   setWavoipConnectionStatus(inboxId, device.connectionStatus || 'connected');
   setWavoipRestricted(inboxId, !!device.restricted, device.restrictedUntil);
+  syncDeviceChannelStats(inboxId, device);
 
   const unsubscribers = [];
 
@@ -70,6 +74,11 @@ const wireDeviceListeners = (inboxId, client) => {
   unsubscribers.push(
     device.on('restrictedChanged', (restricted, restrictedUntil) => {
       setWavoipRestricted(inboxId, restricted, restrictedUntil);
+    })
+  );
+  unsubscribers.push(
+    device.on('activeCallsChanged', count => {
+      setWavoipActiveCalls(inboxId, count);
     })
   );
 
@@ -117,30 +126,27 @@ async function waitForDeviceOpen(device, timeoutMs = 30_000) {
   });
 }
 
-async function ensureDeviceReadiness(client) {
+async function ensureDeviceReadiness(client, inboxId) {
   const device = getPrimaryDevice(client);
   if (!device) return { ready: false, status: null };
+
+  if (inboxId) syncDeviceChannelStats(inboxId, device);
 
   if (await waitForDeviceOpen(device)) {
     return { ready: true, status: device.status };
   }
 
-  if (device.status === 'hibernating') {
-    try {
-      await device.wakeUp?.();
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.debug('[Wavoip] device wakeUp failed', error);
-      return { ready: false, status: device.status };
-    }
+  const wakeResult = await wakeDeviceIfNeeded(device, { inboxId });
+  if (!wakeResult.woke && !wakeResult.ready) {
+    return { ready: false, status: device.status };
   }
 
   const ready = await waitForDeviceOpen(device);
   return { ready, status: device.status };
 }
 
-async function ensureDeviceReady(client) {
-  const { ready } = await ensureDeviceReadiness(client);
+async function ensureDeviceReady(client, inboxId) {
+  const { ready } = await ensureDeviceReadiness(client, inboxId);
   return ready;
 }
 
@@ -205,7 +211,7 @@ export function useWavoipConnection() {
   const connectForInbox = async inboxId => {
     const client = await connectInbox(inboxId);
     if (!client) return null;
-    await ensureDeviceReady(client);
+    await ensureDeviceReady(client, inboxId);
     return client;
   };
 
@@ -249,8 +255,10 @@ export function useWavoipConnection() {
   const wakeUpInboxDevice = async inboxId => {
     const client = await connectInbox(inboxId);
     const device = getPrimaryDevice(client);
-    if (!device?.wakeUp) return false;
-    return device.wakeUp();
+    syncDeviceChannelStats(inboxId, device);
+    const result = await wakeDeviceIfNeeded(device, { inboxId });
+    if (result.error) throw result.error;
+    return result.ready || result.woke;
   };
 
   return {
@@ -267,7 +275,13 @@ export function useWavoipConnection() {
   };
 }
 
-export { teardownAllWavoipClients, ensureDeviceReadiness, getDeviceStatus };
+export {
+  teardownAllWavoipClients,
+  ensureDeviceReadiness,
+  getDeviceStatus,
+  wakeDeviceIfNeeded,
+  syncDeviceChannelStats,
+};
 
 export function getWavoipSdkSyncKey(store) {
   return getSdkConnectableWavoipInboxes(store)

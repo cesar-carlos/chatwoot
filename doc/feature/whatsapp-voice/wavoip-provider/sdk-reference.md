@@ -4,8 +4,7 @@ Mapeamento da documentação oficial do pacote npm para implementação no Chatw
 
 **Índice completo doc oficial:** [official-docs.md](./official-docs.md)
 
-**Versão verificada em 19 jun. 2026:** `2.5.0`. O spike deve usar versão exata;
-atualizações exigem repetir os testes de contrato.
+**Versão verificada em 03 jul. 2026:** `2.6.1`. Atualizações exigem repetir os testes de contrato.
 
 **Fontes primárias (SDK):**
 
@@ -69,8 +68,19 @@ Webhook `DEVICE` usa subset legado (`open`/`close` → futuro `connected`/`disco
 | `statusChanged` | `DeviceStatus` | `WavoipCallingPage` indicador |
 | `qrCodeChanged` | `string \| undefined` | `WavoipQrDisplay` em Settings — `buildQrDataUrl()` via pacote `qrcode`; fallback `devices.wavoip.com/.../qr-image` |
 | `contactChanged` | `Contact \| undefined` | Validar `phone` do inbox vs `contact.phone` |
+| `activeCallsChanged` | `number` (v2.6.1+) | `useWavoipConnection` → `wavoipDeviceStatus`; bloquear restart/logout no `WavoipDevicePanel` |
 
-### 2.3 Métodos do dispositivo
+### 2.3 Propriedades do dispositivo (v2.6.1+)
+
+| Propriedade | Tipo | Uso Chatwoot |
+|-------------|------|--------------|
+| `activeCalls` | `number` | Contador de chamadas em `CallStatus.ACTIVE` (não inclui ringing) |
+| `num_channels` | `number` | Limite de canais do plano — exibir `ativas / total` e bloquear `startCall` |
+
+Instâncias antigas do backend Wavoip não enviam `activeCalls`; o SDK mantém `0` sem erro.
+O Chatwoot trata `num_channels` ausente como “sem limite conhecido” (não bloqueia ligar).
+
+### 2.4 Métodos do dispositivo
 
 | Método | Uso |
 |--------|-----|

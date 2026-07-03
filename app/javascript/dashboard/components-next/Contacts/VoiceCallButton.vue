@@ -64,6 +64,9 @@ const isInitiatingCall = computed(
   () => isStartingCall.value || twilioIsInitiating.value
 );
 
+const isWavoipInboxAtCapacity = inboxId =>
+  isWavoipDeviceAtChannelCapacity(inboxId);
+
 const isWavoipInboxRestricted = inboxId =>
   getWavoipDeviceStatus(inboxId).isRestricted.value;
 
@@ -185,6 +188,13 @@ const startCall = async (inboxId, conversationIdHint = null) => {
     isWavoipInboxRestricted(inboxId)
   ) {
     useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
+    return;
+  }
+  if (
+    provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+    isWavoipInboxAtCapacity(inboxId)
+  ) {
+    useAlert(t('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL'));
     return;
   }
 

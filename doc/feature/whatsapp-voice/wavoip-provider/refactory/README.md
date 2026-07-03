@@ -25,13 +25,28 @@ todos os services/jobs Wavoip e da página de configuração `WavoipCallingPage.
 
 | Categoria | Itens | Status |
 |-----------|-------|--------|
-| Bugs | 5 | ✅ Concluído |
+| Bugs | 7 | ✅ Concluído |
 | Gaps | 11 | ✅ Concluído |
 | Qualidade/Perf | 14 | ✅ Concluído |
-| **Total** | **30/30** | **Refatoração concluída** |
+| **Total** | **32/32** | **Refatoração concluída** |
 
 Todas as fases R1, R2 e R3 foram implementadas conforme [plan.md](./plan.md).
 Suite de regressão: 104 RSpec + 83 Vitest (Wavoip custom).
+
+**03 jul. 2026 — SDK 2.6.1 + melhorias de produto**
+
+- `activeCalls` / `activeCallsChanged` integrados (`wavoipDeviceStatus`, `useWavoipConnection`)
+- `WavoipDevicePanel`: badge de chamadas ativas, bloqueio de restart/logout, hint de hibernação
+- Botões de ligar: guard quando `activeCalls >= num_channels`
+- `wakeDeviceIfNeeded` unificado; diagnóstico enriquecido com snapshot do device
+- Docs atualizados para `@wavoip/wavoip-api@2.6.1`
+
+**03 jul. 2026 — revisão pontual das ações de botão** (a pedido do usuário, a partir de um bug
+observado no painel de dispositivo): [BUG-06](./bugs.md#bug-06--botão-acordar-dispositivo-nunca-chama-devicewakeup-do-sdk)
+— botão "Acordar dispositivo" não usava o `device.wakeUp()` do SDK (apenas relia em REST); cópia
+de diagnóstico silenciava falhas do clipboard. Ambos corrigidos com testes em
+`WavoipDevicePanel.spec.js`. Nenhuma outra regressão encontrada na varredura dos demais
+controles de botão (device panel, QR modal, webhook, roteamento, widget de chamada).
 
 ### Top 5 — corrigidos (R1)
 

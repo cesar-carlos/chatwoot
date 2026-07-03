@@ -6,6 +6,12 @@ import { useStore } from 'dashboard/composables/store';
 import InboxesAPI from 'dashboard/api/inboxes';
 import { exportWavoipDiagnostics } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 import { formatWavoipDeviceActionError } from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
+import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
+import { getWavoipClientEntry } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
+import {
+  hasWavoipDeviceActiveCalls,
+  useWavoipDeviceStatus,
+} from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import WavoipQrScanModal from 'customDashboard/components/wavoip/WavoipQrScanModal.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
@@ -22,22 +28,31 @@ const POLL_MS = 5000;
 
 const { t } = useI18n();
 const store = useStore();
+const { wakeUpInboxDevice, disconnectInbox, connectInbox } =
+  useWavoipConnection();
 
 const inboxId = computed(() => props.inbox.id);
+const deviceLive = computed(() => useWavoipDeviceStatus(inboxId.value));
+
 const isLoading = ref(true);
 const isWaking = ref(false);
 const isRestarting = ref(false);
 const isLoggingOut = ref(false);
+const isCopyingDiagnostics = ref(false);
 const isQrModalOpen = ref(false);
 const qrModalFetchFresh = ref(false);
 const statusVerifiedLive = ref(false);
 let pollTimer = null;
+let panelOpenedSdkConnection = false;
 
-const whatsAppStatus = computed(
-  () => props.inbox.provider_config?.device_status || 'connecting'
-);
+const whatsAppStatus = computed(() => {
+  const live = deviceLive.value.whatsAppStatus.value;
+  if (live) return live;
+  return props.inbox.provider_config?.device_status || 'connecting';
+});
 
 const isConnected = computed(() => whatsAppStatus.value === 'open');
+const isHibernating = computed(() => whatsAppStatus.value === 'hibernating');
 
 const linkedPhone = computed(() =>
   isConnected.value ? props.inbox.phone_number || '' : ''
@@ -48,18 +63,65 @@ const statusLabel = computed(() => {
   return t(`INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.${key}`, key);
 });
 
+const activeCallsCount = computed(
+  () => deviceLive.value.activeCalls.value ?? 0
+);
+
+const numChannels = computed(() => deviceLive.value.numChannels.value);
+
+const activeCallsLabel = computed(() => {
+  if (!isConnected.value) return '';
+  const active = activeCallsCount.value;
+  const total = numChannels.value;
+  if (total) {
+    return t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ACTIVE_CALLS', {
+      active,
+      total,
+    });
+  }
+  if (active > 0) {
+    return t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ACTIVE_CALLS_ONLY', {
+      active,
+    });
+  }
+  return '';
+});
+
 const showStaleStatusHint = computed(
   () => !isLoading.value && !statusVerifiedLive.value
+);
+
+const hasActiveDeviceCalls = computed(() =>
+  hasWavoipDeviceActiveCalls(inboxId.value)
 );
 
 const isBusy = computed(
   () => isWaking.value || isRestarting.value || isLoggingOut.value
 );
 
+const isDestructiveBlocked = computed(
+  () => isBusy.value || hasActiveDeviceCalls.value
+);
+
 function stopPolling() {
   if (pollTimer) {
     clearInterval(pollTimer);
     pollTimer = null;
+  }
+}
+
+async function ensurePanelSdkConnection() {
+  if (!inboxId.value) return;
+  if (getWavoipClientEntry(inboxId.value)) return;
+
+  const status = whatsAppStatus.value;
+  if (status !== 'open' && status !== 'hibernating') return;
+
+  try {
+    await connectInbox(inboxId.value);
+    panelOpenedSdkConnection = true;
+  } catch {
+    /* live channel stats are optional on the settings page */
   }
 }
 
@@ -85,8 +147,6 @@ async function refreshConnection({ forceLiveCheck = false } = {}) {
 function startPolling() {
   if (isQrModalOpen.value) return;
   stopPolling();
-  // Regular poll uses cache (15s TTL); DB status updated by webhook still reflects correctly.
-  // Force live check only on mount and after user actions.
   pollTimer = setInterval(
     () => refreshConnection({ forceLiveCheck: false }),
     POLL_MS
@@ -115,7 +175,8 @@ async function onQrConnected() {
 watch(inboxId, () => {
   stopPolling();
   isLoading.value = true;
-  refreshConnection({ forceLiveCheck: true }).then(() => {
+  refreshConnection({ forceLiveCheck: true }).then(async () => {
+    await ensurePanelSdkConnection();
     if (!isConnected.value && !isQrModalOpen.value) {
       startPolling();
     }
@@ -125,6 +186,7 @@ watch(inboxId, () => {
 watch(isConnected, connected => {
   if (connected) {
     stopPolling();
+    ensurePanelSdkConnection();
   } else if (!isQrModalOpen.value) {
     startPolling();
   }
@@ -134,11 +196,20 @@ function showDeviceActionError(error) {
   useAlert(formatWavoipDeviceActionError(error, t));
 }
 
+function blockIfActiveCalls() {
+  if (!hasActiveDeviceCalls.value) return false;
+  useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.BLOCKED_ACTIVE_CALLS'));
+  return true;
+}
+
 const handleWakeUp = async () => {
   isWaking.value = true;
+  const hadSdkConnection = Boolean(getWavoipClientEntry(inboxId.value));
   try {
-    // Calling all_info wakes a hibernating device (matches SDK wakeUp() internals).
-    // refreshConnection with forceLiveCheck does exactly that via the backend.
+    await wakeUpInboxDevice(inboxId.value);
+    if (!hadSdkConnection) {
+      panelOpenedSdkConnection = true;
+    }
     await refreshConnection({ forceLiveCheck: true });
     if (!isConnected.value) {
       openQrModal({ fresh: true });
@@ -151,6 +222,8 @@ const handleWakeUp = async () => {
 };
 
 const handleRestart = async () => {
+  if (blockIfActiveCalls()) return;
+
   /* eslint-disable no-alert -- native confirm matches Evolution health actions */
   if (
     !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART_CONFIRM'))
@@ -177,6 +250,8 @@ const handleLogout = async () => {
     return;
   }
 
+  if (blockIfActiveCalls()) return;
+
   /* eslint-disable no-alert -- native confirm matches Evolution health actions */
   if (
     !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM'))
@@ -198,13 +273,21 @@ const handleLogout = async () => {
 };
 
 const copyDiagnostics = async () => {
-  const payload = exportWavoipDiagnostics({ inboxId: inboxId.value });
-  await navigator.clipboard.writeText(payload);
-  useAlert(t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.COPIED'));
+  isCopyingDiagnostics.value = true;
+  try {
+    const payload = exportWavoipDiagnostics({ inboxId: inboxId.value });
+    await navigator.clipboard.writeText(payload);
+    useAlert(t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.COPIED'));
+  } catch (error) {
+    showDeviceActionError(error);
+  } finally {
+    isCopyingDiagnostics.value = false;
+  }
 };
 
 onMounted(() => {
-  refreshConnection({ forceLiveCheck: true }).then(() => {
+  refreshConnection({ forceLiveCheck: true }).then(async () => {
+    await ensurePanelSdkConnection();
     if (!isConnected.value && !isQrModalOpen.value) {
       startPolling();
     }
@@ -213,6 +296,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopPolling();
+  if (panelOpenedSdkConnection) {
+    disconnectInbox(inboxId.value).catch(() => {});
+    panelOpenedSdkConnection = false;
+  }
 });
 </script>
 
@@ -242,6 +329,18 @@ onBeforeUnmount(() => {
           </span>
           <span class="font-medium">{{ linkedPhone }}</span>
         </div>
+        <div v-if="activeCallsLabel">
+          <span class="text-n-slate-11">
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ACTIVE_CALLS_LABEL') }}:
+          </span>
+          <span class="font-medium">{{ activeCallsLabel }}</span>
+        </div>
+        <p v-if="isHibernating" class="text-n-amber-11">
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.HIBERNATING_HINT') }}
+        </p>
+        <p v-if="hasActiveDeviceCalls" class="text-n-amber-11">
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ACTIVE_CALLS_HINT') }}
+        </p>
         <p v-if="showStaleStatusHint" class="text-n-amber-11">
           {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.STATUS_STALE') }}
         </p>
@@ -255,9 +354,8 @@ onBeforeUnmount(() => {
           @click="openQrModal({ fresh: true })"
         />
         <NextButton
+          v-if="isHibernating || !isConnected"
           sm
-          faded
-          slate
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAKE_UP')"
           :is-loading="isWaking"
           :disabled="isBusy"
@@ -269,7 +367,7 @@ onBeforeUnmount(() => {
           slate
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART')"
           :is-loading="isRestarting"
-          :disabled="isBusy"
+          :disabled="isDestructiveBlocked"
           @click="handleRestart"
         />
         <NextButton
@@ -279,7 +377,7 @@ onBeforeUnmount(() => {
           slate
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT')"
           :is-loading="isLoggingOut"
-          :disabled="isBusy"
+          :disabled="isDestructiveBlocked"
           @click="handleLogout"
         />
         <NextButton
@@ -287,6 +385,7 @@ onBeforeUnmount(() => {
           faded
           slate
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.COPY')"
+          :is-loading="isCopyingDiagnostics"
           @click="copyDiagnostics"
         />
       </div>

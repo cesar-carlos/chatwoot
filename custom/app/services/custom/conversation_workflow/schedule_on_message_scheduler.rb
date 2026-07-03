@@ -8,29 +8,31 @@ class Custom::ConversationWorkflow::ScheduleOnMessageScheduler
   end
 
   def perform
-    return unless ConversationWorkflowRule.schedulable_on_incoming?(@rule.trigger_type)
-    return if @rule.respect_business_hours?
-    return if @conversation.waiting_since.blank?
-    return if @rule.first_response_overdue? && @conversation.first_reply_created_at.present?
+    return unless incoming_schedule_eligible?
 
-    reference_time = @conversation.waiting_since
-    wait_seconds = wait_seconds_until_threshold(reference_time: reference_time)
-    return if wait_seconds.nil?
-
-    epoch = reference_time.to_i
-    return unless claim_schedule_slot!(wait_seconds, epoch: epoch)
-
-    Custom::ConversationWorkflow::ScheduleOnMessageJob
-      .set(wait: wait_seconds.seconds)
-      .perform_later(conversation_id: @conversation.id, rule_id: @rule.id, reference_epoch: epoch)
+    enqueue_scheduled_job(reference_time: @conversation.waiting_since)
   end
 
   def perform_for_outgoing_message(message)
-    return unless @rule.customer_no_reply?
-    return if @rule.respect_business_hours?
-    return unless message.outgoing?
+    return unless outgoing_schedule_eligible?(message)
 
-    reference_time = message.created_at
+    enqueue_scheduled_job(reference_time: message.created_at)
+  end
+
+  private
+
+  def incoming_schedule_eligible?
+    ConversationWorkflowRule.schedulable_on_incoming?(@rule.trigger_type) &&
+      !@rule.respect_business_hours? &&
+      @conversation.waiting_since.present? &&
+      !(@rule.first_response_overdue? && @conversation.first_reply_created_at.present?)
+  end
+
+  def outgoing_schedule_eligible?(message)
+    @rule.customer_no_reply? && !@rule.respect_business_hours? && message.outgoing?
+  end
+
+  def enqueue_scheduled_job(reference_time:)
     wait_seconds = wait_seconds_until_threshold(reference_time: reference_time)
     return if wait_seconds.nil?
 
@@ -41,8 +43,6 @@ class Custom::ConversationWorkflow::ScheduleOnMessageScheduler
       .set(wait: wait_seconds.seconds)
       .perform_later(conversation_id: @conversation.id, rule_id: @rule.id, reference_epoch: epoch)
   end
-
-  private
 
   def wait_seconds_until_threshold(reference_time:)
     return if reference_time.blank?

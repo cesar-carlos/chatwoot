@@ -26,12 +26,16 @@ vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
 const setWavoipConnectionStatus = vi.fn();
 const setWavoipWhatsAppStatus = vi.fn();
 const setWavoipRestricted = vi.fn();
+const setWavoipActiveCalls = vi.fn();
+const setWavoipNumChannels = vi.fn();
 const clearWavoipDeviceStatus = vi.fn();
 
 vi.mock('customDashboard/lib/wavoip/wavoipDeviceStatus', () => ({
   setWavoipConnectionStatus: (...args) => setWavoipConnectionStatus(...args),
   setWavoipWhatsAppStatus: (...args) => setWavoipWhatsAppStatus(...args),
   setWavoipRestricted: (...args) => setWavoipRestricted(...args),
+  setWavoipActiveCalls: (...args) => setWavoipActiveCalls(...args),
+  setWavoipNumChannels: (...args) => setWavoipNumChannels(...args),
   clearWavoipDeviceStatus: (...args) => clearWavoipDeviceStatus(...args),
 }));
 
@@ -67,15 +71,22 @@ let getWavoipSdkSyncKey;
 let ensureDeviceReadiness;
 let connectionStatusHandler;
 
+let activeCallsChangedHandler;
+
 const createOpenDeviceClient = () => ({
   getDevices: () => [
     {
       status: 'open',
       connectionStatus: 'connected',
       restricted: false,
+      activeCalls: 1,
+      num_channels: 3,
       on: (event, handler) => {
         if (event === 'connectionStatusChanged') {
           connectionStatusHandler = handler;
+        }
+        if (event === 'activeCallsChanged') {
+          activeCallsChangedHandler = handler;
         }
         return () => {};
       },
@@ -89,9 +100,11 @@ describe('useWavoipConnection', () => {
     ({ useWavoipConnection, getWavoipSdkSyncKey, ensureDeviceReadiness } =
       await import('../useWavoipConnection'));
     connectionStatusHandler = undefined;
+    activeCallsChangedHandler = undefined;
     setWavoipConnectionStatus.mockReset();
     setWavoipWhatsAppStatus.mockReset();
     setWavoipRestricted.mockReset();
+    setWavoipActiveCalls.mockReset();
     clearWavoipDeviceStatus.mockReset();
     getWavoipSdkBootstrap.mockReset();
     connectWavoipInbox.mockReset();
@@ -165,6 +178,22 @@ describe('useWavoipConnection', () => {
     expect(setWavoipConnectionStatus).toHaveBeenCalledWith(31, 'connected');
     connectionStatusHandler?.('reconnecting');
     expect(setWavoipConnectionStatus).toHaveBeenCalledWith(31, 'reconnecting');
+  });
+
+  it('forwards activeCallsChanged to device status store', async () => {
+    const client = createOpenDeviceClient();
+    getWavoipSdkBootstrap.mockResolvedValue({
+      data: { device_token: 'token-active' },
+    });
+    connectWavoipInbox.mockResolvedValue(client);
+    getWavoipClient.mockReturnValue(null);
+
+    const { connectForInbox } = useWavoipConnection();
+    await connectForInbox(32);
+
+    expect(setWavoipActiveCalls).toHaveBeenCalledWith(32, 1);
+    activeCallsChangedHandler?.(2);
+    expect(setWavoipActiveCalls).toHaveBeenCalledWith(32, 2);
   });
 
   it('reconnects when bootstrap token changes for an already-connected inbox', async () => {

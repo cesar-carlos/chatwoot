@@ -9,7 +9,9 @@ class ForkRemapFeatureFlagsAfterCatalogConsolidation < ActiveRecord::Migration[7
       new_flags = remap_feature_flags(account.feature_flags)
       next if new_flags == account.feature_flags
 
+      # rubocop:disable Rails/SkipsModelValidations
       account.update_columns(feature_flags: new_flags, updated_at: Time.current)
+      # rubocop:enable Rails/SkipsModelValidations
     end
   end
 

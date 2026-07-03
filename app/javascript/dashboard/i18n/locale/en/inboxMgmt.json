@@ -843,7 +843,13 @@
         "RECONNECT": "Reconnect (scan QR)",
         "STATUS_STALE": "Could not verify with Wavoip right now — the status below may be outdated. Use Reconnect to scan the QR code.",
         "SERVICE_UNAVAILABLE": "The Wavoip device service is temporarily unavailable. Wait a few minutes and try again, or check the device in the Wavoip panel.",
-        "ACTION_FAILED": "Could not complete this device action. Try again or use Copy diagnostics for support."
+        "ACTION_FAILED": "Could not complete this device action. Try again or use Copy diagnostics for support.",
+        "ACTIVE_CALLS_LABEL": "Active calls",
+        "ACTIVE_CALLS": "{active} / {total} active",
+        "ACTIVE_CALLS_ONLY": "{active} active",
+        "ACTIVE_CALLS_HINT": "Restart and logout are disabled while calls are active on this device.",
+        "BLOCKED_ACTIVE_CALLS": "Cannot restart or log out while calls are active on this device.",
+        "HIBERNATING_HINT": "Device is hibernating. Use Wake device to resume without scanning a new QR code."
       },
       "HEALTH": {
         "LOADING": "Checking connection…"

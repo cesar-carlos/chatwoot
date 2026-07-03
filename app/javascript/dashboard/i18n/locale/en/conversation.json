@@ -192,7 +192,8 @@
       "RECONNECTING": "Reconnecting call audio…",
       "DEVICE_RECONNECTING": "Reconnecting to Wavoip…",
       "MIC_DEVICE": "Microphone",
-      "SPEAKER_DEVICE": "Speaker"
+      "SPEAKER_DEVICE": "Speaker",
+      "CHANNELS_FULL": "All call channels on this Wavoip device are in use. Wait for a call to end."
     },
     "WAVOIP_CONNECTIVITY": {
       "GENERIC": "Call connection issue. Check your network and try again.",

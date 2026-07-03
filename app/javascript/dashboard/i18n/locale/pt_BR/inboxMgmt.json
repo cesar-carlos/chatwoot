@@ -830,7 +830,13 @@
         "RECONNECT": "Reconectar (escanear QR)",
         "STATUS_STALE": "Não foi possível verificar com a Wavoip agora — o status abaixo pode estar desatualizado. Use Reconectar para escanear o QR code.",
         "SERVICE_UNAVAILABLE": "O serviço do dispositivo Wavoip está temporariamente indisponível. Aguarde alguns minutos e tente novamente, ou verifique o dispositivo no painel Wavoip.",
-        "ACTION_FAILED": "Não foi possível concluir esta ação no dispositivo. Tente novamente ou use Copiar diagnóstico para suporte."
+        "ACTION_FAILED": "Não foi possível concluir esta ação no dispositivo. Tente novamente ou use Copiar diagnóstico para suporte.",
+        "ACTIVE_CALLS_LABEL": "Chamadas ativas",
+        "ACTIVE_CALLS": "{active} / {total} ativas",
+        "ACTIVE_CALLS_ONLY": "{active} ativa(s)",
+        "ACTIVE_CALLS_HINT": "Reiniciar e desconectar ficam desabilitados enquanto houver chamadas ativas neste dispositivo.",
+        "BLOCKED_ACTIVE_CALLS": "Não é possível reiniciar ou desconectar enquanto houver chamadas ativas neste dispositivo.",
+        "HIBERNATING_HINT": "O dispositivo está em repouso. Use Acordar dispositivo para retomar sem escanear um novo QR code."
       },
       "HEALTH": {
         "LOADING": "Verificando conexão…"
