@@ -65,8 +65,8 @@ Não misturar os eixos: Twilio/PSTN usa `Voice::Provider::Twilio::*` + conferên
 | Padrão | Twilio | WhatsApp Meta |
 |--------|--------|---------------|
 | Provider adapter | `Voice::Provider::Twilio::Adapter` ✅ | Métodos em `WhatsappCloudService` prepend — **sem adapter** |
-| Outbound builder | `Voice::OutboundCallBuilder` ✅ | Lógica inline em `WhatsappCallsController` |
-| Permission flow | N/A | ~70 linhas no controller — **extrair service** |
+| Outbound builder | `Voice::OutboundCallBuilder` ✅ | `Voice::OutboundWhatsappCallBuilder` ✅ |
+| Permission flow | N/A | `Whatsapp::CallPermissionRequestService` ✅ |
 
 Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas). O plano Wavoip é independente desta trilha SDP.
 

@@ -1,11 +1,13 @@
 import { useStore } from 'vuex';
+import { useI18n } from 'vue-i18n';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { useCallsStore } from 'dashboard/stores/calls';
-import CallsAPI from 'customDashboard/api/calls';
+import { useAlert } from 'dashboard/composables';
 import {
   queueAcceptedByRecording,
   flushAcceptedByRecording,
   clearAcceptedByQueue,
+  recordAcceptWithRetry,
 } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
@@ -25,11 +27,16 @@ import {
 
 export function useWavoipCallSession() {
   const store = useStore();
+  const { t } = useI18n();
   const { connectForInbox, syncConnections } = useWavoipConnection();
   const { initiateOutboundCall, isInitiating } = useWavoipOutboundCall();
   const { attachToInbox, acceptOffer, rejectOffer } = useWavoipIncomingOffer();
   const { setActiveCall, clearActiveCall, setMuted, hasActiveCall } =
     useWavoipActiveCall();
+
+  const acceptRecordFailure = () => {
+    useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED'));
+  };
 
   const recordAcceptedBy = async callSid => {
     const dbCallId = useCallsStore().calls.find(
@@ -39,7 +46,9 @@ export function useWavoipCallSession() {
       queueAcceptedByRecording(callSid);
       return;
     }
-    await CallsAPI.recordAccept(dbCallId);
+    await recordAcceptWithRetry(dbCallId, callSid, {
+      onFailure: acceptRecordFailure,
+    });
   };
 
   const acceptIncomingCall = async ({ callId, inboxId }) => {
@@ -54,7 +63,7 @@ export function useWavoipCallSession() {
     setActiveCall(sdkCall, { providerCallId: callId, inboxId });
     removePendingOffer(callId);
     await recordAcceptedBy(callId);
-    await flushAcceptedByRecording(callId);
+    await flushAcceptedByRecording(callId, { onFailure: acceptRecordFailure });
     return sdkCall;
   };
 

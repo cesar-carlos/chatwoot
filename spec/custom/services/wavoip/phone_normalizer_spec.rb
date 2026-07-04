@@ -25,6 +25,10 @@ RSpec.describe Wavoip::PhoneNormalizer do
     ).to eq('+12125551234')
   end
 
+  it 'parses Argentina mobile without plus when digits include country code' do
+    expect(described_class.normalize('5491145678901')).to eq('+5491145678901')
+  end
+
   it 'does not infer +55 when inbox is not Brazilian' do
     expect(
       described_class.normalize('66999050312', inbox_phone: '+14155551234')

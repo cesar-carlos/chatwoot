@@ -2,7 +2,7 @@
 
 Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp** no Chatwoot Enterprise (WhatsApp Cloud Calling API + WebRTC browser↔Meta). O objetivo é orientar implementação, extensão com providers alternativos e decisões de arquitetura no fork.
 
-**Última reanálise:** 27 jun. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
+**Última reanálise:** 04 jul. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
 **Revisão pontual:** 03 jul. 2026 — ações de botão do `WavoipDevicePanel` (ver
 [refactory/bugs.md#bug-06](./wavoip-provider/refactory/bugs.md#bug-06--botão-acordar-dispositivo-nunca-chama-devicewakeup-do-sdk)).
 
@@ -192,12 +192,12 @@ Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-r
 ## Recomendação resumida (fork)
 
 1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — edições inevitáveis em `enterprise/` devem ser mínimas e marcadas `# FORK:`.
-2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun. 2026 (source_id, teardown scoped, inbound guard, webhook rotation). **Pendente:** confirmar entrega de webhooks CALL no painel Wavoip em produção (operacional/vendor).
+2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun. 2026 (source_id, teardown scoped, inbound guard, webhook rotation, caller/receiver). **Pendente piloto:** W1 — prova live no painel Wavoip (CALL, não só DEVICE) + G0.4 browser E2E multiagente.
 3. **Segundo provider Meta-like (CPaaS proxy):** estender stack com adapters — [second-provider-strategy.md](./second-provider-strategy.md).
 4. **Wavoip:** seguir [wavoip-provider/](./wavoip-provider/) — canal `Channel::Wavoip` em `custom/`; **não** inflar `WhatsappEventsJob`.
 5. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; validar contrato SDP/events antes de UI.
 6. **Não usar Twilio Voice** para substituir WhatsApp in-app — [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
-7. **Merge-safety:** preferir `custom/` overlay, `prepend_mod_with`, `# FORK:` grepável — **zero marcadores FORK no código de voz upstream hoje** (exceto `InboundCallBuilder` → `Conversations::Resolver`).
+7. **Merge-safety:** preferir `custom/` overlay, `prepend_mod_with`, `# FORK:` grepável — **core Meta EE sem FORK** (exceto `InboundCallBuilder` → `Conversations::Resolver`); integração Wavoip usa `# FORK:` em hooks OSS (`Dashboard.vue`, `Settings.vue`, `inboxes.js`, `useCallSession.js`, `actionCable.js`, rotas).
 
 ---
 
@@ -235,13 +235,13 @@ Itens levantados na reanálise — checklist de implementação futura vs. concl
 
 **Status código (27 jun. 2026):** stack Meta + refactors P1/P2 concluídos; **Wavoip fases 1–4 code-complete** em `custom/` — refactory R1–R3 concluído; inbound operacional em produção.
 
-### Wavoip — doc status (Jun 2026)
+### Wavoip — doc status (Jul 2026)
 
 | Métrica | Estimativa |
 |---------|------------|
-| **MVP código** | ~85–90% |
-| **Piloto produção** | ~55–60% |
-| **Bloqueador piloto** | Webhooks CALL do painel Wavoip em chamadas live (G0.2/G0.3) |
+| **MVP código** | ~95% |
+| **Piloto produção** | ~60–65% |
+| **Bloqueador piloto** | W1 — prova live no painel Wavoip (CALL) + G0.4 browser E2E multiagente |
 | **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 — `wavoip_webhook_url` / `wavoip_setup_pending` (+ camelCase) |
 
 ### Wavoip — implementation status (Jun 2026)
@@ -252,9 +252,9 @@ Itens levantados na reanálise — checklist de implementação futura vs. concl
 | **Call enum** | ✅ `wavoip: 2` | `enterprise/app/models/call.rb` (`# FORK:`) |
 | **Calls PATCH** | ✅ `accepted_by_agent_id` | `custom/app/controllers/api/v1/accounts/calls_controller.rb` |
 | **Inbox API** | ✅ Admin-only fields | `wavoip_webhook_url`, `wavoip_setup_pending` em `_inbox.json.jbuilder` |
-| **Frontend** | ✅ 18 arquivos | `custom/app/javascript/` — registry, composables, `Wavoip.vue`, `WavoipCallingPage.vue` |
-| **Testes** | ✅ 76 RSpec + 21 Vitest | `spec/custom/**/wavoip/**`, `custom/.../composables/wavoip/specs/`, `custom/.../lib/voice/specs/*.spec.js` (com DB disponível) |
-| **E2E live** | ⚠️ Restrições | Outbound SDK conecta (RINGING → ACTIVE); **webhooks CALL do painel Wavoip ainda não recebidos** |
+| **Frontend** | ✅ ~31 arquivos | `custom/app/javascript/` — registry, composables, `Wavoip.vue`, `WavoipCallingPage.vue` |
+| **Testes** | ✅ 104 RSpec + 83 Vitest examples | Escopo refactory; 21 arquivos Vitest em `spec/custom/**/wavoip/**`, `custom/.../composables/wavoip/specs/`, `custom/.../lib/voice/specs/` |
+| **E2E live** | ⚠️ Parcial | Pipeline OK (caller/receiver, fixtures simulados/live); inbound operacional; **W1** — prova webhook CALL no painel Wavoip ainda pendente |
 | **Produção piloto** | ✅ Inbox ativo | Account 2, inbox 42, device `556697193168` (`open`) — URL exemplo: `/webhooks/wavoip/{webhook_key}` (não inbox id) |
 
 **Veredicto spike:** `go com restrições` — [spike-notes.md](./wavoip-provider/spike-notes.md).

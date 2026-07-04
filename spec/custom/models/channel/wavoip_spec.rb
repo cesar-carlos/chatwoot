@@ -54,6 +54,12 @@ RSpec.describe Channel::Wavoip do
     end
   end
 
+  describe '#supports_outbound_text?' do
+    it 'returns false for voice-only channel' do
+      expect(channel.supports_outbound_text?).to be(false)
+    end
+  end
+
   describe '#webhook_url' do
     it 'embeds the opaque webhook_key without exposing device_token' do
       with_modified_env FRONTEND_URL: 'https://app.chatwoot.com' do

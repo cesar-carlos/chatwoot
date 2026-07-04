@@ -7,7 +7,7 @@ esperados em produção não são tratados corretamente.
 
 ## GAP-OUTBOUND-01 · Widget outbound some enquanto SDK ainda toca
 
-> **Status (26 jun. 2026):** Corrigido — outbound browser trata o SDK como fonte da verdade
+> **Status: ✅ Corrigido (26 jun. 2026)** — outbound browser trata o SDK como fonte da verdade
 > para o widget; backend adia `broadcast_ended` quando a call nunca entrou em `in_progress`.
 
 **Severidade:** Alta  
@@ -36,7 +36,7 @@ sessão (`peerAccept`, `peerReject`, `unanswered`, `ended`).
 
 ## GAP-01 · `offline_fallback: 'none'` não bloqueia a escalação por timeout
 
-> **Status (26 jun. 2026):** Corrigido — `escalated_users` retorna `User.none` quando
+> **Status: ✅ Corrigido (26 jun. 2026)** — `escalated_users` retorna `User.none` quando
 > `incoming_call_offline_fallback == 'none'` (`incoming_call_recipients.rb`).
 
 **Severidade:** Alta (histórico)  
@@ -94,6 +94,8 @@ end
 ---
 
 ## GAP-02 · `accepted_by_agent_id` pode não ser persistido sem erro visível
+
+> **Status: ⚠️ PARCIAL (04 jul. 2026)** — retry com backoff implementado; falha após 3 tentativas ainda depende de `console.warn` (sem alerta UI).
 
 **Severidade:** Alta  
 **Arquivo:** `custom/app/javascript/dashboard/lib/wavoip/wavoipAcceptRecorder.js`
@@ -197,6 +199,8 @@ para que qualquer mudança de token force `syncConnections` a desconectar e reco
 
 ## GAP-04 · `PhoneNormalizer` assume Brasil para qualquer inbox com prefixo 55
 
+> **Status: ⚠️ PARCIAL (04 jul. 2026)** — specs BR/US adicionados; `Phonelib` ainda não substitui heurística `+55` para todos os casos LATAM.
+
 **Severidade:** Média  
 **Arquivo:** `custom/app/services/wavoip/phone_normalizer.rb`
 
@@ -251,6 +255,8 @@ end
 ---
 
 ## GAP-05 · `ring_timeout_seconds` sem limite máximo no backend
+
+> **Status: ✅ Corrigido (26 jun. 2026)** — validação `<= 300` no model.
 
 **Severidade:** Baixa  
 **Arquivos:**
@@ -335,6 +341,8 @@ const cleanup = () => {
 ---
 
 ## GAP-07 · `assignee` e `assignee_or_inbox_members` mapeiam para o mesmo resolver
+
+> **Status: ✅ Corrigido (26 jun. 2026)** — resolver `:assignee_only_scope` para opção `'assignee'`.
 
 **Severidade:** Baixa  
 **Arquivo:** `custom/app/services/wavoip/calls/incoming_call_recipients.rb`
@@ -468,6 +476,8 @@ pré-filtro `.slice(*member_id_strings)` que havia sido aplicado em QC-07. Ver n
 ---
 
 ## GAP-09 · `administratorsToggleDisabled` sem contrato no backend
+
+> **Status: ✅ Corrigido (26 jun. 2026)** — frontend força `include_admins: false` ao salvar `offline_fallback: 'none'`.
 
 **Severidade:** Baixa  
 **Arquivos:**

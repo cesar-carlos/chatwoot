@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class Wavoip::PhoneNormalizer
-  # TODO: Phonelib BR-hint treats 10-digit NANP numbers as BR fixed-line; we prefer US when the
-  # digit pattern matches NANP. Other international formats without "+" may still mis-parse.
   NANP_PATTERN = /\A[2-9]\d{2}[2-9]\d{6}\z/
 
   def self.normalize(phone, inbox_phone: nil)

@@ -29,6 +29,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    voiceOnlyInbox: {
+      type: Boolean,
+      default: false,
+    },
     disabled: {
       type: Boolean,
       default: false,
@@ -154,7 +158,14 @@ export default {
   <div
     class="flex justify-between gap-2 h-[3.25rem] items-center ltr:pl-3 ltr:pr-2 rtl:pr-3 rtl:pl-2"
   >
+    <div
+      v-if="voiceOnlyInbox"
+      class="flex items-center gap-1 px-2 h-8 text-sm font-medium text-n-slate-11"
+    >
+      {{ $t('CONVERSATION.REPLYBOX.PRIVATE_NOTE') }}
+    </div>
     <EditorModeToggle
+      v-else
       :mode="mode"
       :disabled="disabled"
       :is-reply-restricted="isReplyRestricted"

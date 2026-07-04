@@ -4,7 +4,7 @@ Fonte única para ordem, escopo, gates e critérios de pronto da integração Wa
 Os demais documentos desta pasta detalham contratos e referências; quando houver
 divergência de prioridade ou fase, este plano prevalece.
 
-**Reavaliado em:** 27 jun. 2026
+**Reavaliado em:** 04 jul. 2026
 
 **Estado do código:** Fases 1–4 + **conclusão A–E** (jun. 2026): multiagente `voice_call.accepted`, dismiss→reject, test webhook, RECORD retry specs. E2E live com `+5566999050312` — ver [spike-notes.md](./spike-notes.md).
 
@@ -13,8 +13,8 @@ divergência de prioridade ou fase, este plano prevalece.
 | Métrica | Estimativa |
 |---------|------------|
 | **MVP código** | ~95% |
-| **Piloto produção** | ~60% |
-| **Bloqueador piloto** | Webhooks CALL do painel Wavoip em chamadas live (G0.2/G0.3) |
+| **Piloto produção** | ~60–65% |
+| **Bloqueador piloto** | W1 — prova live painel Wavoip (CALL) + G0.4 browser E2E multiagente |
 | **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 |
 
 ## Implementation status (Jun 2026)
@@ -35,7 +35,7 @@ divergência de prioridade ou fase, este plano prevalece.
 | **B** | Multiagente: `voice_call.accepted` PATCH/ACTIVE, `onAccepted` + `isJoining` guard | ✅ |
 | **C** | Backend: logging seguro, RECORD retry, push alinhado cable, HANDLED_REMOTELY stub | ✅ |
 | **D** | Settings: `WavoipDevicePanel`, test webhook, restricted gate, diagnostics, **roteamento inbound configurável** | ✅ |
-| **E** | Specs + docs; E2E manual `+5566999050312` (Pass/Fail em spike-notes) | ⚠️ W1/I1 webhook **Pass**; O1/M1/D1/F1 browser _pending_ |
+| **E** | Specs + docs; E2E manual `+5566999050312` (Pass/Fail em spike-notes) | ⚠️ I2/O2 **Pass**; W1/O1/M1/D1/F1 browser _pending_ |
 
 ### Backend (`custom/`)
 
@@ -49,7 +49,7 @@ divergência de prioridade ou fase, este plano prevalece.
 | Accept audit | `custom/app/controllers/api/v1/accounts/calls_controller.rb` |
 | Inbox create | `custom/app/controllers/custom/api/v1/accounts/inboxes_controller.rb` (prepend) |
 
-### Frontend (`custom/app/javascript/` — 18 arquivos)
+### Frontend (`custom/app/javascript/` — ~31 arquivos)
 
 Registry (`lib/voice/`), composables (`composables/wavoip/`), `WavoipConnectionHost.vue`, `WavoipCallingPage.vue`, `api/calls.js`, Vitest em `lib/voice/specs/`. Tile de criação: `custom/app/javascript/dashboard/routes/dashboard/settings/inbox/channels/Wavoip.vue`.
 
@@ -58,12 +58,14 @@ Registry (`lib/voice/`), composables (`composables/wavoip/`), `WavoipConnectionH
 - `enterprise/app/models/call.rb` — `enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }`
 - `config/routes.rb` — `POST webhooks/wavoip/:webhook_key`
 - `app/views/api/v1/models/_inbox.json.jbuilder` — `wavoip_webhook_url`, `wavoip_setup_pending`
-- Hooks em `useCallSession.js`, `actionCable.js`, `ChannelFactory.vue`, etc.
+- Hooks em `Dashboard.vue`, `Settings.vue`, `inboxes.js`, `useCallSession.js`, `actionCable.js`, `ChannelFactory.vue`, etc.
 
 ### Piloto restante
 
-- [ ] Webhooks CALL do painel Wavoip em chamadas live (G0.2/G0.3) — usar `bin/wavoip-pilot-verify`
-- [ ] G0.4 multiagente (`acceptedElsewhere`) — procedimento em [operations-runbook.md](./operations-runbook.md)
+- [ ] **W1** — prova live no painel Wavoip: toggle CALL + linha CALL no histórico durante chamada real (não só DEVICE)
+- [ ] **G0.4 / M1** — multiagente browser (`acceptedElsewhere` + `voice_call.accepted`) — [operations-runbook.md](./operations-runbook.md)
+- [ ] **O1 / D1 / F1** — E2E browser (outbound bidirecional, dismiss inbound, accept fail)
+- [x] Pipeline caller/receiver + I2/O2 — `bin/wavoip-pilot-verify` e fixtures live
 
 ### Corrigido (Jun 2026)
 
@@ -254,7 +256,7 @@ enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
 
 ## Fase 4 — hardening e rollout piloto
 
-**Duração:** 3–5 dias. **Status:** ✅ code complete — piloto live aguarda webhooks CALL do painel.
+**Duração:** 3–5 dias. **Status:** ✅ code complete — piloto live aguarda **W1** + **G0.4** browser E2E.
 
 - [x] Specs Ruby: normalizer, status, idempotência, auth, enum e autorização.
 - [x] Specs Vitest: registry, races SDK/webhook, accepted elsewhere e teardown.
@@ -321,7 +323,7 @@ frontend. Não adicionar infraestrutura especulativa.
 - [x] Races SDK-before-webhook e webhook-before-SDK têm testes.
 - [x] Rollback desativa UI/conexões sem apagar histórico.
 - [x] `rg "FORK:"` e `bin/fork-inventory` refletem todas as edições compartilhadas.
-- [ ] Live webhook CALL do painel Wavoip em produção (bloqueador piloto).
+- [ ] **W1** — prova live webhook CALL no painel Wavoip + **G0.4** browser E2E (bloqueadores piloto).
 
 ## Referências
 

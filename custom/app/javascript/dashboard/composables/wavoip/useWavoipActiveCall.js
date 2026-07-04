@@ -7,6 +7,7 @@ let activeProviderCallId = null;
 let activeInboxId = null;
 let ringingSdkCall = null;
 let ringingProviderCallId = null;
+let ringingInboxId = null;
 let activeCallTranslateFn = null;
 const isMuted = ref(false);
 const mediaConnectionStatus = ref(null);
@@ -22,7 +23,7 @@ export const clearActiveCall = () => {
 export const clearRingingOutgoingCall = () => {
   ringingSdkCall = null;
   ringingProviderCallId = null;
-  activeInboxId = null;
+  ringingInboxId = null;
 };
 
 export const setRingingOutgoingCall = (
@@ -31,9 +32,9 @@ export const setRingingOutgoingCall = (
 ) => {
   ringingSdkCall = sdkCall;
   ringingProviderCallId = providerCallId || null;
-  if (inboxId) activeInboxId = inboxId;
+  if (inboxId) ringingInboxId = inboxId;
   wireCallDiagnostics(sdkCall, {
-    inboxId: activeInboxId,
+    inboxId: ringingInboxId,
     callId: providerCallId,
     translateFn: activeCallTranslateFn,
   });
@@ -63,6 +64,8 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
 export const getActiveProviderCallId = () => activeProviderCallId;
 
 export const getRingingProviderCallId = () => ringingProviderCallId;
+
+export const getActiveInboxId = () => activeInboxId || ringingInboxId;
 
 export const isWavoipSdkCallOwned = callSid =>
   !!callSid &&

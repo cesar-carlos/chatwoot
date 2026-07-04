@@ -242,6 +242,9 @@ export default {
       return META_RESTRICTION_STATUS_URL;
     },
     replyWindowBannerMessage() {
+      if (this.isAWavoipChannel) {
+        return this.$t('CONVERSATION.WAVOIP_VOICE_ONLY');
+      }
       if (this.isAWhatsAppChannel) {
         return this.$t('CONVERSATION.TWILIO_WHATSAPP_CAN_REPLY');
       }
@@ -264,6 +267,9 @@ export default {
       return this.$t('CONVERSATION.CANNOT_REPLY');
     },
     replyWindowLink() {
+      if (this.isAWavoipChannel) {
+        return '';
+      }
       if (this.isAFacebookInbox || this.isAnInstagramChannel) {
         return REPLY_POLICY.FACEBOOK;
       }
@@ -279,6 +285,9 @@ export default {
       return '';
     },
     replyWindowLinkText() {
+      if (this.isAWavoipChannel) {
+        return '';
+      }
       if (
         this.isAWhatsAppChannel ||
         this.isAFacebookInbox ||
