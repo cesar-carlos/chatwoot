@@ -15,17 +15,11 @@ import {
   formatWavoipStartCallError,
   unwrapWavoipSdkResult,
 } from 'customDashboard/lib/wavoip/wavoipSdkResult';
-import { wireCallDiagnostics } from 'customDashboard/lib/wavoip/wavoipCallDiagnostics';
 
 const isInitiating = ref(false);
 
-const wireOutgoingEvents = (call, inboxId, translateFn) => {
+const wireOutgoingEvents = (call, inboxId) => {
   setRingingOutgoingCall(call, { providerCallId: call.id, inboxId });
-  wireCallDiagnostics(call, {
-    inboxId,
-    callId: call.id,
-    translateFn,
-  });
 
   call.on?.('peerAccept', activeCall => {
     clearRingingOutgoingCall();
@@ -60,7 +54,7 @@ export function useWavoipOutboundCall() {
         throw new Error(t('CONVERSATION.WAVOIP_CALL.CLIENT_UNAVAILABLE'));
       }
 
-      const { ready, status } = await ensureDeviceReadiness(client);
+      const { ready, status } = await ensureDeviceReadiness(client, inboxId);
       if (!ready) {
         // eslint-disable-next-line no-console
         console.warn('[Wavoip] device not ready', { inboxId, status });
@@ -79,7 +73,7 @@ export function useWavoipOutboundCall() {
         throw new Error(formatWavoipStartCallError(err, t));
       }
 
-      wireOutgoingEvents(call, inboxId, t);
+      wireOutgoingEvents(call, inboxId);
 
       const providerCallId = call.id;
       useCallsStore().addCall({

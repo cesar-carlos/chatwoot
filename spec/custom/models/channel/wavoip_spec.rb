@@ -7,11 +7,18 @@ RSpec.describe Channel::Wavoip do
   let(:channel) { create(:channel_wavoip, account: account) }
 
   describe 'validations' do
-    it 'requires a unique phone_number' do
+    it 'requires a unique phone_number per account' do
       duplicate = build(:channel_wavoip, account: account, phone_number: channel.phone_number)
 
       expect(duplicate).not_to be_valid
       expect(duplicate.errors[:phone_number]).to be_present
+    end
+
+    it 'allows the same phone_number on different accounts' do
+      other_account = create(:account)
+      duplicate = build(:channel_wavoip, account: other_account, phone_number: channel.phone_number)
+
+      expect(duplicate).to be_valid
     end
 
     it 'generates a webhook_key on create' do

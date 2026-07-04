@@ -10,6 +10,10 @@ module Wavoip::Calls::JoiningAgentCache
     Rails.cache.write(cache_key(call_id), user_id, expires_in: TTL)
   end
 
+  def write_if_unset(call_id, user_id)
+    Rails.cache.write(cache_key(call_id), user_id, expires_in: TTL, unless_exist: true)
+  end
+
   def read(call_id)
     Rails.cache.read(cache_key(call_id))
   end

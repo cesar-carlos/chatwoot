@@ -259,7 +259,9 @@ Rails.application.routes.draw do
               end
             end
             # FORK: Wavoip call accept attribution (no SDP)
-            resources :calls, only: [:update]
+            resources :calls, only: [:update] do
+              post :join, on: :member
+            end
           end
           resources :custom_attribute_definitions, only: [:index, :show, :create, :update, :destroy]
           resources :custom_filters, only: [:index, :show, :create, :update, :destroy]

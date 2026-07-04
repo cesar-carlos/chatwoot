@@ -48,6 +48,10 @@ vi.mock('dashboard/store', () => ({
 
 import { useAlert } from 'dashboard/composables';
 import {
+  clearActiveCall,
+  getActiveProviderCallId,
+} from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import {
   isCallDismissed,
   isCallJoining,
 } from 'dashboard/composables/useCallSession';
@@ -218,7 +222,7 @@ describe('wavoipVoiceCableHandlers', () => {
         wavoipOfferId: 'sdk_offer_id',
         conversationId: 1,
         inboxId: 2,
-        callDirection: 'incoming',
+        callDirection: 'inbound',
         provider: 'wavoip',
       });
 
@@ -231,6 +235,28 @@ describe('wavoipVoiceCableHandlers', () => {
       expect(useAlert).toHaveBeenCalledWith(
         'CONVERSATION.WAVOIP_CALL.CALLER_ENDED'
       );
+      expect(store.calls).toHaveLength(0);
+    });
+
+    it('clears active inbound call when caller hangs up after answer', () => {
+      getActiveProviderCallId.mockReturnValue('webhook_call_id');
+      const store = useCallsStore();
+      store.calls.push({
+        callSid: 'webhook_call_id',
+        wavoipOfferId: 'sdk_offer_id',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'inbound',
+        provider: 'wavoip',
+        isActive: true,
+      });
+
+      wavoipVoiceCableHandlers.onEnded({
+        call_id: 'webhook_call_id',
+        status: 'completed',
+      });
+
+      expect(clearActiveCall).toHaveBeenCalled();
       expect(store.calls).toHaveLength(0);
     });
 

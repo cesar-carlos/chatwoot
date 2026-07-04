@@ -39,6 +39,15 @@ RSpec.describe 'Wavoip Inboxes API extensions', type: :request do
 
       expect(response).to have_http_status(:unauthorized)
     end
+
+    it 'returns not found when voice features are disabled' do
+      account.disable_features!('channel_wavoip')
+
+      get "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/wavoip_sdk_bootstrap",
+          headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:not_found)
+    end
   end
 
   describe 'POST /api/v1/accounts/:account_id/inboxes/:id/regenerate_wavoip_webhook_key' do

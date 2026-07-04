@@ -8,6 +8,7 @@ import {
   flushAcceptedByRecording,
   clearAcceptedByQueue,
   recordAcceptWithRetry,
+  recordJoinWithRetry,
 } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
@@ -21,7 +22,8 @@ import {
 import {
   useWavoipActiveCall,
   endActiveCall as endSdkActiveCall,
-  clearActiveCall as clearSdkActiveCall,
+  clearActiveCall,
+  clearRingingOutgoingCall,
   getActiveProviderCallId,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 
@@ -46,6 +48,9 @@ export function useWavoipCallSession() {
       queueAcceptedByRecording(callSid);
       return;
     }
+    await recordJoinWithRetry(dbCallId, callSid, {
+      onFailure: acceptRecordFailure,
+    });
     await recordAcceptWithRetry(dbCallId, callSid, {
       onFailure: acceptRecordFailure,
     });
@@ -54,6 +59,15 @@ export function useWavoipCallSession() {
   const acceptIncomingCall = async ({ callId, inboxId }) => {
     await connectForInbox(inboxId);
     attachToInbox(inboxId);
+
+    const dbCallId = useCallsStore().calls.find(
+      c => c.callSid === callId
+    )?.callId;
+    if (dbCallId) {
+      await recordJoinWithRetry(dbCallId, callId, {
+        onFailure: acceptRecordFailure,
+      });
+    }
 
     if (!getPendingOffer(callId)) {
       await waitForPendingOffer(callId);
@@ -76,11 +90,11 @@ export function useWavoipCallSession() {
     const targetId = callIdOverride || getActiveProviderCallId();
     await endSdkActiveCall(callIdOverride);
     if (targetId) useCallsStore().removeCall(targetId);
-    clearSdkActiveCall();
   };
 
   const cleanupSession = () => {
     clearActiveCall();
+    clearRingingOutgoingCall();
     clearAcceptedByQueue();
   };
 
