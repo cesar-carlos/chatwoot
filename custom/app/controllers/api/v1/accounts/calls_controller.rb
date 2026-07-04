@@ -3,11 +3,23 @@
 class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
   before_action :fetch_call
 
+  rescue_from CustomExceptions::CallAlreadyAccepted, with: :render_call_already_accepted
+
+  def join
+    authorize @call.inbox, :show?
+
+    return render json: { error: 'Call provider not supported' }, status: :unprocessable_entity unless @call.wavoip?
+    return render json: { error: 'Call is not active' }, status: :unprocessable_entity unless @call.ringing? || @call.in_progress?
+
+    record_join_intent!
+
+    head :ok
+  end
+
   def update
     authorize @call.inbox, :show?
 
     return render json: { error: 'Call provider not supported' }, status: :unprocessable_entity unless @call.wavoip?
-
     return render json: { error: 'Call is not active' }, status: :unprocessable_entity unless @call.ringing? || @call.in_progress?
 
     record_agent_acceptance!
@@ -17,14 +29,34 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
 
   private
 
-  def record_agent_acceptance!
-    Wavoip::Calls::JoiningAgentCache.write(@call.id, Current.user.id)
-
+  def record_join_intent!
     @call.with_lock do
-      next if @call.accepted_by_agent_id.present?
+      raise_if_claimed_by_other_agent!
+
+      Wavoip::Calls::JoiningAgentCache.write_if_unset(@call.id, Current.user.id)
+    end
+  end
+
+  def record_agent_acceptance!
+    @call.with_lock do
+      raise_if_claimed_by_other_agent!
+      return if @call.accepted_by_agent_id == Current.user.id
 
       accept_call_for_current_user!
     end
+  end
+
+  def raise_if_claimed_by_other_agent!
+    return unless claimed_by_other_agent?
+
+    agent = @call.accepted_by_agent
+    raise CustomExceptions::CallAlreadyAccepted.new(
+      agent_name: agent&.available_name || agent&.name
+    )
+  end
+
+  def claimed_by_other_agent?
+    @call.accepted_by_agent_id.present? && @call.accepted_by_agent_id != Current.user.id
   end
 
   def accept_call_for_current_user!
@@ -43,6 +75,10 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
       call: @call,
       agent: Current.user
     ).perform!
+  end
+
+  def render_call_already_accepted(error)
+    render json: { error: error.message }, status: :conflict
   end
 
   def fetch_call

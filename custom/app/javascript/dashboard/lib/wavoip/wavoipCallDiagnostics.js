@@ -27,26 +27,46 @@ const shouldShowConnectivityAlert = callId => {
 };
 
 const wireCallDiagnostics = (call, { inboxId, callId, translateFn } = {}) => {
-  if (!call?.on) return;
+  if (!call?.on) return () => {};
 
-  call.on('iceDiagnostics', payload => {
-    recordIceDiagnostics(inboxId, callId, payload);
-  });
-  call.on('connectivityIssue', issue => {
-    recordConnectivityIssue(inboxId, callId, issue);
-    if (shouldShowConnectivityAlert(callId)) {
-      useAlert(connectivityMessage(issue, translateFn));
-    }
-  });
-  call.on('error', error => {
-    recordCallError(inboxId, callId, error);
-  });
-  call.on('stats', stats => {
-    recordCallStats(inboxId, callId, stats);
-  });
-  call.on('serverStats', stats => {
-    recordCallStats(inboxId, callId, { server: stats });
-  });
+  const handlers = {
+    iceDiagnostics: payload => {
+      recordIceDiagnostics(inboxId, callId, payload);
+    },
+    connectivityIssue: issue => {
+      recordConnectivityIssue(inboxId, callId, issue);
+      if (shouldShowConnectivityAlert(callId)) {
+        useAlert(connectivityMessage(issue, translateFn));
+      }
+    },
+    error: error => {
+      recordCallError(inboxId, callId, error);
+    },
+    stats: stats => {
+      recordCallStats(inboxId, callId, stats);
+    },
+    serverStats: stats => {
+      recordCallStats(inboxId, callId, { server: stats });
+    },
+  };
+
+  call.on('iceDiagnostics', handlers.iceDiagnostics);
+  call.on('connectivityIssue', handlers.connectivityIssue);
+  call.on('error', handlers.error);
+  call.on('stats', handlers.stats);
+  call.on('serverStats', handlers.serverStats);
+
+  return () => {
+    call.off?.('iceDiagnostics', handlers.iceDiagnostics);
+    call.off?.('connectivityIssue', handlers.connectivityIssue);
+    call.off?.('error', handlers.error);
+    call.off?.('stats', handlers.stats);
+    call.off?.('serverStats', handlers.serverStats);
+  };
 };
 
-export { wireCallDiagnostics };
+const unwireCallDiagnostics = unwire => {
+  unwire?.();
+};
+
+export { wireCallDiagnostics, unwireCallDiagnostics };

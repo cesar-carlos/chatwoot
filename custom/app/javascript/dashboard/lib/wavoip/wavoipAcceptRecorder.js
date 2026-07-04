@@ -14,6 +14,31 @@ export function queueAcceptedByRecording(callSid) {
   if (callSid) pendingAcceptByCallSid.add(callSid);
 }
 
+export async function recordJoinWithRetry(dbCallId, callSid, options = {}) {
+  const { onFailure } = options;
+
+  const attemptJoin = async attempt => {
+    try {
+      await CallsAPI.joinCall(dbCallId);
+      return true;
+    } catch (_) {
+      if (attempt >= MAX_ATTEMPTS - 1) return false;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+      return attemptJoin(attempt + 1);
+    }
+  };
+
+  const joined = await attemptJoin(0);
+  if (joined) return true;
+
+  // eslint-disable-next-line no-console
+  console.warn(
+    `Failed to record join intent for callSid=${callSid} dbCallId=${dbCallId} after ${MAX_ATTEMPTS} attempts`
+  );
+  onFailure?.();
+  return false;
+}
+
 export async function recordAcceptWithRetry(dbCallId, callSid, options = {}) {
   const { onFailure } = options;
 
@@ -48,6 +73,7 @@ export async function flushAcceptedByRecording(callSid, options = {}) {
   if (!dbCallId) return;
 
   pendingAcceptByCallSid.delete(callSid);
+  await recordJoinWithRetry(dbCallId, callSid, options);
   await recordAcceptWithRetry(dbCallId, callSid, options);
 }
 

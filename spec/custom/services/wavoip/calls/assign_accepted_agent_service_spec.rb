@@ -21,18 +21,28 @@ RSpec.describe Wavoip::Calls::AssignAcceptedAgentService do
     )
   end
 
-  it 'assigns the accepting agent to the conversation' do
-    described_class.new(call: call, agent: agent).perform!
+  it 'assigns accepted_by_agent_id from the joining agent cache' do
+    Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
 
-    expect(conversation.reload.assignee).to eq(agent)
+    described_class.new(call: call).perform!
+
+    expect(call.reload.accepted_by_agent_id).to eq(agent.id)
+    expect(Wavoip::Calls::JoiningAgentCache.read(call.id)).to be_nil
   end
 
-  it 'does not overwrite an existing assignee' do
+  it 'does not overwrite an existing accepted_by_agent_id' do
     other = create(:user, account: account)
-    conversation.update!(assignee: other)
+    call.update!(accepted_by_agent_id: other.id)
+    Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
 
-    described_class.new(call: call, agent: agent).perform!
+    described_class.new(call: call).perform!
 
-    expect(conversation.reload.assignee).to eq(other)
+    expect(call.reload.accepted_by_agent_id).to eq(other.id)
+  end
+
+  it 'does nothing when the joining agent cache is empty' do
+    described_class.new(call: call).perform!
+
+    expect(call.reload.accepted_by_agent_id).to be_nil
   end
 end

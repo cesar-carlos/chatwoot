@@ -9,7 +9,7 @@ class Channel::Wavoip < ApplicationRecord
 
   has_secure_token :webhook_key
 
-  validates :phone_number, presence: true, uniqueness: true
+  validates :phone_number, presence: true, uniqueness: { scope: :account_id }
   validates :ring_timeout_seconds_value, numericality: {
     greater_than_or_equal_to: 0,
     less_than_or_equal_to: 300,

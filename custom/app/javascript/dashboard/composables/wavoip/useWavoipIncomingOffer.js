@@ -13,6 +13,7 @@ import {
   registerOfferUnsubscriber,
 } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { unwrapWavoipSdkResult } from 'customDashboard/lib/wavoip/wavoipSdkResult';
+import { isCallDismissed } from 'dashboard/composables/useCallSession';
 
 const pendingOffers = new Map();
 const boundInboxIds = new Set();
@@ -30,20 +31,27 @@ export const getPendingOffer = callId => pendingOffers.get(callId)?.offer;
 
 export const removePendingOffer = callId => {
   const entry = pendingOffers.get(callId);
+  const waiterKeys = new Set([callId]);
+
   if (entry) {
+    if (entry.offer?.id) waiterKeys.add(entry.offer.id);
     [...pendingOffers.entries()]
       .filter(([, value]) => value === entry)
-      .forEach(([key]) => pendingOffers.delete(key));
+      .forEach(([key]) => {
+        pendingOffers.delete(key);
+        waiterKeys.add(key);
+      });
   } else {
     pendingOffers.delete(callId);
   }
 
-  const waiter = offerWaiters.get(callId);
-  if (waiter) {
+  waiterKeys.forEach(key => {
+    const waiter = offerWaiters.get(key);
+    if (!waiter) return;
     clearTimeout(waiter.timer);
-    offerWaiters.delete(callId);
+    offerWaiters.delete(key);
     waiter.reject(new Error('Offer cancelled'));
-  }
+  });
 };
 
 const resolveOfferWaiters = (offer, extraCallIds = []) => {
@@ -143,10 +151,18 @@ const bindOfferListener = (inboxId, t, store) => {
 
   const handler = offer => {
     if (!offer?.id) return;
+
     const callsStore = useCallsStore();
     const existing = findWavoipCallForOffer(callsStore.calls, offer, inboxId);
     const aliasCallSids =
       existing && existing.callSid !== offer.id ? [existing.callSid] : [];
+
+    if (
+      isCallDismissed(offer.id) ||
+      aliasCallSids.some(callSid => isCallDismissed(callSid))
+    ) {
+      return;
+    }
 
     storeOffer(offer, inboxId, aliasCallSids);
     resolveOfferWaiters(offer, aliasCallSids);

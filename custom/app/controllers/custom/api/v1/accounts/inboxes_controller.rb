@@ -6,7 +6,7 @@ module Custom::Api::V1::Accounts::InboxesController
   def wavoip_sdk_bootstrap
     authorize @inbox, :show?
     channel = @inbox.channel
-    return head :not_found unless channel.is_a?(Channel::Wavoip)
+    return head :not_found unless wavoip_channel_ready?(channel)
 
     render json: { device_token: channel.device_token }
   end
@@ -14,7 +14,7 @@ module Custom::Api::V1::Accounts::InboxesController
   def wavoip_device_status
     authorize @inbox, :show?
     channel = @inbox.channel
-    return head :not_found unless channel.is_a?(Channel::Wavoip)
+    return head :not_found unless wavoip_channel_ready?(channel)
 
     force = ActiveModel::Type::Boolean.new.cast(params[:force])
     payload = Wavoip::DeviceStatusService.new(channel: channel).connection_payload(force: force)
@@ -25,7 +25,7 @@ module Custom::Api::V1::Accounts::InboxesController
   def wavoip_logout
     authorize @inbox, :update?
     channel = @inbox.channel
-    return head :not_found unless channel.is_a?(Channel::Wavoip)
+    return head :not_found unless wavoip_channel_ready?(channel)
 
     Wavoip::DeviceStatusService.new(channel: channel).logout!
     @inbox.update_account_cache
@@ -38,7 +38,7 @@ module Custom::Api::V1::Accounts::InboxesController
     refresh = ActiveModel::Type::Boolean.new.cast(params[:refresh])
     authorize @inbox, refresh ? :update? : :show?
     channel = @inbox.channel
-    return head :not_found unless channel.is_a?(Channel::Wavoip)
+    return head :not_found unless wavoip_channel_ready?(channel)
 
     payload = Wavoip::DeviceStatusService.new(channel: channel).qr_payload(refresh: refresh)
     @inbox.update_account_cache if payload[:live]
@@ -336,5 +336,9 @@ module Custom::Api::V1::Accounts::InboxesController
     )
 
     Current.account.wavoip_channels.create!(wavoip_params)
+  end
+
+  def wavoip_channel_ready?(channel)
+    channel.is_a?(Channel::Wavoip) && channel.voice_enabled?
   end
 end

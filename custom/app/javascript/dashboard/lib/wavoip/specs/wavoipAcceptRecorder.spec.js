@@ -16,6 +16,7 @@ vi.mock('customDashboard/lib/wavoip/wavoipSdkPort', () => ({
 vi.mock('customDashboard/api/calls', () => ({
   default: {
     recordAccept: vi.fn(),
+    joinCall: vi.fn(),
   },
 }));
 
@@ -24,6 +25,8 @@ describe('wavoipAcceptRecorder', () => {
     vi.useFakeTimers();
     clearAcceptedByQueue();
     CallsAPI.recordAccept.mockReset();
+    CallsAPI.joinCall.mockReset();
+    CallsAPI.joinCall.mockResolvedValue(undefined);
     setActivePinia(createPinia());
   });
 
@@ -45,6 +48,7 @@ describe('wavoipAcceptRecorder', () => {
     await vi.advanceTimersByTimeAsync(2000);
     await flushPromise;
 
+    expect(CallsAPI.joinCall).toHaveBeenCalledWith(42);
     expect(CallsAPI.recordAccept).toHaveBeenCalledTimes(3);
     expect(CallsAPI.recordAccept).toHaveBeenCalledWith(42);
   });

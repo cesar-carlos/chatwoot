@@ -13,6 +13,7 @@ import {
 import {
   handleVoiceCallCreated,
   isCallDismissed,
+  isInbound,
   markCallDismissed,
   markLocalCall,
   clearLocalCall,
@@ -322,11 +323,10 @@ const buildCallActions = ({
   const dismissCall = async callSid => {
     const call = findCall(callSid);
     silenceCallRingtone(callSid, call);
-    if (
-      isWavoipCall(call) &&
-      call?.callDirection === VOICE_CALL_DIRECTION.INCOMING &&
-      !call?.isActive
-    ) {
+    const isWavoipInboundDirection =
+      isInbound(call?.callDirection) ||
+      call?.callDirection === VOICE_CALL_DIRECTION.INCOMING;
+    if (isWavoipCall(call) && isWavoipInboundDirection && !call?.isActive) {
       await rejectIncomingCall(callSid);
       return;
     }

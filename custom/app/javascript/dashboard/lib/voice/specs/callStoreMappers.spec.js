@@ -131,6 +131,29 @@ describe('callStoreMappers', () => {
 
       expect(match?.callSid).toBe('webhook_call_id');
     });
+
+    it('does not guess when multiple cable rows await the same inbox offer', () => {
+      const calls = [
+        {
+          callSid: 'webhook_call_id_a',
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          awaitingSdkOffer: true,
+          inboxId: 106,
+          isActive: false,
+        },
+        {
+          callSid: 'webhook_call_id_b',
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          awaitingSdkOffer: true,
+          inboxId: 106,
+          isActive: false,
+        },
+      ];
+
+      const match = findWavoipCallForOffer(calls, { id: 'sdk_offer_id' }, 106);
+
+      expect(match).toBeNull();
+    });
   });
 
   describe('mergeStoreEntries', () => {

@@ -3,7 +3,6 @@ import { useAlert } from 'dashboard/composables';
 import store from 'dashboard/store';
 import { mapCableToStoreEntry } from 'customDashboard/lib/voice/callStoreMappers';
 import {
-  endActiveCall as endSdkActiveCall,
   clearActiveCall as clearSdkActiveCall,
   getActiveProviderCallId,
   isWavoipSdkCallOwned,
@@ -13,6 +12,7 @@ import {
   pendingOffers,
 } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { flushAcceptedByRecording } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
+import { removeWavoipCallFromStore } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 import {
   isCallJoining,
   isCallDismissed,
@@ -75,7 +75,6 @@ export const createWavoipVoiceCableHandlers = t => ({
     if (data.end_reason === 'handled_remotely') {
       useAlert(t('CONVERSATION.WAVOIP_CALL.HANDLED_REMOTELY'));
     } else if (
-      !callEntry.isActive &&
       callEntry.callDirection !== 'outbound' &&
       (data.end_reason === 'no_answer' ||
         data.status === 'no_answer' ||
@@ -85,11 +84,16 @@ export const createWavoipVoiceCableHandlers = t => ({
       useAlert(t('CONVERSATION.WAVOIP_CALL.CALLER_ENDED'));
     }
 
-    const isLocalOwner =
-      callEntry.isActive && getActiveProviderCallId() === data.call_id;
+    const ownsActiveSession =
+      callEntry.isActive &&
+      (getActiveProviderCallId() === data.call_id ||
+        getActiveProviderCallId() === callEntry.callSid ||
+        getActiveProviderCallId() === callEntry.wavoipOfferId ||
+        isWavoipSdkCallOwned(data.call_id) ||
+        isWavoipSdkCallOwned(callEntry.callSid) ||
+        isWavoipSdkCallOwned(callEntry.wavoipOfferId));
 
-    if (isLocalOwner) {
-      endSdkActiveCall();
+    if (ownsActiveSession) {
       clearSdkActiveCall();
     }
 
@@ -101,12 +105,10 @@ export const createWavoipVoiceCableHandlers = t => ({
       return;
     }
 
-    const callSids = new Set(
-      [data.call_id, callEntry.callSid, callEntry.wavoipOfferId].filter(Boolean)
+    removeWavoipCallFromStore(
+      data.call_id,
+      callEntry.callSid,
+      callEntry.wavoipOfferId
     );
-    callSids.forEach(callSid => {
-      removePendingOffer(callSid);
-      callsStore.removeCall(callSid);
-    });
   },
 });

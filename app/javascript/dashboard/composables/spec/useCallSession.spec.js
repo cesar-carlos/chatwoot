@@ -87,7 +87,7 @@ describe('useCallSession Wavoip actions', () => {
       inboxId: 5,
       conversationId: 1,
       provider: VOICE_CALL_PROVIDERS.WAVOIP,
-      callDirection: VOICE_CALL_DIRECTION.INCOMING,
+      callDirection: VOICE_CALL_DIRECTION.INBOUND,
       isActive: false,
     });
 
@@ -96,5 +96,23 @@ describe('useCallSession Wavoip actions', () => {
 
     expect(rejectIncomingCallMock).toHaveBeenCalledWith('dismiss_1');
     expect(store.calls.some(c => c.callSid === 'dismiss_1')).toBe(false);
+  });
+
+  it('routes legacy incoming direction through SDK reject', async () => {
+    const store = useCallsStore();
+    store.addCall({
+      callSid: 'dismiss_2',
+      inboxId: 5,
+      conversationId: 1,
+      provider: VOICE_CALL_PROVIDERS.WAVOIP,
+      callDirection: VOICE_CALL_DIRECTION.INCOMING,
+      isActive: false,
+    });
+
+    const { dismissCall } = useCallActions();
+    await dismissCall('dismiss_2');
+
+    expect(rejectIncomingCallMock).toHaveBeenCalledWith('dismiss_2');
+    expect(store.calls.some(c => c.callSid === 'dismiss_2')).toBe(false);
   });
 });

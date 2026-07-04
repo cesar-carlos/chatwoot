@@ -52,13 +52,31 @@ RSpec.describe Api::V1::Accounts::CallsController, type: :request do
       expect(accepted[:data][:call_id]).to eq(call.provider_call_id)
     end
 
-    it 'does not overwrite an existing accepted_by_agent_id' do
+    it 'returns conflict when another agent already accepted' do
       call.update!(accepted_by_agent_id: other_agent.id)
 
       patch "/api/v1/accounts/#{account.id}/calls/#{call.id}",
             headers: agent.create_new_auth_token
 
+      expect(response).to have_http_status(:conflict)
       expect(call.reload.accepted_by_agent_id).to eq(other_agent.id)
+    end
+
+    it 'records join intent before accept' do
+      post "/api/v1/accounts/#{account.id}/calls/#{call.id}/join",
+           headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:ok)
+      expect(Wavoip::Calls::JoiningAgentCache.read(call.id)).to eq(agent.id)
+    end
+
+    it 'returns conflict on join when another agent already accepted' do
+      call.update!(accepted_by_agent_id: other_agent.id)
+
+      post "/api/v1/accounts/#{account.id}/calls/#{call.id}/join",
+           headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:conflict)
     end
 
     it 'returns unauthorized when the agent is not an inbox member' do
