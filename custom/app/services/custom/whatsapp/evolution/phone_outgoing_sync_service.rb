@@ -11,6 +11,20 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
     key = message_key
     return if skip_sync?(key)
 
+    process_sync!(key)
+  rescue StandardError
+    # The dedup lock was already acquired in `skip_sync?` — if anything
+    # below raises before the message is persisted, release it immediately
+    # instead of blocking every retry for the full 1-day TTL. The DB
+    # `duplicate_message?` check remains the authoritative guard, so
+    # releasing early cannot cause a duplicate send/message.
+    release_dedup_lock!
+    raise
+  end
+
+  private
+
+  def process_sync!(key)
     normalized = normalizer.perform
     message_data = normalized&.dig(:messages, 0)
     content = outgoing_content(data, message_data)
@@ -23,8 +37,6 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
     enqueue_outgoing_media_download!(message, message_data) if message_data.present?
     message
   end
-
-  private
 
   def inbox
     channel.inbox
@@ -48,10 +60,27 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
     return true if duplicate_message?(source_id)
     return true if skip_remote_jid?(key['remoteJid'].to_s)
 
-    return false if Whatsapp::MessageDedupLock.new(source_id).acquire!
+    return false if acquire_dedup_lock!(source_id)
 
     raise MutexApplicationJob::LockAcquisitionError,
           "Evolution phone outgoing dedup lock busy for source_id=#{source_id}"
+  end
+
+  # Only ever releases a lock this instance itself acquired — releasing on
+  # a failed `acquire!` would delete another worker's still-active lock.
+  def acquire_dedup_lock!(source_id)
+    lock = Whatsapp::MessageDedupLock.new(source_id)
+    return false unless lock.acquire!
+
+    @dedup_lock = lock
+    @dedup_lock_acquired = true
+  end
+
+  def release_dedup_lock!
+    return unless @dedup_lock_acquired
+
+    @dedup_lock.release!
+    @dedup_lock_acquired = false
   end
 
   def duplicate_message?(source_id)

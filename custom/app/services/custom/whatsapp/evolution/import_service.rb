@@ -20,6 +20,7 @@ class Custom::Whatsapp::Evolution::ImportService
 
     @runtime.reset_cursor! if force
     @runtime.mark_running! unless @runtime.import_running?
+    @runtime.touch_heartbeat!
 
     run_batches!
     requeue_if_pending!
@@ -33,7 +34,7 @@ class Custom::Whatsapp::Evolution::ImportService
 
   def ready_to_import?
     return false unless @runtime.import_enabled?
-    return false if @runtime.import_running? && !force
+    return false if @runtime.import_running? && !force && !@runtime.import_stale?
 
     acquire_import_lock!
   end

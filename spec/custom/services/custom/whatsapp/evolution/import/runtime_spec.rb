@@ -46,4 +46,65 @@ RSpec.describe Custom::Whatsapp::Evolution::Import::Runtime do
       expect(channel.provider_config['import_completed_at']).to be_nil
     end
   end
+
+  describe '#import_stale?' do
+    it 'is false when the import is not running' do
+      expect(runtime.import_stale?).to be false
+    end
+
+    it 'is false for a running import with a recent heartbeat' do
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'import_status' => 'running',
+          'import_heartbeat_at' => 1.minute.ago.iso8601
+        )
+      )
+
+      expect(described_class.new(channel: channel.reload).import_stale?).to be false
+    end
+
+    it 'is true for a running import whose heartbeat is older than the stale threshold' do
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'import_status' => 'running',
+          'import_heartbeat_at' => (described_class::STALE_RUNNING_AFTER + 1.minute).ago.iso8601
+        )
+      )
+
+      expect(described_class.new(channel: channel.reload).import_stale?).to be true
+    end
+
+    it 'falls back to import_started_at when there is no heartbeat yet' do
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'import_status' => 'running',
+          'import_started_at' => (described_class::STALE_RUNNING_AFTER + 1.minute).ago.iso8601,
+          'import_heartbeat_at' => nil
+        )
+      )
+
+      expect(described_class.new(channel: channel.reload).import_stale?).to be true
+    end
+
+    it 'is true when running with no timestamp at all (defensive default)' do
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'import_status' => 'running',
+          'import_started_at' => nil,
+          'import_heartbeat_at' => nil
+        )
+      )
+
+      expect(described_class.new(channel: channel.reload).import_stale?).to be true
+    end
+  end
+
+  describe '#touch_heartbeat!' do
+    it 'persists a fresh import_heartbeat_at timestamp' do
+      runtime.touch_heartbeat!
+
+      channel.reload
+      expect(Time.zone.parse(channel.provider_config['import_heartbeat_at'])).to be_within(5.seconds).of(Time.current)
+    end
+  end
 end

@@ -16,6 +16,16 @@ RSpec.describe Wavoip::RetryRecordAttachmentJob, type: :job do
     account.enable_features!('channel_voice', 'channel_wavoip')
   end
 
+  it 'skips when call_recording_enabled is false' do
+    channel.update!(provider_config: channel.provider_config.merge('call_recording_enabled' => false))
+    service = instance_double(Wavoip::Calls::RecordingAttachmentService, perform: true)
+    allow(Wavoip::Calls::RecordingAttachmentService).to receive(:new).and_return(service)
+
+    described_class.perform_now(inbox.id, provider_call_id, record_url)
+
+    expect(Wavoip::Calls::RecordingAttachmentService).not_to have_received(:new)
+  end
+
   it 'retries when the call row is not found yet' do
     expect do
       described_class.perform_now(inbox.id, provider_call_id, record_url)

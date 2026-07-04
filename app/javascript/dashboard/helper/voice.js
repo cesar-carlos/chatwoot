@@ -5,7 +5,8 @@ import types from 'dashboard/store/mutation-types';
 import store from 'dashboard/store';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
-import { isWavoipSdkCallOwned } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import { isOutboundInitiationActive, isWavoipSdkCallOwned } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import { normalizeCallDirection } from 'customDashboard/lib/voice/voiceCallDirection';
 
 export const TERMINAL_STATUSES = [
   'completed',
@@ -21,6 +22,27 @@ export const isInbound = direction => direction === 'inbound';
 
 const isVoiceCallMessage = message => {
   return CONTENT_TYPES.VOICE_CALL === message?.content_type;
+};
+
+// Wavoip calls rely entirely on the provider's webhook to reach a terminal
+// status. When that webhook never arrives (SDK-only hangups, dropped
+// webhooks), the Call row is stuck "ringing" forever and keeps resurfacing
+// as a ghost incoming/outgoing widget every time the conversation hydrates
+// (e.g. after the outbound-call flow refreshes the conversation). Ignore
+// ringing voice_call messages once they're older than a generous window —
+// well above any configured ring timeout — so stale rows stop haunting the UI
+// while the backend safety-net job catches up and marks them no_answer.
+const WAVOIP_STALE_RINGING_MS = 3 * 60 * 1000;
+
+export const isStaleWavoipRingingMessage = message => {
+  const call = message?.call;
+  if (call?.provider !== VOICE_CALL_PROVIDERS.WAVOIP) return false;
+  if (call?.status !== 'ringing') return false;
+
+  const createdAtMs = (message?.created_at || 0) * 1000;
+  if (!createdAtMs) return false;
+
+  return Date.now() - createdAtMs > WAVOIP_STALE_RINGING_MS;
 };
 
 const shouldSkipCall = (callDirection, senderId, currentUserId) => {
@@ -84,7 +106,7 @@ function extractCallData(message) {
     callId: call.id,
     provider: call.provider,
     status: call.status,
-    callDirection: call.direction === 'outgoing' ? 'outbound' : 'inbound',
+    callDirection: normalizeCallDirection(call.direction),
     conversationId: message?.conversation_id,
     inboxId: message?.inbox_id ?? message?.conversation?.inbox_id,
     assigneeId: extractAssigneeId(message?.conversation),
@@ -99,6 +121,7 @@ export function handleVoiceCallCreated(
   currentUserAvailability
 ) {
   if (!isVoiceCallMessage(message)) return;
+  if (isStaleWavoipRingingMessage(message)) return;
 
   const {
     callSid,
@@ -123,6 +146,14 @@ export function handleVoiceCallCreated(
   }
 
   if (!shouldRingInbound(callDirection, currentUserAvailability)) return;
+
+  if (
+    provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+    callDirection === 'inbound' &&
+    isOutboundInitiationActive(inboxId)
+  ) {
+    return;
+  }
 
   if (
     provider === VOICE_CALL_PROVIDERS.WAVOIP &&
@@ -198,6 +229,7 @@ export function handleVoiceCallUpdated(
   }
 
   if (status === 'ringing') {
+    if (isStaleWavoipRingingMessage(message)) return;
     if (!shouldRingInbound(callDirection, currentUserAvailability)) return;
 
     callsStore.addCall({

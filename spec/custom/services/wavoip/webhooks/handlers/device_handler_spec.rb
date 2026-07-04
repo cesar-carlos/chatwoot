@@ -20,6 +20,7 @@ RSpec.describe Wavoip::Webhooks::Handlers::DeviceHandler do
       session_id: 999,
       call_type: nil,
       record_url: nil,
+      record_status: nil,
       raw_type: 'DEVICE'
     )
   end

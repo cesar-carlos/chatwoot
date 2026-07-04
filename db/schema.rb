@@ -654,6 +654,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_26_121300) do
     t.jsonb "message_templates", default: {}
     t.datetime "message_templates_last_updated", precision: nil
     t.index "((provider_config ->> 'instance_name'::text))", name: "index_channel_whatsapp_evolution_instance_name", unique: true, where: "((provider)::text = 'evolution'::text)"
+    t.index "((provider_config ->> 'instance_name'::text))", name: "index_channel_whatsapp_evolution_go_instance_name", unique: true, where: "((provider)::text = 'evolution_go'::text)"
     t.index ["phone_number"], name: "index_channel_whatsapp_on_phone_number", unique: true
   end
 

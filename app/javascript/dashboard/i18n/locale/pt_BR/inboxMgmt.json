@@ -786,6 +786,7 @@
         "CHECKLIST_TOGGLE": "Ative o interruptor do webhook.",
         "CHECKLIST_CALL_EVENT": "Selecione o evento CALL.",
         "CHECKLIST_DEVICE_EVENT": "Selecione o evento DEVICE (opcional, mas recomendado).",
+        "CHECKLIST_RECORD_EVENT": "Selecione o evento RECORD (obrigatório para gravações no histórico da conversa).",
         "CHECKLIST_URL": "Cole a URL do webhook acima e salve.",
         "TEST": "Testar webhook",
         "TEST_SUCCESS": "Teste de webhook recebido. O status deve aparecer como verificado.",
@@ -800,6 +801,12 @@
       "HOW_IT_WORKS": {
         "LABEL": "Como funciona",
         "DESCRIPTION": "As chamadas são roteadas pelo seu dispositivo Wavoip. Os agentes atendem pelo navegador quando as chamadas recebidas estão habilitadas. Certifique-se de que o navegador do agente tenha permissão de microfone para este site."
+      },
+      "RECORDING": {
+        "LABEL": "Gravar ligações no histórico",
+        "DESCRIPTION": "Quando ativado, ligações concluídas com gravação da Wavoip aparecem com player de áudio na conversa.",
+        "HINT": "A gravação também precisa estar ativa no dispositivo Wavoip e o evento RECORD deve estar selecionado no webhook. ",
+        "DOCS_LINK": "Guia de gravação Wavoip"
       },
       "VOICE_DISABLED": {
         "DESCRIPTION": "Chamadas de voz exigem um token de dispositivo configurado nesta caixa de entrada."
@@ -825,7 +832,9 @@
         "LOADING": "Conectando ao dispositivo…",
         "RESTART": "Reiniciar dispositivo",
         "LOGOUT": "Desconectar WhatsApp",
+        "RESTART_CONFIRM_TITLE": "Reiniciar dispositivo?",
         "RESTART_CONFIRM": "Reiniciar o dispositivo Wavoip? O WhatsApp pode desconectar brevemente.",
+        "LOGOUT_CONFIRM_TITLE": "Desconectar WhatsApp?",
         "LOGOUT_CONFIRM": "Desconectar o WhatsApp deste dispositivo? Será necessário parear novamente.",
         "LINKED_PHONE": "Número vinculado",
         "RECONNECT": "Reconectar (escanear QR)",
@@ -903,6 +912,23 @@
           }
         }
       }
+    },
+    "WAVOIP_ONBOARDING": {
+      "TITLE": "Checklist de configuração",
+      "SUMMARY": "{ready} de {total} etapas concluídas",
+      "TOKEN": "Token do dispositivo configurado",
+      "WEBHOOK": "Webhook verificado (primeiro evento CALL recebido)",
+      "DEVICE_OPEN": "Dispositivo WhatsApp conectado",
+      "VOICE_ENABLED": "Chamadas de voz habilitadas na caixa de entrada",
+      "INBOUND_ENABLED": "Chamadas recebidas habilitadas"
+    },
+    "WAVOIP_RECORDING_CHECKLIST": {
+      "TITLE": "Checklist de gravação",
+      "SUMMARY": "{ready} de {total} verificações automáticas OK",
+      "WAVOIP_PANEL": "Gravação habilitada no dispositivo Wavoip (verifique no painel Wavoip)",
+      "RECORD_WEBHOOK": "Evento RECORD do webhook habilitado e verificado",
+      "CHATWOOT_TOGGLE": "Salvar gravações habilitado no Chatwoot",
+      "HINT": "Os três são necessários para o player de áudio no histórico da conversa. Veja o "
     },
     "EVOLUTION": {
       "SETTINGS": {

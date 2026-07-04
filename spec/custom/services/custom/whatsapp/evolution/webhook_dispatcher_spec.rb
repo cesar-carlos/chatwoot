@@ -108,5 +108,26 @@ RSpec.describe Custom::Whatsapp::Evolution::WebhookDispatcher do
         '[EVOLUTION] unhandled event=UNKNOWN_EVENT instance=legacy-instance'
       )
     end
+
+    it 'routes SEND_MESSAGE_UPDATE through the same mutation lock as MESSAGES_EDITED' do
+      edit_sync_service = instance_double(Custom::Whatsapp::Evolution::MessageEditSyncService, perform: nil)
+      allow(Custom::Whatsapp::Evolution::MessageEditSyncService).to receive(:new).and_return(edit_sync_service)
+      data = { 'key' => { 'id' => 'EDIT-1', 'remoteJid' => '5511999999999@s.whatsapp.net' } }
+
+      dispatcher.dispatch(channel, { event: 'SEND_MESSAGE_UPDATE', data: [data] })
+
+      expect(Custom::Whatsapp::Evolution::MessageEditSyncService).to have_received(:new).with(channel: channel, data: data)
+      expect(edit_sync_service).to have_received(:perform)
+    end
+
+    it 'logs malformed (non-Hash) data items instead of silently skipping them' do
+      allow(Rails.logger).to receive(:warn)
+
+      dispatcher.dispatch(channel, { event: 'MESSAGES_UPSERT', data: ['not-a-hash'] })
+
+      expect(Rails.logger).to have_received(:warn).with(
+        '[EVOLUTION] malformed data item event=MESSAGES_UPSERT class=String'
+      )
+    end
   end
 end

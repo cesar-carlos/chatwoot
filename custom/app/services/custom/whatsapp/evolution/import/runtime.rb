@@ -36,8 +36,32 @@ class Custom::Whatsapp::Evolution::Import::Runtime
     import_contacts? || import_messages?
   end
 
+  # Generous buffer beyond ImportService::IMPORT_LOCK_TTL (2h): if the job
+  # crashed (SIGKILL/OOM) without hitting its `ensure` block, both the Redis
+  # lock and the "running" status would otherwise persist forever and block
+  # every future automatic re-import.
+  STALE_RUNNING_AFTER = 2.hours + 15.minutes
+
   def import_running?
     config['import_status'] == 'running'
+  end
+
+  def import_stale?
+    return false unless import_running?
+
+    heartbeat = config['import_heartbeat_at'] || config['import_started_at']
+    return true if heartbeat.blank?
+
+    Time.zone.parse(heartbeat) < STALE_RUNNING_AFTER.ago
+  rescue ArgumentError, TypeError
+    true
+  end
+
+  # Refreshed on every batch so `import_stale?` reflects "no progress for
+  # STALE_RUNNING_AFTER", not "started more than STALE_RUNNING_AFTER ago" —
+  # long-but-healthy imports keep requeuing and must not be treated as stuck.
+  def touch_heartbeat!
+    persist_runtime!('import_heartbeat_at' => Time.current.iso8601)
   end
 
   def import_completed?

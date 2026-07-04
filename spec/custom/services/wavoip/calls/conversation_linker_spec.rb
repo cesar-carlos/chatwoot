@@ -27,6 +27,7 @@ RSpec.describe Wavoip::Calls::ConversationLinker do
       session_id: 12_345,
       call_type: :official,
       record_url: nil,
+      record_status: nil,
       raw_type: 'CALL'
     }
     Voice::Dto::WebhookCallEvent.new(**defaults, **overrides)

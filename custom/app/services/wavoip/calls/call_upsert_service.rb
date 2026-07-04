@@ -27,12 +27,19 @@ class Wavoip::Calls::CallUpsertService
     existing = find_call
     if existing
       status_applier.apply!(existing, broadcast: true)
+      reopen_conversation_for_call!(existing)
       return existing
     end
 
     call = Wavoip::Calls::ConversationLinker.link!(inbox: inbox, event: event)
     inbox.channel.mark_webhook_verified!
     status_applier.apply!(call, broadcast: true)
+    # No explicit reopen here: ConversationLinker.link! creates the voice_call
+    # message inside its own transaction, and Message::WavoipConversationCycle's
+    # after_create_commit callback already reopened the conversation by the
+    # time this transaction returns control here. The explicit call below is
+    # only needed for the "existing call" and update! paths, where no new
+    # message is created and that callback never fires.
     call
   end
 
@@ -41,7 +48,11 @@ class Wavoip::Calls::CallUpsertService
 
     call = resolve_call_for_update
     return if call.blank?
-    return call unless status_applier.apply!(call, broadcast: true)
+
+    persist_event_record_status!(call)
+    applied = status_applier.apply!(call, broadcast: true)
+    reopen_conversation_for_call!(call)
+    return call unless applied
 
     call
   end
@@ -109,6 +120,25 @@ class Wavoip::Calls::CallUpsertService
   def log_handled_remotely_missing_call
     Rails.logger.warn(
       "[WAVOIP] HANDLED_REMOTELY without call row inbox_id=#{inbox.id} call_id=#{event.external_call_id}"
+    )
+  end
+
+  def persist_event_record_status!(call)
+    return if event.record_status.blank?
+
+    meta = call.meta || {}
+    return if meta['record_status'] == event.record_status
+
+    call.update!(meta: meta.merge('record_status' => event.record_status))
+  end
+
+  def reopen_conversation_for_call!(call)
+    return unless call.ringing? || call.in_progress?
+
+    target_status = call.incoming? ? :pending : :open
+    Wavoip::Calls::ConversationReopenService.perform!(
+      conversation: call.conversation,
+      status: target_status
     )
   end
 end

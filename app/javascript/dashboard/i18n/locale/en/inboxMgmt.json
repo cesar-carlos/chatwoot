@@ -249,6 +249,8 @@
           "TWILIO_DESC": "Connect via Twilio credentials",
           "EVOLUTION": "Evolution API",
           "EVOLUTION_DESC": "WhatsApp via Baileys (self-hosted Evolution)",
+          "EVOLUTION_GO": "Evolution Go",
+          "EVOLUTION_GO_DESC": "High-performance WhatsApp (Go / whatsmeow)",
           "360_DIALOG": "360Dialog"
         },
         "SELECT_PROVIDER": {
@@ -443,6 +445,73 @@
         },
         "API": {
           "ERROR_MESSAGE": "Could not create the Evolution inbox. Check URL, API key, and instance name."
+        }
+      },
+      "EVOLUTION_GO": {
+        "TITLE": "Evolution Go",
+        "DESC": "Connect WhatsApp through your Evolution Go instance (whatsmeow). Scan the QR code to link your number.",
+        "LOGO_ALT": "Evolution Go",
+        "INBOX_NAME": {
+          "LABEL": "Inbox Name",
+          "PLACEHOLDER": "e.g. WhatsApp Support",
+          "ERROR": "Please enter an inbox name"
+        },
+        "BASE_URL": {
+          "LABEL": "Evolution Go URL",
+          "PLACEHOLDER": "https://evolution-go.example.com",
+          "ERROR": "Enter a valid Evolution Go base URL"
+        },
+        "GLOBAL_API_KEY": {
+          "LABEL": "Global API Key",
+          "PLACEHOLDER": "GLOBAL_API_KEY from Evolution Go server",
+          "HELP": "Required when creating a new instance on the server.",
+          "ERROR": "Global API key is required"
+        },
+        "INSTANCE_TOKEN": {
+          "LABEL": "Instance token",
+          "PLACEHOLDER": "Paste the instance token from Evolution Go",
+          "ERROR": "Instance token is required for an existing instance"
+        },
+        "INSTANCE_NAME": {
+          "LABEL": "Instance name",
+          "PLACEHOLDER": "e.g. inbox-sales-1",
+          "ERROR": "Instance name is required",
+          "FORMAT_ERROR": "Use only letters, numbers, hyphens and underscores"
+        },
+        "EXISTING_INSTANCE": {
+          "LABEL": "Use existing instance",
+          "DESCRIPTION": "Connect an instance already created on the Evolution Go server."
+        },
+        "PROXY": {
+          "ENABLED": {
+            "LABEL": "Use proxy (optional)"
+          },
+          "HOST": "Proxy host",
+          "PORT": "Port",
+          "USERNAME": "Username",
+          "PASSWORD": "Password"
+        },
+        "SUBMIT_BUTTON": "Create and show QR code",
+        "CONNECT": {
+          "TITLE": "Inbox created",
+          "DESCRIPTION": "Scan the QR code with WhatsApp to finish linking this inbox.",
+          "OPEN_QR": "Open QR scanner"
+        },
+        "API": {
+          "ERROR_MESSAGE": "Could not create the Evolution Go inbox. Check URL, keys, and instance name."
+        },
+        "SERVER_CHECK": {
+          "ERROR": "Could not reach the Evolution Go server. Check the URL and try again."
+        },
+        "SETTINGS": {
+          "MARK_READ_ON_OPEN": {
+            "LABEL": "Mark incoming as read when opening conversation",
+            "DESCRIPTION": "Send read receipts to WhatsApp when an agent opens the conversation in Chatwoot."
+          },
+          "PROXY": {
+            "REMOVE": "Remove proxy from instance",
+            "REMOVED": "Proxy removal requested. Settings saved in Chatwoot."
+          }
         }
       },
       "API_CHANNEL": {
@@ -787,6 +856,7 @@
         "CHECKLIST_TOGGLE": "Enable the webhook toggle.",
         "CHECKLIST_CALL_EVENT": "Select the CALL event.",
         "CHECKLIST_DEVICE_EVENT": "Select the DEVICE event (optional but recommended).",
+        "CHECKLIST_RECORD_EVENT": "Select the RECORD event (required for call recordings in conversation history).",
         "CHECKLIST_URL": "Paste the webhook URL above and save.",
         "TEST": "Test webhook",
         "TEST_SUCCESS": "Webhook test received. Status should show as verified.",
@@ -801,6 +871,12 @@
       "HOW_IT_WORKS": {
         "LABEL": "How it works",
         "DESCRIPTION": "Calls are routed through your Wavoip device. Agents answer from the browser when inbound calls are enabled. Make sure the agent's browser has microphone permission for this site."
+      },
+      "RECORDING": {
+        "LABEL": "Save call recordings to conversation history",
+        "DESCRIPTION": "When enabled, completed calls with a recording from Wavoip appear as an audio player in the conversation.",
+        "HINT": "Recording must also be enabled on your Wavoip device and the RECORD webhook event must be selected. ",
+        "DOCS_LINK": "Wavoip recording guide"
       },
       "VOICE_DISABLED": {
         "DESCRIPTION": "Voice calling requires a configured device token on this inbox."
@@ -826,7 +902,9 @@
         "LOADING": "Connecting to device…",
         "RESTART": "Restart device",
         "LOGOUT": "Logout WhatsApp",
+        "RESTART_CONFIRM_TITLE": "Restart device?",
         "RESTART_CONFIRM": "Restart the Wavoip device? WhatsApp may disconnect briefly.",
+        "LOGOUT_CONFIRM_TITLE": "Logout WhatsApp?",
         "LOGOUT_CONFIRM": "Log out WhatsApp from this device? You will need to pair again.",
         "LINKED_PHONE": "Linked number",
         "RECONNECT": "Reconnect (scan QR)",
@@ -904,6 +982,23 @@
           }
         }
       }
+    },
+    "WAVOIP_ONBOARDING": {
+      "TITLE": "Setup checklist",
+      "SUMMARY": "{ready} of {total} steps complete",
+      "TOKEN": "Device token configured",
+      "WEBHOOK": "Webhook verified (first CALL event received)",
+      "DEVICE_OPEN": "WhatsApp device connected",
+      "VOICE_ENABLED": "Voice calling enabled on inbox",
+      "INBOUND_ENABLED": "Inbound calls enabled"
+    },
+    "WAVOIP_RECORDING_CHECKLIST": {
+      "TITLE": "Recording checklist",
+      "SUMMARY": "{ready} of {total} automatic checks passing",
+      "WAVOIP_PANEL": "Recording enabled on Wavoip device (verify in Wavoip panel)",
+      "RECORD_WEBHOOK": "RECORD webhook event enabled and verified",
+      "CHATWOOT_TOGGLE": "Save recordings enabled in Chatwoot",
+      "HINT": "All three are required for the audio player in conversation history. See the "
     },
     "EVOLUTION": {
       "SETTINGS": {
@@ -1616,7 +1711,8 @@
       "TIKTOK": "TikTok",
       "VOICE": "Voice",
       "WAVOIP": "Wavoip",
-      "EVOLUTION": "Evolution API"
+      "EVOLUTION": "Evolution API",
+      "EVOLUTION_GO": "Evolution Go"
     }
   }
 }

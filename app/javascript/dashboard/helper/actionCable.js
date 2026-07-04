@@ -10,6 +10,7 @@ import { useAlert } from 'dashboard/composables';
 // FORK: Wavoip voice cable handlers (no SDP)
 import { createWavoipVoiceCableHandlers } from 'customDashboard/lib/voice/voiceCallCableRegistry';
 import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
+import { isWavoipOutboundCablePayload } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
 // FORK: Evolution disconnect alert
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -292,6 +293,8 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onVoiceCallIncoming = data => {
     if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+      if (isWavoipOutboundCablePayload(data)) return;
+
       const availability = this.app.$store.getters.getCurrentUserAvailability;
       const inbox = this.app.$store.getters['inboxes/getInbox']?.(
         data.inbox_id

@@ -113,4 +113,36 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactEnrichmentService do
 
     expect(api_client).to have_received(:fetch_profile).with(number: '242532642504895@lid')
   end
+
+  describe 'enrichment cooldown after a failed fetch' do
+    let(:enriched_at_key) { described_class::EVOLUTION_ENRICHED_AT_KEY }
+
+    it 'does not mark the contact enriched when the API call raises' do
+      allow(api_client).to receive(:fetch_profile).and_raise(Custom::Whatsapp::Evolution::ApiError.new('boom'))
+
+      described_class.new(channel: channel, contact: contact, remote_jid: '556696971841@s.whatsapp.net').perform
+
+      expect(contact.reload.additional_attributes[enriched_at_key]).to be_nil
+    end
+
+    it 'does not mark the contact enriched when fetch_profile responds with an error status' do
+      allow(api_client).to receive(:fetch_profile).and_return(
+        instance_double(HTTParty::Response, success?: false)
+      )
+
+      described_class.new(channel: channel, contact: contact, remote_jid: '556696971841@s.whatsapp.net').perform
+
+      expect(contact.reload.additional_attributes[enriched_at_key]).to be_nil
+    end
+
+    it 'marks the contact enriched after a successful fetch' do
+      allow(api_client).to receive(:fetch_profile).and_return(
+        instance_double(HTTParty::Response, success?: true, parsed_response: {})
+      )
+
+      described_class.new(channel: channel, contact: contact, remote_jid: '556696971841@s.whatsapp.net').perform
+
+      expect(contact.reload.additional_attributes[enriched_at_key]).to be_present
+    end
+  end
 end

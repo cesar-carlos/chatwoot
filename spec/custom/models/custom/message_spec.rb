@@ -98,4 +98,129 @@ RSpec.describe Message, type: :model do
       expect(conversation.additional_attributes['evolution_pending_since']).to be_present
     end
   end
+
+  describe 'Wavoip voice call conversation cycle' do
+    let(:channel) { create(:channel_wavoip, account: account) }
+    let(:inbox) { channel.inbox }
+    let(:contact) { create(:contact, account: account, phone_number: '+5511999999999') }
+    let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5511999999999') }
+
+    before do
+      account.enable_features!('channel_voice', 'channel_wavoip')
+    end
+
+    def create_voice_call_message(conversation, direction: :incoming)
+      call = create(
+        :call,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        contact: contact,
+        provider: :wavoip,
+        direction: direction,
+        status: 'ringing',
+        provider_call_id: SecureRandom.uuid
+      )
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: direction == :incoming ? :incoming : :outgoing,
+        content_type: :voice_call,
+        sender: direction == :incoming ? contact : create(:user, account: account),
+        content_attributes: { data: { call_id: call.id, status: 'ringing' } }
+      )
+    end
+
+    it 'reopens a resolved conversation as open on inbound voice call' do
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :resolved
+      )
+
+      create_voice_call_message(conversation, direction: :incoming)
+
+      expect(conversation.reload).to be_open
+    end
+
+    it 'reopens a resolved conversation as open on outbound voice call' do
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :resolved
+      )
+
+      create_voice_call_message(conversation, direction: :outgoing)
+
+      expect(conversation.reload).to be_open
+    end
+
+    it 'creates an open conversation for the first inbound voice call' do
+      event = Voice::Dto::WebhookCallEvent.new(
+        provider: :wavoip,
+        external_call_id: 'wavoip_pending_cycle',
+        action: :create,
+        external_status: 'INCOMING_RING',
+        direction: :incoming,
+        from_phone: contact.phone_number,
+        to_phone: channel.phone_number,
+        peer_name: 'Caller',
+        duration_seconds: nil,
+        session_id: 1,
+        call_type: :official,
+        record_url: nil,
+        record_status: nil,
+        raw_type: 'CALL'
+      )
+
+      call = Wavoip::Calls::ConversationLinker.link_inbound!(inbox: inbox, event: event)
+
+      expect(call.conversation).to be_open
+    end
+
+    it 'reuses the latest resolved conversation even when lock_to_single is disabled' do
+      inbox.update!(lock_to_single_conversation: false)
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :resolved
+      )
+
+      event = Voice::Dto::WebhookCallEvent.new(
+        provider: :wavoip,
+        external_call_id: 'wavoip_force_single_history',
+        action: :create,
+        external_status: 'INCOMING_RING',
+        direction: :incoming,
+        from_phone: contact.phone_number,
+        to_phone: channel.phone_number,
+        peer_name: 'Caller',
+        duration_seconds: nil,
+        session_id: 2,
+        call_type: :official,
+        record_url: nil,
+        record_status: nil,
+        raw_type: 'CALL'
+      )
+
+      call = Wavoip::Calls::ConversationLinker.link_inbound!(inbox: inbox, event: event)
+
+      aggregate_failures do
+        expect(call.conversation_id).to eq(conversation.id)
+        expect(call.conversation).to be_open
+        expect(Conversation.where(contact_inbox: contact_inbox).count).to eq(1)
+      end
+    end
+  end
 end

@@ -15,6 +15,11 @@ import {
 import { useCallActions } from 'dashboard/composables/useCallSession';
 import { useWhatsappCallSession } from 'dashboard/composables/useWhatsappCallSession';
 import { getBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
+import {
+  shouldShowVoiceCallRecording,
+  shouldShowRecordingProcessing,
+  resolveVoiceCallRecordingUrl,
+} from 'customDashboard/lib/wavoip/voiceCallRecording';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { formatDuration } from 'shared/helpers/timeHelper';
@@ -116,6 +121,48 @@ const displayAgentName = computed(() => {
 
 const audioAttachment = computed(() =>
   (attachments?.value || []).find(a => a.fileType === ATTACHMENT_TYPES.AUDIO)
+);
+
+const callRecordingEnabled = computed(() => {
+  const inbox = store.getters['inboxes/getInbox']?.(inboxId.value);
+  return inbox?.call_recording_enabled;
+});
+
+const recordingAttachment = computed(() =>
+  resolveVoiceCallRecordingUrl({
+    audioAttachment: audioAttachment.value,
+    call: call.value,
+    contentAttributes: contentAttributes?.value,
+  })
+);
+
+const showRecording = computed(() =>
+  shouldShowVoiceCallRecording({
+    provider: call.value?.provider,
+    callStatus: status.value,
+    recordingUrl: recordingAttachment.value?.dataUrl,
+    callRecordingEnabled: callRecordingEnabled.value,
+  })
+);
+
+const completedAtMs = computed(() => {
+  const endedAt = call.value?.endedAt || call.value?.ended_at;
+  if (endedAt) return new Date(endedAt).getTime();
+  const createdAt = call.value?.createdAt || call.value?.created_at;
+  if (createdAt && status.value === VOICE_CALL_STATUS.COMPLETED) {
+    return new Date(createdAt).getTime();
+  }
+  return null;
+});
+
+const showRecordingProcessing = computed(() =>
+  shouldShowRecordingProcessing({
+    provider: call.value?.provider,
+    callStatus: status.value,
+    recordingUrl: recordingAttachment.value?.dataUrl,
+    callRecordingEnabled: callRecordingEnabled.value,
+    completedAtMs: completedAtMs.value,
+  })
 );
 
 const durationSeconds = computed(() => {
@@ -229,21 +276,6 @@ const canJoinCall = computed(() => {
   return true;
 });
 
-const recordingAttachment = computed(() => {
-  if (audioAttachment.value) return audioAttachment.value;
-  const url =
-    call.value?.recordingUrl ||
-    contentAttributes?.value?.data?.recording_url ||
-    contentAttributes?.value?.data?.record_url;
-  if (!url) return null;
-  return {
-    dataUrl: url,
-    fileType: ATTACHMENT_TYPES.AUDIO,
-    extension: 'wav',
-    transcribedText: call.value?.transcript || '',
-  };
-});
-
 const handleJoinCall = async () => {
   if (!canJoinCall.value || isJoining.value) return;
 
@@ -301,12 +333,23 @@ const handleCallBack = async () => {
     }
     if (isWavoip.value) {
       const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
-      const toPhone = sender.value?.phone_number;
+      // The contact snapshot on the message can be stale/missing; the call
+      // record itself always carries the number that was actually dialed.
+      const toPhone = sender.value?.phone_number || call.value?.from_number;
       if (!session || !toPhone) {
         useAlert(t('CONTACT_PANEL.CALL_FAILED'));
         return;
       }
-      await session.connectForInbox?.(inboxId.value);
+      // initiateOutboundCall below connects (and translates connection/device
+      // errors) on its own — this is just an eager warm-up so the SDK offer
+      // listener is attached ASAP. A failure here shouldn't block the actual
+      // attempt or shadow its more specific error message.
+      try {
+        await session.connectForInbox?.(inboxId.value);
+      } catch (warmupError) {
+        // eslint-disable-next-line no-console
+        console.debug('[Wavoip] call-back warm-up connect failed', warmupError);
+      }
       const response = await session.initiateOutboundCall(
         conversationId.value,
         {
@@ -366,10 +409,16 @@ const handleCallBack = async () => {
 
       <!-- Audio player (when there's a recording) -->
       <AudioChip
-        v-if="recordingAttachment"
+        v-if="showRecording && recordingAttachment"
         :attachment="recordingAttachment"
         show-transcribed-text
       />
+      <p
+        v-else-if="showRecordingProcessing"
+        class="text-sm text-n-slate-11 italic"
+      >
+        {{ $t('CONVERSATION.WAVOIP_CALL.RECORDING_PROCESSING') }}
+      </p>
 
       <!-- Call back button (missed inbound) -->
       <NextButton

@@ -116,6 +116,19 @@ class Inboxes extends CacheEnabledApiClient {
   postEvolutionImport(inboxId) {
     return axios.post(`${this.url}/${inboxId}/evolution_import`);
   }
+
+  // FORK: Evolution Go connection / QR polling
+  getEvolutionGoConnection(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/evolution_go_connection`);
+  }
+
+  postEvolutionGoReconnect(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_go_reconnect`);
+  }
+
+  postEvolutionGoServerCheck(payload) {
+    return axios.post(`${this.url}/evolution_go_server_check`, payload);
+  }
 }
 
 export default new Inboxes();

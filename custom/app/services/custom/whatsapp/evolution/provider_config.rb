@@ -29,6 +29,7 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     import_stats
     import_error
     import_started_at
+    import_heartbeat_at
     import_completed_at
     webhook_token
     settings_sync_error

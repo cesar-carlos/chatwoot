@@ -14,6 +14,7 @@ module Voice::Dto
     :session_id,
     :call_type,
     :record_url,
+    :record_status,
     :raw_type
   ) do
     def create? = action == :create

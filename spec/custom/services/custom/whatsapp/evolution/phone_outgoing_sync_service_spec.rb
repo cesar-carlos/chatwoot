@@ -124,5 +124,22 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
         /dedup lock busy/
       )
     end
+
+    it "does not delete another worker's lock when the dedup lock is busy" do
+      dedup_lock = instance_double(Whatsapp::MessageDedupLock, acquire!: false, release!: nil)
+      allow(Whatsapp::MessageDedupLock).to receive(:new).with('PHONE-SENT-MSG-001').and_return(dedup_lock)
+
+      expect { service.perform }.to raise_error(MutexApplicationJob::LockAcquisitionError)
+      expect(dedup_lock).not_to have_received(:release!)
+    end
+
+    it 'releases its own dedup lock on failure so an immediate retry is not blocked for 1 day' do
+      allow(Conversations::Resolver).to receive(:new).and_raise(StandardError, 'boom')
+
+      expect { service.perform }.to raise_error(StandardError, 'boom')
+
+      fresh_lock = Whatsapp::MessageDedupLock.new('PHONE-SENT-MSG-001')
+      expect(fresh_lock.acquire!).to be(true)
+    end
   end
 end

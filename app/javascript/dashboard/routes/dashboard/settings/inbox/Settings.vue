@@ -27,6 +27,8 @@ import WhatsappCallingPage from './settingsPage/WhatsappCallingPage.vue';
 import WavoipCallingPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue';
 // FORK: Evolution WhatsApp settings tab
 import EvolutionSettingsPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionSettingsPage.vue';
+// FORK: Evolution Go WhatsApp health tab
+import EvolutionGoSettingsPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionGoSettingsPage.vue';
 import CustomerSatisfactionPage from './settingsPage/CustomerSatisfactionPage.vue';
 import CollaboratorsPage from './settingsPage/CollaboratorsPage.vue';
 import BotConfiguration from './components/BotConfiguration.vue';
@@ -56,6 +58,7 @@ export default {
     WhatsappCallingPage,
     WavoipCallingPage,
     EvolutionSettingsPage,
+    EvolutionGoSettingsPage,
     CustomerSatisfactionPage,
     FacebookReauthorize,
     GreetingsEditor,
@@ -162,6 +165,12 @@ export default {
         this.inbox.provider === 'evolution'
       );
     },
+    isEvolutionGoWhatsAppChannel() {
+      return (
+        this.inbox.channel_type === INBOX_TYPES.WHATSAPP &&
+        this.inbox.provider === 'evolution_go'
+      );
+    },
     whatsAppAPIProviderName() {
       if (this.isAWhatsAppCloudChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.WHATSAPP_CLOUD');
@@ -171,6 +180,9 @@ export default {
       }
       if (this.isEvolutionWhatsAppChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION');
+      }
+      if (this.isEvolutionGoWhatsAppChannel) {
+        return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION_GO');
       }
       if (this.isATwilioWhatsAppChannel) {
         return this.$t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.TWILIO');
@@ -317,6 +329,16 @@ export default {
         ];
       }
 
+      if (this.isEvolutionGoWhatsAppChannel) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'evolution-go-health',
+            name: this.$t('INBOX_MGMT.TABS.EVOLUTION_GO'),
+          },
+        ];
+      }
+
       return visibleToAllChannelTabs;
     },
     currentInboxId() {
@@ -353,7 +375,7 @@ export default {
       return this.inbox.name;
     },
     canLocktoSingleConversation() {
-      if (this.isEvolutionWhatsAppChannel) return false;
+      if (this.isGatewayWhatsAppChannel) return false;
 
       return (
         this.isASmsInbox ||
@@ -1353,6 +1375,12 @@ export default {
           class="mx-6 max-w-4xl"
         >
           <EvolutionSettingsPage :inbox="inbox" />
+        </div>
+        <div
+          v-if="selectedTabKey === 'evolution-go-health'"
+          class="mx-6 max-w-4xl"
+        >
+          <EvolutionGoSettingsPage :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'csat'">
           <CustomerSatisfactionPage :inbox="inbox" />

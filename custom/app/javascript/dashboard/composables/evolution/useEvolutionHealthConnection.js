@@ -147,17 +147,19 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   async function runAction(action, busyFlag) {
-    if (busyFlag.value) return;
+    if (busyFlag.value) return false;
     busyFlag.value = true;
     try {
       const payload = await store.dispatch(`inboxes/${action}`, inboxId.value);
       await applyPayload(payload);
       await store.dispatch('inboxes/get', inboxId.value);
       useAlert(t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.ACTION_SUCCESS'));
+      return true;
     } catch (error) {
       useAlert(
         error.response?.data?.error || t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE')
       );
+      return false;
     } finally {
       busyFlag.value = false;
     }
@@ -174,8 +176,11 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
     );
     const ok = await confirmDialog?.showConfirmation();
     if (!ok) return;
-    await runAction('evolutionRestart', isRestarting);
-    openQrModal({ fresh: true });
+    const succeeded = await runAction('evolutionRestart', isRestarting);
+    // Only show the "scan to reconnect" flow when the restart actually
+    // happened — surfacing the QR modal after a failed restart made it look
+    // like the action had succeeded.
+    if (succeeded) openQrModal({ fresh: true });
   }
 
   async function logout(confirmDialog) {

@@ -114,7 +114,9 @@ class Custom::Whatsapp::Evolution::ConnectionService
     invalidate_connection_state_cache!
     previous_status = provider_config['connection_status']
     update_runtime_config!('connection_status' => state)
-    invalidate_connection_validation_cache! unless state.to_s == 'open'
+    # Always invalidate: a stale "false" cached while the instance was
+    # closed must not linger after it transitions to "open" (and vice versa).
+    invalidate_connection_validation_cache!
     return unless state == 'open'
 
     phone = phone_from_sender(provider_config['last_sender'])

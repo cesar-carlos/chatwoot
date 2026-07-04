@@ -11,7 +11,7 @@ module Custom::Conversations::MessageWindowService
 
   def messaging_window
     channel = @conversation.inbox.channel
-    return nil if channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution'
+    return nil if channel.is_a?(Channel::Whatsapp) && MessagingProvider::Capabilities.unlimited_session?(channel.provider)
 
     super
   end

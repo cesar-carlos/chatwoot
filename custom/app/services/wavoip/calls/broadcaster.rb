@@ -6,6 +6,8 @@ class Wavoip::Calls::Broadcaster
   end
 
   def broadcast_incoming(call)
+    return unless call.incoming?
+
     contact = call.contact
     streams = agent_streams(call)
     broadcast(
@@ -18,6 +20,8 @@ class Wavoip::Calls::Broadcaster
   end
 
   def broadcast_escalated_ring(call)
+    return unless call.incoming?
+
     contact = call.contact
     streams = escalated_streams(call)
     return if streams.blank?
@@ -37,10 +41,12 @@ class Wavoip::Calls::Broadcaster
   end
 
   def broadcast_agent_accepted(call, accepted_by_agent_id:)
+    agent = User.find_by(id: accepted_by_agent_id)
     broadcast(
       call,
       'voice_call.accepted',
-      accepted_by_agent_id: accepted_by_agent_id
+      accepted_by_agent_id: accepted_by_agent_id,
+      accepted_by_agent_name: agent&.available_name || agent&.name
     )
   end
 

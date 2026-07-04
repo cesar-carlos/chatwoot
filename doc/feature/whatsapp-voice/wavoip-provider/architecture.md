@@ -166,9 +166,12 @@ Baseado no [Webhook Beta](https://wavoip.gitbook.io/api/webhook-beta.md) — ver
 
 `provider_call_id` = `whatsapp_call_id` do payload (stringified).
 
-### 3.5 API REST mínima (fora do MVP)
+### 3.5 API REST mínima
 
-Rotas `register_attempt` / `ack_accept` **adiadas**. `accepted_by_agent_id` via PATCH no accept ou webhook `ACTIVE` — ver [webhook-contract §4](./webhook-contract.md#4-accepted_by_agent_id-sem-rest-mvp).
+`accepted_by_agent_id` é gravado via `PATCH /calls/:id` (`CallsController#update`, com
+`with_lock`) no momento do accept, ou pelo webhook `ACTIVE` como fallback (`JoiningAgentCache`)
+— ver [webhook-contract §4](./webhook-contract.md#4-accepted_by_agent_id-sem-rest-mvp). Rotas
+dedicadas `register_attempt`/`ack_accept` nunca foram necessárias — o PATCH único cobriu o caso.
 
 ### 3.6 ActionCable
 

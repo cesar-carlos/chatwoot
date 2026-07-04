@@ -51,15 +51,25 @@ onMounted(() => {
 
 // Mute routes by provider: WhatsApp toggles the local mic track, Twilio uses
 // the Voice SDK connection's native mute. Both surface the same button.
-const isMuted = ref(false);
 const isWhatsappActive = computed(
   () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WHATSAPP
 );
 const isWavoipActive = computed(
   () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
 );
-const { setMuted: setWavoipMuted, mediaConnectionStatus } =
-  useWavoipActiveCall();
+const {
+  setMuted: setWavoipMuted,
+  isMuted: wavoipIsMuted,
+  mediaConnectionStatus,
+} = useWavoipActiveCall();
+// Wavoip owns its own isMuted state (reset on setActiveCall/clearActiveCall,
+// and it's the value actually wired to the SDK's mute/unmute calls) — read it
+// directly instead of mirroring it into a second local ref that could drift
+// out of sync with the composable.
+const localIsMuted = ref(false);
+const isMuted = computed(() =>
+  isWavoipActive.value ? wavoipIsMuted.value : localIsMuted.value
+);
 const { refreshDevices, setInputDevice, setOutputDevice } = useWavoipMedia();
 
 const primaryIncomingCall = computed(() =>
@@ -130,6 +140,17 @@ const stackedIncomingCalls = computed(() =>
   hasActiveCall.value ? incomingCalls.value : incomingCalls.value.slice(1)
 );
 
+// Cap the number of full stacked cards rendered so a burst of simultaneous
+// ringing calls doesn't push the widget off-screen — summarize the rest in
+// a compact "+N" pill instead.
+const MAX_VISIBLE_STACKED_CARDS = 2;
+const visibleStackedCalls = computed(() =>
+  stackedIncomingCalls.value.slice(0, MAX_VISIBLE_STACKED_CARDS)
+);
+const overflowStackedCallsCount = computed(() =>
+  Math.max(0, stackedIncomingCalls.value.length - MAX_VISIBLE_STACKED_CARDS)
+);
+
 const mainCardState = computed(() => {
   if (hasActiveCall.value) return VOICE_CALL_DIRECTION.ONGOING;
   const direction = primaryIncomingCall.value?.callDirection;
@@ -148,18 +169,22 @@ const stackedCardState = call =>
     : VOICE_CALL_DIRECTION.INCOMING;
 
 const toggleMute = () => {
-  isMuted.value = !isMuted.value;
+  const nextMuted = !isMuted.value;
   if (isWhatsappActive.value) {
-    setWhatsappCallMuted(isMuted.value);
+    localIsMuted.value = nextMuted;
+    setWhatsappCallMuted(nextMuted);
   } else if (isWavoipActive.value) {
-    setWavoipMuted(isMuted.value);
+    // setWavoipMuted updates the composable's own isMuted ref, which is what
+    // `isMuted` reads from for Wavoip calls above.
+    setWavoipMuted(nextMuted);
   } else {
-    TwilioVoiceClient.setMuted(isMuted.value);
+    localIsMuted.value = nextMuted;
+    TwilioVoiceClient.setMuted(nextMuted);
   }
 };
 
 watch(hasActiveCall, active => {
-  if (!active) isMuted.value = false;
+  if (!active) localIsMuted.value = false;
 });
 
 // Convert ISO 3166-1 alpha-2 country code (e.g. "US") to its regional indicator
@@ -333,10 +358,11 @@ onBeforeUnmount(stopRingtone);
 </script>
 
 <template>
-  <div
-    v-if="incomingCalls.length || hasActiveCall"
-    class="fixed ltr:right-4 rtl:left-4 bottom-4 z-50 flex flex-col gap-3 w-[400px]"
-  >
+  <Transition name="call-widget">
+    <div
+      v-if="incomingCalls.length || hasActiveCall"
+      class="fixed ltr:right-4 rtl:left-4 bottom-4 z-50 flex flex-col gap-3 w-[400px]"
+    >
     <div
       v-if="connectionBannerMessage"
       class="rounded-lg border border-n-ruby-6 bg-n-ruby-2 px-3 py-2 text-xs text-n-ruby-11"
@@ -388,7 +414,7 @@ onBeforeUnmount(stopRingtone);
 
     <!-- Stacked incoming calls (shown above the primary card) -->
     <CallCard
-      v-for="call in stackedIncomingCalls"
+      v-for="call in visibleStackedCalls"
       :key="call.callSid"
       :call="call"
       :state="stackedCardState(call)"
@@ -400,6 +426,16 @@ onBeforeUnmount(stopRingtone);
       @toggle-ringtone-mute="toggleRingtoneMute"
       @go-to-conversation="goToConversation(call)"
     />
+    <div
+      v-if="overflowStackedCallsCount > 0"
+      class="rounded-lg bg-n-solid-2 px-3 py-2 text-center text-xs text-n-slate-11"
+    >
+      {{
+        t('CONVERSATION.WAVOIP_CALL.INCOMING_CALLS_OVERFLOW', {
+          count: overflowStackedCallsCount,
+        })
+      }}
+    </div>
 
     <!-- Main Call Widget -->
     <CallCard

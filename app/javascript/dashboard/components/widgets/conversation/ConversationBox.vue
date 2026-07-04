@@ -4,6 +4,7 @@ import ConversationHeader from './ConversationHeader.vue';
 import DashboardAppFrame from '../DashboardApp/Frame.vue';
 import EmptyState from './EmptyState/EmptyState.vue';
 import MessagesView from './MessagesView.vue';
+import WavoipConversationDeviceBanner from 'customDashboard/components/wavoip/WavoipConversationDeviceBanner.vue';
 
 export default {
   components: {
@@ -11,6 +12,7 @@ export default {
     DashboardAppFrame,
     EmptyState,
     MessagesView,
+    WavoipConversationDeviceBanner,
   },
   props: {
     inboxId: {
@@ -103,6 +105,10 @@ export default {
       :class="{
         'border-b border-b-n-weak !pt-2': !dashboardApps.length,
       }"
+    />
+    <WavoipConversationDeviceBanner
+      v-if="currentChat.id"
+      :inbox-id="currentChat.inbox_id"
     />
     <woot-tabs
       v-if="dashboardApps.length && currentChat.id"

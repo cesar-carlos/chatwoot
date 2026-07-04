@@ -9,6 +9,7 @@ class Wavoip::RetryRecordAttachmentJob < ApplicationJob
   def perform(inbox_id, provider_call_id, record_url, attempt = 1)
     inbox = Inbox.find_by(id: inbox_id)
     return if inbox.blank?
+    return unless Wavoip::Calls::RecordingPolicy.recording_feature_enabled?(inbox: inbox)
 
     call = Wavoip::Calls::CallLookup.find(inbox: inbox, provider_call_id: provider_call_id)
     return handle_missing_call(inbox_id, provider_call_id, record_url, attempt) if call.blank?

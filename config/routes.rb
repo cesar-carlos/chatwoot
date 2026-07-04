@@ -288,6 +288,10 @@ Rails.application.routes.draw do
             post :evolution_logout, on: :member
             post :evolution_restart, on: :member
             post :evolution_import, on: :member
+            # FORK: Evolution Go QR / connection polling
+            get :evolution_go_connection, on: :member
+            post :evolution_go_reconnect, on: :member
+            post :evolution_go_server_check, on: :collection
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member
@@ -674,6 +678,8 @@ Rails.application.routes.draw do
   post 'webhooks/wavoip/:webhook_key', to: 'webhooks/wavoip#process_payload'
   # FORK: Evolution API webhooks (Baileys provider)
   post 'webhooks/evolution/:instance_name', to: 'webhooks/evolution#process_payload'
+  # FORK: Evolution Go webhooks (whatsmeow provider)
+  post 'webhooks/evolution_go/:instance_name', to: 'webhooks/evolution_go#process_payload'
 
   namespace :twitter do
     resource :callback, only: [:show]

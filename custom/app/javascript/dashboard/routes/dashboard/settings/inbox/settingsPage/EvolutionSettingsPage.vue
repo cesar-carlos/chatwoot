@@ -117,10 +117,25 @@ watch(
   }
 );
 
+// Reload the editable form fields only when we start looking at a
+// (possibly different) inbox — not on every provider_config change. Health
+// polling / ActionCable pushes update provider_config in the background
+// (connection_status, import_status, ...) constantly; re-running
+// `loadState()` on every one of those would silently discard whatever the
+// agent is mid-typing in this form.
+watch(
+  () => props.inbox.id,
+  () => {
+    Object.assign(state, loadState());
+  },
+  { immediate: true }
+);
+
+// Import status is read-only display data, so it is safe (and desirable)
+// to keep it live-synced with every provider_config change.
 watch(
   () => props.inbox.provider_config,
   () => {
-    Object.assign(state, loadState());
     const config = props.inbox.provider_config || {};
     importStatus.value = {
       status: config.import_status,

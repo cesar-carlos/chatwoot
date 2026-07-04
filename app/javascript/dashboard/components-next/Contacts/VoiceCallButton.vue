@@ -23,10 +23,7 @@ import {
   ensureVoiceConversation,
   findVoiceConversationId,
 } from 'customDashboard/lib/voice/ensureVoiceConversation';
-import {
-  getWavoipDeviceStatus,
-  isWavoipDeviceAtChannelCapacity,
-} from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+import { wavoipOutboundBlockedReasonKey } from 'customDashboard/lib/wavoip/wavoipOutboundPreflight';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -72,12 +69,6 @@ const isStartingCall = ref(false);
 const isInitiatingCall = computed(
   () => isStartingCall.value || twilioIsInitiating.value
 );
-
-const isWavoipInboxAtCapacity = inboxId =>
-  isWavoipDeviceAtChannelCapacity(inboxId);
-
-const isWavoipInboxRestricted = inboxId =>
-  getWavoipDeviceStatus(inboxId).isRestricted.value;
 
 // Mirror the conversation-header button: block a new call whenever any provider
 // call is already active or ringing, otherwise starting a WhatsApp call here
@@ -183,7 +174,16 @@ const startWavoipCall = async (inboxId, conversationIdHint) => {
     return;
   }
 
-  await session.connectForInbox?.(inboxId);
+  // initiateOutboundCall below connects (and translates connection/device
+  // errors) on its own — this is just an eager warm-up so the SDK offer
+  // listener is attached ASAP. A failure here shouldn't block the actual
+  // attempt or shadow its more specific error message.
+  try {
+    await session.connectForInbox?.(inboxId);
+  } catch (warmupError) {
+    // eslint-disable-next-line no-console
+    console.debug('[Wavoip] call button warm-up connect failed', warmupError);
+  }
   const response = await session.initiateOutboundCall(conversationId, {
     inboxId,
     toPhone: props.phone,
@@ -204,19 +204,12 @@ const startCall = async (inboxId, conversationIdHint = null) => {
 
   const inbox = (inboxesList.value || []).find(i => i.id === inboxId);
   const provider = getVoiceCallProvider(inbox);
-  if (
-    provider === VOICE_CALL_PROVIDERS.WAVOIP &&
-    isWavoipInboxRestricted(inboxId)
-  ) {
-    useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
-    return;
-  }
-  if (
-    provider === VOICE_CALL_PROVIDERS.WAVOIP &&
-    isWavoipInboxAtCapacity(inboxId)
-  ) {
-    useAlert(t('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL'));
-    return;
+  if (provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+    const blockedReasonKey = wavoipOutboundBlockedReasonKey(inboxId);
+    if (blockedReasonKey) {
+      useAlert(t(blockedReasonKey));
+      return;
+    }
   }
 
   // Twilio tracks its own loading state via Vuex; gate the local ref only for

@@ -359,7 +359,7 @@ export default {
   </div>
   <div
     v-else-if="
-      isAWhatsAppChannel && !isATwilioChannel && !isEvolutionWhatsAppChannel
+      isAWhatsAppChannel && !isATwilioChannel && !isGatewayWhatsAppChannel
     "
   >
     <div v-if="inbox.provider_config">

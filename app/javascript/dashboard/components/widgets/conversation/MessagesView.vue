@@ -470,7 +470,7 @@ export default {
         :banner-message="replyWindowBannerMessage"
       />
       <Banner
-        v-else-if="!currentChat.can_reply && !isEvolutionWhatsAppChannel"
+        v-else-if="!currentChat.can_reply && !isGatewayWhatsAppChannel"
         color-scheme="alert"
         class="mx-2 mt-2 overflow-hidden rounded-lg"
         :banner-message="replyWindowBannerMessage"

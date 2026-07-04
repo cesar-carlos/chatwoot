@@ -247,6 +247,16 @@ Correções de mídia, import lock, mutex reconciliação e frontend QR/health c
 
 **Run specs:** `bundle exec rspec spec/custom/jobs/custom/whatsapp/evolution/ spec/custom/services/custom/whatsapp/evolution/` · `npm run test -- --run custom/app/javascript/dashboard/composables/evolution/specs/`
 
+### Revisão de código completa (2026-07-04)
+
+Revisão crítica de todas as camadas (core/dispatch, webhook inbound, serviços REST/jobs, frontend) com correções aplicadas — ver [gaps-and-blockers.md §9](../gaps-and-blockers.md#9-revisão-de-código-e-correções-2026-07-04) para a lista completa. Destaques relevantes para este checklist:
+
+- Autenticação do webhook confirmada como já implementada no código (token URL + `apikey`), a doc estava desatualizada.
+- Cache de validação de conexão, dedup lock de outgoing, recovery de import travado e parsing de formato aninhado da API corrigidos — recomenda-se re-rodar as suítes de specs acima antes do próximo smoke manual.
+- Autorização de `evolution_connection`/ActionCable unificada como admin-only.
+
+**Run specs (ampliado):** `bundle exec rspec spec/custom/services/custom/whatsapp/evolution/ spec/custom/jobs/custom/whatsapp/evolution/ spec/custom/services/custom/whatsapp/providers/evolution_service_spec.rb spec/custom/channels/evolution_connection_channel_spec.rb spec/custom/requests/evolution_connection_actions_spec.rb spec/services/whatsapp/message_dedup_lock_spec.rb spec/custom/services/custom/whatsapp/evolution/api_client_spec.rb` · `npm run test -- --run custom/app/javascript/dashboard/composables/evolution/specs/ custom/app/javascript/dashboard/components/evolution/specs/ custom/app/javascript/dashboard/routes/dashboard/settings/inbox/settingsPage/specs/EvolutionSettingsPage.spec.js`
+
 ## Automação Playwright (`tests/playwright/`)
 
 | Spec | Cobertura |

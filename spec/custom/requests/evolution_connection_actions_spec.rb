@@ -33,6 +33,25 @@ RSpec.describe 'Evolution connection actions API', type: :request do
     )
   end
 
+  describe 'GET evolution_connection' do
+    it 'returns the connection payload for an administrator' do
+      get "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/evolution_connection"
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['qrcode_base64']).to eq('data:image/png;base64,abc')
+    end
+
+    it 'is forbidden for a non-admin agent even when assigned to the inbox' do
+      agent = create(:user, account: account, role: :agent)
+      create(:inbox_member, inbox: inbox, user: agent)
+      sign_in agent
+
+      get "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/evolution_connection"
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe 'POST evolution_reconnect' do
     it 'reconnects and returns connection payload' do
       allow(connection_service).to receive(:reconnect!)

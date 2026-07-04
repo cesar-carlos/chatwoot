@@ -8,9 +8,9 @@ Landing page do provider planejado para Evolution Go.
 |------|--------|
 | Chave planejada | `evolution_go` |
 | Documentação de contrato e plano | ✅ |
-| Código em `custom/` | ❌ |
-| `PROVIDERS`, registry e webhook | ❌ |
-| Fixtures reais | ⚠️ pendentes |
+| Código em `custom/` | ✅ Fase 0–1 (MVP texto + QR) |
+| `PROVIDERS`, registry e webhook | ✅ |
+| Fixtures reais | ⚠️ sintéticas — E2E pendente |
 
 Status geral do domínio: [../STATUS.md](../STATUS.md)
 

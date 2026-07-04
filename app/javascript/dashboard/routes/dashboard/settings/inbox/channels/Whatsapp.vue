@@ -9,6 +9,8 @@ import WhatsappEmbeddedSignup from './WhatsappEmbeddedSignup.vue';
 import ChannelSelector from 'dashboard/components/ChannelSelector.vue';
 // FORK: Evolution API WhatsApp provider wizard
 import Evolution from 'customDashboard/routes/dashboard/settings/inbox/channels/Evolution.vue';
+// FORK: Evolution Go WhatsApp provider wizard
+import EvolutionGo from 'customDashboard/routes/dashboard/settings/inbox/channels/EvolutionGo.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -22,6 +24,7 @@ const PROVIDER_TYPES = {
   WHATSAPP_MANUAL: 'whatsapp_manual',
   THREE_SIXTY_DIALOG: '360dialog',
   EVOLUTION: 'evolution',
+  EVOLUTION_GO: 'evolution_go',
 };
 
 const hasWhatsappAppId = computed(() => {
@@ -54,6 +57,12 @@ const availableProviders = computed(() => [
     key: PROVIDER_TYPES.EVOLUTION,
     title: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION'),
     description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION_DESC'),
+    icon: 'i-woot-evolution-color',
+  },
+  {
+    key: PROVIDER_TYPES.EVOLUTION_GO,
+    title: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION_GO'),
+    description: t('INBOX_MGMT.ADD.WHATSAPP.PROVIDERS.EVOLUTION_GO_DESC'),
     icon: 'i-woot-evolution-color',
   },
 ]);
@@ -145,6 +154,9 @@ const handleManualLinkClick = () => {
           type="whatsapp"
         />
         <Evolution v-else-if="selectedProvider === PROVIDER_TYPES.EVOLUTION" />
+        <EvolutionGo
+          v-else-if="selectedProvider === PROVIDER_TYPES.EVOLUTION_GO"
+        />
         <ThreeSixtyDialogWhatsapp
           v-else-if="selectedProvider === PROVIDER_TYPES.THREE_SIXTY_DIALOG"
         />

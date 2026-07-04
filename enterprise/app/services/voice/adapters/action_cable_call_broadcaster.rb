@@ -23,7 +23,8 @@ class Voice::Adapters::ActionCableCallBroadcaster
       call_id: call.provider_call_id,
       provider: provider,
       conversation_id: call.conversation_id,
-      inbox_id: inbox_id || call.inbox_id
+      inbox_id: inbox_id || call.inbox_id,
+      call_direction: call.direction_label
     }
   end
 end

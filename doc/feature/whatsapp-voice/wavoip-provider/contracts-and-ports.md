@@ -131,6 +131,7 @@ Voice::Dto::WebhookCallEvent = Data.define(
   :session_id,         # id_session webhook | nil
   :call_type,          # :official | :unofficial | nil
   :record_url,         # só em RECORD
+  :record_status,     # READY | RECORDING | MIXING | DISABLED | EMPTY_RECORDING | nil
   :raw_type            # "CALL" | "RECORD" | "DEVICE" — debug only
 ) do
   def create? = action == :create
@@ -520,32 +521,36 @@ do enum em `enterprise/app/models/call.rb`.
 
 ## 10. Checklist antes de codar cada fase
 
+Todas as fases 1–4 estão code-complete (ver [implementation-plan.md](./implementation-plan.md)).
+Checklist mantido como referência de contrato, não como pendência:
+
 ### Fase 1 (canal + webhook skeleton)
 
-- [ ] DTO `WebhookCallEvent` definido
-- [ ] `PayloadNormalizer` com fixtures reais
-- [ ] `InboxResolver` + auth [webhook-contract §1](./webhook-contract.md#1-autenticação-http)
-- [ ] Dispatcher sem lógica de domínio
-- [ ] Nenhum import SDK no Rails
+- [x] DTO `WebhookCallEvent` definido
+- [x] `PayloadNormalizer` com fixtures reais
+- [x] `InboxResolver` + auth [webhook-contract §1](./webhook-contract.md#1-autenticação-http)
+- [x] Dispatcher sem lógica de domínio
+- [x] Nenhum import SDK no Rails
 
 ### Fase 2 (outbound + handlers)
 
-- [ ] `StatusMapper` webhook-only
-- [ ] `CallUpsertService` idempotente
-- [ ] `ConversationLinker` → `InboundCallBuilder`
-- [ ] `voiceSessionRegistry` + `wavoipSdkPort`
-- [ ] `BrowserVoiceSession` implementado
+- [x] `StatusMapper` webhook-only
+- [x] `CallUpsertService` idempotente
+- [x] `ConversationLinker` → `InboundCallBuilder`
+- [x] `voiceSessionRegistry` + `wavoipSdkPort`
+- [x] `BrowserVoiceSession` implementado
 
 ### Fase 3 (inbound + widget)
 
-- [ ] Dual path reconciliado no store
-- [ ] `voiceCallCableRegistry` wavoip sem SDP
-- [ ] `acceptedElsewhere` → `dismissCall`
-- [ ] Device `open` gate antes de accept
+- [x] Dual path reconciliado no store
+- [x] `voiceCallCableRegistry` wavoip sem SDP
+- [x] `acceptedElsewhere` → `dismissCall`
+- [x] Device `open` gate antes de accept
 
 ### Fase 4+ (gravação, diagnóstico)
 
-- [ ] `RecordingAttacher` porta
+- [x] `RecordingPolicy` + `RecordingAttachmentService` + toggle `call_recording_enabled`
+- [x] Fallback de gravação via URL direta (`DirectRecordingUrl` + `FetchDirectRecordingJob`, 04 jul. 2026)
 - [ ] `wavoipDiagnosticsCollector` isolado
 
 ---
@@ -560,7 +565,8 @@ do enum em `enterprise/app/models/call.rb`.
 | `wavoip/calls/status_mapper.rb` | StatusMapper |
 | `voice/adapters/action_cable_call_broadcaster.rb` | CallBroadcaster |
 | `wavoip/calls/conversation_linker.rb` | ConversationLinker |
-| `wavoip/calls/call_upsert_service.rb` | CallPersistence |
+| `wavoip/calls/recording_policy.rb` | RecordingPolicy (gate inbox + record_status) |
+| `wavoip/calls/recording_attachment_service.rb` | RecordingAttacher (download ActiveStorage) |
 | `lib/voice/callStoreMappers.js` | NormalizedCallStoreEntry mappers |
 | `lib/wavoip/wavoipSdkPort.js` | Infrastructure FE |
 | `lib/voice/voiceSessionRegistry.js` | BrowserVoiceSession factory |
@@ -571,62 +577,46 @@ do enum em `enterprise/app/models/call.rb`.
 
 ## 12. Melhorias pendentes (backlog)
 
-Itens levantados na revisão profunda (jun/2026). A ordem executável e os gates estão
-em [implementation-plan.md](./implementation-plan.md). Este §12 mantém o catálogo de
-contratos por ID.
+**Atualizado 04 jul. 2026.** A maioria dos itens W-F* e W-O* de UX foi implementada nesta
+rodada; o que resta são gates operacionais (W1, G0.4, E2E browser) e melhorias Meta globais.
 
-### 12.1 Integração compartilhada (após o spike)
+### 12.3 Frontend Wavoip — status
 
-| ID | Melhoria | Por quê | Onde implementar |
-|----|----------|---------|------------------|
-| W-P0.1 | Spike SDK/webhook/IDs | Confirma viabilidade antes de abstrações | [implementation-plan.md](./implementation-plan.md) Fase 0 |
-| W-P0.2 | `voiceSessionRegistry` + `voiceCallCableRegistry` | `useCallSession` não deve conter branches de implementação | `custom/.../lib/voice/` + hooks mínimos |
-| W-P0.3 | `isBrowserVoiceProvider()` | Evita FORK em `FloatingCallWidget`, `calls.js` | `custom/.../lib/voice/browserVoiceProviders.js` |
-| W-P0.4 | Resolver imports do overlay | Adicionar alias Vite somente se a configuração atual não resolver `custom/` | Validar antes de editar `vite.shared.ts` |
+| ID | Melhoria | Status |
+|----|----------|--------|
+| W-F1 | `wavoipSdkPort.js` | ✅ |
+| W-F2 | Mappers dual-path inbound | ✅ |
+| W-F3 | Race offer/webhook | ✅ (spike + reconciliação) |
+| W-F4 | `acceptedElsewhere` / `rejectedElsewhere` | ✅ (+ nome do agente no toast) |
+| W-F5 | Gate `Device.status === 'open'` | ✅ preflight + banner conversa + widget |
+| W-F6 | `useWavoipNotifications` + push perfil | ✅ OS Notification + `voice_call_incoming` no perfil |
+| W-F7 | `VoiceCall.vue` + player + “processando” | ✅ |
+| W-F8 | Dynamic import SDK | ✅ |
+| W-F9 | Specs Vitest | ✅ |
 
-`useWebRtcCallSession(callsAPI)` permanece melhoria para Meta/CPaaS com SDP e não é
-pré-requisito Wavoip.
+### 12.4 Produto / ops — status
 
-### 12.2 Backend Wavoip (Fase 1–4)
+| ID | Melhoria | Status |
+|----|----------|--------|
+| W-O1 | Um token por inbox | Documentado (política) |
+| W-O2 | `peerReject` Meta 138006 | ✅ mensagem `OUTBOUND_PERMISSION_DENIED` |
+| W-O3 | iOS Safari / PWA | ✅ aviso no perfil + `WavoipConnectionHost` |
+| W-O4 | `channel_wavoip` piloto | Runbook |
+| W-O5 | i18n | ✅ `en` upstream + `pt_BR` |
 
-| ID | Melhoria | Detalhe |
-|----|----------|---------|
-| W-B1 | DTO `Voice::Dto::WebhookCallEvent` | Ruby `Data.define` — contrato §4.1 |
-| W-B2 | `PayloadNormalizer` + specs com [fixtures](./fixtures/) | Campo `type` duplicado no payload Wavoip — regra defensiva aqui |
-| W-B3 | `Channel::Wavoip` + migration `channel_wavoip` | Canal separado; `phone_number` único na tabela Wavoip |
-| W-B4 | Enum `wavoip: 2` em `enterprise/app/models/call.rb` | Edição mínima `# FORK:`; `Call` não possui hook `prepend_mod_with` |
-| W-B5 | `Voice::Adapters::ActionCableCallBroadcaster` | Porta compartilhada Meta+Wavoip (payload `provider:`) |
-| W-B6 | `PATCH /api/v1/accounts/:id/calls/:id` | **Rota EE não existe hoje** — registrar `accepted_by_agent_id` após `offer.accept()`; implementar em `custom/` (Fase 3) |
-| W-B7 | `Calls::AssigneeOnAcceptService` | Opcional: `conversation.assignee` ao aceitar inbound |
-| W-B8 | `RecordingAttacher` | Fase 4: `record_url` → meta ou download ActiveStorage |
-| W-B9 | Autorização account/inbox | Admin cria/configura; agente associado recebe bootstrap SDK |
-| W-B10 | Auth + throttle webhook | Chave opaca por canal; limite por chave/IP |
+### 12.5 Ainda pendente (não código ou validação manual)
 
-### 12.3 Frontend Wavoip
+| Item | Tipo |
+|------|------|
+| W1 — prova live webhook CALL no painel Wavoip | Ops / E2E |
+| G0.4 — multiagente browser (2 abas) | E2E |
+| O1 / D1 / F1 — outbound bidirecional, dismiss, accept fail | E2E browser |
+| Reativar webhook Wavoip após 502 | Ops (runbook) |
+| Split composables (`wavoipSdkSession`, etc.) | Refactor futuro |
+| Payloads reais no spike → fixtures | Doc |
+| Adapter MetaCloud / TURN UI admin | Meta backlog §12.6 |
 
-| ID | Melhoria | Detalhe |
-|----|----------|---------|
-| W-F1 | `wavoipSdkPort.js` | Único import `@wavoip/wavoip-api` |
-| W-F2 | `mapWavoipOfferToStoreEntry` / `mapCableToStoreEntry` | Reconciliação dual-path inbound (§3) |
-| W-F3 | Race **offer antes do webhook** | Merge pela correlação validada no spike; UI ring local e histórico quando webhook chegar |
-| W-F4 | `acceptedElsewhere` / `rejectedElsewhere` | Toast + `dismissCall` |
-| W-F5 | Gate `Device.status === 'open'` | Desabilitar ligar/aceitar + banner settings |
-| W-F6 | `useWavoipNotifications` | OS Notification quando aba sem foco |
-| W-F7 | Branch `VoiceCall.vue` | Sem join SDP; `record_url` no completed |
-| W-F8 | Dynamic import SDK | Não carregar em rotas sem inbox Wavoip |
-| W-F9 | Specs Vitest | Mock `wavoipSdkPort`; registry cable |
-
-### 12.4 Produto / ops (documentar na UI)
-
-| ID | Melhoria | Detalhe |
-|----|----------|---------|
-| W-O1 | Um token por inbox | Política multi-agente — [architecture §7](./architecture.md#7-multi-agente) |
-| W-O2 | Sem permissão outbound Meta 138006 | UX em `peerReject` — mensagem clara |
-| W-O3 | iOS Safari notifications | Só PWA — [frontend-integration §6](./frontend-integration.md#6-notificações) |
-| W-O4 | `channel_wavoip` piloto | [feature-flags.md](./feature-flags.md) |
-| W-O5 | i18n | **Somente `en`** no upstream (rule `chatwoot-core`); `pt_BR` só se mantido em `custom/` |
-
-### 12.5 Melhorias Meta (não bloqueiam Wavoip, mas backlog global)
+### 12.6 Melhorias Meta (não bloqueiam Wavoip)
 
 Ver [../README.md §Roadmap](../README.md#roadmap-de-melhorias-ordem-recomendada) P1–P2: adapter MetaCloud, OutboundWhatsappCallBuilder, permission service, handler `permission_granted`.
 

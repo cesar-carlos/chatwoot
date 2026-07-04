@@ -27,8 +27,12 @@ vi.mock('customDashboard/composables/wavoip/useWavoipNotifications', () => ({
   requestWavoipNotificationPermission: vi.fn().mockResolvedValue('granted'),
 }));
 
-vi.mock('dashboard/composables/store', () => ({
-  useMapGetter: () => ref('online'),
+vi.mock('customDashboard/lib/wavoip/wavoipNotificationEnvironment', () => ({
+  isIosSafariWithoutPwa: () => false,
+}));
+
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: key => key }),
 }));
 
 import WavoipConnectionHost from '../WavoipConnectionHost.vue';

@@ -1,0 +1,20 @@
+{
+  "event": "MESSAGE",
+  "instance": "test-go-instance",
+  "data": {
+    "key": {
+      "id": "3EB0IMAGEINBOUND1",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false
+    },
+    "pushName": "João",
+    "messageTimestamp": 1718880001,
+    "message": {
+      "imageMessage": {
+        "caption": "Photo caption",
+        "mimetype": "image/jpeg",
+        "fileName": "photo.jpg"
+      }
+    }
+  }
+}

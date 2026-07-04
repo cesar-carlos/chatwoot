@@ -205,6 +205,18 @@ RSpec.describe Webhooks::WhatsappEventsJob do
       )
       expect(edit_sync_service).to have_received(:perform)
     end
+
+    it 'delegates SEND_MESSAGE_UPDATE to MessageEditSyncService like MESSAGES_EDITED' do
+      envelope = load_fixture('messages_edited').merge('event' => 'send.message.update')
+
+      job.perform_now(envelope)
+
+      expect(Custom::Whatsapp::Evolution::MessageEditSyncService).to have_received(:new).with(
+        channel: channel,
+        data: envelope['data']
+      )
+      expect(edit_sync_service).to have_received(:perform)
+    end
   end
 
   describe 'connection events' do

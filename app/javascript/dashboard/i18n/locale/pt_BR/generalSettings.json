@@ -167,7 +167,8 @@
       "conversation_mention": "Menção",
       "sla_missed_first_response": "SLA não alcançado",
       "sla_missed_next_response": "SLA não alcançado",
-      "sla_missed_resolution": "SLA não alcançado"
+      "sla_missed_resolution": "SLA não alcançado",
+      "voice_call_incoming": "Chamada de voz recebida"
     }
   },
   "NETWORK": {

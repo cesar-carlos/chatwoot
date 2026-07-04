@@ -169,8 +169,8 @@ export default {
     },
     showWhatsappTemplates() {
       if (this.isAWavoipChannel) return false;
-      // FORK: Evolution has no WABA templates
-      if (this.isEvolutionWhatsAppChannel) return false;
+      // FORK: self-hosted WhatsApp gateways have no WABA templates
+      if (this.isGatewayWhatsAppChannel) return false;
       // We support templates for API channels if someone updates templates manually via API
       // That's why we don't explicitly check for channel type here
       const templates = this.$store.getters['inboxes/getWhatsAppTemplates'](
@@ -457,8 +457,8 @@ export default {
       return !this.showAudioRecorderEditor && !this.copilot.isActive.value;
     },
     isEditorDisabled() {
-      // FORK: Evolution has no 24h messaging window
-      if (this.isEvolutionWhatsAppChannel) return false;
+      // FORK: self-hosted WhatsApp gateways have no 24h messaging window
+      if (this.isGatewayWhatsAppChannel) return false;
       // FORK: Wavoip is voice-only — public replies are blocked
       if (this.isAWavoipChannel && !this.isOnPrivateNote) return true;
       return (
@@ -477,7 +477,7 @@ export default {
       if (!hasPermissions([...ROLES, CONTACT_PERMISSIONS], userPermissions)) {
         return false;
       }
-      if (this.isATelegramChannel || this.isEvolutionWhatsAppChannel)
+      if (this.isATelegramChannel || this.isGatewayWhatsAppChannel)
         return true;
       if (this.isAWhatsAppCloudChannel || this.is360DialogWhatsAppChannel) {
         return this.currentChat?.can_reply;

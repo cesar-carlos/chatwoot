@@ -403,6 +403,11 @@ export function useCallSession() {
     () => seedCallsFromHydratedMessages()
   );
 
+  watch(
+    () => store.getters.getSelectedChat?.messages?.length,
+    () => seedCallsFromHydratedMessages()
+  );
+
   onUnmounted(() => detachGlobalsOnLastUnmount());
 
   const actions = buildCallActions({ callsStore, whatsappSession, t });

@@ -126,4 +126,22 @@ describe('WavoipCallingPage', () => {
       })
     );
   });
+
+  it('persists call_recording_enabled when recording toggle changes', async () => {
+    const wrapper = mountPage({ call_recording_enabled: true });
+
+    await wrapper.vm.handleRecordingToggle(false);
+
+    expect(updateInbox).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        channel: {
+          provider_config: expect.objectContaining({
+            call_recording_enabled: false,
+          }),
+        },
+      })
+    );
+    expect(wrapper.vm.callRecordingEnabled).toBe(false);
+  });
 });
