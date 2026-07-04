@@ -57,19 +57,19 @@ export function reconcileWavoipStoreEntry(existing, incoming) {
 export function findWavoipCallForOffer(calls, offer, inboxId) {
   if (!offer?.id) return null;
 
-  return (
-    calls.find(
-      c =>
-        c.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
-        (c.callSid === offer.id || c.wavoipOfferId === offer.id)
-    ) ||
-    calls.find(
-      c =>
-        c.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
-        c.awaitingSdkOffer &&
-        c.inboxId === inboxId &&
-        !c.isActive
-    ) ||
-    null
+  const directMatch = calls.find(
+    c =>
+      c.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+      (c.callSid === offer.id || c.wavoipOfferId === offer.id)
   );
+  if (directMatch) return directMatch;
+
+  const awaiting = calls.filter(
+    c =>
+      c.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
+      c.awaitingSdkOffer &&
+      c.inboxId === inboxId &&
+      !c.isActive
+  );
+  return awaiting.length === 1 ? awaiting[0] : null;
 }

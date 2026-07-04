@@ -108,6 +108,31 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
     end
   end
 
+  it 'broadcasts ended for inbound in_progress when customer hangs up' do
+    call = create_call(
+      direction: :incoming,
+      from_phone: '+15550001111',
+      to_phone: channel.phone_number,
+      status: 'in_progress',
+      started_at: 1.minute.ago
+    )
+
+    applier_for(
+      build_event(
+        direction: :incoming,
+        external_status: 'ENDED',
+        duration_seconds: 45,
+        from_phone: '+15550001111',
+        to_phone: channel.phone_number
+      )
+    ).apply!(call, broadcast: true)
+
+    aggregate_failures do
+      expect(call.reload.status).to eq('completed')
+      expect(broadcaster).to have_received(:broadcast_ended).with(call)
+    end
+  end
+
   it 'assigns joining agent from cache when inbound becomes in_progress' do
     agent = create(:user, account: account)
     call = create_call(

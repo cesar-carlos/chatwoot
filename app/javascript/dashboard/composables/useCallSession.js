@@ -10,7 +10,7 @@ import {
   sendWhatsappTerminateBeacon,
   cleanupWhatsappSession,
 } from 'dashboard/composables/useWhatsappCallSession';
-import { handleVoiceCallCreated } from 'dashboard/helper/voice';
+import { handleVoiceCallCreated, isInbound } from 'dashboard/helper/voice';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 // FORK: Wavoip voice session registry (factory wired in Phase 2)
 import {
@@ -314,11 +314,10 @@ const buildCallActions = ({
   const dismissCall = async callSid => {
     const call = findCall(callSid);
     silenceCallRingtone(callSid, call);
-    if (
-      isWavoipCall(call) &&
-      call?.callDirection === VOICE_CALL_DIRECTION.INCOMING &&
-      !call?.isActive
-    ) {
+    const isWavoipInboundDirection =
+      isInbound(call?.callDirection) ||
+      call?.callDirection === VOICE_CALL_DIRECTION.INCOMING;
+    if (isWavoipCall(call) && isWavoipInboundDirection && !call?.isActive) {
       await rejectIncomingCall(callSid);
       return;
     }

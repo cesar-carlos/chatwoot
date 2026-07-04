@@ -9,6 +9,10 @@ class CallsAPI extends ApiClient {
   recordAccept(callId) {
     return axios.patch(`${this.url}/${callId}`);
   }
+
+  joinCall(callId) {
+    return axios.post(`${this.url}/${callId}/join`);
+  }
 }
 
 export default new CallsAPI();
