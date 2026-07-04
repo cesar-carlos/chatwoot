@@ -98,6 +98,10 @@ export default {
         this.whatsAppAPIProvider === 'evolution'
       );
     },
+    // FORK: Wavoip voice-only inbox
+    isAWavoipChannel() {
+      return this.channelType === INBOX_TYPES.WAVOIP;
+    },
     chatAdditionalAttributes() {
       const { additional_attributes: additionalAttributes } = this.chat || {};
       return additionalAttributes || {};

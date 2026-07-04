@@ -2,7 +2,7 @@
 
 Estratégia para integrar Wavoip ao fork sem alterar o fluxo Meta Cloud Calling.
 
-**Reavaliado em:** 27 jun. 2026
+**Reavaliado em:** 04 jul. 2026
 
 ## Comece aqui
 
@@ -58,14 +58,14 @@ Resultados em [spike-notes.md](./spike-notes.md) (19 jun. 2026):
 | Gate | Resultado |
 |------|-----------|
 | G0.1 SDK | ✅ Pass |
-| G0.2 IDs | ⚠️ Partial — pipeline OK via simulação; correlação live não provada (sem webhook CALL do painel) |
-| G0.3 Webhook bruto | ⚠️ Partial — endpoint `202`; painel Wavoip não POSTa CALL em chamadas live |
-| G0.4 Multiagente | ❌ Não testado |
+| G0.2 IDs | ⚠️ Partial — pipeline OK (caller/receiver, 26 jun.); correlação live via painel Wavoip (W1) pendente |
+| G0.3 Webhook bruto | ⚠️ Partial — endpoint `202`; pipeline aceita payloads live; **W1** — POST CALL do painel em chamada live ainda não provado |
+| G0.4 Multiagente | ❌ Browser E2E pendente |
 | G0.5 Lifecycle | ✅ Pass |
 | G0.6 Segurança | ✅ Pass |
 | G0.7 Histórico | ✅ Pass (simulado) |
 
-**Veredicto:** `go com restrições` — código em produção; piloto bloqueado em entrega de webhooks CALL pelo painel Wavoip.
+**Veredicto:** `go com restrições` — código em produção; piloto bloqueado em **W1** (prova live painel) + **G0.4** (browser E2E multiagente).
 
 ## Escopo revisado
 
@@ -80,22 +80,22 @@ Resultados em [spike-notes.md](./spike-notes.md) (19 jun. 2026):
 Estimativa inicial do MVP após spike: **4–6 semanas**, dependendo principalmente da
 correlação SDK/webhook e da extensão dos acoplamentos frontend.
 
-## Estado atual (27 jun. 2026)
+## Estado atual (04 jul. 2026)
 
 | Métrica | Valor |
 |---------|-------|
 | **MVP código** | ~95% (fases 0–4 code-complete; refactory R1–R3 concluído) |
-| **Piloto produção** | ~65% (webhooks CALL live resolvido no vendor; G0.4 multiagente pendente) |
-| **Bloqueador piloto** | Teste formal G0.4 multiagente; demais fluxos inbound operacionais |
+| **Piloto produção** | ~60–65% |
+| **Bloqueador piloto** | **W1** — prova live no painel Wavoip (CALL) + **G0.4** browser E2E multiagente |
 
 | Componente | Status |
 |------------|--------|
 | Meta Calling | Implementado em `enterprise/` |
-| **Wavoip backend** | ✅ Code complete — `custom/app/models/channel/wavoip.rb`, webhook pipeline, `CallUpsertService`, `ConversationLinker`, `Broadcaster`, `CallsController#update` |
-| **Wavoip frontend** | ✅ 18 arquivos em `custom/app/javascript/` — registry, composables SDK, `Wavoip.vue`, `WavoipCallingPage.vue` |
+| **Wavoip backend** | ✅ Code complete — `custom/app/models/channel/wavoip.rb`, webhook pipeline (caller/receiver), `CallUpsertService`, `ConversationLinker`, `Broadcaster`, `CallsController#update` |
+| **Wavoip frontend** | ✅ ~31 arquivos em `custom/app/javascript/` — registry, composables SDK, `Wavoip.vue`, `WavoipCallingPage.vue` |
 | **Enum `Call.provider`** | ✅ `wavoip: 2` em `enterprise/app/models/call.rb` (`# FORK:`) |
-| **Testes** | ✅ 76 RSpec + 21 Vitest (com DB) |
-| **E2E live** | ✅ Inbound com webhooks CALL + SDK offer; outbound RINGING → ACTIVE |
+| **Testes** | ✅ 104 RSpec + 83 Vitest examples (escopo refactory) |
+| **E2E live** | ⚠️ Pipeline OK + inbound operacional (fixtures simulados/live); **W1** prova painel pendente; outbound SDK RINGING → ACTIVE |
 | **UX ringtone (27 jun.)** | ✅ Parar som ao rejeitar; mute persistente (`useCallRingtonePreference`); alerta `CALLER_ENDED`; reconciliação `wavoipOfferId` |
 | **Produção piloto** | Account 2, inbox 42, device `556697193168` (`open`) |
 | Pacote npm | `@wavoip/wavoip-api@2.6.1` |

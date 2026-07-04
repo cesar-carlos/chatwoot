@@ -14,25 +14,29 @@ export function queueAcceptedByRecording(callSid) {
   if (callSid) pendingAcceptByCallSid.add(callSid);
 }
 
-async function recordAcceptWithRetry(dbCallId, callSid, attempt = 0) {
-  try {
-    await CallsAPI.recordAccept(dbCallId);
-    return undefined;
-  } catch (_) {
-    if (attempt < MAX_ATTEMPTS - 1) {
-      await sleep(RETRY_DELAYS_MS[attempt]);
-      return recordAcceptWithRetry(dbCallId, callSid, attempt + 1);
-    }
+export async function recordAcceptWithRetry(dbCallId, callSid, options = {}) {
+  const { onFailure } = options;
 
-    // eslint-disable-next-line no-console
-    console.warn(
-      `Failed to record accept for callSid=${callSid} dbCallId=${dbCallId} after ${MAX_ATTEMPTS} attempts`
-    );
-    return undefined;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+    try {
+      await CallsAPI.recordAccept(dbCallId);
+      return true;
+    } catch (_) {
+      if (attempt < MAX_ATTEMPTS - 1) {
+        await sleep(RETRY_DELAYS_MS[attempt]);
+      }
+    }
   }
+
+  // eslint-disable-next-line no-console
+  console.warn(
+    `Failed to record accept for callSid=${callSid} dbCallId=${dbCallId} after ${MAX_ATTEMPTS} attempts`
+  );
+  onFailure?.();
+  return false;
 }
 
-export async function flushAcceptedByRecording(callSid) {
+export async function flushAcceptedByRecording(callSid, options = {}) {
   if (!pendingAcceptByCallSid.has(callSid)) return;
 
   const dbCallId = useCallsStore().calls.find(
@@ -41,7 +45,7 @@ export async function flushAcceptedByRecording(callSid) {
   if (!dbCallId) return;
 
   pendingAcceptByCallSid.delete(callSid);
-  await recordAcceptWithRetry(dbCallId, callSid);
+  await recordAcceptWithRetry(dbCallId, callSid, options);
 }
 
 export function clearAcceptedByQueue() {

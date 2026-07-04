@@ -2,14 +2,18 @@ import { readonly, ref } from 'vue';
 import Cookies from 'js-cookie';
 import { VOICE_CALL_OUTBOUND_INIT_STATUS } from 'dashboard/components-next/message/constants';
 import { useAlert } from 'dashboard/composables';
-import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 
 let callsAPI = null;
+let translateFn = key => key;
 let buildTerminatePath = (accountId, callId) =>
   `/api/v1/accounts/${accountId}/whatsapp_calls/${callId}/terminate`;
 
 export function configureWebRtcCallsAPI(api) {
   callsAPI = api;
+}
+
+export function configureWebRtcTranslate(fn) {
+  translateFn = fn;
 }
 
 export function configureWebRtcTerminatePath(builder) {
@@ -202,9 +206,7 @@ const stopRecorderAndUpload = async callId => {
   } catch (err) {
     // eslint-disable-next-line no-console
     console.warn('[WebRTC] recording upload failed:', err);
-    useAlert(
-      conversationI18n.CONVERSATION.VOICE_WIDGET.RECORDING_UPLOAD_FAILED
-    );
+    useAlert(translateFn('CONVERSATION.VOICE_WIDGET.RECORDING_UPLOAD_FAILED'));
   }
 };
 

@@ -2,7 +2,7 @@
 
 Documentação do stack **WhatsApp Cloud Calling** (Meta Graph API + WebRTC browser↔Meta) no Chatwoot Enterprise. Para Twilio PSTN ou gateways não oficiais, ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) e [second-provider-strategy.md](./second-provider-strategy.md).
 
-**Última reanálise:** 24 jun. 2026 (sync pós-refactors outbound/permission + handlers FE).
+**Última reanálise:** jul. 2026 (sync pós-refactors outbound/permission + handlers FE + Wavoip refactory).
 
 ---
 
@@ -439,7 +439,7 @@ Comentário no código convida novos providers — sem registry formal.
 
 ## 11. Pontos de extensão para fork
 
-**Sem marcadores `FORK:`** no código de voz upstream (jun/2026), exceto `Voice::InboundCallBuilder` → `Conversations::Resolver`.
+**Core Meta EE sem `# FORK:`** no código de voz upstream (jul/2026), exceto `Voice::InboundCallBuilder` → `Conversations::Resolver`. Integração Wavoip usa `# FORK:` em hooks OSS (`Dashboard.vue`, `Settings.vue`, `inboxes.js`, `useCallSession.js`, `actionCable.js`, rotas).
 
 **Antes de provider SDP/Meta-like:** executar o roadmap §13. Para Wavoip, executar
 primeiro o [spike e os gates próprios](./wavoip-provider/implementation-plan.md);
@@ -511,7 +511,7 @@ sessão/eventos antes da integração final com widget/store.
 | `components-next/` para UI | **OK** |
 | Evitar god class | **Backend OK**; **FE** — core WebRTC ainda concentrado em `useWebRtcCallSession` |
 | Evitar shotgun surgery | **Parcial** — Wavoip registry; WhatsApp ainda inline em `actionCable.js` |
-| Fork: EE + `custom/` | **OK** — sem FORK em voz upstream (exceto `Conversations::Resolver` no builder) |
+| Fork: EE + `custom/` | **OK** — core Meta sem FORK; Wavoip via hooks OSS + `custom/` |
 
 ### Relação com providers alternativos
 

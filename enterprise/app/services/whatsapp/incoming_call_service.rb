@@ -201,16 +201,17 @@ class Whatsapp::IncomingCallService
   end
 
   def broadcast(call, event, streams: account_streams, **extra)
-    payload = { event: event, data: base_payload(call).merge(extra) }
-    streams.each { |s| ActionCable.server.broadcast(s, payload) }
+    cable_broadcaster.broadcast(call, event, streams: streams, **extra)
+  end
+
+  def cable_broadcaster
+    @cable_broadcaster ||= Voice::Adapters::ActionCableCallBroadcaster.new(
+      account_id: inbox.account_id,
+      provider: 'whatsapp'
+    )
   end
 
   def account_streams
     ["account_#{inbox.account_id}"]
-  end
-
-  def base_payload(call)
-    { account_id: inbox.account_id, id: call.id, call_id: call.provider_call_id,
-      provider: 'whatsapp', conversation_id: call.conversation_id }
   end
 end

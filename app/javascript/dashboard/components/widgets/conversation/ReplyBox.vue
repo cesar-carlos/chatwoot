@@ -206,6 +206,7 @@ export default {
       return !!stripped.trim();
     },
     isReplyRestricted() {
+      if (this.isAWavoipChannel) return true;
       return (
         !this.currentChat?.can_reply &&
         !(this.isAWhatsAppChannel || this.isAPIInbox)
@@ -219,6 +220,9 @@ export default {
     },
     messagePlaceHolder() {
       if (this.isEditorDisabled) {
+        if (this.isAWavoipChannel) {
+          return this.$t('CONVERSATION.WAVOIP_VOICE_ONLY');
+        }
         if (this.isAWhatsAppChannel) {
           return this.$t('CONVERSATION.FOOTER.MESSAGING_RESTRICTED_WHATSAPP');
         }
@@ -451,6 +455,8 @@ export default {
     isEditorDisabled() {
       // FORK: Evolution has no 24h messaging window
       if (this.isEvolutionWhatsAppChannel) return false;
+      // FORK: Wavoip is voice-only — public replies are blocked
+      if (this.isAWavoipChannel && !this.isOnPrivateNote) return true;
       return (
         (this.isAWhatsAppChannel || this.isAPIInbox) &&
         !this.isOnPrivateNote &&
@@ -485,6 +491,11 @@ export default {
         this.setCCAndToEmailsFromLastChat();
         // Reset Copilot editor state (includes cancelling ongoing generation)
         this.copilot.reset();
+      }
+
+      if (this.isAWavoipChannel) {
+        this.replyType = REPLY_EDITOR_MODES.NOTE;
+        return;
       }
 
       if (this.isOnPrivateNote) {
@@ -979,6 +990,8 @@ export default {
       this.hideContentTemplatesModal();
     },
     setReplyMode(mode = REPLY_EDITOR_MODES.REPLY) {
+      if (this.isAWavoipChannel && mode !== REPLY_EDITOR_MODES.NOTE) return;
+
       // Clear attachments when switching between private note and reply modes
       // This is to prevent from breaking the upload rules
       if (this.attachedFiles.length > 0) this.attachedFiles = [];
@@ -1308,6 +1321,7 @@ export default {
       :mode="replyType"
       :conversation-id="conversationId"
       :is-reply-restricted="isReplyRestricted"
+      :voice-only-inbox="isAWavoipChannel"
       :disabled="
         (copilot.isActive.value && copilot.isButtonDisabled.value) ||
         showAudioRecorderEditor

@@ -1,10 +1,12 @@
 import WhatsappCallsAPI from 'dashboard/api/channel/whatsapp/whatsappCallsAPI';
+import { useI18n } from 'vue-i18n';
 import {
   applyOutboundAnswer,
   armOutboundRecorder,
   cleanupWebRtcSession,
   configureWebRtcCallsAPI,
   configureWebRtcTerminatePath,
+  configureWebRtcTranslate,
   handleWebRtcRemoteEnd,
   hasActiveWebRtcCall,
   isLocalWebRtcCall,
@@ -27,6 +29,8 @@ export const setWhatsappCallMuted = setWebRtcCallMuted;
 export const sendWhatsappTerminateBeacon = sendWebRtcTerminateBeacon;
 
 export function useWhatsappCallSession() {
+  const { t } = useI18n();
+  configureWebRtcTranslate(t);
   return useWebRtcCallSession();
 }
 
