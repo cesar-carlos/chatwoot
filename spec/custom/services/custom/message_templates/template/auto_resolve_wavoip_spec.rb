@@ -16,7 +16,7 @@ RSpec.describe MessageTemplates::Template::AutoResolve do
     it 'skips auto-resolve template on voice-only inbox' do
       expect do
         described_class.new(conversation: conversation).perform
-      end.not_to change { conversation.messages.template.count }
+      end.not_to(change { conversation.messages.template.count })
     end
   end
 end

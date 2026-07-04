@@ -102,6 +102,52 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionService do
       expect(quoted.dig(:key, :fromMe)).to be(false)
       expect(quoted.dig(:key, :remoteJid)).to eq('5511999999999@s.whatsapp.net')
     end
+
+    it 'scopes quoted lookup to the current conversation' do
+      other_contact = create(:contact, account: account, phone_number: '+5511888888888')
+      other_contact_inbox = create(:contact_inbox, contact: other_contact, inbox: inbox, source_id: '5511888888888')
+      other_conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: other_contact,
+        contact_inbox: other_contact_inbox
+      )
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: other_conversation,
+        message_type: :incoming,
+        sender: other_contact,
+        source_id: 'SHARED-ID',
+        content: 'Wrong conversation'
+      )
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :incoming,
+        sender: contact,
+        source_id: 'SHARED-ID',
+        content: 'Right conversation',
+        content_attributes: { evolution_remote_jid: '5511999999999@s.whatsapp.net' }
+      )
+      message = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        sender: user,
+        content_attributes: { in_reply_to_external_id: 'SHARED-ID' }
+      )
+
+      quoted = service.send(:build_quoted_context, '5511999999999', message)
+
+      expect(quoted.dig(:message, :conversation)).to eq('Right conversation')
+    end
   end
 
   describe '#process_response' do
@@ -205,7 +251,7 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionService do
       expect(api_client).not_to have_received(:mark_message_as_read)
     end
 
-    it 'prefers the latest unread incoming message over an older quoted one' do
+    it 'marks the replied-to incoming message as read when in_reply_to_external_id is set' do
       create(
         :message,
         account: account,
@@ -235,7 +281,7 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionService do
       expect(api_client).to have_received(:mark_message_as_read).with(
         read_messages: [
           {
-            id: 'IN-LAST',
+            id: 'IN-OLDER',
             fromMe: false,
             remoteJid: '5511999999999@s.whatsapp.net'
           }

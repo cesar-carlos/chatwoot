@@ -21,7 +21,7 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
     reply_id = message.content_attributes[:in_reply_to_external_id]
     return nil if reply_id.blank?
 
-    original = message.inbox.messages.find_by(source_id: reply_id)
+    original = message.conversation.messages.find_by(source_id: reply_id)
     {
       key: {
         id: reply_id,
@@ -69,6 +69,20 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
   end
 
   def read_target_message(message)
+    replied = replied_to_incoming_message(message)
+    return replied if replied.present?
+
+    latest_unread_incoming_message(message)
+  end
+
+  def replied_to_incoming_message(message)
+    reply_id = message.content_attributes[:in_reply_to_external_id]
+    return nil if reply_id.blank?
+
+    message.conversation.messages.incoming.find_by(source_id: reply_id)
+  end
+
+  def latest_unread_incoming_message(message)
     scope = message.conversation.messages
                    .incoming
                    .where(inbox_id: message.inbox_id)

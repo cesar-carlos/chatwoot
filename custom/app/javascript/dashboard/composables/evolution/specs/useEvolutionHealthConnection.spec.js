@@ -5,7 +5,9 @@ const useAlert = vi.fn();
 
 vi.mock('dashboard/composables/store', () => ({
   useStore: () => ({
-    dispatch: vi.fn().mockRejectedValue({ response: { data: { error: 'network down' } } }),
+    dispatch: vi
+      .fn()
+      .mockRejectedValue({ response: { data: { error: 'network down' } } }),
   }),
 }));
 
@@ -19,9 +21,12 @@ vi.mock('vue-i18n', () => ({
   }),
 }));
 
-vi.mock('customDashboard/composables/evolution/useEvolutionConnectionCable', () => ({
-  useEvolutionConnectionCable: vi.fn(),
-}));
+vi.mock(
+  'customDashboard/composables/evolution/useEvolutionConnectionCable',
+  () => ({
+    useEvolutionConnectionCable: vi.fn(),
+  })
+);
 
 import { useEvolutionHealthConnection } from 'customDashboard/composables/evolution/useEvolutionHealthConnection';
 

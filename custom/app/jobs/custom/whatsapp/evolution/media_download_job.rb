@@ -14,7 +14,8 @@ class Custom::Whatsapp::Evolution::MediaDownloadJob < ApplicationJob
     message = Message.find_by(id: message_id)
     return if channel.blank? || message.blank?
     return if message.attachments.exists?
-    return unless acquire_media_lock!(message_id)
+
+    acquire_media_lock!(message_id)
 
     Custom::Whatsapp::Evolution::MediaAttachmentService.new(
       channel: channel,
@@ -30,6 +31,10 @@ class Custom::Whatsapp::Evolution::MediaDownloadJob < ApplicationJob
 
   def acquire_media_lock!(message_id)
     @media_lock_acquired = ::Redis::Alfred.set(media_lock_key(message_id), true, nx: true, ex: MEDIA_LOCK_TTL)
+    return if @media_lock_acquired
+
+    raise MutexApplicationJob::LockAcquisitionError,
+          "Evolution media download lock busy for message_id=#{message_id}"
   end
 
   def release_media_lock!(message_id)

@@ -88,4 +88,15 @@ RSpec.describe Custom::Whatsapp::Evolution::MediaDownloadJob, type: :job do
     expect(Redis::Alfred.get(lock_key)).to be_nil
     expect(Redis::Alfred.set(lock_key, true, nx: true, ex: 60)).to be(true)
   end
+
+  it 'raises LockAcquisitionError when the media lock is busy' do
+    lock_key = format(Redis::RedisKeys::EVOLUTION_MEDIA_DOWNLOAD_LOCK, message_id: message.id)
+    Redis::Alfred.set(lock_key, true, nx: true, ex: 60)
+
+    expect do
+      described_class.perform_now(channel.id, message.id, attachment_payload, 'image')
+    end.to raise_error(MutexApplicationJob::LockAcquisitionError, /media download lock busy/)
+
+    expect(Custom::Whatsapp::Evolution::MediaAttachmentService).not_to have_received(:new)
+  end
 end

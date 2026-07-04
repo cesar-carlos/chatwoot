@@ -28,8 +28,7 @@ import Timer from 'dashboard/helper/Timer';
 
 const isWhatsappCall = call => call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP;
 const isWavoipCall = call => call?.provider === VOICE_CALL_PROVIDERS.WAVOIP;
-const isBrowserVoiceCall = call =>
-  isWhatsappCall(call) || isWavoipCall(call);
+const isBrowserVoiceCall = call => isWhatsappCall(call) || isWavoipCall(call);
 
 const resolveBrowserVoiceSession = (
   call,
@@ -184,7 +183,7 @@ const buildCallActions = ({
     // auto-joins them), so don't short-circuit those.
     if (
       call?.callDirection === VOICE_CALL_DIRECTION.OUTBOUND &&
-      (isBrowserVoiceCall(call))
+      isBrowserVoiceCall(call)
     ) {
       return null;
     }
