@@ -9,12 +9,16 @@ module Custom::Whatsapp::IncomingMessageBaseService
 
     status = @processed_params[:statuses].first
     unless find_message_by_source_id(status[:id])
-      Custom::Whatsapp::Evolution::DeferredStatusJob.set(wait: 5.seconds).perform_later(
+      Custom::Whatsapp::Evolution::DeferredStatusJob.set(
+        wait: Custom::Whatsapp::Evolution::DeferredStatusJob::DEFER_WAIT
+      ).perform_later(
         inbox.id,
-        status.deep_stringify_keys
+        status.deep_stringify_keys,
+        1
       )
       Rails.logger.info(
-        "[EVOLUTION] status update deferred source_id=#{status[:id]} status=#{status[:status]}"
+        "[EVOLUTION] status update deferred source_id=#{status[:id]} status=#{status[:status]} attempt=1/" \
+        "#{Custom::Whatsapp::Evolution::DeferredStatusJob::MAX_ATTEMPTS}"
       )
       return
     end
@@ -46,6 +50,18 @@ module Custom::Whatsapp::IncomingMessageBaseService
   def create_regular_message(message)
     super
     enqueue_pending_evolution_media_download if evolution_channel?
+  end
+
+  def lock_message_source_id!
+    return super unless evolution_channel?
+
+    source_id = messages_data&.first&.dig(:id)
+    return false if source_id.blank?
+
+    return true if Whatsapp::MessageDedupLock.new(source_id).acquire!
+
+    raise MutexApplicationJob::LockAcquisitionError,
+          "Evolution inbound dedup lock busy for source_id=#{source_id}"
   end
 
   private

@@ -23,22 +23,26 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
     @call.with_lock do
       next if @call.accepted_by_agent_id.present?
 
-      @call.update!(accepted_by_agent_id: Current.user.id)
-      Wavoip::Calls::JoiningAgentCache.delete(@call.id)
-      Voice::CallMessageBuilder.new(@call).update_status!(
-        status: @call.status,
-        agent: Current.user,
-        duration_seconds: @call.duration_seconds
-      )
-      Wavoip::Calls::Broadcaster.new(inbox: @call.inbox).broadcast_agent_accepted(
-        @call.reload,
-        accepted_by_agent_id: Current.user.id
-      )
-      Wavoip::Calls::AssigneeOnAcceptService.new(
-        call: @call,
-        agent: Current.user
-      ).perform!
+      accept_call_for_current_user!
     end
+  end
+
+  def accept_call_for_current_user!
+    @call.update!(accepted_by_agent_id: Current.user.id)
+    Wavoip::Calls::JoiningAgentCache.delete(@call.id)
+    Voice::CallMessageBuilder.new(@call).update_status!(
+      status: @call.status,
+      agent: Current.user,
+      duration_seconds: @call.duration_seconds
+    )
+    Wavoip::Calls::Broadcaster.new(inbox: @call.inbox).broadcast_agent_accepted(
+      @call.reload,
+      accepted_by_agent_id: Current.user.id
+    )
+    Wavoip::Calls::AssigneeOnAcceptService.new(
+      call: @call,
+      agent: Current.user
+    ).perform!
   end
 
   def fetch_call

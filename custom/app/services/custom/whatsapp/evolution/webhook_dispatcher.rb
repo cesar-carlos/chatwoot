@@ -32,12 +32,31 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
   end
 
   def process_message_item(channel, params, data_item)
+    if status_update?(params[:event], data_item)
+      process_status_update(channel, params, data_item)
+      return
+    end
+
     key = message_key(data_item)
     if from_me_message?(key)
       process_from_me_message(channel, params[:event], data_item, key)
       return
     end
 
+    normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer.new(
+      channel: channel,
+      envelope: params.merge(data: data_item)
+    ).perform
+    return log_normalizer_skipped(params[:event], data_item) if normalized.blank?
+
+    flat_params = normalized.merge(phone_number: channel.phone_number)
+    sender_id = contact_sender_id(flat_params)
+    with_message_lock(channel, sender_id) do
+      Custom::Whatsapp::Evolution::InboundMessageProcessor.process(channel, flat_params)
+    end
+  end
+
+  def process_status_update(channel, params, data_item)
     normalized = Custom::Whatsapp::Webhooks::EvolutionNormalizer.new(
       channel: channel,
       envelope: params.merge(data: data_item)
@@ -95,6 +114,23 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
 
   def message_key(data_item)
     data_item.is_a?(Hash) ? (data_item['key'] || data_item[:key] || {}) : {}
+  end
+
+  def status_update?(event, data_item)
+    return false unless event == 'MESSAGES_UPDATE' && data_item.is_a?(Hash)
+
+    data = data_item.with_indifferent_access
+    evolution_flat_status?(data) || baileys_status?(data)
+  end
+
+  def evolution_flat_status?(data)
+    data[:keyId].present? && data[:status].present?
+  end
+
+  def baileys_status?(data)
+    key = data[:key] || {}
+    update = data[:update] || {}
+    key[:id].present? && !update[:status].nil?
   end
 
   def from_me_message?(key)

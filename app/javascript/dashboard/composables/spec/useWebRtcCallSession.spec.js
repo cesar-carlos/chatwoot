@@ -28,8 +28,14 @@ const mockPc = {
   ontrack: null,
 };
 
-vi.stubGlobal('RTCPeerConnection', vi.fn(() => mockPc));
-vi.stubGlobal('MediaStream', vi.fn(() => mockStream));
+vi.stubGlobal(
+  'RTCPeerConnection',
+  vi.fn(() => mockPc)
+);
+vi.stubGlobal(
+  'MediaStream',
+  vi.fn(() => mockStream)
+);
 vi.stubGlobal('MediaRecorder', { isTypeSupported: () => false });
 
 describe('useWebRtcCallSession', () => {

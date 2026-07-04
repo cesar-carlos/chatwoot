@@ -17,16 +17,19 @@ export function queueAcceptedByRecording(callSid) {
 export async function recordAcceptWithRetry(dbCallId, callSid, options = {}) {
   const { onFailure } = options;
 
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
+  const attemptRecord = async attempt => {
     try {
       await CallsAPI.recordAccept(dbCallId);
       return true;
     } catch (_) {
-      if (attempt < MAX_ATTEMPTS - 1) {
-        await sleep(RETRY_DELAYS_MS[attempt]);
-      }
+      if (attempt >= MAX_ATTEMPTS - 1) return false;
+      await sleep(RETRY_DELAYS_MS[attempt]);
+      return attemptRecord(attempt + 1);
     }
-  }
+  };
+
+  const recorded = await attemptRecord(0);
+  if (recorded) return true;
 
   // eslint-disable-next-line no-console
   console.warn(

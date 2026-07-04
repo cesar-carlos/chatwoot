@@ -46,6 +46,27 @@ RSpec.describe Custom::Whatsapp::Evolution::WebhookDispatcher do
       )
     end
 
+    it 'routes Baileys MESSAGES_UPDATE with fromMe to InboundMessageProcessor as status' do
+      envelope = {
+        'event' => 'MESSAGES_UPDATE',
+        'instance' => 'test-instance',
+        'data' => {
+          'key' => { 'id' => 'BAILEYS-OUT-1', 'remoteJid' => '5511999999999@s.whatsapp.net', 'fromMe' => true },
+          'update' => { 'status' => 3 }
+        }
+      }
+
+      dispatcher.dispatch(channel, envelope.symbolize_keys)
+
+      expect(Custom::Whatsapp::Evolution::InboundMessageProcessor).to have_received(:process).with(
+        channel,
+        hash_including(
+          statuses: [hash_including(id: 'BAILEYS-OUT-1', status: 'delivered')],
+          phone_number: channel.phone_number
+        )
+      )
+    end
+
     it 'routes CONNECTION_UPDATE to ConnectionService' do
       connection_service = instance_double(Custom::Whatsapp::Evolution::ConnectionService, handle_event: nil)
       allow(Custom::Whatsapp::Evolution::ConnectionService).to receive(:new).and_return(connection_service)

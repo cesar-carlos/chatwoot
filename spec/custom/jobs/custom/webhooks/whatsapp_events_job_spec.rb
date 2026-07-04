@@ -32,6 +32,7 @@ RSpec.describe Webhooks::WhatsappEventsJob do
   before do
     channel
     allow(Whatsapp::IncomingMessageService).to receive(:new).and_return(process_service)
+    allow(Custom::Whatsapp::Evolution::PhoneOutgoingSyncService).to receive(:new)
     allow(Custom::Whatsapp::Evolution::ConnectionService).to receive(:new).and_return(connection_service)
     allow(Custom::Whatsapp::Evolution::ContactsSyncService).to receive(:new).and_return(contacts_sync_service)
     allow(Custom::Whatsapp::Evolution::MessageDeleteSyncService).to receive(:new).and_return(delete_sync_service)
@@ -78,6 +79,28 @@ RSpec.describe Webhooks::WhatsappEventsJob do
           phone_number: channel.phone_number
         )
       )
+    end
+
+    it 'routes Baileys MESSAGES_UPDATE with fromMe through IncomingMessageService as status' do
+      envelope = {
+        'event' => 'MESSAGES_UPDATE',
+        'instance' => 'test-instance',
+        'data' => {
+          'key' => { 'id' => 'BAILEYS-OUT-1', 'remoteJid' => '5511999999999@s.whatsapp.net', 'fromMe' => true },
+          'update' => { 'status' => 4 }
+        }
+      }
+
+      job.perform_now(envelope)
+
+      expect(Whatsapp::IncomingMessageService).to have_received(:new).with(
+        inbox: channel.inbox,
+        params: hash_including(
+          statuses: [hash_including(id: 'BAILEYS-OUT-1', status: 'read')],
+          phone_number: channel.phone_number
+        )
+      )
+      expect(Custom::Whatsapp::Evolution::PhoneOutgoingSyncService).not_to have_received(:new)
     end
 
     it 'routes live Evolution dotted event names (messages.upsert)' do

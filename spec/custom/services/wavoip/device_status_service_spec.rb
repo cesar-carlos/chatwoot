@@ -20,7 +20,7 @@ RSpec.describe Wavoip::DeviceStatusService do
     end
 
     it 'refreshes device status when forced' do
-      stub_request(:get, "https://devices.wavoip.com/test-token/whatsapp/all_info")
+      stub_request(:get, 'https://devices.wavoip.com/test-token/whatsapp/all_info')
         .to_return(
           status: 200,
           body: { result: { status: 'open', contact: { phone: '55669999050312' } } }.to_json,

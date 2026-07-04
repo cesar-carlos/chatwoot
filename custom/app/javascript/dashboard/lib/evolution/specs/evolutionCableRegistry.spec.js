@@ -1,12 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockUnsubscribe, subscriptions, createConsumer } = vi.hoisted(() => {
-  const mockUnsubscribe = vi.fn();
-  const subscriptions = {
-    create: vi.fn(() => ({ unsubscribe: mockUnsubscribe })),
+  const unsub = vi.fn();
+  const subs = {
+    create: vi.fn(() => ({ unsubscribe: unsub })),
   };
-  const createConsumer = vi.fn(() => ({ subscriptions }));
-  return { mockUnsubscribe, subscriptions, createConsumer };
+  const consumer = vi.fn(() => ({ subscriptions: subs }));
+  return {
+    mockUnsubscribe: unsub,
+    subscriptions: subs,
+    createConsumer: consumer,
+  };
 });
 
 vi.mock('@rails/actioncable', () => ({

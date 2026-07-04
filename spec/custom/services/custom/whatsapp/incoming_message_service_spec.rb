@@ -139,6 +139,18 @@ RSpec.describe Whatsapp::IncomingMessageService do
     end
   end
 
+  describe 'Evolution inbound dedup' do
+    it 'raises LockAcquisitionError when the dedup lock is busy' do
+      params = evolution_inbound_params(message_id: 'EVO-DEDUP-BUSY-1')
+      dedup_lock = instance_double(Whatsapp::MessageDedupLock, acquire!: false)
+      allow(Whatsapp::MessageDedupLock).to receive(:new).with('EVO-DEDUP-BUSY-1').and_return(dedup_lock)
+
+      expect do
+        described_class.new(inbox: inbox, params: params).perform
+      end.to raise_error(MutexApplicationJob::LockAcquisitionError, /dedup lock busy/)
+    end
+  end
+
   describe 'Evolution status updates' do
     it 'does not downgrade message status' do
       message
@@ -182,7 +194,7 @@ RSpec.describe Whatsapp::IncomingMessageService do
       end.to have_enqueued_job(Custom::Whatsapp::Evolution::DeferredStatusJob)
 
       expect(Rails.logger).to have_received(:info).with(
-        '[EVOLUTION] status update deferred source_id=MISSING_ID status=read'
+        '[EVOLUTION] status update deferred source_id=MISSING_ID status=read attempt=1/6'
       )
     end
   end
