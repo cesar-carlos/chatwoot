@@ -52,4 +52,27 @@ RSpec.describe Custom::Whatsapp::Evolution::DeferredStatusJob, type: :job do
       a_string_matching(/\[EVOLUTION\] deferred status dropped inbox=#{inbox.id}/)
     )
   end
+
+  it 'drops status updates when the message never appears' do
+    allow(Rails.logger).to receive(:info)
+    allow(Rails.logger).to receive(:warn)
+    allow(Whatsapp::IncomingMessageService).to receive(:new)
+
+    (1...described_class::MAX_ATTEMPTS).each do |attempt|
+      expect do
+        described_class.perform_now(inbox.id, { 'id' => 'NEVER-EXISTS', 'status' => 'delivered' }, attempt)
+      end.to have_enqueued_job(described_class).with(inbox.id, hash_including('id' => 'NEVER-EXISTS'), attempt + 1)
+    end
+
+    described_class.perform_now(
+      inbox.id,
+      { 'id' => 'NEVER-EXISTS', 'status' => 'delivered' },
+      described_class::MAX_ATTEMPTS
+    )
+
+    expect(Whatsapp::IncomingMessageService).not_to have_received(:new)
+    expect(Rails.logger).to have_received(:warn).with(
+      a_string_including("message not found after #{described_class::MAX_ATTEMPTS} attempts")
+    )
+  end
 end

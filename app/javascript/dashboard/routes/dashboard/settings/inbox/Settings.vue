@@ -244,7 +244,10 @@ export default {
       }
 
       if (
-        this.isFeatureEnabledonAccount(this.accountId, FEATURE_FLAGS.AGENT_BOTS) &&
+        this.isFeatureEnabledonAccount(
+          this.accountId,
+          FEATURE_FLAGS.AGENT_BOTS
+        ) &&
         !this.isAWavoipChannel
       ) {
         visibleToAllChannelTabs = [

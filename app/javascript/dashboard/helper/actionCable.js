@@ -77,6 +77,7 @@ class ActionCableConnector extends BaseActionCableConnector {
     return createWavoipVoiceCableHandlers(t || (key => key));
   }
 
+  // eslint-disable-next-line class-methods-use-this
   whatsappVoiceCableHandlers() {
     return createWhatsappVoiceCableHandlers();
   }
