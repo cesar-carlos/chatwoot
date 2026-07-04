@@ -65,3 +65,6 @@ class AutomationRules::ActionService < ActionService
     end
   end
 end
+
+# FORK: voice-only inbox action guards
+AutomationRules::ActionService.prepend_mod_with('AutomationRules::ActionService')

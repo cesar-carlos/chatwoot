@@ -21,14 +21,12 @@ module Custom::Messages::MessageBuilder
   end
 
   def wavoip_outgoing_public_message?
-    channel = @conversation.inbox&.channel
-    return false unless channel.respond_to?(:supports_outbound_text?)
-    return false if channel.supports_outbound_text?
-    return false if @private
-    return false unless @message_type == 'outgoing'
-    return false if @params[:content_type].to_s == 'voice_call'
-
-    true
+    Custom::Channels::OutboundText.blocks_outgoing_public_message?(
+      channel: @conversation.inbox&.channel,
+      private: @private,
+      message_type: @message_type,
+      content_type: @params[:content_type]
+    )
   end
 
   def attach_shared_contact_from_crm

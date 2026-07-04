@@ -25,6 +25,23 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     @search_engine = finder.search_engine
   end
 
+  def create
+    user = Current.user || @resource
+    mb = Messages::MessageBuilder.new(user, @conversation, params)
+    @message = mb.perform
+  rescue CustomExceptions::Wavoip::VoiceOnlyInbox => e
+    render_error_response(e)
+  rescue StandardError => e
+    render_could_not_create_error(e.message)
+  end
+
+  def retry
+    assert_voice_only_public_retry_allowed!
+    super
+  rescue CustomExceptions::Wavoip::VoiceOnlyInbox => e
+    render_error_response(e)
+  end
+
   # FORK: preserve existing content_attributes (email metadata, etc.) when marking deleted
   def destroy
     ActiveRecord::Base.transaction do
@@ -39,6 +56,15 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   end
 
   private
+
+  def assert_voice_only_public_retry_allowed!
+    return if message.blank?
+    return if message.private?
+    return if message.voice_call?
+    return if Custom::Channels::OutboundText.allowed?(@conversation.inbox.channel)
+
+    raise CustomExceptions::Wavoip::VoiceOnlyInbox.new({})
+  end
 
   def normalized_query
     search_params[:q].to_s.strip

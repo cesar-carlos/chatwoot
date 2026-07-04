@@ -70,3 +70,5 @@ class Macros::ExecutionService < ActionService
 end
 
 Macros::ExecutionService.include_mod_with('Macros::ExecutionService')
+# FORK: voice-only inbox action guards
+Macros::ExecutionService.prepend Custom::Macros::ExecutionService
