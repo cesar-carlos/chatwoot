@@ -12,6 +12,8 @@ let activeInboxId = null;
 let ringingSdkCall = null;
 let ringingProviderCallId = null;
 let ringingInboxId = null;
+let outboundInitiationInboxId = null;
+let outboundInitiationConversationId = null;
 let activeCallTranslateFn = null;
 let activeDiagnosticsUnwire = null;
 let ringingDiagnosticsUnwire = null;
@@ -55,6 +57,23 @@ export const clearRingingOutgoingCall = () => {
   ringingProviderCallId = null;
   ringingInboxId = null;
 };
+
+export const beginOutboundInitiation = (inboxId, conversationId) => {
+  outboundInitiationInboxId = inboxId ?? null;
+  outboundInitiationConversationId = conversationId ?? null;
+};
+
+export const endOutboundInitiation = () => {
+  outboundInitiationInboxId = null;
+  outboundInitiationConversationId = null;
+};
+
+export const isOutboundInitiationActive = inboxId =>
+  outboundInitiationInboxId != null &&
+  (inboxId == null || outboundInitiationInboxId === inboxId);
+
+export const getOutboundInitiationConversationId = () =>
+  outboundInitiationConversationId;
 
 export const setRingingOutgoingCall = (
   sdkCall,

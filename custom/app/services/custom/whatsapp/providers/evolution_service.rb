@@ -16,6 +16,11 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     else
       send_text_message(phone_number, message)
     end
+  rescue Custom::Whatsapp::Evolution::ApiError => e
+    # Network/timeout failures never reach `process_response` — without this
+    # rescue the message is left stuck in "sending" with no agent-visible error.
+    fail_message_with_network_error!(message, e)
+    nil
   end
 
   def send_template(phone_number, _template_info, message)
@@ -82,6 +87,35 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
   end
 
   private
+
+  def fail_message_with_network_error!(message, error)
+    error_text = error.respond_to?(:user_message) ? error.user_message : error.message
+    Rails.logger.error(
+      "[EVOLUTION] send_message network error channel=#{whatsapp_channel.id} message=#{message&.id}: #{error.message}"
+    )
+    return if message.blank?
+
+    message.external_error = error_text
+    message.status = :failed
+    message.save!
+    create_network_error_private_note!(message, error_text)
+  end
+
+  def create_network_error_private_note!(message, error_text)
+    return unless notify_send_errors_private?
+    return if message.conversation.blank?
+
+    message.conversation.messages.create!(
+      account_id: message.account_id,
+      inbox_id: message.inbox_id,
+      message_type: :outgoing,
+      private: true,
+      sender: message.sender,
+      content: "WhatsApp message could not be sent: #{error_text.presence || 'Unknown error'}"
+    )
+  rescue StandardError => e
+    Rails.logger.warn "[EVOLUTION] failed to create network error private note: #{e.message}"
+  end
 
   def send_text_message(phone_number, message)
     response = api_client.send_text(

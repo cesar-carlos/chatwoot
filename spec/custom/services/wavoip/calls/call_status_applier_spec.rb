@@ -33,6 +33,7 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
       session_id: 12_345,
       call_type: :official,
       record_url: nil,
+      record_status: nil,
       raw_type: 'CALL'
     }
     Voice::Dto::WebhookCallEvent.new(**defaults, **overrides)

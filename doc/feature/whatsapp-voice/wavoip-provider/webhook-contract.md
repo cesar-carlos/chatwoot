@@ -101,6 +101,37 @@ Autorização: `authorize @call.inbox, :show?`. Spec: `spec/custom/controllers/a
 
 ---
 
+## 4. Evento `RECORD`
+
+Webhook separado do `CALL` — entrega `record_url` e `record_status` após a ligação. Fixture: [fixtures/record_update.json](./fixtures/record_update.json).
+
+| Campo payload | Uso |
+|---------------|-----|
+| `whatsapp_call_id` | Correlação com `Call.provider_call_id` |
+| `record_url` | URL pública da gravação (`.ogg`) |
+| `record_status` | `READY`, `RECORDING`, `MIXING`, `DISABLED`, `EMPTY_RECORDING` |
+
+### 4.1 Pipeline
+
+```
+RECORD → PayloadNormalizer → RecordHandler → RecordingPolicy → AttachRecordingJob (:low)
+```
+
+| Gate | Comportamento |
+|------|---------------|
+| `!inbox.channel.call_recording_enabled?` | Ignorar (não enfileirar attach) |
+| `Call.status != completed` | Não anexar |
+| `record_status` desconhecido | Log warn + ignorar attach |
+| `record_status` ∈ `DISABLED`, `EMPTY_RECORDING` | Ignorar |
+| `record_status` ∈ `RECORDING`, `MIXING` | Persistir `record_status` em `Call#meta`; aguardar `READY` |
+| `record_status == READY` (ou ausente com URL) | Enfileirar `AttachRecordingJob` |
+| `Call.status != completed` | Não anexar (UI também só exibe em `completed`) |
+| `Call` ainda não existe | `RetryRecordAttachmentJob` |
+
+Idempotência: mesmo `record_url` já em `meta` → não reenfileirar.
+
+---
+
 ## 5. ActionCable — contrato por provider
 
 ### 5.1 `voice_call.incoming`

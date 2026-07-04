@@ -101,16 +101,29 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
   end
 
   def import_incoming_record(record)
-    envelope = { 'event' => 'MESSAGES_UPSERT', 'data' => record }
-    normalized = normalizer(envelope).perform
-    return if normalized.blank?
+    sender_id = record.dig('key', 'remoteJid')
+    with_import_message_lock(sender_id) do
+      envelope = { 'event' => 'MESSAGES_UPSERT', 'data' => record }
+      normalized = normalizer(envelope).perform
+      next false if normalized.blank?
 
-    Whatsapp::IncomingMessageService.new(
-      inbox: runtime.inbox,
-      params: normalized.merge(phone_number: channel.phone_number)
-    ).perform
+      Whatsapp::IncomingMessageService.new(
+        inbox: runtime.inbox,
+        params: normalized.merge(phone_number: channel.phone_number)
+      ).perform
 
-    stamp_imported_message!(record.dig('key', 'id'), record['messageTimestamp'])
+      stamp_imported_message!(record.dig('key', 'id'), record['messageTimestamp'])
+    end
+  end
+
+  # A live webhook can race with the historical import for the same contact
+  # (e.g. a message arrives while its JID is being backfilled). Reuse the
+  # same mutex as the webhook path instead of writing unprotected.
+  def with_import_message_lock(sender_id, &)
+    Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id, &)
+  rescue MutexApplicationJob::LockAcquisitionError => e
+    Rails.logger.warn("[EVOLUTION] import message lock contention sender=#{sender_id}: #{e.message}")
+    false
   end
 
   def import_outgoing_record(record)

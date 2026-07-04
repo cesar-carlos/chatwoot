@@ -4,11 +4,12 @@ class Wavoip::Calls::RecordingAttachmentService
   DEFAULT_FILENAME_EXTENSION = 'ogg'
   ALLOWED_CONTENT_TYPE_PREFIXES = %w[audio/].freeze
 
-  pattr_initialize [:call!, :record_url!]
+  pattr_initialize [:call!, :record_url!, :store_fallback_on_error]
 
   def perform
     return if record_url.blank?
     return if call.message.blank?
+    return unless recording_allowed?
     return if already_attached?
 
     SafeFetch.fetch(
@@ -19,7 +20,10 @@ class Wavoip::Calls::RecordingAttachmentService
     end
   rescue SafeFetch::Error => e
     Rails.logger.warn("[WAVOIP] recording fetch failed call_id=#{call.id} error=#{e.class}")
-    store_external_url_fallback!
+    # The direct-URL fallback (no webhook) retries on failure — recordings can
+    # take a few minutes to become available, so don't lock in an unplayable
+    # URL before we know the download actually succeeded.
+    store_external_url_fallback! unless store_fallback_on_error == false
   end
 
   private
@@ -70,5 +74,14 @@ class Wavoip::Calls::RecordingAttachmentService
 
   def recording_content_type(result)
     result.content_type.presence || 'audio/ogg'
+  end
+
+  def recording_allowed?
+    Wavoip::Calls::RecordingPolicy.attachable?(
+      inbox: call.inbox,
+      record_url: record_url,
+      record_status: call.meta&.dig('record_status'),
+      call: call
+    )
   end
 end

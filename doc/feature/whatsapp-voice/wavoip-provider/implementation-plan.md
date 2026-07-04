@@ -8,14 +8,33 @@ divergência de prioridade ou fase, este plano prevalece.
 
 **Estado do código:** Fases 1–4 + **conclusão A–E** (jun. 2026): multiagente `voice_call.accepted`, dismiss→reject, test webhook, RECORD retry specs. E2E live com `+5566999050312` — ver [spike-notes.md](./spike-notes.md).
 
-## Doc status (Jun 2026)
+## Doc status (04 jul. 2026)
 
 | Métrica | Estimativa |
 |---------|------------|
 | **MVP código** | ~95% |
-| **Piloto produção** | ~60–65% |
-| **Bloqueador piloto** | W1 — prova live painel Wavoip (CALL) + G0.4 browser E2E multiagente |
+| **Piloto produção** | **Bloqueado hoje** — ver incidente abaixo |
+| **Bloqueador piloto** | **Webhook Wavoip parado de entregar eventos** (incidente ativo, ver [operations-runbook.md](./operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026)) + W1 (prova live no painel) + G0.4 (browser E2E multiagente) |
 | **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 |
+
+### Changelog 04 jul. 2026 — bugs de produção corrigidos no dia
+
+Encontrados e corrigidos em teste real de produção, fora do escopo da revisão de 26 jun.
+(ver [refactory/CHANGELOG.md](./refactory/CHANGELOG.md) para o histórico completo):
+
+- Notificação de "chamada recebida" disparando quando o agente iniciava uma ligação
+  outbound — corrigido em `wavoipOutboundGuard.js` + `wavoipOutboundPreflight.js`.
+- Conversa não reabria como `pending` ao receber ligação (só reabria como `open`) —
+  `ConversationReopenService` agora recebe o status alvo por direção da chamada.
+- Chamadas fantasma presas em `ringing` reaparecendo como widgets — nova rede de segurança
+  `Wavoip::Calls::StaleCallTimeoutScheduler` + `Wavoip::AutoNoAnswerRingJob`.
+- Gravação nunca aparecia no histórico quando o webhook `RECORD` não estava habilitado no
+  painel Wavoip — fallback via URL direta documentada (`Wavoip::FetchDirectRecordingJob`).
+- "Ligar de volta" falhando com mensagem genérica — checagem de dispositivo restrito/lotado
+  antes de tentar, erro de conexão traduzido.
+- **Incidente ainda ativo:** o webhook da Wavoip parou de entregar eventos após um 502
+  transitório durante um deploy e não retomou sozinho — requer reativação manual no painel
+  Wavoip. Ver runbook para diagnóstico e correção.
 
 ## Implementation status (Jun 2026)
 
@@ -272,13 +291,14 @@ enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
 |------|-------------------|
 | Pareamento QR/código, restart e logout no Chatwoot | Admin pode operar primeiro no painel Wavoip |
 | Web Push com aba fechada | Apenas avisa; não preserva a oferta nem garante aceite |
-| Gravação `RECORD` | Dependência de política, retenção, consentimento e download seguro |
 | Diagnóstico ICE/stats | Útil após validar uso real |
 | Seleção de mic/speaker | O browser default cobre o happy path |
 | Refactor `useWebRtcCallSession` Meta | Beneficia Meta-like/CPaaS, não Wavoip |
 | Adapter/builders Meta | Trilha separada; não bloquear entrega Wavoip |
 
 **Concluído pós-MVP (jun. 2026):** roteamento inbound configurável por inbox (`incoming_call_include_administrators`, `incoming_call_offline_fallback`) — ver [inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings).
+
+**Concluído (jul. 2026):** gravação Wavoip no histórico — toggle `call_recording_enabled`, `RecordingPolicy`, player na bolha — ver [inbox-setup.md §3.5](./inbox-setup.md#35-seção--gravação-no-histórico-settings).
 
 ## Status e normalização
 

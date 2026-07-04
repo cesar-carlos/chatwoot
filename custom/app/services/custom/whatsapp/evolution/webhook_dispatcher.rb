@@ -7,7 +7,10 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
       process_message_events(channel, params)
     when 'MESSAGES_DELETE'
       process_delete_events(channel, params)
-    when 'MESSAGES_EDITED'
+    when 'MESSAGES_EDITED', 'SEND_MESSAGE_UPDATE'
+      # SEND_MESSAGE_UPDATE (dotted: send.message.update) is the event name
+      # used by some Evolution versions for the same "message was edited"
+      # semantics as MESSAGES_EDITED — same payload shape, same handler.
       process_edit_events(channel, params)
     when 'CONTACTS_UPSERT', 'CONTACTS_UPDATE'
       Custom::Whatsapp::Evolution::ContactsSyncJob.perform_later(channel.id, params[:data])
@@ -25,7 +28,10 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
 
   def process_message_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
-      next unless data_item.is_a?(Hash)
+      unless data_item.is_a?(Hash)
+        log_malformed_data_item(params[:event], data_item)
+        next
+      end
 
       process_message_item(channel, params, data_item)
     end
@@ -84,7 +90,10 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
 
   def process_delete_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
-      next unless data_item.is_a?(Hash)
+      unless data_item.is_a?(Hash)
+        log_malformed_data_item(params[:event], data_item)
+        next
+      end
 
       process_mutation_event(channel, data_item) do
         Custom::Whatsapp::Evolution::MessageDeleteSyncService.new(channel: channel, data: data_item).perform
@@ -94,7 +103,10 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
 
   def process_edit_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
-      next unless data_item.is_a?(Hash)
+      unless data_item.is_a?(Hash)
+        log_malformed_data_item(params[:event], data_item)
+        next
+      end
 
       process_mutation_event(channel, data_item) do
         Custom::Whatsapp::Evolution::MessageEditSyncService.new(channel: channel, data: data_item).perform
@@ -148,6 +160,12 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
   def contact_sender_id(params)
     params.dig(:messages, 0, :from) ||
       params.dig(:statuses, 0, :recipient_id)
+  end
+
+  def log_malformed_data_item(event, data_item)
+    Rails.logger.warn(
+      "[EVOLUTION] malformed data item event=#{event} class=#{data_item.class}"
+    )
   end
 
   def log_normalizer_skipped(event, data_item)

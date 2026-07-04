@@ -1,68 +1,49 @@
 # Status — Provider Evolution Go
 
-**Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks). A Evolution Go é **infra externa** — o fork **não** provisiona nem sobe o servidor Go.
+**Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 24/jun/2026 · **doc pronta para implementação — ver `documentation-review.md` para gaps corrigidos**
-
----
-
-## Legenda
-
-| Status | Significado |
-|--------|-------------|
-| ✅ | Documentado / pronto para codificar |
-| ⚠️ | Contrato documentado; confirmar em E2E com instância do operador |
-| ❌ | Não iniciado no código |
+**Última revisão:** 04/jul/2026 · **Fase 0–2 implementada (E2E pendente)**
 
 ---
 
 ## Resumo
 
-| Área | Estado | Notas |
-|------|--------|-------|
-| ADRs §1–26 | ✅ | [decisions.md](./decisions.md) |
-| Contratos Ruby/UI | ✅ | [spec-design.md](./spec-design.md) |
-| API + webhooks | ✅ | [api-reference.md](./api-reference.md), [webhook-events.md](./webhook-events.md) |
-| Postman audit | ✅ | [postman-validation.md](./postman-validation.md) |
-| Coexistência Node | ✅ | [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) |
-| Código `custom/` | ❌ | Nenhuma classe Evolution Go |
-| Fixtures reais | ⚠️ | Templates em `spec/fixtures/evolution_go/` — preencher no E2E |
-| Fase 2 (settings, mídia) | ⚠️ | Body `advanced-settings`, `downloadimage` vs `downloadmedia` |
-
----
-
-## Código Chatwoot — pendente
-
-| Item | Status |
+| Área | Estado |
 |------|--------|
-| `# FORK:` `PROVIDERS` + `evolution_go` | ❌ (só `evolution` hoje) |
-| Registry + prepends | ✅ existem para Node — **reusar** |
-| ApiClient, ConnectionService, Normalizer, Service | ❌ |
-| Wizard Vue | ❌ |
-
-Detalhe por fase: [implementation-plan.md](./implementation-plan.md) · tarefas: [tasks.md](./tasks.md)
-
----
-
-## Lacunas conhecidas (não bloqueiam Fase 0–1)
-
-| # | Tema | Mitigação |
-|---|------|-----------|
-| G1 | Fixtures JSON reais | ADRs + Postman como contrato; capturar no [E2E](./validation-checklist.md) |
-| G2 | Campo JID pós-connect | Fallback documentado em [api-reference.md](./api-reference.md) |
-| G3 | `advanced-settings` body | ADR §26 + E2E §2b do [checklist](./validation-checklist.md) |
-| G4 | `downloadimage` vs `downloadmedia` | ADR §25 — primário OpenAPI, fallback Postman |
+| Fase 0 infra | ✅ |
+| Fase 1 MVP texto + QR + health | ✅ |
+| Fase 2 mídia, READ_RECEIPT, settings | ✅ |
+| Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
+| Job prepend `to_prepare` (dev) | ✅ |
+| Migration índice `instance_name` | ✅ (`schema.rb`) |
+| E2E com instância operador | ⚠️ pendente |
+| Fase 3 (interativos, presence) | ❌ |
 
 ---
 
-## Critério "pronto para codificar"
+## Implementado
 
-- [x] Endpoints Fase 1 documentados
-- [x] ADRs fechadas
-- [x] Wizard + API interna especificados
-- [x] Troubleshooting operacional
-- [x] Audit Postman
-- [ ] Fixtures reais (opcional até E2E)
-- [ ] Versão Go do operador em [evolution-target-version.txt](./evolution-target-version.txt)
+### Backend
+- `EvolutionGo::*` services (ApiClient, ConnectionService, SettingsSync, Media*)
+- `EvolutionGoService` + outbound (text, media, quote, mark read on reply)
+- `EvolutionGoNormalizer` (text + media), `EvolutionGoReadReceiptNormalizer`
+- `READ_RECEIPT` no job prepend; `MarkReadService` ao abrir conversa
+- `sync_settings!` / `sync_proxy!` (advanced-settings + delete proxy)
+- `ignore_from_me_echo` respeitado no normalizer
 
-**Próximo passo:** [tasks.md](./tasks.md) — Fase 0 → Fase 1.
+### Frontend
+- Wizard `EvolutionGo.vue` (server check, regex `instance_name`)
+- `EvolutionGoSettingsPage.vue` (health + WhatsApp/outbound/proxy settings)
+- `isGatewayWhatsAppChannel` / `isEvolutionGoWhatsAppChannel` gates
+- ActionCable + polling QR
+
+### Specs
+- Normalizer (text + image), READ_RECEIPT, ApiClient (media/markread/download)
+- Job (MESSAGE + READ_RECEIPT), service (quote), controller, collision
+
+---
+
+## Próximo passo
+
+1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (mídia download, READ_RECEIPT bruto)
+2. **Fase 3** — poll, location, contact, sticker, presence

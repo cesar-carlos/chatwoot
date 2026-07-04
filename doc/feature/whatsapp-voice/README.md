@@ -4,7 +4,9 @@ Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp
 
 **Última reanálise:** 04 jul. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
 **Revisão pontual:** 03 jul. 2026 — ações de botão do `WavoipDevicePanel` (ver
-[refactory/bugs.md#bug-06](./wavoip-provider/refactory/bugs.md#bug-06--botão-acordar-dispositivo-nunca-chama-devicewakeup-do-sdk)).
+[refactory/CHANGELOG.md#bug-06](./wavoip-provider/refactory/CHANGELOG.md)).
+**Incidente ativo (04 jul. 2026):** webhook Wavoip parou de entregar eventos — ver
+[wavoip-provider/operations-runbook.md § Webhook parou de chegar sem aviso](./wavoip-provider/operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026).
 
 ---
 
@@ -192,7 +194,7 @@ Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-r
 ## Recomendação resumida (fork)
 
 1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — edições inevitáveis em `enterprise/` devem ser mínimas e marcadas `# FORK:`.
-2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun. 2026 (source_id, teardown scoped, inbound guard, webhook rotation, caller/receiver). **Pendente piloto:** W1 — prova live no painel Wavoip (CALL, não só DEVICE) + G0.4 browser E2E multiagente.
+2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun. 2026 (source_id, teardown scoped, inbound guard, webhook rotation, caller/receiver). **Pendente piloto:** webhook parado de entregar eventos (incidente ativo 04 jul. 2026 — ver runbook) + W1 — prova live no painel Wavoip (CALL, não só DEVICE) + G0.4 browser E2E multiagente.
 3. **Segundo provider Meta-like (CPaaS proxy):** estender stack com adapters — [second-provider-strategy.md](./second-provider-strategy.md).
 4. **Wavoip:** seguir [wavoip-provider/](./wavoip-provider/) — canal `Channel::Wavoip` em `custom/`; **não** inflar `WhatsappEventsJob`.
 5. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; validar contrato SDP/events antes de UI.
@@ -233,15 +235,15 @@ Itens levantados na reanálise — checklist de implementação futura vs. concl
 | G10 | UX: loading states, i18n fallbacks, recording upload toast | Meta FE | ✅ **Done** (jun. 2026) |
 | G11 | UX ringtone Wavoip: reject silencia local, mute persistente, CALLER_ENDED | Wavoip FE | ✅ **Done** (27 jun. 2026) |
 
-**Status código (27 jun. 2026):** stack Meta + refactors P1/P2 concluídos; **Wavoip fases 1–4 code-complete** em `custom/` — refactory R1–R3 concluído; inbound operacional em produção.
+**Status código (04 jul. 2026):** stack Meta + refactors P1/P2 concluídos; **Wavoip fases 1–4 code-complete** em `custom/` — refactory R1–R3 concluído (ver [wavoip-provider/refactory/CHANGELOG.md](./wavoip-provider/refactory/CHANGELOG.md)); piloto **bloqueado hoje** por incidente de webhook (ver abaixo).
 
-### Wavoip — doc status (Jul 2026)
+### Wavoip — doc status (04 jul. 2026)
 
 | Métrica | Estimativa |
 |---------|------------|
 | **MVP código** | ~95% |
-| **Piloto produção** | ~60–65% |
-| **Bloqueador piloto** | W1 — prova live no painel Wavoip (CALL) + G0.4 browser E2E multiagente |
+| **Piloto produção** | **Bloqueado hoje** — webhook parado (ver [operations-runbook.md](./wavoip-provider/operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026)) |
+| **Bloqueador piloto** | Webhook Wavoip parado de entregar eventos (incidente ativo) + W1 (prova live no painel) + G0.4 (browser E2E multiagente) |
 | **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 — `wavoip_webhook_url` / `wavoip_setup_pending` (+ camelCase) |
 
 ### Wavoip — implementation status (Jun 2026)
@@ -254,7 +256,7 @@ Itens levantados na reanálise — checklist de implementação futura vs. concl
 | **Inbox API** | ✅ Admin-only fields | `wavoip_webhook_url`, `wavoip_setup_pending` em `_inbox.json.jbuilder` |
 | **Frontend** | ✅ ~31 arquivos | `custom/app/javascript/` — registry, composables, `Wavoip.vue`, `WavoipCallingPage.vue` |
 | **Testes** | ✅ 104 RSpec + 83 Vitest examples | Escopo refactory; 21 arquivos Vitest em `spec/custom/**/wavoip/**`, `custom/.../composables/wavoip/specs/`, `custom/.../lib/voice/specs/` |
-| **E2E live** | ⚠️ Parcial | Pipeline OK (caller/receiver, fixtures simulados/live); inbound operacional; **W1** — prova webhook CALL no painel Wavoip ainda pendente |
+| **E2E live** | ⚠️ Parcial | Pipeline OK (caller/receiver, fixtures simulados/live); inbound bloqueado hoje pelo incidente de webhook (ver runbook); **W1** — prova webhook CALL no painel Wavoip ainda pendente |
 | **Produção piloto** | ✅ Inbox ativo | Account 2, inbox 42, device `556697193168` (`open`) — URL exemplo: `/webhooks/wavoip/{webhook_key}` (não inbox id) |
 
 **Veredicto spike:** `go com restrições` — [spike-notes.md](./wavoip-provider/spike-notes.md).

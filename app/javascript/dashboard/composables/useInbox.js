@@ -6,6 +6,7 @@ import {
   isVoiceCallEnabled,
   getVoiceCallProvider,
 } from 'dashboard/helper/inbox';
+import { isGatewayWhatsAppProvider } from 'customDashboard/lib/whatsapp/gatewayProviders';
 
 export const INBOX_FEATURES = {
   REPLY_TO: 'replyTo',
@@ -130,6 +131,20 @@ export const useInbox = (inboxId = null) => {
     );
   });
 
+  const isEvolutionGoWhatsAppChannel = computed(() => {
+    return (
+      channelType.value === INBOX_TYPES.WHATSAPP &&
+      whatsAppAPIProvider.value === 'evolution_go'
+    );
+  });
+
+  const isGatewayWhatsAppChannel = computed(() => {
+    return (
+      channelType.value === INBOX_TYPES.WHATSAPP &&
+      isGatewayWhatsAppProvider(whatsAppAPIProvider.value)
+    );
+  });
+
   const isAWhatsAppChannel = computed(() => {
     return (
       channelType.value === INBOX_TYPES.WHATSAPP ||
@@ -165,6 +180,8 @@ export const useInbox = (inboxId = null) => {
     isAWhatsAppCloudChannel,
     is360DialogWhatsAppChannel,
     isEvolutionWhatsAppChannel,
+    isEvolutionGoWhatsAppChannel,
+    isGatewayWhatsAppChannel,
     isAnEmailChannel,
     isAnInstagramChannel,
     isATiktokChannel,

@@ -172,6 +172,7 @@ end
 if resource.channel_type == 'Channel::Wavoip' && resource.channel.respond_to?(:voice_enabled?)
   json.voice_enabled resource.channel.voice_enabled?
   json.inbound_calls_enabled resource.channel.inbound_calls_enabled?
+  json.call_recording_enabled resource.channel.call_recording_enabled?
   json.wavoip_setup_pending resource.channel.setup_pending?
   json.incoming_call_include_administrators resource.channel.incoming_call_include_administrators?
   json.incoming_call_offline_fallback resource.channel.incoming_call_offline_fallback
@@ -180,6 +181,7 @@ if resource.channel_type == 'Channel::Wavoip' && resource.channel.respond_to?(:v
   json.current_user_inbox_member resource.inbox_members.exists?(user_id: Current.user.id)
   json.provider_config resource.channel.provider_config.slice(
     'inbound_calls_enabled',
+    'call_recording_enabled',
     'incoming_call_include_administrators',
     'incoming_call_offline_fallback',
     'incoming_call_notify_busy_agents',

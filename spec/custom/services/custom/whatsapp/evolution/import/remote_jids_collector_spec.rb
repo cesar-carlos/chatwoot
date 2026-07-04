@@ -51,6 +51,25 @@ RSpec.describe Custom::Whatsapp::Evolution::Import::RemoteJidsCollector do
       )
     end
 
+    it 'parses the nested { contacts: { records: [...] } } response shape' do
+      allow(api_client).to receive(:find_contacts).and_return(
+        instance_double(
+          HTTParty::Response,
+          success?: true,
+          parsed_response: {
+            'contacts' => {
+              'records' => [
+                { 'remoteJid' => '5511999999999@s.whatsapp.net' },
+                { 'remoteJid' => '120363123456789012@g.us' }
+              ]
+            }
+          }
+        )
+      )
+
+      expect(collector.collect!).to eq(%w[5511999999999@s.whatsapp.net])
+    end
+
     it 'includes group jids when groups_ignore is false' do
       channel.update!(
         provider_config: channel.provider_config.merge(

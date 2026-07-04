@@ -10,7 +10,7 @@ Inventário de pontos no Chatwoot que **impedem ou dificultam** providers altern
 
 | Severidade | Lacuna | Estado fork (jun/2026) |
 |------------|--------|------------------------|
-| 🔴 Bloqueante | `PROVIDERS` whitelist | ✅ **`evolution`** adicionado · ❌ `evolution_go`, `zapi`, `notificame` pendentes |
+| 🔴 Bloqueante | `PROVIDERS` whitelist | ✅ **`evolution`**, **`evolution_go`** · ❌ `zapi`, `notificame` pendentes |
 | 🔴 Bloqueante | Dispatch incoming gateway | ✅ prepend job + normalizer para **`evolution`** |
 | 🟠 Alto | Janela 24h forçada | ✅ bypass para **`evolution`** via prepend |
 | 🟠 Alto | `process_response` formato Meta | ✅ override em `EvolutionService` |
@@ -18,6 +18,7 @@ Inventário de pontos no Chatwoot que **impedem ou dificultam** providers altern
 | 🟡 Médio | Frontend só cloud/default | ⚠️ parcial — wizard Evolution em `custom/` |
 | 🟡 Médio | `phone_number` UNIQUE global | Documentado — 1 inbox/número |
 | 🟢 Baixo | Campanhas, CSAT, health cloud | Gates cloud-only — OK para gateway |
+| 🟠 Alto | Autenticação do webhook `evolution` | ✅ **implementado** — token URL + `apikey` body/header, ver §2.1 (revisão jul/2026 corrigiu a doc, que ainda descrevia como pendente) |
 
 ---
 
@@ -34,14 +35,14 @@ PROVIDERS = %w[default whatsapp_cloud].freeze
 **Fork atual:**
 
 ```29:30:app/models/channel/whatsapp.rb
-  # FORK: evolution — Baileys gateway via Evolution API (custom/)
-  PROVIDERS = %w[default whatsapp_cloud evolution].freeze
+  # FORK: gateway providers — evolution (Baileys/Node), evolution_go (whatsmeow/Go) (custom/)
+  PROVIDERS = %w[default whatsapp_cloud evolution evolution_go].freeze
 ```
 
 | Provider | Em `PROVIDERS` | Código `custom/` |
 |----------|----------------|------------------|
 | `evolution` | ✅ | ✅ |
-| `evolution_go` | ❌ | ❌ (doc pronta) |
+| `evolution_go` | ✅ | ✅ Fase 0–1 (texto + QR + health) |
 | `zapi` | ❌ | ❌ |
 | `notificame` | ❌ | ❌ |
 
@@ -87,9 +88,9 @@ PROVIDERS = %w[default whatsapp_cloud].freeze
   end
 ```
 
-**Impacto:** gateways não passam por HMAC Meta — OK hoje (retorna `false`). **Novo risco:** sem auth alternativa, endpoint fica aberto.
+**Impacto:** gateways não passam por HMAC Meta — OK hoje (retorna `false`).
 
-**Mitigação:** `GatewayWebhookAuth` — token na URL, header `apikey`, ou IP allowlist; implementar no controller via prepend.
+**Mitigação implementada (`evolution`):** `Webhooks::EvolutionController` dedicado (rota própria, não o controller Meta) exige `token` na URL **ou** `apikey` no body/header do webhook, validados com `ActiveSupport::SecurityUtils.secure_compare`; `apikey` é removida do payload antes de ir para o Sidekiq. Rate limit por instância+IP via Rack::Attack. **Ainda em aberto:** IP allowlist e teste explícito da variante via header `apikey` (hoje só body é testado).
 
 ### 2.2 Job — switch de incoming
 
@@ -253,11 +254,41 @@ Reutilizar **com payload normalizado**:
 
 ### Evolution Go (`evolution_go`)
 
-- [x] Documentação completa (~93% — melhorias 22/jun/2026)
-- [ ] Spike fixtures P1 — [evolution-go/tasks.md](./evolution-go/tasks.md)
-- [ ] `# FORK:` `evolution_go` em PROVIDERS
-- [ ] Código `custom/.../evolution_go/`
+- [x] Documentação completa
+- [x] `# FORK:` `evolution_go` em PROVIDERS
+- [x] Código `custom/.../evolution_go/` (Fase 0–1)
+- [x] Gates UI `isGatewayWhatsAppChannel`
+- [x] Health tab + wizard server check
+- [ ] E2E com instância operador — [evolution-go/validation-checklist.md](./evolution-go/validation-checklist.md)
+- [ ] Fase 2 — mídia, READ_RECEIPT, settings sync
 
 ### Outros gateways
 
 - [ ] Z-API / NotificaMe — após piloto estável
+
+---
+
+## 9. Revisão de código e correções (2026-07-04)
+
+Revisão completa do provider `evolution` (core/dispatch, webhook inbound, serviços REST/jobs, frontend). Achados e correções aplicadas nesta rodada:
+
+| Área | Correção |
+|------|----------|
+| `EvolutionService#validate_provider_config?` | Cache de validação de conexão agora é invalidado em **qualquer** mudança de status (antes só invalidava se `state != 'open'`, deixando um `false` em cache logo após conectar) |
+| `Custom::Channel::Whatsapp#sync_evolution_provider_to_api` | `settings_sync_error` só é limpo quando uma sync de fato ocorreu (antes era limpo mesmo sem chamada à API) |
+| `EvolutionService#send_message` | Passou a capturar `ApiError` de rede/timeout e marcar a mensagem como `failed` com nota privada, em vez de deixá-la presa em "enviando" |
+| `dashboard_provider_config` | `webhook_token` agora é mascarado como `api_key`/`proxy_password` |
+| `Custom::Channel::Whatsapp#provider_service` | Fallback do registry para `'evolution'` sem serviço resolvido agora levanta erro explícito em vez de cair silenciosamente no provider 360dialog |
+| `WebhookDispatcher` | `SEND_MESSAGE_UPDATE` (`send.message.update`) tratado como `MESSAGES_EDITED`; itens de payload malformados (`data` não-Hash) agora geram log em vez de serem ignorados silenciosamente |
+| `Import::RemoteJidsCollector` | Corrigido para parsear o formato aninhado `{ contacts: { records: [...] } }` da API (antes só funcionava com array flat, podendo coletar zero JIDs silenciosamente) |
+| `Import::Runtime` / `ImportService` | Recovery automático de import travado em `running` após crash, via heartbeat (`import_heartbeat_at`) — antes ficava bloqueado indefinidamente sem `force: true` manual |
+| `Import::MessagesImporter` | Mensagens inbound do import agora usam o mesmo `MessageMutex` do caminho de webhook, evitando corrida com mensagens ao vivo |
+| `PhoneOutgoingSyncService` | Dedup lock (Redis, TTL 1 dia) agora é liberado se o processamento falhar após ser adquirido — antes travava por até 24h; unlock só ocorre se o lock foi de fato adquirido por esta instância (não derruba lock de outro worker) |
+| `ContactEnrichmentService` | `mark_enriched!` só roda se o fetch de perfil realmente teve sucesso — antes marcava como "enriquecido" mesmo em falha, escondendo o contato de novas tentativas por 24h |
+| `ApiClient` | Retry único (com backoff curto) para timeout/erro de rede e para respostas 5xx; respostas não-JSON agora geram `ApiError` catchável em vez de `NoMethodError` opaco downstream |
+| `EvolutionSettingsPage.vue` | Formulário não é mais resetado a cada atualização de `provider_config` vinda de polling/cable (só recarrega ao trocar de inbox); status de import continua atualizando ao vivo |
+| `useEvolutionHealthConnection.js` | `restart()` só abre o modal de QR se o restart realmente teve sucesso |
+| `EvolutionQrScanModal.vue` | `connectionStatus === 'close'` sem erro explícito de refresh agora é tratado como estado de espera (spinner), não como erro — evita UI de erro logo após um logout intencional |
+| `EvolutionConnectionChannel` / `evolution_connection` (REST) | Autorização unificada como admin-only (`:update?`) — antes o cable aceitava administrador não atribuído ao inbox e o REST usava `:show?` (agente atribuído), permitindo combinações inconsistentes de acesso a dado sensível (QR/pairing code) |
+
+Specs novos/atualizados cobrindo cada item acima em `spec/custom/` e `custom/app/javascript/dashboard/**/specs/`.

@@ -92,4 +92,26 @@ RSpec.describe Channel::Wavoip do
       expect(channel.setup_pending?).to be(false)
     end
   end
+
+  describe '#call_recording_enabled?' do
+    it 'defaults to true for new channels' do
+      expect(channel.call_recording_enabled?).to be(true)
+      expect(channel.provider_config['call_recording_enabled']).to be(true)
+    end
+
+    it 'returns false when explicitly disabled' do
+      channel.update!(provider_config: channel.provider_config.merge('call_recording_enabled' => false))
+
+      expect(channel.call_recording_enabled?).to be(false)
+    end
+
+    it 'backfills call_recording_enabled on update when missing' do
+      channel.update_column(:provider_config, channel.provider_config.except('call_recording_enabled')) # rubocop:disable Rails/SkipsModelValidations
+
+      channel.valid?
+      channel.save!
+
+      expect(channel.provider_config['call_recording_enabled']).to be(true)
+    end
+  end
 end

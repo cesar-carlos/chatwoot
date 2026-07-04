@@ -34,3 +34,19 @@ export function formatWavoipStartCallError(err, t) {
 
   return err.message || t('CONVERSATION.WAVOIP_CALL.DEVICE_NOT_READY');
 }
+
+const PEER_REJECT_PERMISSION_PATTERN =
+  /138006|permission|not authorized|not allowed|call permission/i;
+
+export function formatWavoipPeerRejectError(reason, t) {
+  const message =
+    typeof reason === 'string'
+      ? reason
+      : reason?.message || reason?.code || reason?.reason || '';
+
+  if (PEER_REJECT_PERMISSION_PATTERN.test(String(message))) {
+    return t('CONVERSATION.WAVOIP_CALL.OUTBOUND_PERMISSION_DENIED');
+  }
+
+  return t('CONVERSATION.WAVOIP_CALL.PEER_REJECTED');
+}

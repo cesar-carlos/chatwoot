@@ -290,7 +290,8 @@ Hoje acoplada a `useWhatsappCallSession` e join via SDP. Comportamento Wavoip:
 |--------------|----------|--------|
 | `ringing` inbound | Botão join + SDP | **Sem join** — usar widget flutuante |
 | `in_progress` | Join se não ativo | Chamada já no browser via SDK |
-| `completed` | Gravação upload local | `record_url` no `Call#meta` ou anexo (Fase 4) |
+| `completed` | Gravação upload local | `record_url` no `Call#meta` ou anexo ActiveStorage |
+| Player na bolha | Sempre que há anexo/URL | Só Wavoip + `completed` + `call_recording_enabled` + URL (`voiceCallRecording.js`) |
 | Replay / ligar de novo | Initiate via API Meta | `startCall` na conversa (`ConversationCallButton`) |
 
 ```javascript
@@ -300,8 +301,17 @@ const isWavoip = computed(
 );
 
 // Ocultar botões join/rejoin SDP quando isWavoip
-// Mostrar AudioChip com record_url quando completed + URL presente
+// AudioChip: shouldShowVoiceCallRecording({ provider, callStatus, recordingUrl, callRecordingEnabled })
 ```
+
+Gate UI (`custom/.../lib/wavoip/voiceCallRecording.js`):
+
+| Condição | Mostrar player |
+|----------|----------------|
+| Provider ≠ `wavoip` | Sim (comportamento Meta/Twilio inalterado) |
+| `call_recording_enabled === false` | Não |
+| `status !== completed` | Não |
+| Sem `recording_url` / anexo áudio | Não |
 
 **Sem** `useWhatsappCallSession` para Wavoip — único `# FORK:` necessário na bolha.
 
@@ -317,6 +327,7 @@ custom/app/javascript/dashboard/
     voiceSessionRegistry.js
     callStoreMappers.js          # mapCable + mapOffer + findWavoipCallForOffer
   lib/wavoip/
+    voiceCallRecording.js        # shouldShowVoiceCallRecording + resolveVoiceCallRecordingUrl
     wavoipClientRegistry.js
     wavoipDiagnosticsCollector.js
     wavoipInboxCallRouting.js
@@ -349,7 +360,7 @@ app/javascript/dashboard/          # upstream — widget de voz compartilhado
 
 **Implementados:** `WavoipCallingPage.vue`, `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics, **activeCalls v2.6.1**), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`.
 
-**Não implementados no MVP** (referenciados em docs antigos): `WavoipOnboardingChecklist.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
+**Componentes de settings (04 jul. 2026):** `WavoipOnboardingChecklist.vue`, `WavoipRecordingChecklist.vue`, `WavoipConversationDeviceBanner.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
 
 Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).
 

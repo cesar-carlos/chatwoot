@@ -1,0 +1,17 @@
+{
+  "event": "MESSAGE",
+  "instance": "test-go-instance",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "remoteJidAlt": "5511999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0C5A277F7F9B6C599"
+    },
+    "message": {
+      "conversation": "Olá from Evolution Go!"
+    },
+    "messageTimestamp": "1699999999",
+    "pushName": "João Silva"
+  }
+}

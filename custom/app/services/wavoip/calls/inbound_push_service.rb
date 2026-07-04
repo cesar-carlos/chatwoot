@@ -7,8 +7,13 @@ class Wavoip::Calls::InboundPushService
     return unless call.incoming?
     return if conversation.blank?
 
-    agents_for_notification.find_each do |agent|
-      next if notification_recently_sent?(agent)
+    agents = agents_for_notification.to_a
+    return if agents.blank?
+
+    recently_notified_ids = recently_notified_user_ids(agents.map(&:id))
+
+    agents.each do |agent|
+      next if recently_notified_ids.include?(agent.id)
 
       NotificationBuilder.new(
         notification_type: 'voice_call_incoming',
@@ -33,9 +38,14 @@ class Wavoip::Calls::InboundPushService
     ).users
   end
 
-  def notification_recently_sent?(user)
+  def recently_notified_user_ids(user_ids)
     conversation.notifications
-                .where(user: user, notification_type: Notification.notification_types[:voice_call_incoming])
-                .exists?(['created_at > ?', 1.minute.ago])
+                .where(
+                  user_id: user_ids,
+                  notification_type: Notification.notification_types[:voice_call_incoming]
+                )
+                .where('created_at > ?', 1.minute.ago)
+                .pluck(:user_id)
+                .to_set
   end
 end

@@ -5,6 +5,9 @@ import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFie
 import SettingsToggleSection from 'dashboard/components-next/Settings/SettingsToggleSection.vue';
 import SelectInput from 'dashboard/components-next/select/Select.vue';
 import WavoipDevicePanel from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipDevicePanel.vue';
+import WavoipOnboardingChecklist from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipOnboardingChecklist.vue';
+import WavoipRecordingChecklist from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipRecordingChecklist.vue';
+import { patchWavoipProviderConfig } from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/wavoipProviderConfigPatch';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 
@@ -14,6 +17,8 @@ export default {
     SettingsToggleSection,
     SelectInput,
     WavoipDevicePanel,
+    WavoipOnboardingChecklist,
+    WavoipRecordingChecklist,
     NextButton,
     Spinner,
   },
@@ -26,6 +31,7 @@ export default {
   data() {
     return {
       inboundCallsEnabled: this.inbox.inbound_calls_enabled !== false,
+      callRecordingEnabled: this.inbox.call_recording_enabled !== false,
       includeAdministrators:
         this.inbox.incoming_call_include_administrators !== false,
       notifyBusyAgents: this.inbox.incoming_call_notify_busy_agents === true,
@@ -34,6 +40,7 @@ export default {
         'assignee_or_inbox_members_and_administrators',
       ringTimeoutSeconds: this.inbox.ring_timeout_seconds || 0,
       isTogglingInbound: false,
+      isTogglingRecording: false,
       isSavingRouting: false,
       isRegeneratingWebhook: false,
       isTestingWebhook: false,
@@ -91,10 +98,16 @@ export default {
     administratorsToggleDisabled() {
       return this.offlineFallback === 'none';
     },
+    recordingDocsUrl() {
+      return 'https://wavoip.gitbook.io/api/gravacao';
+    },
   },
   watch: {
     'inbox.inbound_calls_enabled'(val) {
       this.inboundCallsEnabled = val !== false;
+    },
+    'inbox.call_recording_enabled'(val) {
+      this.callRecordingEnabled = val !== false;
     },
     'inbox.incoming_call_include_administrators'(val) {
       this.includeAdministrators = val !== false;
@@ -136,33 +149,38 @@ export default {
       if (this.isSavingRouting) return;
       this.isSavingRouting = true;
       try {
-        await this.$store.dispatch('inboxes/fetchInboxItem', this.inbox.id);
-        const serverInbox =
-          this.$store.getters['inboxes/getInbox'](this.inbox.id) || this.inbox;
-        const existing = { ...(serverInbox.provider_config || {}) };
-        await this.$store.dispatch('inboxes/updateInbox', {
-          id: this.inbox.id,
-          formData: false,
-          channel: {
-            provider_config: {
-              ...existing,
-              incoming_call_include_administrators:
-                updates.incoming_call_include_administrators,
-              incoming_call_offline_fallback:
-                updates.incoming_call_offline_fallback,
-              incoming_call_notify_busy_agents:
-                updates.incoming_call_notify_busy_agents,
-              ring_timeout_seconds: updates.ring_timeout_seconds,
-            },
-          },
+        await patchWavoipProviderConfig(this.$store, this.inbox.id, {
+          incoming_call_include_administrators:
+            updates.incoming_call_include_administrators,
+          incoming_call_offline_fallback:
+            updates.incoming_call_offline_fallback,
+          incoming_call_notify_busy_agents:
+            updates.incoming_call_notify_busy_agents,
+          ring_timeout_seconds: updates.ring_timeout_seconds,
         });
-        await this.$store.dispatch('inboxes/fetchInboxItem', this.inbox.id);
         useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
       } catch (_) {
         useAlert(this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
         throw _;
       } finally {
         this.isSavingRouting = false;
+      }
+    },
+    async handleRecordingToggle(newValue) {
+      if (this.isTogglingRecording) return;
+      const previousValue = this.callRecordingEnabled;
+      this.callRecordingEnabled = newValue;
+      this.isTogglingRecording = true;
+      try {
+        await patchWavoipProviderConfig(this.$store, this.inbox.id, {
+          call_recording_enabled: newValue,
+        });
+        useAlert(this.$t('INBOX_MGMT.EDIT.API.SUCCESS_MESSAGE'));
+      } catch (_) {
+        this.callRecordingEnabled = previousValue;
+        useAlert(this.$t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE'));
+      } finally {
+        this.isTogglingRecording = false;
       }
     },
     async handleIncludeAdministratorsToggle(newValue) {
@@ -279,6 +297,7 @@ export default {
     </p>
 
     <template v-if="voiceEnabled">
+      <WavoipOnboardingChecklist :inbox="inbox" />
       <WavoipDevicePanel :inbox="inbox" />
 
       <div
@@ -299,6 +318,39 @@ export default {
           </template>
         </SettingsToggleSection>
       </div>
+
+      <div
+        class="relative"
+        :class="{ 'pointer-events-none opacity-60': isTogglingRecording }"
+      >
+        <SettingsToggleSection
+          :model-value="callRecordingEnabled"
+          :header="$t('INBOX_MGMT.WAVOIP_CALL.RECORDING.LABEL')"
+          :description="$t('INBOX_MGMT.WAVOIP_CALL.RECORDING.DESCRIPTION')"
+          :hide-toggle="isTogglingRecording"
+          @update:model-value="handleRecordingToggle"
+        >
+          <template v-if="isTogglingRecording" #hiddenToggle>
+            <Spinner class="size-4 text-n-slate-11" />
+          </template>
+          <p class="text-sm text-n-slate-11 mt-2">
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.RECORDING.HINT') }}
+            <a
+              :href="recordingDocsUrl"
+              class="text-n-brand underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ $t('INBOX_MGMT.WAVOIP_CALL.RECORDING.DOCS_LINK') }}
+            </a>
+          </p>
+        </SettingsToggleSection>
+      </div>
+
+      <WavoipRecordingChecklist
+        :inbox="inbox"
+        :recording-docs-url="recordingDocsUrl"
+      />
 
       <div
         class="flex flex-col gap-4 outline outline-1 -outline-offset-1 outline-n-weak rounded-xl px-4 py-3"

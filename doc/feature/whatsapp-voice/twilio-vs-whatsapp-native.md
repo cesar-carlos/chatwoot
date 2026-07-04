@@ -153,14 +153,19 @@ Ver também: [official-vs-unofficial-restrictions.md](../whatsapp-provider/offic
 
 ## Assimetria de código (não confundir com produto)
 
-No código atual, Twilio segue padrões mais modulares que WhatsApp Meta:
+**Atualizado jul. 2026:** o gap de outbound já foi resolvido — `Voice::OutboundWhatsappCallBuilder`
+e `Whatsapp::CallPermissionRequestService` existem desde jun. 2026. A única assimetria restante
+é o adapter de provider:
 
 | Padrão | Twilio | WhatsApp Meta |
 |--------|--------|---------------|
-| Adapter | `Voice::Provider::Twilio::Adapter` | Lógica no prepend `WhatsappCloudService` |
-| Outbound | `Voice::OutboundCallBuilder` | Inline em `WhatsappCallsController` |
+| Adapter | `Voice::Provider::Twilio::Adapter` | Lógica no prepend `WhatsappCloudService` (sem adapter dedicado) |
+| Outbound | `Voice::OutboundCallBuilder` | `Voice::OutboundWhatsappCallBuilder` ✅ |
+| Permissão outbound | N/A | `Whatsapp::CallPermissionRequestService` ✅ |
 
-Isso **não** significa que Twilio poderia fazer WA in-app — são produtos diferentes. Significa que, ao estender voz WhatsApp, o fork deve alinhar WhatsApp ao padrão adapter/builder. Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
+Isso **não** significa que Twilio poderia fazer WA in-app — são produtos diferentes. O item
+pendente é só `Voice::Provider::MetaCloud::Adapter` (delegar de `WhatsappCloudService`), que
+não bloqueia nenhuma funcionalidade — ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
 
 ---
 

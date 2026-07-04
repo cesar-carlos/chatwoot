@@ -148,13 +148,22 @@ class Wavoip::DeviceStatusService
     channel.update!(provider_config: config)
 
     contact_phone = result.dig('contact', 'phone').presence
-    return if contact_phone.blank? || contact_phone == channel.phone_number
+    return if contact_phone.blank?
+
+    normalized = Wavoip::PhoneNormalizer.normalize(
+      contact_phone,
+      inbox_phone: channel.phone_number
+    )
+    return if normalized.blank? || normalized == channel.phone_number
+
+    parsed = Phonelib.parse(normalized)
+    return unless parsed.valid?
 
     Rails.logger.info(
       "[WAVOIP] Atualizando phone_number channel=#{channel.id} " \
-      "de=#{channel.phone_number} para=#{contact_phone}"
+      "de=#{channel.phone_number} para=#{normalized}"
     )
-    channel.update!(phone_number: contact_phone)
+    channel.update!(phone_number: normalized)
   end
 
   def device_base_url(token)

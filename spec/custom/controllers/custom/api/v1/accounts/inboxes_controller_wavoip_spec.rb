@@ -131,4 +131,23 @@ RSpec.describe 'Wavoip Inboxes API extensions', type: :request do
       expect(channel.reload.inbound_calls_enabled?).to be true
     end
   end
+
+  describe 'PATCH /api/v1/accounts/:account_id/inboxes/:id' do
+    it 'updates call_recording_enabled in provider_config for administrator' do
+      patch "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}",
+            headers: admin.create_new_auth_token,
+            params: {
+              channel: {
+                provider_config: {
+                  call_recording_enabled: false
+                }
+              }
+            },
+            as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(channel.reload.call_recording_enabled?).to be(false)
+      expect(response.parsed_body['call_recording_enabled']).to be(false)
+    end
+  end
 end

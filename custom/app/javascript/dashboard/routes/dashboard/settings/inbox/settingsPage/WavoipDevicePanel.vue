@@ -16,6 +16,8 @@ import WavoipQrScanModal from 'customDashboard/components/wavoip/WavoipQrScanMod
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import Icon from 'dashboard/components-next/icon/Icon.vue';
+import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 
 const props = defineProps({
   inbox: {
@@ -42,6 +44,8 @@ const isCopyingDiagnostics = ref(false);
 const isQrModalOpen = ref(false);
 const qrModalFetchFresh = ref(false);
 const statusVerifiedLive = ref(false);
+const restartDialogRef = ref(null);
+const logoutDialogRef = ref(null);
 let pollTimer = null;
 let panelOpenedSdkConnection = false;
 
@@ -221,17 +225,12 @@ const handleWakeUp = async () => {
   }
 };
 
-const handleRestart = async () => {
+const handleRestart = () => {
   if (blockIfActiveCalls()) return;
+  restartDialogRef.value?.open();
+};
 
-  /* eslint-disable no-alert -- native confirm matches Evolution health actions */
-  if (
-    !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART_CONFIRM'))
-  ) {
-    return;
-  }
-  /* eslint-enable no-alert */
-
+const confirmRestart = async () => {
   isRestarting.value = true;
   try {
     await InboxesAPI.getWavoipQr(inboxId.value, { refresh: true });
@@ -241,25 +240,21 @@ const handleRestart = async () => {
     showDeviceActionError(error);
   } finally {
     isRestarting.value = false;
+    restartDialogRef.value?.close();
   }
 };
 
-const handleLogout = async () => {
+const handleLogout = () => {
   if (!isConnected.value) {
     openQrModal({ fresh: true });
     return;
   }
 
   if (blockIfActiveCalls()) return;
+  logoutDialogRef.value?.open();
+};
 
-  /* eslint-disable no-alert -- native confirm matches Evolution health actions */
-  if (
-    !window.confirm(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM'))
-  ) {
-    return;
-  }
-  /* eslint-enable no-alert */
-
+const confirmLogout = async () => {
   isLoggingOut.value = true;
   try {
     await InboxesAPI.postWavoipLogout(inboxId.value);
@@ -269,6 +264,7 @@ const handleLogout = async () => {
     showDeviceActionError(error);
   } finally {
     isLoggingOut.value = false;
+    logoutDialogRef.value?.close();
   }
 };
 
@@ -335,15 +331,32 @@ onBeforeUnmount(() => {
           </span>
           <span class="font-medium">{{ activeCallsLabel }}</span>
         </div>
-        <p v-if="isHibernating" class="text-n-amber-11">
-          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.HIBERNATING_HINT') }}
-        </p>
-        <p v-if="hasActiveDeviceCalls" class="text-n-amber-11">
-          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ACTIVE_CALLS_HINT') }}
-        </p>
-        <p v-if="showStaleStatusHint" class="text-n-amber-11">
-          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.STATUS_STALE') }}
-        </p>
+        <div
+          v-if="isHibernating || hasActiveDeviceCalls || showStaleStatusHint"
+          class="flex flex-wrap gap-1.5"
+        >
+          <span
+            v-if="isHibernating"
+            class="inline-flex items-center gap-1 rounded-full bg-n-amber-3 px-2 py-0.5 text-xs font-medium text-n-amber-11"
+          >
+            <Icon icon="i-ph-moon-bold" class="size-3 shrink-0" />
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.HIBERNATING_HINT') }}
+          </span>
+          <span
+            v-if="hasActiveDeviceCalls"
+            class="inline-flex items-center gap-1 rounded-full bg-n-amber-3 px-2 py-0.5 text-xs font-medium text-n-amber-11"
+          >
+            <Icon icon="i-ph-phone-call-bold" class="size-3 shrink-0" />
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ACTIVE_CALLS_HINT') }}
+          </span>
+          <span
+            v-if="showStaleStatusHint"
+            class="inline-flex items-center gap-1 rounded-full bg-n-amber-3 px-2 py-0.5 text-xs font-medium text-n-amber-11"
+          >
+            <Icon icon="i-ph-warning-bold" class="size-3 shrink-0" />
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.STATUS_STALE') }}
+          </span>
+        </div>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <NextButton
@@ -400,6 +413,26 @@ onBeforeUnmount(() => {
       @session-active="onQrSessionActive"
     />
 
+    <Dialog
+      ref="restartDialogRef"
+      type="alert"
+      :title="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART_CONFIRM_TITLE')"
+      :description="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART_CONFIRM')"
+      :confirm-button-label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART')"
+      :is-loading="isRestarting"
+      @confirm="confirmRestart"
+    />
+
+    <Dialog
+      ref="logoutDialogRef"
+      type="alert"
+      :title="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM_TITLE')"
+      :description="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT_CONFIRM')"
+      :confirm-button-label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT')"
+      :is-loading="isLoggingOut"
+      @confirm="confirmLogout"
+    />
+
     <SettingsFieldSection
       :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_TITLE')"
       :help-text="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_HELP')"
@@ -407,6 +440,7 @@ onBeforeUnmount(() => {
       <ul class="list-disc ps-5 text-sm text-n-slate-11 space-y-1">
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_TOGGLE') }}</li>
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_CALL_EVENT') }}</li>
+        <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_RECORD_EVENT') }}</li>
         <li>
           {{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_DEVICE_EVENT') }}
         </li>

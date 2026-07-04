@@ -78,6 +78,19 @@ export const channelActions = {
       throw error;
     }
   },
+  createEvolutionGoChannel: async ({ commit }, params) => {
+    try {
+      commit(types.default.SET_INBOXES_UI_FLAG, { isCreating: true });
+      const response = await InboxesAPI.create(params);
+      commit(types.default.ADD_INBOXES, response.data);
+      commit(types.default.SET_INBOXES_UI_FLAG, { isCreating: false });
+      sendAnalyticsEvent('whatsapp');
+      return response.data;
+    } catch (error) {
+      commit(types.default.SET_INBOXES_UI_FLAG, { isCreating: false });
+      throw error;
+    }
+  },
   fetchInboxItem: async ({ commit }, inboxId) => {
     const response = await InboxesAPI.show(inboxId);
     commit(types.default.SET_INBOXES_ITEM, response.data);
@@ -101,6 +114,14 @@ export const channelActions = {
   },
   evolutionImport: async (_ctx, inboxId) => {
     const response = await InboxesAPI.postEvolutionImport(inboxId);
+    return response.data;
+  },
+  fetchEvolutionGoConnection: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.getEvolutionGoConnection(inboxId);
+    return response.data;
+  },
+  evolutionGoReconnect: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionGoReconnect(inboxId);
     return response.data;
   },
 };

@@ -161,6 +161,7 @@
       "REJECTED_ELSEWHERE": "Esta chamada foi recusada por outro agente.",
       "CALLER_ENDED": "O chamador encerrou a ligação.",
       "CLIENT_UNAVAILABLE": "Não foi possível conectar ao Wavoip. Verifique o token do dispositivo nas configurações da caixa de entrada.",
+      "CONNECT_FAILED": "Não foi possível conectar ao dispositivo Wavoip. Verifique sua conexão e tente novamente em instantes.",
       "DEVICE_NOT_READY": "O dispositivo Wavoip não está pronto para chamadas. Tente novamente em instantes.",
       "DEVICE_NOT_LINKED": "Vincule o WhatsApp ao dispositivo Wavoip em app.wavoip.com antes de ligar.",
       "DEVICE_DISCONNECTED": "Não foi possível conectar ao Wavoip (falha no WebSocket). Verifique o token, sua rede e se o dispositivo aparece como conectado em app.wavoip.com.",
@@ -175,7 +176,13 @@
       "DEVICE_RECONNECTING": "Reconectando ao Wavoip…",
       "MIC_DEVICE": "Microfone",
       "SPEAKER_DEVICE": "Alto-falante",
-      "CHANNELS_FULL": "Todos os canais de chamada deste dispositivo Wavoip estão em uso. Aguarde o término de uma chamada."
+      "CHANNELS_FULL": "Todos os canais de chamada deste dispositivo Wavoip estão em uso. Aguarde o término de uma chamada.",
+      "ACCEPT_RECORD_FAILED": "Não foi possível registrar quem atendeu esta chamada. A ligação pode continuar, mas o atendimento pode não aparecer no histórico.",
+      "ACCEPTED_ELSEWHERE_BY": "{agentName} atendeu esta chamada.",
+      "PEER_REJECTED": "O contato recusou a ligação ou ela não pôde ser concluída.",
+      "OUTBOUND_PERMISSION_DENIED": "Este contato não autorizou ligações pelo WhatsApp. Envie um pedido de permissão e tente novamente depois.",
+      "RECORDING_PROCESSING": "Processando gravação da chamada…",
+      "INCOMING_CALLS_OVERFLOW": "+{count} chamadas recebidas"
     },
     "WAVOIP_CONNECTIVITY": {
       "GENERIC": "Problema na conexão da chamada. Verifique sua rede e tente novamente.",

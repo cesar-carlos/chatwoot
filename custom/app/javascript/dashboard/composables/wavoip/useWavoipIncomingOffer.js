@@ -13,11 +13,24 @@ import {
   registerOfferUnsubscriber,
 } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { unwrapWavoipSdkResult } from 'customDashboard/lib/wavoip/wavoipSdkResult';
+import { shouldIgnoreInboundWavoipOffer } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
+import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
 import { isCallDismissed } from 'dashboard/composables/useCallSession';
 
 const pendingOffers = new Map();
 const boundInboxIds = new Set();
 const offerWaiters = new Map();
+// Unwire functions for the terminal SDK offer listeners, keyed by offer.id —
+// the offer object can be referenced elsewhere (SDK internals, closures), so
+// listeners are detached explicitly instead of relying on GC.
+const offerUnwirers = new Map();
+
+const unwireOfferEvents = offerId => {
+  const unwire = offerUnwirers.get(offerId);
+  if (!unwire) return;
+  unwire();
+  offerUnwirers.delete(offerId);
+};
 
 const storeOffer = (offer, inboxId, aliasCallSids = []) => {
   const entry = { offer, inboxId };
@@ -34,7 +47,10 @@ export const removePendingOffer = callId => {
   const waiterKeys = new Set([callId]);
 
   if (entry) {
-    if (entry.offer?.id) waiterKeys.add(entry.offer.id);
+    if (entry.offer?.id) {
+      waiterKeys.add(entry.offer.id);
+      unwireOfferEvents(entry.offer.id);
+    }
     [...pendingOffers.entries()]
       .filter(([, value]) => value === entry)
       .forEach(([key]) => {
@@ -64,8 +80,10 @@ const resolveOfferWaiters = (offer, extraCallIds = []) => {
   });
 };
 
-const dismissOfferFromStore = (offer, { alertKey, t } = {}) => {
-  if (alertKey && t) useAlert(t(alertKey));
+const dismissOfferFromStore = (offer, { alertKey, t, alertParams } = {}) => {
+  if (alertKey && t) {
+    useAlert(alertParams ? t(alertKey, alertParams) : t(alertKey));
+  }
 
   const callsStore = useCallsStore();
   const callSids = new Set([offer.id]);
@@ -115,32 +133,54 @@ const mergeIncomingOffer = (offer, inboxId) => {
   if (existing && existing.callSid !== offer.id) {
     callsStore.dismissCall(offer.id);
   }
+
+  const mergedCall = callsStore.calls.find(
+    c => c.callSid === (existing?.callSid || offer.id) || c.wavoipOfferId === offer.id
+  );
+  if (mergedCall?.conversationId) {
+    reopenWavoipInboundConversation(mergedCall.conversationId);
+  }
 };
 
 const wireOfferEvents = (offer, t) => {
-  offer.on?.('acceptedElsewhere', () => {
-    dismissOfferFromStore(offer, {
-      alertKey: 'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE',
-      t,
-    });
-  });
-  offer.on?.('rejectedElsewhere', () => {
-    dismissOfferFromStore(offer, {
-      alertKey: 'CONVERSATION.WAVOIP_CALL.REJECTED_ELSEWHERE',
-      t,
-    });
-  });
-  offer.on?.('unanswered', () => {
-    dismissOfferFromStore(offer, {
-      alertKey: 'CONVERSATION.WAVOIP_CALL.CALLER_ENDED',
-      t,
-    });
-  });
-  offer.on?.('ended', () => {
-    dismissOfferFromStore(offer, {
-      alertKey: 'CONVERSATION.WAVOIP_CALL.CALLER_ENDED',
-      t,
-    });
+  const handlers = {
+    acceptedElsewhere: payload => {
+      const agentName =
+        payload?.agentName ||
+        payload?.displayName ||
+        payload?.name ||
+        payload?.agent?.name;
+      dismissOfferFromStore(offer, {
+        alertKey: agentName
+          ? 'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY'
+          : 'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE',
+        alertParams: agentName ? { agentName } : undefined,
+        t,
+      });
+    },
+    rejectedElsewhere: () => {
+      dismissOfferFromStore(offer, {
+        alertKey: 'CONVERSATION.WAVOIP_CALL.REJECTED_ELSEWHERE',
+        t,
+      });
+    },
+    unanswered: () => {
+      dismissOfferFromStore(offer, {
+        alertKey: 'CONVERSATION.WAVOIP_CALL.CALLER_ENDED',
+        t,
+      });
+    },
+    ended: () => {
+      dismissOfferFromStore(offer, {
+        alertKey: 'CONVERSATION.WAVOIP_CALL.CALLER_ENDED',
+        t,
+      });
+    },
+  };
+
+  Object.entries(handlers).forEach(([event, handler]) => offer.on?.(event, handler));
+  offerUnwirers.set(offer.id, () => {
+    Object.entries(handlers).forEach(([event, handler]) => offer.off?.(event, handler));
   });
 };
 
@@ -153,6 +193,15 @@ const bindOfferListener = (inboxId, t, store) => {
     if (!offer?.id) return;
 
     const callsStore = useCallsStore();
+    if (
+      shouldIgnoreInboundWavoipOffer(offer, {
+        calls: callsStore.calls,
+        inboxId,
+      })
+    ) {
+      return;
+    }
+
     const existing = findWavoipCallForOffer(callsStore.calls, offer, inboxId);
     const aliasCallSids =
       existing && existing.callSid !== offer.id ? [existing.callSid] : [];
