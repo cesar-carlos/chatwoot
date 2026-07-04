@@ -3,8 +3,8 @@
 Fonte única de prioridade e ordem de execução para todas as correções e melhorias
 identificadas na revisão de 26 jun. 2026.
 
-**Total de itens:** 30 (5 bugs + 11 gaps + 14 qualidade)  
-**Critério de pronto geral:** sem regressão nos testes existentes (76 RSpec + 21 Vitest)
+**Total de itens:** 32 (7 bugs + 11 gaps + 14 qualidade)  
+**Critério de pronto geral:** sem regressão nos testes existentes (104 RSpec + 83 Vitest examples)
 + spec específico para cada item corrigido.
 
 ---

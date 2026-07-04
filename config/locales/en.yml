@@ -94,6 +94,8 @@ en:
       failed: Signup failed
     voice:
       call_already_accepted: '%{agent_name} is already handling the call.'
+    wavoip:
+      voice_only_inbox: This inbox only supports voice calls. Use the call button to contact the customer.
     assignment_policy:
       not_found: Assignment policy not found
     attachments:

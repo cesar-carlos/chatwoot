@@ -1,6 +1,36 @@
 # Spike Wavoip — notes
 
-**Status:** `go com restrições` — device `open`; outbound **connected** (RINGING → ACTIVE → ended); **live webhooks from Wavoip panel still not received** after user configured URL (blocker for G0.2/G0.3 live proof).
+## Status unificado (04 jul. 2026)
+
+**Veredicto:** `go com restrições` — fases 0–4 + refactory R1–R3 code-complete.
+
+| Área | Estado |
+|------|--------|
+| Pipeline webhook | ✅ OK — aceita `caller`/`receiver` (fix 26 jun.); inbound I2/O2 passam via `bin/wavoip-pilot-verify` |
+| SDK outbound | ✅ RINGING → ACTIVE comprovado (headless + browser parcial) |
+| **W1** (painel Wavoip) | ⚠️ Pendente — toggle CALL + linha CALL no histórico do painel em chamada live |
+| **G0.4 / M1** (multiagente browser) | ❌ Pendente — `acceptedElsewhere` + `voice_call.accepted` |
+| **O1 / D1 / F1** (browser E2E) | ❌ Pendente — outbound bidirecional, dismiss, accept fail |
+
+**Bloqueadores piloto:** W1 live panel proof + G0.4 browser E2E — **não** contradição de código vs. vendor; pipeline pronto quando bytes chegam.
+
+### Gate matrix piloto (04 jul. 2026)
+
+| Gate | Descrição | Status |
+|------|-----------|--------|
+| **W1** | Webhook CALL no painel Wavoip em chamada live | ⚠️ _pending live panel_ |
+| **O1** | Outbound browser bidirecional | ⚠️ _pending (browser)_ |
+| **M1 / G0.4** | Multiagente — toast + `acceptedElsewhere` | ❌ _pending (browser)_ |
+| **D1** | Dismiss ✕ inbound → SDK reject | ⚠️ _pending (browser)_ |
+| **F1** | Accept falha / timeout | ⚠️ _pending (browser)_ |
+| **I1 / I2** | Inbound peer + caller/receiver | ✅ Pass (automated + fixtures live) |
+| **O2** | Outbound webhook caller/receiver | ✅ Pass (automated) |
+
+---
+
+> **Nota:** seções abaixo datadas **19 jun. 2026** são evidência histórica do spike. Onde conflitarem com o status unificado acima (ex.: "webhooks not received"), prevalece o bloco **04 jul. 2026** — pipeline corrigido; W1 live panel proof ainda pendente.
+
+**Status (19 jun. — histórico):** `go com restrições` — device `open`; outbound **connected** (RINGING → ACTIVE → ended); live webhooks from Wavoip panel not received during spike window (operational/vendor at the time).
 
 **Date:** 19 Jun 2026 (audit fixes 20 Jun 2026)
 
@@ -10,7 +40,7 @@
 
 ---
 
-## Gate results (G0.1–G0.7)
+## Gate results (G0.1–G0.7) — histórico 19 jun. 2026 _(supersedido pelo status 04 jul. 2026 acima)_
 
 | Gate | Result | Evidence |
 |------|--------|----------|

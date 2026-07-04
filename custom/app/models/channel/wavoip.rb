@@ -29,6 +29,11 @@ class Channel::Wavoip < ApplicationRecord
       account.feature_enabled?('channel_wavoip')
   end
 
+  # Voice-only channel — agents may call but cannot send text to the contact.
+  def supports_outbound_text?
+    false
+  end
+
   def inbound_calls_enabled?
     provider_config['inbound_calls_enabled'] != false
   end

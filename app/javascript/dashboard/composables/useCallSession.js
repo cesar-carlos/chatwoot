@@ -28,6 +28,19 @@ import Timer from 'dashboard/helper/Timer';
 
 const isWhatsappCall = call => call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP;
 const isWavoipCall = call => call?.provider === VOICE_CALL_PROVIDERS.WAVOIP;
+const isBrowserVoiceCall = call =>
+  isWhatsappCall(call) || isWavoipCall(call);
+
+const resolveBrowserVoiceSession = (
+  call,
+  { whatsappSession, browserVoiceSessionFor }
+) => {
+  if (isWhatsappCall(call)) return whatsappSession;
+  if (isWavoipCall(call)) {
+    return browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
+  }
+  return null;
+};
 
 // Dismissed call sids must not be re-seeded by the conversation-load watcher.
 // Lives at module scope so all consumers share the same set.
@@ -138,7 +151,10 @@ const buildCallActions = ({
     }
 
     if (isWavoipCall(call)) {
-      const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
+      const session = resolveBrowserVoiceSession(call, {
+        whatsappSession,
+        browserVoiceSessionFor,
+      });
       if (session?.endActiveCall) await session.endActiveCall(call?.callSid);
       globalDurationTimer?.stop();
       return;
@@ -168,7 +184,7 @@ const buildCallActions = ({
     // auto-joins them), so don't short-circuit those.
     if (
       call?.callDirection === VOICE_CALL_DIRECTION.OUTBOUND &&
-      (isWhatsappCall(call) || isWavoipCall(call))
+      (isBrowserVoiceCall(call))
     ) {
       return null;
     }
@@ -191,7 +207,10 @@ const buildCallActions = ({
           useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
           return null;
         }
-        const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
+        const session = resolveBrowserVoiceSession(call, {
+          whatsappSession,
+          browserVoiceSessionFor,
+        });
         await session?.connectForInbox?.(call.inboxId);
         await session?.acceptIncomingCall?.({
           callId: call.callSid,

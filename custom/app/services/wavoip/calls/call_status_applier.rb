@@ -49,6 +49,7 @@ class Wavoip::Calls::CallStatusApplier
   end
 
   def persist_status!(call, attrs)
+    assign_joining_agent_if_needed!(call) if attrs[:status] == 'in_progress'
     call.update!(attrs)
     Voice::CallMessageBuilder.new(call).update_status!(
       status: call.status,
@@ -114,6 +115,14 @@ class Wavoip::Calls::CallStatusApplier
 
   def defer_outbound_ended_broadcast?(call)
     call.outgoing? && call.started_at.blank?
+  end
+
+  def assign_joining_agent_if_needed!(call)
+    return unless call.incoming?
+    return if call.accepted_by_agent_id.present?
+
+    Wavoip::Calls::AssignAcceptedAgentService.new(call: call).perform!
+    call.reload
   end
 
   def broadcast_in_progress(call)

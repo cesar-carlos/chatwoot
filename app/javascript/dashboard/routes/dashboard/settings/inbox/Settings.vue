@@ -168,10 +168,6 @@ export default {
     shouldShowWhatsAppConfiguration() {
       return this.isAWhatsAppCloudChannel;
     },
-    // FORK: Wavoip voice inbox
-    isAWavoipChannel() {
-      return this.inbox.channel_type === INBOX_TYPES.WAVOIP;
-    },
     // FORK: Evolution WhatsApp inbox
     isEvolutionWhatsAppChannel() {
       return (
@@ -212,11 +208,17 @@ export default {
           key: 'business-hours',
           name: this.$t('INBOX_MGMT.TABS.BUSINESS_HOURS'),
         },
-        {
-          key: 'csat',
-          name: this.$t('INBOX_MGMT.TABS.CSAT'),
-        },
       ];
+
+      if (!this.isAWavoipChannel) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'csat',
+            name: this.$t('INBOX_MGMT.TABS.CSAT'),
+          },
+        ];
+      }
 
       if (this.isAWebWidgetInbox) {
         visibleToAllChannelTabs = [

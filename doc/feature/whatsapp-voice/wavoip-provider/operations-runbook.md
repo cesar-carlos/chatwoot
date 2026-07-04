@@ -220,6 +220,25 @@ account.enable_features!('channel_wavoip') # se flag fork ativa
 
 Prerequisite: only one browser client per device token (close Wavoip panel during agent tests).
 
+### Gates de piloto (jul. 2026)
+
+| Gate | Ferramenta | Critério Pass | Status |
+|------|------------|---------------|--------|
+| **W1** | Chamada live + nginx/Sidekiq | POST CALL do painel Wavoip correlacionado com SDK | Pendente — validar em produção |
+| **G0.4 / M1** | 2 browsers/agentes | `acceptedElsewhere` + PATCH único | Pendente — procedimento acima |
+| **O1** | Outbound browser | Áudio bidirecional no dashboard | Pendente |
+| **I1/I2** | `bin/wavoip-pilot-verify` | Pipeline in-process | Pass — revalidar após deploy |
+| **D1 / F1** | Inbound UX | dismiss→reject; accept fail recovery | Pendente |
+
+### `FRONTEND_URL` e rotação de credenciais
+
+| Ação | Notas |
+|------|-------|
+| **`FRONTEND_URL` ausente** | `wavoip_webhook_url` retorna `nil` na API — inbox fica em setup pendente |
+| **Rotacionar webhook key** | Settings → Chamadas → regenerar; atualizar painel Wavoip com nova URL |
+| **Rotacionar `device_token`** | Recriar bootstrap SDK (`wavoip_sdk_bootstrap`); agentes reconectam automaticamente quando o token muda |
+| **STUN/TURN WebRTC Meta** | Super Admin → Installation configs → `VOICE_CALL_STUN_URLS` (editável). Aceita `stun:` e `turn:` para NAT corporativo |
+
 ---
 
 ## Métricas e alertas (suporte)

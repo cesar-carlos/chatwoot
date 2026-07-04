@@ -1,6 +1,19 @@
 module Custom::CsatSurveyService
   private
 
+  def conversation_allows_csat?
+    return false unless channel_supports_outbound_text?
+
+    super
+  end
+
+  def channel_supports_outbound_text?
+    channel = inbox.channel
+    return channel.supports_outbound_text? if channel.respond_to?(:supports_outbound_text?)
+
+    true
+  end
+
   def csat_already_sent?
     return super unless inbox.lock_to_single_conversation?
 

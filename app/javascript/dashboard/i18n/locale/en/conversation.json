@@ -32,6 +32,7 @@
     "LOADING_INBOXES": "Loading inboxes",
     "LOADING_CONVERSATIONS": "Loading Conversations",
     "CANNOT_REPLY": "You cannot reply due to",
+    "WAVOIP_VOICE_ONLY": "This inbox only supports voice calls. Use the call button to contact the customer.",
     "24_HOURS_WINDOW": "24 hour message window restriction",
     "48_HOURS_WINDOW": "48 hour message window restriction",
     "API_HOURS_WINDOW": "You can only reply to this conversation within {hours} hours",
@@ -193,7 +194,8 @@
       "DEVICE_RECONNECTING": "Reconnecting to Wavoip…",
       "MIC_DEVICE": "Microphone",
       "SPEAKER_DEVICE": "Speaker",
-      "CHANNELS_FULL": "All call channels on this Wavoip device are in use. Wait for a call to end."
+      "CHANNELS_FULL": "All call channels on this Wavoip device are in use. Wait for a call to end.",
+      "ACCEPT_RECORD_FAILED": "Could not record who answered this call. The call may still work, but acceptance may not appear in history."
     },
     "WAVOIP_CONNECTIVITY": {
       "GENERIC": "Call connection issue. Check your network and try again.",

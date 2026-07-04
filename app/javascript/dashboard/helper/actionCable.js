@@ -4,17 +4,9 @@ import DashboardAudioNotificationHelper from './AudioAlerts/DashboardAudioNotifi
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { emitter } from 'shared/helpers/mitt';
 import { useImpersonation } from 'dashboard/composables/useImpersonation';
-import { useCallsStore } from 'dashboard/stores/calls';
-import {
-  applyOutboundAnswer,
-  armOutboundRecorder,
-  handleWhatsappRemoteEnd,
-  isLocalWhatsappCall,
-} from 'dashboard/composables/useWhatsappCallSession';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
-import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
+import { createWhatsappVoiceCableHandlers } from 'dashboard/lib/voice/whatsappVoiceCableRegistry';
 import { useAlert } from 'dashboard/composables';
-import conversationI18n from 'dashboard/i18n/locale/en/conversation.json';
 // FORK: Wavoip voice cable handlers (no SDP)
 import { createWavoipVoiceCableHandlers } from 'customDashboard/lib/voice/voiceCallCableRegistry';
 import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
@@ -83,6 +75,10 @@ class ActionCableConnector extends BaseActionCableConnector {
   wavoipVoiceCableHandlers() {
     const t = this.app.$i18n?.global?.t;
     return createWavoipVoiceCableHandlers(t || (key => key));
+  }
+
+  whatsappVoiceCableHandlers() {
+    return createWhatsappVoiceCableHandlers();
   }
 
   // eslint-disable-next-line class-methods-use-this
@@ -392,23 +388,10 @@ class ActionCableConnector extends BaseActionCableConnector {
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    // Defense in depth: the server already filters to online agent streams,
-    // but if anything ever broadcasts to a broader stream (e.g. account-wide),
-    // an agent who's set availability=offline/busy shouldn't ring.
     const availability = this.app.$store.getters.getCurrentUserAvailability;
     if (availability !== 'online') return;
 
-    useCallsStore().addCall({
-      callSid: data.call_id,
-      callId: data.id,
-      conversationId: data.conversation_id,
-      inboxId: data.inbox_id,
-      callDirection: VOICE_CALL_DIRECTION.INBOUND,
-      provider: VOICE_CALL_PROVIDERS.WHATSAPP,
-      sdpOffer: data.sdp_offer,
-      iceServers: data.ice_servers,
-      caller: data.caller,
-    });
+    this.whatsappVoiceCableHandlers().onIncoming(data);
   };
 
   // `connect` is the WebRTC tunnel-ready signal (fires ~20s before pickup
@@ -418,14 +401,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   onVoiceCallOutboundConnected = async data => {
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP || !data.sdp_answer)
       return;
-    // Account-wide broadcast that can arrive before /initiate sets this tab's
-    // call id. applyOutboundAnswer filters foreign calls and buffers the answer
-    // until the id is known, so we must not drop it here on a null activeCallId.
-    try {
-      await applyOutboundAnswer(data.id, data.sdp_answer);
-    } catch (_) {
-      /* noop */
-    }
+    await this.whatsappVoiceCableHandlers().onOutboundConnected(data);
   };
 
   // Real pickup signal — Meta sends status=ACCEPTED on the call when the
@@ -437,10 +413,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    const store = useCallsStore();
-    if (!store.calls.some(c => c.callSid === data.call_id)) return;
-    store.setCallActive(data.call_id);
-    armOutboundRecorder();
+    this.whatsappVoiceCableHandlers().onOutboundAccepted(data);
   };
 
   // eslint-disable-next-line class-methods-use-this
@@ -450,20 +423,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    // The store entry should always be removed for this account-wide broadcast,
-    // but the WebRTC/recorder teardown must only run for the call this tab owns
-    // — otherwise an unrelated agent's call ending would stop this tab's
-    // recorder and upload its chunks against the wrong call id.
-    if (isLocalWhatsappCall(data.id)) {
-      // Await upload before removeCall — the store's sync teardown would otherwise
-      // wipe the recorder chunks before they reach the server.
-      try {
-        await handleWhatsappRemoteEnd(data.id);
-      } catch (_) {
-        /* noop */
-      }
-    }
-    useCallsStore().removeCall(data.call_id);
+    await this.whatsappVoiceCableHandlers().onEnded(data);
   };
 
   // When another tab or agent accepts an inbound WhatsApp call, dismiss it from
@@ -476,16 +436,14 @@ class ActionCableConnector extends BaseActionCableConnector {
       return;
     }
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    const store = useCallsStore();
-    const call = store.calls.find(c => c.callSid === data.call_id);
-    if (!call || call.isActive) return;
-    store.dismissCall(data.call_id);
+    this.whatsappVoiceCableHandlers().onAccepted(data);
   };
 
   // eslint-disable-next-line class-methods-use-this
   onVoiceCallPermissionGranted = data => {
     if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    useAlert(conversationI18n.CONVERSATION.VOICE_WIDGET.PERMISSION_GRANTED);
+    const t = this.app.$i18n?.global?.t;
+    useAlert(this.whatsappVoiceCableHandlers().onPermissionGranted(data, t));
   };
 
   // eslint-disable-next-line class-methods-use-this

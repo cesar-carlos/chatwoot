@@ -107,4 +107,25 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
       expect(broadcaster).to have_received(:broadcast_ended).with(call)
     end
   end
+
+  it 'assigns joining agent from cache when inbound becomes in_progress' do
+    agent = create(:user, account: account)
+    call = create_call(
+      direction: :incoming,
+      from_phone: '+15550001111',
+      to_phone: channel.phone_number
+    )
+    Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
+
+    applier_for(
+      build_event(
+        direction: :incoming,
+        external_status: 'ACTIVE',
+        from_phone: '+15550001111',
+        to_phone: channel.phone_number
+      )
+    ).apply!(call, broadcast: true)
+
+    expect(call.reload.accepted_by_agent_id).to eq(agent.id)
+  end
 end

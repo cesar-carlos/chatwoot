@@ -18,10 +18,13 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
   private
 
   def record_agent_acceptance!
+    Wavoip::Calls::JoiningAgentCache.write(@call.id, Current.user.id)
+
     @call.with_lock do
       next if @call.accepted_by_agent_id.present?
 
       @call.update!(accepted_by_agent_id: Current.user.id)
+      Wavoip::Calls::JoiningAgentCache.delete(@call.id)
       Voice::CallMessageBuilder.new(@call).update_status!(
         status: @call.status,
         agent: Current.user,
@@ -31,6 +34,10 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
         @call.reload,
         accepted_by_agent_id: Current.user.id
       )
+      Wavoip::Calls::AssigneeOnAcceptService.new(
+        call: @call,
+        agent: Current.user
+      ).perform!
     end
   end
 

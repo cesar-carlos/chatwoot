@@ -8,6 +8,11 @@ import {
   queueAcceptedByRecording,
 } from '../wavoipAcceptRecorder';
 
+vi.mock('@wavoip/wavoip-api', () => ({ Wavoip: vi.fn() }));
+vi.mock('customDashboard/lib/wavoip/wavoipSdkPort', () => ({
+  loadWavoipSdk: vi.fn(),
+}));
+
 vi.mock('customDashboard/api/calls', () => ({
   default: {
     recordAccept: vi.fn(),
@@ -32,7 +37,9 @@ describe('wavoipAcceptRecorder', () => {
     store.addCall({ callSid: 'call-1', callId: 42 });
 
     queueAcceptedByRecording('call-1');
-    const flushPromise = flushAcceptedByRecording('call-1');
+    const flushPromise = flushAcceptedByRecording('call-1', {
+      onFailure: vi.fn(),
+    });
 
     await vi.advanceTimersByTimeAsync(1000);
     await vi.advanceTimersByTimeAsync(2000);
