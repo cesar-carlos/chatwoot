@@ -45,3 +45,6 @@ class MessageTemplates::Template::AutoResolve
     @message.presence || account.auto_resolve_message
   end
 end
+
+# FORK: skip auto-resolve template on voice-only inboxes
+MessageTemplates::Template::AutoResolve.prepend_mod_with('MessageTemplates::Template::AutoResolve')

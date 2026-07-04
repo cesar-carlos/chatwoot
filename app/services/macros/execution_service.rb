@@ -68,3 +68,6 @@ class Macros::ExecutionService < ActionService
     WebhookJob.perform_later(webhook_url.first, payload)
   end
 end
+
+# FORK: voice-only inbox action guards
+Macros::ExecutionService.prepend_mod_with('Macros::ExecutionService')

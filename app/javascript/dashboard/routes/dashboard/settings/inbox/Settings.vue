@@ -202,17 +202,13 @@ export default {
         },
       ];
 
-      visibleToAllChannelTabs = [
-        ...visibleToAllChannelTabs,
-        {
-          key: 'business-hours',
-          name: this.$t('INBOX_MGMT.TABS.BUSINESS_HOURS'),
-        },
-      ];
-
       if (!this.isAWavoipChannel) {
         visibleToAllChannelTabs = [
           ...visibleToAllChannelTabs,
+          {
+            key: 'business-hours',
+            name: this.$t('INBOX_MGMT.TABS.BUSINESS_HOURS'),
+          },
           {
             key: 'csat',
             name: this.$t('INBOX_MGMT.TABS.CSAT'),
@@ -248,7 +244,8 @@ export default {
       }
 
       if (
-        this.isFeatureEnabledonAccount(this.accountId, FEATURE_FLAGS.AGENT_BOTS)
+        this.isFeatureEnabledonAccount(this.accountId, FEATURE_FLAGS.AGENT_BOTS) &&
+        !this.isAWavoipChannel
       ) {
         visibleToAllChannelTabs = [
           ...visibleToAllChannelTabs,
@@ -1339,6 +1336,7 @@ export default {
               class="mt-6"
             >
               <SettingsToggleSection
+                v-if="!isAWavoipChannel"
                 v-model="greetingEnabled"
                 :header="
                   $t(

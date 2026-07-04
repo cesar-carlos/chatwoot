@@ -2,16 +2,9 @@
 
 module Custom::Conversations::MessageWindowService
   def can_reply?
-    return false unless channel_supports_outbound_text?
+    return false unless Custom::Channels::OutboundText.allowed?(@conversation.inbox.channel)
 
     super
-  end
-
-  def channel_supports_outbound_text?
-    channel = @conversation.inbox.channel
-    return channel.supports_outbound_text? if channel.respond_to?(:supports_outbound_text?)
-
-    true
   end
 
   private
