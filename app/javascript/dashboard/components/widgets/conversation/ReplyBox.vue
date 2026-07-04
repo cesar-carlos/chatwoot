@@ -168,6 +168,7 @@ export default {
       );
     },
     showWhatsappTemplates() {
+      if (this.isAWavoipChannel) return false;
       // FORK: Evolution has no WABA templates
       if (this.isEvolutionWhatsAppChannel) return false;
       // We support templates for API channels if someone updates templates manually via API
@@ -181,6 +182,9 @@ export default {
       return this.isATwilioWhatsAppChannel && !this.isPrivate;
     },
     isPrivate() {
+      if (this.isAWavoipChannel) {
+        return this.isOnPrivateNote;
+      }
       if (
         this.currentChat.can_reply ||
         this.isAWhatsAppChannel ||
