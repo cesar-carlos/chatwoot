@@ -6,6 +6,11 @@ module MessagingProvider::Capabilities
       unlimited_session: true,
       templates_required: false,
       cloud_api: false
+    },
+    'evolution_go' => {
+      unlimited_session: true,
+      templates_required: false,
+      cloud_api: false
     }
   }.freeze
 

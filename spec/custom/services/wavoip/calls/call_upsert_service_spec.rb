@@ -31,6 +31,7 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
       session_id: 12_345,
       call_type: :official,
       record_url: nil,
+      record_status: nil,
       raw_type: 'CALL'
     }
     Voice::Dto::WebhookCallEvent.new(**defaults, **overrides)
@@ -70,6 +71,32 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
 
       expect { second = service_for(event).create! }.not_to change(Call, :count)
       expect(second.id).to eq(first.id)
+    end
+
+    it 'reopens a resolved conversation when create is retried for an existing call' do
+      contact = create(:contact, account: account, phone_number: '+15550001111')
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        status: :resolved
+      )
+      create(
+        :call,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        contact: contact,
+        provider: :wavoip,
+        provider_call_id: provider_call_id,
+        direction: :incoming,
+        status: 'ringing'
+      )
+
+      service_for(build_event).create!
+
+      expect(conversation.reload).to be_pending
     end
 
     it 're-applies status when create arrives after the call record exists' do
@@ -244,6 +271,21 @@ RSpec.describe Wavoip::Calls::CallUpsertService do
         expect(call.started_at).to be_nil
         expect(broadcaster).not_to have_received(:broadcast_ended)
       end
+    end
+
+    it 'persists record_status from CALL updates even when status is unchanged' do
+      call = service_for(build_event).create!
+      call.update!(status: 'in_progress', meta: { 'wavoip_status' => 'ACTIVE' })
+
+      ignore_event = build_event(
+        action: :update,
+        external_status: 'ACTIVE',
+        record_status: 'RECORDING'
+      )
+
+      service_for(ignore_event).update!
+
+      expect(call.reload.meta['record_status']).to eq('RECORDING')
     end
   end
 end

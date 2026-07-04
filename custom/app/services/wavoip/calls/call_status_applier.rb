@@ -51,12 +51,7 @@ class Wavoip::Calls::CallStatusApplier
   def persist_status!(call, attrs)
     assign_joining_agent_if_needed!(call) if attrs[:status] == 'in_progress'
     call.update!(attrs)
-    Voice::CallMessageBuilder.new(call).update_status!(
-      status: call.status,
-      agent: call.accepted_by_agent,
-      duration_seconds: call.duration_seconds
-    )
-    call.sync_conversation_call_attributes!
+    Wavoip::Calls::CallFinalizer.sync_message_and_conversation!(call)
   end
 
   def build_update_attrs(call, mapped_status)
@@ -88,6 +83,7 @@ class Wavoip::Calls::CallStatusApplier
 
   def status_meta(call, mapped_status)
     base_meta = (call.meta || {}).merge('wavoip_status' => event.external_status)
+    base_meta['record_status'] = event.record_status if event.record_status.present?
     return base_meta.merge('ended_at' => Time.zone.now.to_i) if status_mapper.terminal?(mapped_status)
 
     base_meta
@@ -103,14 +99,26 @@ class Wavoip::Calls::CallStatusApplier
   end
 
   def emit_broadcasts(call, mapped_status)
-    if mapped_status == 'ringing' && call.incoming?
-      broadcaster.broadcast_incoming(call)
-      Wavoip::Calls::RingEscalationScheduler.new(call: call).schedule
+    if mapped_status == 'ringing'
+      Wavoip::Calls::StaleCallTimeoutScheduler.new(call: call).schedule
+      if call.incoming?
+        broadcaster.broadcast_incoming(call)
+        Wavoip::Calls::RingEscalationScheduler.new(call: call).schedule
+      end
     elsif mapped_status == 'in_progress'
       broadcast_in_progress(call)
     elsif status_mapper.terminal?(mapped_status)
       broadcaster.broadcast_ended(call) unless defer_outbound_ended_broadcast?(call)
+      schedule_direct_recording_fetch(call) if mapped_status == 'completed'
     end
+  end
+
+  def schedule_direct_recording_fetch(call)
+    return unless Wavoip::Calls::RecordingPolicy.recording_feature_enabled?(inbox: inbox)
+
+    Wavoip::FetchDirectRecordingJob
+      .set(wait: Wavoip::FetchDirectRecordingJob::INITIAL_DELAY)
+      .perform_later(call.id)
   end
 
   def defer_outbound_ended_broadcast?(call)

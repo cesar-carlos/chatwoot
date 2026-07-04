@@ -15,6 +15,12 @@ class Custom::Whatsapp::Evolution::ApiClient
     Net::ReadTimeout,
     Timeout::Error
   ].freeze
+  # Bounded and small on purpose: some call sites (e.g. credential
+  # validation) run synchronously inside a web request and must not turn a
+  # single slow/failing Evolution instance into a multi-minute hang.
+  MAX_RETRIES = 1
+  RETRY_BACKOFF = 0.3
+  RETRYABLE_STATUSES = (500..599)
 
   def self.for_channel(channel)
     config = channel.provider_config || {}
@@ -251,7 +257,7 @@ class Custom::Whatsapp::Evolution::ApiClient
     request(:delete, path, body)
   end
 
-  def request(method, path, body = nil)
+  def request(method, path, body = nil, attempt: 0)
     options = {
       headers: {
         'apikey' => @api_key,
@@ -262,11 +268,45 @@ class Custom::Whatsapp::Evolution::ApiClient
     options[:timeout] = REQUEST_TIMEOUT
     options[:open_timeout] = OPEN_TIMEOUT
 
-    HTTParty.public_send(method, "#{@base_url}#{path}", options)
+    response = HTTParty.public_send(method, "#{@base_url}#{path}", options)
+    if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response)
+      return retry_request(method, path, body, attempt)
+    end
+
+    ensure_parseable_response!(response, method, path)
+    response
   rescue *NETWORK_ERRORS => e
+    return retry_request(method, path, body, attempt) if attempt < MAX_RETRIES
+
     raise Custom::Whatsapp::Evolution::ApiError.new(
       "Evolution API request failed: #{method.to_s.upcase} #{path}",
       body: e.message
+    )
+  end
+
+  def retry_request(method, path, body, attempt)
+    sleep(RETRY_BACKOFF * (attempt + 1))
+    request(method, path, body, attempt: attempt + 1)
+  end
+
+  def retryable_failure?(response)
+    RETRYABLE_STATUSES.cover?(response.code.to_i)
+  rescue StandardError
+    false
+  end
+
+  # Some failure responses (e.g. an HTML error page from a reverse proxy in
+  # front of Evolution) are not JSON. Surface them as a normal, catchable
+  # `ApiError` instead of letting callers crash with a `NoMethodError` the
+  # first time they call `.dig`/`[]` on what they assumed was a Hash.
+  def ensure_parseable_response!(response, method, path)
+    parsed = response.parsed_response
+    return if parsed.nil? || parsed.is_a?(Hash) || parsed.is_a?(Array) || parsed.to_s.empty?
+
+    raise Custom::Whatsapp::Evolution::ApiError.new(
+      "Evolution API returned a non-JSON response: #{method.to_s.upcase} #{path}",
+      status: response.code,
+      body: parsed.to_s.truncate(500)
     )
   end
 

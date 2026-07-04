@@ -17,7 +17,7 @@ class Channel::Wavoip < ApplicationRecord
   }
   validate :administrators_toggle_consistent_with_offline_fallback
 
-  before_validation :ensure_provider_config_defaults, on: :create
+  before_validation :ensure_provider_config_defaults
 
   def name
     'Wavoip'
@@ -36,6 +36,10 @@ class Channel::Wavoip < ApplicationRecord
 
   def inbound_calls_enabled?
     provider_config['inbound_calls_enabled'] != false
+  end
+
+  def call_recording_enabled?
+    provider_config['call_recording_enabled'] != false
   end
 
   def incoming_call_include_administrators?
@@ -59,6 +63,16 @@ class Channel::Wavoip < ApplicationRecord
 
   def ring_timeout_seconds_value
     provider_config['ring_timeout_seconds']&.to_i
+  end
+
+  # Outbound calls have no fixed "ring timeout" concept (the agent decides when to give
+  # up), so the stale-call safety net uses a much longer, separately configurable ceiling
+  # than inbound. Default 15 minutes — long enough to never interrupt a real conversation
+  # that simply hasn't reached ACTIVE yet, short enough to eventually clear a call whose
+  # ENDED webhook never arrived.
+  def outbound_stale_timeout_seconds
+    configured = provider_config['outbound_stale_timeout_seconds'].to_i
+    configured.positive? ? configured : 900
   end
 
   def webhook_url
@@ -97,7 +111,10 @@ class Channel::Wavoip < ApplicationRecord
   private
 
   def ensure_provider_config_defaults
-    self.provider_config = (provider_config || {}).reverse_merge('inbound_calls_enabled' => true)
+    self.provider_config = (provider_config || {}).reverse_merge(
+      'inbound_calls_enabled' => true,
+      'call_recording_enabled' => true
+    )
   end
 
   def administrators_toggle_consistent_with_offline_fallback

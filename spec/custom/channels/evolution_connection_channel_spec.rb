@@ -50,4 +50,32 @@ RSpec.describe EvolutionConnectionChannel, type: :channel do
 
     expect(subscription).to be_rejected
   end
+
+  it 'rejects a non-admin agent even when assigned to the inbox' do
+    agent = create(:user, account: account, role: :agent)
+    create(:inbox_member, inbox: inbox, user: agent)
+
+    subscribe(
+      pubsub_token: agent.pubsub_token,
+      user_id: agent.id,
+      account_id: account.id,
+      inbox_id: inbox.id
+    )
+
+    expect(subscription).to be_rejected
+  end
+
+  it 'allows an administrator even when not assigned to the inbox' do
+    unassigned_admin = create(:user, account: account, role: :administrator)
+
+    subscribe(
+      pubsub_token: unassigned_admin.pubsub_token,
+      user_id: unassigned_admin.id,
+      account_id: account.id,
+      inbox_id: inbox.id
+    )
+
+    expect(subscription).to be_confirmed
+    expect(subscription).to have_stream_from("evolution:connection:#{inbox.id}")
+  end
 end

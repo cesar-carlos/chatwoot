@@ -50,6 +50,28 @@ RSpec.describe Wavoip::Calls::Broadcaster do
     expect(streams).to include(online_agent.pubsub_token)
     expect(streams).not_to include(offline_agent.pubsub_token)
     expect(payloads.first.last[:event]).to eq('voice_call.incoming')
+    expect(payloads.first.last[:data][:call_direction]).to eq('inbound')
+  end
+
+  it 'does not broadcast incoming for outbound calls' do
+    outbound_call = create(
+      :call,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      contact: contact,
+      provider: :wavoip,
+      provider_call_id: 'broadcast_out_001',
+      direction: :outgoing,
+      status: 'ringing'
+    )
+    broadcaster = described_class.new(inbox: inbox)
+    payloads = []
+    allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
+
+    broadcaster.broadcast_incoming(outbound_call)
+
+    expect(payloads).to be_empty
   end
 
   it 'includes online administrators in the initial ring when configured' do

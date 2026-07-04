@@ -6,6 +6,32 @@ Guia para admins e suporte quando a integração não funciona como esperado.
 
 ---
 
+## Feature flag
+
+Adicionar em `custom/config/features.yml` (overlay fork — não editar `config/features.yml`
+upstream sem `# FORK:`):
+
+```yaml
+- name: channel_wavoip
+  display_name: Wavoip Voice Channel
+  enabled: false
+  premium: true
+```
+
+| UI | Condição |
+|----|----------|
+| Tile `wavoip` ativo | `channel_voice` **e** (`channel_wavoip` ou piloto encerrado) |
+| Durante piloto | `ChannelItem.vue`: `channel_voice && channel_wavoip` |
+| GA | Remover gate `channel_wavoip` ou `enabled: true` no YAML |
+
+Habilitar conta piloto:
+
+```ruby
+account.enable_features!('channel_voice', 'channel_wavoip')
+```
+
+---
+
 ## Produção piloto (Jun 2026)
 
 | Item | Valor (exemplo) |
@@ -125,6 +151,49 @@ Ver [frontend-integration.md §6.4](./frontend-integration.md#64-ringtone-e-pref
 
 Ver logs: `Wavoip::ProcessWebhookJob` (sem payload em produção). Nginx: `grep webhooks/wavoip` (ver seção acima).
 
+### Webhook parou de chegar sem aviso (incidente 04 jul. 2026)
+
+**Sintoma:** o webhook funcionava normalmente e, sem nenhuma mudança de configuração, parou
+de entregar eventos — nenhuma chamada nova cria `Call`/conversa `pending`, gravações não
+anexam, nada aparece nos logs do Sidekiq. O widget de chamada no navegador continua
+funcionando normalmente (ele depende só do SDK/WebSocket, não do webhook), o que mascara o
+problema — só aparece quando se olha o backend/histórico.
+
+**Causa raiz observada:** um erro 502 transitório no servidor (por exemplo durante um
+deploy/restart do Puma) fez a Wavoip descartar aquela tentativa de entrega — e, diferente de
+outros provedores, **não houve nenhuma nova tentativa depois disso**, nem para aquele evento
+nem para eventos seguintes. A Wavoip parece desativar/parar de enviar o webhook após uma
+falha de entrega, sem reativar sozinha.
+
+**Como detectar:**
+
+```bash
+# Verificar quando foi a última tentativa de entrega recebida
+sudo grep 'webhooks/wavoip' /var/log/nginx/chatwoot_access_443.log | tail -20
+
+# Se a última linha tiver status 502/504 e nada depois disso (mesmo com
+# chamadas de teste feitas depois), o webhook parou de ser enviado pela Wavoip
+sudo grep 'webhooks/wavoip' /var/log/nginx/chatwoot_error_443.log | tail -20
+```
+
+Se o timestamp da última linha for muito anterior ao horário atual (minutos/horas), mesmo
+tendo havido chamadas de teste nesse intervalo, o webhook está parado do lado da Wavoip.
+
+**Correção (feita no painel da Wavoip, não no Chatwoot):**
+
+1. [app.wavoip.com](https://app.wavoip.com) → **Devices** → selecionar o dispositivo
+2. **Integrações → Webhook**
+3. Confirmar que o toggle ainda está **ativado** (é comum ele ter caído para desligado)
+4. Confirmar que a URL ainda é exatamente a mesma configurada em Settings → Chamadas
+5. Confirmar que os eventos **CALL** e **RECORD** continuam marcados
+6. Salvar novamente mesmo que pareça já estar correto — isso costuma forçar a reativação
+7. Fazer uma ligação de teste e reconferir o nginx access log
+
+**Mitigação estrutural:** evitar que deploys derrubem o Puma durante uma janela em que um
+webhook possa chegar (ex: usar `systemctl reload`/rolling restart em vez de `restart` puro
+quando disponível), já que uma única falha de entrega pode exigir intervenção manual no
+painel externo para retomar.
+
 ### Segurança do webhook
 
 | Item | Detalhe |
@@ -153,9 +222,13 @@ Comportamento esperado com **um token por inbox**. Primeiro `accept()` ganha. De
 
 | Causa | Ação |
 |-------|------|
-| Webhook `RECORD` não configurado no Wavoip | Habilitar gravação no painel |
-| UI RECORD | Pós-MVP — pipeline backend existe (`RecordHandler`) |
+| Gravação desligada no painel Wavoip | `app.wavoip.com` → Configurações gerais → Gravação → ON |
+| Webhook `RECORD` não selecionado | Painel Wavoip → Webhook → marcar evento **RECORD** — desde 04 jul. 2026 isso não bloqueia mais o recurso: `Wavoip::FetchDirectRecordingJob` tenta a URL direta (`storage.wavoip.com/{id}`) automaticamente 2 min após a chamada completar, mesmo sem esse webhook |
+| Toggle Chatwoot desligado | Settings inbox → Chamadas → **Gravar ligações no histórico** → ON |
+| `record_status` ainda `RECORDING`/`MIXING` | Aguardar webhook `READY` (ou o fallback de URL direta, que tenta até 4x em intervalos de 3 min) |
 | Fallback manual | `https://storage.wavoip.com/{whatsapp_call_id}` |
+
+Ver também [inbox-setup.md §3.5](./inbox-setup.md#35-seção--gravação-no-histórico-settings).
 
 ---
 

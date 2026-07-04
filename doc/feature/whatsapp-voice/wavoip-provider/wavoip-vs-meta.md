@@ -22,7 +22,7 @@ Wavoip cai no eixo **gateway com SDK browser + webhook proprietário**, não no 
 
 ## Tabela comparativa
 
-| Dimensão | Chatwoot + Meta | Chatwoot + Wavoip (proposto) |
+| Dimensão | Chatwoot + Meta | Chatwoot + Wavoip (implementado) |
 |----------|-----------------|------------------------------|
 | **Onde aceita inbound** | `POST /whatsapp_calls/:id/accept` + SDP | `offer.accept()` no browser |
 | **Onde inicia outbound** | `POST /whatsapp_calls/initiate` + SDP | `wavoip.startCall({ to })` no browser |

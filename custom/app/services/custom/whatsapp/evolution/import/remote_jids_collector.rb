@@ -22,10 +22,12 @@ class Custom::Whatsapp::Evolution::Import::RemoteJidsCollector
         'Failed to fetch Evolution contacts for import'
       )
 
-      contacts = Array.wrap(response.parsed_response)
+      contacts = extract_records(response.parsed_response, 'contacts')
       break if contacts.blank?
 
       contacts.each do |record|
+        next unless record.is_a?(Hash)
+
         jid = record['remoteJid'].to_s
         jids << jid if jid.present? && !skip_remote_jid?(jid)
       end

@@ -30,18 +30,14 @@ class Wavoip::Calls::HandledRemotelyStubService
   end
 
   def finalize_stub(call)
-    call.update!(
-      status: 'completed',
-      end_reason: 'handled_remotely',
-      meta: stub_meta(call)
-    )
-    Voice::CallMessageBuilder.new(call).update_status!(
-      status: call.status,
-      agent: nil,
-      duration_seconds: call.duration_seconds
-    )
-    call.sync_conversation_call_attributes!
-    broadcaster.broadcast_ended(call)
+    call.with_lock do
+      call.update!(
+        status: 'completed',
+        end_reason: 'handled_remotely',
+        meta: stub_meta(call)
+      )
+    end
+    Wavoip::Calls::CallFinalizer.finalize_ended!(call, broadcaster: broadcaster, agent: nil)
     inbox.channel.mark_webhook_verified!
     call
   end

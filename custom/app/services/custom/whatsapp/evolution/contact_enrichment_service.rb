@@ -53,8 +53,10 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
     sync_avatar_from_url(@profile_pic_url) if @profile_pic_url.present?
     return unless @force || profile_fetch_needed?
 
-    fetch_and_apply_profile!
-    mark_enriched!
+    # Only extend the 24h enrichment cooldown when the remote fetch actually
+    # ran without erroring — otherwise a transient API failure would hide
+    # the contact from enrichment for a full day for no reason.
+    mark_enriched! if fetch_and_apply_profile!
   end
 
   private
@@ -121,14 +123,17 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
 
   def fetch_and_apply_profile!
     number = lookup_number
-    return if number.blank?
+    return true if number.blank? # nothing to look up — not an error, no point retrying
 
     response = api_client.fetch_profile(number: number)
-    apply_profile(response.parsed_response) if response.success?
+    return false unless response.success?
 
+    apply_profile(response.parsed_response)
     fetch_profile_picture!(number) unless contact.avatar.attached?
+    true
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION] contact enrichment failed for contact #{contact.id}: #{e.message}")
+    false
   end
 
   def profile_fetch_needed?

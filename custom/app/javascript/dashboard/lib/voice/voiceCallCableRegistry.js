@@ -1,7 +1,11 @@
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useAlert } from 'dashboard/composables';
 import store from 'dashboard/store';
-import { mapCableToStoreEntry } from 'customDashboard/lib/voice/callStoreMappers';
+import {
+  mapCableToStoreEntry,
+  findWavoipCallForCableEvent,
+} from 'customDashboard/lib/voice/callStoreMappers';
+import { isOutboundCallDirection } from 'customDashboard/lib/voice/voiceCallDirection';
 import {
   clearActiveCall as clearSdkActiveCall,
   getActiveProviderCallId,
@@ -12,7 +16,9 @@ import {
   pendingOffers,
 } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { flushAcceptedByRecording } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
+import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
 import { removeWavoipCallFromStore } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
+import { shouldIgnoreInboundWavoipCable } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
 import {
   isCallJoining,
   isCallDismissed,
@@ -20,22 +26,67 @@ import {
 
 const currentUserId = () => store.getters.getCurrentUserID;
 
+// The SDK is treated as the source of truth for an outbound ringing widget
+// (see GAP-OUTBOUND-01 in the Wavoip changelog): the webhook can report a
+// terminal status before the SDK's own peerAccept/peerReject/unanswered
+// fires, and removing the widget right away would make it disappear while
+// the callee's phone is still actually ringing. But if the SDK's own event
+// never arrives (dropped network event, backgrounded tab, SDK bug), that
+// call would ring forever with no way to end it from the UI. This schedules
+// a bounded fallback removal so the widget can't become a permanent ghost —
+// it's a no-op if the SDK's own handler already removed the call by then.
+const GHOST_WIDGET_FALLBACK_MS = 8000;
+
+const scheduleGhostWidgetFallback = (callId, callEntry) => {
+  setTimeout(() => {
+    const callsStore = useCallsStore();
+    const stillPresent = callsStore.calls.find(
+      c =>
+        c.callSid === callEntry.callSid ||
+        (callEntry.wavoipOfferId && c.wavoipOfferId === callEntry.wavoipOfferId)
+    );
+    if (!stillPresent || stillPresent.isActive) return;
+
+    removeWavoipCallFromStore(
+      callId,
+      stillPresent.callSid,
+      stillPresent.wavoipOfferId
+    );
+  }, GHOST_WIDGET_FALLBACK_MS);
+};
+
 export const createWavoipVoiceCableHandlers = t => ({
   onIncoming(data) {
     if (isCallDismissed(data.call_id)) return;
 
     const callsStore = useCallsStore();
-    const existing = callsStore.calls.find(c => c.callSid === data.call_id);
-    const offerEntry = pendingOffers.get(data.call_id);
+    if (shouldIgnoreInboundWavoipCable(data, { calls: callsStore.calls })) {
+      return;
+    }
 
+    const existing = findWavoipCallForCableEvent(callsStore.calls, data);
+    const offerEntry =
+      pendingOffers.get(data.call_id) ||
+      (existing?.wavoipOfferId && pendingOffers.get(existing.wavoipOfferId));
+
+    const mapped = mapCableToStoreEntry(data);
     const entry = {
-      ...mapCableToStoreEntry(data),
+      ...mapped,
+      // Keep the SDK-origin callSid as canonical when this cable event
+      // reconciles onto a row the offer already created under its own id.
+      callSid: existing?.callSid || mapped.callSid,
       awaitingSdkOffer: !offerEntry,
-      wavoipOfferId: offerEntry?.offer?.id || data.call_id,
+      wavoipOfferId: offerEntry?.offer?.id || existing?.wavoipOfferId || data.call_id,
     };
 
     callsStore.addCall(existing ? { ...existing, ...entry } : entry);
-    flushAcceptedByRecording(data.call_id);
+    if (entry.conversationId) {
+      reopenWavoipInboundConversation(entry.conversationId);
+    }
+    flushAcceptedByRecording(data.call_id, {
+      t,
+      onFailure: () => useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED')),
+    });
   },
   onOutboundAccepted(data) {
     const callsStore = useCallsStore();
@@ -61,7 +112,13 @@ export const createWavoipVoiceCableHandlers = t => ({
       return;
     }
 
-    useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE'));
+    const agentName = data.accepted_by_agent_name;
+
+    useAlert(
+      agentName
+        ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
+        : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
+    );
     removePendingOffer(data.call_id);
     callsStore.dismissCall(data.call_id);
   },
@@ -75,7 +132,7 @@ export const createWavoipVoiceCableHandlers = t => ({
     if (data.end_reason === 'handled_remotely') {
       useAlert(t('CONVERSATION.WAVOIP_CALL.HANDLED_REMOTELY'));
     } else if (
-      callEntry.callDirection !== 'outbound' &&
+      !isOutboundCallDirection(callEntry.callDirection) &&
       (data.end_reason === 'no_answer' ||
         data.status === 'no_answer' ||
         data.status === 'missed' ||
@@ -98,10 +155,11 @@ export const createWavoipVoiceCableHandlers = t => ({
     }
 
     if (
-      callEntry.callDirection === 'outbound' &&
+      isOutboundCallDirection(callEntry.callDirection) &&
       !callEntry.isActive &&
       isWavoipSdkCallOwned(data.call_id)
     ) {
+      scheduleGhostWidgetFallback(data.call_id, callEntry);
       return;
     }
 

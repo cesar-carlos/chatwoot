@@ -10,7 +10,7 @@ module Custom::Webhooks::WhatsappEventsJob
     channel = find_evolution_channel(params)
     unless channel
       Rails.logger.warn("[EVOLUTION] unknown instance=#{evolution_instance_name(params)}")
-      return
+      return super(params)
     end
 
     if channel_is_inactive?(channel)

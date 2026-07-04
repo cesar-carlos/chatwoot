@@ -10,10 +10,14 @@ vi.mock('dashboard/composables', () => ({
 }));
 
 const getWavoipDeviceStatus = vi.fn();
+const getWavoipQr = vi.fn();
+const postWavoipLogout = vi.fn();
 
 vi.mock('dashboard/api/inboxes', () => ({
   default: {
     getWavoipDeviceStatus: (...args) => getWavoipDeviceStatus(...args),
+    getWavoipQr: (...args) => getWavoipQr(...args),
+    postWavoipLogout: (...args) => postWavoipLogout(...args),
   },
 }));
 
@@ -65,6 +69,8 @@ describe('WavoipDevicePanel', () => {
 
   beforeEach(() => {
     getWavoipDeviceStatus.mockResolvedValue({ data: { live: true } });
+    getWavoipQr.mockReset().mockResolvedValue({});
+    postWavoipLogout.mockReset().mockResolvedValue({});
     wakeUpInboxDevice.mockReset().mockResolvedValue(true);
     disconnectInbox.mockReset().mockResolvedValue();
     connectInbox.mockReset().mockResolvedValue({});
@@ -96,6 +102,21 @@ describe('WavoipDevicePanel', () => {
           NextButton: true,
           Spinner: true,
           WavoipQrScanModal: true,
+          Dialog: {
+            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+            props: [
+              'title',
+              'description',
+              'confirmButtonLabel',
+              'isLoading',
+              'type',
+            ],
+            emits: ['confirm', 'close'],
+            methods: {
+              open() {},
+              close() {},
+            },
+          },
         },
       },
       props: {
@@ -223,5 +244,78 @@ describe('WavoipDevicePanel', () => {
       );
 
     expect(restartButton.attributes('disabled')).toBe('true');
+  });
+
+  it('opens a confirmation dialog instead of restarting immediately when clicking Restart', async () => {
+    const wrapper = mountPanel({ device_status: 'open' });
+    await flushPromises();
+
+    const restartButton = wrapper
+      .findAll('next-button-stub')
+      .find(
+        button =>
+          button.attributes('label') ===
+          'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART'
+      );
+    await restartButton.trigger('click');
+    await flushPromises();
+
+    // Clicking the button only opens the confirmation dialog — the actual
+    // restart call must wait for an explicit confirm.
+    expect(getWavoipQr).not.toHaveBeenCalled();
+  });
+
+  it('restarts the device only after the restart dialog is confirmed', async () => {
+    const wrapper = mountPanel({ device_status: 'open' });
+    await flushPromises();
+
+    const restartDialog = wrapper.findComponent({ ref: 'restartDialogRef' });
+    await restartDialog.vm.$emit('confirm');
+    await flushPromises();
+
+    expect(getWavoipQr).toHaveBeenCalledWith(3, { refresh: true });
+  });
+
+  it('opens a confirmation dialog instead of logging out immediately when clicking Logout', async () => {
+    const wrapper = mountPanel({ device_status: 'open' });
+    await flushPromises();
+
+    const logoutButton = wrapper
+      .findAll('next-button-stub')
+      .find(
+        button =>
+          button.attributes('label') ===
+          'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT'
+      );
+    await logoutButton.trigger('click');
+    await flushPromises();
+
+    expect(postWavoipLogout).not.toHaveBeenCalled();
+  });
+
+  it('logs out only after the logout dialog is confirmed', async () => {
+    const wrapper = mountPanel({ device_status: 'open' });
+    await flushPromises();
+
+    const logoutDialog = wrapper.findComponent({ ref: 'logoutDialogRef' });
+    await logoutDialog.vm.$emit('confirm');
+    await flushPromises();
+
+    expect(postWavoipLogout).toHaveBeenCalledWith(3);
+  });
+
+  it('does not open the logout dialog (and re-opens QR instead) when the device is disconnected', async () => {
+    const wrapper = mountPanel({ device_status: 'close' });
+    await flushPromises();
+
+    const logoutButton = wrapper
+      .findAll('next-button-stub')
+      .find(
+        button =>
+          button.attributes('label') ===
+          'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.LOGOUT'
+      );
+
+    expect(logoutButton).toBeFalsy();
   });
 });

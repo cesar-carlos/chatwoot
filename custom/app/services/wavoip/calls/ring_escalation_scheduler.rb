@@ -11,9 +11,11 @@ class Wavoip::Calls::RingEscalationScheduler
     return unless timeout.positive?
 
     lock_key = "wavoip:escalate_lock:#{call.id}"
-    return if Rails.cache.read(lock_key)
+    # `unless_exist` makes the read+write atomic (SETNX on Redis) — two
+    # concurrent webhook retries racing here can no longer both enqueue a job.
+    acquired = Rails.cache.write(lock_key, true, unless_exist: true, expires_in: (timeout + 5).seconds)
+    return unless acquired
 
-    Rails.cache.write(lock_key, true, expires_in: (timeout + 5).seconds)
     Wavoip::EscalateRingJob.set(wait: timeout.seconds).perform_later(call.id)
   end
 

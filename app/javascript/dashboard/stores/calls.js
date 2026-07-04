@@ -51,7 +51,17 @@ export const useCallsStore = defineStore('calls', {
 
     addCall(callData) {
       if (!callData?.callSid) return;
-      const existing = this.calls.find(c => c.callSid === callData.callSid);
+      // Wavoip's webhook call_id and the SDK's Offer.id can diverge; match by
+      // those alias ids too so a race between the two paths merges into one
+      // row instead of leaving two widgets until something else reconciles
+      // them later.
+      const existing = this.calls.find(
+        c =>
+          c.callSid === callData.callSid ||
+          (callData.wavoipOfferId &&
+            c.wavoipOfferId === callData.wavoipOfferId) ||
+          (callData.callId != null && c.callId === callData.callId)
+      );
       if (existing) {
         // Merge so a later cable event with sdp_offer/provider/caller fills in
         // gaps left by the earlier message.created path (and vice versa).
@@ -60,6 +70,11 @@ export const useCallsStore = defineStore('calls', {
         // "Unknown caller" on the next status update.
         const next = { ...callData };
         if (existing.caller && !next.caller) delete next.caller;
+        // Keep the existing callSid as canonical when this match came through
+        // an alias id rather than an exact callSid match — otherwise the
+        // entry's key would shift under callers still tracking the old sid
+        // (active call widget, dismiss/accept flows).
+        if (existing.callSid !== callData.callSid) delete next.callSid;
         Object.assign(existing, next, { isActive: existing.isActive });
         return;
       }

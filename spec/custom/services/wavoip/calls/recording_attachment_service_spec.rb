@@ -37,4 +37,15 @@ RSpec.describe Wavoip::Calls::RecordingAttachmentService do
     expect(call.reload.meta['record_url']).to eq(record_url)
     expect(message.reload.content_attributes.dig('data', 'recording_url')).to eq(record_url)
   end
+
+  it 'skips when call_recording_enabled is false' do
+    channel.update!(provider_config: channel.provider_config.merge('call_recording_enabled' => false))
+
+    expect(SafeFetch).not_to receive(:fetch)
+
+    described_class.new(call: call, record_url: record_url).perform
+
+    expect(call.reload.meta['record_url']).to be_nil
+    expect(message.reload.content_attributes.dig('data', 'recording_url')).to be_nil
+  end
 end

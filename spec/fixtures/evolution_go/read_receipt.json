@@ -1,0 +1,12 @@
+{
+  "event": "READ_RECEIPT",
+  "instance": "test-go-instance",
+  "data": {
+    "key": {
+      "id": "3EB0READRECEIPT01",
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false
+    },
+    "timestamp": "1718880000"
+  }
+}

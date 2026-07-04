@@ -79,6 +79,8 @@ Biblioteca **browser-only** — base da integração Vue.
 | Manual de boas práticas (2025) | https://wavoip.gitbook.io/api/comece-aqui/manual-de-boas-praticas-wavoip-2025.md |
 | **Webhook (Beta)** — `CALL`, `RECORD`, `DEVICE` | https://wavoip.gitbook.io/api/webhook-beta.md |
 | **Gravação** | https://wavoip.gitbook.io/api/gravacao.md |
+
+Configuração no fork: [inbox-setup.md §3.5](./inbox-setup.md#35-seção--gravação-no-histórico-settings) · troubleshooting [operations-runbook.md § Gravação ausente](./operations-runbook.md#gravação-ausente).
 | Vincule um WhatsApp | https://wavoip.gitbook.io/api/dispositivo/vincule-um-whatsapp.md |
 | Configurações gerais do dispositivo | https://wavoip.gitbook.io/api/dispositivo/configuracoes-gerais.md |
 | WhatsApp externo / Evolution / Baileys | https://wavoip.gitbook.io/api/dispositivo/vincule-um-whatsapp/whatsapp-externo.md · [Evolution](https://wavoip.gitbook.io/api/dispositivo/vincule-um-whatsapp/whatsapp-externo/evolution.md) · [Baileys](https://wavoip.gitbook.io/api/dispositivo/vincule-um-whatsapp/whatsapp-externo/baileys.md) |

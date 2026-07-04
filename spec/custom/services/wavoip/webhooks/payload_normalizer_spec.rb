@@ -42,6 +42,38 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
       expect(event.direction).to eq(:outgoing)
     end
 
+    it 'infers outgoing direction from OUTGOING_RING when direction is missing' do
+      event = normalize(
+        {
+          'type' => 'CALL',
+          'action' => 'create',
+          'whatsapp_call_id' => 'out_no_dir',
+          'status' => 'OUTGOING_RING',
+          'phone' => '+5511999999999',
+          'peer' => { 'phone' => '+5511888888888' }
+        }
+      )
+
+      expect(event.direction).to eq(:outgoing)
+    end
+
+    it 'infers outgoing when inbox phone is caller even if direction says INCOMING' do
+      event = normalize(
+        {
+          'type' => 'CALL',
+          'action' => 'create',
+          'whatsapp_call_id' => 'agent_initiated',
+          'status' => 'CALLING',
+          'direction' => 'INCOMING',
+          'phone' => '5566999050312',
+          'caller' => '5566999050312',
+          'receiver' => '556697193168'
+        }
+      )
+
+      expect(event.direction).to eq(:outgoing)
+    end
+
     it 'falls back to id when whatsapp_call_id is absent' do
       event = normalize(
         {
@@ -83,8 +115,35 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
         expect(event.external_status).to eq('RECORD')
         expect(event.from_phone).to eq('+5511999999999')
         expect(event.record_url).to eq('https://storage.wavoip.com/rec_001')
+        expect(event.record_status).to be_nil
         expect(event.raw_type).to eq('RECORD')
       end
+    end
+
+    it 'normalizes RECORD updates with record_status' do
+      payload = {
+        'type' => 'RECORD',
+        'whatsapp_call_id' => 'rec_002',
+        'phone' => '5511999999999',
+        'record_url' => 'https://storage.wavoip.com/rec_002',
+        'record_status' => 'READY'
+      }
+      event = normalize(payload)
+
+      expect(event.record_status).to eq('READY')
+    end
+
+    it 'maps record_status on CALL events when present' do
+      payload = {
+        'type' => 'CALL',
+        'action' => 'UPDATE',
+        'whatsapp_call_id' => 'call_rec_status_001',
+        'status' => 'ENDED',
+        'record_status' => 'READY'
+      }
+      event = normalize(payload)
+
+      expect(event.record_status).to eq('READY')
     end
 
     it 'normalizes DEVICE updates' do

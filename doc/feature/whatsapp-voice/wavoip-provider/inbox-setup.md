@@ -85,7 +85,38 @@ Referência SDK: [`new Wavoip({ tokens: [...] })`](https://wavoip.gitbook.io/api
 | Campo | `provider_config` key | Obrigatório | Default | Mapeamento Wavoip |
 |-------|----------------------|-------------|---------|-------------------|
 | **Aceitar chamadas recebidas** | `inbound_calls_enabled` | Não | `true` | Se `false`, SDK ignora offers + webhook registra missed |
+| **Gravar ligações no histórico** | `call_recording_enabled` | Não | `true` | Opt-out no Chatwoot; exige gravação ON no painel Wavoip + evento **RECORD** no webhook |
 | **Identificador da plataforma** | `platform` | — | `'chatwoot'` | Fixo no backend; repassado ao `new Wavoip({ platform })` |
+
+### 3.5 Seção — Gravação no histórico (Settings)
+
+Configurável na tab **Chamadas** (`WavoipCallingPage.vue`), toggle **Gravar ligações no histórico**. Persistido em `provider_config.call_recording_enabled` via `PATCH /inboxes/:id` (helper `patchWavoipProviderConfig`).
+
+| Campo UI (i18n) | `provider_config` key | Default | Comportamento |
+|-----------------|----------------------|---------|---------------|
+| **Gravar ligações no histórico** | `call_recording_enabled` | `true` | `false` = ignora webhooks `RECORD` no backend e oculta player na bolha |
+
+**Três toggles independentes** (todos precisam estar ON para o player aparecer):
+
+1. **Wavoip painel** — `app.wavoip.com` → Configurações gerais → Gravação
+2. **Webhook Wavoip** — evento **RECORD** selecionado na URL do inbox
+3. **Chatwoot** — `call_recording_enabled` nesta seção
+
+Política backend: `Wavoip::Calls::RecordingPolicy` (só anexa quando `record_status` é `READY` ou ausente com URL e `Call.status == completed`). Ver [webhook-contract.md §4](./webhook-contract.md#4-evento-record).
+
+**Wireframe (Settings → Chamadas):**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Device status / QR …                                    │
+├─────────────────────────────────────────────────────────┤
+│ [x] Aceitar chamadas recebidas                          │
+│ [x] Gravar ligações no histórico                        │
+│     ℹ️ Gravação no painel Wavoip + evento RECORD        │
+├─────────────────────────────────────────────────────────┤
+│ Incoming call routing …                                 │
+└─────────────────────────────────────────────────────────┘
+```
 
 ### 3.4 Ativação — webhook do servidor
 
@@ -102,7 +133,7 @@ primeiro evento autenticado.
 > **Erro comum:** colar `/webhooks/wavoip/42` (id do inbox). O path correto usa a chave opaca
 > gerada em `channel_wavoip.webhook_key` (ex. `mz5uFxCZ4tVZn94Nm5osnqCQ`).
 
-No painel Wavoip: além da URL, **ativar o toggle** do webhook e selecionar evento **CALL**
+No painel Wavoip: além da URL, **ativar o toggle** do webhook e selecionar eventos **CALL** e **RECORD**
 (no device correto). Ver [operations-runbook.md](./operations-runbook.md#checklist-painel-wavoip-obrigatório).
 
 Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/webhook-beta.md) ·

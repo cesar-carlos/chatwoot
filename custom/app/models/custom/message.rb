@@ -7,6 +7,7 @@ module Custom::Message
     prepend Custom::Message::EvolutionConversationCycle
     prepend Custom::Message::EvolutionDeleteSync
     prepend Custom::Message::WorkflowRulesScheduler
+    prepend Custom::Message::WavoipConversationCycle
 
     before_validation :reject_voice_only_outbound_public_message, on: :create
 

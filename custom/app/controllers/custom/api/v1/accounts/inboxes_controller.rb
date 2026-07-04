@@ -77,7 +77,11 @@ module Custom::Api::V1::Accounts::InboxesController
   end
 
   def evolution_connection
-    authorize @inbox, :show?
+    # Connection status/QR/pairing code is sensitive (it can be used to pair
+    # a new phone as the account's WhatsApp) — keep it admin-only, matching
+    # every other Evolution connection action (reconnect/logout/restart) and
+    # the ActionCable channel that streams the same data.
+    authorize @inbox, :update?
     channel = @inbox.channel
     return head :not_found unless evolution_channel?(channel)
 
@@ -133,6 +137,49 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: import_payload_for(channel.reload)
   end
 
+  def evolution_go_connection
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    payload = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel).connection_payload
+    render json: payload
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.error "[EVOLUTION_GO] evolution_go_connection failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
+  end
+
+  def evolution_go_reconnect
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel)
+    service.reconnect!
+    render json: service.connection_payload
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.error "[EVOLUTION_GO] evolution_go_reconnect failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
+  end
+
+  def evolution_go_server_check
+    authorize Inbox, :create?
+
+    client = Custom::Whatsapp::EvolutionGo::ApiClient.new(
+      base_url: params.require(:base_url),
+      global_api_key: params[:global_api_key]
+    )
+    response = client.server_ok
+    unless response.success?
+      return render json: { ok: false, error: 'Evolution Go server unreachable' },
+                    status: :unprocessable_entity
+    end
+
+    render json: { ok: true }
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    render json: { ok: false, error: e.user_message }, status: :unprocessable_entity
+  end
+
   def update
     super
     refresh_evolution_channel_after_update!
@@ -151,6 +198,10 @@ module Custom::Api::V1::Accounts::InboxesController
     channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution'
   end
 
+  def evolution_go_channel?(channel)
+    channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'
+  end
+
   def connection_payload_for(channel)
     Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).connection_payload
   end
@@ -167,6 +218,7 @@ module Custom::Api::V1::Accounts::InboxesController
   end
 
   def create
+    return create_evolution_go_whatsapp_inbox! if evolution_go_whatsapp_channel?
     return super unless evolution_whatsapp_channel?
 
     validate_evolution_instance_name_available!
@@ -207,6 +259,7 @@ module Custom::Api::V1::Accounts::InboxesController
   def create_channel
     return create_wavoip_channel if permitted_params[:channel][:type] == 'wavoip'
     return create_evolution_whatsapp_channel if evolution_whatsapp_channel?
+    return create_evolution_go_whatsapp_channel if evolution_go_whatsapp_channel?
 
     super
   end
@@ -220,6 +273,13 @@ module Custom::Api::V1::Accounts::InboxesController
     return false if channel_params.blank?
 
     channel_params[:type].to_s == 'whatsapp' && channel_params[:provider].to_s == 'evolution'
+  end
+
+  def evolution_go_whatsapp_channel?
+    channel_params = params[:channel]
+    return false if channel_params.blank?
+
+    channel_params[:type].to_s == 'whatsapp' && channel_params[:provider].to_s == 'evolution_go'
   end
 
   def evolution_provision_error_message(error)
@@ -308,6 +368,124 @@ module Custom::Api::V1::Accounts::InboxesController
     end
   end
 
+  def create_evolution_go_whatsapp_inbox!
+    validate_evolution_go_instance_name_available!
+
+    channel = nil
+    ActiveRecord::Base.transaction do
+      channel = create_evolution_go_whatsapp_channel
+      @inbox = Current.account.inboxes.build(
+        {
+          name: inbox_name(channel),
+          channel: channel
+        }.merge(permitted_params.except(:channel))
+      )
+      @inbox.save!
+    end
+
+    provision_evolution_go_channel!(channel)
+  rescue StandardError => e
+    render_evolution_go_create_error(e)
+  end
+
+  def render_evolution_go_create_error(error)
+    case error
+    when Custom::Whatsapp::EvolutionGo::ApiError
+      Rails.logger.error "[EVOLUTION_GO] inbox create failed: #{error.log_message}"
+      render json: { message: error.user_message }, status: :unprocessable_entity
+    when ActiveRecord::RecordInvalid
+      render json: { message: error.record.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    when ActiveRecord::RecordNotUnique
+      render json: { message: 'An Evolution Go inbox with this instance name already exists' },
+             status: :unprocessable_entity
+    else
+      Rails.logger.error "[EVOLUTION_GO] inbox create failed: #{error.class} #{error.message}"
+      render json: { message: evolution_go_provision_error_message(error) }, status: :unprocessable_entity
+    end
+  end
+
+  def evolution_go_provision_error_message(error)
+    message = error.message.to_s
+    if message.include?('index_channel_whatsapp_evolution_go_instance_name')
+      return 'An Evolution Go inbox with this instance name already exists'
+    end
+
+    message.presence || 'Failed to provision Evolution Go instance'
+  end
+
+  def create_evolution_go_whatsapp_channel
+    config = build_evolution_go_provider_config
+
+    channel = Current.account.whatsapp_channels.new(
+      provider: 'evolution_go',
+      phone_number: evolution_placeholder_phone,
+      provider_config: config.merge(
+        'connection_status' => Custom::Whatsapp::EvolutionGo::ProviderConfig::PENDING_PROVISION_STATUS
+      )
+    )
+    channel.save!(validate: false)
+    channel
+  end
+
+  def build_evolution_go_provider_config
+    go_params = evolution_go_channel_params
+
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.normalize_credentials(
+      Custom::Whatsapp::EvolutionGo::ProviderConfig.build(
+        'base_url' => go_params[:base_url],
+        'global_api_key' => go_params[:global_api_key],
+        'instance_name' => go_params[:instance_name],
+        'instance_token' => go_params[:instance_token]
+      ).merge((go_params[:provider_config] || {}).stringify_keys)
+    )
+  end
+
+  def validate_evolution_go_instance_name_available!
+    instance_name = evolution_go_channel_params[:instance_name].to_s.strip
+    return if instance_name.blank?
+
+    return unless evolution_go_instance_name_taken?(instance_name)
+
+    raise Custom::Whatsapp::EvolutionGo::ApiError.new(
+      'An Evolution Go inbox with this instance name already exists',
+      status: 422
+    )
+  end
+
+  def evolution_go_instance_name_taken?(instance_name)
+    Channel::Whatsapp
+      .where(provider: 'evolution_go')
+      .exists?(["provider_config->>'instance_name' = ?", instance_name])
+  end
+
+  def evolution_go_channel_params
+    params.require(:channel).permit(
+      :base_url,
+      :global_api_key,
+      :instance_name,
+      :instance_token,
+      provider_config: %i[
+        proxy_enabled
+        proxy_host
+        proxy_port
+        proxy_username
+        proxy_password
+      ]
+    )
+  end
+
+  def provision_evolution_go_channel!(channel)
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel)
+    if channel.provider_config['instance_token'].present?
+      service.connect_existing_inbox!
+    else
+      service.provision_new_inbox!
+    end
+  rescue StandardError
+    cleanup_failed_evolution_channel!(channel)
+    raise
+  end
+
   def channel_type_from_params
     return Channel::Wavoip if permitted_params[:channel][:type] == 'wavoip'
 
@@ -328,6 +506,7 @@ module Custom::Api::V1::Accounts::InboxesController
       :device_token,
       provider_config: %i[
         inbound_calls_enabled
+        call_recording_enabled
         incoming_call_include_administrators
         incoming_call_offline_fallback
         incoming_call_notify_busy_agents

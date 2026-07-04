@@ -1,5 +1,21 @@
 # Spike Wavoip — notes
 
+---
+
+## Gravação — spike `all_info` (pendente)
+
+**Objetivo (Fase 0 opcional):** verificar se `GET devices.wavoip.com/{token}/whatsapp/all_info` expõe flag de gravação do dispositivo.
+
+| Item | Estado |
+|------|--------|
+| Chamada com gravação ON/OFF no painel | ⏳ Pendente validação manual |
+| Campo na resposta JSON | ⏳ A documentar quando testado |
+| Sync read-only na UI Chatwoot | Fora do escopo atual — só leitura futura se campo existir |
+
+**Como testar:** alternar gravação em app.wavoip.com → Configurações gerais → Gravação; comparar payload `all_info` antes/depois.
+
+---
+
 ## Status unificado (04 jul. 2026)
 
 **Veredicto:** `go com restrições` — fases 0–4 + refactory R1–R3 code-complete.

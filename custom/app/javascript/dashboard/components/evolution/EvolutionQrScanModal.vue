@@ -65,18 +65,26 @@ const statusLabel = computed(() =>
 );
 
 const showQr = computed(() => Boolean(qrcodeBase64.value));
+// `close` right after opening the modal (e.g. reconnecting following a
+// deliberate logout, or before Evolution has emitted a fresh QR yet) is an
+// expected transient state, not a failure — only a real `qrRefreshError`
+// (an actual failed API call) should surface the error + retry UI. While
+// waiting for the instance to move past `close`, keep showing the spinner.
 const showLoading = computed(
   () =>
-    (isLoading.value || isRefreshing.value) &&
     !showQr.value &&
-    !pairingCode.value
+    !pairingCode.value &&
+    !qrRefreshError.value &&
+    (isLoading.value ||
+      isRefreshing.value ||
+      connectionStatus.value === 'close')
 );
 const showQrError = computed(
   () =>
     !showQr.value &&
     !showLoading.value &&
     !pairingCode.value &&
-    (qrRefreshError.value || connectionStatus.value === 'close')
+    qrRefreshError.value
 );
 
 function cleanupSession() {

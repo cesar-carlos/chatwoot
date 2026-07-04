@@ -1,0 +1,179 @@
+import { computed, onBeforeUnmount, ref, unref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useStore } from 'dashboard/composables/store';
+import { useAlert } from 'dashboard/composables';
+import { subscribeEvolutionGoConnection } from 'customDashboard/lib/evolution_go/evolutionGoCableRegistry';
+import {
+  isEvolutionPlaceholderPhone,
+  normalizeEvolutionConnectionPayload,
+} from 'customDashboard/lib/evolution/evolutionConnectionPayload';
+
+const POLL_MS = 5000;
+const MAX_POLL_FAILURES = 3;
+
+export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
+  const store = useStore();
+  const { t } = useI18n();
+
+  const connectionStatus = ref('connecting');
+  const phoneNumber = ref('');
+  const isLoading = ref(true);
+  const isReconnecting = ref(false);
+  const isQrModalOpen = ref(false);
+  const qrModalFetchFresh = ref(false);
+  const staleData = ref(false);
+
+  let pollTimer = null;
+  let pollFailureCount = 0;
+  let unsubscribeCable = null;
+
+  const inboxId = computed(() => unref(inboxRef)?.id);
+  const isConnected = computed(() => connectionStatus.value === 'open');
+  const isBusy = computed(() => isReconnecting.value);
+
+  function stopPolling() {
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  function applyPhoneFromPayload(payload, normalized) {
+    const phone =
+      normalized.phoneNumber || payload.phoneNumber || payload.phone_number;
+    if (phone && !isEvolutionPlaceholderPhone(phone)) {
+      phoneNumber.value = phone;
+    }
+  }
+
+  async function applyPayload(payload) {
+    if (isQrModalOpen.value) {
+      qrModalRef?.value?.applyPayload?.(payload);
+    }
+
+    const normalized = normalizeEvolutionConnectionPayload(payload) || {};
+
+    if (normalized.connectionStatus) {
+      const wasConnected = isConnected.value;
+      connectionStatus.value = normalized.connectionStatus;
+
+      if (isConnected.value && !wasConnected) {
+        try {
+          const full = await store.dispatch(
+            'inboxes/fetchEvolutionGoConnection',
+            inboxId.value
+          );
+          applyPhoneFromPayload(
+            full,
+            normalizeEvolutionConnectionPayload(full) || {}
+          );
+        } catch {
+          applyPhoneFromPayload(payload, normalized);
+        }
+        stopPolling();
+        isQrModalOpen.value = false;
+        await store.dispatch('inboxes/get', inboxId.value);
+      }
+    }
+
+    applyPhoneFromPayload(payload, normalized);
+  }
+
+  async function refreshConnection() {
+    if (!inboxId.value) return;
+
+    try {
+      const payload = await store.dispatch(
+        'inboxes/fetchEvolutionGoConnection',
+        inboxId.value
+      );
+      await applyPayload(payload);
+      pollFailureCount = 0;
+      staleData.value = false;
+    } catch (error) {
+      pollFailureCount += 1;
+      if (pollFailureCount >= MAX_POLL_FAILURES) {
+        staleData.value = true;
+        useAlert(
+          error?.response?.data?.error ||
+            t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.LOAD_ERROR')
+        );
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  function startPolling() {
+    stopPolling();
+    pollTimer = setInterval(refreshConnection, POLL_MS);
+  }
+
+  function openQrModal({ fresh = false } = {}) {
+    qrModalFetchFresh.value = fresh;
+    isQrModalOpen.value = true;
+  }
+
+  async function reconnect() {
+    if (!inboxId.value || isReconnecting.value) return;
+
+    isReconnecting.value = true;
+    try {
+      const payload = await store.dispatch(
+        'inboxes/evolutionGoReconnect',
+        inboxId.value
+      );
+      await applyPayload(payload);
+      openQrModal({ fresh: false });
+    } catch (error) {
+      useAlert(
+        error?.response?.data?.error ||
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.RECONNECT_ERROR')
+      );
+    } finally {
+      isReconnecting.value = false;
+    }
+  }
+
+  function onQrConnected() {
+    isQrModalOpen.value = false;
+    refreshConnection();
+  }
+
+  watch(
+    inboxId,
+    id => {
+      unsubscribeCable?.();
+      unsubscribeCable = null;
+      if (!id) return;
+
+      unsubscribeCable = subscribeEvolutionGoConnection(id, applyPayload, {
+        store,
+      });
+      isLoading.value = true;
+      refreshConnection().then(() => startPolling());
+    },
+    { immediate: true }
+  );
+
+  onBeforeUnmount(() => {
+    stopPolling();
+    unsubscribeCable?.();
+  });
+
+  return {
+    connectionStatus,
+    phoneNumber,
+    isLoading,
+    isReconnecting,
+    isQrModalOpen,
+    qrModalFetchFresh,
+    staleData,
+    isConnected,
+    isBusy,
+    reconnect,
+    openQrModal,
+    onQrConnected,
+    refreshConnection,
+  };
+}

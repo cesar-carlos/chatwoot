@@ -7,6 +7,7 @@ import {
   mergeStoreEntries,
   reconcileWavoipStoreEntry,
   findWavoipCallForOffer,
+  findWavoipCallForCableEvent,
 } from '../callStoreMappers';
 
 describe('callStoreMappers', () => {
@@ -31,6 +32,19 @@ describe('callStoreMappers', () => {
         caller: { name: 'Alice', phone: '+15551234567' },
         wavoipOfferId: 'wavoip_cable_001',
       });
+    });
+
+    it('maps outbound call_direction from cable payload', () => {
+      const entry = mapCableToStoreEntry({
+        call_id: 'wavoip_out_001',
+        id: 43,
+        provider: 'wavoip',
+        conversation_id: 8,
+        inbox_id: 3,
+        call_direction: 'outbound',
+      });
+
+      expect(entry.callDirection).toBe(VOICE_CALL_DIRECTION.OUTBOUND);
     });
   });
 
@@ -89,6 +103,23 @@ describe('callStoreMappers', () => {
         caller: sdkFirst.caller,
         wavoipOfferId: 'corr_001',
       });
+    });
+
+    it('preserves outbound direction when merging SDK offer onto outbound row', () => {
+      const outbound = {
+        callSid: 'out_001',
+        provider: VOICE_CALL_PROVIDERS.WAVOIP,
+        callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
+        inboxId: 2,
+      };
+      const sdkOffer = mapWavoipOfferToStoreEntry(
+        { id: 'out_001', peer: { phone: '+15550009999' } },
+        { inboxId: 2 }
+      );
+
+      const merged = reconcileWavoipStoreEntry(outbound, sdkOffer);
+
+      expect(merged.callDirection).toBe(VOICE_CALL_DIRECTION.OUTBOUND);
     });
 
     it('merges SDK-after-webhook without dropping persisted ids', () => {
@@ -153,6 +184,84 @@ describe('callStoreMappers', () => {
       const match = findWavoipCallForOffer(calls, { id: 'sdk_offer_id' }, 106);
 
       expect(match).toBeNull();
+    });
+  });
+
+  describe('findWavoipCallForCableEvent', () => {
+    it('matches the sole SDK-origin row awaiting cable confirmation', () => {
+      const calls = [
+        {
+          callSid: 'sdk_offer_id',
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          inboxId: 2,
+          callDirection: VOICE_CALL_DIRECTION.INBOUND,
+          isActive: false,
+        },
+      ];
+
+      const match = findWavoipCallForCableEvent(calls, {
+        call_id: 'webhook_id',
+        id: 55,
+        inbox_id: 2,
+      });
+
+      expect(match?.callSid).toBe('sdk_offer_id');
+    });
+
+    it('matches directly by callId (DB id) when present', () => {
+      const calls = [
+        {
+          callSid: 'temp_sid',
+          callId: 55,
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          inboxId: 2,
+        },
+      ];
+
+      const match = findWavoipCallForCableEvent(calls, {
+        call_id: 'different_webhook_id',
+        id: 55,
+        inbox_id: 2,
+      });
+
+      expect(match?.callSid).toBe('temp_sid');
+    });
+
+    it('does not guess when multiple rows await cable confirmation in the same inbox', () => {
+      const calls = [
+        {
+          callSid: 'a',
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          inboxId: 2,
+          isActive: false,
+        },
+        {
+          callSid: 'b',
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          inboxId: 2,
+          isActive: false,
+        },
+      ];
+
+      expect(
+        findWavoipCallForCableEvent(calls, { call_id: 'x', inbox_id: 2 })
+      ).toBeNull();
+    });
+
+    it('ignores outbound rows when looking for an awaiting inbound match', () => {
+      const calls = [
+        {
+          callSid: 'out_001',
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          inboxId: 2,
+          callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
+          isActive: false,
+        },
+      ];
+
+      expect(
+        findWavoipCallForCableEvent(calls, { call_id: 'x', inbox_id: 2 })
+      ).toBeNull();
     });
   });
 

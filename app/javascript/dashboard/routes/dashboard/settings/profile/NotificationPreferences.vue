@@ -11,6 +11,7 @@ import {
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import { NOTIFICATION_TYPES } from './constants';
+import { isIosSafariWithoutPwa } from 'customDashboard/lib/wavoip/wavoipNotificationEnvironment';
 
 export default {
   components: {
@@ -25,6 +26,7 @@ export default {
       enableAudioAlerts: false,
       hasEnabledPushPermissions: false,
       notificationTypes: NOTIFICATION_TYPES,
+      showIosPwaHint: isIosSafariWithoutPwa(),
     };
   },
   computed: {
@@ -158,6 +160,18 @@ export default {
 
 <template>
   <div id="profile-settings-notifications" class="flex flex-col gap-6">
+    <p
+      v-if="showIosPwaHint"
+      class="rounded-lg border border-n-amber-6 bg-n-amber-2 px-4 py-3 text-sm text-n-amber-12"
+    >
+      {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.WAVOIP_IOS_PWA_HINT') }}
+    </p>
+    <p
+      v-if="hasPushAPISupport"
+      class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-4 py-3 text-sm text-n-slate-11"
+    >
+      {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.WAVOIP_PUSH_HINT') }}
+    </p>
     <!-- Layout for desktop devices -->
     <div class="hidden sm:block">
       <div

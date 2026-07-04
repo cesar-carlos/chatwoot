@@ -1,0 +1,8 @@
+{
+  "event": "CONNECTION",
+  "instance": "test-go-instance",
+  "data": {
+    "state": "open",
+    "Connected": true
+  }
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  formatWavoipPeerRejectError,
   formatWavoipStartCallError,
   unwrapWavoipSdkResult,
 } from '../wavoipSdkResult';
@@ -40,6 +41,20 @@ describe('wavoipSdkResult', () => {
     expect(t).toHaveBeenCalledWith(
       'CONVERSATION.WAVOIP_CALL.START_CALL_DEVICE_FAILED',
       { detail: 'offline' }
+    );
+  });
+
+  it('maps Meta permission denial in peerReject to OUTBOUND_PERMISSION_DENIED', () => {
+    const t = vi.fn(key => key);
+    expect(formatWavoipPeerRejectError('Error 138006 permission denied', t)).toBe(
+      'CONVERSATION.WAVOIP_CALL.OUTBOUND_PERMISSION_DENIED'
+    );
+  });
+
+  it('maps generic peerReject to PEER_REJECTED', () => {
+    const t = vi.fn(key => key);
+    expect(formatWavoipPeerRejectError({ message: 'busy' }, t)).toBe(
+      'CONVERSATION.WAVOIP_CALL.PEER_REJECTED'
     );
   });
 });

@@ -125,8 +125,6 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
   end
 
   def extract_contacts_records(parsed)
-    return Array.wrap(parsed) unless parsed.is_a?(Hash)
-
-    Array.wrap(parsed.dig('contacts', 'records') || parsed['records'] || parsed['contacts'] || parsed)
+    extract_records(parsed, 'contacts')
   end
 end

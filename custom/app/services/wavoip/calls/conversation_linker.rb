@@ -35,10 +35,6 @@ class Wavoip::Calls::ConversationLinker
     Wavoip::PhoneNormalizer.normalize(phone, inbox_phone: inbox_phone)
   end
 
-  def self.normalize_e164(phone, inbox_phone: nil)
-    Wavoip::PhoneNormalizer.normalize(phone, inbox_phone: inbox_phone)
-  end
-
   def initialize(inbox:, event:)
     @inbox = inbox
     @event = event

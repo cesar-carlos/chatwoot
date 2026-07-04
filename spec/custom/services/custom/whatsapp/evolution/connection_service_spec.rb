@@ -133,6 +133,19 @@ RSpec.describe Custom::Whatsapp::Evolution::ConnectionService do
 
       expect(Rails.cache.read(cache_key)).to be_nil
     end
+
+    it 'also invalidates a stale "false" connection validation cache once the instance reports open' do
+      # Regression: a previous check while the instance was closed cached
+      # `false` for 15s; without invalidating on the close -> open
+      # transition too, `validate_provider_config?` would keep returning a
+      # false negative right after a successful reconnect.
+      cache_key = "evolution:connection_validation:#{channel.id}"
+      Rails.cache.write(cache_key, false, expires_in: 15.seconds)
+
+      service.send(:update_connection_status, 'open')
+
+      expect(Rails.cache.read(cache_key)).to be_nil
+    end
   end
 
   describe '#reconnect!' do

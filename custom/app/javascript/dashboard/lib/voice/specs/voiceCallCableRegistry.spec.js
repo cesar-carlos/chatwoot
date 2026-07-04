@@ -2,13 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useCallsStore } from 'dashboard/stores/calls';
 
-const { pendingOffers, removePendingOffer, isWavoipSdkCallOwned } = vi.hoisted(
+const { pendingOffers, removePendingOffer, isWavoipSdkCallOwned, getRingingProviderCallId, isOutboundInitiationActive } = vi.hoisted(
   () => {
     const offers = new Map();
     return {
       pendingOffers: offers,
       removePendingOffer: callId => offers.delete(callId),
       isWavoipSdkCallOwned: vi.fn(() => false),
+      getRingingProviderCallId: vi.fn(() => null),
+      isOutboundInitiationActive: vi.fn(() => false),
     };
   }
 );
@@ -17,6 +19,8 @@ vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
   endActiveCall: vi.fn(),
   clearActiveCall: vi.fn(),
   getActiveProviderCallId: vi.fn(() => null),
+  getRingingProviderCallId: vi.fn(() => null),
+  isOutboundInitiationActive,
   isWavoipSdkCallOwned,
 }));
 
@@ -27,6 +31,10 @@ vi.mock('customDashboard/composables/wavoip/useWavoipIncomingOffer', () => ({
 
 vi.mock('customDashboard/lib/wavoip/wavoipAcceptRecorder', () => ({
   flushAcceptedByRecording: vi.fn(),
+}));
+
+vi.mock('customDashboard/lib/wavoip/wavoipInboundConversation', () => ({
+  reopenWavoipInboundConversation: vi.fn(),
 }));
 
 vi.mock('dashboard/composables', () => ({
@@ -46,6 +54,7 @@ vi.mock('dashboard/store', () => ({
   },
 }));
 
+import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 import { useAlert } from 'dashboard/composables';
 import {
   clearActiveCall,
@@ -56,6 +65,7 @@ import {
   isCallJoining,
 } from 'dashboard/composables/useCallSession';
 import { createWavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
+import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
 
 const t = key => key;
 const wavoipVoiceCableHandlers = createWavoipVoiceCableHandlers(t);
@@ -111,7 +121,7 @@ describe('wavoipVoiceCableHandlers', () => {
       });
     });
 
-    it('accepts cable-only inbound when no SDK offer is pending', () => {
+    it('reopens the conversation when inbound cable includes conversation_id', () => {
       const store = useCallsStore();
 
       wavoipVoiceCableHandlers.onIncoming({
@@ -122,9 +132,93 @@ describe('wavoipVoiceCableHandlers', () => {
         provider: 'wavoip',
       });
 
+      expect(reopenWavoipInboundConversation).toHaveBeenCalledWith(11);
       expect(store.calls[0]?.callSid).toBe('cable_only_001');
-      expect(store.calls[0]?.callId).toBe(77);
+    });
+
+    it('accepts cable-only inbound when no SDK offer is pending', () => {
+      reopenWavoipInboundConversation.mockClear();
+      const store = useCallsStore();
+
+      wavoipVoiceCableHandlers.onIncoming({
+        call_id: 'cable_only_002',
+        id: 78,
+        conversation_id: 12,
+        inbox_id: 2,
+        provider: 'wavoip',
+      });
+
+      expect(store.calls[0]?.callSid).toBe('cable_only_002');
+      expect(store.calls[0]?.callId).toBe(78);
       expect(store.calls[0]?.awaitingSdkOffer).toBe(true);
+    });
+
+    it('reconciles onto the SDK-origin row when the webhook call_id differs from offer.id', () => {
+      const store = useCallsStore();
+      // Simulates an SDK offer that already created a row under its own id,
+      // with no DB call id yet (mirrors mapWavoipOfferToStoreEntry's shape).
+      store.addCall({
+        callSid: 'sdk_offer_id',
+        wavoipOfferId: 'sdk_offer_id',
+        provider: 'wavoip',
+        inboxId: 2,
+        callDirection: VOICE_CALL_DIRECTION.INBOUND,
+        awaitingSdkOffer: false,
+      });
+
+      wavoipVoiceCableHandlers.onIncoming({
+        call_id: 'webhook_call_id_divergent',
+        id: 123,
+        conversation_id: 20,
+        inbox_id: 2,
+        provider: 'wavoip',
+      });
+
+      expect(store.calls).toHaveLength(1);
+      expect(store.calls[0]).toMatchObject({
+        callSid: 'sdk_offer_id',
+        callId: 123,
+        conversationId: 20,
+      });
+    });
+
+    it('ignores cable when payload marks outbound direction', () => {
+      const store = useCallsStore();
+
+      wavoipVoiceCableHandlers.onIncoming({
+        call_id: 'server_out',
+        id: 91,
+        conversation_id: 6,
+        inbox_id: 2,
+        provider: 'wavoip',
+        call_direction: 'outbound',
+      });
+
+      expect(store.calls).toHaveLength(0);
+    });
+
+    it('does not add inbound cable row for agent-initiated outbound call', () => {
+      getRingingProviderCallId.mockReturnValue('out_cable');
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'out_cable',
+        conversationId: 5,
+        inboxId: 2,
+        callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onIncoming({
+        call_id: 'out_cable',
+        id: 90,
+        conversation_id: 5,
+        inbox_id: 2,
+        provider: 'wavoip',
+      });
+
+      expect(store.calls).toHaveLength(1);
+      expect(store.calls[0].callDirection).toBe(VOICE_CALL_DIRECTION.OUTBOUND);
+      expect(store.calls[0].callId).toBeUndefined();
     });
   });
 
@@ -150,6 +244,28 @@ describe('wavoipVoiceCableHandlers', () => {
 
       expect(useAlert).toHaveBeenCalled();
       expect(store.calls.some(c => c.callSid === 'acc_001')).toBe(false);
+    });
+
+    it('includes agent name in accepted elsewhere alert when provided', () => {
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'acc_named',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onAccepted({
+        call_id: 'acc_named',
+        accepted_by_agent_id: 42,
+        accepted_by_agent_name: 'Maria',
+      });
+
+      expect(useAlert).toHaveBeenCalledWith(
+        'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY'
+      );
+      expect(store.calls.some(c => c.callSid === 'acc_named')).toBe(false);
     });
 
     it('does not dismiss when the current user accepted', () => {
@@ -279,6 +395,76 @@ describe('wavoipVoiceCableHandlers', () => {
       });
 
       expect(store.calls.some(c => c.callSid === 'out_ring_001')).toBe(true);
+    });
+
+    it('removes an SDK-owned outbound ghost widget after the fallback window if the SDK never confirms', () => {
+      vi.useFakeTimers();
+      isWavoipSdkCallOwned.mockImplementation(
+        callId => callId === 'out_ghost_001'
+      );
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'out_ghost_001',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'outbound',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onEnded({
+        call_id: 'out_ghost_001',
+        end_reason: 'no_answer',
+      });
+
+      expect(store.calls.some(c => c.callSid === 'out_ghost_001')).toBe(true);
+
+      vi.advanceTimersByTime(8000);
+
+      expect(store.calls.some(c => c.callSid === 'out_ghost_001')).toBe(
+        false
+      );
+      vi.useRealTimers();
+    });
+
+    it('does not force-remove the ghost widget fallback if the SDK already cleaned it up', () => {
+      vi.useFakeTimers();
+      isWavoipSdkCallOwned.mockImplementation(
+        callId => callId === 'out_ghost_002'
+      );
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'out_ghost_002',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'outbound',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onEnded({
+        call_id: 'out_ghost_002',
+        end_reason: 'no_answer',
+      });
+
+      // SDK's own handler (e.g. wireOutgoingEvents' `unanswered`) removes it
+      // before the fallback window elapses.
+      store.removeCall('out_ghost_002');
+      store.addCall({
+        callSid: 'unrelated_call',
+        conversationId: 2,
+        inboxId: 2,
+        callDirection: 'outbound',
+        provider: 'wavoip',
+      });
+
+      vi.advanceTimersByTime(8000);
+
+      expect(store.calls.some(c => c.callSid === 'out_ghost_002')).toBe(
+        false
+      );
+      expect(store.calls.some(c => c.callSid === 'unrelated_call')).toBe(
+        true
+      );
+      vi.useRealTimers();
     });
   });
 });

@@ -1,4 +1,5 @@
 import { INBOX_TYPES, isVoiceCallEnabled } from 'dashboard/helper/inbox';
+import { isGatewayWhatsAppProvider } from 'customDashboard/lib/whatsapp/gatewayProviders';
 
 export const INBOX_FEATURES = {
   REPLY_TO: 'replyTo',
@@ -96,6 +97,19 @@ export default {
       return (
         this.channelType === INBOX_TYPES.WHATSAPP &&
         this.whatsAppAPIProvider === 'evolution'
+      );
+    },
+    // FORK: Evolution Go WhatsApp (whatsmeow gateway)
+    isEvolutionGoWhatsAppChannel() {
+      return (
+        this.channelType === INBOX_TYPES.WHATSAPP &&
+        this.whatsAppAPIProvider === 'evolution_go'
+      );
+    },
+    isGatewayWhatsAppChannel() {
+      return (
+        this.channelType === INBOX_TYPES.WHATSAPP &&
+        isGatewayWhatsAppProvider(this.whatsAppAPIProvider)
       );
     },
     // FORK: Wavoip voice-only inbox

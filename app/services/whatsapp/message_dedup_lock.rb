@@ -16,4 +16,12 @@ class Whatsapp::MessageDedupLock
   def acquire!
     ::Redis::Alfred.set(@key, true, nx: true, ex: @ttl)
   end
+
+  # Releases the lock early instead of waiting out the full TTL. Safe to
+  # call when the caller aborts processing before persisting anything keyed
+  # by this source_id — a subsequent retry must be able to acquire again
+  # immediately rather than being blocked for up to `DEFAULT_TTL`.
+  def release!
+    ::Redis::Alfred.delete(@key)
+  end
 end

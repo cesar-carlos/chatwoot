@@ -1,21 +1,31 @@
 import { useCallsStore } from 'dashboard/stores/calls';
+import { useAlert } from 'dashboard/composables';
 import CallsAPI from 'customDashboard/api/calls';
 
 const pendingAcceptByCallSid = new Set();
 const RETRY_DELAYS_MS = [1000, 2000, 4000];
 const MAX_ATTEMPTS = 3;
+const ACCEPT_RECORD_FAILED_KEY = 'CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED';
 
 const sleep = ms =>
   new Promise(resolve => {
     setTimeout(resolve, ms);
   });
 
+const resolveFailureHandler = options => {
+  if (options.onFailure) return options.onFailure;
+  if (options.t) {
+    return () => useAlert(options.t(ACCEPT_RECORD_FAILED_KEY));
+  }
+  return undefined;
+};
+
 export function queueAcceptedByRecording(callSid) {
   if (callSid) pendingAcceptByCallSid.add(callSid);
 }
 
 export async function recordJoinWithRetry(dbCallId, callSid, options = {}) {
-  const { onFailure } = options;
+  const onFailure = resolveFailureHandler(options);
 
   const attemptJoin = async attempt => {
     try {
@@ -40,7 +50,7 @@ export async function recordJoinWithRetry(dbCallId, callSid, options = {}) {
 }
 
 export async function recordAcceptWithRetry(dbCallId, callSid, options = {}) {
-  const { onFailure } = options;
+  const onFailure = resolveFailureHandler(options);
 
   const attemptRecord = async attempt => {
     try {

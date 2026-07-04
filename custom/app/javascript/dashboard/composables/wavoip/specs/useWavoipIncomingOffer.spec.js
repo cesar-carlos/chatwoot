@@ -42,12 +42,26 @@ vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
   registerOfferUnsubscriber: vi.fn(),
 }));
 
+const { isWavoipSdkCallOwned, getRingingProviderCallId, isOutboundInitiationActive } = vi.hoisted(() => ({
+  isWavoipSdkCallOwned: vi.fn(() => false),
+  getRingingProviderCallId: vi.fn(() => null),
+  isOutboundInitiationActive: vi.fn(() => false),
+}));
+
+vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
+  isWavoipSdkCallOwned,
+  getRingingProviderCallId,
+  isOutboundInitiationActive,
+}));
+
+import { notifyIncomingWavoipOffer } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import {
   pendingOffers,
   removePendingOffer,
   useWavoipIncomingOffer,
   waitForPendingOffer,
 } from '../useWavoipIncomingOffer';
+import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 
 const createOffer = id => {
   const handlers = {};
@@ -56,7 +70,11 @@ const createOffer = id => {
     on: vi.fn((event, handler) => {
       handlers[event] = handler;
     }),
+    off: vi.fn(event => {
+      delete handlers[event];
+    }),
     trigger: event => handlers[event]?.(),
+    activeHandlerCount: () => Object.keys(handlers).length,
     accept: vi.fn(),
     reject: vi.fn(),
   };
@@ -68,6 +86,10 @@ describe('useWavoipIncomingOffer', () => {
     offerHandlers.offer = undefined;
     mockAlert.mockClear();
     mockTranslate.mockClear();
+    isWavoipSdkCallOwned.mockReset().mockReturnValue(false);
+    getRingingProviderCallId.mockReset().mockReturnValue(null);
+    isOutboundInitiationActive.mockReset().mockReturnValue(false);
+    notifyIncomingWavoipOffer.mockClear();
     setActivePinia(createPinia());
   });
 
@@ -154,15 +176,49 @@ describe('useWavoipIncomingOffer', () => {
     await expect(pending).rejects.toThrow('Offer cancelled');
   });
 
-  it('dismisses webhook and SDK rows when caller ends with mismatched ids', () => {
+  it('ignores SDK offer when agent initiated outbound call', () => {
     const { attachToInbox } = useWavoipIncomingOffer();
     const store = useCallsStore();
     attachToInbox(106);
 
     store.addCall({
+      callSid: 'outbound_sdk',
+      inboxId: 106,
+      provider: 'wavoip',
+      callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
+    });
+
+    const offer = createOffer('outbound_sdk');
+    offerHandlers.offer(offer);
+
+    expect(store.calls).toHaveLength(1);
+    expect(store.calls[0].callDirection).toBe(VOICE_CALL_DIRECTION.OUTBOUND);
+    expect(pendingOffers.has(offer.id)).toBe(false);
+    expect(notifyIncomingWavoipOffer).not.toHaveBeenCalled();
+  });
+
+  it('ignores SDK offer when ringing outbound session owns the id', () => {
+    const { attachToInbox } = useWavoipIncomingOffer();
+    attachToInbox(107);
+    getRingingProviderCallId.mockReturnValue('ringing_out');
+
+    const offer = createOffer('ringing_out');
+    offerHandlers.offer(offer);
+
+    expect(useCallsStore().calls).toHaveLength(0);
+    expect(pendingOffers.has(offer.id)).toBe(false);
+    expect(notifyIncomingWavoipOffer).not.toHaveBeenCalled();
+  });
+
+  it('dismisses webhook and SDK rows when caller ends with mismatched ids', () => {
+    const { attachToInbox } = useWavoipIncomingOffer();
+    const store = useCallsStore();
+    attachToInbox(200);
+
+    store.addCall({
       callSid: 'webhook_call_id',
       callId: 22,
-      inboxId: 106,
+      inboxId: 200,
       provider: 'wavoip',
       callDirection: 'incoming',
       awaitingSdkOffer: true,
@@ -181,5 +237,33 @@ describe('useWavoipIncomingOffer', () => {
     expect(store.calls).toHaveLength(0);
     expect(pendingOffers.has('sdk_offer_id')).toBe(false);
     expect(pendingOffers.has('webhook_call_id')).toBe(false);
+  });
+
+  it('unwires all offer listeners once dismissed (no leak)', () => {
+    const { attachToInbox } = useWavoipIncomingOffer();
+    attachToInbox(300);
+
+    const offer = createOffer('offer_unwire');
+    offerHandlers.offer(offer);
+
+    expect(offer.activeHandlerCount()).toBe(4);
+    offer.trigger('unanswered');
+
+    expect(offer.off).toHaveBeenCalledTimes(4);
+    expect(offer.activeHandlerCount()).toBe(0);
+  });
+
+  it('unwires listeners via removePendingOffer even without a terminal SDK event', () => {
+    const { attachToInbox } = useWavoipIncomingOffer();
+    attachToInbox(301);
+
+    const offer = createOffer('offer_manual_remove');
+    offerHandlers.offer(offer);
+    expect(offer.activeHandlerCount()).toBe(4);
+
+    removePendingOffer(offer.id);
+
+    expect(offer.off).toHaveBeenCalledTimes(4);
+    expect(offer.activeHandlerCount()).toBe(0);
   });
 });

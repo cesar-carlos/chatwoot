@@ -40,7 +40,7 @@ class Wavoip::Webhooks::PayloadNormalizer
       external_call_id: external_call_id_from_payload,
       action: webhook_action,
       external_status: payload[:status].to_s,
-      direction: map_direction(payload[:direction]),
+      direction: inferred_direction,
       from_phone: call_from_phone,
       to_phone: call_to_phone,
       peer_name: peer_display_name,
@@ -48,6 +48,7 @@ class Wavoip::Webhooks::PayloadNormalizer
       session_id: payload[:id_session],
       call_type: map_call_type(payload[:call_type]),
       record_url: nil,
+      record_status: normalize_record_status(payload[:record_status]),
       raw_type: 'CALL'
     }
   end
@@ -75,7 +76,7 @@ class Wavoip::Webhooks::PayloadNormalizer
   end
 
   def contact_phone_from_caller_receiver
-    case map_direction(payload[:direction])
+    case inferred_direction
     when :incoming
       normalize_phone(payload[:caller]) if payload[:caller].present?
     when :outgoing
@@ -84,7 +85,7 @@ class Wavoip::Webhooks::PayloadNormalizer
   end
 
   def inbox_phone_from_caller_receiver
-    case map_direction(payload[:direction])
+    case inferred_direction
     when :incoming
       payload[:receiver]
     when :outgoing
@@ -106,6 +107,7 @@ class Wavoip::Webhooks::PayloadNormalizer
       session_id: payload[:id_session],
       call_type: nil,
       record_url: payload[:record_url].to_s.presence,
+      record_status: normalize_record_status(payload[:record_status]),
       raw_type: 'RECORD'
     )
   end
@@ -124,26 +126,17 @@ class Wavoip::Webhooks::PayloadNormalizer
       session_id: payload[:id_session],
       call_type: nil,
       record_url: nil,
+      record_status: nil,
       raw_type: 'DEVICE'
     )
   end
 
-  def map_direction(value)
-    case value.to_s.upcase
-    when 'INCOMING' then :incoming
-    when 'OUTGOING', 'OUTCOMING' then :outgoing
-    else
-      log_unknown_direction if value.blank? && webhook_action == :create
-      nil
-    end
-  end
-
-  def log_unknown_direction
-    return if Rails.env.production?
-
-    Rails.logger.warn(
-      "[WAVOIP] CALL CREATE missing direction call_id=#{external_call_id_from_payload}"
-    )
+  def inferred_direction
+    @inferred_direction ||= Wavoip::Webhooks::DirectionInferrer.new(
+      payload: payload,
+      webhook_action: webhook_action,
+      external_call_id: external_call_id_from_payload
+    ).infer
   end
 
   def map_call_type(value)
@@ -177,5 +170,12 @@ class Wavoip::Webhooks::PayloadNormalizer
     return if value.blank?
 
     value.to_i
+  end
+
+  def normalize_record_status(value)
+    status = value.to_s.presence
+    return if status.blank?
+
+    status.upcase
   end
 end

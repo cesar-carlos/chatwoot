@@ -53,4 +53,14 @@ RSpec.describe Wavoip::Calls::RingEscalationScheduler do
       scheduler.schedule
     end.not_to have_enqueued_job(Wavoip::EscalateRingJob)
   end
+
+  it 'acquires the lock atomically via unless_exist (no read-then-write race)' do
+    scheduler = described_class.new(call: call)
+
+    expect(Rails.cache).to receive(:write).with(
+      "wavoip:escalate_lock:#{call.id}", true, hash_including(unless_exist: true)
+    ).and_call_original
+
+    scheduler.schedule
+  end
 end

@@ -40,4 +40,17 @@ describe Whatsapp::MessageDedupLock do
       expect(wins).to eq(1), "Expected exactly 1 winner but got #{wins}. Results: #{results.inspect}"
     end
   end
+
+  describe '#release!' do
+    it 'allows a fresh acquire immediately after releasing' do
+      lock.acquire!
+      lock.release!
+
+      expect(described_class.new(source_id).acquire!).to be_truthy
+    end
+
+    it 'is a no-op when the lock was never acquired' do
+      expect { lock.release! }.not_to raise_error
+    end
+  end
 end

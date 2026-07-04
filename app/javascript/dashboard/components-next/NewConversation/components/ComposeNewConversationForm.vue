@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import { useVuelidate } from '@vuelidate/core';
 import { required, requiredIf } from '@vuelidate/validators';
 import { INBOX_TYPES, isVoiceCallEnabled } from 'dashboard/helper/inbox';
+import { isGatewayWhatsAppProvider } from 'customDashboard/lib/whatsapp/gatewayProviders';
 import {
   appendSignature,
   removeSignature,
@@ -76,10 +77,10 @@ const state = props.formState || {
 const inboxTypes = computed(() => ({
   isEmail: props.targetInbox?.channelType === INBOX_TYPES.EMAIL,
   isTwilio: props.targetInbox?.channelType === INBOX_TYPES.TWILIO,
-  // FORK: Evolution uses free text, not WABA templates
+  // FORK: self-hosted WhatsApp gateways use free text, not WABA templates
   isWhatsapp:
     props.targetInbox?.channelType === INBOX_TYPES.WHATSAPP &&
-    props.targetInbox?.provider !== 'evolution',
+    !isGatewayWhatsAppProvider(props.targetInbox?.provider),
   isWebWidget: props.targetInbox?.channelType === INBOX_TYPES.WEB,
   isApi: props.targetInbox?.channelType === INBOX_TYPES.API,
   isEmailOrWebWidget:
