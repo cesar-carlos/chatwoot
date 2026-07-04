@@ -5,12 +5,28 @@ alwaysApply: true
 
 # Fork Workflow
 
-Fork of [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot). All custom work on **`main`**; **`develop`** mirrors `upstream/develop` — never commit fork changes there.
+Fork of [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot).
 
-| Branch | Purpose |
-|--------|---------|
-| `develop` | Exact upstream mirror |
-| `main` | All fork-specific changes |
+## Branches (policy)
+
+| Branch | GitHub default | Purpose |
+|--------|----------------|---------|
+| **`main`** | **Yes** | All fork-specific work — commits, PRs, deploys, feature branches |
+| `develop` | No | Read-only mirror of `upstream/develop` — sync only, **never** fork commits |
+
+- **`main`** is the repository default branch on GitHub (`origin/HEAD` → `origin/main`).
+- **`develop`** exists only to stay aligned with the upstream fork; do not branch from it for fork features, open PRs into it, or push custom changes.
+- Upstream README still describes upstream git-flow (`develop` base) — **ignore that for this fork**; follow this rule instead.
+
+```bash
+# Correct: fork work
+git checkout main
+git checkout -b feat/my-feature   # branch from main
+# PR target: main
+
+# Wrong: never commit or PR to develop
+git checkout develop   # sync/mirror only via bin/fork-sync-upstream
+```
 
 ## Sync & automation
 
