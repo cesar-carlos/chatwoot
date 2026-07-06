@@ -48,6 +48,7 @@ vi.mock('dashboard/composables', () => ({
 vi.mock('dashboard/composables/useCallSession', () => ({
   isCallJoining: vi.fn(() => false),
   isCallDismissed: vi.fn(() => false),
+  markCallDismissed: vi.fn(),
 }));
 
 vi.mock('dashboard/store', () => ({
@@ -309,6 +310,31 @@ describe('wavoipVoiceCableHandlers', () => {
 
       expect(useAlert).not.toHaveBeenCalled();
       expect(store.calls.some(c => c.callSid === 'acc_joining')).toBe(true);
+    });
+
+    it('dismisses when webhook call_id differs from SDK offer id', () => {
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'sdk_offer_99',
+        wavoipOfferId: 'sdk_offer_99',
+        callId: 501,
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onAccepted({
+        id: 501,
+        call_id: 'webhook_call_42',
+        accepted_by_agent_id: 42,
+        accepted_by_agent_name: 'Maria',
+      });
+
+      expect(useAlert).toHaveBeenCalledWith(
+        'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY'
+      );
+      expect(store.calls).toHaveLength(0);
     });
   });
 
