@@ -12,12 +12,14 @@ import {
   isWavoipSdkCallOwned,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import {
-  removePendingOffer,
   pendingOffers,
 } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { flushAcceptedByRecording } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
 import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
-import { removeWavoipCallFromStore } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
+import {
+  dismissWavoipCallFromStore,
+  removeWavoipCallFromStore,
+} from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 import { shouldIgnoreInboundWavoipCable } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
 import {
   isCallJoining,
@@ -101,12 +103,22 @@ export const createWavoipVoiceCableHandlers = t => ({
   },
   onAccepted(data) {
     const callsStore = useCallsStore();
-    const callEntry = callsStore.calls.find(c => c.callSid === data.call_id);
+    const callEntry = findWavoipCallForCableEvent(callsStore.calls, data);
     if (!callEntry) return;
 
     if (callEntry.isActive) return;
     if (isCallJoining()) return;
-    if (getActiveProviderCallId() === data.call_id) return;
+
+    const activeId = getActiveProviderCallId();
+    if (
+      activeId &&
+      (activeId === data.call_id ||
+        activeId === callEntry.callSid ||
+        activeId === callEntry.wavoipOfferId)
+    ) {
+      return;
+    }
+
     if (
       data.accepted_by_agent_id &&
       data.accepted_by_agent_id === currentUserId()
@@ -121,8 +133,12 @@ export const createWavoipVoiceCableHandlers = t => ({
         ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
         : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
     );
-    removePendingOffer(data.call_id);
-    callsStore.dismissCall(data.call_id);
+    dismissWavoipCallFromStore(
+      data.call_id,
+      callEntry.callSid,
+      callEntry.wavoipOfferId,
+      callEntry.callId
+    );
   },
   onEnded(data) {
     const callsStore = useCallsStore();
