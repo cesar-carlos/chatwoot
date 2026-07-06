@@ -46,9 +46,10 @@ const resolveBrowserVoiceSession = (
 const dismissedCallSids = new Set();
 export const isCallDismissed = callSid =>
   callSid ? dismissedCallSids.has(callSid) : false;
-const markDismissed = callSid => {
+export const markCallDismissed = callSid => {
   if (callSid) dismissedCallSids.add(callSid);
 };
+const markDismissed = markCallDismissed;
 
 // Tracks calls this agent silenced locally by rejecting/dismissing. The call
 // may linger in the store (and in other agents' tabs) while the SDK or backend
