@@ -83,16 +83,15 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     post('/send/text', body, headers: instance_headers)
   end
 
-  def send_media(number:, type:, url:, caption: nil, filename: nil, quoted: nil, delay: nil)
+  def send_media(number:, type:, url:, **options)
     body = {
       number: normalize_number(number),
       type: type,
       url: url
     }
-    body[:caption] = caption if caption.present?
-    body[:filename] = filename if filename.present?
-    body[:quoted] = quoted if quoted.present?
-    body[:delay] = delay if delay.present?
+    %i[caption filename quoted delay].each do |key|
+      body[key] = options[key] if options[key].present?
+    end
     post('/send/media', body, headers: instance_headers)
   end
 
@@ -182,9 +181,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     options[:body] = body.to_json if body.present?
 
     response = HTTParty.public_send(method, "#{@base_url}#{path}", options)
-    if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response)
-      return retry_request(method, path, body, headers, attempt)
-    end
+    return retry_request(method, path, body, headers, attempt) if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response)
 
     ensure_parseable_response!(response, method, path)
     response

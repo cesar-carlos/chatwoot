@@ -477,8 +477,7 @@ export default {
       if (!hasPermissions([...ROLES, CONTACT_PERMISSIONS], userPermissions)) {
         return false;
       }
-      if (this.isATelegramChannel || this.isGatewayWhatsAppChannel)
-        return true;
+      if (this.isATelegramChannel || this.isGatewayWhatsAppChannel) return true;
       if (this.isAWhatsAppCloudChannel || this.is360DialogWhatsAppChannel) {
         return this.currentChat?.can_reply;
       }

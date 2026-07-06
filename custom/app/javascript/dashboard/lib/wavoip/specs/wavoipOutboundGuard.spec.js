@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 
-const { isWavoipSdkCallOwned, getRingingProviderCallId, isOutboundInitiationActive } = vi.hoisted(() => ({
+const {
+  isWavoipSdkCallOwned,
+  getRingingProviderCallId,
+  isOutboundInitiationActive,
+} = vi.hoisted(() => ({
   isWavoipSdkCallOwned: vi.fn(() => false),
   getRingingProviderCallId: vi.fn(() => null),
   isOutboundInitiationActive: vi.fn(() => false),
@@ -54,7 +58,10 @@ describe('wavoipOutboundGuard', () => {
     it('ignores offer when agent started outbound call', () => {
       isWavoipSdkCallOwned.mockImplementation(id => id === 'sdk_out');
       expect(
-        shouldIgnoreInboundWavoipOffer({ id: 'sdk_out' }, { calls: [], inboxId: 1 })
+        shouldIgnoreInboundWavoipOffer(
+          { id: 'sdk_out' },
+          { calls: [], inboxId: 1 }
+        )
       ).toBe(true);
     });
 

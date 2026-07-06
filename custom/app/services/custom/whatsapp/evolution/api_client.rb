@@ -269,9 +269,7 @@ class Custom::Whatsapp::Evolution::ApiClient
     options[:open_timeout] = OPEN_TIMEOUT
 
     response = HTTParty.public_send(method, "#{@base_url}#{path}", options)
-    if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response)
-      return retry_request(method, path, body, attempt)
-    end
+    return retry_request(method, path, body, attempt) if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response)
 
     ensure_parseable_response!(response, method, path)
     response

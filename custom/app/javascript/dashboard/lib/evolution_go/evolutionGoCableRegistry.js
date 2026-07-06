@@ -13,7 +13,13 @@ function getConsumer() {
   return sharedConsumer;
 }
 
-function createSubscription({ inboxId, pubsubToken, accountId, userId, listeners }) {
+function createSubscription({
+  inboxId,
+  pubsubToken,
+  accountId,
+  userId,
+  listeners,
+}) {
   if (!inboxId || !pubsubToken) return null;
 
   return getConsumer().subscriptions.create(
@@ -34,20 +40,7 @@ function createSubscription({ inboxId, pubsubToken, accountId, userId, listeners
   );
 }
 
-export function subscribeEvolutionGoConnection(inboxId, onUpdate, context = {}) {
-  const store = context.store;
-  if (!inboxId || !store) return () => {};
-
-  return acquireEvolutionGoConnectionCable({
-    inboxId,
-    pubsubToken: store.getters.getCurrentUser?.pubsub_token,
-    accountId: store.getters.getCurrentAccountId,
-    userId: store.getters.getCurrentUserID,
-    onUpdate,
-  });
-}
-
-export function acquireEvolutionGoConnectionCable({
+function acquireEvolutionGoConnectionCable({
   inboxId,
   pubsubToken,
   accountId,
@@ -81,4 +74,21 @@ export function acquireEvolutionGoConnectionCable({
       registry.delete(key);
     }
   };
+}
+
+export function subscribeEvolutionGoConnection(
+  inboxId,
+  onUpdate,
+  context = {}
+) {
+  const store = context.store;
+  if (!inboxId || !store) return () => {};
+
+  return acquireEvolutionGoConnectionCable({
+    inboxId,
+    pubsubToken: store.getters.getCurrentUser?.pubsub_token,
+    accountId: store.getters.getCurrentAccountId,
+    userId: store.getters.getCurrentUserID,
+    onUpdate,
+  });
 }

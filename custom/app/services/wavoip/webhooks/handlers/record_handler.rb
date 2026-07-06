@@ -39,13 +39,9 @@ class Wavoip::Webhooks::Handlers::RecordHandler < Wavoip::Webhooks::Handlers::Ba
     meta = (call.meta || {}).dup
     changes = {}
 
-    if event.record_status.present? && meta['record_status'] != event.record_status
-      changes['record_status'] = event.record_status
-    end
+    changes['record_status'] = event.record_status if event.record_status.present? && meta['record_status'] != event.record_status
 
-    if include_record_url && meta['record_url'] != event.record_url
-      changes['record_url'] = event.record_url
-    end
+    changes['record_url'] = event.record_url if include_record_url && meta['record_url'] != event.record_url
 
     return if changes.blank?
 

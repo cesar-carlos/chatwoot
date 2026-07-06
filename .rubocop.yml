@@ -19,17 +19,21 @@ Metrics/ClassLength:
     - 'app/models/message.rb'
     - 'app/models/conversation.rb'
     - 'custom/app/services/custom/whatsapp/evolution/connection_service.rb'
+    - 'custom/app/services/custom/whatsapp/evolution_go/api_client.rb'
 
 Metrics/ModuleLength:
   Exclude:
     - lib/seeders/message_seeder.rb
     - spec/support/slack_stubs.rb
     - 'custom/app/controllers/custom/api/v1/accounts/inboxes_controller.rb'
+    - 'custom/app/models/custom/channel/whatsapp.rb'
+    - 'custom/app/services/custom/whatsapp/providers/evolution_go_service_outbound.rb'
 
 Metrics/MethodLength:
   Max: 19
   Exclude:
     - 'enterprise/lib/captain/agent.rb'
+    - 'custom/app/services/custom/whatsapp/evolution/import/remote_jids_collector.rb'
 
 RSpec/ExampleLength:
   Max: 50

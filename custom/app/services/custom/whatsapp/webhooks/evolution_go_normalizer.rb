@@ -31,11 +31,18 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
   def filtered?(data)
     key = data['key'] || data[:key] || {}
     remote_jid = extract_remote_jid(key)
-    return true if from_me?(key) && ignore_from_me_echo?
-    return true if ignore_groups? && group_jid?(remote_jid)
-    return true if status_broadcast?(remote_jid)
+    return true if echo_filtered?(key)
+    return true if group_filtered?(remote_jid)
 
-    false
+    status_broadcast?(remote_jid)
+  end
+
+  def echo_filtered?(key)
+    from_me?(key) && ignore_from_me_echo?
+  end
+
+  def group_filtered?(remote_jid)
+    ignore_groups? && group_jid?(remote_jid)
   end
 
   def normalize_message(data)

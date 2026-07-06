@@ -7,10 +7,7 @@ class Wavoip::Calls::RecordingAttachmentService
   pattr_initialize [:call!, :record_url!, :store_fallback_on_error]
 
   def perform
-    return if record_url.blank?
-    return if call.message.blank?
-    return unless recording_allowed?
-    return if already_attached?
+    return unless attachable_recording?
 
     SafeFetch.fetch(
       record_url,
@@ -27,6 +24,13 @@ class Wavoip::Calls::RecordingAttachmentService
   end
 
   private
+
+  def attachable_recording?
+    record_url.present? &&
+      call.message.present? &&
+      recording_allowed? &&
+      !already_attached?
+  end
 
   def persist_recording!(result)
     call.with_lock do

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-module Custom::Api::V1::Accounts::ConversationsControllerEvolutionGo
+module Custom::Api::V1::Accounts::ConversationsController
   def update_last_seen
     super
     mark_evolution_go_messages_read
@@ -15,4 +15,4 @@ module Custom::Api::V1::Accounts::ConversationsControllerEvolutionGo
   end
 end
 
-Api::V1::Accounts::ConversationsController.prepend(Custom::Api::V1::Accounts::ConversationsControllerEvolutionGo)
+Api::V1::Accounts::ConversationsController.prepend_mod_with('Api::V1::Accounts::ConversationsController')

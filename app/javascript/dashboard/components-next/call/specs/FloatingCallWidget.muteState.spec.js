@@ -66,7 +66,7 @@ vi.mock('dashboard/api/channel/voice/twilioVoiceClient', () => ({
   default: { setMuted: vi.fn() },
 }));
 
-// eslint-disable-next-line import/first
+// Import after mocks so Vitest hoists do not break module wiring.
 import FloatingCallWidget from '../FloatingCallWidget.vue';
 
 describe('FloatingCallWidget — mute state', () => {
@@ -120,9 +120,7 @@ describe('FloatingCallWidget — mute state', () => {
     };
     const wrapper = mountWidget();
 
-    await wrapper
-      .findComponent({ name: 'CallCard' })
-      .vm.$emit('toggle-mute');
+    await wrapper.findComponent({ name: 'CallCard' }).vm.$emit('toggleMute');
 
     expect(setWavoipMuted).toHaveBeenCalledWith(true);
     await wrapper.vm.$nextTick();

@@ -42,7 +42,11 @@ vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
   registerOfferUnsubscriber: vi.fn(),
 }));
 
-const { isWavoipSdkCallOwned, getRingingProviderCallId, isOutboundInitiationActive } = vi.hoisted(() => ({
+const {
+  isWavoipSdkCallOwned,
+  getRingingProviderCallId,
+  isOutboundInitiationActive,
+} = vi.hoisted(() => ({
   isWavoipSdkCallOwned: vi.fn(() => false),
   getRingingProviderCallId: vi.fn(() => null),
   isOutboundInitiationActive: vi.fn(() => false),

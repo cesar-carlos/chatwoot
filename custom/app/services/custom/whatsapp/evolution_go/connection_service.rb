@@ -104,11 +104,16 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     end
 
     data = api_client.unwrap(response)
+    update_connection_status(connection_state_from_status_data(data))
+    Rails.cache.write(cache_key, true, expires_in: CONNECTION_STATE_CACHE_TTL)
+  end
+
+  def connection_state_from_status_data(data)
     connected = ActiveModel::Type::Boolean.new.cast(api_client.dig_field(data, 'connected', 'Connected'))
     logged_in = ActiveModel::Type::Boolean.new.cast(api_client.dig_field(data, 'loggedIn', 'LoggedIn'))
-    state = connected && logged_in ? 'open' : (connected ? 'connecting' : 'close')
-    update_connection_status(state)
-    Rails.cache.write(cache_key, true, expires_in: CONNECTION_STATE_CACHE_TTL)
+    return 'open' if connected && logged_in
+
+    connected ? 'connecting' : 'close'
   end
 
   private

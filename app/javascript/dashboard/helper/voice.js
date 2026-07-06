@@ -5,7 +5,10 @@ import types from 'dashboard/store/mutation-types';
 import store from 'dashboard/store';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
-import { isOutboundInitiationActive, isWavoipSdkCallOwned } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import {
+  isOutboundInitiationActive,
+  isWavoipSdkCallOwned,
+} from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import { normalizeCallDirection } from 'customDashboard/lib/voice/voiceCallDirection';
 
 export const TERMINAL_STATUSES = [

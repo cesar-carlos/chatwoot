@@ -147,6 +147,10 @@ class Wavoip::DeviceStatusService
     config['device_status'] = status
     channel.update!(provider_config: config)
 
+    sync_contact_phone!(result)
+  end
+
+  def sync_contact_phone!(result)
     contact_phone = result.dig('contact', 'phone').presence
     return if contact_phone.blank?
 
