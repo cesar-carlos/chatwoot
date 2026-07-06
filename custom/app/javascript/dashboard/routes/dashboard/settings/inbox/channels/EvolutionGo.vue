@@ -125,7 +125,7 @@ async function createChannel() {
     const channelPayload = {
       type: 'whatsapp',
       provider: 'evolution_go',
-        base_url: normalizedBaseUrl,
+      base_url: normalizedBaseUrl,
       instance_name: state.instanceName.trim(),
       provider_config: {
         proxy_enabled: state.proxyEnabled,
@@ -204,7 +204,9 @@ async function createChannel() {
         v-model="state.globalApiKey"
         type="password"
         :label="t('INBOX_MGMT.ADD.EVOLUTION_GO.GLOBAL_API_KEY.LABEL')"
-        :placeholder="t('INBOX_MGMT.ADD.EVOLUTION_GO.GLOBAL_API_KEY.PLACEHOLDER')"
+        :placeholder="
+          t('INBOX_MGMT.ADD.EVOLUTION_GO.GLOBAL_API_KEY.PLACEHOLDER')
+        "
         :message="
           formErrors.globalApiKey ||
           t('INBOX_MGMT.ADD.EVOLUTION_GO.GLOBAL_API_KEY.HELP')
@@ -216,7 +218,9 @@ async function createChannel() {
         v-model="state.instanceToken"
         type="password"
         :label="t('INBOX_MGMT.ADD.EVOLUTION_GO.INSTANCE_TOKEN.LABEL')"
-        :placeholder="t('INBOX_MGMT.ADD.EVOLUTION_GO.INSTANCE_TOKEN.PLACEHOLDER')"
+        :placeholder="
+          t('INBOX_MGMT.ADD.EVOLUTION_GO.INSTANCE_TOKEN.PLACEHOLDER')
+        "
         :message="formErrors.instanceToken"
         :message-type="formErrors.instanceToken ? 'error' : 'info'"
       />
@@ -224,7 +228,9 @@ async function createChannel() {
       <Input
         v-model="state.instanceName"
         :label="t('INBOX_MGMT.ADD.EVOLUTION_GO.INSTANCE_NAME.LABEL')"
-        :placeholder="t('INBOX_MGMT.ADD.EVOLUTION_GO.INSTANCE_NAME.PLACEHOLDER')"
+        :placeholder="
+          t('INBOX_MGMT.ADD.EVOLUTION_GO.INSTANCE_NAME.PLACEHOLDER')
+        "
         :message="formErrors.instanceName"
         :message-type="formErrors.instanceName ? 'error' : 'info'"
       />

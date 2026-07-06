@@ -2,18 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { useCallsStore } from 'dashboard/stores/calls';
 
-const { pendingOffers, removePendingOffer, isWavoipSdkCallOwned, getRingingProviderCallId, isOutboundInitiationActive } = vi.hoisted(
-  () => {
-    const offers = new Map();
-    return {
-      pendingOffers: offers,
-      removePendingOffer: callId => offers.delete(callId),
-      isWavoipSdkCallOwned: vi.fn(() => false),
-      getRingingProviderCallId: vi.fn(() => null),
-      isOutboundInitiationActive: vi.fn(() => false),
-    };
-  }
-);
+const {
+  pendingOffers,
+  removePendingOffer,
+  isWavoipSdkCallOwned,
+  getRingingProviderCallId,
+  isOutboundInitiationActive,
+} = vi.hoisted(() => {
+  const offers = new Map();
+  return {
+    pendingOffers: offers,
+    removePendingOffer: callId => offers.delete(callId),
+    isWavoipSdkCallOwned: vi.fn(() => false),
+    getRingingProviderCallId: vi.fn(() => null),
+    isOutboundInitiationActive: vi.fn(() => false),
+  };
+});
 
 vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
   endActiveCall: vi.fn(),
@@ -420,9 +424,7 @@ describe('wavoipVoiceCableHandlers', () => {
 
       vi.advanceTimersByTime(8000);
 
-      expect(store.calls.some(c => c.callSid === 'out_ghost_001')).toBe(
-        false
-      );
+      expect(store.calls.some(c => c.callSid === 'out_ghost_001')).toBe(false);
       vi.useRealTimers();
     });
 
@@ -458,12 +460,8 @@ describe('wavoipVoiceCableHandlers', () => {
 
       vi.advanceTimersByTime(8000);
 
-      expect(store.calls.some(c => c.callSid === 'out_ghost_002')).toBe(
-        false
-      );
-      expect(store.calls.some(c => c.callSid === 'unrelated_call')).toBe(
-        true
-      );
+      expect(store.calls.some(c => c.callSid === 'out_ghost_002')).toBe(false);
+      expect(store.calls.some(c => c.callSid === 'unrelated_call')).toBe(true);
       vi.useRealTimers();
     });
   });

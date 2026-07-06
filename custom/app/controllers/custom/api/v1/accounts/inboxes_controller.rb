@@ -406,9 +406,7 @@ module Custom::Api::V1::Accounts::InboxesController
 
   def evolution_go_provision_error_message(error)
     message = error.message.to_s
-    if message.include?('index_channel_whatsapp_evolution_go_instance_name')
-      return 'An Evolution Go inbox with this instance name already exists'
-    end
+    return 'An Evolution Go inbox with this instance name already exists' if message.include?('index_channel_whatsapp_evolution_go_instance_name')
 
     message.presence || 'Failed to provision Evolution Go instance'
   end

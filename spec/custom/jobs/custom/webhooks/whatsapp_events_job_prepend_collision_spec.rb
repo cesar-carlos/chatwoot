@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Evolution Go vs Evolution node job prepend collision' do
+RSpec.describe Webhooks::WhatsappEventsJob do
   let(:account) { create(:account) }
   let(:go_channel) do
     create(
@@ -49,7 +49,7 @@ RSpec.describe 'Evolution Go vs Evolution node job prepend collision' do
     expect(Custom::Whatsapp::Evolution::WebhookDispatcher).not_to receive(:new)
 
     expect do
-      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+      described_class.perform_now(job_payload)
     end.to change(Message, :count).by(1)
   end
 end

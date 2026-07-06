@@ -38,7 +38,7 @@ RSpec.describe Custom::Whatsapp::Evolution::ApiClient do
   end
 
   describe 'retry behaviour' do
-    before { allow(client).to receive(:sleep) }
+    before { allow(Kernel).to receive(:sleep) }
 
     it 'retries once after a network error and returns the successful response' do
       success = instance_double(HTTParty::Response, success?: true, parsed_response: { 'subject' => 'ok' })

@@ -49,11 +49,13 @@ const bannerMessage = computed(() => {
 </script>
 
 <template>
-  <div
-    v-if="bannerMessage"
-    class="border-b border-n-amber-6 bg-n-amber-2 px-4 py-2 text-sm text-n-amber-12"
-    role="status"
-  >
-    {{ bannerMessage }}
+  <div>
+    <div
+      v-if="bannerMessage"
+      class="border-b border-n-amber-6 bg-n-amber-2 px-4 py-2 text-sm text-n-amber-12"
+      role="status"
+    >
+      {{ bannerMessage }}
+    </div>
   </div>
 </template>

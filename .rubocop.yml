@@ -24,6 +24,7 @@ Metrics/MethodLength:
   Max: 19
   Exclude:
     - 'enterprise/lib/captain/agent.rb'
+    - 'custom/app/services/custom/whatsapp/evolution/import/remote_jids_collector.rb'
 
 RSpec/ExampleLength:
   Max: 50

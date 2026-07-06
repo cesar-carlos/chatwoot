@@ -76,7 +76,8 @@ export const createWavoipVoiceCableHandlers = t => ({
       // reconciles onto a row the offer already created under its own id.
       callSid: existing?.callSid || mapped.callSid,
       awaitingSdkOffer: !offerEntry,
-      wavoipOfferId: offerEntry?.offer?.id || existing?.wavoipOfferId || data.call_id,
+      wavoipOfferId:
+        offerEntry?.offer?.id || existing?.wavoipOfferId || data.call_id,
     };
 
     callsStore.addCall(existing ? { ...existing, ...entry } : entry);
@@ -85,7 +86,8 @@ export const createWavoipVoiceCableHandlers = t => ({
     }
     flushAcceptedByRecording(data.call_id, {
       t,
-      onFailure: () => useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED')),
+      onFailure: () =>
+        useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED')),
     });
   },
   onOutboundAccepted(data) {

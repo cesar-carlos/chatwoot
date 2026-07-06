@@ -440,7 +440,9 @@ onBeforeUnmount(() => {
       <ul class="list-disc ps-5 text-sm text-n-slate-11 space-y-1">
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_TOGGLE') }}</li>
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_CALL_EVENT') }}</li>
-        <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_RECORD_EVENT') }}</li>
+        <li>
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_RECORD_EVENT') }}
+        </li>
         <li>
           {{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_DEVICE_EVENT') }}
         </li>
