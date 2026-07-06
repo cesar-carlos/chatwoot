@@ -103,7 +103,8 @@ describe('WavoipDevicePanel', () => {
           Spinner: true,
           WavoipQrScanModal: true,
           Dialog: {
-            template: '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
+            template:
+              '<div class="dialog-stub"><slot /><slot name="footer" /></div>',
             props: [
               'title',
               'description',

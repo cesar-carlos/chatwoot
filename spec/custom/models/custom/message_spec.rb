@@ -109,8 +109,8 @@ RSpec.describe Message, type: :model do
       account.enable_features!('channel_voice', 'channel_wavoip')
     end
 
-    def create_voice_call_message(conversation, direction: :incoming)
-      call = create(
+    def build_wavoip_call(conversation, direction:)
+      create(
         :call,
         account: account,
         inbox: inbox,
@@ -121,6 +121,10 @@ RSpec.describe Message, type: :model do
         status: 'ringing',
         provider_call_id: SecureRandom.uuid
       )
+    end
+
+    def create_voice_call_message(conversation, direction: :incoming)
+      call = build_wavoip_call(conversation, direction: direction)
       create(
         :message,
         account: account,

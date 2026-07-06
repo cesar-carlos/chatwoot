@@ -16,8 +16,8 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
     it 'accepts PascalCase and camelCase keys' do
       hash = { 'Connected' => true, 'loggedIn' => false, 'myJid' => '5511@s.whatsapp.net' }
 
-      expect(client.dig_field(hash, 'connected', 'Connected')).to eq(true)
-      expect(client.dig_field(hash, 'loggedIn', 'LoggedIn')).to eq(false)
+      expect(client.dig_field(hash, 'connected', 'Connected')).to be(true)
+      expect(client.dig_field(hash, 'loggedIn', 'LoggedIn')).to be(false)
       expect(client.dig_field(hash, 'jid', 'myJid', 'JID')).to eq('5511@s.whatsapp.net')
     end
   end

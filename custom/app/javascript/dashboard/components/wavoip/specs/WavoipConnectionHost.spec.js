@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { createStore } from 'vuex';
 

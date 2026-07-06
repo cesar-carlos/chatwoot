@@ -40,7 +40,7 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
   def record_agent_acceptance!
     @call.with_lock do
       raise_if_claimed_by_other_agent!
-      return if @call.accepted_by_agent_id == Current.user.id
+      next if @call.accepted_by_agent_id == Current.user.id
 
       accept_call_for_current_user!
     end

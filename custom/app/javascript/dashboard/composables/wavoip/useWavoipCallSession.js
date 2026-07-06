@@ -22,8 +22,8 @@ import {
 import {
   useWavoipActiveCall,
   endActiveCall as endSdkActiveCall,
-  clearActiveCall,
   clearRingingOutgoingCall,
+  clearActiveCall,
   getActiveProviderCallId,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 
@@ -33,8 +33,7 @@ export function useWavoipCallSession() {
   const { connectForInbox, syncConnections } = useWavoipConnection();
   const { initiateOutboundCall, isInitiating } = useWavoipOutboundCall();
   const { attachToInbox, acceptOffer, rejectOffer } = useWavoipIncomingOffer();
-  const { setActiveCall, clearActiveCall, setMuted, hasActiveCall } =
-    useWavoipActiveCall();
+  const { setActiveCall, setMuted, hasActiveCall } = useWavoipActiveCall();
 
   const acceptRecordFailure = () => {
     useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED'));

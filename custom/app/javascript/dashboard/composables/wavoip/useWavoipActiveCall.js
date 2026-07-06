@@ -1,9 +1,6 @@
 import { readonly, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import {
-  wireCallDiagnostics,
-  unwireCallDiagnostics,
-} from 'customDashboard/lib/wavoip/wavoipCallDiagnostics';
+import { wireCallDiagnostics } from 'customDashboard/lib/wavoip/wavoipCallDiagnostics';
 import { removeWavoipCallFromStore } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 
 let activeSdkCall = null;
@@ -115,9 +112,9 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
   };
   activeEndedHandler = () => {
     if (activeSdkCall !== sdkCall) return;
-    const providerCallId = activeProviderCallId;
+    const endedCallId = activeProviderCallId;
     clearActiveCall();
-    removeWavoipCallFromStore(providerCallId);
+    removeWavoipCallFromStore(endedCallId);
   };
 
   sdkCall?.on?.('connectionStatus', activeConnectionStatusHandler);

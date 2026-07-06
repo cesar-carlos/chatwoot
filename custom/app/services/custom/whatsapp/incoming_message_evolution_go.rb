@@ -40,9 +40,7 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
   end
 
   def download_attachment_file(attachment_payload)
-    if evolution_go_channel? && attachment_payload[:_evolution_go_message].present?
-      return download_evolution_go_media(attachment_payload)
-    end
+    return download_evolution_go_media(attachment_payload) if evolution_go_channel? && attachment_payload[:_evolution_go_message].present?
 
     super
   end

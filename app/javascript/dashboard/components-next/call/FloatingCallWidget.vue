@@ -363,99 +363,102 @@ onBeforeUnmount(stopRingtone);
       v-if="incomingCalls.length || hasActiveCall"
       class="fixed ltr:right-4 rtl:left-4 bottom-4 z-50 flex flex-col gap-3 w-[400px]"
     >
-    <div
-      v-if="connectionBannerMessage"
-      class="rounded-lg border border-n-ruby-6 bg-n-ruby-2 px-3 py-2 text-xs text-n-ruby-11"
-    >
-      {{ connectionBannerMessage }}
-    </div>
+      <div
+        v-if="connectionBannerMessage"
+        class="rounded-lg border border-n-ruby-6 bg-n-ruby-2 px-3 py-2 text-xs text-n-ruby-11"
+      >
+        {{ connectionBannerMessage }}
+      </div>
 
-    <div
-      v-if="isWavoipActive && (inputDevices.length || outputDevices.length)"
-      class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-3 py-2 flex flex-col gap-2 text-xs"
-    >
-      <label v-if="inputDevices.length" class="flex flex-col gap-1">
-        <span class="text-n-slate-11">{{
-          t('CONVERSATION.WAVOIP_CALL.MIC_DEVICE')
-        }}</span>
-        <select
-          class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
-          :value="activeInputId || ''"
-          @change="handleInputDeviceChange"
-        >
-          <option
-            v-for="device in inputDevices"
-            :key="device.deviceId"
-            :value="device.deviceId"
+      <div
+        v-if="isWavoipActive && (inputDevices.length || outputDevices.length)"
+        class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-3 py-2 flex flex-col gap-2 text-xs"
+      >
+        <label v-if="inputDevices.length" class="flex flex-col gap-1">
+          <span class="text-n-slate-11">{{
+            t('CONVERSATION.WAVOIP_CALL.MIC_DEVICE')
+          }}</span>
+          <select
+            class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
+            :value="activeInputId || ''"
+            @change="handleInputDeviceChange"
           >
-            {{ device.label || device.deviceId }}
-          </option>
-        </select>
-      </label>
-      <label v-if="outputDevices.length" class="flex flex-col gap-1">
-        <span class="text-n-slate-11">{{
-          t('CONVERSATION.WAVOIP_CALL.SPEAKER_DEVICE')
-        }}</span>
-        <select
-          class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
-          :value="activeOutputId || ''"
-          @change="handleOutputDeviceChange"
-        >
-          <option
-            v-for="device in outputDevices"
-            :key="device.deviceId"
-            :value="device.deviceId"
+            <option
+              v-for="device in inputDevices"
+              :key="device.deviceId"
+              :value="device.deviceId"
+            >
+              {{ device.label || device.deviceId }}
+            </option>
+          </select>
+        </label>
+        <label v-if="outputDevices.length" class="flex flex-col gap-1">
+          <span class="text-n-slate-11">{{
+            t('CONVERSATION.WAVOIP_CALL.SPEAKER_DEVICE')
+          }}</span>
+          <select
+            class="rounded border border-n-slate-6 bg-n-solid-1 px-2 py-1 text-n-slate-12"
+            :value="activeOutputId || ''"
+            @change="handleOutputDeviceChange"
           >
-            {{ device.label || device.deviceId }}
-          </option>
-        </select>
-      </label>
-    </div>
+            <option
+              v-for="device in outputDevices"
+              :key="device.deviceId"
+              :value="device.deviceId"
+            >
+              {{ device.label || device.deviceId }}
+            </option>
+          </select>
+        </label>
+      </div>
 
-    <!-- Stacked incoming calls (shown above the primary card) -->
-    <CallCard
-      v-for="call in visibleStackedCalls"
-      :key="call.callSid"
-      :call="call"
-      :state="stackedCardState(call)"
-      :call-info="getCallInfo(call)"
-      :is-ringtone-muted="isRingtoneMuted"
-      @accept="handleJoinCall(call)"
-      @reject="rejectIncomingCall(call.callSid)"
-      @dismiss="dismissCall(call.callSid)"
-      @toggle-ringtone-mute="toggleRingtoneMute"
-      @go-to-conversation="goToConversation(call)"
-    />
-    <div
-      v-if="overflowStackedCallsCount > 0"
-      class="rounded-lg bg-n-solid-2 px-3 py-2 text-center text-xs text-n-slate-11"
-    >
-      {{
-        t('CONVERSATION.WAVOIP_CALL.INCOMING_CALLS_OVERFLOW', {
-          count: overflowStackedCallsCount,
-        })
-      }}
-    </div>
+      <!-- Stacked incoming calls (shown above the primary card) -->
+      <CallCard
+        v-for="call in visibleStackedCalls"
+        :key="call.callSid"
+        :call="call"
+        :state="stackedCardState(call)"
+        :call-info="getCallInfo(call)"
+        :is-ringtone-muted="isRingtoneMuted"
+        @accept="handleJoinCall(call)"
+        @reject="rejectIncomingCall(call.callSid)"
+        @dismiss="dismissCall(call.callSid)"
+        @toggle-ringtone-mute="toggleRingtoneMute"
+        @go-to-conversation="goToConversation(call)"
+      />
+      <div
+        v-if="overflowStackedCallsCount > 0"
+        class="rounded-lg bg-n-solid-2 px-3 py-2 text-center text-xs text-n-slate-11"
+      >
+        {{
+          t('CONVERSATION.WAVOIP_CALL.INCOMING_CALLS_OVERFLOW', {
+            count: overflowStackedCallsCount,
+          })
+        }}
+      </div>
 
-    <!-- Main Call Widget -->
-    <CallCard
-      v-if="hasActiveCall || primaryIncomingCall"
-      :call="activeCall || primaryIncomingCall"
-      :state="mainCardState"
-      :call-info="getCallInfo(activeCall || primaryIncomingCall)"
-      :duration="hasActiveCall ? formattedCallDuration : ''"
-      :is-muted="isMuted"
-      :show-mute="hasActiveCall"
-      :is-joining="isJoining"
-      :is-ringtone-muted="isRingtoneMuted"
-      @accept="handleJoinCall(primaryIncomingCall)"
-      @reject="rejectIncomingCall(primaryIncomingCall?.callSid)"
-      @dismiss="dismissCall(primaryIncomingCall?.callSid)"
-      @toggle-ringtone-mute="toggleRingtoneMute"
-      @end="handleEndCall"
-      @toggle-mute="toggleMute"
-      @go-to-conversation="goToConversation(activeCall || primaryIncomingCall)"
-    />
-  </div>
-  <template v-else />
+      <!-- Main Call Widget -->
+      <CallCard
+        v-if="hasActiveCall || primaryIncomingCall"
+        :call="activeCall || primaryIncomingCall"
+        :state="mainCardState"
+        :call-info="getCallInfo(activeCall || primaryIncomingCall)"
+        :duration="hasActiveCall ? formattedCallDuration : ''"
+        :is-muted="isMuted"
+        :show-mute="hasActiveCall"
+        :is-joining="isJoining"
+        :is-ringtone-muted="isRingtoneMuted"
+        @accept="handleJoinCall(primaryIncomingCall)"
+        @reject="rejectIncomingCall(primaryIncomingCall?.callSid)"
+        @dismiss="dismissCall(primaryIncomingCall?.callSid)"
+        @toggle-ringtone-mute="toggleRingtoneMute"
+        @end="handleEndCall"
+        @toggle-mute="toggleMute"
+        @go-to-conversation="
+          goToConversation(activeCall || primaryIncomingCall)
+        "
+      />
+    </div>
+    <template v-else />
+  </Transition>
 </template>

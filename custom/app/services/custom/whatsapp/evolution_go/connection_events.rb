@@ -17,17 +17,25 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
     return {} unless data.is_a?(Hash)
 
     data = data.with_indifferent_access
-    attrs = {}
     qrcode = dig_field(data, 'qrcode', 'Qrcode') || data
-    base64 = dig_field(qrcode, 'qrcode', 'Qrcode', 'base64', 'Base64') || qrcode if qrcode.is_a?(Hash)
-    base64 ||= data['qrcode'] if data['qrcode'].is_a?(String)
-    code = dig_field(data, 'code', 'Code') || dig_field(qrcode, 'code', 'Code') if qrcode.is_a?(Hash)
+    attrs = {}
+    base64 = qrcode_base64_value(data, qrcode)
+    code = qrcode_code_value(data, qrcode)
     attrs['last_qr_base64'] = base64 if base64.present?
     attrs['last_qr_code'] = code if code.present?
     attrs
   end
 
   private
+
+  def qrcode_base64_value(data, qrcode)
+    base64 = dig_field(qrcode, 'qrcode', 'Qrcode', 'base64', 'Base64') || qrcode if qrcode.is_a?(Hash)
+    base64 || (data['qrcode'] if data['qrcode'].is_a?(String))
+  end
+
+  def qrcode_code_value(data, qrcode)
+    dig_field(data, 'code', 'Code') || (dig_field(qrcode, 'code', 'Code') if qrcode.is_a?(Hash))
+  end
 
   def provider_config
     channel.provider_config || {}

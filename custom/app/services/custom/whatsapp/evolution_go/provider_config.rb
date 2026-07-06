@@ -44,10 +44,10 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfig
 
   def self.normalize_credentials(config)
     config = config.stringify_keys
+    %w[global_api_key instance_token instance_name].each do |key|
+      config[key] = config[key].to_s.strip if config[key].present?
+    end
     config['base_url'] = config['base_url'].to_s.strip.delete_suffix('/') if config['base_url'].present?
-    config['global_api_key'] = config['global_api_key'].to_s.strip if config['global_api_key'].present?
-    config['instance_token'] = config['instance_token'].to_s.strip if config['instance_token'].present?
-    config['instance_name'] = config['instance_name'].to_s.strip if config['instance_name'].present?
     config
   end
 

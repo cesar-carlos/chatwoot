@@ -25,7 +25,10 @@ export const isAgentInitiatedWavoipStoreCall = call => {
 export const isWavoipOutboundCablePayload = data =>
   isOutboundCallDirection(data?.call_direction);
 
-export const shouldIgnoreInboundWavoipOffer = (offer, { calls = [], inboxId } = {}) => {
+export const shouldIgnoreInboundWavoipOffer = (
+  offer,
+  { calls = [], inboxId } = {}
+) => {
   if (!offer?.id) return true;
   if (isOutboundInitiationActive(inboxId)) return true;
   if (isAgentInitiatedWavoipCallId(offer.id)) return true;

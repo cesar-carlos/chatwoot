@@ -258,9 +258,7 @@ async function removeProxy() {
       />
       <SettingsToggleSection
         v-model="state.sendTemplatesAsText"
-        :label="
-          t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.LABEL')
-        "
+        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.DESCRIPTION')
         "
@@ -279,7 +277,9 @@ async function removeProxy() {
       />
     </SettingsAccordion>
 
-    <SettingsAccordion :title="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY_SECTION')">
+    <SettingsAccordion
+      :title="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY_SECTION')"
+    >
       <SettingsToggleSection
         v-model="state.proxyEnabled"
         :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.ENABLED.LABEL')"

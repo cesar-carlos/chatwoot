@@ -46,9 +46,9 @@ describe('wavoipSdkResult', () => {
 
   it('maps Meta permission denial in peerReject to OUTBOUND_PERMISSION_DENIED', () => {
     const t = vi.fn(key => key);
-    expect(formatWavoipPeerRejectError('Error 138006 permission denied', t)).toBe(
-      'CONVERSATION.WAVOIP_CALL.OUTBOUND_PERMISSION_DENIED'
-    );
+    expect(
+      formatWavoipPeerRejectError('Error 138006 permission denied', t)
+    ).toBe('CONVERSATION.WAVOIP_CALL.OUTBOUND_PERMISSION_DENIED');
   });
 
   it('maps generic peerReject to PEER_REJECTED', () => {

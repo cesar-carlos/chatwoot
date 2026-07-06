@@ -37,21 +37,25 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div
-    v-if="showIosHint && currentUserAvailability === 'online'"
-    class="fixed bottom-20 left-4 right-4 z-40 mx-auto max-w-lg rounded-lg border border-n-amber-6 bg-n-amber-2 px-4 py-3 text-sm text-n-amber-12 shadow-md sm:left-auto"
-    role="status"
-  >
-  <div class="flex items-start justify-between gap-3">
-    <p>{{ t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.WAVOIP_IOS_PWA_HINT') }}</p>
-    <button
-      type="button"
-      class="shrink-0 text-n-amber-11 hover:text-n-amber-12"
-      :aria-label="t('CONVERSATION.HEADER.CLOSE')"
-      @click="showIosHint = false"
+  <div>
+    <div
+      v-if="showIosHint && currentUserAvailability === 'online'"
+      class="fixed bottom-20 left-4 right-4 z-40 mx-auto max-w-lg rounded-lg border border-n-amber-6 bg-n-amber-2 px-4 py-3 text-sm text-n-amber-12 shadow-md sm:left-auto"
+      role="status"
     >
-      <span class="i-lucide-x size-4" />
-    </button>
-  </div>
+      <div class="flex items-start justify-between gap-3">
+        <p>
+          {{ t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.WAVOIP_IOS_PWA_HINT') }}
+        </p>
+        <button
+          type="button"
+          class="shrink-0 text-n-amber-11 hover:text-n-amber-12"
+          :aria-label="t('CONVERSATION.HEADER.CLOSE')"
+          @click="showIosHint = false"
+        >
+          <span class="i-lucide-x size-4" />
+        </button>
+      </div>
+    </div>
   </div>
 </template>

@@ -24,7 +24,11 @@ import { wavoipOutboundBlockedReasonKey } from 'customDashboard/lib/wavoip/wavoi
 
 const isInitiating = ref(false);
 
-const purgeSpuriousInboundCalls = ({ conversationId, inboxId, keepCallSid }) => {
+const purgeSpuriousInboundCalls = ({
+  conversationId,
+  inboxId,
+  keepCallSid,
+}) => {
   const callsStore = useCallsStore();
   callsStore.calls
     .filter(
@@ -57,12 +61,14 @@ const reopenConversationIfNeeded = async (store, conversationId) => {
 // The SDK call object can outlive this closure (e.g. if the client keeps its
 // own reference in an active-calls list), so each terminal event unwires all
 // four listeners itself instead of relying on `call` being garbage collected.
-const wireOutgoingEvents = (call, inboxId) => {
+const wireOutgoingEvents = (call, inboxId, translate) => {
   setRingingOutgoingCall(call, { providerCallId: call.id, inboxId });
 
   const handlers = {};
   const unwire = () => {
-    Object.entries(handlers).forEach(([event, handler]) => call.off?.(event, handler));
+    Object.entries(handlers).forEach(([event, handler]) =>
+      call.off?.(event, handler)
+    );
   };
 
   handlers.peerAccept = activeCall => {
@@ -75,7 +81,7 @@ const wireOutgoingEvents = (call, inboxId) => {
     unwire();
     clearRingingOutgoingCall();
     useCallsStore().dismissCall(call.id);
-    useAlert(formatWavoipPeerRejectError(reason, t));
+    useAlert(formatWavoipPeerRejectError(reason, translate));
   };
   handlers.unanswered = () => {
     unwire();
@@ -88,7 +94,9 @@ const wireOutgoingEvents = (call, inboxId) => {
     useCallsStore().removeCall(call.id);
   };
 
-  Object.entries(handlers).forEach(([event, handler]) => call.on?.(event, handler));
+  Object.entries(handlers).forEach(([event, handler]) =>
+    call.on?.(event, handler)
+  );
 };
 
 export function useWavoipOutboundCall() {
@@ -114,7 +122,10 @@ export function useWavoipOutboundCall() {
         client = await connectForInbox(inboxId);
       } catch (connectError) {
         // eslint-disable-next-line no-console
-        console.warn('[Wavoip] connect failed before starting call', connectError);
+        console.warn(
+          '[Wavoip] connect failed before starting call',
+          connectError
+        );
         throw new Error(t('CONVERSATION.WAVOIP_CALL.CONNECT_FAILED'));
       }
       if (!client) {
@@ -140,7 +151,7 @@ export function useWavoipOutboundCall() {
         throw new Error(formatWavoipStartCallError(err, t));
       }
 
-      wireOutgoingEvents(call, inboxId);
+      wireOutgoingEvents(call, inboxId, t);
 
       const providerCallId = call.id;
       useCallsStore().addCall({

@@ -68,7 +68,7 @@ RSpec.describe Wavoip::Calls::ConversationReopenService do
     conversation = conversation_with(status: :open)
 
     expect { described_class.perform!(conversation: conversation) }
-      .not_to change { conversation.reload.status }
+      .not_to(change { conversation.reload.status })
   end
 
   it 'no-ops for non-wavoip inboxes' do

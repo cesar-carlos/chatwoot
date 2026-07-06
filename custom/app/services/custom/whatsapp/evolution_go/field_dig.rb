@@ -6,9 +6,9 @@ module Custom::Whatsapp::EvolutionGo::FieldDig
   def dig_field(hash, *keys)
     return nil if hash.blank?
 
-    keys.lazy.map { |key|
+    keys.lazy.map do |key|
       variants = [key, key.to_s.camelize(:lower), key.to_s.camelize]
       variants.map { |k| hash[k] || hash[k.to_s] }.find(&:present?)
-    }.find(&:present?)
+    end.find(&:present?)
   end
 end

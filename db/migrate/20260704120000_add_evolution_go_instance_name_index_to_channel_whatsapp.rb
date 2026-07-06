@@ -4,7 +4,11 @@ class AddEvolutionGoInstanceNameIndexToChannelWhatsapp < ActiveRecord::Migration
   disable_ddl_transaction!
 
   def up
-    return if index_exists?(:channel_whatsapp, name: 'index_channel_whatsapp_evolution_go_instance_name')
+    return if index_exists?(
+      :channel_whatsapp,
+      "(provider_config->>'instance_name')",
+      name: 'index_channel_whatsapp_evolution_go_instance_name'
+    )
 
     add_index :channel_whatsapp,
               "(provider_config->>'instance_name')",

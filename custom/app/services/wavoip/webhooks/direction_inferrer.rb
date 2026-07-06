@@ -51,14 +51,27 @@ class Wavoip::Webhooks::DirectionInferrer
 
   def infer_direction_from_caller_receiver
     inbox_digits = phone_digits(payload[:phone])
-    caller_digits = phone_digits(payload[:caller])
-    receiver_digits = phone_digits(payload[:receiver])
     return nil if inbox_digits.blank?
 
-    return :outgoing if caller_digits == inbox_digits && receiver_digits.present? && receiver_digits != inbox_digits
-    return :incoming if receiver_digits == inbox_digits && caller_digits.present? && caller_digits != inbox_digits
+    direction_from_endpoints(inbox_digits)
+  end
+
+  def direction_from_endpoints(inbox_digits)
+    caller_digits = phone_digits(payload[:caller])
+    receiver_digits = phone_digits(payload[:receiver])
+
+    return :outgoing if outgoing_from_endpoints?(inbox_digits, caller_digits, receiver_digits)
+    return :incoming if incoming_from_endpoints?(inbox_digits, caller_digits, receiver_digits)
 
     nil
+  end
+
+  def outgoing_from_endpoints?(inbox_digits, caller_digits, receiver_digits)
+    caller_digits == inbox_digits && receiver_digits.present? && receiver_digits != inbox_digits
+  end
+
+  def incoming_from_endpoints?(inbox_digits, caller_digits, receiver_digits)
+    receiver_digits == inbox_digits && caller_digits.present? && caller_digits != inbox_digits
   end
 
   def infer_direction_from_status(status)

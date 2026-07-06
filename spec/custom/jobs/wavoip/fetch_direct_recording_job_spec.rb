@@ -24,7 +24,7 @@ RSpec.describe Wavoip::FetchDirectRecordingJob do
       provider_call_id: 'direct_fetch_001'
     )
   end
-  let!(:message) do
+  let(:message) do
     msg = Voice::CallMessageBuilder.new(call).perform!
     call.update!(message_id: msg.id)
     msg
@@ -33,6 +33,7 @@ RSpec.describe Wavoip::FetchDirectRecordingJob do
 
   before do
     account.enable_features!('channel_voice', 'channel_wavoip')
+    message
   end
 
   it 'attaches the recording from the documented direct URL' do

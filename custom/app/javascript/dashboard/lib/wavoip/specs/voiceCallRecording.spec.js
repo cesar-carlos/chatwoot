@@ -36,9 +36,9 @@ describe('shouldShowVoiceCallRecording', () => {
   });
 
   it('hides recording when URL is missing', () => {
-    expect(
-      shouldShowVoiceCallRecording({ ...base, recordingUrl: null })
-    ).toBe(false);
+    expect(shouldShowVoiceCallRecording({ ...base, recordingUrl: null })).toBe(
+      false
+    );
   });
 
   it('does not gate non-wavoip providers', () => {
@@ -93,7 +93,10 @@ describe('shouldShowRecordingProcessing', () => {
 
 describe('resolveVoiceCallRecordingUrl', () => {
   it('prefers active storage attachment', () => {
-    const attachment = { dataUrl: '/rails/active_storage/blobs/1', fileType: 'audio' };
+    const attachment = {
+      dataUrl: '/rails/active_storage/blobs/1',
+      fileType: 'audio',
+    };
 
     expect(
       resolveVoiceCallRecordingUrl({
@@ -132,8 +135,8 @@ describe('inferAudioExtension', () => {
   });
 
   it('parses extension before query string', () => {
-    expect(inferAudioExtension('https://storage.wavoip.com/foo.mp3?token=1')).toBe(
-      'mp3'
-    );
+    expect(
+      inferAudioExtension('https://storage.wavoip.com/foo.mp3?token=1')
+    ).toBe('mp3');
   });
 });

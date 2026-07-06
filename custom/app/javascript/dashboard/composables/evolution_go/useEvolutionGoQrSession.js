@@ -99,15 +99,6 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     return refreshInFlight;
   }
 
-  function armQrExpiryTimer() {
-    clearExpiryTimer();
-    expiryTimer = setTimeout(() => {
-      if (!isConnected()) {
-        requestNewQr();
-      }
-    }, QR_EXPIRY_MS);
-  }
-
   async function requestNewQr() {
     const id = unref(inboxId);
     if (!id || isRefreshing.value) return;
@@ -126,9 +117,19 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     } finally {
       isRefreshing.value = false;
       if (!isConnected()) {
+        // eslint-disable-next-line no-use-before-define -- paired QR expiry scheduling
         armQrExpiryTimer();
       }
     }
+  }
+
+  function armQrExpiryTimer() {
+    clearExpiryTimer();
+    expiryTimer = setTimeout(() => {
+      if (!isConnected()) {
+        requestNewQr();
+      }
+    }, QR_EXPIRY_MS);
   }
 
   function startPolling() {

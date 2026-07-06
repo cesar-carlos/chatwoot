@@ -135,7 +135,9 @@ const mergeIncomingOffer = (offer, inboxId) => {
   }
 
   const mergedCall = callsStore.calls.find(
-    c => c.callSid === (existing?.callSid || offer.id) || c.wavoipOfferId === offer.id
+    c =>
+      c.callSid === (existing?.callSid || offer.id) ||
+      c.wavoipOfferId === offer.id
   );
   if (mergedCall?.conversationId) {
     reopenWavoipInboundConversation(mergedCall.conversationId);
@@ -178,9 +180,13 @@ const wireOfferEvents = (offer, t) => {
     },
   };
 
-  Object.entries(handlers).forEach(([event, handler]) => offer.on?.(event, handler));
+  Object.entries(handlers).forEach(([event, handler]) =>
+    offer.on?.(event, handler)
+  );
   offerUnwirers.set(offer.id, () => {
-    Object.entries(handlers).forEach(([event, handler]) => offer.off?.(event, handler));
+    Object.entries(handlers).forEach(([event, handler]) =>
+      offer.off?.(event, handler)
+    );
   });
 };
 

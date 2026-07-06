@@ -5,7 +5,8 @@ import CallsAPI from 'customDashboard/api/calls';
 const pendingAcceptByCallSid = new Set();
 const RETRY_DELAYS_MS = [1000, 2000, 4000];
 const MAX_ATTEMPTS = 3;
-const ACCEPT_RECORD_FAILED_KEY = 'CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED';
+const ACCEPT_RECORD_FAILED_KEY =
+  'CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED';
 
 const sleep = ms =>
   new Promise(resolve => {

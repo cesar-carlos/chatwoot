@@ -46,16 +46,21 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
       evolution_go_remote_jid: remote_jid
     }.compact
 
-    case message_type
-    when 'text'
-      return nil unless apply_text_payload!(message_hash, data)
-    when 'image', 'video', 'audio', 'document', 'sticker'
-      message_hash[message_type.to_sym] = build_media_payload(data, message_type)
-    else
-      return nil
-    end
+    return nil unless apply_message_type_payload!(message_hash, data, message_type)
 
     message_hash
+  end
+
+  def apply_message_type_payload!(message_hash, data, message_type)
+    case message_type
+    when 'text'
+      apply_text_payload!(message_hash, data)
+    when 'image', 'video', 'audio', 'document', 'sticker'
+      message_hash[message_type.to_sym] = build_media_payload(data, message_type)
+      true
+    else
+      false
+    end
   end
 
   def apply_text_payload!(message_hash, data)
@@ -71,17 +76,26 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     message_key = media_message_key(message, type)
     media = message[message_key] || message[message_key.to_sym] || {}
 
-    {
+    media_fields(media).merge(
       id: (data.dig('key', 'id') || data.dig(:key, :id)),
+      _evolution_go_message: evolution_go_message_metadata(data, message)
+    ).compact
+  end
+
+  def media_fields(media)
+    {
       caption: media['caption'] || media[:caption],
       filename: media['fileName'] || media[:fileName],
-      mimetype: media['mimetype'] || media[:mimetype],
-      _evolution_go_message: {
-        'key' => data['key'] || data[:key],
-        'message' => message,
-        'messageTimestamp' => data['messageTimestamp'] || data[:messageTimestamp]
-      }
-    }.compact
+      mimetype: media['mimetype'] || media[:mimetype]
+    }
+  end
+
+  def evolution_go_message_metadata(data, message)
+    {
+      'key' => data['key'] || data[:key],
+      'message' => message,
+      'messageTimestamp' => data['messageTimestamp'] || data[:messageTimestamp]
+    }
   end
 
   def media_message_key(message, type)
