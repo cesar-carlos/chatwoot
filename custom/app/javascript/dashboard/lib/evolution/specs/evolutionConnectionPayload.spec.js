@@ -3,6 +3,7 @@ import {
   formatQrDataUrl,
   isEvolutionPlaceholderPhone,
   normalizeEvolutionConnectionPayload,
+  seedConnectionStateFromInbox,
 } from '../evolutionConnectionPayload';
 
 const qrcodeWebhookPayload = {
@@ -99,6 +100,29 @@ describe('evolutionConnectionPayload', () => {
     it('returns null for empty payloads', () => {
       expect(normalizeEvolutionConnectionPayload(null)).toBeNull();
       expect(normalizeEvolutionConnectionPayload({})).toBeNull();
+    });
+  });
+
+  describe('seedConnectionStateFromInbox', () => {
+    it('reads connection status and phone from inbox provider_config', () => {
+      expect(
+        seedConnectionStateFromInbox({
+          phone_number: '+5511999999999',
+          provider_config: { connection_status: 'open' },
+        })
+      ).toEqual({
+        connectionStatus: 'open',
+        phoneNumber: '+5511999999999',
+      });
+    });
+
+    it('ignores placeholder phone numbers', () => {
+      expect(
+        seedConnectionStateFromInbox({
+          phone_number: '+550001234567',
+          provider_config: { connection_status: 'connecting' },
+        })
+      ).toEqual({ connectionStatus: 'connecting' });
     });
   });
 });

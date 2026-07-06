@@ -1026,7 +1026,7 @@
         "CONVERSATION_PENDING_REQUIRES_REOPEN": "Ative \"Reabrir conversa ao receber mensagem\" acima para o status pendente valer ao reabrir conversas resolvidas. Sem isso, apenas conversas novas começam como pendentes.",
         "OPERATIONAL_NOTES": {
           "TEMPLATES": "Templates do WhatsApp Business são enviados como texto simples quando o modo template está ativo. Envio nativo de template não é suportado.",
-          "RECONCILIATION": "A sincronização de mensagens perdidas verifica as últimas 6 horas e até 20 páginas do histórico Evolution a cada 6 horas quando ativada.",
+          "RECONCILIATION": "A sincronização de mensagens perdidas verifica as últimas 6 horas e até 20 páginas do histórico Evolution aproximadamente a cada 30 minutos quando ativada.",
           "PARTIAL_ATTACHMENTS": "Se um anexo falhar em uma mensagem com vários arquivos, os anteriores podem já ter sido entregues e uma nota privada será adicionada."
         },
         "SYNC_ERROR": "As configurações foram salvas no Chatwoot, mas não foi possível sincronizar com a Evolution: {error}",

@@ -6,10 +6,22 @@ import { useEvolutionConnectionCable } from 'customDashboard/composables/evoluti
 import {
   isEvolutionPlaceholderPhone,
   normalizeEvolutionConnectionPayload,
+  seedConnectionStateFromInbox,
 } from 'customDashboard/lib/evolution/evolutionConnectionPayload';
 
 const POLL_MS = 5000;
 const MAX_POLL_FAILURES = 3;
+
+function applySeedToState(inbox, { connectionStatus, phoneNumber }) {
+  const seeded = seedConnectionStateFromInbox(inbox);
+  if (seeded.connectionStatus) {
+    connectionStatus.value = seeded.connectionStatus;
+  }
+  if (seeded.phoneNumber) {
+    phoneNumber.value = seeded.phoneNumber;
+  }
+  return seeded;
+}
 
 export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
   const store = useStore();
@@ -94,6 +106,7 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
       staleData.value = false;
     } catch (error) {
       pollFailureCount += 1;
+      applySeedToState(unref(inboxRef), { connectionStatus, phoneNumber });
       if (pollFailureCount >= MAX_POLL_FAILURES) {
         staleData.value = true;
         useAlert(
@@ -115,10 +128,12 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
   useEvolutionConnectionCable(inboxId, applyPayload);
 
   watch(
-    inboxId,
-    id => {
-      if (!id) return;
-      isLoading.value = true;
+    () => unref(inboxRef),
+    inbox => {
+      if (!inbox?.id) return;
+
+      const seeded = applySeedToState(inbox, { connectionStatus, phoneNumber });
+      isLoading.value = !seeded.connectionStatus;
       refreshConnection();
       startPolling();
     },

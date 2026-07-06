@@ -65,3 +65,20 @@ export function normalizeEvolutionConnectionPayload(raw) {
 
   return Object.keys(payload).length ? payload : null;
 }
+
+/** Seed health UI from inbox store data while the live status request runs. */
+export function seedConnectionStateFromInbox(inbox) {
+  if (!inbox) return {};
+
+  const config = inbox.provider_config || {};
+  const status = config.connection_status || config.connectionStatus;
+  const phone =
+    inbox.phone_number || config.phone_number || config.phoneNumber;
+
+  const seeded = {};
+  if (status) seeded.connectionStatus = status;
+  if (phone && !isEvolutionPlaceholderPhone(phone)) {
+    seeded.phoneNumber = phone;
+  }
+  return seeded;
+}

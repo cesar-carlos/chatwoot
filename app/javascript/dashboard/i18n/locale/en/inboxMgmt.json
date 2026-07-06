@@ -1099,7 +1099,7 @@
         "CONVERSATION_PENDING_REQUIRES_REOPEN": "Enable \"Reopen conversation when receiving message\" above for pending status to apply when a resolved conversation is reopened. Without it, only brand-new conversations start as pending.",
         "OPERATIONAL_NOTES": {
           "TEMPLATES": "WhatsApp Business templates are sent as plain text when template mode is enabled. Native template submission is not supported.",
-          "RECONCILIATION": "Lost message sync checks the last 6 hours and up to 20 pages of Evolution history every 6 hours when enabled.",
+          "RECONCILIATION": "Lost message sync checks the last 6 hours and up to 20 pages of Evolution history about every 30 minutes when enabled.",
           "PARTIAL_ATTACHMENTS": "If one attachment in a multi-file message fails to send, earlier files may already be delivered and a private note is added."
         },
         "SYNC_ERROR": "Settings were saved in Chatwoot but could not be synced to Evolution: {error}",

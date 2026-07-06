@@ -25,6 +25,7 @@ RSpec.describe Custom::Whatsapp::Evolution::ImportService do
   before do
     create(:inbox, account: account, channel: channel)
     allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:new).and_return(api_client)
+    allow(Custom::Whatsapp::Evolution::ContactEnrichmentJob).to receive(:perform_later)
   end
 
   describe '#perform' do
@@ -45,6 +46,34 @@ RSpec.describe Custom::Whatsapp::Evolution::ImportService do
       expect(channel.provider_config['import_status']).to eq('completed')
       expect(channel.provider_config['import_stats']['contacts_imported']).to eq(1)
       expect(account.contacts.find_by(phone_number: '+5511999999999')).to be_present
+    end
+
+    it 'enqueues contact enrichment with profile picture during import' do
+      allow(api_client).to receive(:find_contacts).and_return(
+        instance_double(
+          HTTParty::Response,
+          success?: true,
+          parsed_response: [
+            {
+              'remoteJid' => '5511999999999@s.whatsapp.net',
+              'pushName' => 'Alice',
+              'profilePictureUrl' => 'https://pps.whatsapp.net/v/alice.jpg'
+            }
+          ]
+        )
+      )
+
+      service.perform
+
+      contact = account.contacts.find_by(phone_number: '+5511999999999')
+      expect(Custom::Whatsapp::Evolution::ContactEnrichmentJob).to have_received(:perform_later).with(
+        channel.id,
+        contact.id,
+        hash_including(
+          profile_pic_url: 'https://pps.whatsapp.net/v/alice.jpg',
+          force: true
+        )
+      )
     end
 
     it 'skips when import flags are disabled' do

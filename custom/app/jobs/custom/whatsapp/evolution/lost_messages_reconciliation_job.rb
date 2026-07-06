@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::LostMessagesReconciliationJob < ApplicationJob
-  queue_as :low
+  queue_as :default
 
   retry_on MutexApplicationJob::LockAcquisitionError, wait: 5.seconds, attempts: 3
 
