@@ -80,4 +80,34 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactsSyncService do
 
     expect(Custom::Whatsapp::Evolution::ContactEnrichmentJob).not_to have_received(:perform_later)
   end
+
+  it 'still enqueues enrichment when profilePicUrl arrives for a recently enriched contact without avatar' do
+    contact = create(
+      :contact,
+      account: account,
+      name: 'Matheus Teixeira',
+      phone_number: '+5566996971841',
+      additional_attributes: {
+        'evolution_remote_jid' => '556696971841@s.whatsapp.net',
+        'evolution_push_name' => 'Matheus Teixeira',
+        'evolution_enriched_at' => Time.current.utc.iso8601(3)
+      }
+    )
+    create(:contact_inbox, contact: contact, inbox: channel.inbox, source_id: '5566996971841')
+
+    described_class.new(
+      channel: channel,
+      data: {
+        'remoteJid' => '556696971841@s.whatsapp.net',
+        'pushName' => 'Matheus Teixeira',
+        'profilePicUrl' => 'https://pps.whatsapp.net/v/example.jpg'
+      }
+    ).perform
+
+    expect(Custom::Whatsapp::Evolution::ContactEnrichmentJob).to have_received(:perform_later).with(
+      channel.id,
+      contact.id,
+      hash_including(profile_pic_url: 'https://pps.whatsapp.net/v/example.jpg')
+    )
+  end
 end

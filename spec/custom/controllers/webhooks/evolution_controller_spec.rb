@@ -32,7 +32,7 @@ RSpec.describe Webhooks::EvolutionController, type: :request do
         post "/webhooks/evolution/#{instance_name}", params: payload
       end.to have_enqueued_job(Webhooks::WhatsappEventsJob).with(
         hash_including('event' => 'MESSAGES_UPSERT', 'instance_name' => instance_name)
-      )
+      ).on_queue('default')
 
       expect(response).to have_http_status(:ok)
     end

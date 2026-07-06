@@ -60,7 +60,8 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
 
     contact = upsert_contact(record, remote_jid)
     link_contact_inbox(contact, source_id)
-    enqueue_contact_enrichment(contact, remote_jid, record['pushName'], record['profilePicUrl'])
+    profile_pic_url = Custom::Whatsapp::Evolution::ContactEnrichmentService.profile_pic_url_from_record(record)
+    enqueue_contact_enrichment(contact, remote_jid, record['pushName'], profile_pic_url)
   end
 
   def upsert_contact(record, remote_jid)
@@ -89,7 +90,8 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
       contact: contact,
       remote_jid: remote_jid,
       push_name: push_name,
-      profile_pic_url: profile_pic_url
+      profile_pic_url: profile_pic_url,
+      force: true
     )
 
     Custom::Whatsapp::Evolution::ContactEnrichmentJob.perform_later(
@@ -98,7 +100,8 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
       {
         remote_jid: remote_jid,
         push_name: push_name,
-        profile_pic_url: profile_pic_url
+        profile_pic_url: profile_pic_url,
+        force: true
       }.compact
     )
   end

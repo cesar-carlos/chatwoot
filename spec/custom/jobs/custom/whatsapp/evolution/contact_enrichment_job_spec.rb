@@ -43,5 +43,22 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactEnrichmentJob do
 
       expect(enrichment_service).not_to have_received(:perform)
     end
+
+    it 'runs when profile_pic_url is present even if the contact was enriched recently' do
+      contact.update!(
+        additional_attributes: {
+          Custom::Whatsapp::Evolution::ContactEnrichmentService::EVOLUTION_ENRICHED_AT_KEY => Time.current.utc.iso8601(3)
+        }
+      )
+      allow(Custom::Whatsapp::Evolution::ContactEnrichmentService).to receive(:enrichment_stale?).and_return(false)
+
+      described_class.perform_now(
+        channel.id,
+        contact.id,
+        profile_pic_url: 'https://pps.whatsapp.net/v/example.jpg'
+      )
+
+      expect(enrichment_service).to have_received(:perform)
+    end
   end
 end

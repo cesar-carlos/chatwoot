@@ -67,6 +67,42 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactEnrichmentService do
     )
   end
 
+  it 'extracts profile picture URL from alternate Evolution field names' do
+    expect(
+      described_class.profile_pic_url_from_record(
+        'profilePictureUrl' => 'https://pps.whatsapp.net/v/alternate.jpg'
+      )
+    ).to eq('https://pps.whatsapp.net/v/alternate.jpg')
+  end
+
+  it 'fetches profile picture from Evolution when no URL is provided and avatar is missing' do
+    allow(api_client).to receive(:fetch_profile_picture_url).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'profilePictureUrl' => 'https://pps.whatsapp.net/v/fetched.jpg' }
+      )
+    )
+    contact.update!(
+      additional_attributes: {
+        described_class::EVOLUTION_ENRICHED_AT_KEY => Time.current.utc.iso8601(3)
+      }
+    )
+
+    described_class.new(
+      channel: channel,
+      contact: contact,
+      remote_jid: '556696971841@s.whatsapp.net'
+    ).perform
+
+    expect(api_client).to have_received(:fetch_profile_picture_url)
+    expect(Avatar::AvatarFromUrlJob).to have_received(:perform_later).with(
+      contact,
+      'https://pps.whatsapp.net/v/fetched.jpg'
+    )
+    expect(api_client).not_to have_received(:fetch_profile)
+  end
+
   it 'applies profile and business data from fetchProfile' do
     allow(api_client).to receive(:fetch_profile).and_return(
       instance_double(

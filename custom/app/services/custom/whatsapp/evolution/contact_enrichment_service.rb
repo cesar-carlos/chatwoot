@@ -8,6 +8,19 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
   EVOLUTION_REMOTE_JID_KEY = 'evolution_remote_jid'
   EVOLUTION_ENRICHED_AT_KEY = 'evolution_enriched_at'
 
+  def self.profile_pic_url_from_record(record)
+    return if record.blank?
+
+    data = record.with_indifferent_access
+    [
+      data[:profilePicUrl],
+      data[:profilePictureUrl],
+      data[:profile_picture_url],
+      data[:imgUrl],
+      data.dig(:profilePicture, :url)
+    ].map { |value| value.to_s.strip.presence }.compact.first
+  end
+
   def self.should_enqueue?(contact:, remote_jid: nil, push_name: nil, profile_pic_url: nil, force: false)
     return true if ActiveModel::Type::Boolean.new.cast(force)
 
@@ -51,12 +64,12 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
     persist_remote_jid!
     update_name_from_push_name!
     sync_avatar_from_url(@profile_pic_url) if @profile_pic_url.present?
-    return unless @force || profile_fetch_needed?
 
-    # Only extend the 24h enrichment cooldown when the remote fetch actually
-    # ran without erroring — otherwise a transient API failure would hide
-    # the contact from enrichment for a full day for no reason.
-    mark_enriched! if fetch_and_apply_profile!
+    if @force || profile_fetch_needed?
+      mark_enriched! if fetch_and_apply_profile!
+    elsif !contact.avatar.attached?
+      fetch_profile_picture!(lookup_number)
+    end
   end
 
   private

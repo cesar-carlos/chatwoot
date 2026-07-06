@@ -32,6 +32,7 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
 
   def enrichment_allowed?(contact, attrs)
     return true if ActiveModel::Type::Boolean.new.cast(attrs[:force])
+    return true if attrs[:profile_pic_url].present? && !contact.avatar.attached?
 
     !recently_enriched?(contact)
   end

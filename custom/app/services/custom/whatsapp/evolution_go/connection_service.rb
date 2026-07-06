@@ -40,8 +40,8 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
   end
 
   def connection_payload
-    refresh_connection_status!
-    fetch_qr_if_needed!
+    state_checked = refresh_connection_status!
+    fetch_qr_if_needed!(state_checked: state_checked)
     {
       connection_status: provider_config['connection_status'],
       phone_number: channel.phone_number,
@@ -93,19 +93,20 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
 
   def refresh_connection_status!
     cache_key = connection_state_cache_key
-    return if Rails.cache.read(cache_key).present?
+    return :cached if Rails.cache.read(cache_key).present?
 
     response = api_client.connection_status
     unless response.success?
       Rails.logger.warn(
         "[EVOLUTION_GO] connection_status failed channel=#{channel.id} status=#{response.code}"
       )
-      return
+      return :failed
     end
 
     data = api_client.unwrap(response)
     update_connection_status(connection_state_from_status_data(data))
     Rails.cache.write(cache_key, true, expires_in: CONNECTION_STATE_CACHE_TTL)
+    :success
   end
 
   def connection_state_from_status_data(data)
@@ -133,13 +134,22 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     channel.provider_config || {}
   end
 
-  def fetch_qr_if_needed!
+  def fetch_qr_if_needed!(state_checked: nil)
     return unless provider_config['connection_status'].in?(%w[connecting close])
     return if provider_config['last_qr_base64'].present?
+    return if state_checked == :failed
+    return if session_recently_active?
 
     provisioner.send(:fetch_qr_code!)
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.warn "[EVOLUTION_GO] fetch_qr_if_needed failed channel=#{channel.id}: #{e.message}"
+  end
+
+  def session_recently_active?
+    inbox = channel.inbox
+    return false if inbox.blank?
+
+    inbox.messages.incoming.where(created_at: 15.minutes.ago..).exists?
   end
 
   def normalize_connection_status(state)
