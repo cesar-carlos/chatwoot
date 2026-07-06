@@ -49,7 +49,10 @@ describe('useEvolutionHealthConnection', () => {
 
   it('sets staleData after repeated connection refresh failures', async () => {
     scope = effectScope(true);
-    const inbox = ref({ id: 42 });
+    const inbox = ref({
+      id: 42,
+      provider_config: { connection_status: 'connecting' },
+    });
     const { staleData } = scope.run(() => useEvolutionHealthConnection(inbox));
 
     await nextTick();
@@ -58,6 +61,24 @@ describe('useEvolutionHealthConnection', () => {
 
     expect(staleData.value).toBe(true);
     expect(useAlert).toHaveBeenCalled();
+  });
+
+  it('shows cached connection status immediately while refreshing', async () => {
+    dispatchMock.mockResolvedValue({ connection_status: 'open' });
+    scope = effectScope(true);
+    const inbox = ref({
+      id: 42,
+      provider_config: { connection_status: 'open' },
+      phone_number: '+5511999999999',
+    });
+    const { isLoading, connectionStatus } = scope.run(() =>
+      useEvolutionHealthConnection(inbox)
+    );
+
+    await nextTick();
+
+    expect(isLoading.value).toBe(false);
+    expect(connectionStatus.value).toBe('open');
   });
 
   it('forwards cable payloads to the QR modal when it is open', async () => {

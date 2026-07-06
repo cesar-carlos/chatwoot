@@ -72,21 +72,21 @@ class Custom::Whatsapp::Evolution::ConnectionService
 
   def refresh_connection_status!(force: false)
     cache_key = connection_state_cache_key
-    return if !force && Rails.cache.read(cache_key).present?
+    return :cached if !force && Rails.cache.read(cache_key).present?
 
     response = api_client.connection_state
     unless response.success?
       Rails.logger.warn(
         "[EVOLUTION] connection_state failed channel=#{channel.id} status=#{response.code}"
       )
-      return
+      return :failed
     end
 
     state = response.parsed_response.dig('instance', 'state') ||
             response.parsed_response['state']
     update_connection_status(state) if state.present?
     Rails.cache.write(cache_key, true, expires_in: CONNECTION_STATE_CACHE_TTL)
-    response.parsed_response
+    :success
   end
 
   def handle_event(envelope)
@@ -98,8 +98,8 @@ class Custom::Whatsapp::Evolution::ConnectionService
   end
 
   def connection_payload
-    refresh_connection_status!
-    fetch_qr_if_needed!
+    state_checked = refresh_connection_status!
+    fetch_qr_if_needed!(state_checked: state_checked)
     {
       connection_status: provider_config['connection_status'],
       phone_number: channel.phone_number,
@@ -269,15 +269,24 @@ class Custom::Whatsapp::Evolution::ConnectionService
       ActiveModel::Type::Boolean.new.cast(cfg['import_messages'])
   end
 
-  def fetch_qr_if_needed!
+  def fetch_qr_if_needed!(state_checked: nil)
     return if provider_config['connection_status'].to_s == 'open'
     return if provider_config['last_qr_base64'].present?
     return if Rails.cache.read(qr_fetch_cache_key).present?
+    return if state_checked == :failed
+    return if session_recently_active?
 
     fetch_qr_code
     Rails.cache.write(qr_fetch_cache_key, true, expires_in: QR_FETCH_CACHE_TTL)
   rescue Custom::Whatsapp::Evolution::ApiError => e
     Rails.logger.warn "[EVOLUTION] fetch_qr_if_needed failed channel=#{channel.id}: #{e.message}"
+  end
+
+  def session_recently_active?
+    inbox = channel.inbox
+    return false if inbox.blank?
+
+    inbox.messages.incoming.where(created_at: 15.minutes.ago..).exists?
   end
 
   def connection_state_cache_key

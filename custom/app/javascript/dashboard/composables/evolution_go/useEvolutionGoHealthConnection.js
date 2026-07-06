@@ -6,10 +6,22 @@ import { subscribeEvolutionGoConnection } from 'customDashboard/lib/evolution_go
 import {
   isEvolutionPlaceholderPhone,
   normalizeEvolutionConnectionPayload,
+  seedConnectionStateFromInbox,
 } from 'customDashboard/lib/evolution/evolutionConnectionPayload';
 
 const POLL_MS = 5000;
 const MAX_POLL_FAILURES = 3;
+
+function applySeedToState(inbox, { connectionStatus, phoneNumber }) {
+  const seeded = seedConnectionStateFromInbox(inbox);
+  if (seeded.connectionStatus) {
+    connectionStatus.value = seeded.connectionStatus;
+  }
+  if (seeded.phoneNumber) {
+    phoneNumber.value = seeded.phoneNumber;
+  }
+  return seeded;
+}
 
 export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   const store = useStore();
@@ -92,6 +104,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
       staleData.value = false;
     } catch (error) {
       pollFailureCount += 1;
+      applySeedToState(unref(inboxRef), { connectionStatus, phoneNumber });
       if (pollFailureCount >= MAX_POLL_FAILURES) {
         staleData.value = true;
         useAlert(
@@ -141,16 +154,17 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   watch(
-    inboxId,
-    id => {
+    () => unref(inboxRef),
+    inbox => {
       unsubscribeCable?.();
       unsubscribeCable = null;
-      if (!id) return;
+      if (!inbox?.id) return;
 
-      unsubscribeCable = subscribeEvolutionGoConnection(id, applyPayload, {
+      unsubscribeCable = subscribeEvolutionGoConnection(inbox.id, applyPayload, {
         store,
       });
-      isLoading.value = true;
+      const seeded = applySeedToState(inbox, { connectionStatus, phoneNumber });
+      isLoading.value = !seeded.connectionStatus;
       refreshConnection().then(() => startPolling());
     },
     { immediate: true }

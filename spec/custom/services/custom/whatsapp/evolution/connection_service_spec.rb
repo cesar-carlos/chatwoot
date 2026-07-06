@@ -194,6 +194,48 @@ RSpec.describe Custom::Whatsapp::Evolution::ConnectionService do
     end
   end
 
+  describe '#connection_payload' do
+    let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
+
+    before do
+      allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).and_return(api_client)
+      Rails.cache.clear
+    end
+
+    it 'skips QR fetch when connection_state check fails' do
+      failed_response = instance_double(HTTParty::Response, success?: false, code: 503)
+      allow(api_client).to receive(:connection_state).and_return(failed_response)
+      expect(api_client).not_to receive(:connect)
+      channel.update!(
+        provider_config: channel.provider_config.merge('connection_status' => 'connecting')
+      )
+
+      payload = service.connection_payload
+
+      expect(payload[:connection_status]).to eq('connecting')
+    end
+
+    it 'skips QR fetch when the inbox recently received messages' do
+      state_response = instance_double(
+        HTTParty::Response,
+        success?: false,
+        code: 503
+      )
+      allow(api_client).to receive(:connection_state).and_return(state_response)
+      expect(api_client).not_to receive(:connect)
+      channel.update!(
+        provider_config: channel.provider_config.merge('connection_status' => 'connecting')
+      )
+      inbox = channel.inbox
+      contact = create(:contact, account: account)
+      contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox)
+      conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+      create(:message, account: account, inbox: inbox, conversation: conversation, message_type: :incoming, created_at: 1.minute.ago)
+
+      service.connection_payload
+    end
+  end
+
   describe '#restart!' do
     let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
 

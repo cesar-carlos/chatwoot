@@ -1,6 +1,9 @@
 /* global axios */
 import CacheEnabledApiClient from './CacheEnabledApiClient';
 
+// FORK: slightly above Evolution ApiClient REQUEST_TIMEOUT (30s)
+const EVOLUTION_CONNECTION_TIMEOUT_MS = 35_000;
+
 class Inboxes extends CacheEnabledApiClient {
   constructor() {
     super('inboxes', { accountScoped: true });
@@ -107,7 +110,9 @@ class Inboxes extends CacheEnabledApiClient {
 
   // FORK: Evolution connection / QR polling
   getEvolutionConnection(inboxId) {
-    return axios.get(`${this.url}/${inboxId}/evolution_connection`);
+    return axios.get(`${this.url}/${inboxId}/evolution_connection`, {
+      timeout: EVOLUTION_CONNECTION_TIMEOUT_MS,
+    });
   }
 
   postEvolutionReconnect(inboxId) {
@@ -128,7 +133,9 @@ class Inboxes extends CacheEnabledApiClient {
 
   // FORK: Evolution Go connection / QR polling
   getEvolutionGoConnection(inboxId) {
-    return axios.get(`${this.url}/${inboxId}/evolution_go_connection`);
+    return axios.get(`${this.url}/${inboxId}/evolution_go_connection`, {
+      timeout: EVOLUTION_CONNECTION_TIMEOUT_MS,
+    });
   }
 
   postEvolutionGoReconnect(inboxId) {

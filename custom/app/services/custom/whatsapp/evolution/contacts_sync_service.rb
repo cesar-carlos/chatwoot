@@ -30,7 +30,7 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
     return if phone.blank?
 
     push_name = record[:pushName].to_s.strip.presence
-    profile_pic_url = record[:profilePicUrl].to_s.presence
+    profile_pic_url = Custom::Whatsapp::Evolution::ContactEnrichmentService.profile_pic_url_from_record(record)
     contact = find_or_create_contact(phone, remote_jid, push_name)
     enqueue_enrichment(contact, remote_jid, push_name, profile_pic_url)
   end
