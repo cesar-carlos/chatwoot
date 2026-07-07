@@ -17,7 +17,10 @@ Campos do inbox Chatwoot (`Channel::Whatsapp#provider_config`) mapeados para API
 | Proxy | `proxy_enabled`, `proxy_host`, `proxy_port`, `proxy_username`, `proxy_password` | create `proxy` object |
 | Conversas | `conversation_pending`, `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork |
 | Outbound | `sign_msg`, `send_templates_as_text` | Chatwoot fork |
-| Filtros inbound | `ignore_from_me_echo` | Normalizer |
+| Filtros inbound | `ignore_from_me_echo`, `mark_inbound_deleted`, `mark_inbound_edited`, `convert_markdown_inbound` | Normalizer + sync services |
+| Import | `import_contacts`, `import_messages`, `import_on_connect`, `import_*` runtime | Jobs + `POST /user/*`, `HISTORY_SYNC` |
+| Sync outbound irreversível | `sync_delete_to_whatsapp`, `sync_edit_to_whatsapp` | `DeleteSyncService`, `EditSyncService` |
+| Diagnóstico | `mutation_stats`, `settings_sync_error`, `last_webhook_at` | `DiagnosticsService` |
 | Webhook | URL + `subscribe` events | `POST /instance/connect` |
 
 ---
@@ -54,6 +57,8 @@ Path confirmado Postman: `GET` + `PUT /instance/{instanceId}/advanced-settings`.
 | Campo `provider_config` | Enviar (PUT body) | Ler (GET — aceitar variantes) | Default fork |
 |-------------------------|-------------------|--------------------------------|--------------|
 | `ignore_groups` | `ignoreGroups` | `ignoreGroups` | `true` |
+
+Com `ignore_groups: false`, mensagens `@g.us` criam conversa por grupo (`GroupContactService`); nome via `POST /group/info`.
 | `reject_call` | `rejectCall` | `rejectCall`, `rejectCalls` | `false` |
 | `msg_call` | `msgRejectCall` | `msgRejectCall`, `rejectCallMessage` | `""` |
 | `always_online` | `alwaysOnline` | `alwaysOnline` | `false` |
@@ -97,6 +102,29 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 | `sign_msg` | `false` | Assinatura agente no texto |
 | `send_templates_as_text` | `true` | Template → send_text |
 | `ignore_from_me_echo` | `true` | Filtrar `fromMe` no normalizer |
+| `convert_markdown_inbound` | `true` | WA → markdown no normalizer |
+| `convert_markdown_outbound` | `true` | markdown → WA no outbound |
+| `mark_read_on_reply` | `false` | `POST /message/markread` ao responder |
+| `mark_read_on_open` | `true` | mark read ao abrir conversa |
+| `mark_inbound_deleted` | `true` | Cliente apaga no WA → soft delete no CW |
+| `mark_inbound_edited` | `true` | Cliente edita no WA → atualiza CW |
+| `sync_delete_to_whatsapp` | `false` | Agente apaga no CW → delete no WA (opt-in) |
+| `sync_edit_to_whatsapp` | `false` | Conteúdo alterado no CW → edit no WA (opt-in) |
+| `import_contacts` | `false` | Import manual ou `import_on_connect` |
+| `import_on_connect` | `false` | Disparar import ao conectar |
+| `import_messages` | `false` | Histórico via `HISTORY_SYNC` |
+| `days_limit_import_messages` | `7` | Janela em dias para history sync |
+
+### Runtime import / diagnóstico (somente leitura na UI)
+
+| Campo | Descrição |
+|-------|-----------|
+| `import_status` | `idle` / `running` / `completed` / `failed` |
+| `import_stats` | `contacts_imported`, `messages_imported`, … |
+| `import_error` | Último erro do job |
+| `mutation_stats` | `inbound_delete_skipped`, `inbound_edit_skipped` |
+| `settings_sync_error` | Falha ao sync `advanced-settings` |
+| `last_webhook_at` | Timestamp do último teste webhook |
 
 ---
 
@@ -120,7 +148,16 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
   "merge_brazil_contacts": true,
   "sign_msg": false,
   "send_templates_as_text": true,
-  "ignore_from_me_echo": true
+  "ignore_from_me_echo": true,
+  "convert_markdown_inbound": true,
+  "mark_inbound_deleted": true,
+  "mark_inbound_edited": true,
+  "import_on_connect": false,
+  "import_contacts": false,
+  "import_messages": false,
+  "days_limit_import_messages": 7,
+  "sync_delete_to_whatsapp": false,
+  "sync_edit_to_whatsapp": false
 }
 ```
 

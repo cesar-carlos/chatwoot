@@ -132,8 +132,10 @@ Reusar prepend da Fase 0 com capability `unlimited_session: true`.
 
 | Decisão | Valor |
 |---------|-------|
-| **MVP** | `ignore_groups: true` no create/advanced-settings + filtro `@g.us` no normalizer |
-| **Fase posterior** | Suporte a grupos como conversas separadas |
+| **Default** | `ignore_groups: true` no create/advanced-settings + filtro `@g.us` no normalizer |
+| **Opt-in** | Com `ignore_groups: false`: conversa única por grupo JID (`@g.us`), nome via `POST /group/info`, participante em `evolution_go_participant_jid` |
+| **Reuso** | `GroupContactService`, `GroupParticipantService`, `GroupMetadataService` (provider-aware para EG) |
+| **Fixture** | `message_inbound_group.json` sintética — capturar webhook real no E2E |
 
 ---
 

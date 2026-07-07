@@ -252,6 +252,8 @@
           "TWILIO_DESC": "Conectar através de credenciais Twilio",
           "EVOLUTION": "Evolution API",
           "EVOLUTION_DESC": "WhatsApp via Baileys (Evolution self-hosted)",
+          "EVOLUTION_GO": "Evolution Go",
+          "EVOLUTION_GO_DESC": "WhatsApp de alta performance (Go / whatsmeow)",
           "360_DIALOG": "360Dialog"
         },
         "SELECT_PROVIDER": {
@@ -373,6 +375,73 @@
         },
         "API": {
           "ERROR_MESSAGE": "Não foi possível criar a caixa de entrada Evolution. Verifique URL, chave da API e nome da instância."
+        }
+      },
+      "EVOLUTION_GO": {
+        "TITLE": "Evolution Go",
+        "DESC": "Conecte o WhatsApp pela sua instância Evolution Go (whatsmeow). Escaneie o QR code para vincular seu número.",
+        "LOGO_ALT": "Evolution Go",
+        "INBOX_NAME": {
+          "LABEL": "Nome da caixa de entrada",
+          "PLACEHOLDER": "ex.: Suporte WhatsApp",
+          "ERROR": "Informe o nome da caixa de entrada"
+        },
+        "BASE_URL": {
+          "LABEL": "URL do Evolution Go",
+          "PLACEHOLDER": "https://evolution-go.exemplo.com",
+          "ERROR": "Informe uma URL base válida do Evolution Go"
+        },
+        "GLOBAL_API_KEY": {
+          "LABEL": "Chave global da API",
+          "PLACEHOLDER": "GLOBAL_API_KEY do servidor Evolution Go",
+          "HELP": "Obrigatória ao criar uma nova instância no servidor.",
+          "ERROR": "A chave global da API é obrigatória"
+        },
+        "INSTANCE_TOKEN": {
+          "LABEL": "Token da instância",
+          "PLACEHOLDER": "Cole o token da instância do Evolution Go",
+          "ERROR": "O token da instância é obrigatório para uma instância existente"
+        },
+        "INSTANCE_NAME": {
+          "LABEL": "Nome da instância",
+          "PLACEHOLDER": "ex.: inbox-vendas-1",
+          "ERROR": "O nome da instância é obrigatório",
+          "FORMAT_ERROR": "Use apenas letras, números, hífens e sublinhados"
+        },
+        "EXISTING_INSTANCE": {
+          "LABEL": "Usar instância existente",
+          "DESCRIPTION": "Conecte uma instância já criada no servidor Evolution Go."
+        },
+        "PROXY": {
+          "ENABLED": {
+            "LABEL": "Usar proxy (opcional)"
+          },
+          "HOST": "Host do proxy",
+          "PORT": "Porta",
+          "USERNAME": "Usuário",
+          "PASSWORD": "Senha"
+        },
+        "SUBMIT_BUTTON": "Criar e exibir QR code",
+        "CONNECT": {
+          "TITLE": "Caixa de entrada criada",
+          "DESCRIPTION": "Escaneie o QR code com o WhatsApp para concluir a vinculação desta caixa de entrada.",
+          "OPEN_QR": "Abrir leitor de QR"
+        },
+        "API": {
+          "ERROR_MESSAGE": "Não foi possível criar a caixa de entrada Evolution Go. Verifique URL, chaves e nome da instância."
+        },
+        "SERVER_CHECK": {
+          "ERROR": "Não foi possível alcançar o servidor Evolution Go. Verifique a URL e tente novamente."
+        },
+        "SETTINGS": {
+          "MARK_READ_ON_OPEN": {
+            "LABEL": "Marcar recebidas como lidas ao abrir a conversa",
+            "DESCRIPTION": "Enviar confirmação de leitura ao WhatsApp quando um agente abrir a conversa no Chatwoot."
+          },
+          "PROXY": {
+            "REMOVE": "Remover proxy da instância",
+            "REMOVED": "Remoção do proxy solicitada. Configurações salvas no Chatwoot."
+          }
         }
       },
       "VOICE": {
@@ -733,7 +802,8 @@
       "CSAT": "CSAT",
       "VOICE": "Voz",
       "CALLS": "Chamadas",
-      "EVOLUTION": "WhatsApp"
+      "EVOLUTION": "WhatsApp",
+      "EVOLUTION_GO": "Evolution Go"
     },
     "VOICE_CONFIGURATION": {
       "ENABLE_VOICE": {
@@ -936,7 +1006,8 @@
           "HELP_TEXT": "Estado atual da sessão WhatsApp reportado pela Evolution API.",
           "OPEN": "Conectado",
           "CONNECTING": "Conectando",
-          "CLOSE": "Desconectado"
+          "CLOSE": "Desconectado",
+          "PENDING_PROVISION": "Provisionando"
         },
         "HEALTH": {
           "LOADING": "Verificando conexão…",
@@ -950,7 +1021,10 @@
           "RESTART_CONFIRM": "Reiniciar a instância Evolution? A sessão pode desconectar brevemente e um novo QR code pode ser necessário.",
           "LOGOUT_CONFIRM": "Encerrar esta sessão WhatsApp? Será necessário escanear um novo QR code para reconectar.",
           "ACTION_SUCCESS": "Instância Evolution atualizada.",
-          "DISCONNECTED_ALERT": "WhatsApp desconectado na caixa de entrada \"{inbox}\". Abra as configurações da caixa de entrada para reconectar."
+          "DISCONNECTED_ALERT": "WhatsApp desconectado na caixa de entrada \"{inbox}\". Abra as configurações da caixa de entrada para reconectar.",
+          "STALE_DATA": "Não foi possível atualizar o status da conexão. As informações exibidas podem estar desatualizadas.",
+          "LOAD_ERROR": "Não foi possível verificar a conexão. Tente novamente.",
+          "RECONNECT_ERROR": "Não foi possível reconectar. Tente novamente."
         },
         "QR_MODAL": {
           "TITLE": "Escanear QR code",
@@ -962,7 +1036,8 @@
           "REFRESH": "Atualizar QR",
           "REFRESH_ERROR": "Não foi possível atualizar o QR code. Tente novamente.",
           "CLOSE": "Fechar",
-          "CONNECTED": "WhatsApp conectado com sucesso."
+          "CONNECTED": "WhatsApp conectado com sucesso.",
+          "QR_ALT": "QR code do WhatsApp"
         },
         "WHATSAPP_BEHAVIOR_SECTION": "Comportamento do WhatsApp",
         "CONVERSATION_SECTION": "Conversas",
@@ -1055,7 +1130,7 @@
         },
         "MARK_READ_ON_REPLY": {
           "LABEL": "Marcar recebidas como lidas ao responder",
-          "DESCRIPTION": "Ao responder uma mensagem específica, marcar essa mensagem como lida no WhatsApp após o envio do agente."
+          "DESCRIPTION": "Ao responder uma mensagem específica, marcar essa mensagem como lida no WhatsApp. Se não houver mensagem de resposta, marca a última mensagem recebida não lida."
         },
         "NOTIFY_SEND_ERRORS_PRIVATE": {
           "LABEL": "Nota privada em falha de envio",
@@ -1065,6 +1140,11 @@
           "LABEL": "Excluir no WhatsApp ao excluir no Chatwoot",
           "DESCRIPTION": "Quando o agente excluir uma mensagem no Chatwoot, excluir para todos no WhatsApp."
         },
+        "SYNC_EDIT_TO_WHATSAPP": {
+          "LABEL": "Editar no WhatsApp ao editar no Chatwoot",
+          "DESCRIPTION": "Quando o conteúdo da mensagem mudar no Chatwoot, envia o novo texto ao WhatsApp. Requer API ou fluxo futuro de edição na UI."
+        },
+        "IRREVERSIBLE_SECTION": "Ações irreversíveis no WhatsApp",
         "SEND_RANDOM_DELAY": {
           "LABEL": "Atraso aleatório no envio",
           "DESCRIPTION": "Aguardar 500–2000 ms antes de cada mensagem enviada para reduzir padrões de automação."
@@ -1131,6 +1211,61 @@
           "RESTART": "Salvar proxy e reiniciar instância",
           "RESTART_SUCCESS": "Proxy salvo e reinício da instância solicitado.",
           "RESTART_ERROR": "Não foi possível reiniciar a instância Evolution após salvar o proxy."
+        }
+      }
+    },
+    "EVOLUTION_GO": {
+      "SETTINGS": {
+        "MARK_READ_ON_OPEN": {
+          "LABEL": "Marcar recebidas como lidas ao abrir a conversa",
+          "DESCRIPTION": "Enviar confirmação de leitura ao WhatsApp quando um agente abrir a conversa no Chatwoot."
+        },
+        "IMPORT": {
+          "CONTACTS": {
+            "LABEL": "Importar contatos com cadastro completo",
+            "DESCRIPTION": "Importa contatos do WhatsApp via Evolution Go (GET /user/contacts), cria no Chatwoot e enriquece cada contato com perfil (POST /user/info) e avatar (POST /user/avatar)."
+          },
+          "MESSAGES": {
+            "LABEL": "Importar histórico de mensagens",
+            "DESCRIPTION": "Solicita o histórico de cada contato importado via POST /chat/history-sync. As mensagens chegam pelo webhook HISTORY_SYNC."
+          },
+          "DAYS_LIMIT": {
+            "LABEL": "Janela do histórico (dias)",
+            "DESCRIPTION": "Importar apenas mensagens dos últimos N dias (1–365) por contato durante a importação."
+          },
+          "MESSAGES_REQUIRES_CONTACTS": "O histórico de mensagens roda após a importação de contatos (ative Importar contatos ou execute a importação com as duas opções)."
+        },
+        "MARK_INBOUND_DELETED": {
+          "LABEL": "Marcar mensagens apagadas pelo cliente no Chatwoot",
+          "DESCRIPTION": "Quando o contato apagar uma mensagem no WhatsApp, substitui o texto no Chatwoot por um aviso de mensagem apagada. Não apaga nada no WhatsApp."
+        },
+        "MARK_INBOUND_EDITED": {
+          "LABEL": "Atualizar mensagens editadas pelo cliente no Chatwoot",
+          "DESCRIPTION": "Quando o contato editar uma mensagem no WhatsApp, atualiza a mensagem original no Chatwoot com o novo texto e indicador de edição."
+        },
+        "SYNC_DELETE_WARNING": "Apagar uma mensagem no Chatwoot também a apaga para todos no WhatsApp. Esta ação não pode ser desfeita.",
+        "IMPORT_RUN_WARNING": "A importação de contatos roda em segundo plano e pode levar vários minutos em listas grandes. Continuar?",
+        "IMPORT_RUN_CONFIRM": "Iniciar importação",
+        "PROXY_CREATE_ONLY": "O proxy só pode ser configurado na criação do inbox. Para alterar o proxy, recrie a instância Evolution Go.",
+        "INBOUND_ONLY_NOTE": "Estas opções apenas atualizam o Chatwoot. Não alteram nem apagam nada no WhatsApp.",
+        "API_SYNC_NOTE": "Estas configurações são sincronizadas com o servidor Evolution Go ao salvar.",
+        "IRREVERSIBLE_SECTION": "Ações irreversíveis no WhatsApp",
+        "DIAGNOSTICS": {
+          "TITLE": "Diagnóstico",
+          "WEBHOOK_URL": "URL do webhook",
+          "WEBHOOK_SUBSCRIBE": "Eventos inscritos",
+          "IMPORT_STATUS": "Status da importação",
+          "MUTATION_STATS": "Mutações inbound ignoradas",
+          "TEST_WEBHOOK": "Testar pipeline do webhook",
+          "TEST_WEBHOOK_SUCCESS": "Evento de teste enfileirado com sucesso.",
+          "TEST_WEBHOOK_ERROR": "Não foi possível enfileirar o evento de teste.",
+          "LOADING": "Carregando diagnóstico…",
+          "INBOUND_DELETE_SKIPPED": "{count} exclusões do cliente ignoradas (mensagem não encontrada)",
+          "INBOUND_EDIT_SKIPPED": "{count} edições do cliente ignoradas (mensagem não encontrada)"
+        },
+        "PROXY": {
+          "REMOVE": "Remover proxy da instância",
+          "REMOVED": "Remoção do proxy solicitada. Configurações salvas no Chatwoot."
         }
       }
     },
@@ -1730,7 +1865,8 @@
       "TIKTOK": "TikTok",
       "VOICE": "Voz",
       "WAVOIP": "Wavoip",
-      "EVOLUTION": "Evolution API"
+      "EVOLUTION": "Evolution API",
+      "EVOLUTION_GO": "Evolution Go"
     }
   }
 }

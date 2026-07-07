@@ -45,6 +45,7 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
         :message,
         account: account,
         inbox: message.inbox,
+        conversation: message.conversation,
         message_type: :incoming,
         source_id: 'INCOMING1',
         content_attributes: { evolution_go_remote_jid: '5511999999999@s.whatsapp.net' }

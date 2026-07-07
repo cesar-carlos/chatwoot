@@ -1,12 +1,12 @@
 {
-  "event": "READ_RECEIPT",
+  "event": "Receipt",
   "instance": "test-go-instance",
+  "state": "Read",
   "data": {
-    "key": {
-      "id": "3EB0READRECEIPT01",
-      "remoteJid": "5511999999999@s.whatsapp.net",
-      "fromMe": false
-    },
-    "timestamp": "1718880000"
+    "Chat": "5511999999999@s.whatsapp.net",
+    "Sender": "5511888888888:5@s.whatsapp.net",
+    "MessageIDs": ["3EB0READRECEIPT01"],
+    "Timestamp": "2024-10-10T17:18:00-03:00",
+    "Type": "read"
   }
 }

@@ -94,9 +94,11 @@ CHAT_PRESENCE, CALL, CONNECTION, LABEL, CONTACT, GROUP, NEWSLETTER, QRCODE
 | `QRCODE` | Sessão | 1 | QR wizard |
 | `PRESENCE` | Presença | — | Ignorar |
 | `CHAT_PRESENCE` | Typing | 3 | Opcional → `message/presence` |
-| `HISTORY_SYNC` | Histórico | 4 | Import |
+| `HISTORY_SYNC` | Histórico | 4 | `HistorySyncProcessor` + `content_attributes.history_import` |
+| `MESSAGE_DELETE`, `MESSAGES_DELETE` | Delete cliente | UX | `MessageDeleteSyncService` |
+| `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX | `MessageEditSyncService` |
 | `CALL` | Chamadas | — | Projeto voz |
-| `GROUP` | Grupos | — | Ignorar MVP |
+| `GROUP` | Grupos | — | Ignorar; inbound grupo via `MESSAGE` com `@g.us` |
 | `CONTACT` | Contatos | — | Ignorar |
 | `LABEL` | Labels | — | Ignorar |
 | `NEWSLETTER` | Newsletter | — | Ignorar |
@@ -134,7 +136,7 @@ Lista completa: wiki `events-system.md` § Tipos de Eventos.
 |------|-------------|---------------------|
 | Contato normal | `5511...@s.whatsapp.net` | Dígitos antes de `@` |
 | LID | `xxx@lid` + `remoteJidAlt` | Usar `remoteJidAlt` se presente |
-| Grupo | `120363...@g.us` | Ignorar se `ignore_groups: true` |
+| Grupo | `120363...@g.us` | Filtrar se `ignore_groups: true`; senão `source_id` = JID grupo + `participant` no key |
 | Status | `status@broadcast` | Ignorar |
 | Echo | `fromMe: true` | Ignorar (hardcoded F1) |
 

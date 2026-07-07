@@ -317,6 +317,10 @@ Rails.application.routes.draw do
             # FORK: Evolution Go QR / connection polling
             get :evolution_go_connection, on: :member
             post :evolution_go_reconnect, on: :member
+            post :evolution_go_logout, on: :member
+            post :evolution_go_import, on: :member
+            get :evolution_go_diagnostics, on: :member
+            post :evolution_go_test_webhook, on: :member
             post :evolution_go_server_check, on: :collection
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do

@@ -592,6 +592,7 @@ provideMessageContext({
         :is-open="showContextMenu"
         :enabled-options="contextMenuEnabledOptions"
         :message="payloadForContextMenu"
+        :inbox-id="inboxId"
         hide-button
         @open="openContextMenu"
         @close="closeContextMenu"

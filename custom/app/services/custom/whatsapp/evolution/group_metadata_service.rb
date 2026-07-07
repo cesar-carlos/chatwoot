@@ -3,6 +3,7 @@
 class Custom::Whatsapp::Evolution::GroupMetadataService
   CACHE_TTL = 1.hour
   FETCH_ENQUEUE_TTL = 5.minutes.to_i
+  SUPPORTED_PROVIDERS = %w[evolution evolution_go].freeze
 
   pattr_initialize [:channel!]
 
@@ -32,19 +33,40 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
   private
 
   def fetch_subject(group_jid)
-    response = api_client.find_group_infos(group_jid: group_jid)
-    return unless response.success?
+    response = group_info_response(group_jid)
+    return unless response&.success?
 
-    parsed = response.parsed_response || {}
+    parsed = unwrap_group_response(response)
     parsed['subject'].presence ||
+      parsed['Name'].presence ||
       parsed.dig('group', 'subject').presence ||
+      parsed.dig('group', 'Name').presence ||
       parsed.dig('groupMetadata', 'subject')
-  rescue Custom::Whatsapp::Evolution::ApiError => e
-    Rails.logger.warn("[EVOLUTION] group metadata fetch failed jid=#{group_jid}: #{e.message}")
+  rescue Custom::Whatsapp::Evolution::ApiError, Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.warn("[#{provider_tag}] group metadata fetch failed jid=#{group_jid}: #{e.message}")
     nil
   end
 
+  def group_info_response(group_jid)
+    return unless supported_provider?
+
+    if evolution_go_channel?
+      api_client.group_info(group_jid: group_jid)
+    else
+      api_client.find_group_infos(group_jid: group_jid)
+    end
+  end
+
+  def unwrap_group_response(response)
+    parsed = response.parsed_response || {}
+    data = parsed['data']
+    return data if data.is_a?(Hash)
+
+    parsed
+  end
+
   def enqueue_metadata_fetch!(group_jid)
+    return unless supported_provider?
     return unless claim_metadata_fetch_enqueue!(group_jid)
 
     Custom::Whatsapp::Evolution::GroupMetadataFetchJob.perform_later(channel.id, group_jid)
@@ -60,7 +82,23 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
   end
 
   def api_client
-    Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
+    if evolution_go_channel?
+      Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel)
+    else
+      Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
+    end
+  end
+
+  def supported_provider?
+    channel.provider.in?(SUPPORTED_PROVIDERS)
+  end
+
+  def evolution_go_channel?
+    channel.provider == 'evolution_go'
+  end
+
+  def provider_tag
+    evolution_go_channel? ? 'EVOLUTION_GO' : 'EVOLUTION'
   end
 
   def cache_key(group_jid)

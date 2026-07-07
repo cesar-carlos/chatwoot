@@ -394,6 +394,7 @@
       "DELETE_CONFIRMATION": {
         "TITLE": "Você tem certeza que deseja excluir esta mensagem?",
         "MESSAGE": "Você não pode desfazer essa ação",
+        "WHATSAPP_SYNC": "Esta mensagem também será apagada para todos no WhatsApp. Esta ação não pode ser desfeita.",
         "DELETE": "Excluir",
         "CANCEL": "Cancelar"
       },

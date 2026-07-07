@@ -24,17 +24,40 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
   end
 
   def reconnect!
-    update_runtime_config!('connection_status' => 'connecting')
+    update_runtime_config!(
+      'connection_status' => 'connecting',
+      'last_qr_base64' => nil,
+      'last_qr_code' => nil
+    )
     invalidate_connection_state_cache!
+    disconnect_before_reconnect!
     provisioner.connect_existing_inbox!
+  end
+
+  def logout!
+    response = api_client.logout
+    Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to logout Evolution Go instance')
+
+    invalidate_connection_state_cache!
+    update_runtime_config!(
+      'connection_status' => 'close',
+      'last_qr_base64' => nil,
+      'last_qr_code' => nil
+    )
+    invalidate_connection_validation_cache! if channel.respond_to?(:provider_service)
+    response.parsed_response
   end
 
   def sync_phone_number!
     response = api_client.connection_status
     return unless response.success?
 
-    data = api_client.unwrap(response)
+    data = api_client.unwrap(response, context: 'connection_status')
     jid = api_client.dig_field(data, 'jid', 'myJid', 'JID', 'MyJid')
+    sync_phone_from_jid!(jid)
+  end
+
+  def sync_phone_from_jid!(jid)
     phone = phone_from_jid(jid)
     update_phone_number!(phone) if phone.present? && placeholder_phone?(channel.phone_number)
   end
@@ -64,10 +87,18 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     normalized = normalize_connection_status(state)
     return if normalized.blank?
 
+    previous_status = provider_config['connection_status']
+    attrs = { 'connection_status' => normalized }
+    if normalized == 'close'
+      attrs['last_qr_base64'] = nil
+      attrs['last_qr_code'] = nil
+    end
+
     invalidate_connection_state_cache!
-    update_runtime_config!('connection_status' => normalized)
+    update_runtime_config!(attrs)
     invalidate_connection_validation_cache! if channel.respond_to?(:provider_service)
     sync_phone_number! if normalized == 'open'
+    maybe_enqueue_contacts_import!(previous_status, normalized) if normalized == 'open'
   end
 
   def update_runtime_config!(attrs)
@@ -103,7 +134,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
       return :failed
     end
 
-    data = api_client.unwrap(response)
+    data = api_client.unwrap(response, context: 'connection_status')
     update_connection_status(connection_state_from_status_data(data))
     Rails.cache.write(cache_key, true, expires_in: CONNECTION_STATE_CACHE_TTL)
     :success
@@ -138,18 +169,16 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     return unless provider_config['connection_status'].in?(%w[connecting close])
     return if provider_config['last_qr_base64'].present?
     return if state_checked == :failed
-    return if session_recently_active?
 
     provisioner.send(:fetch_qr_code!)
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.warn "[EVOLUTION_GO] fetch_qr_if_needed failed channel=#{channel.id}: #{e.message}"
   end
 
-  def session_recently_active?
-    inbox = channel.inbox
-    return false if inbox.blank?
-
-    inbox.messages.incoming.where(created_at: 15.minutes.ago..).exists?
+  def disconnect_before_reconnect!
+    api_client.disconnect
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.warn "[EVOLUTION_GO] disconnect before reconnect failed channel=#{channel.id}: #{e.message}"
   end
 
   def normalize_connection_status(state)
@@ -161,10 +190,14 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
   end
 
   def phone_from_jid(jid)
-    digits = jid.to_s.split('@').first
-    return if digits.blank?
+    phone = jid_resolver.phone_from_jid(jid)
+    return if phone.blank?
 
-    "+#{digits.gsub(/\D/, '')}"
+    "+#{phone}"
+  end
+
+  def jid_resolver
+    @jid_resolver ||= Custom::Whatsapp::EvolutionGo::JidResolver.new(provider_config)
   end
 
   def placeholder_phone?(phone)
@@ -190,5 +223,25 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
 
   def invalidate_connection_validation_cache!
     Rails.cache.delete("evolution_go:validate_config:#{channel.id}")
+  end
+
+  def maybe_enqueue_contacts_import!(previous_status, state)
+    return unless state == 'open'
+    return if previous_status == 'open'
+    return unless import_on_connect_enabled?
+    return unless import_contacts_enabled?
+
+    status = provider_config['import_status']
+    return if status.in?(%w[running completed])
+
+    Custom::Whatsapp::EvolutionGo::ImportJob.perform_later(channel.id)
+  end
+
+  def import_on_connect_enabled?
+    ActiveModel::Type::Boolean.new.cast(provider_config['import_on_connect'])
+  end
+
+  def import_contacts_enabled?
+    ActiveModel::Type::Boolean.new.cast(provider_config['import_contacts'])
   end
 end

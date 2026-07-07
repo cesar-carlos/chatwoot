@@ -46,6 +46,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    inboxId: {
+      type: Number,
+      default: null,
+    },
   },
   emits: ['open', 'close', 'replyTo'],
   setup() {
@@ -66,6 +70,7 @@ export default {
       getAccount: 'accounts/getAccount',
       currentAccountId: 'getCurrentAccountId',
       getUISettings: 'getUISettings',
+      getInboxById: 'inboxes/getInbox',
     }),
     plainTextContent() {
       return this.getPlainText(this.messageContent);
@@ -83,6 +88,29 @@ export default {
       return useSnakeCase(
         this.message.content_attributes ?? this.message.contentAttributes
       );
+    },
+    inbox() {
+      if (!this.inboxId) return null;
+      return this.getInboxById(this.inboxId) || null;
+    },
+    isWhatsAppSyncDeleteEnabled() {
+      const inbox = this.inbox;
+      if (!inbox || inbox.channel_type !== 'Channel::Whatsapp') return false;
+
+      const provider = inbox.provider;
+      if (provider !== 'evolution_go' && provider !== 'evolution') return false;
+
+      const config = inbox.provider_config || inbox.providerConfig || {};
+      return config.sync_delete_to_whatsapp === true;
+    },
+    deleteConfirmationMessage() {
+      if (this.isWhatsAppSyncDeleteEnabled) {
+        return this.$t(
+          'CONVERSATION.CONTEXT_MENU.DELETE_CONFIRMATION.WHATSAPP_SYNC'
+        );
+      }
+
+      return this.$t('CONVERSATION.CONTEXT_MENU.DELETE_CONFIRMATION.MESSAGE');
     },
   },
   methods: {
@@ -188,7 +216,7 @@ export default {
       :on-close="closeDeleteModal"
       :on-confirm="confirmDeletion"
       :title="$t('CONVERSATION.CONTEXT_MENU.DELETE_CONFIRMATION.TITLE')"
-      :message="$t('CONVERSATION.CONTEXT_MENU.DELETE_CONFIRMATION.MESSAGE')"
+      :message="deleteConfirmationMessage"
       :confirm-text="$t('CONVERSATION.CONTEXT_MENU.DELETE_CONFIRMATION.DELETE')"
       :reject-text="$t('CONVERSATION.CONTEXT_MENU.DELETE_CONFIRMATION.CANCEL')"
     />

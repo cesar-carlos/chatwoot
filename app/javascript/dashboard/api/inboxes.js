@@ -142,6 +142,22 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.post(`${this.url}/${inboxId}/evolution_go_reconnect`);
   }
 
+  postEvolutionGoLogout(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_go_logout`);
+  }
+
+  postEvolutionGoImport(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_go_import`);
+  }
+
+  getEvolutionGoDiagnostics(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/evolution_go_diagnostics`);
+  }
+
+  postEvolutionGoTestWebhook(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_go_test_webhook`);
+  }
+
   postEvolutionGoServerCheck(payload) {
     return axios.post(`${this.url}/evolution_go_server_check`, payload);
   }

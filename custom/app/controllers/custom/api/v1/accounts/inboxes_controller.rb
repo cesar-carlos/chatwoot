@@ -142,7 +142,7 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless evolution_go_channel?(channel)
 
-    payload = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel).connection_payload
+    payload = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel).connection_payload
     render json: payload
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.error "[EVOLUTION_GO] evolution_go_connection failed: #{e.log_message}"
@@ -154,12 +154,52 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless evolution_go_channel?(channel)
 
-    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel)
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel)
     service.reconnect!
     render json: service.connection_payload
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.error "[EVOLUTION_GO] evolution_go_reconnect failed: #{e.log_message}"
     render json: { error: e.user_message }, status: :unprocessable_entity
+  end
+
+  def evolution_go_logout
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel)
+    service.logout!
+    render json: service.connection_payload
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.error "[EVOLUTION_GO] evolution_go_logout failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
+  end
+
+  def evolution_go_import
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    Custom::Whatsapp::EvolutionGo::ImportJob.perform_later(channel.id, force: true)
+    render json: import_payload_for(channel.reload)
+  end
+
+  def evolution_go_diagnostics
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    render json: Custom::Whatsapp::EvolutionGo::DiagnosticsService.new(channel: channel).perform
+  end
+
+  def evolution_go_test_webhook
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    render json: Custom::Whatsapp::EvolutionGo::WebhookTestService.new(channel: channel).perform
+  rescue StandardError => e
+    render json: { ok: false, error: e.message }, status: :unprocessable_entity
   end
 
   def evolution_go_server_check
@@ -473,7 +513,7 @@ module Custom::Api::V1::Accounts::InboxesController
   end
 
   def provision_evolution_go_channel!(channel)
-    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel)
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel)
     if channel.provider_config['instance_token'].present?
       service.connect_existing_inbox!
     else

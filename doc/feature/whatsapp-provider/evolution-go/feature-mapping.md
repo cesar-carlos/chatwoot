@@ -25,7 +25,9 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 | Campanhas | — | ❌ | — |
 | `source_id` | `data.Info.ID` | 1 | `process_response` |
 | Typing | `POST /message/presence` | 3 | — |
-| Mark read outbound | `POST /message/markread` | 2 | `mark_read_on_reply` |
+| Mark read outbound | `POST /message/markread` | 2 | `mark_read_on_reply`, `mark_read_on_open` |
+| Delete for everyone | `POST /message/delete` | UX | `sync_delete_to_whatsapp` + `DeleteSyncService` |
+| Edit message | `POST /message/edit` | UX | `sync_edit_to_whatsapp` + `EditSyncService` (opt-in) |
 
 ---
 
@@ -39,8 +41,11 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 | Dedup | — | 1 | `lock_message_source_id!` (upstream) |
 | Contato/conversa | — | 1 | `IncomingMessageBaseService` |
 | Reply threading | `quoted` no data | 2 | `process_in_reply_to` |
+| Client delete | `MESSAGE` revoke / `MESSAGE_DELETE` | UX | `MessageDeleteSyncService` |
+| Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` | UX | `MessageEditSyncService` |
+| History import | `HISTORY_SYNC` | 4 | `HistorySyncProcessor` |
 | Reações | reaction no MESSAGE | 3 | ignorar ou placeholder |
-| Grupos | `GROUP` / `@g.us` | ❌ MVP | filtrar |
+| Grupos | `MESSAGE` com `@g.us` | UX | `EvolutionGoNormalizer` + `GroupContactService` quando `ignore_groups: false` |
 | Echo fromMe | `MESSAGE` fromMe | 1 | filtrar |
 
 ---
@@ -73,7 +78,9 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 
 | Fonte | `ContactInbox#source_id` |
 |-------|--------------------------|
-| Inbound `data.key.remoteJid` | dígitos antes de `@` |
+| Inbound 1:1 `data.key.remoteJid` | dígitos antes de `@` |
+| Inbound grupo `@g.us` | JID completo do grupo (`GroupContactService`) |
+| Participante em grupo | `evolution_go_participant_jid` em `content_attributes` |
 | LID + alt | usar `remoteJidAlt` se presente |
 | Outbound ID | `data.Info.ID` (string) |
 
@@ -101,7 +108,10 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 | Wizard 3 steps | 1 | [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
 | QR / pairing | 1 | idem |
 | Connection badge | 2 | [inbox-business-rules.md](./inbox-business-rules.md) |
-| Settings abas | 2 | idem |
+| Settings abas | 2+ | [inbox-business-rules.md](./inbox-business-rules.md) |
+| Diagnóstico + test webhook | UX | `EvolutionGoHealthPage` |
+| Import polling | UX | `useEvolutionGoImportStatus` |
+| Delete confirm WhatsApp sync | UX | `MessageContextMenu` |
 | `isEvolutionGoWhatsAppChannel` | 1 | idem |
 
 ---
@@ -126,4 +136,5 @@ Ver [../whatsapp-voice/README.md](../../whatsapp-voice/README.md).
 | **1** | Texto in/out, QR, connect, webhook, wizard |
 | **2** | Mídia, READ_RECEIPT, markread, settings, proxy delete |
 | **3** | Reply, presence, react, sticker, location |
-| **4** | HISTORY_SYNC import |
+| **4** | HISTORY_SYNC import (✅ código; E2E fixture pendente) |
+| **UX** | Avisos settings, diagnóstico, confirmações, defaults novos inboxes |

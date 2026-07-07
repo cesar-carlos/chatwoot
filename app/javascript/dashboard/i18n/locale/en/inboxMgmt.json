@@ -816,7 +816,8 @@
       "CSAT": "CSAT",
       "VOICE": "Voice",
       "CALLS": "Calls",
-      "EVOLUTION": "WhatsApp"
+      "EVOLUTION": "WhatsApp",
+      "EVOLUTION_GO": "Evolution Go"
     },
     "VOICE_CONFIGURATION": {
       "ENABLE_VOICE": {
@@ -1019,7 +1020,8 @@
           "HELP_TEXT": "Current WhatsApp session state reported by Evolution API.",
           "OPEN": "Connected",
           "CONNECTING": "Connecting",
-          "CLOSE": "Disconnected"
+          "CLOSE": "Disconnected",
+          "PENDING_PROVISION": "Provisioning"
         },
         "HEALTH": {
           "LOADING": "Checking connection…",
@@ -1034,7 +1036,9 @@
           "LOGOUT_CONFIRM": "Log out this WhatsApp session? You will need to scan a new QR code to reconnect.",
           "ACTION_SUCCESS": "Evolution instance updated.",
           "DISCONNECTED_ALERT": "WhatsApp disconnected for inbox \"{inbox}\". Open inbox settings to reconnect.",
-          "STALE_DATA": "Could not refresh connection status. The information shown may be outdated."
+          "STALE_DATA": "Could not refresh connection status. The information shown may be outdated.",
+          "LOAD_ERROR": "Could not check connection status. Please try again.",
+          "RECONNECT_ERROR": "Could not reconnect. Please try again."
         },
         "QR_MODAL": {
           "TITLE": "Scan QR code",
@@ -1141,7 +1145,7 @@
         },
         "MARK_READ_ON_REPLY": {
           "LABEL": "Mark incoming as read when agent replies",
-          "DESCRIPTION": "When replying to a specific message, mark that WhatsApp message as read after the agent sends a reply."
+          "DESCRIPTION": "When replying to a specific message, mark that WhatsApp message as read. If no reply target is set, marks the latest unread incoming message as read."
         },
         "NOTIFY_SEND_ERRORS_PRIVATE": {
           "LABEL": "Private note on send failure",
@@ -1151,6 +1155,11 @@
           "LABEL": "Delete on WhatsApp when deleted in Chatwoot",
           "DESCRIPTION": "When an agent deletes a message in Chatwoot, delete it for everyone on WhatsApp."
         },
+        "SYNC_EDIT_TO_WHATSAPP": {
+          "LABEL": "Edit on WhatsApp when edited in Chatwoot",
+          "DESCRIPTION": "When message content changes in Chatwoot, push the new text to WhatsApp. Requires API or future UI edit flow."
+        },
+        "IRREVERSIBLE_SECTION": "Irreversible WhatsApp actions",
         "SEND_RANDOM_DELAY": {
           "LABEL": "Random send delay",
           "DESCRIPTION": "Wait 500–2000 ms before each outbound message to reduce automation patterns."
@@ -1221,6 +1230,61 @@
           "RESTART": "Save proxy and restart instance",
           "RESTART_SUCCESS": "Proxy saved and instance restart requested.",
           "RESTART_ERROR": "Could not restart the Evolution instance after saving proxy."
+        }
+      }
+    },
+    "EVOLUTION_GO": {
+      "SETTINGS": {
+        "MARK_READ_ON_OPEN": {
+          "LABEL": "Mark incoming as read when opening conversation",
+          "DESCRIPTION": "Send read receipts to WhatsApp when an agent opens the conversation in Chatwoot."
+        },
+        "IMPORT": {
+          "CONTACTS": {
+            "LABEL": "Import contacts with full profile",
+            "DESCRIPTION": "Import WhatsApp contacts from Evolution Go (GET /user/contacts), create them in Chatwoot, and enrich each contact with profile info (POST /user/info) and avatar (POST /user/avatar)."
+          },
+          "MESSAGES": {
+            "LABEL": "Import message history",
+            "DESCRIPTION": "Request chat history per imported contact via POST /chat/history-sync. Messages arrive through the HISTORY_SYNC webhook."
+          },
+          "DAYS_LIMIT": {
+            "LABEL": "History window (days)",
+            "DESCRIPTION": "Only request messages from the last N days (1–365) for each contact during import."
+          },
+          "MESSAGES_REQUIRES_CONTACTS": "Message history import runs after contacts are imported (enable Import contacts or run import with both options)."
+        },
+        "MARK_INBOUND_DELETED": {
+          "LABEL": "Mark client-deleted messages in Chatwoot",
+          "DESCRIPTION": "When a contact deletes a message on WhatsApp, replace the message text in Chatwoot with a deleted notice. Does not delete anything on WhatsApp."
+        },
+        "MARK_INBOUND_EDITED": {
+          "LABEL": "Update client-edited messages in Chatwoot",
+          "DESCRIPTION": "When a contact edits a message on WhatsApp, update the original message in Chatwoot with the new text and an edited indicator."
+        },
+        "SYNC_DELETE_WARNING": "Deleting a message in Chatwoot will also delete it for everyone on WhatsApp. This cannot be undone.",
+        "IMPORT_RUN_WARNING": "Contact import runs in the background and may take several minutes for large contact lists. Continue?",
+        "IMPORT_RUN_CONFIRM": "Start import",
+        "PROXY_CREATE_ONLY": "Proxy can only be configured when creating the inbox. To change proxy settings, recreate the Evolution Go instance.",
+        "INBOUND_ONLY_NOTE": "These options only update Chatwoot. They do not change or delete anything on WhatsApp.",
+        "API_SYNC_NOTE": "These settings are synced to the Evolution Go server when you save.",
+        "IRREVERSIBLE_SECTION": "Irreversible WhatsApp actions",
+        "DIAGNOSTICS": {
+          "TITLE": "Diagnostics",
+          "WEBHOOK_URL": "Webhook URL",
+          "WEBHOOK_SUBSCRIBE": "Subscribed events",
+          "IMPORT_STATUS": "Import status",
+          "MUTATION_STATS": "Skipped inbound mutations",
+          "TEST_WEBHOOK": "Test webhook pipeline",
+          "TEST_WEBHOOK_SUCCESS": "Test event enqueued successfully.",
+          "TEST_WEBHOOK_ERROR": "Could not enqueue test event.",
+          "LOADING": "Loading diagnostics…",
+          "INBOUND_DELETE_SKIPPED": "{count} client deletes skipped (message not found)",
+          "INBOUND_EDIT_SKIPPED": "{count} client edits skipped (message not found)"
+        },
+        "PROXY": {
+          "REMOVE": "Remove proxy from instance",
+          "REMOVED": "Proxy removal requested. Settings saved in Chatwoot."
         }
       }
     },
