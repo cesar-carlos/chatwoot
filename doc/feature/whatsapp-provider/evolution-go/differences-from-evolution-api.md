@@ -77,7 +77,7 @@ A documentação oficial afirma que ambos compartilham **"API contract REST (com
 | `QRCODE_UPDATED` | **`QRCODE`** | Exibir QR no wizard |
 | `SEND_MESSAGE` | Implícito em `MESSAGE` com `fromMe: true` | Filtrar echo |
 | — | `PRESENCE`, `CHAT_PRESENCE` | Ignorar MVP |
-| — | `GROUP`, `GROUP_UPDATE` | Ignorar se `ignore_groups: true` |
+| — | `GROUP`, `GROUP_UPDATE` | Ignorar; inbound grupo via `MESSAGE` + `@g.us` quando `ignore_groups: false` |
 | — | `CALL` | Fase voz separada |
 | — | `HISTORY_SYNC` | Fase import |
 
@@ -114,6 +114,7 @@ Evolution API adiciona `apikey`, `destination`, `date_time`, `sender` no envelop
 | `MessageWindowService` bypass | ✅ Idêntico |
 | Lógica normalizer `data.key` / `remoteJid` | ✅ ~80% — payload whatsmeow ≈ Baileys |
 | Filtros `@g.us`, `fromMe`, `status@broadcast` | ✅ Idêntico |
+| `GroupContactService` / metadata grupo | ✅ Reutilizado (EG usa `POST /group/info`) |
 | `EvolutionService` / `ApiClient` / rotas webhook | ❌ Paths, auth, eventos diferentes |
 | Wizard Vue | ⚠️ Layout similar; campos e polling diferentes |
 | Fixtures `spec/fixtures/evolution/` | ❌ Criar `spec/fixtures/evolution_go/` |

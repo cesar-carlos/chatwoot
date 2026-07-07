@@ -1,0 +1,26 @@
+{
+  "event": "MESSAGE",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "PROTOCOL-EDIT-MSG",
+      "Chat": "5511999999999@s.whatsapp.net",
+      "Sender": "5511999999999@s.whatsapp.net",
+      "IsFromMe": false,
+      "Timestamp": 1699999999
+    },
+    "Message": {
+      "protocolMessage": {
+        "type": "MESSAGE_EDIT",
+        "key": {
+          "id": "3EB0EDITEDMSG123",
+          "remoteJid": "5511999999999@s.whatsapp.net",
+          "fromMe": false
+        },
+        "editedMessage": {
+          "conversation": "Texto atualizado pelo cliente"
+        }
+      }
+    }
+  }
+}

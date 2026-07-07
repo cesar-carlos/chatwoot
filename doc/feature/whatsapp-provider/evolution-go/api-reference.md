@@ -327,15 +327,27 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 { "number": "5511999999999", "state": "composing", "isAudio": false }
 ```
 
-### React / Edit / Delete (Fase 3)
+### React / Edit / Delete
 
-| Path | Doc |
-|------|-----|
-| `POST /message/react` | [react-a-message](https://docs.evolutionfoundation.com.br/evolution-go/react-a-message) |
-| `POST /message/edit` | [edit-a-message](https://docs.evolutionfoundation.com.br/evolution-go/edit-a-message) |
-| `POST /message/delete` | [delete-a-message-for-everyone](https://docs.evolutionfoundation.com.br/evolution-go/delete-a-message-for-everyone) |
-| `POST /message/downloadimage` | [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image) — OpenAPI oficial |
-| `POST /message/downloadmedia` | Postman — body com `message.{type}Message`; validar no E2E qual endpoint usar |
+| Path | Fase fork | Componente |
+|------|-----------|------------|
+| `POST /message/react` | 3 | — |
+| `POST /message/edit` | UX | `EditSyncService` (opt-in `sync_edit_to_whatsapp`) |
+| `POST /message/delete` | UX | `DeleteSyncService` (opt-in `sync_delete_to_whatsapp`) |
+| `POST /message/downloadimage` | 2 | `MediaDownloadJob` |
+| `POST /message/downloadmedia` | 2 | fallback download |
+
+### History sync (Fase 4)
+
+```
+POST /chat/history-sync
+```
+
+Body: `{ "chat": "5511...@s.whatsapp.net", "days": 7 }` — dispara eventos `HISTORY_SYNC` com batch de mensagens.
+
+Componentes: `ApiClient#history_sync`, `Import::MessagesImporter`, `HistorySyncProcessor`.
+
+Fixture sintética: `spec/fixtures/evolution_go/history_sync.json` — **validar payload real no E2E**.
 
 ---
 
@@ -347,22 +359,37 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 | [mute-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/mute-a-chat) | Silenciar |
 | [pin-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/pin-a-chat) | Fixar |
 | [unpin-a-chat](https://docs.evolutionfoundation.com.br/evolution-go/unpin-a-chat) | Desfixar |
+| [history-sync](https://docs.evolutionfoundation.com.br/evolution-go/) (Postman) | `POST /chat/history-sync` — import histórico |
 
 ---
 
-## 5. Group (fora do MVP 1:1)
+## 5. API Chatwoot (inbox admin)
 
-Ver [documentation-links.md § Group](./documentation-links.md#group).
+| Método | Path | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_diagnostics` | Webhook URL, import status, `mutation_stats` |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_test_webhook` | Enfileira MESSAGE de teste |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_import` | Força import contatos (+ messages se habilitado) |
 
 ---
 
-## 6. User / Label
+## 6. Group
+
+| Método | Path | Uso fork |
+|--------|------|----------|
+| `POST` | `/group/info` | `ApiClient#group_info` — nome do grupo (`subject`/`Name`) quando `ignore_groups: false` |
+
+Demais rotas de grupo: ver [documentation-links.md § Group](./documentation-links.md#group). Outbound para grupo usa JID `@g.us` no `number` do send.
+
+---
+
+## 7. User / Label
 
 Ver [documentation-links.md](./documentation-links.md) — fora do escopo inbox Chatwoot MVP.
 
 ---
 
-## 7. O que NÃO existe (vs Evolution API Node)
+## 8. O que NÃO existe (vs Evolution API Node)
 
 | Evolution API | Evolution Go |
 |---------------|--------------|

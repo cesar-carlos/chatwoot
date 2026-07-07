@@ -17,6 +17,10 @@ Substituir por capturas reais no [E2E](../../doc/feature/whatsapp-provider/evolu
 | `connection_event.json` | Webhook `CONNECTION` | `ConnectionService#handle_event` |
 | `qrcode_event.json` | Webhook `QRCODE` | Wizard QR |
 | `read_receipt.json` | Webhook `READ_RECEIPT` | Fase 2 statuses |
+| `message_edit.json` | Webhook edit | `MessageEditSyncService` |
+| `message_revoke.json` | Webhook delete/revoke | `MessageDeleteSyncService` |
+| `history_sync.json` | Webhook `HISTORY_SYNC` | `HistorySyncProcessor` (⚠️ sintética) |
+| `message_inbound_group.json` | Webhook `MESSAGE` grupo | `EvolutionGoNormalizer` group path (⚠️ sintética) |
 
 ---
 
@@ -28,7 +32,8 @@ Substituir por capturas reais no [E2E](../../doc/feature/whatsapp-provider/evolu
 | Auth send | `apikey: {instance_token}` |
 | Body send | `{ "number": "...", "text": "..." }` |
 | `source_id` outbound | `data.Info.ID` |
-| `source_id` inbound | `data.key.id` |
+| `source_id` inbound 1:1 | `data.key.id` |
+| `source_id` inbound grupo | JID `@g.us` completo |
 | Texto simples | `message.conversation` |
 | Eventos webhook | `MESSAGE`, `CONNECTION`, `QRCODE` |
 

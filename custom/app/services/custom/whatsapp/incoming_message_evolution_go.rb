@@ -6,7 +6,9 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
   def process_statuses
     return super unless evolution_go_channel?
 
-    status = @processed_params[:statuses].first
+    status = @processed_params[:statuses]&.first&.with_indifferent_access
+    return if status.blank?
+
     unless find_message_by_source_id(status[:id])
       Custom::Whatsapp::Evolution::DeferredStatusJob.set(
         wait: Custom::Whatsapp::Evolution::DeferredStatusJob::DEFER_WAIT

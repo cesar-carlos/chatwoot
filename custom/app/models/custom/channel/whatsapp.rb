@@ -163,11 +163,7 @@ module Custom::Channel::Whatsapp
     Rails.logger.warn "[#{provider.upcase}] destroy cleanup failed for channel #{id}: #{e.message}"
   end
 
-  # The two gateway `ConnectionService`s currently differ in constructor
-  # shape (`evolution` takes `channel:`, `evolution_go` takes a positional
-  # arg per its documented contract). This is the single, deliberately small
-  # seam where that difference is bridged — nothing else in this file needs
-  # to know about it.
+  # Both gateway ConnectionServices use keyword `channel:` (attr_extras pattr_initialize).
   def gateway_connection_service
     case provider
     when 'evolution' then Custom::Whatsapp::Evolution::ConnectionService.new(channel: self)

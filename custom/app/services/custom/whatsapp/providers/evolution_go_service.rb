@@ -5,8 +5,12 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
 
   def send_message(phone_number, message)
     @message = message
-    if message.attachments.present?
+    if contact_attachment?(message)
+      send_contact_card_message(phone_number, message)
+    elsif message.attachments.present?
       send_attachment_message(phone_number, message)
+    elsif input_select_items(message).present?
+      send_input_select_message(phone_number, message)
     else
       send_text_message(phone_number, message)
     end
@@ -57,10 +61,16 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
   end
 
   def error_message(response)
+    return 'Unknown Evolution Go error' if response.nil?
+
     body = response.parsed_response
     return body.to_s unless body.is_a?(Hash)
 
-    body.dig('error', 'message') || body['message'] || body['error']
+    error = body['error']
+    text = body['message'] || (error.is_a?(Hash) ? error['message'] : error)
+    return Custom::Whatsapp::EvolutionGo::ApiError.friendly_session_message if session_disconnected?(text)
+
+    text
   end
 
   def process_response(response, message)
@@ -75,6 +85,18 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
     end
   end
 
+  def handle_error(response, message)
+    super
+    return if message.blank?
+
+    error_text = error_message(response).presence || "Unknown Evolution Go error (HTTP #{response&.code})"
+    return if message.external_error.present?
+
+    message.external_error = error_text
+    message.status = :failed
+    message.save!
+  end
+
   private
 
   def send_text_message(phone_number, message)
@@ -82,8 +104,21 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
       number: phone_number,
       text: apply_outbound_text(message.outgoing_content, message),
       quoted: build_quoted_context(phone_number, message),
-      delay: outbound_delay
+      delay: outbound_delay,
+      **delivery_options(phone_number, message)
     )
+    message_id = process_response(response, message)
+    mark_incoming_read_after_reply(phone_number, message) if message_id.present?
+    message_id
+  end
+
+  def send_input_select_message(phone_number, message)
+    items = input_select_items(message)
+    quoted = build_quoted_context(phone_number, message)
+    delay = outbound_delay
+    title = apply_outbound_text(message.outgoing_content.presence || 'Please choose an option', message)
+
+    response = dispatch_input_select(phone_number, title, items, quoted, delay, message)
     message_id = process_response(response, message)
     mark_incoming_read_after_reply(phone_number, message) if message_id.present?
     message_id
@@ -92,18 +127,19 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
   def extract_source_id(parsed)
     return unless parsed.is_a?(Hash)
 
-    data = parsed['data'] || {}
-    Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(data, 'Info')&.dig('ID') ||
-      Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(data, 'messageId', 'MessageId') ||
-      parsed.dig('data', 'Info', 'ID') ||
-      parsed.dig('data', 'messageId')
+    data = parsed['data']
+    return unless data.is_a?(Hash)
+
+    info = Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(data, 'Info')
+    (info.is_a?(Hash) ? info['ID'] || info['Id'] : nil) ||
+      Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(data, 'messageId', 'MessageId')
   end
 
   def connection_open?
     response = api_client.connection_status
     return false unless response.success?
 
-    data = api_client.unwrap(response)
+    data = api_client.unwrap(response, context: 'connection_status')
     connected = ActiveModel::Type::Boolean.new.cast(api_client.dig_field(data, 'connected', 'Connected'))
     logged_in = ActiveModel::Type::Boolean.new.cast(api_client.dig_field(data, 'loggedIn', 'LoggedIn'))
     connected && logged_in
@@ -131,6 +167,10 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
     message.external_error = error_text
     message.status = :failed
     message.save!
-    create_send_error_private_note!(message, nil) if notify_send_errors_private?
+    create_send_error_private_note!(message, error_text) if notify_send_errors_private?
+  end
+
+  def session_disconnected?(text)
+    Custom::Whatsapp::EvolutionGo::ApiError.session_disconnected?(text)
   end
 end

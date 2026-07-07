@@ -1,6 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useAlert } from 'dashboard/composables';
+import InboxesAPI from 'dashboard/api/inboxes';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
@@ -22,6 +24,9 @@ const STATUS_STYLES = {
 
 const { t } = useI18n();
 const qrModalRef = ref(null);
+const diagnostics = ref(null);
+const isDiagnosticsLoading = ref(false);
+const isTestingWebhook = ref(false);
 
 const {
   connectionStatus,
@@ -45,6 +50,39 @@ const statusLabel = computed(() => {
   const key = connectionStatus.value.toUpperCase();
   return t(`INBOX_MGMT.EVOLUTION.SETTINGS.CONNECTION_STATUS.${key}`);
 });
+
+const mutationStats = computed(() => diagnostics.value?.mutation_stats || {});
+
+async function loadDiagnostics() {
+  if (!props.inbox?.id) return;
+
+  isDiagnosticsLoading.value = true;
+  try {
+    const { data } = await InboxesAPI.getEvolutionGoDiagnostics(props.inbox.id);
+    diagnostics.value = data;
+  } catch {
+    diagnostics.value = null;
+  } finally {
+    isDiagnosticsLoading.value = false;
+  }
+}
+
+async function testWebhook() {
+  if (!props.inbox?.id || isTestingWebhook.value) return;
+
+  isTestingWebhook.value = true;
+  try {
+    await InboxesAPI.postEvolutionGoTestWebhook(props.inbox.id);
+    useAlert(t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK_SUCCESS'));
+    await loadDiagnostics();
+  } catch {
+    useAlert(t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK_ERROR'));
+  } finally {
+    isTestingWebhook.value = false;
+  }
+}
+
+onMounted(loadDiagnostics);
 </script>
 
 <template>
@@ -88,6 +126,70 @@ const statusLabel = computed(() => {
         @click="reconnect"
       />
     </div>
+
+    <SettingsFieldSection
+      :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TITLE')"
+    >
+      <div
+        v-if="isDiagnosticsLoading"
+        class="flex items-center gap-2 text-sm text-n-slate-11"
+      >
+        <Spinner class="size-4" />
+        {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.LOADING') }}
+      </div>
+      <div v-else-if="diagnostics" class="text-sm text-n-slate-11 space-y-2">
+        <p v-if="diagnostics.webhook_url">
+          <span class="font-medium">
+            {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.WEBHOOK_URL') }}:
+          </span>
+          {{ diagnostics.webhook_url }}
+        </p>
+        <p v-if="diagnostics.webhook_subscribe?.length">
+          <span class="font-medium">
+            {{
+              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.WEBHOOK_SUBSCRIBE')
+            }}:
+          </span>
+          {{ diagnostics.webhook_subscribe.join(', ') }}
+        </p>
+        <p v-if="diagnostics.import_status">
+          <span class="font-medium">
+            {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.IMPORT_STATUS') }}:
+          </span>
+          {{ diagnostics.import_status }}
+        </p>
+        <p v-if="diagnostics.settings_sync_error" class="text-n-ruby-11">
+          {{ diagnostics.settings_sync_error }}
+        </p>
+        <p v-if="diagnostics.import_error" class="text-n-ruby-11">
+          {{ diagnostics.import_error }}
+        </p>
+        <p v-if="mutationStats.inbound_delete_skipped">
+          {{
+            t(
+              'INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INBOUND_DELETE_SKIPPED',
+              { count: mutationStats.inbound_delete_skipped }
+            )
+          }}
+        </p>
+        <p v-if="mutationStats.inbound_edit_skipped">
+          {{
+            t(
+              'INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INBOUND_EDIT_SKIPPED',
+              { count: mutationStats.inbound_edit_skipped }
+            )
+          }}
+        </p>
+        <NextButton
+          variant="faded"
+          :label="
+            t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK')
+          "
+          :is-loading="isTestingWebhook"
+          @click="testWebhook"
+        />
+      </div>
+    </SettingsFieldSection>
 
     <EvolutionGoQrScanModal
       v-if="inbox.id"

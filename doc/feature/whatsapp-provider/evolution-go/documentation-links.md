@@ -102,7 +102,7 @@
 
 ### Group
 
-Paths confirmados Postman (abr/2026). **Fork MVP:** ignorar grupos (`ignore_groups: true`).
+Paths confirmados Postman (abr/2026). **Default fork:** `ignore_groups: true`. Com `false`, `POST /group/info` alimenta nome do contato grupo.
 
 | Operação | Método | Path | Doc oficial |
 |----------|--------|------|-------------|
@@ -172,7 +172,7 @@ Configurados em `POST /instance/connect` body `subscribe: []`.
 | `QRCODE` | QR no wizard | 1 |
 | `READ_RECEIPT` | Status read | 2 |
 | `SEND_MESSAGE` | Echo outbound — filtrar | — |
-| `GROUP` | Ignorar MVP | — |
+| `GROUP` | Evento metadata — inbound grupo via `MESSAGE` | — |
 | `CALL` | Voz — projeto separado | — |
 
 Default connect retorna `eventString` com todos os eventos se `subscribe` omitido — **restringir no fork** para reduzir ruído.

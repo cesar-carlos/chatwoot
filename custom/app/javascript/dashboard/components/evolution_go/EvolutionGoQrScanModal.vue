@@ -59,25 +59,49 @@ const statusLabel = computed(() =>
 );
 
 const showQr = computed(() => Boolean(qrcodeBase64.value));
+const closeWithoutQrTimedOut = ref(false);
+let closeWithoutQrTimer = null;
+
 const showLoading = computed(
   () =>
     !showQr.value &&
     !pairingCode.value &&
     !qrRefreshError.value &&
+    !closeWithoutQrTimedOut.value &&
     (isLoading.value ||
       isRefreshing.value ||
-      connectionStatus.value === 'close')
+      connectionStatus.value === 'connecting')
 );
 const showQrError = computed(
   () =>
     !showQr.value &&
     !showLoading.value &&
     !pairingCode.value &&
-    qrRefreshError.value
+    (qrRefreshError.value || closeWithoutQrTimedOut.value)
 );
+
+function clearCloseWithoutQrTimer() {
+  if (closeWithoutQrTimer) {
+    clearTimeout(closeWithoutQrTimer);
+    closeWithoutQrTimer = null;
+  }
+}
+
+function scheduleCloseWithoutQrTimeout(status) {
+  clearCloseWithoutQrTimer();
+  closeWithoutQrTimedOut.value = false;
+
+  if (status === 'close' && !qrcodeBase64.value && !pairingCode.value) {
+    closeWithoutQrTimer = setTimeout(() => {
+      closeWithoutQrTimedOut.value = true;
+    }, 5000);
+  }
+}
 
 function cleanupSession() {
   sessionActive = false;
+  clearCloseWithoutQrTimer();
+  closeWithoutQrTimedOut.value = false;
   stopSession();
   unsubscribeCable?.();
   unsubscribeCable = null;
@@ -101,6 +125,19 @@ function closeModal() {
   dialogRef.value?.close();
   isOpen.value = false;
 }
+
+watch(
+  [connectionStatus, qrcodeBase64, pairingCode],
+  ([status, qr, code]) => {
+    if (qr || code) {
+      clearCloseWithoutQrTimer();
+      closeWithoutQrTimedOut.value = false;
+      return;
+    }
+    scheduleCloseWithoutQrTimeout(status);
+  },
+  { immediate: true }
+);
 
 watch(
   isOpen,

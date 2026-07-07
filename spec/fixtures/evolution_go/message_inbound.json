@@ -1,17 +1,18 @@
 {
-  "event": "MESSAGE",
+  "event": "Message",
   "instance": "test-go-instance",
   "data": {
-    "key": {
-      "remoteJid": "5511999999999@s.whatsapp.net",
-      "remoteJidAlt": "5511999999999@s.whatsapp.net",
-      "fromMe": false,
-      "id": "3EB0C5A277F7F9B6C599"
+    "Info": {
+      "ID": "3EB0C5A277F7F9B6C599",
+      "Chat": "5511999999999@s.whatsapp.net",
+      "Sender": "5511999999999:38@s.whatsapp.net",
+      "SenderAlt": "5511999999999@s.whatsapp.net",
+      "IsFromMe": false,
+      "PushName": "João Silva",
+      "Timestamp": 1699999999
     },
-    "message": {
+    "Message": {
       "conversation": "Olá from Evolution Go!"
-    },
-    "messageTimestamp": "1699999999",
-    "pushName": "João Silva"
+    }
   }
 }

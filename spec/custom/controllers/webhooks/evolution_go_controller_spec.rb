@@ -32,7 +32,7 @@ RSpec.describe Webhooks::EvolutionGoController, type: :request do
         post "/webhooks/evolution_go/#{instance_name}?token=#{webhook_token}", params: payload
       end.to have_enqueued_job(Webhooks::WhatsappEventsJob).with(
         hash_including(
-          'event' => 'MESSAGE',
+          'event' => 'Message',
           'evolution_go_instance_name' => instance_name,
           'channel_id' => channel.id
         )

@@ -27,9 +27,15 @@ class Custom::Whatsapp::EvolutionGo::ApiError < StandardError
     case status.to_i
     when 401
       response_detail(body, status)
+    when 403
+      sanitize_detail(extract_message(body)) ||
+        'Evolution Go rejected the request (check global vs instance API key)'
+    when 400, 404, 422
+      sanitize_detail(extract_message(body))
     else
       text = extract_message(body)
       return 'An Evolution Go instance with this name already exists' if duplicate_instance?(text)
+      return sanitize_detail(text) if session_disconnected?(text)
 
       nil
     end
@@ -46,18 +52,24 @@ class Custom::Whatsapp::EvolutionGo::ApiError < StandardError
     case status.to_i
     when 401
       return 'Evolution Go rejected the API key (check global_api_key or instance_token)'
+    when 403
+      return sanitize_detail(extract_message(body)) ||
+             'Evolution Go rejected the request (check global vs instance API key)'
     end
 
     text = extract_message(body)
     return 'An Evolution Go instance with this name already exists' if duplicate_instance?(text)
+    return friendly_session_message if session_disconnected?(text)
 
-    text
+    sanitize_detail(text)
   end
 
   def self.extract_message(body)
     return body.to_s unless body.is_a?(Hash)
 
-    message = body.dig('error', 'message') || body['message'] || body['error']
+    error = body['error']
+    message = body['message']
+    message ||= error.is_a?(Hash) ? error['message'] : error
     normalize_message(message)
   end
 
@@ -71,5 +83,20 @@ class Custom::Whatsapp::EvolutionGo::ApiError < StandardError
 
   def self.duplicate_instance?(text)
     text.to_s.match?(/already (exists|in use)/i)
+  end
+
+  def self.session_disconnected?(text)
+    text.to_s.match?(/client is nil|not connected|logged.?out|session.*disconnected/i)
+  end
+
+  def self.friendly_session_message
+    'WhatsApp session disconnected — reconnect the inbox'
+  end
+
+  def self.sanitize_detail(text)
+    return nil if text.blank?
+    return friendly_session_message if session_disconnected?(text)
+
+    text.to_s.truncate(200)
   end
 end

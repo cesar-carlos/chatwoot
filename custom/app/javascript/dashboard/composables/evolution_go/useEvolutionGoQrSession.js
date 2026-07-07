@@ -127,7 +127,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     clearExpiryTimer();
     expiryTimer = setTimeout(() => {
       if (!isConnected()) {
-        requestNewQr();
+        refreshConnection();
       }
     }, QR_EXPIRY_MS);
   }

@@ -12,9 +12,12 @@ class Custom::Whatsapp::Webhooks::EvolutionGoReadReceiptNormalizer
 
   def perform
     envelope_data = envelope.with_indifferent_access
-    return unless envelope_data[:event] == 'READ_RECEIPT'
+    return unless envelope_data[:event].to_s.upcase.in?(%w[READ_RECEIPT RECEIPT])
 
-    data = envelope_data[:data]
+    data = Custom::Whatsapp::Webhooks::EvolutionGoReadReceiptPayloadAdapter.canonicalize_data(
+      envelope_data[:data],
+      envelope_state: envelope_data[:state]
+    )
     return if data.blank?
 
     normalize_read_receipt(data)
@@ -22,10 +25,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoReadReceiptNormalizer
 
   private
 
-  def phone_from_jid(jid)
-    digits = jid.to_s.split('@').first
-    return if digits.blank?
-
-    digits.gsub(/\D/, '')
+  def config
+    channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
   end
 end

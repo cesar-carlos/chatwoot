@@ -11,7 +11,7 @@ module Custom::ContactInbox
 
   def evolution_group_source_id?
     inbox.channel_type == 'Channel::Whatsapp' &&
-      inbox.channel.provider == 'evolution' &&
+      inbox.channel.provider.in?(%w[evolution evolution_go]) &&
       Custom::Whatsapp::Evolution::GroupContactService.group_jid?(source_id)
   end
 end

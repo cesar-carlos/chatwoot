@@ -25,14 +25,23 @@ module Custom::Whatsapp::EvolutionGo::SettingsSync
   private
 
   def advanced_settings_payload
-    {
-      ignoreGroups: provider_config['ignore_groups'],
-      rejectCall: provider_config['reject_call'],
-      msgRejectCall: provider_config['msg_call'].to_s,
-      alwaysOnline: provider_config['always_online'],
-      readMessages: provider_config['read_messages'],
-      ignoreStatus: provider_config['ignore_status']
-    }
+    payload = {
+      ignoreGroups: boolean_setting('ignore_groups'),
+      rejectCall: boolean_setting('reject_call'),
+      alwaysOnline: boolean_setting('always_online'),
+      readMessages: boolean_setting('read_messages'),
+      ignoreStatus: boolean_setting('ignore_status')
+    }.compact
+
+    msg_call = provider_config['msg_call']
+    payload[:msgRejectCall] = msg_call.to_s if msg_call.present?
+    payload
+  end
+
+  def boolean_setting(key)
+    return nil if provider_config[key].nil?
+
+    ActiveModel::Type::Boolean.new.cast(provider_config[key])
   end
 
   def proxy_enabled?

@@ -1,0 +1,22 @@
+{
+  "event": "HISTORY_SYNC",
+  "instance": "test-go-instance",
+  "data": {
+    "messages": [
+      {
+        "Info": {
+          "ID": "3EB0HIST001",
+          "Chat": "5511999999999@s.whatsapp.net",
+          "Sender": "5511999999999:38@s.whatsapp.net",
+          "SenderAlt": "5511999999999@s.whatsapp.net",
+          "IsFromMe": false,
+          "PushName": "João Silva",
+          "Timestamp": 1699900000
+        },
+        "Message": {
+          "conversation": "Historical message from HISTORY_SYNC"
+        }
+      }
+    ]
+  }
+}

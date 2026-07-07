@@ -114,14 +114,14 @@ Mapeamento completo com variantes de casing: [provider-config-mapping.md § Grup
 
 | Campo fork | Campo Go | Default | Fase | Label UI (en) |
 |------------|----------|---------|------|---------------|
-| `ignore_groups` | `ignoreGroups` | **`true`** | 1 | Ignore groups |
+| `ignore_groups` | `ignoreGroups` | **`true`** | 2 | Ignore groups — com `false`, conversa única por grupo |
 | `reject_call` | `rejectCall` | `false` | 2 | Reject calls |
 | `msg_call` | `msgRejectCall` | `""` | 2 | Message when rejecting call |
 | `always_online` | `alwaysOnline` | `false` | 2 | Always online |
 | `read_messages` | `readMessages` | `false` | 2 | Mark incoming as read on WA |
 | `ignore_status` | `ignoreStatus` | **`true`** | 2 | Ignore status broadcasts |
 
-**Fase 1:** `ignore_groups: true` no create — sem UI toggle.
+**Default:** `ignore_groups: true` no create. UI toggle em **Comportamento WhatsApp** (`EvolutionGoSettingsPage`).
 
 Doc create: [create-a-new-instance](https://docs.evolutionfoundation.com.br/evolution-go/create-a-new-instance)
 
@@ -162,8 +162,11 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 | `sign_msg` | `false` | 2 | Prefixo agente |
 | `sign_delimiter` | `\n` | 2 | — |
 | `convert_markdown_outbound` | `true` | 2 | CW → WA formatting |
-| `mark_read_on_reply` | `false` | 2 | → `POST /message/markread` |
+| `mark_read_on_reply` | `false` | 2 | → `POST /message/markread`; fallback: última não lida se sem reply target |
 | `send_random_delay` | via `delay` no send | 2 | Campo `delay` em SendText |
+| `sync_delete_to_whatsapp` | `false` | UX | Agente delete CW → `POST /message/delete` (opt-in, irreversível) |
+| `sync_edit_to_whatsapp` | `false` | UX | Hook em `Message#content` change → `POST /message/edit` (opt-in) |
+| `notify_send_errors_private` | `true` | 2 | Nota privada em falha de envio |
 
 **Quote reply:** `{ quoted: { messageId, participant } }` — schema Go, não Baileys.
 
@@ -173,9 +176,11 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 
 | Campo | Default | Fase | Implementação |
 |-------|---------|------|---------------|
-| `ignore_from_me_echo` | `true` | 1 | Hardcoded normalizer |
-| `ignore_jids` | `["@g.us"]` | 1/2 | Normalizer |
-| `ignore_status_broadcast` | `true` | 1 | `status@broadcast` |
+| `ignore_from_me_echo` | `true` | 1 | Normalizer (configurável) |
+| `ignore_status` | `true` | 2 | `status@broadcast` |
+| `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → soft delete CW |
+| `mark_inbound_edited` | `true` | UX | Webhook edit → atualiza CW |
+| `convert_markdown_inbound` | `true` | UX | Normalizer + edit sync |
 
 ### `source_id` inbound
 
@@ -197,14 +202,39 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 
 ## 8. Settings inbox — abas (Fase 2+)
 
-| Aba | Conteúdo |
-|-----|----------|
-| **Connection** | Status badge, reconnect, logout, QR |
-| **WhatsApp** | ignore_groups, reject_call, read_messages |
-| **Proxy** | Editar proxy / delete |
-| **Advanced** | ignore_jids, sign_msg, conversation_pending |
+| Aba / seção | Conteúdo |
+|-------------|----------|
+| **Health + diagnóstico** | Status, reconnect, QR, webhook URL, subscribe, import status, `mutation_stats`, test webhook |
+| **Comportamento WhatsApp** | ignore_groups, reject_call, read_messages, always_online (sync advanced-settings) |
+| **Mensagens enviadas** | sign_msg, markdown, mark read, delay, templates, notify errors |
+| **Filtros inbound** | ignore echo/status, markdown inbound, mark deleted/edited (só Chatwoot) |
+| **Irreversível** | sync_delete_to_whatsapp, sync_edit_to_whatsapp (bloco amber) |
+| **Importação** | contacts, messages, on_connect, merge BR, status + polling |
+| **Proxy** | Banner create-only se `proxy_host` presente; remove via API |
 
 Ocultar: templates Meta, campanhas, embedded signup, health cloud, voz Meta.
+
+---
+
+## 9. Importação e histórico
+
+| Campo | Default | API / evento |
+|-------|---------|--------------|
+| `import_contacts` | `false` | `GET /user/contacts` + enrichment `/user/info`, `/user/avatar` |
+| `import_on_connect` | `false` | Dispara `ImportJob` ao `connection_status: open` |
+| `import_messages` | `false` | `POST /chat/history-sync` → webhook `HISTORY_SYNC` |
+| `days_limit_import_messages` | `7` | Body `days` no history-sync |
+
+Mensagens históricas recebem `content_attributes.history_import: true`.
+
+---
+
+## 10. Diagnóstico operacional
+
+| Endpoint | `GET /api/v1/accounts/:id/inboxes/:id/evolution_go_diagnostics` |
+|----------|----------------------------------------------------------------|
+| Campos | `webhook_url`, `connection_status`, `import_*`, `mutation_stats`, `settings_sync_error` |
+| Teste | `POST evolution_go_test_webhook` — enfileira MESSAGE sintético + `last_webhook_at` |
 
 ---
 

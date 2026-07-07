@@ -224,7 +224,7 @@ custom/
 - [ ] Inbound texto → conversa no Chatwoot
 - [ ] Outbound texto → `source_id = data.Info.ID`
 - [ ] Sem janela 24h
-- [ ] Grupos ignorados (`@g.us`)
+- [ ] Grupos: default ignorados; com `ignore_groups: false` → conversa única por `@g.us` (ver [tasks.md § G1](./tasks.md))
 - [ ] `evolution`, `evolution_go` e cloud coexistem no mesmo account
 - [ ] Specs: `EvolutionGoNormalizer`, `EvolutionGoController` auth, `ApiClient#dig_field`
 

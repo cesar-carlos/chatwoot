@@ -6,6 +6,8 @@ module Custom::Message
   prepended do
     prepend Custom::Message::EvolutionConversationCycle
     prepend Custom::Message::EvolutionDeleteSync
+    prepend Custom::Message::EvolutionGoDeleteSync
+    prepend Custom::Message::EvolutionGoEditSync
     prepend Custom::Message::WorkflowRulesScheduler
     prepend Custom::Message::WavoipConversationCycle
 
@@ -14,6 +16,8 @@ module Custom::Message
     after_create_commit :schedule_workflow_rules_on_incoming, if: :incoming?
     after_create_commit :schedule_workflow_rules_on_outgoing, if: :outgoing?
     after_update_commit :sync_evolution_delete_to_whatsapp
+    after_update_commit :sync_evolution_go_delete_to_whatsapp
+    after_update_commit :sync_evolution_go_edit_to_whatsapp
   end
 
   def send_reply

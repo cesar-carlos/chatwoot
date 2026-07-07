@@ -4,7 +4,6 @@ require 'rails_helper'
 
 RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
   let(:account) { create(:account) }
-  let(:inbox) { create(:inbox, account: account, channel: channel) }
   let(:channel) do
     create(
       :channel_whatsapp,
@@ -18,8 +17,9 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
       )
     )
   end
+  let(:inbox) { channel.inbox }
 
-  before { inbox }
+  before { channel }
 
   it 'dispatches MESSAGE events through the normalizer' do
     payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_inbound.json').read)
@@ -29,7 +29,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     )
 
     expect(Custom::Whatsapp::Webhooks::EvolutionGoNormalizer).to receive(:new)
-      .with(channel, hash_including('event' => 'MESSAGE'))
+      .with(channel, hash_including('event' => 'Message'))
       .and_call_original
 
     expect do
@@ -39,21 +39,42 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
 
   it 'dispatches READ_RECEIPT events as statuses' do
     payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/read_receipt.json').read)
-    job_payload = payload.merge(
-      'evolution_go_instance_name' => 'test-go-instance',
-      'channel_id' => channel.id
-    )
+    payload['event'] = 'READ_RECEIPT'
+    conversation = create(:conversation, account: account, inbox: inbox)
     existing = create(
       :message,
       account: account,
       inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
       source_id: '3EB0READRECEIPT01',
       status: :delivered
     )
 
-    Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    normalized = Custom::Whatsapp::Webhooks::EvolutionGoReadReceiptNormalizer.new(channel, payload).perform
+    expect(normalized).to be_present
+
+    Custom::Whatsapp::EvolutionGo::InboundMessageProcessor.process(
+      channel,
+      normalized.merge(phone_number: channel.phone_number)
+    )
 
     expect(existing.reload.status).to eq('read')
+  end
+
+  it 'routes READ_RECEIPT events through the read receipt normalizer in the job' do
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/read_receipt.json').read)
+    payload['event'] = 'READ_RECEIPT'
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect(Custom::Whatsapp::Webhooks::EvolutionGoReadReceiptNormalizer).to receive(:new)
+      .with(channel, hash_including('event' => 'READ_RECEIPT'))
+      .and_call_original
+
+    Webhooks::WhatsappEventsJob.perform_now(job_payload)
   end
 
   it 'delegates unknown evolution_go channels to super without dropping' do

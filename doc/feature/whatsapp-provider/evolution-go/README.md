@@ -8,7 +8,7 @@ Landing page do provider planejado para Evolution Go.
 |------|--------|
 | Chave planejada | `evolution_go` |
 | Documentação de contrato e plano | ✅ |
-| Código em `custom/` | ✅ Fase 0–1 (MVP texto + QR) |
+| Código em `custom/` | ✅ Fase 0–2 + UX/diagnóstico/import/grupos (jul/2026) |
 | `PROVIDERS`, registry e webhook | ✅ |
 | Fixtures reais | ⚠️ sintéticas — E2E pendente |
 
@@ -54,6 +54,9 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - connect + QR + webhook via REST
 - envio e recebimento de texto no MVP
 - mídia, status e advanced settings em fases seguintes
+- import contatos, delete/edit inbound, sync delete/edit outbound (opt-in)
+- diagnóstico operacional e import histórico via `HISTORY_SYNC`
+- grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
 - sem provisionar o servidor Go dentro deste repositório
 
 ## Onde este provider encosta no código atual

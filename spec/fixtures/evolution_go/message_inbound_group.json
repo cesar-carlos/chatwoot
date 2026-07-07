@@ -1,0 +1,18 @@
+{
+  "event": "Message",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "3EB0GROUP00000001",
+      "Chat": "120363012345678901@g.us",
+      "Sender": "5511777777777:38@s.whatsapp.net",
+      "SenderAlt": "5511777777777@s.whatsapp.net",
+      "IsFromMe": false,
+      "PushName": "Group Member",
+      "Timestamp": 1699999999
+    },
+    "Message": {
+      "conversation": "Hello from the group!"
+    }
+  }
+}

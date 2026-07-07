@@ -25,8 +25,10 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
   describe 'retry and non-JSON handling' do
     it 'retries once on 502 responses' do
       stub_request(:get, 'https://go.example.com/instance/status')
-        .to_return(status: 502, body: 'bad gateway')
-        .then.return(status: 200, body: { message: 'success', data: { Connected: true } }.to_json)
+        .to_return(
+          { status: 502, body: 'bad gateway' },
+          { status: 200, body: { message: 'success', data: { Connected: true } }.to_json }
+        )
 
       response = client.connection_status
       expect(response.success?).to be(true)
@@ -35,9 +37,20 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
 
     it 'raises ApiError on non-JSON responses' do
       stub_request(:get, 'https://go.example.com/server/ok')
-        .to_return(status: 200, body: 'not json')
+        .to_return(status: 200, body: 'not json', headers: { 'Content-Type' => 'application/json' })
 
       expect { client.server_ok }.to raise_error(Custom::Whatsapp::EvolutionGo::ApiError, /non-JSON/)
+    end
+  end
+
+  describe '#group_info' do
+    it 'posts groupJid to /group/info' do
+      stub_request(:post, 'https://go.example.com/group/info')
+        .with(body: { groupJid: '120363012345678901@g.us' })
+        .to_return(status: 200, body: { data: { Name: 'Support Team' } }.to_json)
+
+      response = client.group_info(group_jid: '120363012345678901@g.us')
+      expect(response.success?).to be(true)
     end
   end
 
@@ -75,10 +88,10 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
   end
 
   describe '#download_media' do
-    it 'falls back to downloadmedia when downloadimage fails' do
-      stub_request(:post, 'https://go.example.com/message/downloadimage')
-        .to_return(status: 404, body: { error: 'not found' }.to_json)
+    it 'uses downloadmedia first and falls back to downloadimage' do
       stub_request(:post, 'https://go.example.com/message/downloadmedia')
+        .to_return(status: 404, body: { error: 'not found' }.to_json)
+      stub_request(:post, 'https://go.example.com/message/downloadimage')
         .to_return(status: 200, body: { base64: Base64.strict_encode64('bytes') }.to_json)
 
       envelope = {
@@ -86,6 +99,26 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
         message: { imageMessage: { mimetype: 'image/jpeg' } }
       }
       response = client.download_media(envelope)
+      expect(response.success?).to be(true)
+      expect(WebMock).to have_requested(:post, 'https://go.example.com/message/downloadmedia').once
+    end
+  end
+
+  describe '#send_contact' do
+    it 'posts vcard payload to /send/contact' do
+      stub_request(:post, 'https://go.example.com/send/contact')
+        .with(
+          body: hash_including(
+            'number' => '5511999999999',
+            'vcard' => hash_including('fullName' => 'Maria', 'phone' => '5511888888888')
+          )
+        )
+        .to_return(status: 200, body: { data: { Info: { ID: 'CONTACT1' } } }.to_json)
+
+      response = client.send_contact(
+        number: '5511999999999',
+        vcard: { fullName: 'Maria', phone: '5511888888888' }
+      )
       expect(response.success?).to be(true)
     end
   end
