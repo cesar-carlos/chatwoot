@@ -118,6 +118,28 @@ Enviar mensagem do celular para o número conectado.
 
 ---
 
+## 4b. UX / sync / import (jul/2026)
+
+- [ ] Settings toggles persistem após F5 (`channel.provider_config`)
+- [ ] Import contatos — status `running` → polling atualiza UI
+- [ ] Cliente apaga mensagem no WA → reflete no CW (`mark_inbound_deleted`)
+- [ ] Cliente edita mensagem no WA → reflete no CW (`mark_inbound_edited`)
+- [ ] Agente apaga com `sync_delete_to_whatsapp` — confirmação + delete no WA
+- [ ] Painel diagnóstico exibe webhook URL e `mutation_stats`
+- [ ] `POST evolution_go_test_webhook` retorna `ok: true`
+- [ ] `POST /chat/history-sync` + evento `HISTORY_SYNC` real (salvar fixture)
+
+### 4c. Grupos (`ignore_groups: false`)
+
+- [ ] Toggle **Ignorar grupos** desligado no inbox
+- [ ] Enviar mensagem em grupo WhatsApp → **uma** conversa com nome do grupo
+- [ ] `ContactInbox#source_id` = JID `@g.us` (não telefone do participante)
+- [ ] Mensagens de participantes diferentes no mesmo grupo → mesma conversa
+- [ ] Resposta do agente no Chatwoot → chega no grupo
+- [ ] Salvar fixture real: `message_inbound_group.json`
+
+---
+
 ## 5. Documentar resultados
 
 - [ ] [evolution-target-version.txt](./evolution-target-version.txt)

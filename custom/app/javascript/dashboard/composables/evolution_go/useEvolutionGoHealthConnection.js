@@ -12,6 +12,11 @@ import {
 const POLL_MS = 5000;
 const MAX_POLL_FAILURES = 3;
 
+function resolveInboxRef(inboxRef) {
+  const value = unref(inboxRef);
+  return typeof value === 'function' ? value() : value;
+}
+
 function applySeedToState(inbox, { connectionStatus, phoneNumber }) {
   const seeded = seedConnectionStateFromInbox(inbox);
   if (seeded.connectionStatus) {
@@ -39,7 +44,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   let pollFailureCount = 0;
   let unsubscribeCable = null;
 
-  const inboxId = computed(() => unref(inboxRef)?.id);
+  const inboxId = computed(() => resolveInboxRef(inboxRef)?.id);
   const isConnected = computed(() => connectionStatus.value === 'open');
   const isBusy = computed(() => isReconnecting.value);
 
@@ -104,7 +109,10 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
       staleData.value = false;
     } catch (error) {
       pollFailureCount += 1;
-      applySeedToState(unref(inboxRef), { connectionStatus, phoneNumber });
+      applySeedToState(resolveInboxRef(inboxRef), {
+        connectionStatus,
+        phoneNumber,
+      });
       if (pollFailureCount >= MAX_POLL_FAILURES) {
         staleData.value = true;
         useAlert(
@@ -118,6 +126,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   function startPolling() {
+    if (isQrModalOpen.value || isConnected.value) return;
     stopPolling();
     pollTimer = setInterval(refreshConnection, POLL_MS);
   }
@@ -154,13 +163,17 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   watch(
-    () => unref(inboxRef),
-    inbox => {
+    () => resolveInboxRef(inboxRef)?.id,
+    id => {
       unsubscribeCable?.();
       unsubscribeCable = null;
-      if (!inbox?.id) return;
+      if (!id) {
+        isLoading.value = false;
+        return;
+      }
 
-      unsubscribeCable = subscribeEvolutionGoConnection(inbox.id, applyPayload, {
+      const inbox = resolveInboxRef(inboxRef);
+      unsubscribeCable = subscribeEvolutionGoConnection(id, applyPayload, {
         store,
       });
       const seeded = applySeedToState(inbox, { connectionStatus, phoneNumber });

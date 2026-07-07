@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
+  INTERACTIVE_LIST_BUTTON_TEXT = 'Options'
+  INTERACTIVE_FOOTER_TEXT = 'Chatwoot'
+
   private
 
   def apply_outbound_text(body, message)
@@ -15,7 +18,7 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   end
 
   def build_quoted_context(phone_number, message)
-    reply_id = message.content_attributes[:in_reply_to_external_id]
+    reply_id = message.content_attributes.with_indifferent_access[:in_reply_to_external_id]
     return nil if reply_id.blank?
 
     original = message.conversation.messages.find_by(source_id: reply_id)
@@ -28,15 +31,39 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   def quoted_participant(phone_number, original)
     jid = original&.content_attributes&.dig('evolution_go_remote_jid').presence
     return jid if jid.present?
+    return business_participant_jid if original.present? && !original.incoming?
 
     delivery_jid(phone_number, original)
   end
 
-  def delivery_jid(phone_number, _context_message = nil)
+  def business_participant_jid
+    phone = whatsapp_channel.phone_number.to_s.gsub(/\D/, '')
+    return if phone.blank? || phone.start_with?('55000')
+
+    "#{phone}@s.whatsapp.net"
+  end
+
+  def delivery_jid(phone_number, context_message = nil)
+    stored = context_message&.content_attributes&.dig('evolution_go_remote_jid').presence
+    return stored if stored.present?
+
     value = phone_number.to_s.strip
     return value if value.include?('@')
 
     "#{normalize_phone(value)}@s.whatsapp.net"
+  end
+
+  def delivery_options(phone_number, message)
+    opts = {}
+    opts[:format_jid] = true if lid_delivery?(phone_number, message)
+    opts
+  end
+
+  def lid_delivery?(phone_number, message)
+    return true if phone_number.to_s.include?('@lid')
+
+    jid = message&.content_attributes&.dig('evolution_go_remote_jid').to_s
+    jid.end_with?('@lid')
   end
 
   def mark_incoming_read_after_reply(phone_number, message)
@@ -58,7 +85,7 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   end
 
   def replied_to_incoming_message(message)
-    reply_id = message.content_attributes[:in_reply_to_external_id]
+    reply_id = message.content_attributes.with_indifferent_access[:in_reply_to_external_id]
     return nil if reply_id.blank?
 
     message.conversation.messages.incoming.find_by(source_id: reply_id)
@@ -74,11 +101,15 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     scope.where.not(status: Message.statuses[:read]).first || scope.first
   end
 
-  def create_send_error_private_note!(message, response)
+  def create_send_error_private_note!(message, response_or_text)
     return unless notify_send_errors_private?
     return if message.blank? || message.conversation.blank?
 
-    error_text = error_message(response).presence || 'Unknown error'
+    error_text = if response_or_text.is_a?(String)
+                   response_or_text
+                 else
+                   error_message(response_or_text).presence || 'Unknown error'
+                 end
     message.conversation.messages.create!(
       account_id: message.account_id,
       inbox_id: message.inbox_id,
@@ -97,6 +128,59 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     rand(500..2000)
   end
 
+  def input_select_items(message)
+    Array.wrap(message.content_attributes&.dig('items')).select do |item|
+      item.is_a?(Hash) && item['title'].present?
+    end
+  end
+
+  def dispatch_input_select(phone_number, title, items, quoted, delay, message)
+    options = delivery_options(phone_number, message).merge(quoted: quoted, delay: delay)
+    if items.size <= 3
+      api_client.send_buttons(
+        number: phone_number,
+        title: title,
+        description: title,
+        footer: INTERACTIVE_FOOTER_TEXT,
+        buttons: build_reply_buttons(items),
+        **options
+      )
+    else
+      api_client.send_list(
+        number: phone_number,
+        title: title,
+        description: title,
+        footer_text: INTERACTIVE_FOOTER_TEXT,
+        button_text: INTERACTIVE_LIST_BUTTON_TEXT,
+        sections: [build_list_section(items)],
+        **options
+      )
+    end
+  end
+
+  def build_reply_buttons(items)
+    items.map.with_index(1) do |item, index|
+      {
+        type: 'reply',
+        displayText: item['title'].to_s.truncate(20),
+        id: (item['value'].presence || index).to_s
+      }
+    end
+  end
+
+  def build_list_section(items)
+    {
+      title: 'Options',
+      rows: items.map.with_index(1) do |item, index|
+        {
+          title: item['title'].to_s.truncate(24),
+          description: item['description'].to_s.truncate(72),
+          rowId: (item['value'].presence || index).to_s
+        }
+      end
+    }
+  end
+
   def send_attachment_message(phone_number, message)
     message_id = deliver_attachment_batch(phone_number, message)
     mark_incoming_read_after_reply(phone_number, message) if message_id.present?
@@ -110,7 +194,7 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
       response = dispatch_attachment(
         phone_number: phone_number,
         attachment: attachment,
-        media_source: Custom::Whatsapp::Evolution::MediaPayload.for_attachment(attachment),
+        media_source: sanitize_media_source(Custom::Whatsapp::Evolution::MediaPayload.for_attachment(attachment)),
         message: message,
         include_caption: index.zero?
       )
@@ -155,6 +239,26 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   end
 
   def dispatch_attachment(phone_number:, attachment:, media_source:, message:, include_caption: true)
+    quoted = build_quoted_context(phone_number, message)
+    delay = outbound_delay
+    options = delivery_options(phone_number, message).merge(quoted: quoted, delay: delay)
+
+    if attachment.contact?
+      return api_client.send_contact(
+        number: phone_number,
+        vcard: build_evolution_go_vcard(attachment),
+        **options
+      )
+    end
+
+    if sticker_attachment?(attachment)
+      return api_client.send_sticker(
+        number: phone_number,
+        sticker: media_source,
+        **options
+      )
+    end
+
     mediatype = attachment_mediatype(attachment)
     api_client.send_media(
       number: phone_number,
@@ -162,9 +266,43 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
       url: media_source,
       caption: include_caption ? attachment_caption(message, mediatype) : nil,
       filename: attachment.file.filename.to_s,
-      quoted: build_quoted_context(phone_number, message),
-      delay: outbound_delay
+      **options
     )
+  end
+
+  def contact_attachment?(message)
+    message.attachments.one? && message.attachments.first.contact?
+  end
+
+  def send_contact_card_message(phone_number, message)
+    attachment = message.attachments.first
+    response = api_client.send_contact(
+      number: phone_number,
+      vcard: build_evolution_go_vcard(attachment),
+      quoted: build_quoted_context(phone_number, message),
+      delay: outbound_delay,
+      **delivery_options(phone_number, message)
+    )
+    message_id = process_response(response, message)
+    mark_incoming_read_after_reply(phone_number, message) if message_id.present?
+    message_id
+  end
+
+  def build_evolution_go_vcard(attachment)
+    entry = Whatsapp::ContactMessagePayloadBuilder.build(attachment)
+    phone_digits = attachment.fallback_title.to_s.gsub(/\D/, '')
+    full_name = entry.dig(:name, :formatted_name).presence || phone_digits
+
+    {
+      fullName: full_name,
+      phone: phone_digits,
+      organization: entry.dig(:org, :company)
+    }.compact
+  end
+
+  def sticker_attachment?(attachment)
+    attachment.file_type == 'sticker' ||
+      (attachment.file_type == 'image' && attachment.file.content_type.to_s == 'image/webp')
   end
 
   def attachment_caption(message, mediatype)
@@ -175,10 +313,17 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   end
 
   def attachment_mediatype(attachment)
-    return 'sticker' if attachment.file_type == 'sticker'
+    return 'sticker' if sticker_attachment?(attachment)
     return attachment.file_type if %w[image audio video].include?(attachment.file_type)
 
     'document'
+  end
+
+  def sanitize_media_source(url)
+    value = url.to_s
+    return value unless value.start_with?('data:')
+
+    value.sub(/\Adata:[^;]+;base64,/, '')
   end
 
   def sign_msg?

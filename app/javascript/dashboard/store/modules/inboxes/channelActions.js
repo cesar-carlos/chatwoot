@@ -124,4 +124,12 @@ export const channelActions = {
     const response = await InboxesAPI.postEvolutionGoReconnect(inboxId);
     return response.data;
   },
+  evolutionGoLogout: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionGoLogout(inboxId);
+    return response.data;
+  },
+  evolutionGoImport: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionGoImport(inboxId);
+    return response.data;
+  },
 };

@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 04/jul/2026 · **Fase 0–2 implementada (E2E pendente)**
+**Última revisão:** 07/jul/2026 · **Fase 0–2 + UX/diagnóstico/import + grupos (código); E2E parcial pendente**
 
 ---
 
@@ -13,9 +13,15 @@
 | Fase 0 infra | ✅ |
 | Fase 1 MVP texto + QR + health | ✅ |
 | Fase 2 mídia, READ_RECEIPT, settings | ✅ |
+| Import contatos + enrichment | ✅ |
+| Inbound delete/edit (webhook → Chatwoot) | ✅ |
+| Outbound delete sync (`sync_delete_to_whatsapp`) | ✅ |
+| UX settings (avisos, polling import, confirmações) | ✅ |
+| Diagnóstico (`evolution_go_diagnostics`, test webhook) | ✅ |
+| `convert_markdown_inbound`, `sync_edit_to_whatsapp` (MVP) | ✅ |
+| Import histórico (`HISTORY_SYNC` + `POST /chat/history-sync`) | ✅ código · ⚠️ fixture sintética |
+| Grupos WhatsApp (`ignore_groups: false`) | ✅ código · ⚠️ fixture sintética |
 | Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
-| Job prepend `to_prepare` (dev) | ✅ |
-| Migration índice `instance_name` | ✅ (`schema.rb`) |
 | E2E com instância operador | ⚠️ pendente |
 | Fase 3 (interativos, presence) | ❌ |
 
@@ -24,26 +30,59 @@
 ## Implementado
 
 ### Backend
-- `EvolutionGo::*` services (ApiClient, ConnectionService, SettingsSync, Media*)
-- `EvolutionGoService` + outbound (text, media, quote, mark read on reply)
-- `EvolutionGoNormalizer` (text + media), `EvolutionGoReadReceiptNormalizer`
+- `EvolutionGo::*` services (ApiClient, ConnectionService, SettingsSync, Media*, Import*)
+- `EvolutionGoService` + outbound (text, media, quote, mark read on reply/open)
+- `EvolutionGoNormalizer` (text + media + markdown inbound)
 - `READ_RECEIPT` no job prepend; `MarkReadService` ao abrir conversa
+- Inbound delete/edit: `MessageDeleteSyncService`, `MessageEditSyncService` + eventos `MESSAGE` (revoke), `MESSAGE_DELETE`, `MESSAGES_EDITED`, etc.
+- Outbound delete: `DeleteSyncService` + hook `EvolutionGoDeleteSync` em `Message`
+- Outbound edit (opt-in): `EditSyncService` + hook `EvolutionGoEditSync` em `Message`
+- Import contatos: `ImportService`, `ContactsImporter`, enrichment (`/user/info`, `/user/avatar`)
+- Import histórico: `MessagesImporter`, `HistorySyncProcessor`, evento `HISTORY_SYNC`
+- Diagnóstico: `DiagnosticsService`, `WebhookTestService`, `MutationStatsRecorder`
+- Grupos: `EvolutionGoNormalizer` (group JID + participant), `GroupContactService` / `GroupParticipantService`, `ApiClient#group_info`, `GroupMetadataService` (provider-aware), `PhoneOutgoingSyncService` (outbound grupo)
 - `sync_settings!` / `sync_proxy!` (advanced-settings + delete proxy)
-- `ignore_from_me_echo` respeitado no normalizer
 
 ### Frontend
 - Wizard `EvolutionGo.vue` (server check, regex `instance_name`)
-- `EvolutionGoSettingsPage.vue` (health + WhatsApp/outbound/proxy settings)
-- `isGatewayWhatsAppChannel` / `isEvolutionGoWhatsAppChannel` gates
+- `EvolutionGoSettingsPage.vue` — seções agrupadas, avisos amber, import messages, irreversível (delete/edit sync)
+- `EvolutionGoHealthPage.vue` — conexão + painel diagnóstico + teste webhook
+- `useEvolutionGoImportStatus.js` — polling 5s enquanto `import_status === 'running'`
+- `MessageContextMenu` — confirmação delete com aviso WhatsApp quando `sync_delete_to_whatsapp`
 - ActionCable + polling QR
 
+### API inbox (custom controller)
+- `GET evolution_go_diagnostics`
+- `POST evolution_go_test_webhook`
+- `POST evolution_go_import`
+
 ### Specs
-- Normalizer (text + image), READ_RECEIPT, ApiClient (media/markread/download)
-- Job (MESSAGE + READ_RECEIPT), service (quote), controller, collision
+- Normalizer, READ_RECEIPT, ApiClient, job (MESSAGE + READ_RECEIPT + delete/edit)
+- Delete/edit sync services, import pipeline
+- Fixture `spec/fixtures/evolution_go/history_sync.json` (sintética)
+- Fixture `spec/fixtures/evolution_go/message_inbound_group.json` (sintética)
+- Normalizer group specs (3 exemplos)
+
+---
+
+## Defaults novos inboxes (`ProviderConfigDefaults`)
+
+| Campo | Default |
+|-------|---------|
+| `mark_inbound_deleted` | `true` |
+| `mark_inbound_edited` | `true` |
+| `import_on_connect` | `false` |
+| `convert_markdown_inbound` | `true` |
+| `sync_delete_to_whatsapp` | `false` (opt-in) |
+| `sync_edit_to_whatsapp` | `false` (opt-in) |
+| `import_messages` | `false` |
+
+Inboxes existentes **não** são migrados — só novos inboxes recebem estes defaults.
 
 ---
 
 ## Próximo passo
 
-1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (mídia download, READ_RECEIPT bruto)
-2. **Fase 3** — poll, location, contact, sticker, presence
+1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (`HISTORY_SYNC`, grupos, delete/edit inbound, `POST /chat/history-sync`)
+2. **Fase 3** — poll, location, contact card, sticker, presence
+3. **Proxy edit** — aguarda validação `advanced-settings` (UI hoje: banner create-only)

@@ -1,6 +1,6 @@
 class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   include Api::V1::InboxesHelper
-  before_action :fetch_inbox, except: [:index, :create]
+  before_action :fetch_inbox, except: [:index, :create, :evolution_go_server_check]
   before_action :fetch_agent_bot, only: [:set_agent_bot]
   before_action :validate_limit, only: [:create]
   # we are already handling the authorization in fetch inbox
@@ -20,6 +20,12 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     evolution_logout
     evolution_restart
     evolution_import
+    evolution_go_connection
+    evolution_go_reconnect
+    evolution_go_server_check
+    evolution_go_import
+    evolution_go_diagnostics
+    evolution_go_test_webhook
   ]
   # rubocop:enable Rails/LexicallyScopedActionFilter
 

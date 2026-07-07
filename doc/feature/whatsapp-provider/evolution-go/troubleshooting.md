@@ -79,7 +79,7 @@ Campo `phone` obrigatório — E.164 sem `+`.
 | `FRONTEND_URL` público | Evolution Go alcança URL |
 | Auth | `?token=` = `webhook_token` do channel |
 | Sidekiq | `WhatsappEventsJob` prepend rodando |
-| Filtros | `@g.us`, `fromMe` ignorados por design F1 |
+| Filtros | `@g.us` ignorado quando `ignore_groups: true` (default); `fromMe` echo filtrado |
 
 ### HTTP 401 no webhook
 
@@ -89,6 +89,14 @@ Campo `phone` obrigatório — E.164 sem `+`.
 ### HTTP 404
 
 - `instance_name` na rota ≠ `provider_config.instance_name`
+
+### Mensagens de grupo viram conversas separadas (uma por participante)
+
+| Causa | Ação |
+|-------|------|
+| `ignore_groups: true` (default) | Comportamento antigo: grupos filtrados ou tratados como 1:1 se payload resolver participante |
+| `ignore_groups: false` mas conversas antigas | Conversas criadas antes da correção não se fundem — só **novas** mensagens usam JID do grupo |
+| Payload EG com `key.remoteJid` = participante | `EvolutionGoPayloadAdapter` deve preferir `Info.Chat` `@g.us` — validar com fixture real no E2E |
 
 ---
 

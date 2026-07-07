@@ -30,14 +30,22 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
 
     return 'text' if extract_text_body(message).present?
 
+    Rails.logger.info("[EVOLUTION_GO] unsupported inbound message keys=#{message.keys.join(',')}")
     nil
   end
 
   def build_message_hash(data, wa_id, message_type, key)
     return nil if wa_id.blank?
 
-    message_type = 'text' if message_type.blank?
-    remote_jid = extract_remote_jid(key)
+    if message_type.blank?
+      message_type = 'text'
+      data = data.merge(
+        'message' => (data['message'] || data[:message] || {}).merge(
+          'conversation' => '[Unsupported message type]'
+        )
+      )
+    end
+    remote_jid = group_remote_jid(key, wa_id)
     message_hash = {
       from: wa_id,
       id: key['id'] || key[:id],
@@ -67,8 +75,13 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     body = extract_text_body(data['message'] || data[:message] || {})
     return false if body.blank?
 
+    body = Custom::Whatsapp::Evolution::MarkdownConverter.inbound(body) if convert_markdown_inbound?
     message_hash[:text] = { body: body }
     true
+  end
+
+  def convert_markdown_inbound?
+    ActiveModel::Type::Boolean.new.cast(config['convert_markdown_inbound'])
   end
 
   def build_media_payload(data, type)
@@ -102,5 +115,16 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     return 'stickerMessage' if type == 'sticker' && (message['stickerMessage'].present? || message[:stickerMessage].present?)
 
     "#{type}Message"
+  end
+
+  def group_remote_jid(key, wa_id)
+    remote_jid = extract_remote_jid(key)
+    return remote_jid if group_jid?(remote_jid)
+
+    group_jid?(wa_id) ? wa_id : remote_jid
+  end
+
+  def group_jid?(remote_jid)
+    Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid)
   end
 end

@@ -17,7 +17,7 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 
 | Campo | Default | Motivo |
 |-------|---------|--------|
-| `ignore_groups` | `true` | Chatwoot modela 1:1 |
+| `ignore_groups` | `true` | Default 1:1; com `false`, grupos viram conversa única por JID |
 | `ignore_status` | `true` | Ignorar status@broadcast |
 | `reject_call` | `false` | Operador decide |
 | `read_messages` | `false` | Não marcar lido automaticamente |
@@ -28,6 +28,14 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 | `send_templates_as_text` | `true` | Sem WABA templates |
 | `ignore_from_me_echo` | `true` | Evitar duplicação outbound |
 | `proxy_enabled` | `false` | Opcional no wizard |
+| `mark_inbound_deleted` | `true` | Refletir delete do cliente no Chatwoot |
+| `mark_inbound_edited` | `true` | Refletir edit do cliente no Chatwoot |
+| `import_on_connect` | `false` | Import manual/opt-in (evita carga ao conectar) |
+| `convert_markdown_inbound` | `true` | Paridade Evolution API |
+| `sync_delete_to_whatsapp` | `false` | Irreversível — opt-in explícito |
+| `sync_edit_to_whatsapp` | `false` | Opt-in; sem UI nativa de editar mensagem no CW |
+
+> **Inboxes existentes** mantêm valores já salvos; defaults acima aplicam-se apenas a **novos** inboxes.
 
 ---
 
@@ -46,7 +54,7 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 | Fase | Comportamento |
 |------|---------------|
 | Fase 1 | Seção opcional no wizard — objeto `proxy` no `POST /instance/create` |
-| Fase 2 | Editar via `advanced-settings` |
+| Fase 2 | Remover via `DELETE /instance/proxy/{id}`; **editar host/porta exige recriar instância** (banner na UI) |
 
 Campos: `address`, `port`, `username`, `password` (não `host`/`protocol` da Evolution API).
 
@@ -70,6 +78,20 @@ Campos: `address`, `port`, `username`, `password` (não `host`/`protocol` da Evo
 | `WAID:` prefix em source_id | Legado Evolution→Chatwoot |
 | `sign_msg` default ON (Manager) | Fork OFF |
 | SQL import direto Postgres | Usar API/history-sync Fase 4 |
+| Editar proxy após create | Recriar instância — sem `advanced-settings` proxy validado |
+
+---
+
+## Grupos WhatsApp
+
+| `ignore_groups` | Comportamento |
+|-----------------|---------------|
+| `true` (default) | Mensagens `@g.us` filtradas no normalizer |
+| `false` | Uma conversa por grupo; `ContactInbox#source_id` = JID `@g.us`; nome do contato via `POST /group/info` (`GroupMetadataService`); remetente em `evolution_go_participant_jid` |
+
+Paridade com Evolution API: reutiliza `GroupContactService`, `GroupParticipantService`, `GroupMetadataFetchJob`.
+
+**Limitações:** conversas 1:1 criadas antes de habilitar grupos não se fundem automaticamente; fixture de grupo ainda sintética.
 
 ---
 
@@ -91,7 +113,8 @@ Para `isEvolutionGoWhatsAppChannel`:
 | Regra | `evolution` | `evolution_go` |
 |-------|-------------|----------------|
 | Bypass 24h | ✅ | ✅ |
-| Grupos ignorados MVP | ✅ | ✅ |
+| Grupos ignorados (default) | ✅ | ✅ |
+| Grupos como conversa (`ignore_groups: false`) | ✅ | ✅ |
 | Reopen conversation | ✅ | ✅ |
 | Proxy wizard F1 | ✅ | ✅ |
 | Webhook dedicado | `/webhooks/evolution/` | `/webhooks/evolution_go/` |

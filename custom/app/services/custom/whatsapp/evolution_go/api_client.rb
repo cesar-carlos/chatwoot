@@ -6,6 +6,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   MAX_RETRIES = 1
   RETRY_BACKOFF = 0.3
   RETRYABLE_STATUSES = (500..599)
+  NON_RETRYABLE_PATHS = %w[/instance/create].freeze
   NETWORK_ERRORS = [
     HTTParty::Error,
     SocketError,
@@ -45,12 +46,11 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   end
 
   def server_ok
-    get('/server/ok')
+    get('/server/ok', headers: {})
   end
 
   def create_instance(name:, token: nil, proxy: nil)
-    body = { name: name }
-    body[:token] = token if token.present?
+    body = { name: name, token: token.presence || SecureRandom.uuid }
     body[:proxy] = proxy if proxy.present?
     post('/instance/create', body, headers: admin_headers)
   end
@@ -76,10 +76,11 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     get('/instance/status', headers: instance_headers)
   end
 
-  def send_text(number:, text:, quoted: nil, delay: nil)
+  def send_text(number:, text:, quoted: nil, delay: nil, format_jid: nil)
     body = { number: normalize_number(number), text: text }
     body[:quoted] = quoted if quoted.present?
     body[:delay] = delay if delay.present?
+    body[:formatJid] = format_jid unless format_jid.nil?
     post('/send/text', body, headers: instance_headers)
   end
 
@@ -89,10 +90,66 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
       type: type,
       url: url
     }
-    %i[caption filename quoted delay].each do |key|
-      body[key] = options[key] if options[key].present?
+    %i[caption filename quoted delay format_jid].each do |key|
+      api_key = key == :format_jid ? :formatJid : key
+      value = options[key]
+      body[api_key] = value unless value.nil?
     end
     post('/send/media', body, headers: instance_headers)
+  end
+
+  def send_contact(number:, vcard:, quoted: nil, delay: nil, format_jid: nil)
+    body = { number: normalize_number(number), vcard: vcard }
+    body[:quoted] = quoted if quoted.present?
+    body[:delay] = delay if delay.present?
+    body[:formatJid] = format_jid unless format_jid.nil?
+    post('/send/contact', body, headers: instance_headers)
+  end
+
+  def send_sticker(number:, sticker:, quoted: nil, delay: nil, format_jid: nil)
+    body = { number: normalize_number(number), sticker: sticker }
+    body[:quoted] = quoted if quoted.present?
+    body[:delay] = delay if delay.present?
+    body[:formatJid] = format_jid unless format_jid.nil?
+    post('/send/sticker', body, headers: instance_headers)
+  end
+
+  def send_buttons(number:, title:, description:, footer:, buttons:, **options)
+    body = {
+      number: normalize_number(number),
+      title: title,
+      description: description,
+      footer: footer,
+      buttons: buttons
+    }
+    %i[quoted delay format_jid image_url video_url].each do |key|
+      api_key = case key
+                when :format_jid then :formatJid
+                when :image_url then :imageUrl
+                when :video_url then :videoUrl
+                else key
+                end
+      value = options[key]
+      body[api_key] = value unless value.nil?
+    end
+    post('/send/button', body, headers: instance_headers)
+  end
+
+  def send_list(number:, title:, description:, footer_text:, button_text:, sections:, **options)
+    body = {
+      number: normalize_number(number),
+      title: title,
+      description: description,
+      footerText: footer_text,
+      buttonText: button_text,
+      sections: sections
+    }
+    %i[quoted delay format_jid].each do |key|
+      api_key = key == :format_jid ? :formatJid : key
+      value = options[key]
+      body[api_key] = value unless value.nil?
+    end
+    post('/send/list', body, headers: instance_headers)
   end
 
   def mark_messages_read(number:, ids:)
@@ -105,11 +162,11 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
 
   def download_media(message_envelope)
     envelope = message_envelope.with_indifferent_access
-    response = post('/message/downloadimage', download_image_body(envelope), headers: instance_headers)
+    message = envelope[:message] || envelope['message']
+    response = post('/message/downloadmedia', { message: message }, headers: instance_headers)
     return response if response.success?
 
-    message = envelope[:message] || envelope['message']
-    post('/message/downloadmedia', { message: message }, headers: instance_headers)
+    post('/message/downloadimage', download_image_body(envelope), headers: instance_headers)
   end
 
   def advanced_settings(instance_id)
@@ -128,11 +185,69 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     delete("/instance/delete/#{instance_id}", headers: admin_headers)
   end
 
-  def unwrap(response)
+  def user_contacts
+    get('/user/contacts', headers: instance_headers)
+  end
+
+  def user_info(numbers:)
+    post('/user/info', { number: Array.wrap(numbers).map(&:to_s) }, headers: instance_headers)
+  end
+
+  def user_avatar(number:, preview: false)
+    post(
+      '/user/avatar',
+      { number: normalize_number(number), preview: preview },
+      headers: instance_headers
+    )
+  end
+
+  def delete_message(chat:, message_id:)
+    post(
+      '/message/delete',
+      { chat: chat.to_s, messageId: message_id.to_s },
+      headers: instance_headers
+    )
+  end
+
+  def edit_message(chat:, message_id:, message:)
+    post(
+      '/message/edit',
+      { chat: chat.to_s, messageId: message_id.to_s, message: message.to_s },
+      headers: instance_headers
+    )
+  end
+
+  def history_sync(chat:, days:)
+    post(
+      '/chat/history-sync',
+      { chat: chat.to_s, days: days.to_i },
+      headers: instance_headers
+    )
+  end
+
+  def group_info(group_jid:)
+    post('/group/info', { groupJid: group_jid.to_s }, headers: instance_headers)
+  end
+
+  def unwrap(response, context: nil)
     parsed = response.parsed_response
     return {} unless parsed.is_a?(Hash)
 
-    parsed['data'] || {}
+    data = parsed['data']
+    if data.blank?
+      top_level = extract_top_level_fields(parsed)
+      if top_level.present?
+        Rails.logger.info("[EVOLUTION_GO] unwrap used top-level fields context=#{context}") if context.present?
+        return top_level
+      end
+
+      log_empty_unwrap(context, parsed)
+      return {}
+    end
+
+    return unwrap_qr_string(data, parsed) if data.is_a?(String)
+
+    data.is_a?(Hash) ? data : {}
   end
 
   def dig_field(hash, *keys)
@@ -181,7 +296,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     options[:body] = body.to_json if body.present?
 
     response = HTTParty.public_send(method, "#{@base_url}#{path}", options)
-    return retry_request(method, path, body, headers, attempt) if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response)
+    return retry_request(method, path, body, headers, attempt) if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response, path)
 
     ensure_parseable_response!(response, method, path)
     response
@@ -199,7 +314,9 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     request(method, path, body, headers: headers, attempt: attempt + 1)
   end
 
-  def retryable_failure?(response)
+  def retryable_failure?(response, path)
+    return false if NON_RETRYABLE_PATHS.include?(path)
+
     RETRYABLE_STATUSES.cover?(response.code.to_i)
   end
 
@@ -217,5 +334,33 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
 
   def normalize_number(number)
     number.to_s.gsub(/\D/, '')
+  end
+
+  def extract_top_level_fields(parsed)
+    fields = {}
+    token = dig_field(parsed, 'token', 'Token')
+    fields['token'] = token if token.present?
+    id = dig_field(parsed, 'id', 'Id', 'ID')
+    fields['id'] = id if id.present?
+    qrcode = dig_field(parsed, 'qrcode', 'Qrcode')
+    fields['qrcode'] = qrcode if qrcode.present?
+    code = dig_field(parsed, 'code', 'Code')
+    fields['code'] = code if code.present?
+    fields.presence
+  end
+
+  def unwrap_qr_string(data, parsed)
+    {
+      'qrcode' => data,
+      'code' => dig_field(parsed, 'code', 'Code')
+    }.compact
+  end
+
+  def log_empty_unwrap(context, parsed)
+    return if context.blank?
+
+    Rails.logger.warn(
+      "[EVOLUTION_GO] unwrap returned empty payload context=#{context} keys=#{parsed.keys.join(',')}"
+    )
   end
 end
