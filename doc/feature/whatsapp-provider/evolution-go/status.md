@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 08/jul/2026 · **Integração completa (6 fases código); E2E operador pendente**
+**Última revisão:** 08/jul/2026 (code review + latency + bug fixes) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -30,7 +30,13 @@
 | `user/check` em enrichment (opcional) | ✅ |
 | `set_presence` spike (ApiClient) | ✅ |
 | Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
-| E2E com instância operador | ⚠️ pendente |
+| Phone echo sync (`SEND_MESSAGE` / `fromMe`) | ✅ |
+| Latency (webhook `:default`, debounce, async mark-read) | ✅ jul/2026 |
+| `ProviderConfigMerger` atomic runtime writes | ✅ jul/2026 |
+| `UrlSafetyGuard` on server check | ✅ jul/2026 |
+| QR deferred to modal (no sync fetch on create) | ✅ jul/2026 |
+| Read receipt batch processing | ✅ jul/2026 |
+| `GET evolution_go_connection`, `POST evolution_go_logout`, `POST evolution_go_server_check` | ✅ |
 | Fase 3 (interativos além de location, presence wiring) | ⚠️ parcial |
 
 ---

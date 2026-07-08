@@ -1,6 +1,6 @@
 # Evolution Go — provider `evolution_go`
 
-Landing page do provider planejado para Evolution Go.
+Landing page do provider Evolution Go (implementado).
 
 ## Estado atual
 

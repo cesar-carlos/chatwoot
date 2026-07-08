@@ -53,6 +53,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     if (normalized.qrcodeBase64) {
       qrcodeBase64.value = normalized.qrcodeBase64;
       qrRefreshError.value = false;
+      // eslint-disable-next-line no-use-before-define -- re-arm expiry when fresh QR arrives
       armQrExpiryTimer();
     }
     if (normalized.pairingCode) {
@@ -83,7 +84,10 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
 
     isLoading.value = true;
     refreshInFlight = store
-      .dispatch('inboxes/fetchEvolutionGoConnection', { inboxId: id, includeQr })
+      .dispatch('inboxes/fetchEvolutionGoConnection', {
+        inboxId: id,
+        includeQr,
+      })
       .then(payload => {
         applyPayload(payload);
       })

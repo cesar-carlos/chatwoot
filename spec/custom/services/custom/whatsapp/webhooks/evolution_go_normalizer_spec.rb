@@ -56,9 +56,9 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
   end
 
   it 'allows fromMe when ignore_from_me_echo is false' do
-    channel.update!(
-      provider_config: channel.provider_config.merge('ignore_from_me_echo' => false)
-    )
+    config = channel.provider_config.merge('ignore_from_me_echo' => false)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
     payload = fixture.deep_dup
     payload['data']['Info']['IsFromMe'] = true
 

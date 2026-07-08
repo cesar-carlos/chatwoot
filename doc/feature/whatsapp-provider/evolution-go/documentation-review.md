@@ -104,7 +104,20 @@ Evolution Go tem **o mesmo envelope** (`event` + `instance`). Sem cuidado:
 | `error-handling.md` | ✅ | ❌ | Evolution Go tem runbook de erros |
 | `troubleshooting.md` | ✅ | ❌ | Z-API cria após piloto |
 | `ConnectionEvents` separado | ❌ (inline no `ConnectionService`) | ✅ | Ambas válidas — evitar drift futuro |
-| `Broadcaster` dedicado | ❌ | ❌ | AC broadcast inline no ConnectionService/Events |
+| `Broadcaster` dedicado | ✅ | ❌ | `EvolutionGo::Broadcaster` + disconnect toast |
+
+---
+
+## Revisão jul/2026 (pós-implementação + review)
+
+| Área | Ação |
+|------|------|
+| `webhook-events.md` | SEND_MESSAGE echo sync, EventNames, aliases, canonical subscribe |
+| `decisions.md` | §7/§18/§25 updated; ADR §28–§31 (echo, EventNames, latency, SSRF) |
+| `provider-config-mapping.md`, `inbox-business-rules.md` | Proxy `host` not `address` |
+| `troubleshooting.md`, `status.md`, `README.md` | Sync with current behavior |
+| `api-reference.md`, `postman-validation.md`, `spec-design.md`, `frontend-wizard-spec.md` | ✅ alinhados jul/2026 |
+| Código | 23 review items: P1–P3 fixes applied jul/2026 |
 
 ---
 

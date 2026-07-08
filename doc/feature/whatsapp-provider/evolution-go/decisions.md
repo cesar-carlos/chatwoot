@@ -107,12 +107,13 @@ Doc: [send-a-text-message](https://docs.evolutionfoundation.com.br/evolution-go/
 
 ---
 
-## 7. Echo `fromMe` no inbound
+## 7. Echo `fromMe` / `SEND_MESSAGE`
 
 | Decisão | Valor |
 |---------|-------|
-| **MVP** | Ignorar `MESSAGE` com `data.key.fromMe: true` |
-| **Fase 2+** | Campo `ignore_from_me_echo` default `true` |
+| **Default** | `ignore_from_me_echo: true` — drop echo events |
+| **Opt-in** | When `false`, `SEND_MESSAGE` and `MESSAGE` with `fromMe: true` → `PhoneOutgoingSyncService` (outgoing, `phone_sent: true`) |
+| **Contact** | `PeerContactInboxResolver` reuses existing conversations |
 
 ---
 
@@ -225,8 +226,8 @@ Detalhe: [business-rules-adaptation.md](./business-rules-adaptation.md)
 
 | Decisão | Valor |
 |---------|-------|
-| **Evento** | `MESSAGE` (não `MESSAGES_UPSERT`) |
-| **Echo** | Ignorar `SEND_MESSAGE` no job |
+| **Evento** | `MESSAGE` (wire: `Message`; normalized via `EventNames`) |
+| **Echo** | `SEND_MESSAGE` subscrito; processado quando `ignore_from_me_echo: false` |
 
 ---
 
@@ -303,14 +304,11 @@ Detalhe operação: [troubleshooting.md § Reconnect](./troubleshooting.md).
 
 | Decisão | Valor |
 |---------|-------|
-| **Primário** | `POST /message/downloadimage` — OpenAPI oficial |
-| **Fallback** | `POST /message/downloadmedia` — Postman (body `message.{type}Message`) se primário falhar |
-| **`ApiClient`** | `download_media(message_payload)` tenta `downloadimage` → `downloadmedia` |
-| **Spike** | Confirmar qual endpoint responde 2xx na versão congelada |
+| **Endpoint** | `POST /message/downloadmedia` only (body `{ message }`) |
+| **`ApiClient`** | `download_media` — no `/message/downloadimage` fallback (absent from current swagger) |
+| **Job queue** | `MediaDownloadJob` on `:default` |
 
-Doc: [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image)
-
-**Status:** **✅ Fechado** (22/jun/2026) — validar comportamento no E2E §2b.
+**Status:** **✅ Atualizado** (jul/2026) — swagger jun/2026 lists only `downloadmedia`.
 
 ---
 
@@ -369,3 +367,47 @@ end
 | jun/2026 | ADR §22 `global_api_key` fechado; §23 reconnect sempre reenvia webhook no connect |
 | 22/jun/2026 | Audit Postman MCP; §24 reconnect vs connect; §25 download mídia; §26 casing ApiClient |
 | 24/jun/2026 | ADR §27 prepend collision; fix EvolutionGoController envelope key; registry format |
+| jul/2026 | §28–§31: echo sync, EventNames, latency, SSRF guard; §7/§18/§25 updated |
+
+---
+
+## 28. Phone echo sync (`SEND_MESSAGE`)
+
+| Decisão | Valor |
+|---------|-------|
+| **Service** | `PhoneOutgoingSyncService` + `PeerContactInboxResolver` |
+| **Setting** | `ignore_from_me_echo` (default `true`) |
+| **Dedup** | `source_id` + `MessageDedupLock`; release lock on early exit |
+
+---
+
+## 29. Event name normalization
+
+| Decisão | Valor |
+|---------|-------|
+| **Module** | `Custom::Whatsapp::EvolutionGo::EventNames` |
+| **Wire** | PascalCase (`Message`, `LoggedOut`) → SCREAMING_SNAKE (`MESSAGE`, `LOGGED_OUT`) |
+| **Handlers** | Accept aliases: `LOGGEDOUT`, `QR_CODE`, `DELETE`, `RECEIPT`, etc. |
+
+---
+
+## 30. Latency & queue priority (jul/2026)
+
+| Decisão | Valor |
+|---------|-------|
+| **Webhook enqueue** | `WhatsappEventsJob` on queue `:default` |
+| **`last_webhook_at`** | Debounced 30s via Redis `EVOLUTION_GO_WEBHOOK_TOUCH_DEBOUNCE` |
+| **Media / mark-read** | `MediaDownloadJob`, `MarkReadJob` on `:default`; `mark_read_on_reply` async |
+| **ApiClient** | `RETRY_BACKOFF` 0.1s; `validate_provider_config` cache 60s |
+| **Runtime config** | `ProviderConfigMerger` atomic JSONB merge |
+
+---
+
+## 31. SSRF guard — server check
+
+| Decisão | Valor |
+|---------|-------|
+| **Module** | `Custom::Whatsapp::EvolutionGo::UrlSafetyGuard` |
+| **Blocks** | Link-local / cloud metadata (`169.254.0.0/16`, etc.) |
+| **Allows** | RFC1918, localhost (self-hosted setups) |
+| **ApiClient** | `follow_redirects: false` on all requests |

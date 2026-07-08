@@ -1,6 +1,6 @@
 # Especificação UI — Wizard e settings Evolution Go
 
-Planejamento frontend **sem implementação**. Define componentes, fluxo e integração com `custom/` dashboard.
+Planejamento frontend **implementado** (jul/2026). Componentes reais abaixo; este doc descreve contrato UX — ver código em `custom/app/javascript/`.
 
 **Relacionados:** [inbox-business-rules.md](./inbox-business-rules.md) · [implementation-plan.md](./implementation-plan.md) · [../gaps-and-blockers.md](../gaps-and-blockers.md)
 
@@ -80,21 +80,18 @@ Modo **instância existente:** `global_api_key` opcional no Step 1 — obrigató
 
 ---
 
-## Composable sugerido
+## Composables implementados
 
-```
-custom/app/javascript/dashboard/composables/useEvolutionGoConnection.js
-```
+| Arquivo | Responsabilidade |
+|---------|------------------|
+| `useEvolutionGoHealthConnection.js` | Status, reconnect, logout, `isReconnecting` |
+| `useEvolutionGoQrSession.js` | QR modal, polling com `includeQr`, expiry timer |
+| `useEvolutionGoImportStatus.js` | Banner import contatos/messages |
+| `evolutionGoCableRegistry.js` | ActionCable por inbox |
 
-| Export | Responsabilidade |
-|--------|------------------|
-| `connectionStatus` | ref `open` / `connecting` / `close` |
-| `qrCode` | base64 do QR |
-| `pairingCode` | string 8 dígitos |
-| `startPolling()` | status + qr fallback |
-| `subscribeActionCable(inboxId)` | WS events |
+Componentes: `EvolutionGo.vue` (wizard), `EvolutionGoSettingsPage.vue`, `EvolutionGoHealthPage.vue`, `EvolutionGoQrScanModal.vue`.
 
-API calls via store action ou endpoint Chatwoot proxy (recomendado: **backend** `ConnectionService` expõe JSON — não expor `global_api_key` no browser).
+**QR sob demanda:** health poll **não** busca QR a cada 5s — apenas o modal (`include_qr=true`) dispara `GET /instance/qr`.
 
 ---
 

@@ -64,16 +64,16 @@ Evolution GO
 |------------------|-------------------|------|
 | `GET /group/my` | `GET /group/myall` | ✅ Corrigido em [documentation-links.md](./documentation-links.md) |
 | `POST /instance/{id}/advanced-settings` | `GET` + `PUT /instance/{id}/advanced-settings` | ✅ Corrigido em [api-reference.md](./api-reference.md) |
-| Só `/message/downloadimage` | Postman também tem `/message/downloadmedia` | ⚠️ E2E — OpenAPI só indexa `downloadimage` |
+| Só `/message/downloadimage` | Swagger atual: `/message/downloadmedia` | ✅ Fork usa só `downloadmedia` (jul/2026) |
 
 ### Ainda abertas — validar no E2E
 
 | Tema | Postman | OpenAPI | Impacto fork |
 |------|---------|---------|--------------|
 | **advanced-settings body** | `rejectCalls`, `rejectCallMessage`, `readStatus` | create response: `rejectCall`, `msgRejectCall`, `ignoreGroups`, `ignoreStatus` | Fase 2 `sync_settings` — aceitar variantes |
-| **download mídia** | `POST /message/downloadmedia` (body `message.imageMessage`) | `POST /message/downloadimage` (campos flat) | Fase 2 inbound mídia |
+| **download mídia** | `POST /message/downloadmedia` | Ausente do swagger jul/2026 | ✅ Fork — só `downloadmedia` |
 | **reconnect** | `POST /instance/reconnect` | Não no `llms.txt` | **Não usar** no fork — ADR §24; connect canônico |
-| **create proxy** | comentário `host` | `address`, `port`, `username`, `password` | Seguir OpenAPI |
+| **create proxy** | comentário `host` | OpenAPI: `host`, `port`, `username`, `password` | ✅ Fork envia `host` |
 | **connect extras** | `websocketEnable`, `rabbitmqEnable`, `natsEnable`, `subscribe: ["ALL"]` | Parcial no create response | Fora MVP; documentar para ops |
 | **send/contact body** | `vcard: { fullName, organization, phone }` | OpenAPI genérico | Fase 3 |
 
@@ -160,8 +160,7 @@ Evolution GO
 | Presence | `POST /message/presence` | `{ number, state, isAudio? }` |
 | Delete | `POST /message/delete` | `{ chat, messageId }` |
 | Edit | `POST /message/edit` | `{ chat, messageId, message }` |
-| Download media | `POST /message/downloadmedia` | `{ message: { imageMessage: {...} } }` |
-| Download image | `POST /message/downloadimage` | campos flat (OpenAPI) |
+| Download media | `POST /message/downloadmedia` | `{ message: { imageMessage: {...} } }` — **único usado pelo fork** |
 
 ---
 
@@ -222,7 +221,7 @@ Evolution GO
 - [ ] Confirmar `data.Info.ID` no send text response
 - [ ] Confirmar webhook `MESSAGE` inbound
 - [ ] Testar `GET`+`PUT /instance/{id}/advanced-settings` vs campos create
-- [ ] Testar `downloadimage` vs `downloadmedia` para mídia inbound
+- [ ] Testar `POST /message/downloadmedia` para mídia inbound
 - [ ] Atualizar [evolution-target-version.txt](./evolution-target-version.txt)
 
 ---

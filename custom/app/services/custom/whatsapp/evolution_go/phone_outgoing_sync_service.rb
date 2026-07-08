@@ -133,8 +133,8 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
       content: content,
       source_id: key['id'],
       content_attributes: {
-        phone_sent: true,
-        external_created_at: timestamp.iso8601,
+        :phone_sent => true,
+        :external_created_at => timestamp.iso8601,
         Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY => remote_jid
       }.compact,
       created_at: timestamp,

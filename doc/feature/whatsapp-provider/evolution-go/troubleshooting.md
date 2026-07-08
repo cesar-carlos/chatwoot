@@ -134,7 +134,7 @@ Ver [decisions.md §23](./decisions.md).
 | Causa | Ação |
 |-------|------|
 | Echo `fromMe` | Normalizer deve ignorar |
-| `SEND_MESSAGE` + outbound CW | Não subscrever `SEND_MESSAGE` no MVP |
+| `SEND_MESSAGE` + outbound CW | `SEND_MESSAGE` is subscribed; use `ignore_from_me_echo: false` for phone echo sync; dedup by `source_id` |
 | Retry Go (5×) | Dedup Redis `source_id` |
 
 ---
@@ -213,4 +213,4 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 |---------|---------------|
 | Payload webhook desconhecido | Salvar raw JSON → fixture + atualizar normalizer |
 | `READ_RECEIPT` formato diferente | Spike Fase 2 |
-| Mídia inbound falha | `download_media` — primário `downloadimage`, fallback `downloadmedia` ([decisions.md §25](./decisions.md)) |
+| Mídia inbound falha | `POST /message/downloadmedia` only ([decisions.md §25](./decisions.md)) |

@@ -121,9 +121,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
       sleep(QR_FETCH_DELAY_SECONDS) if attempt < attempts - 1
     end
 
-    if raise_on_failure
-      raise last_error || transient_qr_unavailable_error
-    end
+    raise last_error || transient_qr_unavailable_error if raise_on_failure
 
     Rails.logger.warn(
       "[EVOLUTION_GO] QR not ready after #{attempts} attempts channel=#{channel.id}: #{last_error&.message}"

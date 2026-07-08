@@ -128,7 +128,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
       .and not_change(Conversation, :count)
       .and not_change(ContactInbox, :count)
 
-    message = Message.last
+    message = Message.find_by!(source_id: payload.dig('data', 'Info', 'ID'))
     expect(message.conversation.contact_inbox).to eq(contact_inbox)
     expect(message.content).to eq('Mensagem enviada pelo celular')
   end
@@ -148,7 +148,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
       Webhooks::WhatsappEventsJob.perform_now(job_payload)
     end.to change(Message, :count).by(1)
 
-    message = Message.last
+    message = Message.find_by!(source_id: '3EB0PHONE-SENT-002')
     aggregate_failures do
       expect(message.outgoing?).to be(true)
       expect(message.content).to eq('Mensagem enviada pelo celular')

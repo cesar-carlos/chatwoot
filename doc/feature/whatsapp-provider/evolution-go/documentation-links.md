@@ -81,8 +81,9 @@
 | Presence (typing) | `POST` | `/message/presence` | [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/set-chat-presence) | 3 |
 | Edit | `POST` | `/message/edit` | [edit-a-message](https://docs.evolutionfoundation.com.br/evolution-go/edit-a-message) | 3 |
 | Delete for everyone | `POST` | `/message/delete` | [delete-a-message-for-everyone](https://docs.evolutionfoundation.com.br/evolution-go/delete-a-message-for-everyone) | 3 |
-| Download media | `POST` | `/message/downloadmedia` | Postman — Fase 2 |
-| Download image | `POST` | `/message/downloadimage` | [download-an-image](https://docs.evolutionfoundation.com.br/evolution-go/download-an-image) — OpenAPI; validar no E2E |
+| Download media | `POST` | `/message/downloadmedia` | Fase 2 — único endpoint usado pelo fork |
+
+> `/message/downloadimage` aparece em docs legadas; **ausente** do swagger jul/2026 — não usar no fork.
 
 ---
 

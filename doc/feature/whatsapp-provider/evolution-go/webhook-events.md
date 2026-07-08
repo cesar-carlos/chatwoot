@@ -4,6 +4,8 @@ Formato dos webhooks que a Evolution Go envia ao Chatwoot e como o **`EvolutionG
 
 **Código referência:** [events-system.md](https://github.com/evolution-foundation/evolution-go/blob/main/docs/wiki/recursos-avancados/events-system.md)
 
+**Wire format:** Evolution Go sends PascalCase event names (`Message`, `SendMessage`, `LoggedOut`). The fork normalizes them via `Custom::Whatsapp::EvolutionGo::EventNames` to SCREAMING_SNAKE (`MESSAGE`, `SEND_MESSAGE`, `LOGGED_OUT`) before routing. Examples in this doc use the normalized form unless noted.
+
 ---
 
 ## Envelope padrão
@@ -71,6 +73,7 @@ Configurar em `subscribe` no `POST /instance/connect`:
 ```json
 [
   "MESSAGE",
+  "SEND_MESSAGE",
   "CONNECTION",
   "QRCODE",
   "READ_RECEIPT",
@@ -84,7 +87,7 @@ Configurar em `subscribe` no `POST /instance/connect`:
 
 When `ignore_groups: false`, also include `GROUP`.
 
-Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via health UI **Sync webhook events**, `POST evolution_go_sync_webhook`, reconnect, or `rake evolution_go:sync_webhooks`.
+Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via health UI **Sync webhook events**, `POST evolution_go_sync_webhook`, reconnect, or `rake evolution_go:sync_webhooks`. Auto-sync also runs when `ignore_from_me_echo` or `ignore_groups` change (`WEBHOOK_SUBSCRIBE_KEYS`).
 
 **Legacy MVP (superseded):**
 
@@ -92,9 +95,28 @@ Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via he
 ["MESSAGE", "CONNECTION", "QRCODE"]
 ```
 
-Fase 2: `READ_RECEIPT` (now in canonical list above).
+**Do not subscribe:** `ALL` (noisy). Group events when `ignore_groups: true`.
 
-**Não subscrever no MVP:** `SEND_MESSAGE` (echo outbound), `ALL`, eventos de grupo se `ignore_groups: true`.
+### `SEND_MESSAGE` / phone echo sync
+
+`SEND_MESSAGE` is in the canonical subscribe list. Behavior depends on `ignore_from_me_echo` (default `true`):
+
+| Setting | Behavior |
+|---------|----------|
+| `ignore_from_me_echo: true` | Event logged and dropped |
+| `ignore_from_me_echo: false` | `PhoneOutgoingSyncService` creates an **outgoing** message with `content_attributes.phone_sent: true`; contact resolved via `PeerContactInboxResolver` |
+
+Same path for `MESSAGE` events with `fromMe: true`. Delete/edit protocol messages on `SEND_MESSAGE` are routed to delete/edit sync services before echo sync.
+
+### Event name aliases (after normalization)
+
+| Normalized | Also accepted |
+|------------|---------------|
+| `LOGGED_OUT` | `LOGGEDOUT` |
+| `QR_CODE` | `QRCODE` |
+| `DELETE` | `MESSAGE_DELETE`, `MESSAGES_DELETE` |
+| `RECEIPT` | `READ_RECEIPT` |
+| `SEND_MESSAGE_UPDATE` | (edit alias) |
 
 ### Catálogo completo `subscribe` (connect)
 
@@ -108,7 +130,7 @@ CHAT_PRESENCE, CALL, CONNECTION, LABEL, CONTACT, GROUP, NEWSLETTER, QRCODE
 | Evento | Categoria | Fase fork | Ação |
 |--------|-----------|-----------|------|
 | `MESSAGE` | Mensagens | 1 | Normalizer inbound |
-| `SEND_MESSAGE` | Mensagens | — | **Ignorar** (echo) |
+| `SEND_MESSAGE` | Mensagens | 1 | Echo sync when `ignore_from_me_echo: false` → `PhoneOutgoingSyncService` |
 | `READ_RECEIPT` | Status | 2 | Status read |
 | `CONNECTION` | Sessão | 1 | `connection_status` |
 | `QRCODE` | Sessão | 1 | QR wizard |

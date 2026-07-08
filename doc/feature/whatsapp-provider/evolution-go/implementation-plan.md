@@ -1,5 +1,7 @@
 # Plano de implementação — Provider Evolution Go
 
+> **Nota (jul/2026):** Documento histórico de fases — ver [status.md](./status.md) para estado atual. Fases 0–4 implementadas; E2E e fixtures reais pendentes.
+
 Integração `provider: 'evolution_go'` no fork Chatwoot. Alinhado com [../implementation-plan-second-whatsapp-provider.md](../implementation-plan-second-whatsapp-provider.md).
 
 **Pré-requisitos:** [differences-from-evolution-api.md](./differences-from-evolution-api.md) · [decisions.md](./decisions.md) · [status.md](./status.md)
@@ -142,7 +144,7 @@ POST /send/text
 | # | Item |
 |---|------|
 | 2.1 | `send_attachment_message` → `POST /send/media` |
-| 2.2 | Mídia inbound: `ApiClient#download_media` (`downloadimage` → fallback `downloadmedia`) |
+| 2.2 | Mídia inbound: `ApiClient#download_media` (`POST /message/downloadmedia` only) |
 | 2.3 | `READ_RECEIPT` → `statuses[]` flat |
 | 2.4 | Reply/quote: `{ quoted: { messageId, participant } }` no send |
 | 2.5 | `GET`+`PUT /instance/:id/advanced-settings` (`sync_settings!`) |

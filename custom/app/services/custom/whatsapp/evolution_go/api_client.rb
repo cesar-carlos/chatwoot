@@ -211,7 +211,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   end
 
   def user_check(number:)
-    numbers = Array.wrap(number).map { |value| normalize_number(value) }.compact
+    numbers = Array.wrap(number).filter_map { |value| normalize_number(value) }
     post('/user/check', { number: numbers }, headers: instance_headers)
   end
 

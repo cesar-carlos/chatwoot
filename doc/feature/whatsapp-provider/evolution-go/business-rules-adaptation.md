@@ -56,7 +56,7 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 | Fase 1 | Seção opcional no wizard — objeto `proxy` no `POST /instance/create` |
 | Fase 2 | Remover via `DELETE /instance/proxy/{id}`; **editar host/porta exige recriar instância** (banner na UI) |
 
-Campos: `address`, `port`, `username`, `password` (não `host`/`protocol` da Evolution API).
+Campos: `host`, `port`, `protocol`, `username`, `password`. `POST /instance/proxy/{instanceId}` exists for post-create updates (fork still requires recreate for settings UI proxy changes).
 
 ---
 
