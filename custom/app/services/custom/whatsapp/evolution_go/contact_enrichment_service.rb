@@ -12,7 +12,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
 
     additional = contact.additional_attributes.to_h.stringify_keys
     return true if remote_jid.to_s.present? && additional[EVOLUTION_GO_REMOTE_JID_KEY] != remote_jid.to_s
-    return true if !contact.avatar.attached?
+    return true unless contact.avatar.attached?
     return true if push_name_changed?(contact, push_name)
 
     enrichment_stale?(contact)
@@ -120,8 +120,8 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
 
     applied = false
     applied = apply_user_info!(jid) if jid.present?
-    applied = fetch_and_apply_avatar!(number) || applied
-    applied
+    fetch_and_apply_avatar!(number) || applied
+
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] contact enrichment failed for contact #{contact.id}: #{e.message}")
     false
@@ -144,7 +144,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     users[jid] || users[jid.to_s] || users.values.first
   end
 
-  def apply_profile(profile, jid)
+  def apply_profile(profile, jid) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     return if profile.blank?
 
     updates = {}

@@ -9,16 +9,14 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
       data = data.with_indifferent_access
       info = data[:Info]
 
-      if info.is_a?(Hash)
-        return canonicalize_from_info(data, info.with_indifferent_access)
-      end
+      return canonicalize_from_info(data, info.with_indifferent_access) if info.is_a?(Hash)
 
       return data if data[:key].present?
 
       {}
     end
 
-    def build_key(info)
+    def build_key(info) # rubocop:disable Metrics/CyclomaticComplexity
       chat = info[:Chat].to_s
       sender = info[:Sender].to_s
       sender_alt = (info[:SenderAlt] || info[:RecipientAlt]).to_s
@@ -35,7 +33,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
       }.compact
     end
 
-    def unwrap_nested_message(message)
+    def unwrap_nested_message(message) # rubocop:disable Metrics/CyclomaticComplexity
       return {} unless message.is_a?(Hash)
 
       message = message.with_indifferent_access

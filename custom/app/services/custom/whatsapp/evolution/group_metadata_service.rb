@@ -32,7 +32,7 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
 
   private
 
-  def fetch_subject(group_jid)
+  def fetch_subject(group_jid) # rubocop:disable Metrics/CyclomaticComplexity
     response = group_info_response(group_jid)
     return unless response&.success?
 

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength, Metrics/MethodLength, Metrics/ParameterLists
 module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   INTERACTIVE_LIST_BUTTON_TEXT = 'Options'
   INTERACTIVE_FOOTER_TEXT = 'Chatwoot'
@@ -358,3 +359,4 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     phone.to_s.gsub(/\D/, '')
   end
 end
+# rubocop:enable Metrics/ModuleLength, Metrics/MethodLength, Metrics/ParameterLists

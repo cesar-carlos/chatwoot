@@ -8,6 +8,9 @@ namespace :evolution_go do
     failed = 0
 
     scope.find_each do |channel|
+      config = channel.provider_config || {}
+      next if config['instance_id'].blank?
+
       service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel)
       events = service.webhook_subscribe_sync.sync!
       synced += 1

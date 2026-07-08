@@ -13,6 +13,7 @@ import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoi
 import { isWavoipOutboundCablePayload } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
 // FORK: Evolution disconnect alert
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
+import { onEvolutionGoConnectionClosed } from 'customDashboard/lib/evolution_go/evolutionGoCableRegistry';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 
 const { isImpersonating } = useImpersonation();
@@ -59,6 +60,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       'voice_call.permission_granted': this.onVoiceCallPermissionGranted,
       // FORK: Evolution WhatsApp disconnect
       'evolution.connection_closed': this.onEvolutionConnectionClosed,
+      'evolution_go.connection_closed': this.onEvolutionGoConnectionClosed,
     };
   }
 
@@ -376,6 +378,12 @@ class ActionCableConnector extends BaseActionCableConnector {
   onEvolutionConnectionClosed = ({ data }) => {
     if (!data?.inbox_id) return;
     onEvolutionConnectionClosed(data);
+  };
+
+  // eslint-disable-next-line class-methods-use-this
+  onEvolutionGoConnectionClosed = ({ data }) => {
+    if (!data?.inbox_id) return;
+    onEvolutionGoConnectionClosed(data);
   };
 }
 

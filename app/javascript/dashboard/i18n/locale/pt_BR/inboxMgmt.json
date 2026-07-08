@@ -1264,6 +1264,8 @@
           "SYNC_WEBHOOK_SUCCESS": "Inscrição do webhook sincronizada com o Evolution Go.",
           "SYNC_WEBHOOK_ERROR": "Não foi possível sincronizar a inscrição do webhook.",
           "INSTANCE_NAME": "Nome da instância",
+          "INSTANCE_LOGS": "Logs da instância",
+          "LOAD_ERROR": "Não foi possível carregar o diagnóstico.",
           "LOADING": "Carregando diagnóstico…",
           "INBOUND_DELETE_SKIPPED": "{count} exclusões do cliente ignoradas (mensagem não encontrada)",
           "INBOUND_EDIT_SKIPPED": "{count} edições do cliente ignoradas (mensagem não encontrada)"

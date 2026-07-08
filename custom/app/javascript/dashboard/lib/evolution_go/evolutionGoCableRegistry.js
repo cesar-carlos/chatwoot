@@ -1,4 +1,6 @@
 import { createConsumer } from '@rails/actioncable';
+import { useAlert } from 'dashboard/composables';
+import i18n from 'dashboard/i18n';
 import { normalizeEvolutionConnectionPayload } from 'customDashboard/lib/evolution/evolutionConnectionPayload';
 
 const registry = new Map();
@@ -91,4 +93,12 @@ export function subscribeEvolutionGoConnection(
     userId: store.getters.getCurrentUserID,
     onUpdate,
   });
+}
+
+export function onEvolutionGoConnectionClosed(data) {
+  useAlert(
+    i18n.global.t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.DISCONNECTED_ALERT', {
+      inbox: data.inbox_name,
+    })
+  );
 }

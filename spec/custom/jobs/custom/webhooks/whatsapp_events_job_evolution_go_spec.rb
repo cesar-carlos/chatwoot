@@ -77,7 +77,10 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     Webhooks::WhatsappEventsJob.perform_now(job_payload)
   end
 
-  it 'enqueues group metadata fetch for GROUP events' do
+  it 'enqueues group metadata fetch for GROUP events when groups are enabled' do
+    channel.update!(
+      provider_config: channel.provider_config.merge('ignore_groups' => false)
+    )
     payload = {
       'event' => 'GROUP',
       'evolution_go_instance_name' => 'test-go-instance',
@@ -87,6 +90,19 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
 
     expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).to receive(:perform_later)
       .with(channel.id, '120363012345678901@g.us')
+
+    Webhooks::WhatsappEventsJob.perform_now(payload)
+  end
+
+  it 'skips GROUP events when ignore_groups is enabled' do
+    payload = {
+      'event' => 'GROUP',
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id,
+      'data' => { 'groupJid' => '120363012345678901@g.us' }
+    }
+
+    expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).not_to receive(:perform_later)
 
     Webhooks::WhatsappEventsJob.perform_now(payload)
   end

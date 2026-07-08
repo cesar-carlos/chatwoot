@@ -140,4 +140,12 @@ export const channelActions = {
     const response = await InboxesAPI.postEvolutionGoPair(inboxId, phone);
     return response.data;
   },
+  fetchEvolutionGoDiagnostics: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.getEvolutionGoDiagnostics(inboxId);
+    return response.data;
+  },
+  evolutionGoTestWebhook: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionGoTestWebhook(inboxId);
+    return response.data;
+  },
 };
