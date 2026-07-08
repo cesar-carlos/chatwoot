@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength, Metrics/MethodLength, Metrics/CyclomaticComplexity
 module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   def perform(params = {})
     params = params.with_indifferent_access
@@ -27,7 +28,17 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
 
   def find_evolution_go_channel(params)
     channel_id = params[:channel_id]
-    Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution_go') if channel_id.present?
+    if channel_id.present?
+      channel = Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution_go')
+      return channel if channel.present?
+    end
+
+    instance_name = params[:evolution_go_instance_name]
+    return if instance_name.blank?
+
+    Channel::Whatsapp.where(provider: 'evolution_go')
+                     .where("provider_config->>'instance_name' = ?", instance_name)
+                     .first
   end
 
   def dispatch_evolution_go_event(channel, params)
@@ -47,7 +58,7 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     when 'GROUP'
       process_group_event(channel, params)
     when 'SEND_MESSAGE'
-      nil
+      Rails.logger.info("[EVOLUTION_GO] ignored outbound echo event=#{params[:event]} channel=#{channel.id}")
     else
       Rails.logger.info("[EVOLUTION_GO] ignored event=#{params[:event]} channel=#{channel.id}")
     end
@@ -106,13 +117,28 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def process_history_sync_event(channel, params)
-    Custom::Whatsapp::EvolutionGo::Import::HistorySyncProcessor.new(
-      channel: channel,
-      data: params[:data]
-    ).perform
+    sender_id = history_sync_sender_id(params[:data])
+    Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id) do
+      Custom::Whatsapp::EvolutionGo::Import::HistorySyncProcessor.new(
+        channel: channel,
+        data: params[:data]
+      ).perform
+    end
+  end
+
+  def history_sync_sender_id(data)
+    return if data.blank?
+
+    data = data.with_indifferent_access
+    jid = data.dig(:key, :remoteJid) || data.dig('key', 'remoteJid') ||
+          data[:remoteJid] || data[:jid]
+    jid.to_s.presence
   end
 
   def process_group_event(channel, params)
+    config = channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
+    return if Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.ignore_groups?(config)
+
     group_jid = extract_group_jid(params[:data])
     return if group_jid.blank?
 
@@ -223,3 +249,4 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
 end
 
 Webhooks::WhatsappEventsJob.prepend(Custom::Webhooks::WhatsappEventsJobEvolutionGo)
+# rubocop:enable Metrics/ModuleLength, Metrics/MethodLength, Metrics/CyclomaticComplexity

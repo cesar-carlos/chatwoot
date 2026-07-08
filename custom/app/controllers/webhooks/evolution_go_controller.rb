@@ -4,7 +4,9 @@ class Webhooks::EvolutionGoController < ActionController::API
   before_action :authenticate_webhook!
 
   def process_payload
-    Webhooks::WhatsappEventsJob.set(queue: :default).perform_later(
+    touch_last_webhook_at!
+
+    Webhooks::WhatsappEventsJob.set(queue: :low).perform_later(
       sanitized_job_payload.merge(
         evolution_go_instance_name: params[:instance_name],
         channel_id: @channel.id
@@ -43,5 +45,13 @@ class Webhooks::EvolutionGoController < ActionController::API
     payload = params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
     payload.delete('instance')
     payload
+  end
+
+  def touch_last_webhook_at!
+    config = (@channel.provider_config || {}).stringify_keys.merge(
+      'last_webhook_at' => Time.current.utc.iso8601(3)
+    )
+    @channel.update_columns(provider_config: config, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+    @channel.provider_config = config
   end
 end

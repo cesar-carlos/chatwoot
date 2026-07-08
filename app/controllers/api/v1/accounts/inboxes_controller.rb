@@ -1,6 +1,8 @@
 class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   include Api::V1::InboxesHelper
+  # rubocop:disable Rails/LexicallyScopedActionFilter -- evolution_go_server_check lives in custom prepend
   before_action :fetch_inbox, except: [:index, :create, :evolution_go_server_check]
+  # rubocop:enable Rails/LexicallyScopedActionFilter
   before_action :fetch_agent_bot, only: [:set_agent_bot]
   # we are already handling the authorization in fetch inbox
   # FORK: Wavoip endpoints authorize in custom prepend (bootstrap uses show?, rotate uses admin policy)

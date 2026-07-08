@@ -2,7 +2,7 @@
 
 class Custom::Whatsapp::Webhooks::EvolutionGoReadReceiptPayloadAdapter
   class << self
-    def canonicalize_data(data, envelope_state: nil)
+    def canonicalize_data(data, envelope_state: nil) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       return {} if data.blank?
       return data.with_indifferent_access if data.is_a?(Hash) && legacy_key_shape?(data)
 

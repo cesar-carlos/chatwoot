@@ -36,7 +36,7 @@ RSpec.describe Webhooks::EvolutionGoController, type: :request do
           'evolution_go_instance_name' => instance_name,
           'channel_id' => channel.id
         )
-      ).on_queue('default')
+      ).on_queue('low')
 
       expect(response).to have_http_status(:ok)
     end

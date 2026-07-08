@@ -14,7 +14,7 @@ class Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService
 
     message = find_message(key[:id])
     if message.blank?
-      Custom::Whatsapp::EvolutionGo::MutationStatsRecorder.increment!(channel, 'inbound_delete_skipped')
+      Custom::Whatsapp::EvolutionGo::MutationStatsRecorder.record!(channel, 'inbound_delete_skipped')
       return
     end
 

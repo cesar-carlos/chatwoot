@@ -12,7 +12,7 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
     response = api_client.edit_message(
       chat: chat_jid,
       message_id: message.source_id,
-      message: message.content.to_s
+      message: whatsapp_edit_body
     )
     return if response.success?
 
@@ -49,6 +49,12 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
     return if phone.blank?
 
     "#{phone}@s.whatsapp.net"
+  end
+
+  def whatsapp_edit_body
+    body = message.content.to_s
+    prefix = Custom::Whatsapp::EvolutionGo::MessageEditSyncService::EDITED_PREFIX
+    body.start_with?(prefix) ? body.delete_prefix(prefix) : body
   end
 
   def api_client

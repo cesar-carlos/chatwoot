@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize, Metrics/MethodLength
 class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
   EDITED_PREFIX = "Edited message:\n\n"
 
@@ -17,7 +18,7 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
     original = channel.inbox.messages.find_by(source_id: key[:id])
     if original.blank?
       created = create_edited_message(key, body, original)
-      Custom::Whatsapp::EvolutionGo::MutationStatsRecorder.increment!(channel, 'inbound_edit_skipped') unless created
+      Custom::Whatsapp::EvolutionGo::MutationStatsRecorder.record!(channel, 'inbound_edit_skipped') unless created
       return
     end
 
@@ -99,3 +100,4 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
     @jid_resolver ||= Custom::Whatsapp::EvolutionGo::JidResolver.new(channel.provider_config || {})
   end
 end
+# rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize, Metrics/MethodLength

@@ -73,8 +73,7 @@ export function seedConnectionStateFromInbox(inbox) {
 
   const config = inbox.provider_config || {};
   const status = config.connection_status || config.connectionStatus;
-  const phone =
-    inbox.phone_number || config.phone_number || config.phoneNumber;
+  const phone = inbox.phone_number || config.phone_number || config.phoneNumber;
 
   const seeded = {};
   if (status) seeded.connectionStatus = status;

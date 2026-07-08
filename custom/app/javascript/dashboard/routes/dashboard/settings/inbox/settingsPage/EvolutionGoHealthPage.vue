@@ -1,8 +1,8 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
-import InboxesAPI from 'dashboard/api/inboxes';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
@@ -23,11 +23,14 @@ const STATUS_STYLES = {
 };
 
 const { t } = useI18n();
+const store = useStore();
 const confirmDialog = ref(null);
 const qrModalRef = ref(null);
 const diagnostics = ref(null);
 const isDiagnosticsLoading = ref(false);
+const diagnosticsLoadError = ref(false);
 const isTestingWebhook = ref(false);
+const showInstanceLogs = ref(false);
 
 const {
   connectionStatus,
@@ -60,15 +63,31 @@ const statusLabel = computed(() => {
 
 const mutationStats = computed(() => diagnostics.value?.mutation_stats || {});
 
+const instanceLogsPreview = computed(() => {
+  const logs = diagnostics.value?.instance_logs;
+  if (!logs) return '';
+
+  const lines = Array.isArray(logs)
+    ? logs
+    : String(logs).split(/\r?\n/).filter(Boolean);
+
+  return lines.slice(-20).join('\n');
+});
+
 async function loadDiagnostics() {
   if (!props.inbox?.id) return;
 
   isDiagnosticsLoading.value = true;
+  diagnosticsLoadError.value = false;
   try {
-    const { data } = await InboxesAPI.getEvolutionGoDiagnostics(props.inbox.id);
+    const data = await store.dispatch(
+      'inboxes/fetchEvolutionGoDiagnostics',
+      props.inbox.id
+    );
     diagnostics.value = data;
   } catch {
     diagnostics.value = null;
+    diagnosticsLoadError.value = true;
   } finally {
     isDiagnosticsLoading.value = false;
   }
@@ -79,11 +98,15 @@ async function testWebhook() {
 
   isTestingWebhook.value = true;
   try {
-    await InboxesAPI.postEvolutionGoTestWebhook(props.inbox.id);
-    useAlert(t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK_SUCCESS'));
+    await store.dispatch('inboxes/evolutionGoTestWebhook', props.inbox.id);
+    useAlert(
+      t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK_SUCCESS')
+    );
     await loadDiagnostics();
   } catch {
-    useAlert(t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK_ERROR'));
+    useAlert(
+      t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK_ERROR')
+    );
   } finally {
     isTestingWebhook.value = false;
   }
@@ -159,6 +182,9 @@ onMounted(loadDiagnostics);
         <Spinner class="size-4" />
         {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.LOADING') }}
       </div>
+      <div v-else-if="diagnosticsLoadError" class="text-sm text-n-ruby-11">
+        {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.LOAD_ERROR') }}
+      </div>
       <div v-else-if="diagnostics" class="text-sm text-n-slate-11 space-y-2">
         <p v-if="diagnostics.webhook_url">
           <span class="font-medium">
@@ -169,14 +195,18 @@ onMounted(loadDiagnostics);
         <p v-if="diagnostics.webhook_subscribe?.length">
           <span class="font-medium">
             {{
-              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.WEBHOOK_SUBSCRIBE')
+              t(
+                'INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.WEBHOOK_SUBSCRIBE'
+              )
             }}:
           </span>
           {{ diagnostics.webhook_subscribe.join(', ') }}
         </p>
         <p v-if="diagnostics.import_status">
           <span class="font-medium">
-            {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.IMPORT_STATUS') }}:
+            {{
+              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.IMPORT_STATUS')
+            }}:
           </span>
           {{ diagnostics.import_status }}
         </p>
@@ -186,28 +216,63 @@ onMounted(loadDiagnostics);
         <p v-if="diagnostics.import_error" class="text-n-ruby-11">
           {{ diagnostics.import_error }}
         </p>
-        <p v-if="diagnostics.instance_info?.name || diagnostics.instance_info?.Name">
+        <p
+          v-if="
+            diagnostics.instance_info?.name || diagnostics.instance_info?.Name
+          "
+        >
           <span class="font-medium">
-            {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INSTANCE_NAME') }}:
+            {{
+              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INSTANCE_NAME')
+            }}:
           </span>
           {{ diagnostics.instance_info.name || diagnostics.instance_info.Name }}
         </p>
-        <p v-if="mutationStats.inbound_delete_skipped">
-          {{
-            t(
-              'INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INBOUND_DELETE_SKIPPED',
-              { count: mutationStats.inbound_delete_skipped }
-            )
-          }}
+        <p
+          v-if="
+            mutationStats.inbound_delete_skipped ||
+            mutationStats.inbound_edit_skipped
+          "
+        >
+          <span class="font-medium">
+            {{
+              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.MUTATION_STATS')
+            }}:
+          </span>
+          <span v-if="mutationStats.inbound_delete_skipped">
+            {{
+              t(
+                'INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INBOUND_DELETE_SKIPPED',
+                { count: mutationStats.inbound_delete_skipped }
+              )
+            }}
+          </span>
+          <span v-if="mutationStats.inbound_edit_skipped">
+            {{
+              t(
+                'INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INBOUND_EDIT_SKIPPED',
+                { count: mutationStats.inbound_edit_skipped }
+              )
+            }}
+          </span>
         </p>
-        <p v-if="mutationStats.inbound_edit_skipped">
-          {{
-            t(
-              'INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INBOUND_EDIT_SKIPPED',
-              { count: mutationStats.inbound_edit_skipped }
-            )
-          }}
-        </p>
+        <div v-if="instanceLogsPreview" class="space-y-1">
+          <button
+            type="button"
+            class="text-left font-medium text-n-slate-12 hover:underline"
+            @click="showInstanceLogs = !showInstanceLogs"
+          >
+            {{
+              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INSTANCE_LOGS')
+            }}
+          </button>
+          <pre
+            v-if="showInstanceLogs"
+            class="max-h-48 overflow-auto rounded-lg border border-n-weak bg-n-solid-1 p-3 text-xs whitespace-pre-wrap"
+          >
+            {{ instanceLogsPreview }}
+          </pre>
+        </div>
         <div class="flex flex-wrap gap-2">
           <NextButton
             variant="faded"
@@ -237,6 +302,7 @@ onMounted(loadDiagnostics);
       v-model="isQrModalOpen"
       :inbox-id="inbox.id"
       :fetch-fresh-qr="qrModalFetchFresh"
+      cable-managed-externally
       @connected="onQrConnected"
     />
 

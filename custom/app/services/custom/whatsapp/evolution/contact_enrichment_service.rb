@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- enrichment mirrors Evolution contact profile fetch
 class Custom::Whatsapp::Evolution::ContactEnrichmentService
   ENRICHMENT_COOLDOWN = 24.hours
   WHATSAPP_STATUS_KEY = 'whatsapp_status'
@@ -18,7 +19,7 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
       data[:profile_picture_url],
       data[:imgUrl],
       data.dig(:profilePicture, :url)
-    ].map { |value| value.to_s.strip.presence }.compact.first
+    ].filter_map { |value| value.to_s.strip.presence }.first
   end
 
   def self.should_enqueue?(contact:, remote_jid: nil, push_name: nil, profile_pic_url: nil, force: false)
@@ -242,3 +243,4 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
     sync_avatar_from_url(url) if url.present?
   end
 end
+# rubocop:enable Metrics/ClassLength

@@ -2,6 +2,7 @@
 import { computed, ref, watch, toRef, nextTick, onUnmounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
+import { useAlert } from 'dashboard/composables';
 
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
@@ -15,6 +16,10 @@ const props = defineProps({
     default: null,
   },
   fetchFreshQr: {
+    type: Boolean,
+    default: false,
+  },
+  cableManagedExternally: {
     type: Boolean,
     default: false,
   },
@@ -49,6 +54,7 @@ const {
   store,
   onConnected: () => {
     emit('connected');
+    useAlert(t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.CONNECTED'));
     isOpen.value = false;
   },
 });
@@ -62,17 +68,15 @@ const statusLabel = computed(() =>
 );
 
 const showQr = computed(() => Boolean(qrcodeBase64.value));
-const closeWithoutQrTimedOut = ref(false);
-let closeWithoutQrTimer = null;
 
 const showLoading = computed(
   () =>
     !showQr.value &&
     !pairingCode.value &&
     !qrRefreshError.value &&
-    !closeWithoutQrTimedOut.value &&
     (isLoading.value ||
       isRefreshing.value ||
+      connectionStatus.value === 'close' ||
       connectionStatus.value === 'connecting')
 );
 const showQrError = computed(
@@ -80,34 +84,22 @@ const showQrError = computed(
     !showQr.value &&
     !showLoading.value &&
     !pairingCode.value &&
-    (qrRefreshError.value || closeWithoutQrTimedOut.value)
+    qrRefreshError.value
 );
-
-function clearCloseWithoutQrTimer() {
-  if (closeWithoutQrTimer) {
-    clearTimeout(closeWithoutQrTimer);
-    closeWithoutQrTimer = null;
-  }
-}
-
-function scheduleCloseWithoutQrTimeout(status) {
-  clearCloseWithoutQrTimer();
-  closeWithoutQrTimedOut.value = false;
-
-  if (status === 'close' && !qrcodeBase64.value && !pairingCode.value) {
-    closeWithoutQrTimer = setTimeout(() => {
-      closeWithoutQrTimedOut.value = true;
-    }, 5000);
-  }
-}
 
 function cleanupSession() {
   sessionActive = false;
-  clearCloseWithoutQrTimer();
-  closeWithoutQrTimedOut.value = false;
   stopSession();
   unsubscribeCable?.();
   unsubscribeCable = null;
+}
+
+async function handleRefreshQr() {
+  try {
+    await requestNewQr();
+  } catch {
+    useAlert(t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REFRESH_ERROR'));
+  }
 }
 
 function openModal() {
@@ -115,11 +107,13 @@ function openModal() {
   if (sessionActive) return;
 
   sessionActive = true;
-  unsubscribeCable = subscribeEvolutionGoConnection(
-    props.inboxId,
-    applyPayload,
-    { store }
-  );
+  if (!props.cableManagedExternally) {
+    unsubscribeCable = subscribeEvolutionGoConnection(
+      props.inboxId,
+      applyPayload,
+      { store }
+    );
+  }
   startSession({ fetchFreshQr: props.fetchFreshQr });
 }
 
@@ -128,19 +122,6 @@ function closeModal() {
   dialogRef.value?.close();
   isOpen.value = false;
 }
-
-watch(
-  [connectionStatus, qrcodeBase64, pairingCode],
-  ([status, qr, code]) => {
-    if (qr || code) {
-      clearCloseWithoutQrTimer();
-      closeWithoutQrTimedOut.value = false;
-      return;
-    }
-    scheduleCloseWithoutQrTimeout(status);
-  },
-  { immediate: true }
-);
 
 watch(
   isOpen,
@@ -206,6 +187,10 @@ defineExpose({ open: openModal, close: closeModal, applyPayload });
         />
       </div>
 
+      <p v-if="showQr" class="text-xs text-n-slate-10">
+        {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.EXPIRES_HINT') }}
+      </p>
+
       <div
         v-else-if="showLoading"
         class="flex flex-col items-center gap-2 py-8 text-sm text-n-slate-11"
@@ -224,7 +209,7 @@ defineExpose({ open: openModal, close: closeModal, applyPayload });
           :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REFRESH')"
           :is-loading="isRefreshing"
           :disabled="isRefreshing"
-          @click="requestNewQr"
+          @click="handleRefreshQr"
         />
       </div>
 
@@ -251,13 +236,17 @@ defineExpose({ open: openModal, close: closeModal, applyPayload });
           type="tel"
           class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-2 text-sm text-n-slate-12"
           :placeholder="
-            t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.PAIRING_PHONE_PLACEHOLDER')
+            t(
+              'INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.PAIRING_PHONE_PLACEHOLDER'
+            )
           "
         />
         <Button
           type="button"
           variant="faded"
-          :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REQUEST_PAIRING_CODE')"
+          :label="
+            t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REQUEST_PAIRING_CODE')
+          "
           :is-loading="isRequestingPairing"
           :disabled="isRequestingPairing || !pairingPhone"
           @click="requestPairingCode(pairingPhone)"
@@ -284,7 +273,7 @@ defineExpose({ open: openModal, close: closeModal, applyPayload });
           :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REFRESH')"
           :is-loading="isRefreshing"
           :disabled="isRefreshing"
-          @click="requestNewQr"
+          @click="handleRefreshQr"
         />
       </div>
     </template>

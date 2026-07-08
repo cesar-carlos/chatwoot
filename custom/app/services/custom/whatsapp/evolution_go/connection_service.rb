@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- connection lifecycle orchestrates provision, QR, import, and cable
 class Custom::Whatsapp::EvolutionGo::ConnectionService
   include Custom::Whatsapp::EvolutionGo::SettingsSync
 
@@ -44,7 +45,8 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     code = api_client.dig_field(data, 'pairingCode', 'PairingCode', 'code', 'Code')
     update_runtime_config!(
       'connection_status' => 'connecting',
-      'last_qr_code' => code
+      'last_qr_code' => code,
+      'webhook_subscribe' => events
     )
     { pairing_code: code }
   end
@@ -267,3 +269,4 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     ActiveModel::Type::Boolean.new.cast(provider_config['import_contacts'])
   end
 end
+# rubocop:enable Metrics/ClassLength

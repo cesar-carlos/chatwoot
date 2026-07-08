@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
 class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   pattr_initialize [:channel!, :data!]
 
@@ -137,3 +138,4 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     @jid_resolver ||= Custom::Whatsapp::EvolutionGo::JidResolver.new(config)
   end
 end
+# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength

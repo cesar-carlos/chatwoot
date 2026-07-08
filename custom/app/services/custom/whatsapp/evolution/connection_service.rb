@@ -286,7 +286,7 @@ class Custom::Whatsapp::Evolution::ConnectionService
     inbox = channel.inbox
     return false if inbox.blank?
 
-    inbox.messages.incoming.where(created_at: 15.minutes.ago..).exists?
+    inbox.messages.incoming.exists?(created_at: 15.minutes.ago..)
   end
 
   def connection_state_cache_key

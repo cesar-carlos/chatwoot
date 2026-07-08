@@ -127,7 +127,10 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
 
   async function requestPairingCode(phone) {
     const id = unref(inboxId);
-    const normalizedPhone = (phone || pairingPhone.value || '').replace(/\D/g, '');
+    const normalizedPhone = (phone || pairingPhone.value || '').replace(
+      /\D/g,
+      ''
+    );
     if (!id || !normalizedPhone || isRequestingPairing.value) return;
 
     isRequestingPairing.value = true;
@@ -156,7 +159,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     clearExpiryTimer();
     expiryTimer = setTimeout(() => {
       if (!isConnected()) {
-        refreshConnection();
+        requestNewQr();
       }
     }, QR_EXPIRY_MS);
   }

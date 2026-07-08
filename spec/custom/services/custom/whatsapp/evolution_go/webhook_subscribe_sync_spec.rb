@@ -72,5 +72,18 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync do
       expect(events).to include('MESSAGE', 'HISTORY_SYNC')
       expect(channel.reload.provider_config['webhook_subscribe']).to eq(events)
     end
+
+    it 'preserves open connection_status when syncing webhooks' do
+      channel.update!(
+        provider_config: channel.provider_config.merge('connection_status' => 'open')
+      )
+
+      stub_request(:post, 'https://go.example.com/instance/connect')
+        .to_return(status: 200, body: { message: 'success', data: {} }.to_json)
+
+      sync.sync!
+
+      expect(channel.reload.provider_config['connection_status']).to eq('open')
+    end
   end
 end

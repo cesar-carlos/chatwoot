@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength, Metrics/ParameterLists -- Evolution Go HTTP surface mirrors provider API
 class Custom::Whatsapp::EvolutionGo::ApiClient
   REQUEST_TIMEOUT = 30
   OPEN_TIMEOUT = 10
@@ -407,3 +408,4 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     )
   end
 end
+# rubocop:enable Metrics/ClassLength, Metrics/ParameterLists

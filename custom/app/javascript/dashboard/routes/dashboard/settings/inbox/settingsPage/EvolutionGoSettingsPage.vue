@@ -74,8 +74,8 @@ const settingsSyncError = computed(
   () => props.inbox.provider_config?.settings_sync_error || ''
 );
 
-const hasExistingProxy = computed(
-  () => Boolean(props.inbox.provider_config?.proxy_host)
+const hasExistingProxy = computed(() =>
+  Boolean(props.inbox.provider_config?.proxy_host)
 );
 
 watch(
@@ -155,7 +155,9 @@ async function persistSettings({ showSuccessAlert = true } = {}) {
   const updatedInbox = store.getters['inboxes/getInbox'](props.inbox.id);
   const syncError = updatedInbox?.provider_config?.settings_sync_error;
   if (syncError) {
-    useAlert(t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_ERROR', { error: syncError }));
+    useAlert(
+      t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_ERROR', { error: syncError })
+    );
     return;
   }
 
@@ -179,11 +181,6 @@ function requestImport() {
   if (isImporting.value) return;
   if (!state.importContacts && !state.importMessages) return;
   showImportConfirmModal.value = true;
-}
-
-async function confirmImport() {
-  showImportConfirmModal.value = false;
-  await runImport();
 }
 
 async function runImport() {
@@ -212,6 +209,11 @@ async function runImport() {
   } finally {
     isImporting.value = false;
   }
+}
+
+async function confirmImport() {
+  showImportConfirmModal.value = false;
+  await runImport();
 }
 
 function importStatusLabel(status) {
@@ -255,7 +257,10 @@ async function removeProxy() {
   <div class="flex flex-col gap-6">
     <EvolutionGoHealthPage :inbox="inbox" />
 
-    <p v-if="settingsSyncError" class="text-sm text-n-ruby-11">
+    <p
+      v-if="settingsSyncError"
+      class="text-sm text-n-ruby-11 rounded-lg border border-n-ruby-6 bg-n-ruby-2 px-4 py-3"
+    >
       {{
         t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_ERROR', {
           error: settingsSyncError,
@@ -271,28 +276,28 @@ async function removeProxy() {
       </p>
       <SettingsToggleSection
         v-model="state.groupsIgnore"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.GROUPS_IGNORE.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.GROUPS_IGNORE.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.GROUPS_IGNORE.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.rejectCall"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.REJECT_CALL.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.REJECT_CALL.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.REJECT_CALL.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.readMessages"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.READ_MESSAGES.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.READ_MESSAGES.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.READ_MESSAGES.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.alwaysOnline"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.ALWAYS_ONLINE.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.ALWAYS_ONLINE.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.ALWAYS_ONLINE.DESCRIPTION')
         "
@@ -310,12 +315,12 @@ async function removeProxy() {
     >
       <SettingsToggleSection
         v-model="state.signMsg"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.SIGN_MSG.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SIGN_MSG.LABEL')"
         :description="t('INBOX_MGMT.EVOLUTION.SETTINGS.SIGN_MSG.DESCRIPTION')"
       />
       <SettingsToggleSection
         v-model="state.convertMarkdownOutbound"
-        :label="
+        :header="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERT_MARKDOWN_OUTBOUND.LABEL')
         "
         :description="
@@ -326,28 +331,28 @@ async function removeProxy() {
       />
       <SettingsToggleSection
         v-model="state.markReadOnReply"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.MARK_READ_ON_REPLY.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.MARK_READ_ON_REPLY.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.MARK_READ_ON_REPLY.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.markReadOnOpen"
-        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_READ_ON_OPEN.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_READ_ON_OPEN.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_READ_ON_OPEN.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.sendRandomDelay"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_RANDOM_DELAY.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_RANDOM_DELAY.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_RANDOM_DELAY.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.notifySendErrorsPrivate"
-        :label="
+        :header="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.NOTIFY_SEND_ERRORS_PRIVATE.LABEL')
         "
         :description="
@@ -358,7 +363,9 @@ async function removeProxy() {
       />
       <SettingsToggleSection
         v-model="state.sendTemplatesAsText"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.LABEL')"
+        :header="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.LABEL')
+        "
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SEND_TEMPLATES_AS_TEXT.DESCRIPTION')
         "
@@ -373,37 +380,45 @@ async function removeProxy() {
       </p>
       <SettingsToggleSection
         v-model="state.ignoreStatus"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_STATUS_BROADCAST.LABEL')"
+        :header="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_STATUS_BROADCAST.LABEL')
+        "
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_STATUS_BROADCAST.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.ignoreFromMeEcho"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_FROM_ME_ECHO.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_FROM_ME_ECHO.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.IGNORE_FROM_ME_ECHO.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.convertMarkdownInbound"
-        :label="
+        :header="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERT_MARKDOWN_INBOUND.LABEL')
         "
         :description="
-          t('INBOX_MGMT.EVOLUTION.SETTINGS.CONVERT_MARKDOWN_INBOUND.DESCRIPTION')
+          t(
+            'INBOX_MGMT.EVOLUTION.SETTINGS.CONVERT_MARKDOWN_INBOUND.DESCRIPTION'
+          )
         "
       />
       <SettingsToggleSection
         v-model="state.markInboundDeleted"
-        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_INBOUND_DELETED.LABEL')"
+        :header="
+          t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_INBOUND_DELETED.LABEL')
+        "
         :description="
           t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_INBOUND_DELETED.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.markInboundEdited"
-        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_INBOUND_EDITED.LABEL')"
+        :header="
+          t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_INBOUND_EDITED.LABEL')
+        "
         :description="
           t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.MARK_INBOUND_EDITED.DESCRIPTION')
         "
@@ -418,14 +433,16 @@ async function removeProxy() {
       </p>
       <SettingsToggleSection
         v-model="state.syncDeleteToWhatsapp"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_DELETE_TO_WHATSAPP.LABEL')"
+        :header="
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_DELETE_TO_WHATSAPP.LABEL')
+        "
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_DELETE_TO_WHATSAPP.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.syncEditToWhatsapp"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_EDIT_TO_WHATSAPP.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_EDIT_TO_WHATSAPP.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.SYNC_EDIT_TO_WHATSAPP.DESCRIPTION')
         "
@@ -437,21 +454,21 @@ async function removeProxy() {
     >
       <SettingsToggleSection
         v-model="state.importOnConnect"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.ON_CONNECT.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.ON_CONNECT.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.ON_CONNECT.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.importContacts"
-        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.CONTACTS.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.CONTACTS.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.CONTACTS.DESCRIPTION')
         "
       />
       <SettingsToggleSection
         v-model="state.importMessages"
-        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.MESSAGES.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.MESSAGES.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.MESSAGES.DESCRIPTION')
         "
@@ -460,7 +477,11 @@ async function removeProxy() {
         v-if="state.importMessages && !state.importContacts"
         class="text-sm text-n-amber-11"
       >
-        {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.MESSAGES_REQUIRES_CONTACTS') }}
+        {{
+          t(
+            'INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.MESSAGES_REQUIRES_CONTACTS'
+          )
+        }}
       </p>
       <SettingsFieldSection
         v-if="state.importMessages"
@@ -478,7 +499,7 @@ async function removeProxy() {
       </SettingsFieldSection>
       <SettingsToggleSection
         v-model="state.mergeBrazilContacts"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.MERGE_BRAZIL_CONTACTS.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.MERGE_BRAZIL_CONTACTS.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.MERGE_BRAZIL_CONTACTS.DESCRIPTION')
         "
@@ -528,7 +549,7 @@ async function removeProxy() {
       </p>
       <SettingsToggleSection
         v-model="state.proxyEnabled"
-        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.ENABLED.LABEL')"
+        :header="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.ENABLED.LABEL')"
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.ENABLED.DESCRIPTION')
         "

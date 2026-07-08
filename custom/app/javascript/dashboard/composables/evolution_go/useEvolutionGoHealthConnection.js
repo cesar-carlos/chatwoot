@@ -123,7 +123,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
         staleData.value = true;
         useAlert(
           error?.response?.data?.error ||
-            t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.LOAD_ERROR')
+            t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.STALE_DATA')
         );
       }
     } finally {
@@ -154,8 +154,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
       return true;
     } catch (error) {
       useAlert(
-        error?.response?.data?.error ||
-          t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE')
+        error?.response?.data?.error || t('INBOX_MGMT.EDIT.API.ERROR_MESSAGE')
       );
       return false;
     } finally {
@@ -164,24 +163,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   async function reconnect() {
-    if (!inboxId.value || isReconnecting.value) return;
-
-    isReconnecting.value = true;
-    try {
-      const payload = await store.dispatch(
-        'inboxes/evolutionGoReconnect',
-        inboxId.value
-      );
-      await applyPayload(payload);
-      openQrModal({ fresh: false });
-    } catch (error) {
-      useAlert(
-        error?.response?.data?.error ||
-          t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.RECONNECT_ERROR')
-      );
-    } finally {
-      isReconnecting.value = false;
-    }
+    openQrModal({ fresh: true });
   }
 
   async function logout(confirmDialog) {
