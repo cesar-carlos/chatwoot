@@ -27,10 +27,16 @@ RSpec.describe Custom::Whatsapp::Evolution::JidResolver do
       expect(recipient).to eq('5511999999999')
     end
 
-    it 'returns group id for group JIDs' do
+    it 'returns full group JID for group status keys' do
       recipient = resolver.recipient_id_for_status('120363123456789012@g.us')
 
-      expect(recipient).to eq('120363123456789012')
+      expect(recipient).to eq('120363123456789012@g.us')
+    end
+  end
+
+  describe '#phone_from_jid' do
+    it 'does not fabricate a phone number from bare LID JIDs' do
+      expect(resolver.phone_from_jid('242532642504895@lid')).to be_nil
     end
   end
 end

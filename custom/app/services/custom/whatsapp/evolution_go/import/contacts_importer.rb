@@ -45,7 +45,7 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
   end
 
   def import_contacts_batch(contacts, offset, total_count)
-    remote_jids = runtime.cursor[:remote_jids] || []
+    remote_jids = load_remote_jids
     contacts.each do |record|
       next unless record.is_a?(Hash)
 
@@ -54,6 +54,7 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
       import_contact_record(record, remote_jid)
     end
 
+    save_remote_jids!(remote_jids.uniq)
     runtime.update_stats!(contacts_imported: contacts.size)
     next_offset = offset + contacts.size
     if next_offset >= total_count
@@ -63,9 +64,25 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
 
     runtime.persist_cursor!(
       'contacts_offset' => next_offset,
-      'remote_jids' => remote_jids.uniq,
       'phase' => 'contacts'
     )
+  end
+
+  def load_remote_jids
+    stored = ::Redis::Alfred.get(remote_jids_redis_key)
+    return [] if stored.blank?
+
+    JSON.parse(stored)
+  rescue JSON::ParserError
+    []
+  end
+
+  def save_remote_jids!(jids)
+    ::Redis::Alfred.set(remote_jids_redis_key, jids.to_json, ex: 7.days.to_i)
+  end
+
+  def remote_jids_redis_key
+    format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_REMOTE_JIDS, channel_id: runtime.channel.id)
   end
 
   def import_contact_record(record, remote_jid)
@@ -122,15 +139,16 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
 
   def advance_to_messages_phase!
     if runtime.import_messages?
-      remote_jids = runtime.cursor[:remote_jids].presence || []
+      remote_jids = load_remote_jids
       runtime.persist_cursor!(
         'phase' => 'messages',
         'message_jid_index' => 0,
-        'message_page' => 1,
-        'remote_jids' => remote_jids
+        'message_page' => 1
       )
+      save_remote_jids!(remote_jids) if remote_jids.present?
     else
       runtime.mark_completed!
+      ::Redis::Alfred.delete(remote_jids_redis_key)
     end
   end
 end

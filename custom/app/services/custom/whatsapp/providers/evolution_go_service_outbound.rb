@@ -73,7 +73,9 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     target = read_target_message(message)
     return if target.blank? || target.source_id.blank?
 
-    api_client.mark_messages_read(number: phone_number, ids: [target.source_id])
+    Custom::Whatsapp::EvolutionGo::MarkReadJob.perform_later(
+      whatsapp_channel.id, phone_number, [target.source_id]
+    )
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION_GO] mark read on reply failed: #{e.message}"
   end

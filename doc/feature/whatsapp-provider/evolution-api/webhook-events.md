@@ -78,15 +78,20 @@ Evolution aceita `webhook.headers` em `POST /webhook/set` — incluindo `jwt_key
 | `CONNECTION_UPDATE` | 1 | Atualizar `connection_status` no channel |
 | `QRCODE_UPDATED` | 1 | Exibir QR no wizard/settings |
 
-Registrados em `ProviderConfig::WEBHOOK_EVENTS` e aplicados via `ApiClient#apply_webhook`.
-
-### Eventos opcionais (fases posteriores)
+Registrados em `ProviderConfig::WEBHOOK_EVENTS` e aplicados via `ApiClient#apply_webhook`:
 
 | Evento | Uso |
 |--------|-----|
 | `MESSAGES_DELETE` | Apagar mensagem no Chatwoot (inbound) |
 | `MESSAGES_EDITED` | Edição de mensagem |
-| `SEND_MESSAGE` | Echo outbound (cuidado com duplicação) |
+| `GROUPS_UPSERT` / `GROUP_UPDATE` | Atualizar metadata/nome do contato-grupo |
+
+### Alias e eventos não tratados
+
+| Evento | Uso |
+|--------|-----|
+| `SEND_MESSAGE_UPDATE` | Alias de edição — mesmo handler que `MESSAGES_EDITED` |
+| `SEND_MESSAGE` | Não tratado pelo dispatcher |
 
 Lista completa: `EventController.events` em `src/api/integrations/event/event.controller.ts`
 

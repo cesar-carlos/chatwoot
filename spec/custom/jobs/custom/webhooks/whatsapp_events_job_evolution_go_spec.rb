@@ -29,7 +29,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     )
 
     expect(Custom::Whatsapp::Webhooks::EvolutionGoNormalizer).to receive(:new)
-      .with(channel, hash_including('event' => 'Message'))
+      .with(channel, hash_including('event' => 'MESSAGE'))
       .and_call_original
 
     expect do
@@ -105,6 +105,71 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).not_to receive(:perform_later)
 
     Webhooks::WhatsappEventsJob.perform_now(payload)
+  end
+
+  it 'syncs phone-sent SendMessage events into the existing conversation' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => false)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+
+    contact = create(:contact, account: account, phone_number: '+556696971841', name: 'Cesar Carlos')
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
+    create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.to change(Message, :count).by(1)
+      .and not_change(Conversation, :count)
+      .and not_change(ContactInbox, :count)
+
+    message = Message.last
+    expect(message.conversation.contact_inbox).to eq(contact_inbox)
+    expect(message.content).to eq('Mensagem enviada pelo celular')
+  end
+
+  it 'syncs phone-sent SendMessage events when ignore_from_me_echo is disabled' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => false)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone.json').read)
+    payload['data']['Info']['ID'] = '3EB0PHONE-SENT-002'
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.to change(Message, :count).by(1)
+
+    message = Message.last
+    aggregate_failures do
+      expect(message.outgoing?).to be(true)
+      expect(message.content).to eq('Mensagem enviada pelo celular')
+      expect(message.source_id).to eq('3EB0PHONE-SENT-002')
+      expect(message.content_attributes['phone_sent']).to be(true)
+    end
+  end
+
+  it 'ignores SendMessage events when ignore_from_me_echo is enabled' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => true)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.not_to change(Message, :count)
   end
 
   it 'delegates unknown evolution_go channels to super without dropping' do

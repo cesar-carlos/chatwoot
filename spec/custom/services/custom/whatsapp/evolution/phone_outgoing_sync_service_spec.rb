@@ -40,9 +40,9 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
 
   describe '#perform' do
     it 'creates an outgoing message for a phone-sent text' do
-      expect { service.perform }.to change(Message, :count).by(1)
+      expect { service.perform }.to change { inbox.messages.count }.by(1)
 
-      message = Message.last
+      message = inbox.messages.find_by!(source_id: 'PHONE-SENT-MSG-001')
       aggregate_failures do
         expect(message.inbox).to eq(inbox)
         expect(message.outgoing?).to be(true)

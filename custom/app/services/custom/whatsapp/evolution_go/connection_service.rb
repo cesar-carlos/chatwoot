@@ -33,7 +33,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     invalidate_connection_state_cache!
     disconnect_before_reconnect!
     webhook_subscribe_sync.sync!
-    provisioner.send(:fetch_qr_code!)
+    provisioner.send(:fetch_qr_code!, raise_on_failure: false, max_attempts: 3)
   end
 
   def pair!(phone:)
@@ -65,6 +65,10 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     response.parsed_response
   end
 
+  def sync_webhook_subscribe!
+    webhook_subscribe_sync.sync!
+  end
+
   def sync_phone_number!
     response = api_client.connection_status
     return unless response.success?
@@ -79,9 +83,9 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     update_phone_number!(phone) if phone.present? && placeholder_phone?(channel.phone_number)
   end
 
-  def connection_payload
+  def connection_payload(include_qr: false)
     state_checked = refresh_connection_status!
-    fetch_qr_if_needed!(state_checked: state_checked)
+    fetch_qr_if_needed!(state_checked: state_checked) if include_qr
     {
       connection_status: provider_config['connection_status'],
       phone_number: channel.phone_number,
@@ -122,12 +126,11 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     attrs = attrs.stringify_keys
     return if attrs.blank?
 
-    persist_provider_config!(provider_config.merge(attrs))
+    Custom::Whatsapp::EvolutionGo::ProviderConfigMerger.merge!(channel, attrs)
   end
 
-  def persist_provider_config!(merged)
-    channel.update_columns(provider_config: merged, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
-    channel.provider_config = merged
+  def persist_provider_config!(attrs)
+    Custom::Whatsapp::EvolutionGo::ProviderConfigMerger.merge!(channel, attrs.stringify_keys)
   end
 
   def connection_events
@@ -194,7 +197,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     return if provider_config['last_qr_base64'].present?
     return if state_checked == :failed
 
-    provisioner.send(:fetch_qr_code!)
+    provisioner.send(:fetch_qr_code!, raise_on_failure: false, max_attempts: 1)
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.warn "[EVOLUTION_GO] fetch_qr_if_needed failed channel=#{channel.id}: #{e.message}"
   end

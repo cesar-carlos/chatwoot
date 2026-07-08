@@ -105,12 +105,11 @@ Implementar em `ApiClient#send_text` — ver [spec-design.md](./spec-design.md).
 
 | Decisão | Valor |
 |---------|-------|
-| **MVP** | Ignorar `MESSAGES_UPSERT` com `data.key.fromMe: true` (filtro **hardcoded** na Fase 1) |
-| **Fase 2+** | Campo configurável `ignore_from_me_echo` default `true` na UI |
+| **Default** | `ignore_from_me_echo: false` — echoes `fromMe` sincronizam via `PhoneOutgoingSyncService` |
+| **Opt-out** | `ignore_from_me_echo: true` descarta UPSERT `fromMe` no dispatcher |
+| **Dedup** | `MessageDedupLock` no envio outbound + checagem de `source_id` / `evolution_secondary_source_ids` |
 
-Outbound já cria mensagem com `source_id` no Chatwoot; processar echo duplicaria.
-
-**Nota `isIntegration`:** a flag `textMessage(..., true)` na Evolution só evita re-entrada quando `chatwoot.enabled` está ativo no Baileys. Com integração legada desligada ([§7](#7-integração-chatwoot-na-evolution)), o provider nativo **não** depende dessa flag — validar em spike que echo não duplica mesmo assim.
+Outbound já cria mensagem com `source_id` no Chatwoot; dedup locks evitam duplicatas na corrida echo vs persistência.
 
 ---
 

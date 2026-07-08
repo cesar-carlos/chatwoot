@@ -280,8 +280,8 @@ class Rack::Attack
     "#{match[:key]}:#{req.ip}" if match
   end
 
-  # FORK: Evolution webhook throttle per instance + IP
-  throttle('webhooks/evolution', limit: 120, period: 1.minute) do |req|
+  # FORK: Evolution webhook volume can exceed 120/min during active chats
+  throttle('webhooks/evolution', limit: 600, period: 1.minute) do |req|
     next unless req.post? && req.path.match?(%r{\A/webhooks/evolution/[^/]+\z})
 
     match = req.path.match(%r{/webhooks/evolution/(?<instance>[^/]+)})

@@ -8,6 +8,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(channel_id, contact_id, attrs = {})
+    @lock_acquired = false
     channel = Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution_go')
     contact = Contact.find_by(id: contact_id)
     return if channel.blank? || contact.blank?
@@ -16,6 +17,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
     return unless enrichment_allowed?(contact, attrs)
     return unless acquire_in_flight_lock!(contact)
 
+    @lock_acquired = true
     Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.new(
       channel: channel,
       contact: contact,
@@ -24,7 +26,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
       force: attrs[:force]
     ).perform
   ensure
-    release_in_flight_lock!(contact) if contact
+    release_in_flight_lock!(contact) if contact && @lock_acquired
   end
 
   private

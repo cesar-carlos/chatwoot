@@ -52,11 +52,18 @@ class Custom::Whatsapp::Evolution::GroupContactService
   def find_or_create_group_contact!
     contact = account.contacts.find_or_initialize_by(identifier: remote_jid)
     attrs = contact_attributes
-    contact.name = attrs[:name] if contact.name.blank? || contact.name == remote_jid
+    contact.name = attrs[:name] if should_update_group_name?(contact, attrs[:name])
     contact.identifier = remote_jid
     contact.phone_number = nil
     contact.additional_attributes = (contact.additional_attributes || {}).merge(attrs[:additional_attributes])
     contact.save!
     contact
+  end
+
+  def should_update_group_name?(contact, new_name)
+    return false if new_name.blank?
+    return true if contact.name.blank? || contact.name == remote_jid
+
+    contact.additional_attributes&.dig(IS_WHATSAPP_GROUP_KEY) == true
   end
 end

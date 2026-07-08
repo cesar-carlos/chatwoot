@@ -42,7 +42,7 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     return nil if message_hash.blank?
 
     add_reply_context!(message_hash, data)
-    attach_participant_metadata!(message_hash, key)
+    attach_participant_metadata!(message_hash, key, data)
 
     contact_name = group_contact_name(key, data)
     {
@@ -74,10 +74,18 @@ class Custom::Whatsapp::Webhooks::EvolutionNormalizer
     @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(config)
   end
 
-  def attach_participant_metadata!(message_hash, key)
-    participant = key['participant'].to_s.presence
+  def attach_participant_metadata!(message_hash, key, data)
+    participant = participant_jid_from_key(key)
     return if participant.blank?
 
     message_hash[:evolution_participant_jid] = participant
+    push_name = data['pushName'].to_s.strip.presence || data[:pushName].to_s.strip.presence
+    message_hash[:evolution_participant_push_name] = push_name if push_name.present?
+  end
+
+  def participant_jid_from_key(key)
+    key = key.with_indifferent_access
+    alt = key[:participantAlt].to_s.presence || key[:participantPn].to_s.presence
+    alt || key[:participant].to_s.presence
   end
 end

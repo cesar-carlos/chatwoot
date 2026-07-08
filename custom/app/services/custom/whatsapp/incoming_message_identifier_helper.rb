@@ -85,12 +85,20 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
     participant_jid = participant_jid_from_message
     return if participant_jid.blank?
 
-    push_name = @processed_params.dig(:contacts, 0, :profile, :name).to_s.strip.presence
+    push_name = participant_push_name_from_message
     Custom::Whatsapp::Evolution::GroupParticipantService.new(
       channel: inbox.channel,
       participant_jid: participant_jid,
       push_name: push_name
     ).sync!
+  end
+
+  def participant_push_name_from_message
+    message = messages_data&.first
+    return if message.blank?
+
+    message[:evolution_participant_push_name].presence ||
+      message['evolution_participant_push_name'].presence
   end
 
   def enqueue_evolution_contact_enrichment

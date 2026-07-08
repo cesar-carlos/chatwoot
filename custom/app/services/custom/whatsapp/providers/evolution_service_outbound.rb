@@ -6,6 +6,35 @@ module Custom::Whatsapp::Providers::EvolutionServiceOutbound
 
   private
 
+  EVOLUTION_SECONDARY_SOURCE_IDS_KEY = 'evolution_secondary_source_ids'
+
+  def acquire_outbound_dedup_lock!(source_id)
+    return if source_id.blank?
+
+    Whatsapp::MessageDedupLock.new(source_id).acquire!
+  end
+
+  def response_message_id(response)
+    parsed = response.parsed_response
+    return unless response.success? && parsed.is_a?(Hash)
+
+    parsed.dig('key', 'id').to_s.presence
+  end
+
+  def persist_secondary_source_id!(message, source_id)
+    return if message.blank? || source_id.blank?
+
+    attrs = (message.content_attributes || {}).stringify_keys
+    ids = Array.wrap(attrs[EVOLUTION_SECONDARY_SOURCE_IDS_KEY])
+    return if ids.include?(source_id)
+
+    message.update!(
+      content_attributes: attrs.merge(
+        EVOLUTION_SECONDARY_SOURCE_IDS_KEY => (ids + [source_id]).uniq
+      )
+    )
+  end
+
   def apply_outbound_text(body, message)
     text = body.to_s
     text = Custom::Whatsapp::Evolution::MarkdownConverter.outbound(text) if convert_markdown_outbound?

@@ -61,7 +61,10 @@ const statusKey = computed(
 );
 
 const statusLabel = computed(() =>
-  t(`INBOX_MGMT.EVOLUTION.SETTINGS.CONNECTION_STATUS.${statusKey.value}`)
+  t(
+    `INBOX_MGMT.EVOLUTION.SETTINGS.CONNECTION_STATUS.${statusKey.value}`,
+    connectionStatus.value
+  )
 );
 
 const showQr = computed(() => Boolean(qrcodeBase64.value));
@@ -78,6 +81,9 @@ const showLoading = computed(
     (isLoading.value ||
       isRefreshing.value ||
       connectionStatus.value === 'close')
+);
+const showRefreshError = computed(
+  () => qrRefreshError.value && !showLoading.value
 );
 const showQrError = computed(
   () =>
@@ -116,11 +122,10 @@ function closeModal() {
 }
 
 async function handleRefreshQr() {
-  try {
-    await requestNewQr();
-  } catch (error) {
+  const result = await requestNewQr();
+  if (!result?.ok) {
     useAlert(
-      error?.response?.data?.error ||
+      result?.error?.response?.data?.error ||
         t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REFRESH_ERROR')
     );
   }
@@ -177,6 +182,20 @@ defineExpose({ open: openModal, close: closeModal, applyPayload });
             status: statusLabel,
           })
         }}
+      </div>
+
+      <div
+        v-if="showRefreshError"
+        class="flex flex-col items-center gap-3 py-2 text-sm text-n-slate-11"
+      >
+        <p>{{ t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REFRESH_ERROR') }}</p>
+        <Button
+          type="button"
+          :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REFRESH')"
+          :is-loading="isRefreshing"
+          :disabled="isRefreshing"
+          @click="handleRefreshQr"
+        />
       </div>
 
       <div

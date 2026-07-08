@@ -26,7 +26,13 @@ RSpec.describe Custom::Whatsapp::Evolution::GroupMetadataService do
 
   before do
     allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).with(channel).and_return(api_client)
+    @previous_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache.lookup_store(:memory_store)
     Rails.cache.clear
+  end
+
+  after do
+    Rails.cache = @previous_cache
   end
 
   describe '#display_name' do
