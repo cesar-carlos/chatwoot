@@ -717,8 +717,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
     t.jsonb "provider_config", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["account_id", "phone_number"], name: "index_channel_wavoip_on_account_id_and_phone_number", unique: true
     t.index ["account_id"], name: "index_channel_wavoip_on_account_id"
-    t.index ["phone_number"], name: "index_channel_wavoip_on_phone_number", unique: true
     t.index ["webhook_key"], name: "index_channel_wavoip_on_webhook_key", unique: true
   end
 
