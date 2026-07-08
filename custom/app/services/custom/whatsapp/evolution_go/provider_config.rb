@@ -3,7 +3,17 @@
 module Custom::Whatsapp::EvolutionGo::ProviderConfig
   PENDING_PROVISION_STATUS = 'pending_provision'
 
-  WEBHOOK_EVENTS = %w[MESSAGE CONNECTION QRCODE READ_RECEIPT].freeze
+  WEBHOOK_EVENTS = %w[
+    MESSAGE
+    CONNECTION
+    QRCODE
+    READ_RECEIPT
+    MESSAGE_DELETE
+    MESSAGES_DELETE
+    MESSAGES_EDITED
+    MESSAGE_EDIT
+    HISTORY_SYNC
+  ].freeze
 
   RUNTIME_KEYS = %w[
     connection_status

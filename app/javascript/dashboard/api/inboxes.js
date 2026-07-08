@@ -149,6 +149,14 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.post(`${this.url}/${inboxId}/evolution_go_test_webhook`);
   }
 
+  postEvolutionGoSyncWebhook(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_go_sync_webhook`);
+  }
+
+  postEvolutionGoPair(inboxId, phone) {
+    return axios.post(`${this.url}/${inboxId}/evolution_go_pair`, { phone });
+  }
+
   postEvolutionGoServerCheck(payload) {
     return axios.post(`${this.url}/evolution_go_server_check`, payload);
   }

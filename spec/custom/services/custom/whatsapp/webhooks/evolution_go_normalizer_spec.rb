@@ -169,4 +169,37 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     expect(result[:messages].first[:image][:_evolution_go_message]).to be_present
     expect(result[:messages].first[:image][:caption]).to eq('Photo caption')
   end
+
+  it 'normalizes inbound location MESSAGE events' do
+    location_fixture = JSON.parse(
+      Rails.root.join('spec/fixtures/evolution_go/message_inbound_location.json').read
+    )
+
+    result = described_class.new(channel, location_fixture).perform
+
+    aggregate_failures do
+      expect(result[:messages].first[:type]).to eq('location')
+      expect(result[:messages].first[:location][:latitude]).to eq(-23.5505199)
+      expect(result[:messages].first[:location][:longitude]).to eq(-46.6333094)
+      expect(result[:messages].first[:location][:name]).to eq('São Paulo')
+    end
+  end
+
+  it 'renders reaction messages as placeholder text' do
+    reaction_fixture = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'REACTION1'
+        },
+        'message' => { 'reactionMessage' => { 'text' => '👍' } }
+      }
+    }
+
+    result = described_class.new(channel, reaction_fixture).perform
+
+    expect(result[:messages].first[:text][:body]).to eq('[Reaction message]')
+  end
 end

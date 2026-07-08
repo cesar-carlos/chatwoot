@@ -127,6 +127,12 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Agente apaga com `sync_delete_to_whatsapp` — confirmação + delete no WA
 - [ ] Painel diagnóstico exibe webhook URL e `mutation_stats`
 - [ ] `POST evolution_go_test_webhook` retorna `ok: true`
+- [ ] `POST evolution_go_sync_webhook` atualiza `webhook_subscribe` no channel
+- [ ] `rake evolution_go:sync_webhooks` sincroniza todos os inboxes Go
+- [ ] Logout na health page desconecta sessão (`POST evolution_go_logout`)
+- [ ] Pairing code via `POST evolution_go_pair` com `{ phone }` retorna `pairing_code`
+- [ ] Location inbound (`message_inbound_location.json`) → attachment no Chatwoot
+- [ ] Location outbound (agente envia pin) → `POST /send/location`
 - [ ] `POST /chat/history-sync` + evento `HISTORY_SYNC` real (salvar fixture)
 
 ### 4c. Grupos (`ignore_groups: false`)
@@ -137,6 +143,31 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Mensagens de participantes diferentes no mesmo grupo → mesma conversa
 - [ ] Resposta do agente no Chatwoot → chega no grupo
 - [ ] Salvar fixture real: `message_inbound_group.json`
+
+---
+
+## 6. Webhook subscribe sync
+
+```bash
+curl -sS -X POST "${CHATWOOT_BASE}/api/v1/accounts/${ACCOUNT_ID}/inboxes/${INBOX_ID}/evolution_go_sync_webhook" \
+  -H "api_access_token: ${API_TOKEN}" | tee /tmp/evogo-sync-webhook.json
+```
+
+- [ ] HTTP 2xx
+- [ ] `webhook_subscribe` inclui eventos canônicos (delete, edit, history)
+- [ ] Com `ignore_groups: false`, lista inclui `GROUP`
+
+## 7. Pairing code
+
+```bash
+curl -sS -X POST "${CHATWOOT_BASE}/api/v1/accounts/${ACCOUNT_ID}/inboxes/${INBOX_ID}/evolution_go_pair" \
+  -H "api_access_token: ${API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"phone": "'"${TEST_PHONE}"'"}' | tee spec/fixtures/evolution_go/pair_response.json
+```
+
+- [ ] HTTP 2xx · `pairing_code` presente
+- [ ] Código aceito no WhatsApp → `connection_status: open`
 
 ---
 

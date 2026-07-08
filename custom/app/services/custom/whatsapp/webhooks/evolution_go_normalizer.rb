@@ -106,13 +106,6 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
     jid_resolver.phone_from_jid(jid)
   end
 
-  def extract_text_body(message)
-    return message['conversation'] if message['conversation'].present?
-    return message.dig('extendedTextMessage', 'text') if message.dig('extendedTextMessage', 'text').present?
-
-    nil
-  end
-
   def from_me?(key)
     ActiveModel::Type::Boolean.new.cast(key['fromMe'] || key[:fromMe])
   end

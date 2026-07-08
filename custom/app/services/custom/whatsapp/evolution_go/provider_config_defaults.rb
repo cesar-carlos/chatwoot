@@ -39,6 +39,6 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults
     'days_limit_import_messages' => 7,
     'connection_status' => 'close',
     'webhook_token' => nil,
-    'webhook_subscribe' => %w[MESSAGE CONNECTION QRCODE READ_RECEIPT]
+    'webhook_subscribe' => Custom::Whatsapp::EvolutionGo::ProviderConfig::WEBHOOK_EVENTS
   }.freeze
 end

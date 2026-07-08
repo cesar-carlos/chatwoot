@@ -34,6 +34,7 @@ export function formatQrDataUrl(value) {
 function extractPairingCode(raw) {
   const candidates = [
     raw.pairingCode,
+    raw.pairing_code,
     raw.qrcode_code,
     raw.qrcodeCode,
     raw.qrcode?.pairingCode,

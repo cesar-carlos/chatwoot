@@ -75,7 +75,8 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
       'instance_name' => api_client.dig_field(data, 'name', 'Name') || provider_config['instance_name'],
       'connection_status' => 'connecting',
       'webhook_token' => provider_config['webhook_token'].presence || SecureRandom.hex(16),
-      'webhook_subscribe' => provider_config['webhook_subscribe'].presence || Custom::Whatsapp::EvolutionGo::ProviderConfig::WEBHOOK_EVENTS
+      'webhook_subscribe' => provider_config['webhook_subscribe'].presence ||
+        Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.canonical_events(provider_config)
     }
     connection_service.persist_provider_config!(provider_config.merge(attrs.stringify_keys))
     @api_client = nil
@@ -88,12 +89,10 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
   end
 
   def connect_with_webhook!
-    response = api_client.connect(
-      webhook_url: webhook_url,
-      subscribe: webhook_subscribe_events
-    )
-    Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to connect Evolution Go instance')
-    connection_service.update_runtime_config!('connection_status' => 'connecting')
+    Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.new(
+      channel: channel,
+      connection_service: connection_service
+    ).sync!
   end
 
   def fetch_qr_code!
@@ -122,8 +121,10 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
   end
 
   def webhook_subscribe_events
-    Array.wrap(provider_config['webhook_subscribe']).presence ||
-      Custom::Whatsapp::EvolutionGo::ProviderConfig::WEBHOOK_EVENTS
+    Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.new(
+      channel: channel,
+      connection_service: connection_service
+    ).merge_stored!
   end
 
   def proxy_body

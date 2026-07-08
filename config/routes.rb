@@ -295,6 +295,8 @@ Rails.application.routes.draw do
             post :evolution_go_import, on: :member
             get :evolution_go_diagnostics, on: :member
             post :evolution_go_test_webhook, on: :member
+            post :evolution_go_sync_webhook, on: :member
+            post :evolution_go_pair, on: :member
             post :evolution_go_server_check, on: :collection
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do

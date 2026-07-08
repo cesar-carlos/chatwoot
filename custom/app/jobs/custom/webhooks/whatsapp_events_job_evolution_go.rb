@@ -44,6 +44,8 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel).handle_event(params)
     when 'HISTORY_SYNC'
       process_history_sync_event(channel, params)
+    when 'GROUP'
+      process_group_event(channel, params)
     when 'SEND_MESSAGE'
       nil
     else
@@ -108,6 +110,22 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       channel: channel,
       data: params[:data]
     ).perform
+  end
+
+  def process_group_event(channel, params)
+    group_jid = extract_group_jid(params[:data])
+    return if group_jid.blank?
+
+    Custom::Whatsapp::Evolution::GroupMetadataFetchJob.perform_later(channel.id, group_jid)
+  end
+
+  def extract_group_jid(data)
+    return if data.blank?
+
+    data = data.with_indifferent_access
+    jid = data[:groupJid] || data[:jid] || data[:id] ||
+          data.dig(:key, :remoteJid) || data.dig('key', 'remoteJid')
+    jid.to_s.include?('@g.us') ? jid.to_s : nil
   end
 
   def process_edit_event(channel, params)

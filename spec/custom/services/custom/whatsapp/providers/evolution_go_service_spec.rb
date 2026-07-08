@@ -38,6 +38,9 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
       allow(api_client).to receive(:send_text).and_return(
         instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Info' => { 'ID' => 'TXT1' } } })
       )
+      allow(api_client).to receive(:send_location).and_return(
+        instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Info' => { 'ID' => 'LOC1' } } })
+      )
     end
 
     it 'includes quoted context when replying' do
@@ -66,6 +69,33 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
             messageId: 'INCOMING1',
             participant: '5511999999999@s.whatsapp.net'
           }
+        )
+      )
+    end
+
+    it 'sends location attachments via send_location' do
+      location_message = create(
+        :message,
+        account: account,
+        inbox: message.inbox,
+        conversation: message.conversation
+      )
+      location_message.attachments.create!(
+        account: account,
+        file_type: :location,
+        coordinates_lat: -23.55,
+        coordinates_long: -46.63,
+        fallback_title: 'São Paulo'
+      )
+
+      service.send_message('5511999999999', location_message)
+
+      expect(api_client).to have_received(:send_location).with(
+        hash_including(
+          number: '5511999999999',
+          latitude: -23.55,
+          longitude: -46.63,
+          name: 'São Paulo'
         )
       )
     end
