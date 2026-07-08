@@ -1,6 +1,8 @@
 # Spec design — classes `custom/` Evolution Go
 
-Contratos públicos das classes do provider antes da implementação. Espelha [../evolution-api/spec-design.md](../evolution-api/spec-design.md).
+> **Nota (jul/2026):** Contratos históricos de planejamento — a implementação em `custom/` é a fonte de verdade. Divergências conhecidas foram corrigidas nesta revisão (downloadmedia only, history-sync body, user_check array).
+
+Contratos públicos das classes do provider. Espelha [../evolution-api/spec-design.md](../evolution-api/spec-design.md).
 
 ---
 
@@ -57,7 +59,7 @@ def send_media(number:, type:, url:, caption: nil, filename: nil)  # Fase 2 — 
 # Fase 2
 def get_advanced_settings(instance_id)                 # GET /instance/{id}/advanced-settings
 def update_advanced_settings(instance_id, settings:)    # PUT /instance/{id}/advanced-settings
-def download_media(message_payload)                    # POST /message/downloadimage → fallback downloadmedia
+def download_media(message_payload)                    # POST /message/downloadmedia only (no downloadimage fallback)
 
 # private
 def admin_headers    # { 'apikey' => global_api_key }
@@ -93,13 +95,11 @@ end
 
 ```ruby
 def download_media(message_payload)
-  post('/message/downloadimage', flatten_media_fields(message_payload), headers: instance_headers)
-rescue ApiError => e
-  raise e unless retriable_download_error?(e)
-
   post('/message/downloadmedia', { message: message_payload }, headers: instance_headers)
 end
 ```
+
+Sem fallback `/message/downloadimage` — endpoint ausente do swagger atual (jul/2026).
 
 ---
 

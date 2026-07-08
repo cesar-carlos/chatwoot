@@ -99,7 +99,7 @@ Enviar mensagem do celular para o número conectado.
 ## 2b. Fase 2 (opcional)
 
 - [ ] `GET`+`PUT /instance/{id}/advanced-settings` — anotar casing dos campos
-- [ ] `POST /message/downloadimage` vs `downloadmedia` — ADR §25
+- [ ] `POST /message/downloadmedia` inbound mídia — ADR §25 (sem `downloadimage`)
 - [ ] Reconnect: confirmar que `POST /instance/connect` preserva webhook (ADR §23–24)
 
 ---
@@ -133,7 +133,9 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Pairing code via `POST evolution_go_pair` com `{ phone }` retorna `pairing_code`
 - [ ] Location inbound (`message_inbound_location.json`) → attachment no Chatwoot
 - [ ] Location outbound (agente envia pin) → `POST /send/location`
-- [ ] `POST /chat/history-sync` + evento `HISTORY_SYNC` real (salvar fixture)
+- [ ] `POST /chat/history-sync` body `{ count, messageInfo }` + evento `HISTORY_SYNC` real (salvar fixture)
+- [ ] Echo celular (`SEND_MESSAGE` / `fromMe`) aparece como outgoing no Chatwoot
+- [ ] `evolution_go_server_check` bloqueia URLs internas (SSRF guard)
 
 ### 4c. Grupos (`ignore_groups: false`)
 

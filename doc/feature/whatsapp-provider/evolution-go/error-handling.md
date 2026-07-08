@@ -100,6 +100,17 @@ i18n: [frontend-wizard-spec.md § i18n](./frontend-wizard-spec.md)
 
 Evolution Go espera **200** rápido. Não retornar 401 após validar — logar e 200 para evitar retry storm (5× / 30s).
 
+### Retry policy (jobs fork)
+
+| Job | Retry |
+|-----|-------|
+| `WhatsappEventsJob` (Evolution Go) | Sidekiq default — falha real re-enfileira |
+| `MediaDownloadJob` | Sidekiq default + dedup lock |
+| `MarkReadJob` | **Sem** `retry_on` — best-effort; falha logada apenas |
+| `ContactEnrichmentJob` | Sidekiq default; lock liberado só se adquirido |
+
+`ApiClient`: `follow_redirects: false` — redirect não contorna SSRF guard (ADR §31).
+
 | Resposta CW | Efeito |
 |-------------|--------|
 | 200 | OK — sem retry |

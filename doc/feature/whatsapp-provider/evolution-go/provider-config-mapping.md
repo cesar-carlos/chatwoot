@@ -73,7 +73,7 @@ Com `ignore_groups: false`, mensagens `@g.us` criam conversa por grupo (`GroupCo
 
 | Campo `provider_config` | Campo Go `proxy` |
 |-------------------------|------------------|
-| `proxy_host` | `address` |
+| `proxy_host` | `host` |
 | `proxy_port` | `port` |
 | `proxy_username` | `username` |
 | `proxy_password` | `password` |
