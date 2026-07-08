@@ -73,7 +73,7 @@ describe('useCallSession Wavoip registry integration', () => {
     await joinCall({ conversationId: 1, inboxId: 5, callSid: 'reg_join_1' });
 
     expect(getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP)).toBeTruthy();
-    expect(connectForInboxMock).toHaveBeenCalledWith(5);
+    expect(connectForInboxMock).not.toHaveBeenCalled();
     expect(acceptIncomingCallMock).toHaveBeenCalledWith({
       callId: 'reg_join_1',
       inboxId: 5,

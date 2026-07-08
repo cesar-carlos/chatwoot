@@ -470,7 +470,8 @@
       "PERMISSION_GRANTED": "Contact has authorized WhatsApp calls — you can call them now.",
       "UNKNOWN_CALLER": "Unknown caller",
       "CUSTOMER_SUPPORT": "Customer support",
-      "RECORDING_UPLOAD_FAILED": "Call recording could not be saved. Please check your connection and try again."
+      "RECORDING_UPLOAD_FAILED": "Call recording could not be saved. Please check your connection and try again.",
+      "MEDIA_CONNECTION_FAILED": "Call media connection failed. The call was ended."
     }
   },
   "EMAIL_TRANSCRIPT": {

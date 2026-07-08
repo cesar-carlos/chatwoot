@@ -10,7 +10,10 @@ RSpec.describe Voice::OutboundWhatsappCallBuilder do
   end
   let(:inbox) { channel.inbox }
   let(:agent) { create(:user, account: account) }
-  let(:conversation) { create(:conversation, account: account, inbox: inbox) }
+  let(:conversation) do
+    contact = create(:contact, account: account, phone_number: '+5511999999999')
+    create(:conversation, account: account, inbox: inbox, contact: contact)
+  end
   let(:provider_service) { instance_double(Whatsapp::Providers::WhatsappCloudService) }
   let(:sdp_offer) { 'v=0...offer' }
   let(:provider_call_id) { 'wacid_outbound_123' }

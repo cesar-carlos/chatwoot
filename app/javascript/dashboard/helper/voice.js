@@ -7,6 +7,11 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import types from 'dashboard/store/mutation-types';
 import store from 'dashboard/store';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
+import {
+  handleWebRtcRemoteEnd,
+  isLocalWebRtcCall,
+} from 'dashboard/composables/useWebRtcCallSession';
+// FORK: Wavoip inbound ring routing and call-direction normalization
 import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 import {
   isOutboundInitiationActive,
@@ -31,6 +36,7 @@ const isVoiceCallMessage = message => {
   return CONTENT_TYPES.VOICE_CALL === message?.content_type;
 };
 
+// FORK: ignore stale Wavoip ringing messages (ghost widgets)
 // Wavoip calls rely entirely on the provider's webhook to reach a terminal
 // status. When that webhook never arrives (SDK-only hangups, dropped
 // webhooks), the Call row is stuck "ringing" forever and keeps resurfacing
@@ -40,6 +46,7 @@ const isVoiceCallMessage = message => {
 // well above any configured ring timeout — so stale rows stop haunting the UI
 // while the backend safety-net job catches up and marks them no_answer.
 const WAVOIP_STALE_RINGING_MS = 3 * 60 * 1000;
+const WHATSAPP_STALE_RINGING_MS = 3 * 60 * 1000;
 
 export const isStaleWavoipRingingMessage = message => {
   const call = message?.call;
@@ -51,6 +58,21 @@ export const isStaleWavoipRingingMessage = message => {
 
   return Date.now() - createdAtMs > WAVOIP_STALE_RINGING_MS;
 };
+
+export const isStaleWhatsappRingingMessage = message => {
+  const call = message?.call;
+  if (call?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return false;
+  if (call?.status !== 'ringing') return false;
+
+  const createdAtMs = (message?.created_at || 0) * 1000;
+  if (!createdAtMs) return false;
+
+  return Date.now() - createdAtMs > WHATSAPP_STALE_RINGING_MS;
+};
+
+export const isStaleRingingVoiceMessage = message =>
+  isStaleWavoipRingingMessage(message) ||
+  isStaleWhatsappRingingMessage(message);
 
 const shouldSkipCall = (callDirection, senderId, currentUserId) => {
   return callDirection === 'outbound' && senderId !== currentUserId;
@@ -128,7 +150,7 @@ export function handleVoiceCallCreated(
   currentUserAvailability
 ) {
   if (!isVoiceCallMessage(message)) return;
-  if (isStaleWavoipRingingMessage(message)) return;
+  if (isStaleRingingVoiceMessage(message)) return;
 
   const {
     callSid,
@@ -160,6 +182,7 @@ export function handleVoiceCallCreated(
 
   if (!shouldRingInbound(callDirection, currentUserAvailability)) return;
 
+  // FORK: suppress Wavoip inbound ring during outbound initiation / inbox routing
   if (
     provider === VOICE_CALL_PROVIDERS.WAVOIP &&
     callDirection === 'inbound' &&
@@ -217,6 +240,14 @@ export function handleVoiceCallUpdated(
 
   callsStore.handleCallStatusChanged({ callSid, status, conversationId });
 
+  if (
+    provider === VOICE_CALL_PROVIDERS.WHATSAPP &&
+    TERMINAL_STATUSES.includes(status) &&
+    isLocalWebRtcCall(callId)
+  ) {
+    handleWebRtcRemoteEnd(callId);
+  }
+
   commit(types.UPDATE_MESSAGE_CALL_STATUS, {
     conversationId,
     callStatus: status,
@@ -231,6 +262,7 @@ export function handleVoiceCallUpdated(
       currentUserId,
     })
   ) {
+    // FORK: don't remove widget while Wavoip SDK session is still live
     // Outbound Wavoip messages are created with a null sender (accepted_by_agent
     // is not set at call-creation time), so shouldShowCall always returns false
     // for every agent. The SDK is the source of truth for whether the session is
@@ -242,7 +274,7 @@ export function handleVoiceCallUpdated(
   }
 
   if (status === 'ringing') {
-    if (isStaleWavoipRingingMessage(message)) return;
+    if (isStaleRingingVoiceMessage(message)) return;
     if (!shouldRingInbound(callDirection, currentUserAvailability)) return;
 
     callsStore.addCall({

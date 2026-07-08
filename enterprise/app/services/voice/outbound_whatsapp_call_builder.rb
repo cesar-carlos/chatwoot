@@ -29,14 +29,19 @@ class Voice::OutboundWhatsappCallBuilder
   end
 
   def perform!
+    provider_call_id = nil
     provider_call_id = initiate_provider_call!
 
     ActiveRecord::Base.transaction do
       call = build_call!(provider_call_id)
       message = Voice::CallMessageBuilder.new(call).perform!
       call.update!(message_id: message.id)
+      Whatsapp::Calls::StaleCallTimeoutScheduler.new(call: call).schedule
       call
     end
+  rescue StandardError => e
+    rollback_provider_call!(provider_call_id) if provider_call_id.present?
+    raise e
   end
 
   private
@@ -44,7 +49,7 @@ class Voice::OutboundWhatsappCallBuilder
   attr_reader :conversation, :agent, :sdp_offer, :provider_service
 
   def contact_phone
-    conversation.contact.phone_number.delete('+')
+    conversation.contact.phone_number&.delete('+')
   end
 
   def initiate_provider_call!
@@ -67,5 +72,11 @@ class Voice::OutboundWhatsappCallBuilder
       accepted_by_agent_id: agent.id,
       meta: { 'sdp_offer' => sdp_offer, 'ice_servers' => Call.default_ice_servers }
     )
+  end
+
+  def rollback_provider_call!(provider_call_id)
+    provider_service.terminate_call(provider_call_id)
+  rescue StandardError => e
+    Rails.logger.warn "[WHATSAPP CALL] rollback terminate failed for #{provider_call_id}: #{e.class} #{e.message}"
   end
 end

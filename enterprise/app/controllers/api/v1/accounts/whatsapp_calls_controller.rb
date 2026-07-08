@@ -32,6 +32,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     @upload_status = @call.message.with_lock { attach_recording_idempotently }
   end
 
+  # FORK: delegate outbound dial to OutboundWhatsappCallBuilder
   def initiate
     @call = Voice::OutboundWhatsappCallBuilder.perform!(
       conversation: @conversation,
@@ -125,10 +126,15 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     'uploaded'
   end
 
-  def create_outbound_call
-    # A reused thread unassigned at click time is claimed for the caller (wins over auto-assignment); a
-    # fresh thread (@conversation nil until the dial succeeds) is created already assigned to the caller.
-    claim_for_caller = @conversation.present? && @conversation.assignee_id.nil?
+  # FORK: delegate opt-in flow to CallPermissionRequestService
+  # Meta error 138006 means the contact hasn't opted in yet; delegate opt-in
+  # flow to the dedicated service (throttle, template, activity, WAMID record).
+  # 422 (not 200) so clients treating 2xx as "call placed" can't mistake the
+  # permission-template path for a successful dial.
+  def handle_no_call_permission
+    status = Whatsapp::CallPermissionRequestService.new(
+      conversation: @conversation, agent: Current.user
+    ).perform
 
     result = provider_service.initiate_call(@contact.phone_number.delete('+'), params[:sdp_offer])
     provider_call_id = result.dig('calls', 0, 'id') || result['call_id']

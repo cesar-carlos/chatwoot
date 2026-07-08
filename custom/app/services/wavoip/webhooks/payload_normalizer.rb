@@ -132,7 +132,9 @@ class Wavoip::Webhooks::PayloadNormalizer
   end
 
   def inferred_direction
-    @inferred_direction ||= Wavoip::Webhooks::DirectionInferrer.new(
+    return @inferred_direction if defined?(@inferred_direction)
+
+    @inferred_direction = Wavoip::Webhooks::DirectionInferrer.new(
       payload: payload,
       webhook_action: webhook_action,
       external_call_id: external_call_id_from_payload

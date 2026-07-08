@@ -47,11 +47,14 @@ class Wavoip::Calls::RecordingAttachmentService
   end
 
   def store_external_url_fallback!
-    meta = (call.meta || {}).dup
-    return if meta['record_url'] == record_url
+    call.with_lock do
+      call.reload
+      meta = (call.meta || {}).dup
+      next if meta['record_url'] == record_url
 
-    call.update!(meta: meta.merge('record_url' => record_url))
-    sync_message_recording_url!(record_url)
+      call.update!(meta: meta.merge('record_url' => record_url))
+      sync_message_recording_url!(record_url)
+    end
   end
 
   def sync_message_recording_url!(url = nil)

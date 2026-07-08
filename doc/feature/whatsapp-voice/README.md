@@ -2,10 +2,10 @@
 
 Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp** no Chatwoot Enterprise (WhatsApp Cloud Calling API + WebRTC browser↔Meta). O objetivo é orientar implementação, extensão com providers alternativos e decisões de arquitetura no fork.
 
-**Última reanálise:** 04 jul. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
+**Última reanálise:** 08 jul. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
 **Revisão pontual:** 03 jul. 2026 — ações de botão do `WavoipDevicePanel` (ver
 [refactory/CHANGELOG.md#bug-06](./wavoip-provider/refactory/CHANGELOG.md)).
-**Incidente ativo (04 jul. 2026):** webhook Wavoip parou de entregar eventos — ver
+**Incidente webhook Wavoip (04 jul. 2026):** hardening de código concluído (08 jul. 2026); verificação live no painel Wavoip ainda requer acesso ops — checklist em
 [wavoip-provider/operations-runbook.md § Webhook parou de chegar sem aviso](./wavoip-provider/operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026).
 
 ---
@@ -131,7 +131,7 @@ Se o fork **não** usar `whatsapp_cloud`, restrições da Meta na API oficial de
 | God class / anti-patterns graves | **Baixo risco (BE)** | Backend sem god class; FE core WebRTC em `useWebRtcCallSession` (~480 linhas); `useWhatsappCallSession` é wrapper fino (~33 linhas) |
 | Extensibilidade multi-provider | **Fraca** | Acoplamento WhatsApp/Meta por design; ver roadmap §13 |
 | Alinhamento Meta Calling API | **Bom** | `pre_accept`+`accept`, `connect`≠pickup, races tratadas |
-| Cobertura de testes | **Parcial** | Specs Ruby nos serviços críticos; FE WebRTC sem testes unitários |
+| Cobertura de testes | **Boa** (voice scope) | 267 RSpec + ~165 Vitest; `useWebRtcCallSession.spec.js` cobre race/beacon/422 |
 
 ### O que está bem (segue as rules do projeto)
 
@@ -144,9 +144,9 @@ Se o fork **não** usar `whatsapp_cloud`, restrições da Meta na API oficial de
 
 | # | Débito | Severidade | Doc |
 |---|--------|------------|-----|
-| 1 | Assimetria Twilio vs WhatsApp no backend | **Média** (reduzida) | Twilio tem adapter; WhatsApp agora tem `OutboundWhatsappCallBuilder` + `CallPermissionRequestService` — falta `MetaCloud::Adapter` |
+| 1 | Assimetria Twilio vs WhatsApp no backend | **Baixa** | Twilio e WhatsApp têm adapters (`Twilio::Adapter`, `MetaCloud::Adapter`); falta só `Voice::Provider::WhatsappCalling::Base` formal |
 | 2 | `useWebRtcCallSession.js` concentra WebRTC | Média | Extraído de `useWhatsappCallSession` (wrapper fino); recorder + API + beacon ainda num módulo |
-| 3 | `useCallSession.js` com branching `isWhatsappCall` | Média | Wavoip usa registry parcial; WhatsApp ainda inline em `actionCable.js` |
+| 3 | `useCallSession.js` com branching `isWhatsappCall` | Média | Wavoip e WhatsApp usam registries (`voiceSessionRegistry`, `whatsappVoiceCableRegistry`); `useCallSession` ainda tem branches por provider |
 | 4 | Model `Call` mistura concerns Twilio + WhatsApp | Baixa | Pragmático no EE; novo enum exige edição `# FORK:` porque `Call` não expõe hook |
 | ~~5~~ | ~~Permissão outbound no controller~~ | ✅ Resolvido | `Whatsapp::CallPermissionRequestService` (jun. 2026) |
 
@@ -158,16 +158,16 @@ Detalhes e plano de correção: [architecture-and-flow.md §13](./architecture-a
 
 | # | Lacuna | Impacto | Mitigação |
 |---|--------|---------|-----------|
-| 1 | Sem `Voice::Provider::WhatsappCalling::Base` (só Twilio tem adapter) | Cada provider = controller/job/composable novos | `Voice::Provider::MetaCloud::Adapter` + registry — [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-para-provider-sdpmeta-like) |
+| 1 | Sem `Voice::Provider::WhatsappCalling::Base` formal | Cada CPaaS Meta-like exige contrato explícito | `MetaCloud::Adapter` ✅; falta `WhatsappCalling::Base` — [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-para-provider-sdpmeta-like) |
 | ~~2~~ | ~~`useWhatsappCallSession` acoplado a `/whatsapp_calls`~~ | ✅ Resolvido (jun. 2026) | `useWebRtcCallSession(callsAPI)` extraído; wrapper fino em `useWhatsappCallSession.js` |
-| 3 | `actionCable.js` filtra WhatsApp inline (Wavoip usa registry) | Segundo provider WebRTC Meta-like precisa de branches ou registry | Generalizar `VOICE_CALL_CABLE_HANDLERS` para WhatsApp — §13 |
+| ~~3~~ | ~~`actionCable.js` filtra WhatsApp inline~~ | ✅ Resolvido (jul. 2026) | `whatsappVoiceCableRegistry.js` + `voiceCallCableRegistry.js`; `actionCable.js` delega por provider |
 | ~~4~~ | ~~`voice_call.permission_granted` sem handler FE~~ | ✅ Resolvido (jun. 2026) | Toast em `actionCable.js` + i18n `VOICE_WIDGET.PERMISSION_GRANTED` |
 | ~~5~~ | ~~`voice_call.accepted` sem handler FE~~ | ✅ Resolvido (jun. 2026) | `onVoiceCallAccepted` descarta incoming em outros tabs quando outro agente aceita |
 | 6 | `voice_calling_supported?` só `whatsapp_cloud` | Gateways bloqueados no model OSS | `prepend_mod_with` em `custom/` |
 | 7 | TURN não configurado por default | NAT corporativo pode falhar mídia | `VOICE_CALL_STUN_URLS` via `GlobalConfigService` (STUN+TURN); ver §14 |
 | 8 | `disable_voice_calling!` não desliga Meta | Flag local + webhook; WABA `calling.status` intacto | Documentar para admins; opcional `DISABLED` na Meta |
 | ~~9~~ | ~~Outbound WhatsApp sem builder dedicado~~ | ✅ Resolvido (jun. 2026) | `Voice::OutboundWhatsappCallBuilder` |
-| 10 | Sem testes FE para race buffers / beacon | Regressões silenciosas em WebRTC | Specs Vitest com mocks de `RTCPeerConnection` / API |
+| ~~10~~ | ~~Sem testes FE para race buffers / beacon~~ | ✅ Resolvido (jul. 2026) | `useWebRtcCallSession.spec.js` + specs Wavoip em `custom/.../specs/` |
 
 Detalhes: [architecture-and-flow.md §12–14](./architecture-and-flow.md) · [second-provider-strategy.md](./second-provider-strategy.md)
 
@@ -177,13 +177,13 @@ Detalhes: [architecture-and-flow.md §12–14](./architecture-and-flow.md) · [s
 
 | Prioridade | Melhoria | Onde | Esforço | Status |
 |------------|----------|------|---------|--------|
-| **P0** | Registry de sessões/eventos por provider em `useCallSession` + `actionCable.js` | `# FORK:` mínimo | 2–3 dias | Parcial — Wavoip tem registry; WhatsApp inline |
+| **P0** | Registry de sessões/eventos por provider em `useCallSession` + `actionCable.js` | `# FORK:` mínimo | 2–3 dias | Parcial — registries por provider; `useCallSession` ainda brancha |
 | ~~**P1**~~ | ~~Extrair `useWebRtcCallSession(callsAPI)`~~ | FE | ~1 semana | ✅ Done |
-| **P1** | `Voice::Provider::MetaCloud::Adapter` (delegar de `WhatsappCloudService`) | `enterprise/` ou `custom/` | 3–5 dias | Pendente |
+| ~~**P1**~~ | ~~`Voice::Provider::MetaCloud::Adapter`~~ | `enterprise/` | 3–5 dias | ✅ Done (jul. 2026) |
 | ~~**P1**~~ | ~~`Voice::OutboundWhatsappCallBuilder`~~ | `enterprise/` | 2–3 dias | ✅ Done |
 | ~~**P1**~~ | ~~`Whatsapp::CallPermissionRequestService`~~ | `enterprise/` | 1–2 dias | ✅ Done |
 | ~~**P2**~~ | ~~Handler FE `voice_call.permission_granted` + `accepted`~~ | `actionCable.js` | 1 dia | ✅ Done |
-| **P2** | Specs Vitest: `pendingOutboundAnswers`, `beaconTerminate`, permission 422 | `spec/` FE | 2–3 dias | Pendente |
+| ~~**P2**~~ | ~~Specs Vitest: `pendingOutboundAnswers`, `beaconTerminate`, permission 422~~ | `spec/` FE | 2–3 dias | ✅ Done (jul. 2026) |
 | **P2** | Suporte TURN em `VOICE_CALL_STUN_URLS` (doc + validação admin) | config + settings UI | 1–2 dias | Parcial — `GlobalConfigService` no model; UI admin pendente |
 | **P3** | Renomear rotas `/voice_calls` (opcional) | refactor amplo | só se valer o diff | Pendente |
 
@@ -194,7 +194,7 @@ Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-r
 ## Recomendação resumida (fork)
 
 1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — edições inevitáveis em `enterprise/` devem ser mínimas e marcadas `# FORK:`.
-2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun. 2026 (source_id, teardown scoped, inbound guard, webhook rotation, caller/receiver). **Pendente piloto:** webhook parado de entregar eventos (incidente ativo 04 jul. 2026 — ver runbook) + W1 — prova live no painel Wavoip (CALL, não só DEVICE) + G0.4 browser E2E multiagente.
+2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun.–jul. 2026 (source_id, teardown scoped, inbound guard, webhook rotation, caller/receiver, P0 hardening). **Pendente piloto (ops):** W1 — prova live no painel Wavoip (CALL, não só DEVICE) após reativação manual do webhook (incidente 04 jul. 2026 — ver runbook) + G0.4 browser E2E multiagente.
 3. **Segundo provider Meta-like (CPaaS proxy):** estender stack com adapters — [second-provider-strategy.md](./second-provider-strategy.md).
 4. **Wavoip:** seguir [wavoip-provider/](./wavoip-provider/) — canal `Channel::Wavoip` em `custom/`; **não** inflar `WhatsappEventsJob`.
 5. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; validar contrato SDP/events antes de UI.
@@ -222,28 +222,28 @@ Itens levantados na reanálise — checklist de implementação futura vs. concl
 
 | # | Item | Escopo | Status |
 |---|------|--------|--------|
-| G1 | Registry de sessão/eventos por provider | Meta + Wavoip | Parcial — Wavoip em `voiceCallCableRegistry.js`; Meta inline |
+| G1 | Registry de sessão/eventos por provider | Meta + Wavoip | Parcial — `voiceCallCableRegistry.js` (Wavoip) + `whatsappVoiceCableRegistry.js` (Meta); `useCallSession` ainda brancha |
 | G1b | Extrair `useWebRtcCallSession` | Meta + provider SDP/CPaaS | ✅ **Done** (jun. 2026) |
-| G2 | `Voice::Provider::MetaCloud::Adapter` | Só Meta | Pendente |
+| G2 | `Voice::Provider::MetaCloud::Adapter` | Só Meta | ✅ **Done** (jul. 2026) |
 | G3 | `Voice::OutboundWhatsappCallBuilder` | Só Meta | ✅ **Done** (jun. 2026) |
 | G4 | `Whatsapp::CallPermissionRequestService` | Só Meta | ✅ **Done** (jun. 2026) |
 | G5 | Handlers `voice_call.permission_granted` + `accepted` | Só Meta | ✅ **Done** (jun. 2026) |
-| G6 | Specs Vitest WebRTC race/beacon | Meta | Pendente |
+| G6 | Specs Vitest WebRTC race/beacon | Meta | ✅ **Done** (jul. 2026) |
 | G7 | Canal `Channel::Wavoip` + webhook + composables | Fork `custom/` | ✅ **Done** |
 | G8 | `PATCH` `accepted_by_agent_id` pós-accept Wavoip | Fork `custom/` | ✅ **Done** — `with_lock` (jun. 2026) |
 | G9 | Wavoip `apply_status!` return + `voice_enabled?` guard + `ENDED`→`no_answer` | Fork `custom/` | ✅ **Done** (jun. 2026) |
 | G10 | UX: loading states, i18n fallbacks, recording upload toast | Meta FE | ✅ **Done** (jun. 2026) |
 | G11 | UX ringtone Wavoip: reject silencia local, mute persistente, CALLER_ENDED | Wavoip FE | ✅ **Done** (27 jun. 2026) |
 
-**Status código (04 jul. 2026):** stack Meta + refactors P1/P2 concluídos; **Wavoip fases 1–4 code-complete** em `custom/` — refactory R1–R3 concluído (ver [wavoip-provider/refactory/CHANGELOG.md](./wavoip-provider/refactory/CHANGELOG.md)); piloto **bloqueado hoje** por incidente de webhook (ver abaixo).
+**Status código (08 jul. 2026):** stack Meta + refactors P0/P1 concluídos (`MetaCloud::Adapter`, registries cable, stale sweepers Meta+Wavoip, Vitest WebRTC); **Wavoip fases 1–4 code-complete** em `custom/` — refactory R1–R3 concluído (ver [wavoip-provider/refactory/CHANGELOG.md](./wavoip-provider/refactory/CHANGELOG.md)); piloto **bloqueado por verificação ops** (W1 — reativar/confirmar webhook no painel Wavoip).
 
 ### Wavoip — doc status (04 jul. 2026)
 
 | Métrica | Estimativa |
 |---------|------------|
 | **MVP código** | ~95% |
-| **Piloto produção** | **Bloqueado hoje** — webhook parado (ver [operations-runbook.md](./wavoip-provider/operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026)) |
-| **Bloqueador piloto** | Webhook Wavoip parado de entregar eventos (incidente ativo) + W1 (prova live no painel) + G0.4 (browser E2E multiagente) |
+| **Piloto produção** | **Bloqueado por ops** — código hardened (08 jul. 2026); confirmação live pendente (ver [operations-runbook.md](./wavoip-provider/operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026)) |
+| **Bloqueador piloto** | W1 (prova live webhook CALL no painel Wavoip) + G0.4 (browser E2E multiagente) |
 | **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 — `wavoip_webhook_url` / `wavoip_setup_pending` (+ camelCase) |
 
 ### Wavoip — implementation status (Jun 2026)
@@ -255,7 +255,7 @@ Itens levantados na reanálise — checklist de implementação futura vs. concl
 | **Calls PATCH** | ✅ `accepted_by_agent_id` | `custom/app/controllers/api/v1/accounts/calls_controller.rb` |
 | **Inbox API** | ✅ Admin-only fields | `wavoip_webhook_url`, `wavoip_setup_pending` em `_inbox.json.jbuilder` |
 | **Frontend** | ✅ ~31 arquivos | `custom/app/javascript/` — registry, composables, `Wavoip.vue`, `WavoipCallingPage.vue` |
-| **Testes** | ✅ 104 RSpec + 83 Vitest examples | Escopo refactory; 21 arquivos Vitest em `spec/custom/**/wavoip/**`, `custom/.../composables/wavoip/specs/`, `custom/.../lib/voice/specs/` |
+| **Testes** | ✅ 267 RSpec + ~165 Vitest examples | Escopo voice: `spec/custom/**/wavoip`, `spec/enterprise/services/{voice,whatsapp}`; Vitest em `useWebRtcCallSession.spec.js`, `custom/.../specs/` |
 | **E2E live** | ⚠️ Parcial | Pipeline OK (caller/receiver, fixtures simulados/live); inbound bloqueado hoje pelo incidente de webhook (ver runbook); **W1** — prova webhook CALL no painel Wavoip ainda pendente |
 | **Produção piloto** | ✅ Inbox ativo | Account 2, inbox 42, device `556697193168` (`open`) — URL exemplo: `/webhooks/wavoip/{webhook_key}` (não inbox id) |
 

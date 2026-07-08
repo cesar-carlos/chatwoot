@@ -8,8 +8,7 @@ Guia para admins e suporte quando a integração não funciona como esperado.
 
 ## Feature flag
 
-Adicionar em `custom/config/features.yml` (overlay fork — não editar `config/features.yml`
-upstream sem `# FORK:`):
+Definido em `config/features.yml` (entrada `channel_wavoip` com `# FORK:`):
 
 ```yaml
 - name: channel_wavoip
@@ -189,7 +188,20 @@ tendo havido chamadas de teste nesse intervalo, o webhook está parado do lado d
 6. Salvar novamente mesmo que pareça já estar correto — isso costuma forçar a reativação
 7. Fazer uma ligação de teste e reconferir o nginx access log
 
-**Mitigação estrutural:** evitar que deploys derrubem o Puma durante uma janela em que um
+**Mitigação estrutural (código — concluída 08 jul. 2026):** hardening no Chatwoot — `RecordHandler` (enqueue antes de persist), stale sweepers (`ringing` + `in_progress`), FE lifecycle (`endSdkActiveCall` no cable `ended`, QR `onBeforeUnmount`, `syncConnections` respeita call ativa), Meta `MetaCloud::Adapter`, rate limit webhook 64KB/120 req/min. **Isso não reativa o webhook no painel Wavoip** — ainda exige intervenção manual abaixo.
+
+**Verificação checklist (2026-07-08):**
+
+| # | Verificação | Status |
+|---|-------------|--------|
+| 1 | Painel Wavoip → webhook **CALL** ativo + URL correta (`/webhooks/wavoip/{webhook_key}`) | ⏳ Requer acesso ops ao painel |
+| 2 | `grep 'POST /webhooks/wavoip/'` nos logs nginx (origem Wavoip, não só curl) | ⏳ Requer acesso ops aos logs |
+| 3 | Sidekiq: `[WAVOIP] processed inbox_id=… type=CALL` | ⏳ Requer acesso ops ao Sidekiq |
+| 4 | Código-side hardening (RecordHandler, sweepers, FE, adapter) | ✅ Concluído em `main` |
+
+> **Nota:** itens 1–3 são gate piloto **W1** — bloqueadores operacionais, não de código. Registrar data de confirmação live quando ops validar.
+
+**Mitigação operacional:** evitar que deploys derrubem o Puma durante uma janela em que um
 webhook possa chegar (ex: usar `systemctl reload`/rolling restart em vez de `restart` puro
 quando disponível), já que uma única falha de entrega pode exigir intervenção manual no
 painel externo para retomar.
@@ -266,7 +278,7 @@ account.enable_features!('channel_wavoip') # se flag fork ativa
 |---|-------------|----------------|
 | 1 | Smoke automatizado | `WAVOIP_INBOX_ID=106 WAVOIP_TEST_PEER_PHONE=+5566999050312 bin/wavoip-pilot-verify` (W1 + I1 + I2 + O2) |
 | 2 | Webhook live (não curl) | `grep 'POST /webhooks/wavoip/' /var/log/nginx/chatwoot_access_443.log \| grep -v curl` |
-| 3 | Sidekiq processa CALL | Logs `[WAVOIP] processed inbox_id=… event_type=CALL` |
+| 3 | Sidekiq processa CALL | Logs `[WAVOIP] processed inbox_id=… type=CALL` |
 | 4 | Outbound E2E | SDK RINGING → ACTIVE + `Call` + `voice_call` no DB |
 | 5 | Inbound E2E | Widget + webhook `INCOMING_RING` + push (se VAPID) |
 | 6 | G0.4 multi-agente | Dois browsers online; segundo agente vê toast `ACCEPTED_ELSEWHERE` |
@@ -319,7 +331,7 @@ Prerequisite: only one browser client per device token (close Wavoip panel durin
 | Sinal | Onde buscar |
 |-------|-------------|
 | Webhook aceito | Rails log `[WAVOIP] webhook accepted inbox_id=…` |
-| Job processado | `[WAVOIP] processed inbox_id=… event_type=…` |
+| Job processado | `[WAVOIP] processed inbox_id=… type=…` |
 | Webhook drop | `[WAVOIP] Dropping webhook: inbox_id=… not found` |
 | Recording fetch fail | `[WAVOIP] recording fetch failed call_id=…` |
 | Throttle bootstrap | Rack::Attack log `wavoip_sdk_bootstrap` |

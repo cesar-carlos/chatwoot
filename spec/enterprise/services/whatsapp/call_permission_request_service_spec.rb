@@ -10,12 +10,12 @@ RSpec.describe Whatsapp::CallPermissionRequestService do
   end
   let(:inbox) { channel.inbox }
   let(:agent) { create(:user, account: account) }
-  let(:conversation) { create(:conversation, account: account, inbox: inbox) }
+  let(:contact) { create(:contact, account: account, phone_number: '+15550001111') }
+  let(:conversation) { create(:conversation, account: account, inbox: inbox, contact: contact) }
   let(:provider_service) { instance_double(Whatsapp::Providers::WhatsappCloudService) }
 
   before do
-    allow(channel).to receive(:provider_service).and_return(provider_service)
-    allow(conversation.inbox).to receive(:channel).and_return(channel)
+    allow(Whatsapp::Providers::WhatsappCloudService).to receive(:new).and_return(provider_service)
   end
 
   describe '#perform' do

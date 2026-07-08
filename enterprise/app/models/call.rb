@@ -69,11 +69,33 @@ class Call < ApplicationRecord
     "conf_account_#{account_id}_call_#{id}"
   end
 
-  # Browser ↔ Meta WebRTC needs at least one STUN server to discover its public srflx candidate.
+  # FORK: ICE/TURN servers from GlobalConfigService (VOICE_CALL_ICE_SERVERS / VOICE_CALL_STUN_URLS)
+  # Browser ↔ Meta WebRTC needs STUN/TURN servers to discover srflx/relay candidates.
   def self.default_ice_servers
-    raw = GlobalConfigService.load('VOICE_CALL_STUN_URLS', DEFAULT_STUN_URL)
-    urls = raw.to_s.split(',').filter_map { |u| u.strip.presence }
+    raw = GlobalConfigService.load('VOICE_CALL_ICE_SERVERS', nil)
+    return parse_ice_servers(raw) if raw.present?
+
+    stun_raw = GlobalConfigService.load('VOICE_CALL_STUN_URLS', DEFAULT_STUN_URL)
+    urls = stun_raw.to_s.split(',').filter_map { |u| u.strip.presence }
     [{ urls: urls }]
+  end
+
+  def self.parse_ice_servers(raw)
+    parsed = raw.is_a?(String) ? JSON.parse(raw) : raw
+    Array(parsed).filter_map { |entry| build_ice_server_entry(entry) }.presence || [{ urls: DEFAULT_STUN_URL }]
+  rescue JSON::ParserError
+    [{ urls: DEFAULT_STUN_URL }]
+  end
+
+  def self.build_ice_server_entry(entry)
+    entry = entry.with_indifferent_access
+    urls = entry[:urls]
+    return if urls.blank?
+
+    server = { urls: urls }
+    server[:username] = entry[:username] if entry[:username].present?
+    server[:credential] = entry[:credential] if entry[:credential].present?
+    server
   end
 
   def direction_label

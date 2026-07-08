@@ -1,5 +1,9 @@
 import { createWavoipClient } from 'customDashboard/lib/wavoip/wavoipSdkPort';
 import { clearWavoipMediaForInbox } from 'customDashboard/composables/wavoip/useWavoipMedia';
+import {
+  pendingOffers,
+  removePendingOffer,
+} from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 
 const clients = new Map();
 
@@ -36,6 +40,11 @@ export async function disconnectWavoipInbox(inboxId) {
   } catch (_) {
     /* noop */
   }
+
+  [...pendingOffers.entries()]
+    .filter(([, offerEntry]) => offerEntry.inboxId === inboxId)
+    .map(([callId]) => callId)
+    .forEach(callId => removePendingOffer(callId));
 
   clearWavoipMediaForInbox(inboxId);
   clients.delete(inboxId);

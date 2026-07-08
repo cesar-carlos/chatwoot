@@ -29,6 +29,14 @@ RSpec.describe Api::V1::Accounts::CallsController, type: :request do
     create(:inbox_member, user: other_agent, inbox: inbox)
   end
 
+  around do |example|
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = original_cache
+  end
+
   describe 'PATCH /api/v1/accounts/:account_id/calls/:id' do
     it 'records accepted_by_agent_id for the authenticated agent' do
       patch "/api/v1/accounts/#{account.id}/calls/#{call.id}",
@@ -50,6 +58,16 @@ RSpec.describe Api::V1::Accounts::CallsController, type: :request do
       expect(accepted).to be_present
       expect(accepted[:data][:accepted_by_agent_id]).to eq(agent.id)
       expect(accepted[:data][:call_id]).to eq(call.provider_call_id)
+    end
+
+    it 'returns conflict when another agent already joined' do
+      Wavoip::Calls::JoiningAgentCache.write(call.id, other_agent.id)
+
+      patch "/api/v1/accounts/#{account.id}/calls/#{call.id}",
+            headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:conflict)
+      expect(call.reload.accepted_by_agent_id).to be_nil
     end
 
     it 'returns conflict when another agent already accepted' do

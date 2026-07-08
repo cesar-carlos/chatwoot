@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, toRef, nextTick } from 'vue';
+import { ref, watch, toRef, nextTick, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 
@@ -133,6 +133,10 @@ watch(
 
 watch(isOpen, open => {
   emit('sessionActive', open);
+});
+
+onBeforeUnmount(() => {
+  cleanupSession();
 });
 
 defineExpose({ open: openModal, close: closeModal });

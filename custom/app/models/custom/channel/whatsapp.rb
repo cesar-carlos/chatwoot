@@ -129,19 +129,29 @@ module Custom::Channel::Whatsapp
     return unless previous_changes.key?('provider_config')
 
     before_cfg, after_cfg = previous_changes['provider_config']
-    synced_settings = Custom::Whatsapp::EvolutionGo::ProviderConfig.settings_change?(before_cfg, after_cfg)
-    synced_proxy = Custom::Whatsapp::EvolutionGo::ProviderConfig.proxy_change?(before_cfg, after_cfg)
-    synced_webhooks = Custom::Whatsapp::EvolutionGo::ProviderConfig.webhook_subscribe_change?(before_cfg, after_cfg)
-    return unless synced_settings || synced_proxy || synced_webhooks
+    changes = evolution_go_sync_changes(before_cfg, after_cfg)
+    return unless changes.values.any?
 
-    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: self)
-    service.sync_settings! if synced_settings
-    service.sync_proxy! if synced_proxy
-    service.sync_webhook_subscribe! if synced_webhooks
-    clear_settings_sync_error!
+    apply_evolution_go_sync!(changes)
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.error "[EVOLUTION_GO] settings sync failed for channel #{id}: #{e.message}"
     record_settings_sync_error!(e.message)
+  end
+
+  def evolution_go_sync_changes(before_cfg, after_cfg)
+    {
+      settings: Custom::Whatsapp::EvolutionGo::ProviderConfig.settings_change?(before_cfg, after_cfg),
+      proxy: Custom::Whatsapp::EvolutionGo::ProviderConfig.proxy_change?(before_cfg, after_cfg),
+      webhooks: Custom::Whatsapp::EvolutionGo::ProviderConfig.webhook_subscribe_change?(before_cfg, after_cfg)
+    }
+  end
+
+  def apply_evolution_go_sync!(changes)
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: self)
+    service.sync_settings! if changes[:settings]
+    service.sync_proxy! if changes[:proxy]
+    service.sync_webhook_subscribe! if changes[:webhooks]
+    clear_settings_sync_error!
   end
 
   def clear_settings_sync_error!

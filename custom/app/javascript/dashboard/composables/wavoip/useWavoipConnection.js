@@ -25,10 +25,14 @@ import {
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 import { recordConnectivityIssue } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
+import { getActiveProviderCallId } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+
+const BOOTSTRAP_CACHE_TTL_MS = 15_000;
 
 const connectedInboxIds = new Set();
 const connectInboxPromises = new Map();
 const sdkBootstrapTokens = new Map();
+const bootstrapCache = new Map();
 const connectingCount = ref(0);
 const isConnecting = computed(() => connectingCount.value > 0);
 
@@ -36,6 +40,28 @@ const isWavoipInbox = inbox => inbox?.channel_type === INBOX_TYPES.WAVOIP;
 
 const isWavoipDeviceOpen = inbox =>
   inbox?.provider_config?.device_status === 'open';
+
+const clearBootstrapCache = inboxId => {
+  if (inboxId) {
+    bootstrapCache.delete(inboxId);
+    return;
+  }
+  bootstrapCache.clear();
+};
+
+const fetchBootstrapToken = async inboxId => {
+  const cached = bootstrapCache.get(inboxId);
+  if (cached && Date.now() - cached.fetchedAt < BOOTSTRAP_CACHE_TTL_MS) {
+    return cached.token;
+  }
+
+  const { data } = await InboxesAPI.getWavoipSdkBootstrap(inboxId);
+  const token = data?.device_token;
+  if (token) {
+    bootstrapCache.set(inboxId, { token, fetchedAt: Date.now() });
+  }
+  return token;
+};
 
 const getAssignedWavoipInboxes = store => {
   const inboxes = store.getters['inboxes/getInboxes'] || [];
@@ -192,8 +218,7 @@ export function useWavoipConnection() {
 
     if (connectedInboxIds.has(inboxId)) {
       const existingEntry = getWavoipClientEntry(inboxId);
-      const { data } = await InboxesAPI.getWavoipSdkBootstrap(inboxId);
-      const freshToken = data?.device_token;
+      const freshToken = await fetchBootstrapToken(inboxId);
       if (freshToken) sdkBootstrapTokens.set(inboxId, freshToken);
       if (freshToken && existingEntry?.token === freshToken) {
         return existingEntry.client;
@@ -204,8 +229,8 @@ export function useWavoipConnection() {
       return establishInboxConnection(inboxId, freshToken);
     }
 
-    const { data } = await InboxesAPI.getWavoipSdkBootstrap(inboxId);
-    return establishInboxConnection(inboxId, data?.device_token);
+    const token = await fetchBootstrapToken(inboxId);
+    return establishInboxConnection(inboxId, token);
   };
 
   const connectForInbox = async inboxId => {
@@ -219,15 +244,19 @@ export function useWavoipConnection() {
     connectedInboxIds.delete(inboxId);
     connectInboxPromises.delete(inboxId);
     sdkBootstrapTokens.delete(inboxId);
+    clearBootstrapCache(inboxId);
     await disconnectWavoipInbox(inboxId);
     clearWavoipDeviceStatus(inboxId);
   };
 
   const syncConnections = async availability => {
     if (availability !== 'online') {
+      if (getActiveProviderCallId()) return;
+
       connectedInboxIds.clear();
       connectInboxPromises.clear();
       sdkBootstrapTokens.clear();
+      clearBootstrapCache();
       await teardownAllWavoipClients();
       return;
     }

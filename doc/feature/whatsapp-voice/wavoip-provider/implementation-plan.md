@@ -4,17 +4,17 @@ Fonte única para ordem, escopo, gates e critérios de pronto da integração Wa
 Os demais documentos desta pasta detalham contratos e referências; quando houver
 divergência de prioridade ou fase, este plano prevalece.
 
-**Reavaliado em:** 04 jul. 2026
+**Reavaliado em:** 08 jul. 2026
 
-**Estado do código:** Fases 1–4 + **conclusão A–E** (jun. 2026): multiagente `voice_call.accepted`, dismiss→reject, test webhook, RECORD retry specs. E2E live com `+5566999050312` — ver [spike-notes.md](./spike-notes.md).
+**Estado do código:** Fases 1–4 + **conclusão A–E** (jun. 2026) + **P0 hardening** (jul. 2026): RecordHandler, stale sweepers, FE lifecycle (`endSdkActiveCall`), Meta `MetaCloud::Adapter`. E2E live com `+5566999050312` — ver [spike-notes.md](./spike-notes.md).
 
 ## Doc status (04 jul. 2026)
 
 | Métrica | Estimativa |
 |---------|------------|
 | **MVP código** | ~95% |
-| **Piloto produção** | **Bloqueado hoje** — ver incidente abaixo |
-| **Bloqueador piloto** | **Webhook Wavoip parado de entregar eventos** (incidente ativo, ver [operations-runbook.md](./operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026)) + W1 (prova live no painel) + G0.4 (browser E2E multiagente) |
+| **Piloto produção** | **Bloqueado por ops** — código hardened (08 jul. 2026); verificação live pendente |
+| **Bloqueador piloto** | W1 (prova live webhook CALL no painel Wavoip) + G0.4 (browser E2E multiagente) — ver [operations-runbook.md](./operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026) |
 | **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 |
 
 ### Changelog 04 jul. 2026 — bugs de produção corrigidos no dia
@@ -32,9 +32,7 @@ Encontrados e corrigidos em teste real de produção, fora do escopo da revisão
   painel Wavoip — fallback via URL direta documentada (`Wavoip::FetchDirectRecordingJob`).
 - "Ligar de volta" falhando com mensagem genérica — checagem de dispositivo restrito/lotado
   antes de tentar, erro de conexão traduzido.
-- **Incidente ainda ativo:** o webhook da Wavoip parou de entregar eventos após um 502
-  transitório durante um deploy e não retomou sozinho — requer reativação manual no painel
-  Wavoip. Ver runbook para diagnóstico e correção.
+- **Incidente webhook (04 jul. 2026):** 502 transitório durante deploy — Wavoip parou de retentar. **Código hardened 08 jul. 2026** (RecordHandler, stale sweepers, FE lifecycle). **Reativação/verificação live** requer acesso ao painel Wavoip (ops) — ver runbook checklist datada 2026-07-08.
 
 ## Implementation status (Jun 2026)
 
@@ -44,7 +42,7 @@ Encontrados e corrigidos em teste real de produção, fora do escopo da revisão
 | **1 — Fundação** | ✅ Done | `Channel::Wavoip`, migration `channel_wavoip`, webhook `POST /webhooks/wavoip/:webhook_key`, tile `Wavoip.vue` |
 | **2 — Outbound** | ✅ Done | Composables SDK, `CallUpsertService`, outbound RINGING → ACTIVE em produção |
 | **3 — Inbound + registry** | ✅ Done | `voiceSessionRegistry`, `voiceCallCableRegistry`, `useCallSession` dispatch, `CallsController#update` |
-| **4 — Hardening** | ✅ Done | RSpec + Vitest; pós-MVP: device panel, `connectionStatusChanged`, cable/SDK reconcile, RECORD retry |
+| **4 — Hardening** | ✅ Done | RSpec (267 voice scope) + Vitest (~165); pós-MVP: device panel, QR pairing, cable/SDK reconcile, RECORD retry, stale sweepers |
 
 ### Conclusão A–E (Jun 2026)
 
@@ -289,12 +287,12 @@ enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2 }
 
 | Item | Motivo para adiar |
 |------|-------------------|
-| Pareamento QR/código, restart e logout no Chatwoot | Admin pode operar primeiro no painel Wavoip |
+| Pareamento QR/código, restart e logout no Chatwoot | ✅ Implementado — `WavoipDevicePanel`, `WavoipQrDisplay`, `useWavoipQrSession` (Settings) |
 | Web Push com aba fechada | Apenas avisa; não preserva a oferta nem garante aceite |
 | Diagnóstico ICE/stats | Útil após validar uso real |
 | Seleção de mic/speaker | O browser default cobre o happy path |
-| Refactor `useWebRtcCallSession` Meta | Beneficia Meta-like/CPaaS, não Wavoip |
-| Adapter/builders Meta | Trilha separada; não bloquear entrega Wavoip |
+| Refactor `useWebRtcCallSession` Meta | ✅ Extraído (jun. 2026) |
+| Adapter/builders Meta | ✅ `MetaCloud::Adapter` + builders (jul. 2026) |
 
 **Concluído pós-MVP (jun. 2026):** roteamento inbound configurável por inbox (`incoming_call_include_administrators`, `incoming_call_offline_fallback`) — ver [inbox-setup.md §3.6](./inbox-setup.md#36-seção--roteamento-de-chamadas-inbound-settings).
 

@@ -4,7 +4,7 @@
 
 **Relacionado:** [architecture.md](./architecture.md) · [webhook-contract.md](./webhook-contract.md) · [frontend-integration.md](./frontend-integration.md) · [sdk-reference.md](./sdk-reference.md) · [../architecture-and-flow.md §13](../architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas)
 
-**Última revisão:** jun/2026.
+**Última revisão:** jul. 2026 (P0 hardening, registries cable).
 
 ---
 
@@ -110,7 +110,9 @@ flowchart TB
 
 ---
 
-## 4. Contratos backend (Ruby)
+## 4. Contratos backend (Ruby) — conceituais
+
+> **Nota:** as portas abaixo descrevem o **contrato alvo** para inversão de dependência. A implementação atual usa classes concretas em `custom/` (`PayloadNormalizer`, `CallUpsertService`, `Broadcaster`, etc.) sem módulos `Voice::Port::*` formais — duck typing + specs bastam no padrão Chatwoot.
 
 ### 4.1 DTO normalizado (saída do parser — entrada dos handlers)
 
@@ -159,7 +161,7 @@ end
 | `Wavoip::Calls::StatusMapper` | Webhook: `INCOMING_RING`, `ACTIVE`, … |
 | (futuro) `Whatsapp::Calls::StatusMapper` | Meta webhook statuses |
 
-**Não** misturar vocabulário SDK (`CallStatus::CALLING`) neste mapper — isso é **porta frontend** (`callStatusUI.js`).
+**Não** misturar vocabulário SDK (`CallStatus::CALLING`) neste mapper — vocabulário SDK é tratado em `wavoipCallDiagnostics.js` / event handlers do composable, não no mapper webhook.
 
 ### 4.3 Porta `Voice::Port::CallBroadcaster`
 
@@ -419,14 +421,7 @@ export function createWavoipClient({ tokens, platform = 'chatwoot' }) {
 
 Composables dependem de `wavoipSdkPort` + `wavoipClientRegistry` — **não** de import direto (testável com mock).
 
-### 5.6 `callStatusUI.js` — porta SDK → UI (não Rails)
-
-```javascript
-// Vocabulário SDK CallStatus → VOICE_CALL_DIRECTION / widget state
-export function sdkStatusToWidgetState(callStatus) { /* ... */ }
-```
-
-Separado de `Wavoip::Calls::StatusMapper` (webhook). **Dois mappers, duas fontes** — ver [sdk-reference §7](./sdk-reference.md#7-dois-vocabulários-de-status-crítico).
+**SDK → UI:** `wavoipCallDiagnostics.js` traduz `connectivityIssue` para i18n (`CONVERSATION.WAVOIP_CONNECTIVITY.*`) com fallback `GENERIC`.
 
 ---
 
@@ -497,7 +492,7 @@ sequenceDiagram
 |-------|------|------------|
 | `PayloadNormalizer` | `spec/custom/.../payload_normalizer_spec.rb` | [fixtures/](./fixtures/) |
 | `StatusMapper` | webhook vocabulary only | tabela §4.2 |
-| `callStatusUI.js` | SDK vocabulary only | tabela sdk-reference §7.2 |
+| `callStatusUI.js` | SDK vocabulary only | removido — usar `wavoipCallDiagnostics.js` + handlers SDK |
 | `CallUpdateHandler` | terminal guard | double `CallPersistence` |
 | `ConversationLinker` | delega builder | mock `InboundCallBuilder` |
 | `BrowserVoiceSession` | Vitest | mock `wavoipSdkPort` |
@@ -614,13 +609,13 @@ rodada; o que resta são gates operacionais (W1, G0.4, E2E browser) e melhorias 
 | Reativar webhook Wavoip após 502 | Ops (runbook) |
 | Split composables (`wavoipSdkSession`, etc.) | Refactor futuro |
 | Payloads reais no spike → fixtures | Doc |
-| Adapter MetaCloud / TURN UI admin | Meta backlog §12.6 |
+| Adapter MetaCloud / TURN UI admin | Meta backlog — adapter ✅; TURN UI pendente |
 
 ### 12.6 Melhorias Meta (não bloqueiam Wavoip)
 
-Ver [../README.md §Roadmap](../README.md#roadmap-de-melhorias-ordem-recomendada) P1–P2: adapter MetaCloud, OutboundWhatsappCallBuilder, permission service, handler `permission_granted`.
+Ver [../README.md §Roadmap](../README.md#roadmap-de-melhorias-ordem-recomendada) — `MetaCloud::Adapter` ✅; TURN UI admin pendente.
 
-### 12.6 Critério “documentação completa”
+### 12.7 Critério “documentação completa”
 
 - [x] Portas e DTOs definidos (este doc)
 - [x] Fontes da verdade explícitas (§3)

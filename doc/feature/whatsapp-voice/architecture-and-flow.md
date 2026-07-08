@@ -2,7 +2,7 @@
 
 Documentação do stack **WhatsApp Cloud Calling** (Meta Graph API + WebRTC browser↔Meta) no Chatwoot Enterprise. Para Twilio PSTN ou gateways não oficiais, ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) e [second-provider-strategy.md](./second-provider-strategy.md).
 
-**Última reanálise:** jul. 2026 (sync pós-refactors outbound/permission + handlers FE + Wavoip refactory).
+**Última reanálise:** jul. 2026 (sync pós-P0: `MetaCloud::Adapter`, registries cable, stale sweepers Meta+Wavoip, Vitest WebRTC).
 
 ---
 
@@ -38,15 +38,17 @@ O recurso permite que **agentes atendam e façam chamadas de voz pelo WhatsApp**
 | **Webhook `calls`** | Inscrito automaticamente quando `calling_enabled: true` em `provider_config` |
 | **Navegador** | Microfone + WebRTC; STUN via `VOICE_CALL_STUN_URLS` (default `stun:stun.l.google.com:19302`) |
 
-### Assimetria Twilio vs WhatsApp (débito documentado)
+### Assimetria Twilio vs WhatsApp (resolvida em jul. 2026)
 
 | Aspecto | Twilio (PSTN) | WhatsApp (Meta Calling) |
 |---------|---------------|-------------------------|
-| Adapter | `Voice::Provider::Twilio::Adapter` | Métodos no prepend `WhatsappCloudService` (sem adapter dedicado — pendente `MetaCloud::Adapter`) |
+| Adapter | `Voice::Provider::Twilio::Adapter` | `Voice::Provider::MetaCloud::Adapter` ✅ |
 | Outbound | `Voice::OutboundCallBuilder` + `Contacts::CallsController` | `Voice::OutboundWhatsappCallBuilder` + `WhatsappCallsController#initiate` |
 | Permissão outbound | N/A | `Whatsapp::CallPermissionRequestService` (throttle + template) |
 | Sinalização | TwiML + conferência server-side | SDP browser ↔ Meta |
 | API REST | `/contacts/:id/calls` | `/whatsapp_calls/*` |
+
+Único débito restante: contrato formal `Voice::Provider::WhatsappCalling::Base` para segundo CPaaS Meta-like — ver [second-provider-strategy.md](./second-provider-strategy.md).
 
 Outbound WhatsApp exige `sdp_offer` do browser antes do `Call.create!` — o builder encapsula Meta API + transaction com `CallMessageBuilder`.
 
@@ -367,24 +369,22 @@ Montagem global: `Dashboard.vue` renderiza `FloatingCallWidget` quando há call 
 |--------|--------|
 | `useWebRtcCallSession.js` | Core WebRTC: RTCPeerConnection, recorder, race buffers, beacon terminate — API injetável |
 | `useWhatsappCallSession.js` | Wrapper fino (~33 linhas) → `WhatsappCallsAPI` |
-| `useCallSession.js` | Orquestrador Twilio + WhatsApp + Wavoip; timer global; seed de calls após refresh |
+| `useCallSession.js` | Orquestrador Twilio + WhatsApp + Wavoip; timer global; seed de calls após refresh (~435 linhas) |
 | `stores/calls.js` (Pinia) | Estado calls; `teardownByProvider`; usa `VOICE_CALL_PROVIDERS` |
 | `voice.js` | Sync `message.created` → store |
 
 API client: `api/channel/whatsapp/whatsappCallsAPI.js`
 
-### ActionCable events (WhatsApp)
+### ActionCable events (WhatsApp + Wavoip)
 
-Registrados em `actionCable.js`:
+Handlers por provider em registries dedicados:
 
-| Evento | Handler | Filtros |
-|--------|---------|---------|
-| `voice_call.incoming` | `onVoiceCallIncoming` | WhatsApp: `provider === whatsapp`, agente online; Wavoip: registry |
-| `voice_call.outbound_connected` | `onVoiceCallOutboundConnected` | SDP answer (WhatsApp only) |
-| `voice_call.outbound_accepted` | `onVoiceCallOutboundAccepted` | `armOutboundRecorder` + `setCallActive` |
-| `voice_call.ended` | `onVoiceCallEnded` | Teardown só se `isLocalWhatsappCall` (WhatsApp) ou owner Wavoip |
-| `voice_call.accepted` | `onVoiceCallAccepted` | Descarta incoming em outros tabs quando outro agente aceita |
-| `voice_call.permission_granted` | `onVoiceCallPermissionGranted` | Toast — contato autorizou chamadas outbound |
+| Registry | Caminho | Providers |
+|----------|---------|-----------|
+| WhatsApp | `app/javascript/dashboard/lib/voice/whatsappVoiceCableRegistry.js` | `whatsapp` |
+| Wavoip | `custom/.../lib/voice/voiceCallCableRegistry.js` | `wavoip` |
+
+`actionCable.js` delega por `data.provider` — sem lógica SDP inline.
 
 ### Detecção de provider
 
@@ -495,8 +495,9 @@ sessão/eventos antes da integração final com widget/store.
 - **`disable_voice_calling!`** não desliga calling na Meta (`calling.status` permanece `ENABLED`)
 - Locks Redis + `call.with_lock` para races webhook/agente
 - **`useWebRtcCallSession.js` (~480 linhas)** — WebRTC + recorder + API + beacon num módulo (extraído de `useWhatsappCallSession`)
-- **`useCallSession.js` (~365 linhas)** — branching por provider; Wavoip usa registry parcial
-- **Sem testes FE** para race buffers (`pendingOutboundAnswers`), beacon terminate, fluxo 422 permission
+- **`useCallSession.js` (~435 linhas)** — branching por provider; registries cable por provider; unificação total ainda pendente
+- ~~**Sem testes FE** para race buffers (`pendingOutboundAnswers`), beacon terminate, fluxo 422 permission~~ — ✅ `useWebRtcCallSession.spec.js` (jul. 2026)
+- **Stale call safety nets** — `Whatsapp::Calls::StaleCallTimeoutScheduler` + `Wavoip::Calls::StaleCallTimeoutScheduler` (ringing + in_progress); frontend `isStaleRingingVoiceMessage` em `voice.js`
 - **Model `Call`** mistura meta Twilio (`conference_sid`) e WhatsApp (`sdp_*` em `meta` jsonb)
 - **Post-refresh widget seeding** — `FloatingCallWidget` só monta quando store já tem call; ringing em messages hidratadas pode não seedar (edge case documentado)
 
@@ -510,7 +511,7 @@ sessão/eventos antes da integração final com widget/store.
 | Vue: lógica em composables | **OK** — `useWebRtcCallSession` extraído; wrapper WhatsApp fino |
 | `components-next/` para UI | **OK** |
 | Evitar god class | **Backend OK**; **FE** — core WebRTC ainda concentrado em `useWebRtcCallSession` |
-| Evitar shotgun surgery | **Parcial** — Wavoip registry; WhatsApp ainda inline em `actionCable.js` |
+| Evitar shotgun surgery | **Parcial** — registries por provider; `useCallSession` ainda brancha |
 | Fork: EE + `custom/` | **OK** — core Meta sem FORK; Wavoip via hooks OSS + `custom/` |
 
 ### Relação com providers alternativos
@@ -527,26 +528,11 @@ do dispatch por provider, mas não compartilha o core SDP.
 
 ### 13.1 Backend
 
-#### A. `Voice::Provider::MetaCloud::Adapter`
+#### A. `Voice::Provider::MetaCloud::Adapter` ✅ **Implementado**
 
-Extrair métodos de calling do prepend `Enterprise::Whatsapp::Providers::WhatsappCloudService` para adapter simétrico ao Twilio:
+`enterprise/app/services/voice/provider/meta_cloud/adapter.rb` — extrai métodos de calling do prepend `Enterprise::Whatsapp::Providers::WhatsappCloudService`. O prepend delega ao adapter.
 
-```ruby
-# enterprise/app/services/voice/provider/meta_cloud/adapter.rb
-class Voice::Provider::MetaCloud::Adapter
-  def initialize(channel)
-    @channel = channel
-  end
-
-  def initiate_call(to_phone, sdp_offer); end
-  def pre_accept_call(call_id, sdp_answer); end
-  # ... reject, terminate, send_call_permission_request, update_calling_status
-end
-```
-
-O prepend de `WhatsappCloudService` delega ao adapter (ou o channel expõe `whatsapp_calling_adapter`). Novos CPaaS implementam o mesmo contrato em `custom/`.
-
-**Contrato sugerido:** `Voice::Provider::WhatsappCalling::Base` — ver [second-provider-strategy.md](./second-provider-strategy.md).
+**Contrato formal pendente:** `Voice::Provider::WhatsappCalling::Base` — ver [second-provider-strategy.md](./second-provider-strategy.md).
 
 #### B. `Voice::OutboundWhatsappCallBuilder` ✅ **Implementado**
 
@@ -602,30 +588,26 @@ const voiceCallProviderRegistry = {
 
 Substituir `isWhatsappCall(call)` espalhado por `registry[call.provider]`.
 
-#### C. `actionCable.js` — generalizar filtro (P0)
+#### C. `actionCable.js` — registries por provider ✅ **Implementado**
 
-```javascript
-const WEBRTC_PROVIDERS = [VOICE_CALL_PROVIDERS.WHATSAPP /*, WAVOIP */];
-
-onVoiceCallIncoming = data => {
-  if (!WEBRTC_PROVIDERS.includes(data?.provider)) return;
-  // ...
-};
-```
+- `whatsappVoiceCableRegistry.js` — handlers Meta (SDP, recorder, multi-tab)
+- `voiceCallCableRegistry.js` (Wavoip) — handlers sem SDP
+- `actionCable.js` delega por `data.provider`
 
 #### D. Handler `voice_call.permission_granted` + `voice_call.accepted` ✅ **Implementado**
 
 - `onVoiceCallPermissionGranted` — toast via `useAlert` + i18n `VOICE_WIDGET.PERMISSION_GRANTED`
 - `onVoiceCallAccepted` — descarta incoming em outros tabs quando outro agente aceita (multi-tab sync)
 
-#### E. Testes Vitest (P2)
+#### E. Testes Vitest (P2) ✅ **Implementado**
 
-| Caso | O quê mockar |
-|------|--------------|
-| `pendingOutboundAnswers` race | Cable antes de `/initiate` |
-| `initiateOutboundCall` 422 | `permission_requested` / `permission_pending` |
-| `beaconTerminate` | `fetch` keepalive + headers cookie |
-| `isLocalWhatsappCall` | teardown só na aba dona |
+`app/javascript/dashboard/composables/spec/useWebRtcCallSession.spec.js` cobre:
+
+| Caso | Status |
+|------|--------|
+| `pendingOutboundAnswers` race (foreign call id) | ✅ |
+| `initiateOutboundCall` 422 permission | ✅ |
+| `beaconTerminate` keepalive + auth headers | ✅ |
 
 ### 13.3 Modelo e config
 
@@ -678,10 +660,10 @@ Referências: [Meta Calling docs](https://developers.facebook.com/docs/whatsapp/
 | `Voice::OutboundCallBuilder` | Outbound Twilio | — |
 | `Voice::OutboundWhatsappCallBuilder` | Outbound WhatsApp com SDP browser | ✅ Implementado |
 | `Voice::CallMessageBuilder` | Bolha voice_call | — |
-| `Voice::Provider::MetaCloud::Adapter` | — | **Pendente** (§13.1.A) |
-| `Channel::Whatsapp` | `voice_enabled?`, enable/disable | `whatsapp_calling_adapter` dispatch |
-| `Enterprise::Whatsapp::Providers::WhatsappCloudService` | Graph API calls | Delegar ao adapter |
+| `Voice::Provider::MetaCloud::Adapter` | Graph API calls | ✅ Implementado |
+| `Channel::Whatsapp` | `voice_enabled?`, enable/disable | delega ao adapter |
+| `Enterprise::Whatsapp::Providers::WhatsappCloudService` | Graph API calls | Delega ao adapter |
 | `Api::V1::Accounts::WhatsappCallsController` | REST | Fino — delega builder/services |
 | `useWebRtcCallSession` | Core WebRTC browser | ✅ Implementado |
 | `useWhatsappCallSession` | Wrapper WhatsApp | ✅ Thin wrapper |
-| `useCallSession` | Orquestrador multi-provider | Registry parcial (Wavoip) |
+| `useCallSession` | Orquestrador multi-provider | Registries parciais (cable por provider) |

@@ -273,7 +273,8 @@ describe('wavoipVoiceCableHandlers', () => {
       expect(store.calls.some(c => c.callSid === 'acc_named')).toBe(false);
     });
 
-    it('does not dismiss when the current user accepted', () => {
+    it('does not dismiss when the current user accepted and owns the SDK call', () => {
+      isWavoipSdkCallOwned.mockReturnValue(true);
       const store = useCallsStore();
       store.addCall({
         callSid: 'acc_self',
@@ -290,6 +291,26 @@ describe('wavoipVoiceCableHandlers', () => {
 
       expect(useAlert).not.toHaveBeenCalled();
       expect(store.calls.some(c => c.callSid === 'acc_self')).toBe(true);
+    });
+
+    it('dismisses when the current user accepted in another tab', () => {
+      isWavoipSdkCallOwned.mockReturnValue(false);
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'acc_other_tab',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+
+      wavoipVoiceCableHandlers.onAccepted({
+        call_id: 'acc_other_tab',
+        accepted_by_agent_id: 99,
+      });
+
+      expect(useAlert).toHaveBeenCalled();
+      expect(store.calls.some(c => c.callSid === 'acc_other_tab')).toBe(false);
     });
 
     it('does not dismiss while this tab is joining the call', () => {

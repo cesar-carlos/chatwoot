@@ -60,6 +60,34 @@ export class WavoipWebhookApi {
     };
   }
 
+  buildEndedPayload(options: {
+    whatsappCallId: string;
+    callerDigits: string;
+    receiverDigits: string;
+    durationSeconds?: number;
+  }): WavoipCallWebhookPayload & { duration?: number } {
+    return {
+      type: 'CALL',
+      action: 'UPDATE',
+      whatsapp_call_id: options.whatsappCallId,
+      status: 'ENDED',
+      direction: 'INCOMING',
+      caller: options.callerDigits.replace(/\D/g, ''),
+      receiver: options.receiverDigits.replace(/\D/g, ''),
+      duration: options.durationSeconds ?? 0,
+    };
+  }
+
+  async dismissInboundWidget(page: Page) {
+    const dismiss = page.getByRole('button', { name: /dismiss/i }).first();
+    await dismiss.click();
+  }
+
+  async waitForWidgetHidden(page: Page, options?: { timeoutMs?: number }) {
+    const timeout = options?.timeoutMs ?? 15_000;
+    await expect(page.getByText('Incoming call').first()).toBeHidden({ timeout });
+  }
+
   /**
    * Polls for the inbound call widget after webhook POST (202).
    * Sidekiq must process Wavoip::ProcessWebhookJob before ActionCable delivers the event.

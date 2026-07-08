@@ -2,7 +2,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
-import { useStore } from 'dashboard/composables/store';
 import InboxesAPI from 'dashboard/api/inboxes';
 import { exportWavoipDiagnostics } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 import { formatWavoipDeviceActionError } from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
@@ -29,7 +28,6 @@ const props = defineProps({
 const POLL_MS = 5000;
 
 const { t } = useI18n();
-const store = useStore();
 const { wakeUpInboxDevice, disconnectInbox, connectInbox } =
   useWavoipConnection();
 
@@ -44,14 +42,17 @@ const isCopyingDiagnostics = ref(false);
 const isQrModalOpen = ref(false);
 const qrModalFetchFresh = ref(false);
 const statusVerifiedLive = ref(false);
+const polledDeviceStatus = ref(null);
 const restartDialogRef = ref(null);
 const logoutDialogRef = ref(null);
 let pollTimer = null;
+let refreshPromise = null;
 let panelOpenedSdkConnection = false;
 
 const whatsAppStatus = computed(() => {
   const live = deviceLive.value.whatsAppStatus.value;
   if (live) return live;
+  if (polledDeviceStatus.value) return polledDeviceStatus.value;
   return props.inbox.provider_config?.device_status || 'connecting';
 });
 
@@ -130,22 +131,27 @@ async function ensurePanelSdkConnection() {
 }
 
 async function refreshConnection({ forceLiveCheck = false } = {}) {
-  try {
-    const { data } = await InboxesAPI.getWavoipDeviceStatus(inboxId.value, {
-      force: forceLiveCheck,
-    });
-    statusVerifiedLive.value = data?.live === true;
-  } catch {
-    statusVerifiedLive.value = false;
-  }
+  if (refreshPromise) return refreshPromise;
 
-  try {
-    await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
-  } catch {
-    // keep last known state
-  } finally {
-    isLoading.value = false;
-  }
+  refreshPromise = (async () => {
+    try {
+      const { data } = await InboxesAPI.getWavoipDeviceStatus(inboxId.value, {
+        force: forceLiveCheck,
+      });
+      statusVerifiedLive.value = data?.live === true;
+      if (data?.device_status) {
+        polledDeviceStatus.value = data.device_status;
+      }
+    } catch {
+      statusVerifiedLive.value = false;
+    } finally {
+      isLoading.value = false;
+    }
+  })().finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
 }
 
 function startPolling() {
@@ -178,6 +184,7 @@ async function onQrConnected() {
 
 watch(inboxId, () => {
   stopPolling();
+  polledDeviceStatus.value = null;
   isLoading.value = true;
   refreshConnection({ forceLiveCheck: true }).then(async () => {
     await ensurePanelSdkConnection();

@@ -1,32 +1,40 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::WebhookDispatcher
+  MESSAGE_EVENTS = %w[MESSAGES_UPSERT MESSAGES_UPDATE].freeze
+  EDIT_EVENTS = %w[MESSAGES_EDITED SEND_MESSAGE_UPDATE].freeze
+  CONTACT_EVENTS = %w[CONTACTS_UPSERT CONTACTS_UPDATE].freeze
+  GROUP_EVENTS = %w[GROUPS_UPSERT GROUP_UPDATE].freeze
+  CONNECTION_EVENTS = %w[CONNECTION_UPDATE QRCODE_UPDATED].freeze
+
   def dispatch(channel, params)
-    case params[:event]
-    when 'MESSAGES_UPSERT', 'MESSAGES_UPDATE'
-      process_message_events(channel, params)
-    when 'MESSAGES_DELETE'
-      process_delete_events(channel, params)
-    when 'MESSAGES_EDITED', 'SEND_MESSAGE_UPDATE'
-      # SEND_MESSAGE_UPDATE (dotted: send.message.update) is the event name
-      # used by some Evolution versions for the same "message was edited"
-      # semantics as MESSAGES_EDITED — same payload shape, same handler.
-      process_edit_events(channel, params)
-    when 'CONTACTS_UPSERT', 'CONTACTS_UPDATE'
-      Custom::Whatsapp::Evolution::ContactsSyncJob.perform_later(channel.id, params[:data])
-    when 'GROUPS_UPSERT', 'GROUP_UPDATE'
-      process_group_events(channel, params)
-    when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
-      Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
-    else
-      instance_name = params[:instance_name].presence || params[:instance]
-      Rails.logger.warn(
-        "[EVOLUTION] unhandled event=#{params[:event]} instance=#{instance_name}"
-      )
-    end
+    event = params[:event]
+    return process_message_events(channel, params) if MESSAGE_EVENTS.include?(event)
+    return process_delete_events(channel, params) if event == 'MESSAGES_DELETE'
+    return process_edit_events(channel, params) if EDIT_EVENTS.include?(event)
+    return sync_contacts(channel, params) if CONTACT_EVENTS.include?(event)
+    return process_group_events(channel, params) if GROUP_EVENTS.include?(event)
+    return handle_connection_event(channel, params) if CONNECTION_EVENTS.include?(event)
+
+    log_unhandled_event(params)
   end
 
   private
+
+  def sync_contacts(channel, params)
+    Custom::Whatsapp::Evolution::ContactsSyncJob.perform_later(channel.id, params[:data])
+  end
+
+  def handle_connection_event(channel, params)
+    Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
+  end
+
+  def log_unhandled_event(params)
+    instance_name = params[:instance_name].presence || params[:instance]
+    Rails.logger.warn(
+      "[EVOLUTION] unhandled event=#{params[:event]} instance=#{instance_name}"
+    )
+  end
 
   def process_group_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|
