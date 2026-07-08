@@ -1,14 +1,20 @@
 # Versão alvo — Evolution Go
-# Preencher após E2E com instância do operador (validation-checklist.md)
+# Atualizado após implementação completa (jul/2026) — confirmar com E2E operador
 
 # Versão do servidor operador (image tag, release ou GET /server/ok):
-image=
+image=pending-e2e
 
 # Git commit (opcional — repositório evolution-foundation/evolution-go):
 # commit=
 
 # Data da validação E2E:
 # e2e_date=
+
+# Implementado no fork (jul/2026):
+# - WebhookSubscribeSync (canonical events + GROUP condicional)
+# - Pair API (POST /instance/pair)
+# - Location inbound/outbound
+# - Logout UI, sync webhook UI, diagnostics instance info/logs
 
 # Notas:
 # - Licença ativa é pré-requisito do operador

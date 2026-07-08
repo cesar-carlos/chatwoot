@@ -8,8 +8,10 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
   const connectionStatus = ref('connecting');
   const qrcodeBase64 = ref('');
   const pairingCode = ref('');
+  const pairingPhone = ref('');
   const isLoading = ref(false);
   const isRefreshing = ref(false);
+  const isRequestingPairing = ref(false);
   const qrRefreshError = ref(false);
 
   let pollTimer = null;
@@ -123,6 +125,33 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     }
   }
 
+  async function requestPairingCode(phone) {
+    const id = unref(inboxId);
+    const normalizedPhone = (phone || pairingPhone.value || '').replace(/\D/g, '');
+    if (!id || !normalizedPhone || isRequestingPairing.value) return;
+
+    isRequestingPairing.value = true;
+    try {
+      const payload = await store.dispatch('inboxes/evolutionGoPair', {
+        inboxId: id,
+        phone: normalizedPhone,
+      });
+      applyPayload(payload);
+      if (payload.pairing_code) {
+        pairingCode.value = payload.pairing_code;
+      }
+      qrRefreshError.value = false;
+    } catch (error) {
+      if (isInboxNotFoundError(error)) {
+        handleInboxNotFound();
+      } else {
+        qrRefreshError.value = true;
+      }
+    } finally {
+      isRequestingPairing.value = false;
+    }
+  }
+
   function armQrExpiryTimer() {
     clearExpiryTimer();
     expiryTimer = setTimeout(() => {
@@ -157,11 +186,14 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     connectionStatus,
     qrcodeBase64,
     pairingCode,
+    pairingPhone,
     isLoading,
     isRefreshing,
+    isRequestingPairing,
     qrRefreshError,
     refreshConnection,
     requestNewQr,
+    requestPairingCode,
     startSession,
     stopSession,
     applyPayload,

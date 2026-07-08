@@ -31,7 +31,22 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     )
     invalidate_connection_state_cache!
     disconnect_before_reconnect!
-    provisioner.connect_existing_inbox!
+    webhook_subscribe_sync.sync!
+    provisioner.send(:fetch_qr_code!)
+  end
+
+  def pair!(phone:)
+    events = webhook_subscribe_sync.merge_stored!
+    response = api_client.pair(phone: phone, subscribe: events)
+    Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to request Evolution Go pairing code')
+
+    data = api_client.unwrap(response, context: 'pair')
+    code = api_client.dig_field(data, 'pairingCode', 'PairingCode', 'code', 'Code')
+    update_runtime_config!(
+      'connection_status' => 'connecting',
+      'last_qr_code' => code
+    )
+    { pairing_code: code }
   end
 
   def logout!
@@ -115,6 +130,13 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
 
   def connection_events
     @connection_events ||= Custom::Whatsapp::EvolutionGo::ConnectionEvents.new(
+      channel: channel,
+      connection_service: self
+    )
+  end
+
+  def webhook_subscribe_sync
+    @webhook_subscribe_sync ||= Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.new(
       channel: channel,
       connection_service: self
     )

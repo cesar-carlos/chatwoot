@@ -116,6 +116,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     jid = lookup_jid
     number = lookup_number
     return true if jid.blank? && number.blank?
+    return false unless whatsapp_user_exists?(number)
 
     applied = false
     applied = apply_user_info!(jid) if jid.present?
@@ -188,6 +189,23 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
       EVOLUTION_GO_ENRICHED_AT_KEY => Time.current.utc.iso8601(3)
     )
     contact.update!(additional_attributes: additional)
+    true
+  end
+
+  def whatsapp_user_exists?(number)
+    return true if number.blank?
+
+    response = api_client.user_check(number: number)
+    return true unless response.success?
+
+    parsed = response.parsed_response
+    data = parsed.is_a?(Hash) ? (parsed['data'] || parsed) : {}
+    exists = data['exists']
+    return exists if exists.in?([true, false])
+
+    ActiveModel::Type::Boolean.new.cast(data['Exists'])
+  rescue StandardError => e
+    Rails.logger.warn("[EVOLUTION_GO] user/check failed for contact #{contact.id}: #{e.message}")
     true
   end
 end

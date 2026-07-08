@@ -202,6 +202,34 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: { ok: false, error: e.message }, status: :unprocessable_entity
   end
 
+  def evolution_go_sync_webhook
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel)
+    events = service.webhook_subscribe_sync.sync!
+    render json: Custom::Whatsapp::EvolutionGo::DiagnosticsService.new(channel: channel.reload).perform.merge(
+      webhook_subscribe: events
+    )
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.error "[EVOLUTION_GO] evolution_go_sync_webhook failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
+  end
+
+  def evolution_go_pair
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    service = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel)
+    pairing = service.pair!(phone: params.require(:phone))
+    render json: service.connection_payload.merge(pairing)
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.error "[EVOLUTION_GO] evolution_go_pair failed: #{e.log_message}"
+    render json: { error: e.user_message }, status: :unprocessable_entity
+  end
+
   def evolution_go_server_check
     authorize Inbox, :create?
 

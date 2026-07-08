@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 07/jul/2026 · **Fase 0–2 + UX/diagnóstico/import + grupos (código); E2E parcial pendente**
+**Última revisão:** 08/jul/2026 · **Integração completa (6 fases código); E2E operador pendente**
 
 ---
 
@@ -21,9 +21,17 @@
 | `convert_markdown_inbound`, `sync_edit_to_whatsapp` (MVP) | ✅ |
 | Import histórico (`HISTORY_SYNC` + `POST /chat/history-sync`) | ✅ código · ⚠️ fixture sintética |
 | Grupos WhatsApp (`ignore_groups: false`) | ✅ código · ⚠️ fixture sintética |
+| Webhook subscribe sync (`WebhookSubscribeSync`) | ✅ |
+| Logout UI (health page) | ✅ |
+| Pair API (`POST /instance/pair`) | ✅ |
+| Location inbound/outbound | ✅ |
+| GROUP webhook → metadata cache | ✅ |
+| Diagnostics instance info/logs | ✅ |
+| `user/check` em enrichment (opcional) | ✅ |
+| `set_presence` spike (ApiClient) | ✅ |
 | Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
 | E2E com instância operador | ⚠️ pendente |
-| Fase 3 (interativos, presence) | ❌ |
+| Fase 3 (interativos além de location, presence wiring) | ⚠️ parcial |
 
 ---
 
@@ -46,7 +54,7 @@
 ### Frontend
 - Wizard `EvolutionGo.vue` (server check, regex `instance_name`)
 - `EvolutionGoSettingsPage.vue` — seções agrupadas, avisos amber, import messages, irreversível (delete/edit sync)
-- `EvolutionGoHealthPage.vue` — conexão + painel diagnóstico + teste webhook
+- `EvolutionGoHealthPage.vue` — conexão + logout + painel diagnóstico + sync webhook + teste webhook
 - `useEvolutionGoImportStatus.js` — polling 5s enquanto `import_status === 'running'`
 - `MessageContextMenu` — confirmação delete com aviso WhatsApp quando `sync_delete_to_whatsapp`
 - ActionCable + polling QR
@@ -54,6 +62,8 @@
 ### API inbox (custom controller)
 - `GET evolution_go_diagnostics`
 - `POST evolution_go_test_webhook`
+- `POST evolution_go_sync_webhook`
+- `POST evolution_go_pair`
 - `POST evolution_go_import`
 
 ### Specs
@@ -83,6 +93,6 @@ Inboxes existentes **não** são migrados — só novos inboxes recebem estes de
 
 ## Próximo passo
 
-1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (`HISTORY_SYNC`, grupos, delete/edit inbound, `POST /chat/history-sync`)
-2. **Fase 3** — poll, location, contact card, sticker, presence
+1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (sync webhook, pair, location, logout, grupos)
+2. **Presence wiring** — conectar `ApiClient#set_presence` ao typing indicator do dashboard
 3. **Proxy edit** — aguarda validação `advanced-settings` (UI hoje: banner create-only)

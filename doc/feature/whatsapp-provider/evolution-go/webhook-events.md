@@ -66,13 +66,33 @@ Configurar em `subscribe` no `POST /instance/connect`:
 | `CONNECTION` | `CONNECTION_UPDATE` | 1 | `connection_status` no channel |
 | `QRCODE` | `QRCODE_UPDATED` | 1 | QR no wizard via ActionCable |
 
-**Subscribe MVP:**
+**Subscribe MVP (canonical fork list):**
+
+```json
+[
+  "MESSAGE",
+  "CONNECTION",
+  "QRCODE",
+  "READ_RECEIPT",
+  "MESSAGE_DELETE",
+  "MESSAGES_DELETE",
+  "MESSAGES_EDITED",
+  "MESSAGE_EDIT",
+  "HISTORY_SYNC"
+]
+```
+
+When `ignore_groups: false`, also include `GROUP`.
+
+Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via health UI **Sync webhook events**, `POST evolution_go_sync_webhook`, reconnect, or `rake evolution_go:sync_webhooks`.
+
+**Legacy MVP (superseded):**
 
 ```json
 ["MESSAGE", "CONNECTION", "QRCODE"]
 ```
 
-Fase 2: adicionar `READ_RECEIPT`.
+Fase 2: `READ_RECEIPT` (now in canonical list above).
 
 **Não subscrever no MVP:** `SEND_MESSAGE` (echo outbound), `ALL`, eventos de grupo se `ignore_groups: true`.
 
@@ -98,7 +118,7 @@ CHAT_PRESENCE, CALL, CONNECTION, LABEL, CONTACT, GROUP, NEWSLETTER, QRCODE
 | `MESSAGE_DELETE`, `MESSAGES_DELETE` | Delete cliente | UX | `MessageDeleteSyncService` |
 | `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX | `MessageEditSyncService` |
 | `CALL` | Chamadas | — | Projeto voz |
-| `GROUP` | Grupos | — | Ignorar; inbound grupo via `MESSAGE` com `@g.us` |
+| `GROUP` | Grupos | 5 | Warm `GroupMetadataFetchJob` quando `ignore_groups: false`; inbound grupo via `MESSAGE` com `@g.us` |
 | `CONTACT` | Contatos | — | Ignorar |
 | `LABEL` | Labels | — | Ignorar |
 | `NEWSLETTER` | Newsletter | — | Ignorar |

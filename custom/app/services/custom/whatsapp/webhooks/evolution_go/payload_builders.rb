@@ -8,7 +8,9 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     'documentMessage' => 'document',
     'audioMessage' => 'audio',
     'videoMessage' => 'video',
-    'stickerMessage' => 'sticker'
+    'stickerMessage' => 'sticker',
+    'locationMessage' => 'location',
+    'liveLocationMessage' => 'location'
   }.freeze
 
   MEDIA_MESSAGE_KEYS = %w[
@@ -19,6 +21,12 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     stickerMessage
   ].freeze
 
+  UNSUPPORTED_TYPE_PLACEHOLDERS = {
+    'reactionMessage' => '[Reaction message]',
+    'listMessage' => '[List message]',
+    'listResponseMessage' => '[List message]'
+  }.freeze
+
   private
 
   def map_message_type(message)
@@ -28,7 +36,13 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
       return MESSAGE_TYPE_MAP[key] if message[key].present? || message[key.to_sym].present?
     end
 
-    return 'text' if extract_text_body(message).present?
+    return 'location' if message['locationMessage'].present? || message[:locationMessage].present? ||
+                        message['liveLocationMessage'].present? || message[:liveLocationMessage].present?
+
+    body = extract_text_body(message)
+    return 'text' if body.present?
+
+    return 'text' if unsupported_placeholder(message).present?
 
     Rails.logger.info("[EVOLUTION_GO] unsupported inbound message keys=#{message.keys.join(',')}")
     nil
@@ -66,6 +80,8 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     when 'image', 'video', 'audio', 'document', 'sticker'
       message_hash[message_type.to_sym] = build_media_payload(data, message_type)
       true
+    when 'location'
+      apply_location_payload!(message_hash, data)
     else
       false
     end
@@ -77,6 +93,56 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
 
     body = Custom::Whatsapp::Evolution::MarkdownConverter.inbound(body) if convert_markdown_inbound?
     message_hash[:text] = { body: body }
+    true
+  end
+
+  def extract_text_body(message)
+    message = (message || {}).with_indifferent_access
+    body = message['conversation'] ||
+           message.dig('extendedTextMessage', 'text') ||
+           message.dig('imageMessage', 'caption') ||
+           message.dig('videoMessage', 'caption') ||
+           message.dig('documentMessage', 'caption')
+    return body if body.present?
+
+    unsupported_placeholder(message)
+  end
+
+  def unsupported_placeholder(message)
+    return nil if message.blank?
+
+    message = message.with_indifferent_access
+    type_key = UNSUPPORTED_TYPE_PLACEHOLDERS.keys.find { |key| message[key].present? }
+    return UNSUPPORTED_TYPE_PLACEHOLDERS[type_key] if type_key
+
+    return nil if message.key?('viewOnceMessageV2') || message.key?('ephemeralMessage')
+
+    message.keys.any? { |key| key.to_s.end_with?('Message') } ? '[Unsupported message type]' : nil
+  end
+
+  def apply_location_payload!(message_hash, data)
+    message = (data['message'] || data[:message] || {}).with_indifferent_access
+    location = message['locationMessage'] || message['liveLocationMessage']
+    return false if location.blank?
+
+    location = location.with_indifferent_access
+    latitude = location['degreesLatitude'] || location['latitude']
+    longitude = location['degreesLongitude'] || location['longitude']
+    return false if latitude.blank? || longitude.blank?
+
+    name = location['name'].presence
+    address = location['address'].presence
+    maps_url = "https://maps.google.com/?q=#{latitude},#{longitude}"
+
+    message_hash[:location] = {
+      latitude: latitude,
+      longitude: longitude,
+      name: name,
+      address: address,
+      url: maps_url
+    }.compact
+
+    message_hash[:text] = { body: [name, address, maps_url].compact.join(' — ') } if name.present? || address.present?
     true
   end
 

@@ -54,6 +54,63 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
     end
   end
 
+  describe '#pair' do
+    it 'posts phone and subscribe to /instance/pair' do
+      stub_request(:post, 'https://go.example.com/instance/pair')
+        .with(
+          body: {
+            phone: '5511999999999',
+            subscribe: %w[MESSAGE CONNECTION QRCODE]
+          }
+        )
+        .to_return(
+          status: 200,
+          body: { message: 'success', data: { PairingCode: 'ABCD-1234' } }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      response = client.pair(phone: '5511999999999', subscribe: %w[MESSAGE CONNECTION QRCODE])
+      expect(response.success?).to be(true)
+      expect(
+        client.dig_field(client.unwrap(response, context: 'pair'), 'pairingCode', 'PairingCode')
+      ).to eq('ABCD-1234')
+    end
+  end
+
+  describe '#send_location' do
+    it 'posts latitude and longitude to /send/location' do
+      stub_request(:post, 'https://go.example.com/send/location')
+        .with(
+          body: hash_including(
+            number: '5511999999999',
+            latitude: -23.55,
+            longitude: -46.63,
+            name: 'São Paulo'
+          )
+        )
+        .to_return(status: 200, body: { data: { Info: { ID: 'LOC1' } } }.to_json)
+
+      response = client.send_location(
+        number: '5511999999999',
+        latitude: -23.55,
+        longitude: -46.63,
+        name: 'São Paulo'
+      )
+      expect(response.success?).to be(true)
+    end
+  end
+
+  describe '#set_presence' do
+    it 'posts composing state to /message/presence' do
+      stub_request(:post, 'https://go.example.com/message/presence')
+        .with(body: { number: '5511999999999', state: 'composing', isAudio: false })
+        .to_return(status: 200, body: { message: 'success' }.to_json)
+
+      response = client.set_presence(number: '5511999999999', state: 'composing')
+      expect(response.success?).to be(true)
+    end
+  end
+
   describe '#send_media' do
     it 'posts to /send/media with quoted context' do
       stub_request(:post, 'https://go.example.com/send/media')

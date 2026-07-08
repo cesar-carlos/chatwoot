@@ -1,0 +1,21 @@
+{
+  "event": "MESSAGE",
+  "instance": "test-go-instance",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "3EB0LOCATION00001"
+    },
+    "message": {
+      "locationMessage": {
+        "degreesLatitude": -23.5505199,
+        "degreesLongitude": -46.6333094,
+        "name": "São Paulo",
+        "address": "Centro, São Paulo - SP"
+      }
+    },
+    "messageTimestamp": "1718880000",
+    "pushName": "João Silva"
+  }
+}

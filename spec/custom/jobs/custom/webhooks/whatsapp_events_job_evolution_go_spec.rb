@@ -77,6 +77,20 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     Webhooks::WhatsappEventsJob.perform_now(job_payload)
   end
 
+  it 'enqueues group metadata fetch for GROUP events' do
+    payload = {
+      'event' => 'GROUP',
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id,
+      'data' => { 'groupJid' => '120363012345678901@g.us' }
+    }
+
+    expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).to receive(:perform_later)
+      .with(channel.id, '120363012345678901@g.us')
+
+    Webhooks::WhatsappEventsJob.perform_now(payload)
+  end
+
   it 'delegates unknown evolution_go channels to super without dropping' do
     payload = {
       'event' => 'MESSAGE',

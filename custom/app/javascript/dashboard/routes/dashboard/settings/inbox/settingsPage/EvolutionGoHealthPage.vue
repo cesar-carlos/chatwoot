@@ -23,6 +23,7 @@ const STATUS_STYLES = {
 };
 
 const { t } = useI18n();
+const confirmDialog = ref(null);
 const qrModalRef = ref(null);
 const diagnostics = ref(null);
 const isDiagnosticsLoading = ref(false);
@@ -33,12 +34,18 @@ const {
   phoneNumber,
   isLoading,
   isReconnecting,
+  isLoggingOut,
+  isSyncingWebhook,
   isQrModalOpen,
   qrModalFetchFresh,
   staleData,
+  confirmTitle,
+  confirmDescription,
   isConnected,
   isBusy,
   reconnect,
+  logout,
+  syncWebhook,
   onQrConnected,
 } = useEvolutionGoHealthConnection(() => props.inbox, { qrModalRef });
 
@@ -80,6 +87,11 @@ async function testWebhook() {
   } finally {
     isTestingWebhook.value = false;
   }
+}
+
+async function handleSyncWebhook() {
+  await syncWebhook();
+  await loadDiagnostics();
 }
 
 onMounted(loadDiagnostics);
@@ -125,6 +137,16 @@ onMounted(loadDiagnostics);
         :disabled="isBusy"
         @click="reconnect"
       />
+      <NextButton
+        v-if="isConnected"
+        faded
+        ruby
+        type="button"
+        :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.LOGOUT')"
+        :is-loading="isLoggingOut"
+        :disabled="isBusy"
+        @click="logout(confirmDialog)"
+      />
     </div>
 
     <SettingsFieldSection
@@ -164,6 +186,12 @@ onMounted(loadDiagnostics);
         <p v-if="diagnostics.import_error" class="text-n-ruby-11">
           {{ diagnostics.import_error }}
         </p>
+        <p v-if="diagnostics.instance_info?.name || diagnostics.instance_info?.Name">
+          <span class="font-medium">
+            {{ t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.INSTANCE_NAME') }}:
+          </span>
+          {{ diagnostics.instance_info.name || diagnostics.instance_info.Name }}
+        </p>
         <p v-if="mutationStats.inbound_delete_skipped">
           {{
             t(
@@ -180,14 +208,26 @@ onMounted(loadDiagnostics);
             )
           }}
         </p>
-        <NextButton
-          variant="faded"
-          :label="
-            t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK')
-          "
-          :is-loading="isTestingWebhook"
-          @click="testWebhook"
-        />
+        <div class="flex flex-wrap gap-2">
+          <NextButton
+            variant="faded"
+            :label="
+              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.TEST_WEBHOOK')
+            "
+            :is-loading="isTestingWebhook"
+            :disabled="isBusy"
+            @click="testWebhook"
+          />
+          <NextButton
+            variant="faded"
+            :label="
+              t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.DIAGNOSTICS.SYNC_WEBHOOK')
+            "
+            :is-loading="isSyncingWebhook"
+            :disabled="isBusy"
+            @click="handleSyncWebhook"
+          />
+        </div>
       </div>
     </SettingsFieldSection>
 
@@ -198,6 +238,12 @@ onMounted(loadDiagnostics);
       :inbox-id="inbox.id"
       :fetch-fresh-qr="qrModalFetchFresh"
       @connected="onQrConnected"
+    />
+
+    <woot-confirm-modal
+      ref="confirmDialog"
+      :title="confirmTitle"
+      :description="confirmDescription"
     />
   </div>
 </template>
