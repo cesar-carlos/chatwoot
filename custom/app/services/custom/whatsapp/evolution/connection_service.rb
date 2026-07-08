@@ -108,8 +108,6 @@ class Custom::Whatsapp::Evolution::ConnectionService
     }
   end
 
-  protected
-
   def update_connection_status(state)
     invalidate_connection_state_cache!
     previous_status = provider_config['connection_status']
@@ -222,7 +220,12 @@ class Custom::Whatsapp::Evolution::ConnectionService
   end
 
   def persist_provider_config!(merged)
-    channel.update_columns(provider_config: merged, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+    Channel::Whatsapp.transaction do
+      Channel::Whatsapp.lock.find(channel.id).update_columns(
+        provider_config: merged,
+        updated_at: Time.current
+      ) # rubocop:disable Rails/SkipsModelValidations
+    end
     channel.provider_config = merged
   end
 

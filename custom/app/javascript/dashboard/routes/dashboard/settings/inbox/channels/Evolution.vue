@@ -9,6 +9,7 @@ import { useStore, useMapGetter } from 'dashboard/composables/store';
 
 import PageHeader from 'dashboard/routes/dashboard/settings/SettingsSubPageHeader.vue';
 import Input from 'dashboard/components-next/input/Input.vue';
+import SelectInput from 'dashboard/components-next/select/Select.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import EvolutionQrScanModal from 'customDashboard/components/evolution/EvolutionQrScanModal.vue';
@@ -49,6 +50,13 @@ const validationRules = {
 const v$ = useVuelidate(validationRules, state);
 const isSubmitDisabled = computed(() => v$.value.$invalid);
 
+const proxyProtocolOptions = computed(() => [
+  { value: 'http', label: 'HTTP' },
+  { value: 'https', label: 'HTTPS' },
+  { value: 'socks4', label: 'SOCKS4' },
+  { value: 'socks5', label: 'SOCKS5' },
+]);
+
 const formErrors = computed(() => ({
   inboxName: v$.value.inboxName?.$error
     ? t('INBOX_MGMT.ADD.EVOLUTION.INBOX_NAME.ERROR')
@@ -65,6 +73,13 @@ const formErrors = computed(() => ({
 }));
 
 function onWizardConnected() {
+  router.replace({
+    name: 'settings_inboxes_add_agents',
+    params: { page: 'new', inbox_id: inboxId.value },
+  });
+}
+
+function configureLater() {
   router.replace({
     name: 'settings_inboxes_add_agents',
     params: { page: 'new', inbox_id: inboxId.value },
@@ -188,10 +203,14 @@ async function createChannel() {
           />
           <Input
             v-model="state.proxyPort"
+            type="number"
+            min="1"
+            max="65535"
             :label="t('INBOX_MGMT.ADD.EVOLUTION.PROXY.PORT')"
           />
-          <Input
+          <SelectInput
             v-model="state.proxyProtocol"
+            :options="proxyProtocolOptions"
             :label="t('INBOX_MGMT.ADD.EVOLUTION.PROXY.PROTOCOL')"
           />
           <Input
@@ -236,6 +255,13 @@ async function createChannel() {
         type="button"
         :label="t('INBOX_MGMT.ADD.EVOLUTION.CONNECT.OPEN_QR')"
         @click="openQrReader"
+      />
+      <NextButton
+        variant="faded"
+        color="slate"
+        type="button"
+        :label="t('INBOX_MGMT.ADD.EVOLUTION.CONNECT.CONFIGURE_LATER')"
+        @click="configureLater"
       />
     </div>
 

@@ -14,6 +14,8 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
       process_edit_events(channel, params)
     when 'CONTACTS_UPSERT', 'CONTACTS_UPDATE'
       Custom::Whatsapp::Evolution::ContactsSyncJob.perform_later(channel.id, params[:data])
+    when 'GROUPS_UPSERT', 'GROUP_UPDATE'
+      process_group_events(channel, params)
     when 'CONNECTION_UPDATE', 'QRCODE_UPDATED'
       Custom::Whatsapp::Evolution::ConnectionService.new(channel: channel).handle_event(params)
     else
@@ -25,6 +27,28 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
   end
 
   private
+
+  def process_group_events(channel, params)
+    Array.wrap(params[:data]).each do |data_item|
+      unless data_item.is_a?(Hash)
+        log_malformed_data_item(params[:event], data_item)
+        next
+      end
+
+      group_jid = extract_group_jid(data_item)
+      next if group_jid.blank?
+
+      Custom::Whatsapp::Evolution::GroupMetadataService.new(channel: channel).warm_cache!(group_jid)
+    end
+  end
+
+  def extract_group_jid(data_item)
+    data = data_item.with_indifferent_access
+    data[:id].presence ||
+      data.dig(:key, :remoteJid).presence ||
+      data[:remoteJid].presence ||
+      data.dig(:group, :id).presence
+  end
 
   def process_message_events(channel, params)
     Array.wrap(params[:data]).each do |data_item|

@@ -15,6 +15,8 @@ module Custom::Whatsapp::Evolution::ProviderConfig
     CONTACTS_UPDATE
     CONNECTION_UPDATE
     QRCODE_UPDATED
+    GROUPS_UPSERT
+    GROUP_UPDATE
   ].freeze
 
   # Written by webhooks / connection polling — must not trigger Evolution API sync or credential validation.

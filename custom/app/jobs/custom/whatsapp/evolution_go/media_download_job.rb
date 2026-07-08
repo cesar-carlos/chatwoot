@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::EvolutionGo::MediaDownloadJob < ApplicationJob
-  queue_as :low
+  # :default (not :low) so attachments don't lag behind lower-priority background
+  # work such as contact enrichment or imports; agents are waiting on this.
+  queue_as :default
 
   MEDIA_LOCK_TTL = 5.minutes.to_i
 

@@ -1,21 +1,9 @@
 # frozen_string_literal: true
 
+require 'ipaddr'
+
 module Custom::Whatsapp::Evolution::MediaPayload
-  PRIVATE_HOST_PATTERN = /
-    \A
-    (?:
-      localhost |
-      127\.0\.0\.1 |
-      0\.0\.0\.0 |
-      ::1 |
-      192\.168\. |
-      10\. |
-      172\.(?:1[6-9]|2\d|3[01])\. |
-      169\.254\. |
-      fc[0-9a-f]{2}: |
-      fe[89ab][0-9a-f]:
-    )
-  /ix
+  MAX_ENCODE_BYTES = Custom::Whatsapp::Evolution::MediaDecoder::MAX_DECODE_BYTES
 
   module_function
 
@@ -32,9 +20,9 @@ module Custom::Whatsapp::Evolution::MediaPayload
     uri = URI.parse(url)
     return false unless uri.is_a?(URI::HTTP)
 
-    host = uri.host.to_s.downcase
+    host = uri.hostname.to_s.downcase
     return false if host.blank?
-    return false if PRIVATE_HOST_PATTERN.match?(host)
+    return false if private_or_loopback_host?(host)
     return false if host.end_with?('.local', '.internal', '.localhost')
 
     true
@@ -42,8 +30,20 @@ module Custom::Whatsapp::Evolution::MediaPayload
     false
   end
 
+  def private_or_loopback_host?(host)
+    ip = IPAddr.new(host)
+    ip.loopback? || ip.private? || ip.link_local?
+  rescue IPAddr::InvalidAddressError
+    host == 'localhost' || host == '0.0.0.0'
+  end
+
   def encode_attachment(attachment)
     content = attachment.file.blob.open(&:read)
+    if content.bytesize > MAX_ENCODE_BYTES
+      Rails.logger.warn("[EVOLUTION] attachment exceeds #{MAX_ENCODE_BYTES} bytes; skipping base64 encode")
+      return nil
+    end
+
     mime = attachment.file.content_type.presence || 'application/octet-stream'
     "data:#{mime};base64,#{Base64.strict_encode64(content)}"
   rescue StandardError => e

@@ -255,9 +255,8 @@ Na integração Evolution→Chatwoot legada, quando `reopenConversation: false`,
 | `ignore_from_me_echo` | boolean | `false` | 1‡ | (implícito) | Ignora `fromMe: true` no UPSERT (evita duplicar outbound) | implícito no fluxo |
 | `ignore_survey_links` | boolean | `true` | 2 | Ignore CSAT survey echoes | Ignora msgs com `/survey/responses/` + URL | ~1982 |
 | `format_group_messages` | boolean | `false` | 3+ | Prefix group messages with participant | `**+55 (11) 9999-9999 - Name:**` | ~2198 |
-| `show_pairing_code` | boolean | `true` | 2 | Show pairing code alongside QR | `qrcode.pairingCode` format `XXXX-XXXX` | ~2439 |
 
-‡ Fase 1: filtros aplicados **hardcoded** no normalizer — sem toggles na UI.
+‡ Fase 1: alguns filtros aplicados no normalizer; toggles expostos em `EvolutionSettingsPage.vue`.
 
 ### Valores especiais `ignore_jids`
 
@@ -278,6 +277,8 @@ Na integração Evolution→Chatwoot legada, quando `reopenConversation: false`,
 |-------|------|---------|------|----------|-----------|----------------|
 | `import_contacts` | boolean | `false` | 4 | Import contacts from address book | Importa agenda após QR | `ChatwootDto.importContacts` |
 | `import_messages` | boolean | `false` | 4 | Import message history | Importa histórico WA → CW | `importMessages` |
+| `import_on_connect` | boolean | `true` | 4 | Auto-import after QR connect | Dispara import job ao conectar | settings UI |
+| `sync_lost_messages` | boolean | `false` | 4 | Reconcile missed messages | Job periódico opt-in | settings UI |
 | `days_limit_import_messages` | number | `7` | 4 | Days limit for message import | Janela em dias | `daysLimitImportMessages` |
 
 Disponível após conexão QR — igual UI Evolution (screenshot).

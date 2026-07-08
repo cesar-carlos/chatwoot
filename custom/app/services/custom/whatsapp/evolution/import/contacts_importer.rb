@@ -39,7 +39,10 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
     contacts.each do |record|
       next unless record.is_a?(Hash)
 
-      remote_jids << record['remoteJid'] if record['remoteJid'].present?
+      remote_jid = record['remoteJid'].to_s
+      next if remote_jid.blank? || skip_remote_jid?(remote_jid)
+
+      remote_jids << remote_jid
       import_contact_record(record)
     end
 

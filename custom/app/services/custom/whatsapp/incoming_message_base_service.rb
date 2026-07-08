@@ -52,16 +52,39 @@ module Custom::Whatsapp::IncomingMessageBaseService
     enqueue_pending_evolution_media_download if evolution_channel?
   end
 
+  def process_messages
+    return super unless evolution_channel?
+
+    begin
+      super
+    rescue StandardError
+      release_evolution_inbound_dedup_lock!
+      raise
+    end
+  end
+
   def lock_message_source_id!
     return super unless evolution_channel?
 
     source_id = messages_data&.first&.dig(:id)
     return false if source_id.blank?
 
-    return true if Whatsapp::MessageDedupLock.new(source_id).acquire!
+    lock = Whatsapp::MessageDedupLock.new(source_id)
+    if lock.acquire!
+      @evolution_dedup_lock = lock
+      @evolution_dedup_lock_acquired = true
+      return true
+    end
 
     raise MutexApplicationJob::LockAcquisitionError,
           "Evolution inbound dedup lock busy for source_id=#{source_id}"
+  end
+
+  def release_evolution_inbound_dedup_lock!
+    return unless @evolution_dedup_lock_acquired
+
+    @evolution_dedup_lock.release!
+    @evolution_dedup_lock_acquired = false
   end
 
   private

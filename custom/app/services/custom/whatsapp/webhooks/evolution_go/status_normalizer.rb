@@ -36,8 +36,9 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::StatusNormalizer
 
     return 'delivered' if state.casecmp('delivered').zero?
     return 'read' if state.casecmp('read').zero? || type == 'read'
+    return 'delivered' if state.blank? && type.blank?
 
-    'read'
+    nil
   end
 
   def status_timestamp(data)

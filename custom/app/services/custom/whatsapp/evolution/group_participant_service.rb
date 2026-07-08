@@ -20,11 +20,21 @@ class Custom::Whatsapp::Evolution::GroupParticipantService
   end
 
   def upsert_participant_contact!
-    phone = jid_resolver.phone_from_message_key({ 'remoteJid' => participant_jid })
-    return if phone.blank?
+    resolved_jid = participant_jid.to_s
+    return if resolved_jid.blank?
 
-    contact = channel.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
-    contact.name = push_name.presence || contact.name || contact.phone_number
+    phone = jid_resolver.phone_from_message_key({ 'remoteJid' => resolved_jid })
+    contact = if phone.present?
+                channel.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
+              elsif resolved_jid.end_with?('@lid')
+                channel.account.contacts.find_or_initialize_by(identifier: resolved_jid).tap do |c|
+                  c.phone_number = nil
+                end
+              else
+                return
+              end
+
+    contact.name = push_name.presence || contact.name if contact.name.blank?
     contact.save!
     contact
   end

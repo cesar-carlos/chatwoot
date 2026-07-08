@@ -18,6 +18,8 @@ class Custom::Whatsapp::Evolution::DeferredStatusJob < ApplicationJob
     return if inbox.blank?
 
     status = status_params.with_indifferent_access
+    return if skip_deferred_status?(inbox, status)
+
     return reschedule_or_drop(inbox_id, status_params, attempt, status[:id]) unless inbox.messages.exists?(source_id: status[:id])
 
     Whatsapp::IncomingMessageService.new(
@@ -27,6 +29,19 @@ class Custom::Whatsapp::Evolution::DeferredStatusJob < ApplicationJob
   end
 
   private
+
+  def skip_deferred_status?(inbox, status)
+    channel = inbox.channel
+    return false unless channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution'
+
+    remote_jid = status[:remoteJid].presence || status.dig(:key, :remoteJid)
+    return false if remote_jid.blank?
+
+    Custom::Whatsapp::Evolution::RemoteJidFilter.skip_remote_jid?(
+      remote_jid,
+      channel.provider_config || {}
+    )
+  end
 
   def reschedule_or_drop(inbox_id, status_params, attempt, source_id)
     if attempt < MAX_ATTEMPTS

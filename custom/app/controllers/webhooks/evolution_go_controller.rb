@@ -1,12 +1,16 @@
 # frozen_string_literal: true
 
 class Webhooks::EvolutionGoController < ActionController::API
+  # Avoids a synchronous DB write on every webhook when a burst arrives, while
+  # still keeping `last_webhook_at` accurate to within TOUCH_DEBOUNCE_SECONDS.
+  TOUCH_DEBOUNCE_SECONDS = 30
+
   before_action :authenticate_webhook!
 
   def process_payload
     touch_last_webhook_at!
 
-    Webhooks::WhatsappEventsJob.set(queue: :low).perform_later(
+    Webhooks::WhatsappEventsJob.set(queue: :default).perform_later(
       sanitized_job_payload.merge(
         evolution_go_instance_name: params[:instance_name],
         channel_id: @channel.id
@@ -48,10 +52,16 @@ class Webhooks::EvolutionGoController < ActionController::API
   end
 
   def touch_last_webhook_at!
+    debounced = Redis::Alfred.set(touch_debounce_key, true, nx: true, ex: TOUCH_DEBOUNCE_SECONDS)
+    return unless debounced
+
     config = (@channel.provider_config || {}).stringify_keys.merge(
       'last_webhook_at' => Time.current.utc.iso8601(3)
     )
-    @channel.update_columns(provider_config: config, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
-    @channel.provider_config = config
+    Custom::Whatsapp::EvolutionGo::ProviderConfigMerger.merge!(@channel, config.slice('last_webhook_at'))
+  end
+
+  def touch_debounce_key
+    format(Redis::RedisKeys::EVOLUTION_GO_WEBHOOK_TOUCH_DEBOUNCE, channel_id: @channel.id)
   end
 end

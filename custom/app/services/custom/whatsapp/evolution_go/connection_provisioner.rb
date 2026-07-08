@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
+  QR_FETCH_MAX_ATTEMPTS = 3
+  QR_FETCH_DELAY_SECONDS = 1.0
+
   pattr_initialize [:channel!, :connection_service!]
 
   def self.webhook_url_for(channel)
@@ -20,7 +23,6 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
 
     persist_create_response!(response)
     connect_with_webhook!
-    fetch_qr_code!
   rescue StandardError => e
     delete_remote_instance! if instance_created
     raise e
@@ -30,7 +32,6 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
     validate_webhook_base_url!
     ensure_webhook_token!
     connect_with_webhook!
-    fetch_qr_code!
   end
 
   def teardown!
@@ -95,16 +96,75 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
     ).sync!
   end
 
-  def fetch_qr_code!
-    response = api_client.qr_code
-    Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to fetch Evolution Go QR code')
+  def fetch_qr_code!(raise_on_failure: true, max_attempts: QR_FETCH_MAX_ATTEMPTS)
+    last_error = nil
+    attempts = [max_attempts.to_i, 1].max
 
+    attempts.times do |attempt|
+      response = api_client.qr_code
+      if response.success?
+        attrs = qr_storage_attrs_from_response(response)
+        if attrs.present?
+          connection_service.update_runtime_config!(attrs)
+          return true
+        end
+
+        last_error = transient_qr_unavailable_error(response)
+      elsif qr_fetch_retryable?(response)
+        last_error = qr_api_error(response)
+      elsif raise_on_failure
+        Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to fetch Evolution Go QR code')
+      else
+        last_error = qr_api_error(response)
+      end
+
+      sleep(QR_FETCH_DELAY_SECONDS) if attempt < attempts - 1
+    end
+
+    if raise_on_failure
+      raise last_error || transient_qr_unavailable_error
+    end
+
+    Rails.logger.warn(
+      "[EVOLUTION_GO] QR not ready after #{attempts} attempts channel=#{channel.id}: #{last_error&.message}"
+    )
+    false
+  end
+
+  def qr_storage_attrs_from_response(response)
     data = api_client.unwrap(response, context: 'qr_code')
-    attrs = connection_service.connection_events.qrcode_storage_attrs(
+    connection_service.connection_events.qrcode_storage_attrs(
       'qrcode' => api_client.dig_field(data, 'qrcode', 'Qrcode'),
       'code' => api_client.dig_field(data, 'code', 'Code')
     )
-    connection_service.update_runtime_config!(attrs) if attrs.present?
+  end
+
+  def qr_fetch_retryable?(response)
+    status = response.code.to_i
+    return true if status.in?([404, 422])
+
+    qr_not_ready_message?(response.parsed_response)
+  end
+
+  def qr_not_ready_message?(body)
+    message = Custom::Whatsapp::EvolutionGo::ApiError.extract_message(body)
+    message.match?(/no QR code available|not ready|wait a moment/i)
+  end
+
+  def qr_api_error(response)
+    Custom::Whatsapp::EvolutionGo::ApiError.new(
+      'Failed to fetch Evolution Go QR code',
+      status: response.code,
+      body: response.parsed_response
+    )
+  end
+
+  def transient_qr_unavailable_error(response = nil)
+    Custom::Whatsapp::EvolutionGo::ApiError.new(
+      'Failed to fetch Evolution Go QR code',
+      status: response&.code || 422,
+      body: response&.parsed_response || { 'message' => 'no QR code available. Please wait a moment and try again' }
+    )
   end
 
   def delete_remote_instance!

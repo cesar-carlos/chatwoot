@@ -269,7 +269,7 @@ class Custom::Whatsapp::Evolution::ApiClient
     options[:open_timeout] = OPEN_TIMEOUT
 
     response = HTTParty.public_send(method, "#{@base_url}#{path}", options)
-    return retry_request(method, path, body, attempt) if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response)
+    return retry_request(method, path, body, attempt) if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response, method)
 
     ensure_parseable_response!(response, method, path)
     response
@@ -287,8 +287,8 @@ class Custom::Whatsapp::Evolution::ApiClient
     request(method, path, body, attempt: attempt + 1)
   end
 
-  def retryable_failure?(response)
-    RETRYABLE_STATUSES.cover?(response.code.to_i)
+  def retryable_failure?(response, method)
+    RETRYABLE_STATUSES.cover?(response.code.to_i) && method.to_sym == :get
   rescue StandardError
     false
   end
@@ -309,7 +309,10 @@ class Custom::Whatsapp::Evolution::ApiClient
   end
 
   def normalize_number(phone)
-    phone.to_s.gsub(/\D/, '')
+    value = phone.to_s.strip
+    return value if value.include?('@')
+
+    value.gsub(/\D/, '')
   end
 
   def profile_lookup_number(number)

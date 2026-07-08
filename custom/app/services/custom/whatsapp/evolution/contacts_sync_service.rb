@@ -35,8 +35,8 @@ class Custom::Whatsapp::Evolution::ContactsSyncService
     enqueue_enrichment(contact, remote_jid, push_name, profile_pic_url)
   end
 
-  def jid_resolver
-    @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(config)
+  def jid_config
+    config
   end
 
   def find_or_create_contact(phone, remote_jid, push_name)

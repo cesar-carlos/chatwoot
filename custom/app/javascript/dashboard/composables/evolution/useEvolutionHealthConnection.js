@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, ref, unref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, toValue, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -11,6 +11,11 @@ import {
 
 const POLL_MS = 5000;
 const MAX_POLL_FAILURES = 3;
+
+function resolveInboxRef(inboxRef) {
+  const value = toValue(inboxRef);
+  return typeof value === 'function' ? value() : value;
+}
 
 function applySeedToState(inbox, { connectionStatus, phoneNumber }) {
   const seeded = seedConnectionStateFromInbox(inbox);
@@ -41,7 +46,7 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
   let pollTimer = null;
   let pollFailureCount = 0;
 
-  const inboxId = computed(() => unref(inboxRef)?.id);
+  const inboxId = computed(() => resolveInboxRef(inboxRef)?.id);
   const isConnected = computed(() => connectionStatus.value === 'open');
   const isBusy = computed(() => isLoggingOut.value || isRestarting.value);
 
@@ -106,8 +111,11 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
       staleData.value = false;
     } catch (error) {
       pollFailureCount += 1;
-      applySeedToState(unref(inboxRef), { connectionStatus, phoneNumber });
-      if (pollFailureCount >= MAX_POLL_FAILURES) {
+      applySeedToState(resolveInboxRef(inboxRef), {
+        connectionStatus,
+        phoneNumber,
+      });
+      if (pollFailureCount === MAX_POLL_FAILURES) {
         staleData.value = true;
         useAlert(
           error?.response?.data?.error ||
@@ -128,10 +136,11 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
   useEvolutionConnectionCable(inboxId, applyPayload);
 
   watch(
-    () => unref(inboxRef),
-    inbox => {
-      if (!inbox?.id) return;
+    inboxId,
+    id => {
+      if (!id) return;
 
+      const inbox = resolveInboxRef(inboxRef);
       const seeded = applySeedToState(inbox, { connectionStatus, phoneNumber });
       isLoading.value = !seeded.connectionStatus;
       refreshConnection();
@@ -205,7 +214,8 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
     );
     const ok = await confirmDialog?.showConfirmation();
     if (!ok) return;
-    await runAction('evolutionLogout', isLoggingOut);
+    const succeeded = await runAction('evolutionLogout', isLoggingOut);
+    if (!succeeded) return;
     phoneNumber.value = '';
     startPolling();
   }

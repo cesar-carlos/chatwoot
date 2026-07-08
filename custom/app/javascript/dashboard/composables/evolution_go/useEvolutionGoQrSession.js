@@ -53,6 +53,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     if (normalized.qrcodeBase64) {
       qrcodeBase64.value = normalized.qrcodeBase64;
       qrRefreshError.value = false;
+      armQrExpiryTimer();
     }
     if (normalized.pairingCode) {
       pairingCode.value = normalized.pairingCode;
@@ -76,13 +77,13 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     qrRefreshError.value = true;
   }
 
-  async function refreshConnection() {
+  async function refreshConnection({ includeQr = false } = {}) {
     const id = unref(inboxId);
     if (!id || refreshInFlight) return refreshInFlight;
 
     isLoading.value = true;
     refreshInFlight = store
-      .dispatch('inboxes/fetchEvolutionGoConnection', id)
+      .dispatch('inboxes/fetchEvolutionGoConnection', { inboxId: id, includeQr })
       .then(payload => {
         applyPayload(payload);
       })
@@ -167,7 +168,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
   function startPolling() {
     stopPolling();
     pollTimer = setInterval(() => {
-      refreshConnection();
+      refreshConnection({ includeQr: true });
     }, POLL_MS);
   }
 

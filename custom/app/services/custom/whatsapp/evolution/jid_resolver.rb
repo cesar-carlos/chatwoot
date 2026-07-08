@@ -37,7 +37,10 @@ class Custom::Whatsapp::Evolution::JidResolver
   end
 
   def phone_from_jid(jid)
-    phone = jid.to_s.split('@').first.presence
+    jid_str = jid.to_s
+    return if jid_str.end_with?('@lid')
+
+    phone = jid_str.split('@').first.presence
     return if phone.blank?
     return unless phone.match?(/\A\d+\z/)
 

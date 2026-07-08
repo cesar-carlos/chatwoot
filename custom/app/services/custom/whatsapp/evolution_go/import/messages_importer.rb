@@ -9,7 +9,7 @@ class Custom::Whatsapp::EvolutionGo::Import::MessagesImporter
   end
 
   def import_batch!
-    remote_jids = Array.wrap(runtime.cursor[:remote_jids])
+    remote_jids = load_remote_jids_from_redis
     if remote_jids.blank?
       runtime.mark_completed!
       return
@@ -30,7 +30,7 @@ class Custom::Whatsapp::EvolutionGo::Import::MessagesImporter
   def request_history_sync!(remote_jid)
     response = api_client.history_sync(
       chat: remote_jid,
-      days: days_limit
+      count: days_limit
     )
     Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(
       response,
@@ -40,6 +40,16 @@ class Custom::Whatsapp::EvolutionGo::Import::MessagesImporter
 
   def days_limit
     runtime.config.fetch('days_limit_import_messages', 7).to_i.clamp(1, 365)
+  end
+
+  def load_remote_jids_from_redis
+    key = format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_REMOTE_JIDS, channel_id: runtime.channel.id)
+    stored = ::Redis::Alfred.get(key)
+    return [] if stored.blank?
+
+    JSON.parse(stored)
+  rescue JSON::ParserError
+    []
   end
 
   def advance_cursor!(jid_index, jid_count)

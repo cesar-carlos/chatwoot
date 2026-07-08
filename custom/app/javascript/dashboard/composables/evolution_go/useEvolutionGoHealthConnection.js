@@ -163,6 +163,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   async function reconnect() {
+    isReconnecting.value = true;
     openQrModal({ fresh: true });
   }
 
@@ -198,6 +199,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   function onQrConnected() {
+    isReconnecting.value = false;
     isQrModalOpen.value = false;
     refreshConnection();
   }

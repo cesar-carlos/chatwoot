@@ -3,12 +3,19 @@
 module Custom::Whatsapp::Evolution::Import::JidHelpers
   private
 
+  # Includers that don't track import `runtime` (e.g. ContactsSyncService,
+  # which reacts to live webhooks instead of a batch import) must override
+  # this to point at their own provider config source.
+  def jid_config
+    runtime.config
+  end
+
   def jid_resolver
-    @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(runtime.config)
+    @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(jid_config)
   end
 
   def skip_remote_jid?(remote_jid)
-    Custom::Whatsapp::Evolution::RemoteJidFilter.skip_remote_jid?(remote_jid, runtime.config)
+    Custom::Whatsapp::Evolution::RemoteJidFilter.skip_remote_jid?(remote_jid, jid_config)
   end
 
   def phone_from_jid(jid)
@@ -32,7 +39,7 @@ module Custom::Whatsapp::Evolution::Import::JidHelpers
   end
 
   def merge_brazil_contacts?
-    ActiveModel::Type::Boolean.new.cast(runtime.config['merge_brazil_contacts'])
+    ActiveModel::Type::Boolean.new.cast(jid_config['merge_brazil_contacts'])
   end
 
   # The Evolution API returns either a flat array of records or a nested

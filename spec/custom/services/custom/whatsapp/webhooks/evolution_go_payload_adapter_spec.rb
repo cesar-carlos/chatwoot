@@ -48,6 +48,51 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter do
       expect(result[:message][:conversation]).to eq('Hidden text')
     end
 
+    it 'maps fromMe payloads to the recipient peer JID' do
+      data = {
+        'Info' => {
+          'ID' => 'MSG-FROM-ME',
+          'Chat' => '556696971841@s.whatsapp.net',
+          'Sender' => '5511999999999:38@s.whatsapp.net',
+          'SenderAlt' => '5511999999999@s.whatsapp.net',
+          'RecipientAlt' => '556696971841@s.whatsapp.net',
+          'IsFromMe' => true,
+          'PushName' => 'Agent',
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'conversation' => 'From phone'
+        }
+      }
+
+      result = described_class.canonicalize_data(data)
+
+      expect(result[:key][:remoteJid]).to eq('556696971841@s.whatsapp.net')
+      expect(result[:key][:remoteJidAlt]).to eq('556696971841@s.whatsapp.net')
+      expect(result[:key][:fromMe]).to be(true)
+    end
+
+    it 'uses RecipientAlt for fromMe LID chats' do
+      data = {
+        'Info' => {
+          'ID' => 'MSG-FROM-ME-LID',
+          'Chat' => '123456789012345@lid',
+          'Sender' => '5511999999999:38@s.whatsapp.net',
+          'SenderAlt' => '5511999999999@s.whatsapp.net',
+          'RecipientAlt' => '556696971841@s.whatsapp.net',
+          'IsFromMe' => true
+        },
+        'Message' => {
+          'conversation' => 'From phone'
+        }
+      }
+
+      result = described_class.canonicalize_data(data)
+
+      expect(result[:key][:remoteJid]).to eq('123456789012345@lid')
+      expect(result[:key][:remoteJidAlt]).to eq('556696971841@s.whatsapp.net')
+    end
+
     it 'returns empty hash for nil data' do
       expect(described_class.canonicalize_data(nil)).to eq({})
     end

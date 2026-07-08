@@ -1,0 +1,18 @@
+{
+  "event": "SendMessage",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "3EB0PHONE-SENT-001",
+      "Chat": "556696971841@s.whatsapp.net",
+      "Sender": "5511999999999:38@s.whatsapp.net",
+      "SenderAlt": "556696971841@s.whatsapp.net",
+      "IsFromMe": true,
+      "PushName": "Agent",
+      "Timestamp": 1699999999
+    },
+    "Message": {
+      "conversation": "Mensagem enviada pelo celular"
+    }
+  }
+}

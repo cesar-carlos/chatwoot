@@ -78,6 +78,11 @@ const hasExistingProxy = computed(() =>
   Boolean(props.inbox.provider_config?.proxy_host)
 );
 
+const proxyEditDisabled = computed(
+  () =>
+    Boolean(props.inbox.provider_config?.instance_id) && !hasExistingProxy.value
+);
+
 watch(
   () => props.inbox.id,
   () => {
@@ -102,10 +107,7 @@ watch(
 );
 
 function buildProviderConfig() {
-  const existing = { ...(props.inbox.provider_config || {}) };
-
   const config = {
-    ...existing,
     ignore_groups: state.groupsIgnore,
     sign_msg: state.signMsg,
     convert_markdown_outbound: state.convertMarkdownOutbound,
@@ -553,28 +555,34 @@ async function removeProxy() {
         :description="
           t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.ENABLED.DESCRIPTION')
         "
+        :disabled="proxyEditDisabled"
       />
       <template v-if="state.proxyEnabled">
         <SettingsFieldSection
           :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.HOST.LABEL')"
         >
-          <Input v-model="state.proxyHost" />
+          <Input v-model="state.proxyHost" :disabled="proxyEditDisabled" />
         </SettingsFieldSection>
         <SettingsFieldSection
           :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.PORT.LABEL')"
         >
-          <Input v-model="state.proxyPort" type="number" />
+          <Input
+            v-model="state.proxyPort"
+            type="number"
+            :disabled="proxyEditDisabled"
+          />
         </SettingsFieldSection>
         <SettingsFieldSection
           :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.USERNAME.LABEL')"
         >
-          <Input v-model="state.proxyUsername" />
+          <Input v-model="state.proxyUsername" :disabled="proxyEditDisabled" />
         </SettingsFieldSection>
         <SettingsFieldSection
           :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.PROXY.PASSWORD.LABEL')"
         >
           <Input
             v-model="state.proxyPassword"
+            :disabled="proxyEditDisabled"
             type="password"
             :placeholder="MASKED_SECRET"
           />

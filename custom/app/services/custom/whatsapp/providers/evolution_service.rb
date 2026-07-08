@@ -74,7 +74,9 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
   def process_response(response, message)
     parsed = response.parsed_response
     if response.success? && parsed.is_a?(Hash) && parsed.dig('key', 'id').present?
-      parsed.dig('key', 'id')
+      message_id = parsed.dig('key', 'id')
+      acquire_outbound_dedup_lock!(message_id)
+      message_id
     else
       handle_error(response, message)
       nil
@@ -143,6 +145,7 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
 
   def send_attachment_message(phone_number, message)
     message_id = deliver_attachment_batch(phone_number, message)
+    send_complementary_text_for_captionless_attachments!(phone_number, message) if message_id.present?
     mark_incoming_read_after_reply(phone_number, message) if message_id.present?
     message_id
   end
@@ -166,12 +169,17 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
   end
 
   def process_attachment_response(response, message, index, message_id)
+    secondary_id = response_message_id(response)
+    acquire_outbound_dedup_lock!(secondary_id)
+
     if index.zero?
       first_id = process_response(response, message)
       return :failed if first_id.blank?
 
       return first_id
     end
+
+    persist_secondary_source_id!(message, secondary_id) if secondary_id.present?
 
     return message_id if response.success?
 
@@ -202,7 +210,9 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     quoted = build_quoted_context(phone_number, message)
     delay = outbound_delay
     mediatype = attachment_mediatype(attachment)
-    return send_audio_attachment(phone_number, media_source, quoted, delay) if mediatype == 'audio'
+    if mediatype == 'audio'
+      return send_audio_attachment(phone_number, media_source, quoted, delay)
+    end
 
     api_client.send_media(
       number: phone_number,
@@ -236,6 +246,25 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     return attachment.file_type if %w[image audio video].include?(attachment.file_type)
 
     'document'
+  end
+
+  def send_complementary_text_for_captionless_attachments!(phone_number, message)
+    return if message.content.blank?
+    return unless message.attachments.any? do |attachment|
+      %w[audio sticker].include?(attachment_mediatype(attachment))
+    end
+
+    response = api_client.send_text(
+      number: phone_number,
+      text: apply_outbound_text(message.content, message),
+      quoted: build_quoted_context(phone_number, message),
+      delay: outbound_delay
+    )
+    secondary_id = response_message_id(response)
+    acquire_outbound_dedup_lock!(secondary_id)
+    persist_secondary_source_id!(message, secondary_id) if secondary_id.present?
+  rescue StandardError => e
+    Rails.logger.warn "[EVOLUTION] complementary text after audio/sticker failed: #{e.message}"
   end
 
   def normalize_phone(phone)

@@ -5,7 +5,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   REQUEST_TIMEOUT = 30
   OPEN_TIMEOUT = 10
   MAX_RETRIES = 1
-  RETRY_BACKOFF = 0.3
+  RETRY_BACKOFF = 0.1
   RETRYABLE_STATUSES = (500..599)
   NON_RETRYABLE_PATHS = %w[/instance/create].freeze
   NETWORK_ERRORS = [
@@ -184,10 +184,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   def download_media(message_envelope)
     envelope = message_envelope.with_indifferent_access
     message = envelope[:message] || envelope['message']
-    response = post('/message/downloadmedia', { message: message }, headers: instance_headers)
-    return response if response.success?
-
-    post('/message/downloadimage', download_image_body(envelope), headers: instance_headers)
+    post('/message/downloadmedia', { message: message }, headers: instance_headers)
   end
 
   def advanced_settings(instance_id)
@@ -214,7 +211,8 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   end
 
   def user_check(number:)
-    post('/user/check', { number: normalize_number(number) }, headers: instance_headers)
+    numbers = Array.wrap(number).map { |value| normalize_number(value) }.compact
+    post('/user/check', { number: numbers }, headers: instance_headers)
   end
 
   def update_advanced_settings(instance_id, settings:)
@@ -261,10 +259,13 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     )
   end
 
-  def history_sync(chat:, days:)
+  def history_sync(chat:, count: nil, message_info: nil)
     post(
       '/chat/history-sync',
-      { chat: chat.to_s, days: days.to_i },
+      {
+        count: (count || 100).to_i,
+        messageInfo: message_info || { chat: chat.to_s }
+      },
       headers: instance_headers
     )
   end
@@ -324,19 +325,13 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     request(:delete, path, nil, headers: headers)
   end
 
-  def download_image_body(envelope)
-    key = envelope[:key] || envelope['key'] || {}
-    message = envelope[:message] || envelope['message'] || {}
-
-    {
-      id: key[:id] || key['id'],
-      remoteJid: key[:remoteJid] || key['remoteJid'],
-      message: message
-    }.compact
-  end
-
   def request(method, path, body, headers:, attempt: 0)
-    options = { headers: headers, timeout: REQUEST_TIMEOUT, open_timeout: OPEN_TIMEOUT }
+    options = {
+      headers: headers,
+      timeout: REQUEST_TIMEOUT,
+      open_timeout: OPEN_TIMEOUT,
+      follow_redirects: false
+    }
     options[:body] = body.to_json if body.present?
 
     response = HTTParty.public_send(method, "#{@base_url}#{path}", options)
@@ -377,7 +372,10 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   end
 
   def normalize_number(number)
-    number.to_s.gsub(/\D/, '')
+    value = number.to_s.strip
+    return value if value.include?('@')
+
+    value.gsub(/\D/, '')
   end
 
   def extract_top_level_fields(parsed)

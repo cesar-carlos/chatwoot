@@ -44,7 +44,7 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
     return cached unless cached.nil?
 
     open = connection_open?
-    Rails.cache.write(connection_validation_cache_key, open, expires_in: 30.seconds)
+    Rails.cache.write(connection_validation_cache_key, open, expires_in: 60.seconds)
     open
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.warn("[EVOLUTION_GO] validate_provider_config failed channel=#{whatsapp_channel.id}: #{e.message}")

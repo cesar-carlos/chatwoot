@@ -119,7 +119,7 @@ Operações disponíveis no dashboard (**Settings → WhatsApp → Evolution** t
 | Causa | Ação |
 |-------|------|
 | Integração legada **e** provider nativo ativos | `POST /chatwoot/set` → `enabled: false` |
-| Echo `fromMe` | Normalizer deve ignorar — `ignore_from_me_echo: true` |
+| Echo `fromMe` | Default sincroniza via `PhoneOutgoingSyncService`; use `ignore_from_me_echo: true` para descartar |
 | Retry Evolution | Dedup Redis por `source_id` — ver [decisions.md §16](./decisions.md) |
 | Job processado 2x | Sidekiq retry — idempotência em `IncomingMessageBaseService` |
 

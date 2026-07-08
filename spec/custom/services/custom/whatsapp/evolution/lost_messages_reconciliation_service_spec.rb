@@ -143,6 +143,29 @@ RSpec.describe Custom::Whatsapp::Evolution::LostMessagesReconciliationService do
   end
 
   it 're-raises LockAcquisitionError so the job can retry' do
+    payload = {
+      'key' => {
+        'id' => 'EVO-LOCK-1',
+        'remoteJid' => '5511888888888@s.whatsapp.net',
+        'fromMe' => false
+      },
+      'messageType' => 'conversation',
+      'message' => { 'conversation' => 'lock test' },
+      'pushName' => 'Bob',
+      'messageTimestamp' => Time.current.to_i
+    }
+    allow(api_client).to receive(:find_messages).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'messages' => {
+            'records' => [payload],
+            'pages' => 1
+          }
+        }
+      )
+    )
     allow(Custom::Whatsapp::Evolution::MessageMutex).to receive(:with_lock)
       .and_raise(MutexApplicationJob::LockAcquisitionError, 'lock busy')
 

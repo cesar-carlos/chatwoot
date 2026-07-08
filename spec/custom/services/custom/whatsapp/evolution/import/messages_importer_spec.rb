@@ -20,7 +20,7 @@ RSpec.describe Custom::Whatsapp::Evolution::Import::MessagesImporter do
       )
     )
   end
-  let(:inbox) { create(:inbox, account: account, channel: channel) }
+  let(:inbox) { channel.inbox }
   let(:runtime) { Custom::Whatsapp::Evolution::Import::Runtime.new(channel: channel) }
   let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
   let(:remote_jid) { '5511999999999@s.whatsapp.net' }

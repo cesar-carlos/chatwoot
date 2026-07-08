@@ -38,7 +38,11 @@ class Custom::Whatsapp::Evolution::MediaAttachmentService
     tempfile = build_tempfile(response.parsed_response)
     return if tempfile.blank?
 
-    create_attachment!(tempfile)
+    begin
+      create_attachment!(tempfile)
+    ensure
+      tempfile.close!
+    end
   end
 
   def create_attachment!(tempfile)

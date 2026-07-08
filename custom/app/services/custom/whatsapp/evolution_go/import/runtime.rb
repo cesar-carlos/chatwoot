@@ -71,6 +71,9 @@ class Custom::Whatsapp::EvolutionGo::Import::Runtime
   end
 
   def reset_cursor!
+    ::Redis::Alfred.delete(
+      format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_REMOTE_JIDS, channel_id: channel.id)
+    )
     initial_phase = import_contacts? ? 'contacts' : 'messages'
     persist_runtime!(
       'import_status' => 'idle',
@@ -127,9 +130,7 @@ class Custom::Whatsapp::EvolutionGo::Import::Runtime
   end
 
   def persist_runtime!(attrs)
-    merged = config.merge(attrs.stringify_keys)
-    channel.update_columns(provider_config: merged, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
-    channel.provider_config = merged
+    Custom::Whatsapp::EvolutionGo::ProviderConfigMerger.merge!(channel, attrs.stringify_keys)
   end
 
   def contacts_cache_key

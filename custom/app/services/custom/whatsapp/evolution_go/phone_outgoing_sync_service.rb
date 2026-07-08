@@ -1,7 +1,10 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength
+# Syncs WhatsApp messages sent from the connected phone (Evolution Go SEND_MESSAGE /
+# MESSAGE with fromMe) as outgoing Chatwoot messages.
 class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
+  include Custom::Whatsapp::Evolution::OutgoingMessageHelper
+
   pattr_initialize [:channel!, :data!]
 
   def perform
@@ -23,13 +26,21 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
       { 'event' => 'MESSAGE', 'data' => canonical }
     ).perform
     message_data = normalized&.dig(:messages, 0)
-    content = message_data&.dig(:text, :body) || message_data&.dig('text', 'body')
-    return if content.blank? && message_data.blank?
+    content = outgoing_content(canonical, message_data)
+    if content.blank? && !outgoing_media_message?(message_data)
+      release_dedup_lock!
+      return
+    end
 
     contact_inbox = find_or_create_contact_inbox(key)
-    return if contact_inbox.blank?
+    if contact_inbox.blank?
+      release_dedup_lock!
+      return
+    end
 
-    create_outgoing_message!(contact_inbox, key, content)
+    message = create_outgoing_message!(contact_inbox, key, content, canonical)
+    enqueue_outgoing_media_download!(message, message_data) if message_data.present?
+    message
   end
 
   def inbox
@@ -84,28 +95,20 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   end
 
   def find_or_create_contact_inbox(key)
-    remote_jid = key['remoteJid'].to_s
+    key_data = key.with_indifferent_access
+    remote_jid = key_data['remoteJid'].to_s
     if group_jid?(remote_jid) && !ignore_groups?
       return Custom::Whatsapp::Evolution::GroupContactService.new(
         channel: channel,
         remote_jid: remote_jid,
-        push_name: data['pushName'] || data[:pushName]
+        push_name: nil
       ).find_or_create_contact_inbox!
     end
 
-    phone = jid_resolver.phone_from_message_key(key)
-    return if phone.blank?
-
-    source_id = jid_resolver.normalize_phone(phone)
-    contact = account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
-    push_name = data['pushName'] || data[:pushName]
-    contact.name = push_name.presence || contact.name || contact.phone_number
-    contact.save!
-
-    ContactInboxBuilder.new(contact: contact, inbox: inbox, source_id: source_id).perform
+    Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver.new(channel: channel, key: key_data).find_or_create!
   end
 
-  def create_outgoing_message!(contact_inbox, key, content)
+  def create_outgoing_message!(contact_inbox, key, content, canonical)
     conversation = Conversations::Resolver.new(
       inbox: inbox,
       contact_inbox: contact_inbox,
@@ -117,7 +120,11 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
       }
     ).perform
 
-    timestamp = Time.zone.at((data['messageTimestamp'] || data[:messageTimestamp] || Time.current.to_i).to_i)
+    timestamp = message_timestamp(
+      canonical['messageTimestamp'] || canonical[:messageTimestamp] ||
+        data['messageTimestamp'] || data[:messageTimestamp]
+    )
+    remote_jid = jid_resolver.resolve_message_jid(key.with_indifferent_access)
     conversation.messages.create!(
       account_id: account.id,
       inbox_id: inbox.id,
@@ -127,10 +134,27 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
       source_id: key['id'],
       content_attributes: {
         phone_sent: true,
-        external_created_at: timestamp.iso8601
-      },
+        external_created_at: timestamp.iso8601,
+        Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY => remote_jid
+      }.compact,
       created_at: timestamp,
       updated_at: timestamp
+    )
+  end
+
+  def enqueue_outgoing_media_download!(message, message_data)
+    return unless outgoing_media_message?(message_data)
+
+    data = message_data.with_indifferent_access
+    type = data[:type].to_s
+    attachment_payload = data[type]
+    return if attachment_payload.blank?
+
+    Custom::Whatsapp::EvolutionGo::MediaDownloadJob.perform_later(
+      channel.id,
+      message.id,
+      attachment_payload.deep_stringify_keys,
+      type
     )
   end
 
@@ -138,4 +162,3 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     @jid_resolver ||= Custom::Whatsapp::EvolutionGo::JidResolver.new(config)
   end
 end
-# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength

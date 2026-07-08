@@ -6,9 +6,9 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
   def handle_event(envelope)
     envelope = envelope.with_indifferent_access
     case envelope[:event].to_s.upcase
-    when 'CONNECTION', 'CONNECTED', 'DISCONNECTED', 'LOGGEDOUT'
+    when 'CONNECTION', 'CONNECTED', 'DISCONNECTED', 'LOGGEDOUT', 'LOGGED_OUT'
       handle_connection_event(envelope)
-    when 'QRCODE'
+    when 'QRCODE', 'QR_CODE'
       handle_qrcode_event(envelope)
     end
   end
@@ -103,7 +103,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
   def state_from_event_name(event)
     case event.to_s.upcase
     when 'CONNECTED' then 'open'
-    when 'DISCONNECTED', 'LOGGEDOUT' then 'close'
+    when 'DISCONNECTED', 'LOGGEDOUT', 'LOGGED_OUT' then 'close'
     end
   end
 

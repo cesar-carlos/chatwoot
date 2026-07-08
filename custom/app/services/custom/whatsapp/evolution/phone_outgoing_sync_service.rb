@@ -84,7 +84,17 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
   end
 
   def duplicate_message?(source_id)
-    inbox.messages.exists?(source_id: source_id)
+    return true if inbox.messages.exists?(source_id: source_id)
+    return true if secondary_source_id_exists?(source_id)
+
+    false
+  end
+
+  def secondary_source_id_exists?(source_id)
+    inbox.messages.where(
+      'content_attributes::jsonb @> ?',
+      { evolution_secondary_source_ids: [source_id] }.to_json
+    ).exists?
   end
 
   def skip_remote_jid?(remote_jid)

@@ -27,7 +27,18 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
 
     name = "#{subject} (GROUP)"
     Rails.cache.write(cache_key(group_jid), name, expires_in: CACHE_TTL)
+    sync_group_contact_name!(group_jid, name)
     name
+  end
+
+  def sync_group_contact_name!(group_jid, name)
+    contact = channel.account.contacts.find_by(identifier: group_jid)
+    return if contact.blank? || name.blank?
+    return unless contact.additional_attributes&.dig(Custom::Whatsapp::Evolution::GroupKeys::IS_WHATSAPP_GROUP_KEY)
+
+    return if contact.name == name
+
+    contact.update!(name: name)
   end
 
   private

@@ -15,6 +15,13 @@ function getConsumer() {
   return sharedConsumer;
 }
 
+function disconnectSharedConsumerIfIdle() {
+  if (registry.size === 0 && sharedConsumer) {
+    sharedConsumer.disconnect();
+    sharedConsumer = null;
+  }
+}
+
 function createEvolutionSubscription({
   inboxId,
   pubsubToken,
@@ -63,8 +70,19 @@ export function acquireEvolutionConnectionCable({
       userId,
       listeners,
     });
-    entry = { listeners, subscription };
+    entry = { listeners, subscription, pubsubToken };
     registry.set(key, entry);
+  } else if (entry.pubsubToken !== pubsubToken) {
+    entry.subscription?.unsubscribe();
+    entry.listeners = entry.listeners || new Set();
+    entry.subscription = createEvolutionSubscription({
+      inboxId,
+      pubsubToken,
+      accountId,
+      userId,
+      listeners: entry.listeners,
+    });
+    entry.pubsubToken = pubsubToken;
   }
 
   entry.listeners.add(onUpdate);
@@ -74,6 +92,7 @@ export function acquireEvolutionConnectionCable({
     if (entry.listeners.size === 0) {
       entry.subscription?.unsubscribe();
       registry.delete(key);
+      disconnectSharedConsumerIfIdle();
     }
   };
 }
