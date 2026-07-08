@@ -9,27 +9,33 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
     statuses = Array.wrap(@processed_params[:statuses]).filter_map(&:with_indifferent_access)
     return if statuses.blank?
 
-    statuses.each do |status|
-      next if status[:id].blank?
+    statuses.each { |status| process_evolution_go_status(status) }
+  end
 
-      unless find_message_by_source_id(status[:id])
-        Custom::Whatsapp::Evolution::DeferredStatusJob.set(
-          wait: Custom::Whatsapp::Evolution::DeferredStatusJob::DEFER_WAIT
-        ).perform_later(
-          inbox.id,
-          status.deep_stringify_keys,
-          1
-        )
-        Rails.logger.info(
-          "[EVOLUTION_GO] status update deferred source_id=#{status[:id]} status=#{status[:status]} attempt=1/" \
-          "#{Custom::Whatsapp::Evolution::DeferredStatusJob::MAX_ATTEMPTS}"
-        )
-        next
-      end
+  def process_evolution_go_status(status)
+    return if status[:id].blank?
 
-      @processed_params[:statuses] = [status]
-      super
+    unless find_message_by_source_id(status[:id])
+      defer_evolution_go_status(status)
+      return
     end
+
+    @processed_params[:statuses] = [status]
+    super
+  end
+
+  def defer_evolution_go_status(status)
+    Custom::Whatsapp::Evolution::DeferredStatusJob.set(
+      wait: Custom::Whatsapp::Evolution::DeferredStatusJob::DEFER_WAIT
+    ).perform_later(
+      inbox.id,
+      status.deep_stringify_keys,
+      1
+    )
+    Rails.logger.info(
+      "[EVOLUTION_GO] status update deferred source_id=#{status[:id]} status=#{status[:status]} attempt=1/" \
+      "#{Custom::Whatsapp::Evolution::DeferredStatusJob::MAX_ATTEMPTS}"
+    )
   end
 
   def update_message_with_status(message, status)

@@ -38,12 +38,26 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
   end
 
   def record_agent_acceptance!
+    deferred = []
     @call.with_lock do
       raise_if_claimed_by_other_agent!
       next if @call.accepted_by_agent_id == Current.user.id
 
-      accept_call_for_current_user!
+      ensure_join_claim_for_accept!
+      accept_call_for_current_user!(deferred: deferred)
     end
+    run_deferred!(deferred)
+  end
+
+  def ensure_join_claim_for_accept!
+    return if Wavoip::Calls::JoiningAgentCache.write_if_unset(@call.id, Current.user.id)
+    return if Wavoip::Calls::JoiningAgentCache.read(@call.id) == Current.user.id
+
+    joining_agent_id = Wavoip::Calls::JoiningAgentCache.read(@call.id)
+    agent = User.find_by(id: joining_agent_id)
+    raise CustomExceptions::CallAlreadyAccepted.new(
+      agent_name: agent&.available_name || agent&.name
+    )
   end
 
   def raise_if_claimed_by_other_agent!
@@ -59,18 +73,24 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
     @call.accepted_by_agent_id.present? && @call.accepted_by_agent_id != Current.user.id
   end
 
-  def accept_call_for_current_user!
+  def accept_call_for_current_user!(deferred:)
     @call.update!(accepted_by_agent_id: Current.user.id)
     Wavoip::Calls::JoiningAgentCache.delete(@call.id)
     Wavoip::Calls::CallFinalizer.sync_message_and_conversation!(@call, agent: Current.user)
-    Wavoip::Calls::Broadcaster.new(inbox: @call.inbox).broadcast_agent_accepted(
-      @call.reload,
-      accepted_by_agent_id: Current.user.id
-    )
+    deferred << lambda {
+      Wavoip::Calls::Broadcaster.new(inbox: @call.inbox).broadcast_agent_accepted(
+        @call.reload,
+        accepted_by_agent_id: Current.user.id
+      )
+    }
     Wavoip::Calls::AssigneeOnAcceptService.new(
       call: @call,
       agent: Current.user
     ).perform!
+  end
+
+  def run_deferred!(deferred)
+    deferred.each(&:call)
   end
 
   def render_call_already_accepted(error)

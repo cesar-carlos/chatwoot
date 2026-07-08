@@ -2,7 +2,7 @@
 
 Plano para adicionar um **segundo provider de chamadas WhatsApp in-app**. **Não** usar padrão Twilio PSTN — ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
 
-**Última reanálise:** jun/2026 (reavaliação arquitetural completa).
+**Última reanálise:** jul. 2026 (P0: `MetaCloud::Adapter`, registries cable, Vitest WebRTC).
 
 ---
 
@@ -60,15 +60,15 @@ flowchart TD
 
 Não misturar os eixos: Twilio/PSTN usa `Voice::Provider::Twilio::*` + conferência; WhatsApp in-app usa SDP/WebRTC. Ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
 
-### Assimetria documentada (jun/2026)
+### Assimetria documentada (jul. 2026)
 
 | Padrão | Twilio | WhatsApp Meta |
 |--------|--------|---------------|
-| Provider adapter | `Voice::Provider::Twilio::Adapter` ✅ | Métodos em `WhatsappCloudService` prepend — **sem adapter** |
+| Provider adapter | `Voice::Provider::Twilio::Adapter` ✅ | `Voice::Provider::MetaCloud::Adapter` ✅ |
 | Outbound builder | `Voice::OutboundCallBuilder` ✅ | `Voice::OutboundWhatsappCallBuilder` ✅ |
 | Permission flow | N/A | `Whatsapp::CallPermissionRequestService` ✅ |
 
-Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas). O plano Wavoip é independente desta trilha SDP.
+**Pendente:** contrato formal `Voice::Provider::WhatsappCalling::Base` (item 0.2.1). Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas). O plano Wavoip é independente desta trilha SDP.
 
 ---
 
@@ -89,17 +89,17 @@ necessário depois do spike.
 | 0.1.1 | Extrair `useWebRtcCallSession(callsAPI)` | `composables/useWebRtcCallSession.js` | WebRTC + recorder + buffers; API injetável |
 | 0.1.2 | `useWhatsappCallSession` vira thin wrapper | mesmo path | Delega para `WhatsappCallsAPI` |
 | 0.1.3 | `WEBRTC_PROVIDERS` constante exportada | `helper/inbox.js` ou `helper/voiceCallProviders.js` | Lista extensível |
-| 0.1.4 | Registry em `useCallSession` | `composables/useCallSession.js` | `# FORK:` ou contrib upstream |
-| 0.1.5 | Generalizar filtro cable | `helper/actionCable.js` | `WEBRTC_PROVIDERS.includes(provider)` |
-| 0.1.6 | Specs Vitest (race, 422, beacon) | `spec/.../useWebRtcCallSession.spec.js` | Mocks RTCPeerConnection/API |
+| 0.1.4 | Registry em `useCallSession` | `composables/useCallSession.js` | Parcial — registries cable; `useCallSession` ainda brancha |
+| 0.1.5 | Generalizar filtro cable | `whatsappVoiceCableRegistry.js` + `voiceCallCableRegistry.js` | ✅ Done (jul. 2026) |
+| 0.1.6 | Specs Vitest (race, 422, beacon) | `composables/spec/useWebRtcCallSession.spec.js` | ✅ Done (jul. 2026) |
 
 ### 0.2 Backend (P1 — ~1 semana, opcional antes de CPaaS)
 
 | # | Entrega | Arquivo | Done |
 |---|---------|---------|------|
-| 0.2.1 | Contrato `Voice::Provider::WhatsappCalling::Base` | `enterprise/.../whatsapp_calling/base.rb` | Métodos initiate/accept/reject/… |
-| 0.2.2 | `Voice::Provider::MetaCloud::Adapter` | `enterprise/.../meta_cloud/adapter.rb` | Move lógica do prepend |
-| 0.2.3 | Prepend delega ao adapter | `WhatsappCloudService` EE | Sem mudança de comportamento |
+| 0.2.1 | Contrato `Voice::Provider::WhatsappCalling::Base` | `enterprise/.../whatsapp_calling/base.rb` | **Pendente** — único item BE Fase 0 restante |
+| 0.2.2 | `Voice::Provider::MetaCloud::Adapter` | `enterprise/.../meta_cloud/adapter.rb` | ✅ Done (jul. 2026) |
+| 0.2.3 | Prepend delega ao adapter | `WhatsappCloudService` EE | ✅ Done (jul. 2026) |
 | 0.2.4 | `Voice::OutboundWhatsappCallBuilder` | `enterprise/.../outbound_whatsapp_call_builder.rb` | ✅ Done (jun. 2026) |
 | 0.2.5 | `Whatsapp::CallPermissionRequestService` | `enterprise/.../call_permission_request_service.rb` | ✅ Done (jun. 2026) |
 | 0.2.6 | Specs espelhados | `spec/enterprise/services/...` | Builders + permission service |
@@ -108,7 +108,7 @@ necessário depois do spike.
 
 - [x] `useWhatsappCallSession.js` < 80 linhas (wrapper) — ~33 linhas (jun. 2026)
 - [ ] Zero regressão Meta inbound/outbound em staging
-- [ ] `rg isWhatsappCall` — branching reduzido a registry
+- [ ] `rg isWhatsappCall` — branching reduzido a registry (parcial — registries cable prontos)
 - [ ] Novo provider WebRTC = novo wrapper + entrada no registry (sem copiar WebRTC core)
 
 **Wavoip:** não depende de 0.1.1–0.1.2 nem de 0.2. Depende somente de um dispatch
@@ -129,7 +129,7 @@ flowchart TB
 
     subgraph BE
         Ctrl[WhatsappCallsController]
-        Adp1[MetaCloudAdapter — atual]
+        Adp1[MetaCloudAdapter — atual ✅]
         Adp2[CustomCpaasAdapter — custom/]
         Ctrl --> Adp1 & Adp2
     end
@@ -384,9 +384,9 @@ Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpa
 
 ### Fase 0 (refactor)
 
-- [ ] `useWebRtcCallSession` extraído; `useWhatsappCallSession` < 80 linhas
-- [ ] Registry provider em `useCallSession` + `WEBRTC_PROVIDERS` no cable
-- [ ] Specs Vitest para race buffer e permission 422
+- [x] `useWebRtcCallSession` extraído; `useWhatsappCallSession` < 80 linhas
+- [x] Registry provider em cable (`whatsappVoiceCableRegistry` + `voiceCallCableRegistry`)
+- [x] Specs Vitest para race buffer e permission 422
 - [ ] Sem regressão `whatsapp_cloud` em inbound/outbound/terminate
 
 ### Segundo provider

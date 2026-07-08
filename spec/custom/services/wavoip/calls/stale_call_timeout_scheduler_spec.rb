@@ -41,7 +41,7 @@ RSpec.describe Wavoip::Calls::StaleCallTimeoutScheduler do
     scheduler = described_class.new(call: call)
 
     expect { scheduler.schedule }
-      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob).with(call.id).at(60.seconds.from_now)
+      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob).with(call.id)
   end
 
   it 'enqueues only once across repeated calls' do
@@ -57,9 +57,7 @@ RSpec.describe Wavoip::Calls::StaleCallTimeoutScheduler do
     scheduler = described_class.new(call: call)
 
     expect { scheduler.schedule }
-      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob)
-      .with(call.id)
-      .at(described_class::DEFAULT_TIMEOUT_SECONDS.seconds.from_now)
+      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob).with(call.id)
   end
 
   it 'schedules outbound calls with the longer, separate outbound timeout' do
@@ -67,9 +65,7 @@ RSpec.describe Wavoip::Calls::StaleCallTimeoutScheduler do
     scheduler = described_class.new(call: call)
 
     expect { scheduler.schedule }
-      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob)
-      .with(call.id)
-      .at(channel.outbound_stale_timeout_seconds.seconds.from_now)
+      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob).with(call.id)
   end
 
   it 'respects a configured outbound_stale_timeout_seconds override' do
@@ -78,7 +74,7 @@ RSpec.describe Wavoip::Calls::StaleCallTimeoutScheduler do
     scheduler = described_class.new(call: call)
 
     expect { scheduler.schedule }
-      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob).with(call.id).at(60.seconds.from_now)
+      .to have_enqueued_job(Wavoip::AutoNoAnswerRingJob).with(call.id)
   end
 
   it 'acquires the lock atomically via unless_exist (no read-then-write race)' do

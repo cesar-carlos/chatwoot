@@ -125,7 +125,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     expect do
       Webhooks::WhatsappEventsJob.perform_now(job_payload)
     end.to change(Message, :count).by(1)
-      .and not_change(Conversation, :count)
+                                  .and not_change(Conversation, :count)
       .and not_change(ContactInbox, :count)
 
     message = Message.find_by!(source_id: payload.dig('data', 'Info', 'ID'))

@@ -8,8 +8,7 @@ RSpec.describe Voice::Provider::MetaCloud::Adapter do
     create(:channel_whatsapp, provider: 'whatsapp_cloud', account: account,
                               validate_provider_config: false, sync_templates: false)
   end
-  let(:provider_service) { channel.provider_service }
-  let(:adapter) { described_class.new(provider_service) }
+  let(:adapter) { described_class.new(channel) }
 
   before do
     account.enable_features!('channel_voice')

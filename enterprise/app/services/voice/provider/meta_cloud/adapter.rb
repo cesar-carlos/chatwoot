@@ -3,8 +3,10 @@
 class Voice::Provider::MetaCloud::Adapter
   WHATSAPP_CALLING_API_VERSION_FALLBACK = 'v22.0'
 
-  def initialize(provider_service)
-    @provider_service = provider_service
+  HTTP_TIMEOUT_SECONDS = 10
+
+  def initialize(channel)
+    @channel = channel
   end
 
   def pre_accept_call(call_id, sdp_answer)
@@ -25,7 +27,10 @@ class Voice::Provider::MetaCloud::Adapter
 
   def send_call_permission_request(to_phone_number, body_text = I18n.t('conversations.messages.whatsapp.call_permission_request_body'))
     response = HTTParty.post(
-      "#{calls_phone_id_path}/messages", headers: api_headers, body: permission_request_body(to_phone_number, body_text)
+      "#{calls_phone_id_path}/messages",
+      headers: api_headers,
+      body: permission_request_body(to_phone_number, body_text),
+      timeout: HTTP_TIMEOUT_SECONDS
     )
 
     unless response.success?
@@ -38,7 +43,10 @@ class Voice::Provider::MetaCloud::Adapter
 
   def initiate_call(to_phone_number, sdp_offer)
     response = HTTParty.post(
-      "#{calls_phone_id_path}/calls", headers: api_headers, body: initiate_call_body(to_phone_number, sdp_offer)
+      "#{calls_phone_id_path}/calls",
+      headers: api_headers,
+      body: initiate_call_body(to_phone_number, sdp_offer),
+      timeout: HTTP_TIMEOUT_SECONDS
     )
     process_initiate_call_response(response)
   end
@@ -47,7 +55,8 @@ class Voice::Provider::MetaCloud::Adapter
     response = HTTParty.post(
       "#{calls_phone_id_path}/settings",
       headers: api_headers,
-      body: { calling: { status: status } }.to_json
+      body: { calling: { status: status } }.to_json,
+      timeout: HTTP_TIMEOUT_SECONDS
     )
     return true if response.success?
 
@@ -59,14 +68,19 @@ class Voice::Provider::MetaCloud::Adapter
 
   private
 
-  attr_reader :provider_service
+  attr_reader :channel
 
-  delegate :whatsapp_channel, :api_headers, to: :provider_service
+  def api_headers
+    {
+      'Authorization' => "Bearer #{channel.provider_config['api_key']}",
+      'Content-Type' => 'application/json'
+    }
+  end
 
   def calls_phone_id_path
     base = ENV.fetch('WHATSAPP_CLOUD_BASE_URL', 'https://graph.facebook.com')
     version = GlobalConfigService.load('WHATSAPP_API_VERSION', WHATSAPP_CALLING_API_VERSION_FALLBACK)
-    "#{base}/#{version}/#{whatsapp_channel.provider_config['phone_number_id']}"
+    "#{base}/#{version}/#{channel.provider_config['phone_number_id']}"
   end
 
   def call_action_body(call_id, action, sdp_answer = nil)
@@ -78,7 +92,7 @@ class Voice::Provider::MetaCloud::Adapter
   def call_api(action_name, body)
     url = "#{calls_phone_id_path}/calls"
     Rails.logger.info "[WHATSAPP CALL] #{action_name} POST #{url} body=#{body.except(:session).to_json}"
-    response = HTTParty.post(url, headers: api_headers, body: body.to_json)
+    response = HTTParty.post(url, headers: api_headers, body: body.to_json, timeout: HTTP_TIMEOUT_SECONDS)
     Rails.logger.error "[WHATSAPP CALL] #{action_name} failed: status=#{response.code} body=#{response.body}" unless response.success?
     response.success?
   end

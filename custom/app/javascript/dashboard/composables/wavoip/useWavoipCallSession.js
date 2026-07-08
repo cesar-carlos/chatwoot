@@ -59,15 +59,6 @@ export function useWavoipCallSession() {
     await connectForInbox(inboxId);
     attachToInbox(inboxId);
 
-    const dbCallId = useCallsStore().calls.find(
-      c => c.callSid === callId
-    )?.callId;
-    if (dbCallId) {
-      await recordJoinWithRetry(dbCallId, callId, {
-        onFailure: acceptRecordFailure,
-      });
-    }
-
     if (!getPendingOffer(callId)) {
       await waitForPendingOffer(callId);
     }

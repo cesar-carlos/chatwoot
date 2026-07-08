@@ -47,12 +47,12 @@ describe Whatsapp::CallPermissionReplyService do
     )
   end
 
-  it 'is a no-op when the contact rejected the request' do
+  it 'clears permission flags without broadcasting when the contact rejected the request' do
     allow(ActionCable.server).to receive(:broadcast)
 
     described_class.new(inbox: inbox, params: reply_params(response: 'reject')).perform
 
-    expect(conversation.reload.additional_attributes).to include('call_permission_requested_at')
+    expect(conversation.reload.additional_attributes).not_to include('call_permission_requested_at')
     expect(ActionCable.server).not_to have_received(:broadcast)
   end
 

@@ -36,6 +36,7 @@ import {
 import Timer from 'dashboard/helper/Timer';
 
 const isWhatsappCall = call => call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP;
+// FORK: Wavoip browser voice session dispatch
 const isWavoipCall = call => call?.provider === VOICE_CALL_PROVIDERS.WAVOIP;
 const isBrowserVoiceCall = call => isWhatsappCall(call) || isWavoipCall(call);
 
@@ -74,6 +75,9 @@ let storedCallsStoreRef = null;
 // see one in-flight join, not two unrelated isJoining refs.
 const globalIsJoining = ref(false);
 const globalIsJoiningReadonly = readonly(globalIsJoining);
+const SEED_CALLS_DEBOUNCE_MS = 200;
+let seedCallsDebounceTimer = null;
+let seedCallsFromHydratedMessagesFn = null;
 
 export const isCallJoining = () => globalIsJoining.value;
 
@@ -89,6 +93,7 @@ const handlePageHideGlobal = () => {
 
   const store = storedCallsStoreRef;
   const active = store?.activeCall;
+  // FORK: tear down Wavoip session on page hide
   if (active?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
     const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
     session?.endActiveCall?.(active.callSid);
@@ -112,9 +117,25 @@ const attachGlobalsOnFirstMount = callsStore => {
   window.addEventListener('pagehide', handlePageHideGlobal);
 };
 
+const clearSeedCallsDebounce = () => {
+  if (!seedCallsDebounceTimer) return;
+  clearTimeout(seedCallsDebounceTimer);
+  seedCallsDebounceTimer = null;
+};
+
+const scheduleSeedCallsFromHydratedMessages = () => {
+  if (!seedCallsFromHydratedMessagesFn) return;
+  clearSeedCallsDebounce();
+  seedCallsDebounceTimer = setTimeout(() => {
+    seedCallsDebounceTimer = null;
+    seedCallsFromHydratedMessagesFn();
+  }, SEED_CALLS_DEBOUNCE_MS);
+};
+
 const detachGlobalsOnLastUnmount = () => {
   globalsAttachedCount -= 1;
   if (globalsAttachedCount > 0) return;
+  clearSeedCallsDebounce();
   globalDurationTimer?.stop();
   globalDurationTimer = null;
   globalCallDuration.value = 0;
@@ -150,6 +171,7 @@ const buildCallActions = ({
     }
 
     if (isWavoipCall(call)) {
+      // FORK: end active Wavoip call via browser voice session
       const session = resolveBrowserVoiceSession(call, {
         whatsappSession,
         browserVoiceSessionFor,
@@ -204,6 +226,7 @@ const buildCallActions = ({
       }
 
       if (isWavoipCall(call)) {
+        // FORK: accept inbound Wavoip call via SDK session
         if (isWavoipInboxRestricted(call.inboxId)) {
           useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
           return null;
@@ -212,8 +235,11 @@ const buildCallActions = ({
           whatsappSession,
           browserVoiceSessionFor,
         });
-        await session?.connectForInbox?.(call.inboxId);
-        await session?.acceptIncomingCall?.({
+        if (!session?.acceptIncomingCall) {
+          useAlert(t('CONVERSATION.WAVOIP_CALL.CLIENT_UNAVAILABLE'));
+          return null;
+        }
+        await session.acceptIncomingCall({
           callId: call.callSid,
           inboxId: call.inboxId,
           conversationId: call.conversationId,
@@ -265,6 +291,7 @@ const buildCallActions = ({
       // eslint-disable-next-line no-console
       console.error('Failed to join call:', error);
       if (isWavoipCall(call)) {
+        // FORK: tear down Wavoip session after join failure
         teardownWavoipActiveCall();
         removePendingOffer(callSid);
         markCallDismissed(callSid);
@@ -296,6 +323,7 @@ const buildCallActions = ({
           await whatsappSession.rejectIncomingCall(call.callId);
         }
       } else if (isWavoipCall(call)) {
+        // FORK: reject/dismiss Wavoip call via SDK session
         const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
         if (call.callDirection === VOICE_CALL_DIRECTION.OUTBOUND) {
           await session?.endActiveCall?.();
@@ -327,6 +355,7 @@ const buildCallActions = ({
       isInbound(call?.callDirection) ||
       call?.callDirection === VOICE_CALL_DIRECTION.INCOMING;
     if (isWavoipCall(call) && isWavoipInboundDirection && !call?.isActive) {
+      // FORK: dismiss inbound Wavoip rings via SDK reject
       await rejectIncomingCall(callSid);
       return;
     }
@@ -385,6 +414,7 @@ export function useCallSession() {
       });
     });
   };
+  seedCallsFromHydratedMessagesFn = seedCallsFromHydratedMessages;
 
   watch(
     reactive.hasActiveCall,
@@ -405,18 +435,22 @@ export function useCallSession() {
   });
 
   // Re-seed when conversations stream in after mount; addCall merges by callSid
-  // and dismissed sids are filtered, so this is idempotent.
+  // and dismissed sids are filtered, so this is idempotent. Debounced so rapid
+  // message/conversation updates don't re-scan the full cache on every tick.
   watch(
     () => store.getters.getAllConversations?.length,
-    () => seedCallsFromHydratedMessages()
+    () => scheduleSeedCallsFromHydratedMessages()
   );
 
   watch(
     () => store.getters.getSelectedChat?.messages?.length,
-    () => seedCallsFromHydratedMessages()
+    () => scheduleSeedCallsFromHydratedMessages()
   );
 
-  onUnmounted(() => detachGlobalsOnLastUnmount());
+  onUnmounted(() => {
+    seedCallsFromHydratedMessagesFn = null;
+    detachGlobalsOnLastUnmount();
+  });
 
   const actions = buildCallActions({ callsStore, whatsappSession, t });
 

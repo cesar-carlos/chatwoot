@@ -52,7 +52,7 @@ class Wavoip::DeviceStatusService
 
   def refresh_device_status!(force: false)
     cache_key = cache_key_for_channel
-    return if !force && Rails.cache.read(cache_key)
+    return nil if !force && Rails.cache.read(cache_key)
 
     result = fetch_all_info
     if result

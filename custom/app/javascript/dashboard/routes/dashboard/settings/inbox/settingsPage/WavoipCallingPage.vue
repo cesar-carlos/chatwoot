@@ -10,6 +10,7 @@ import WavoipRecordingChecklist from 'customDashboard/routes/dashboard/settings/
 import { patchWavoipProviderConfig } from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/wavoipProviderConfigPatch';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import { useBranding } from 'shared/composables/useBranding';
 
 export default {
   components: {
@@ -27,6 +28,10 @@ export default {
       type: Object,
       default: () => ({}),
     },
+  },
+  setup() {
+    const { replaceInstallationName } = useBranding();
+    return { replaceInstallationName };
   },
   data() {
     return {
@@ -449,7 +454,9 @@ export default {
 
     <SettingsFieldSection
       :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.LABEL')"
-      :help-text="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.HELP_TEXT')"
+      :help-text="
+        replaceInstallationName($t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.HELP_TEXT'))
+      "
     >
       <woot-code v-if="webhookUrl" :script="webhookUrl" lang="html" />
       <p v-else class="text-sm text-n-slate-11">
@@ -477,7 +484,11 @@ export default {
 
     <SettingsFieldSection
       :label="$t('INBOX_MGMT.WAVOIP_CALL.SETUP_STATUS.LABEL')"
-      :help-text="$t('INBOX_MGMT.WAVOIP_CALL.SETUP_STATUS.HELP_TEXT')"
+      :help-text="
+        replaceInstallationName(
+          $t('INBOX_MGMT.WAVOIP_CALL.SETUP_STATUS.HELP_TEXT')
+        )
+      "
     >
       <div class="flex items-center gap-2">
         <span :class="setupStatus.icon" class="size-4" />

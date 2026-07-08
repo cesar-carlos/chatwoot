@@ -101,23 +101,10 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
     attempts = [max_attempts.to_i, 1].max
 
     attempts.times do |attempt|
-      response = api_client.qr_code
-      if response.success?
-        attrs = qr_storage_attrs_from_response(response)
-        if attrs.present?
-          connection_service.update_runtime_config!(attrs)
-          return true
-        end
+      outcome = attempt_qr_fetch(raise_on_failure: raise_on_failure)
+      return true if outcome == :success
 
-        last_error = transient_qr_unavailable_error(response)
-      elsif qr_fetch_retryable?(response)
-        last_error = qr_api_error(response)
-      elsif raise_on_failure
-        Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to fetch Evolution Go QR code')
-      else
-        last_error = qr_api_error(response)
-      end
-
+      last_error = outcome
       sleep(QR_FETCH_DELAY_SECONDS) if attempt < attempts - 1
     end
 
@@ -127,6 +114,24 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
       "[EVOLUTION_GO] QR not ready after #{attempts} attempts channel=#{channel.id}: #{last_error&.message}"
     )
     false
+  end
+
+  def attempt_qr_fetch(raise_on_failure:)
+    response = api_client.qr_code
+    return store_qr_attrs!(response) if response.success?
+
+    return qr_api_error(response) if qr_fetch_retryable?(response)
+
+    Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to fetch Evolution Go QR code') if raise_on_failure
+    qr_api_error(response)
+  end
+
+  def store_qr_attrs!(response)
+    attrs = qr_storage_attrs_from_response(response)
+    return transient_qr_unavailable_error(response) if attrs.blank?
+
+    connection_service.update_runtime_config!(attrs)
+    :success
   end
 
   def qr_storage_attrs_from_response(response)

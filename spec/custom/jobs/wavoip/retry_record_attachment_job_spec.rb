@@ -29,7 +29,7 @@ RSpec.describe Wavoip::RetryRecordAttachmentJob, type: :job do
   it 'retries when the call row is not found yet' do
     expect do
       described_class.perform_now(inbox.id, provider_call_id, record_url)
-    end.to have_enqueued_job(described_class).with(inbox.id, provider_call_id, record_url, 2)
+    end.to have_enqueued_job(described_class).with(inbox.id, provider_call_id, record_url, 2, record_status: nil)
   end
 
   it 'persists record_url meta and invokes attachment service when call exists' do
@@ -97,6 +97,6 @@ RSpec.describe Wavoip::RetryRecordAttachmentJob, type: :job do
 
     expect do
       described_class.perform_now(inbox.id, provider_call_id, record_url)
-    end.to have_enqueued_job(described_class).with(inbox.id, provider_call_id, record_url, 2)
+    end.to have_enqueued_job(described_class).with(inbox.id, provider_call_id, record_url, 2, record_status: nil)
   end
 end

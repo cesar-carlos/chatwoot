@@ -26,6 +26,25 @@ RSpec.describe Webhooks::WavoipController, type: :request do
       expect(response).to have_http_status(:accepted)
     end
 
+    it 'returns payload_too_large when the body exceeds 64KB' do
+      post "/webhooks/wavoip/#{channel.webhook_key}",
+           params: payload.merge(extra: 'x' * 65.kilobytes)
+
+      expect(response).to have_http_status(:payload_too_large)
+    end
+
+    it 'strips unknown payload keys before enqueueing' do
+      expect do
+        post "/webhooks/wavoip/#{channel.webhook_key}",
+             params: payload.merge(malicious_key: 'drop-me')
+      end.to have_enqueued_job(Wavoip::ProcessWebhookJob).with(
+        inbox.id,
+        satisfy { |enqueued| enqueued.is_a?(Hash) && !enqueued.key?('malicious_key') && enqueued['type'] == 'CALL' }
+      )
+
+      expect(response).to have_http_status(:accepted)
+    end
+
     it 'returns unauthorized for an invalid webhook_key' do
       post '/webhooks/wavoip/invalid-key', params: payload
 

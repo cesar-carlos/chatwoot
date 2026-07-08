@@ -67,6 +67,14 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
     account.enable_features!('channel_voice', 'channel_wavoip')
   end
 
+  around do |example|
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = original_cache
+  end
+
   it 'persists no_answer but defers broadcast_ended for outbound still ringing' do
     call = create_call
 
@@ -92,7 +100,7 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
   end
 
   it 'broadcasts ended for inbound ringing to no_answer' do
-    call = create_call(direction: :incoming, from_phone: '+15550001111', to_phone: channel.phone_number)
+    call = create_call(direction: :incoming)
 
     applier_for(
       build_event(
@@ -112,8 +120,6 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
   it 'broadcasts ended for inbound in_progress when customer hangs up' do
     call = create_call(
       direction: :incoming,
-      from_phone: '+15550001111',
-      to_phone: channel.phone_number,
       status: 'in_progress',
       started_at: 1.minute.ago
     )
@@ -134,13 +140,25 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
     end
   end
 
+  it 'skips duplicate terminal ENDED webhooks without re-broadcasting' do
+    call = create_call(
+      status: 'completed',
+      started_at: 1.minute.ago,
+      duration_seconds: 30,
+      meta: { 'wavoip_status' => 'ENDED', 'ended_at' => 1.hour.ago.to_i }
+    )
+
+    result = applier_for(build_event(external_status: 'ENDED', duration_seconds: 30)).apply!(call, broadcast: true)
+
+    aggregate_failures do
+      expect(result).to be(false)
+      expect(broadcaster).not_to have_received(:broadcast_ended)
+    end
+  end
+
   it 'assigns joining agent from cache when inbound becomes in_progress' do
     agent = create(:user, account: account)
-    call = create_call(
-      direction: :incoming,
-      from_phone: '+15550001111',
-      to_phone: channel.phone_number
-    )
+    call = create_call(direction: :incoming)
     Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
 
     applier_for(

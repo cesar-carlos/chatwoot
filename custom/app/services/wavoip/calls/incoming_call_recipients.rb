@@ -9,6 +9,8 @@ class Wavoip::Calls::IncomingCallRecipients
     assignee_or_inbox_members_and_administrators
   ].freeze
 
+  RECIPIENT_USER_IDS_CACHE_KEY = :wavoip_recipient_user_ids
+
   OFFLINE_FALLBACK_RESOLVERS = {
     'none' => :none_scope,
     'assignee' => :assignee_only_scope,
@@ -62,17 +64,23 @@ class Wavoip::Calls::IncomingCallRecipients
   # When `incoming_call_include_administrators` is enabled, account admins are
   # included from the very first ring — not only as an offline fallback.
   def recipients_base_scope
-    user_ids = inbox.member_ids.dup
-    user_ids |= channel.account.administrators.ids if channel.incoming_call_include_administrators?
-    User.where(id: user_ids)
+    @recipients_base_scope ||= begin
+      user_ids = inbox.member_ids.dup
+      user_ids |= channel.account.administrators.ids if channel.incoming_call_include_administrators?
+      User.where(id: user_ids)
+    end
   end
 
   def recipient_user_ids
-    @recipient_user_ids ||= recipients_base_scope.pluck(:id)
+    @recipient_user_ids ||= self.class.recipient_user_ids_cache[recipient_user_ids_cache_key] ||= recipients_base_scope.pluck(:id)
   end
 
   def recipients_scope
-    @recipients_scope ||= recipients_base_scope
+    recipients_base_scope
+  end
+
+  def recipient_user_ids_cache_key
+    [inbox.id, channel.incoming_call_include_administrators?]
   end
 
   def online_member_users
@@ -147,5 +155,11 @@ class Wavoip::Calls::IncomingCallRecipients
 
   def offline_fallback
     channel.incoming_call_offline_fallback
+  end
+
+  class << self
+    def recipient_user_ids_cache
+      Thread.current[RECIPIENT_USER_IDS_CACHE_KEY] ||= {}
+    end
   end
 end

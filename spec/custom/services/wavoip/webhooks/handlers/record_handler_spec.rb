@@ -108,7 +108,7 @@ RSpec.describe Wavoip::Webhooks::Handlers::RecordHandler do
     expect do
       described_class.new(inbox: inbox, event: missing_event).perform
     end.to have_enqueued_job(Wavoip::RetryRecordAttachmentJob)
-      .with(inbox.id, 'missing_call', record_url)
+      .with(inbox.id, 'missing_call', record_url, record_status: 'READY')
   end
 
   it 'skips attach when call_recording_enabled is false' do

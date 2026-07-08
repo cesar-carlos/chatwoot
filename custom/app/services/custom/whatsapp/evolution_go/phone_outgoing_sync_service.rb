@@ -109,7 +109,25 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   end
 
   def create_outgoing_message!(contact_inbox, key, content, canonical)
-    conversation = Conversations::Resolver.new(
+    conversation = resolve_outgoing_conversation(contact_inbox)
+    timestamp = outgoing_message_timestamp(canonical)
+    remote_jid = jid_resolver.resolve_message_jid(key.with_indifferent_access)
+
+    conversation.messages.create!(
+      account_id: account.id,
+      inbox_id: inbox.id,
+      message_type: :outgoing,
+      status: :delivered,
+      content: content,
+      source_id: key['id'],
+      content_attributes: outgoing_content_attributes(timestamp, remote_jid),
+      created_at: timestamp,
+      updated_at: timestamp
+    )
+  end
+
+  def resolve_outgoing_conversation(contact_inbox)
+    Conversations::Resolver.new(
       inbox: inbox,
       contact_inbox: contact_inbox,
       conversation_params: {
@@ -119,27 +137,21 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
         contact_inbox_id: contact_inbox.id
       }
     ).perform
+  end
 
-    timestamp = message_timestamp(
+  def outgoing_message_timestamp(canonical)
+    message_timestamp(
       canonical['messageTimestamp'] || canonical[:messageTimestamp] ||
         data['messageTimestamp'] || data[:messageTimestamp]
     )
-    remote_jid = jid_resolver.resolve_message_jid(key.with_indifferent_access)
-    conversation.messages.create!(
-      account_id: account.id,
-      inbox_id: inbox.id,
-      message_type: :outgoing,
-      status: :delivered,
-      content: content,
-      source_id: key['id'],
-      content_attributes: {
-        :phone_sent => true,
-        :external_created_at => timestamp.iso8601,
-        Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY => remote_jid
-      }.compact,
-      created_at: timestamp,
-      updated_at: timestamp
-    )
+  end
+
+  def outgoing_content_attributes(timestamp, remote_jid)
+    {
+      :phone_sent => true,
+      :external_created_at => timestamp.iso8601,
+      Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY => remote_jid
+    }.compact
   end
 
   def enqueue_outgoing_media_download!(message, message_data)

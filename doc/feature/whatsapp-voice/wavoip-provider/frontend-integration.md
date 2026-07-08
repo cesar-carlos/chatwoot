@@ -329,7 +329,11 @@ custom/app/javascript/dashboard/
   lib/wavoip/
     voiceCallRecording.js        # shouldShowVoiceCallRecording + resolveVoiceCallRecordingUrl
     wavoipClientRegistry.js
+    wavoipCallDiagnostics.js     # connectivityIssue → i18n
     wavoipDiagnosticsCollector.js
+    wavoipInboundConversation.js
+    wavoipOutboundGuard.js
+    wavoipOutboundPreflight.js
     wavoipInboxCallRouting.js
   composables/wavoip/
     useWavoipConnection.js
@@ -338,11 +342,22 @@ custom/app/javascript/dashboard/
     useWavoipActiveCall.js
     useWavoipCallSession.js
     useWavoipNotifications.js
-  components/wavoip/WavoipConnectionHost.vue
-  routes/dashboard/settings/inbox/channels/Wavoip.vue
-  routes/dashboard/settings/inbox/settingsPage/WavoipCallingPage.vue
+    useWavoipQrSession.js
+  components/wavoip/
+    WavoipConnectionHost.vue
+    WavoipQrScanModal.vue
+  routes/dashboard/settings/inbox/
+    channels/Wavoip.vue
+    settingsPage/
+      WavoipCallingPage.vue
+      WavoipDevicePanel.vue
+      WavoipOnboardingChecklist.vue
+      WavoipRecordingChecklist.vue
+      WavoipConversationDeviceBanner.vue
 
 app/javascript/dashboard/          # upstream — widget de voz compartilhado
+  lib/voice/whatsappVoiceCableRegistry.js
+  composables/spec/useWebRtcCallSession.spec.js
   composables/useCallRingtonePreference.js
   composables/useCallSession.js    # ringtoneSilencedCallSids, reject/dismiss
   components-next/call/
@@ -356,11 +371,11 @@ app/javascript/dashboard/          # upstream — widget de voz compartilhado
 |------------|------------------|
 | `Wavoip.vue` | Wizard de criação + alerta com URL do webhook pós-criação |
 | `WavoipCallingPage.vue` | Settings → Chamadas: device panel, inbound toggle, **roteamento inbound**, webhook, status |
-| `WavoipWebhookInstructions.vue` | Etapa pós-criação no wizard (copy URL, aguardar primeiro evento) |
+| `WavoipOnboardingChecklist.vue` | Checklist semáforo de onboarding (Settings) |
+| `WavoipRecordingChecklist.vue` | Checklist de gravação (Settings) |
+| `WavoipConversationDeviceBanner.vue` | Banner de device não pronto na conversa |
 
-**Implementados:** `WavoipCallingPage.vue`, `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics, **activeCalls v2.6.1**), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`.
-
-**Componentes de settings (04 jul. 2026):** `WavoipOnboardingChecklist.vue`, `WavoipRecordingChecklist.vue`, `WavoipConversationDeviceBanner.vue` — ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
+**Implementados:** `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics, **activeCalls v2.6.1**), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`, `wavoipCallDiagnostics.js`, `wavoipOutboundPreflight.js`, `wavoipOutboundGuard.js`.
 
 Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).
 

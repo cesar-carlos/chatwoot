@@ -24,15 +24,16 @@ RSpec.describe Custom::Whatsapp::Evolution::GroupMetadataService do
   let(:api_client) { instance_double(Custom::Whatsapp::Evolution::ApiClient) }
   let(:fixture) { JSON.parse(Rails.root.join('spec/fixtures/evolution/group_find_infos_response.json').read) }
 
-  before do
-    allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).with(channel).and_return(api_client)
-    @previous_cache = Rails.cache
+  around do |example|
+    original_cache = Rails.cache
     Rails.cache = ActiveSupport::Cache.lookup_store(:memory_store)
     Rails.cache.clear
+    example.run
+    Rails.cache = original_cache
   end
 
-  after do
-    Rails.cache = @previous_cache
+  before do
+    allow(Custom::Whatsapp::Evolution::ApiClient).to receive(:for_channel).with(channel).and_return(api_client)
   end
 
   describe '#display_name' do

@@ -139,7 +139,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
           'SenderAlt' => '5511777777777@s.whatsapp.net',
           'IsFromMe' => false,
           'PushName' => 'Group Member',
-          'Timestamp' => 1699999999
+          'Timestamp' => 1_699_999_999
         },
         'Message' => { 'conversation' => 'Mixed payload hello' },
         'key' => {

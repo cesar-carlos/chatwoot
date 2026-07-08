@@ -6,6 +6,7 @@ RSpec.describe Wavoip::Calls::RecordingPolicy do
   let(:account) { create(:account) }
   let(:channel) { create(:channel_wavoip, account: account) }
   let(:inbox) { channel.inbox }
+  let(:conversation) { create(:conversation, account: account, inbox: inbox) }
   let(:record_url) { 'https://example.com/recording.ogg' }
   let!(:call) do
     create(

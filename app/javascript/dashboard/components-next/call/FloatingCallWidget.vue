@@ -9,6 +9,7 @@ import {
 } from 'dashboard/composables/useCallSession';
 import { useCallRingtonePreference } from 'dashboard/composables/useCallRingtonePreference';
 import { setWhatsappCallMuted } from 'dashboard/composables/useWhatsappCallSession';
+// FORK: Wavoip active call composables (mute, media, device status)
 import { useWavoipActiveCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import {
   useWavoipMedia,
@@ -54,6 +55,7 @@ onMounted(() => {
 const isWhatsappActive = computed(
   () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WHATSAPP
 );
+// FORK: Wavoip mute, media devices, and connection status
 const isWavoipActive = computed(
   () => activeCall.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
 );
@@ -303,6 +305,7 @@ watch(
     if (
       call?.callDirection === VOICE_CALL_DIRECTION.OUTBOUND &&
       call?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP &&
+      // FORK: skip auto-join for Wavoip outbound (SDK owns the session)
       call?.provider !== VOICE_CALL_PROVIDERS.WAVOIP &&
       !hasActiveCall.value &&
       WindowVisibilityHelper.isWindowVisible()
@@ -336,6 +339,7 @@ const stopRingtone = () => {
 const shouldRingForCall = call =>
   call.callDirection !== VOICE_CALL_DIRECTION.OUTBOUND &&
   !isCallRingtoneSilenced(call.callSid) &&
+  // FORK: silence ringtone by Wavoip offer id alias
   !isCallRingtoneSilenced(call.wavoipOfferId);
 
 const ringingInbound = computed(
@@ -370,6 +374,7 @@ onBeforeUnmount(stopRingtone);
         {{ connectionBannerMessage }}
       </div>
 
+      <!-- FORK: Wavoip mic/speaker device selectors -->
       <div
         v-if="isWavoipActive && (inputDevices.length || outputDevices.length)"
         class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-3 py-2 flex flex-col gap-2 text-xs"

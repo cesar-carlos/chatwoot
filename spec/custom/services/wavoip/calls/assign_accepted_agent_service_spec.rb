@@ -3,6 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe Wavoip::Calls::AssignAcceptedAgentService do
+  around do |example|
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = original_cache
+  end
+
   let(:account) { create(:account) }
   let(:channel) { create(:channel_wavoip, account: account) }
   let(:inbox) { channel.inbox }

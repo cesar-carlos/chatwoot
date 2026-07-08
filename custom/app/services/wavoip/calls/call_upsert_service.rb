@@ -126,10 +126,13 @@ class Wavoip::Calls::CallUpsertService
   def persist_event_record_status!(call)
     return if event.record_status.blank?
 
-    meta = call.meta || {}
-    return if meta['record_status'] == event.record_status
+    call.with_lock do
+      call.reload
+      meta = call.meta || {}
+      next if meta['record_status'] == event.record_status
 
-    call.update!(meta: meta.merge('record_status' => event.record_status))
+      call.update!(meta: meta.merge('record_status' => event.record_status))
+    end
   end
 
   def reopen_conversation_for_call!(call)

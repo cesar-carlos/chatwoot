@@ -32,21 +32,27 @@ class Custom::Whatsapp::EvolutionGo::Import::HistorySyncProcessor
   end
 
   def import_record(record)
-    canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(record)
-    key = canonical['key'] || canonical[:key] || {}
-    source_id = key['id'] || key[:id]
-    return false if source_id.present? && channel.inbox.messages.exists?(source_id: source_id)
+    source_id = extract_source_id(record)
+    return false if duplicate_source_id?(source_id)
 
-    if from_me_record?(key)
-      import_from_me_record!(record)
-    else
-      import_inbound_record!(record)
-    end
+    import_record_by_direction!(record)
     stamp_imported_message!(source_id)
     true
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] history sync import failed: #{e.message}")
     false
+  end
+
+  def duplicate_source_id?(source_id)
+    source_id.present? && channel.inbox.messages.exists?(source_id: source_id)
+  end
+
+  def import_record_by_direction!(record)
+    canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(record)
+    key = canonical['key'] || canonical[:key] || {}
+    return import_from_me_record!(record) if from_me_record?(key)
+
+    import_inbound_record!(record)
   end
 
   def from_me_record?(key)

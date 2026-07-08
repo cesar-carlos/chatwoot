@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
 import { getWavoipSdkSyncKey } from 'customDashboard/composables/wavoip/useWavoipConnection';
 import { registerWavoipCallSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
+import { endActiveCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import { requestWavoipNotificationPermission } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import { isIosSafariWithoutPwa } from 'customDashboard/lib/wavoip/wavoipNotificationEnvironment';
 
@@ -30,8 +31,9 @@ watch(
   { immediate: true }
 );
 
-onBeforeUnmount(() => {
+onBeforeUnmount(async () => {
   registerWavoipCallSession(null);
+  await endActiveCall();
   cleanupSession();
 });
 </script>

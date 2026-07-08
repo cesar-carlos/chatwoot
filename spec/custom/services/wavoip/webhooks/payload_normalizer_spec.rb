@@ -220,7 +220,7 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
         'type' => 'CALL',
         'action' => 'CREATE',
         'whatsapp_call_id' => 'missing_direction_001',
-        'status' => 'INCOMING_RING',
+        'status' => 'ACTIVE',
         'peer' => { 'phone' => '+5511888888888' }
       }
 

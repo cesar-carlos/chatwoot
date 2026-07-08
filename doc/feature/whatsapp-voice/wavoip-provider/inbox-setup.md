@@ -27,7 +27,7 @@ flowchart LR
 |-------|------------|------------------|
 | 1 | `ChannelList.vue` + `ChannelItem.vue` | Tile `wavoip` (Beta), gate `channel_voice` |
 | 2 | `custom/.../channels/Wavoip.vue` | Formulário com todos os campos abaixo |
-| 3 | `WavoipWebhookInstructions.vue` | Configurar URL e aguardar primeiro evento |
+| 3 | `Wavoip.vue` (alerta pós-criação) | Configurar URL e aguardar primeiro evento — ver §3.4 |
 | 4 | Rota `settings_inboxes_add_agents` | Igual aos demais canais |
 | 5 | Dashboard | Inbox operacional após agentes adicionados |
 
@@ -88,36 +88,6 @@ Referência SDK: [`new Wavoip({ tokens: [...] })`](https://wavoip.gitbook.io/api
 | **Gravar ligações no histórico** | `call_recording_enabled` | Não | `true` | Opt-out no Chatwoot; exige gravação ON no painel Wavoip + evento **RECORD** no webhook |
 | **Identificador da plataforma** | `platform` | — | `'chatwoot'` | Fixo no backend; repassado ao `new Wavoip({ platform })` |
 
-### 3.5 Seção — Gravação no histórico (Settings)
-
-Configurável na tab **Chamadas** (`WavoipCallingPage.vue`), toggle **Gravar ligações no histórico**. Persistido em `provider_config.call_recording_enabled` via `PATCH /inboxes/:id` (helper `patchWavoipProviderConfig`).
-
-| Campo UI (i18n) | `provider_config` key | Default | Comportamento |
-|-----------------|----------------------|---------|---------------|
-| **Gravar ligações no histórico** | `call_recording_enabled` | `true` | `false` = ignora webhooks `RECORD` no backend e oculta player na bolha |
-
-**Três toggles independentes** (todos precisam estar ON para o player aparecer):
-
-1. **Wavoip painel** — `app.wavoip.com` → Configurações gerais → Gravação
-2. **Webhook Wavoip** — evento **RECORD** selecionado na URL do inbox
-3. **Chatwoot** — `call_recording_enabled` nesta seção
-
-Política backend: `Wavoip::Calls::RecordingPolicy` (só anexa quando `record_status` é `READY` ou ausente com URL e `Call.status == completed`). Ver [webhook-contract.md §4](./webhook-contract.md#4-evento-record).
-
-**Wireframe (Settings → Chamadas):**
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ Device status / QR …                                    │
-├─────────────────────────────────────────────────────────┤
-│ [x] Aceitar chamadas recebidas                          │
-│ [x] Gravar ligações no histórico                        │
-│     ℹ️ Gravação no painel Wavoip + evento RECORD        │
-├─────────────────────────────────────────────────────────┤
-│ Incoming call routing …                                 │
-└─────────────────────────────────────────────────────────┘
-```
-
 ### 3.4 Ativação — webhook do servidor
 
 Exibida **após** o inbox ser criado. O admin configura a URL no painel Wavoip
@@ -138,6 +108,36 @@ No painel Wavoip: além da URL, **ativar o toggle** do webhook e selecionar even
 
 Referência: [Webhook (Beta)](https://wavoip.gitbook.io/api/webhook-beta.md) ·
 contrato auth [webhook-contract.md](./webhook-contract.md).
+
+### 3.5 Seção — Gravação no histórico (Settings)
+
+Configurável na tab **Chamadas** (`WavoipCallingPage.vue`), toggle **Gravar ligações no histórico**. Persistido em `provider_config.call_recording_enabled` via `PATCH /inboxes/:id` (helper `patchWavoipProviderConfig`).
+
+| Campo UI (i18n) | `provider_config` key | Default | Comportamento |
+|-----------------|----------------------|---------|---------------|
+| **Gravar ligações no histórico** | `call_recording_enabled` | `true` | `false` = ignora webhooks `RECORD` no backend e oculta player na bolha |
+
+**Três toggles independentes** (todos precisam estar ON para o player aparecer):
+
+1. **Wavoip painel** — `app.wavoip.com` → Configurações gerais → Gravação
+2. **Webhook Wavoip** — evento **RECORD** selecionado na URL do inbox
+3. **Chatwoot** — `call_recording_enabled` nesta seção
+
+Política backend: `Wavoip::Calls::RecordingPolicy` (só anexa quando `record_status` é `READY` ou ausente com URL e `Call.status == completed`). Ver [webhook-contract.md §5](./webhook-contract.md#5-evento-record).
+
+**Wireframe (Settings → Chamadas):**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ Device status / QR …                                    │
+├─────────────────────────────────────────────────────────┤
+│ [x] Aceitar chamadas recebidas                          │
+│ [x] Gravar ligações no histórico                        │
+│     ℹ️ Gravação no painel Wavoip + evento RECORD        │
+├─────────────────────────────────────────────────────────┤
+│ Incoming call routing …                                 │
+└─────────────────────────────────────────────────────────┘
+```
 
 ### 3.6 Seção — Roteamento de chamadas inbound (Settings)
 
@@ -203,7 +203,7 @@ Componentes Vue sugeridos (evitar god component):
 | `WavoipInboxIdentityFields.vue` | Nome + telefone |
 | `WavoipDeviceFields.vue` | Token + id_session |
 | `WavoipCallBehaviorFields.vue` | inbound toggle |
-| `WavoipWebhookInstructions.vue` | URL pós-criação, copy, rotação e status de verificação |
+| `WavoipWebhookInstructions.vue` | URL pós-criação, copy, rotação e status de verificação — **removido**; lógica em `Wavoip.vue` (alerta pós-criação) |
 | `WavoipNotificationFields.vue` | Campos opcionais colapsados |
 
 ---
@@ -271,20 +271,21 @@ def create_wavoip_channel
 end
 ```
 
-Validação em service dedicado (não no model):
+Validação no model `Channel::Wavoip` (`validates :phone_number`, `ring_timeout_seconds_value`) e falha explícita do `create!` no controller — sem service `CreateValidator` dedicado:
 
 ```ruby
-# custom/app/services/wavoip/channels/create_validator.rb
-class Wavoip::Channels::CreateValidator
-  def initialize(phone_number:, device_token:)
-    @phone_number = phone_number
-    @device_token = device_token
-  end
+# custom/app/controllers/custom/api/v1/accounts/inboxes_controller.rb
+def create_wavoip_channel
+  raise Pundit::NotAuthorizedError unless Current.account.feature_enabled?('channel_voice') &&
+                                          Current.account.feature_enabled?('channel_wavoip')
 
-  def validate!
-    raise ArgumentError, 'device_token required' if @device_token.blank?
-    raise ArgumentError, 'invalid phone' unless phone_e164?(@phone_number)
-  end
+  wavoip_params = params.require(:channel).permit(
+    :phone_number,
+    :device_token,
+    provider_config: %i[inbound_calls_enabled call_recording_enabled ...]
+  )
+
+  Current.account.wavoip_channels.create!(wavoip_params)
 end
 ```
 

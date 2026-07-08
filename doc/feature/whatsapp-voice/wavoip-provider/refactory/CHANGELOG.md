@@ -7,7 +7,7 @@ Wavoip. Para o texto completo (descrição, código antes/depois, racional) de c
 ## 26 jun. – 03 jul. 2026 — revisão inicial (32/32 concluído)
 
 Revisão de código cobrindo toda a implementação `custom/**/wavoip/**` das fases 1–4.
-Suite de regressão: 104 RSpec + 83 Vitest.
+Suite de regressão: 267 RSpec (voice scope) + ~165 Vitest.
 
 | ID | Título | Severidade | Status |
 |----|--------|------------|--------|
@@ -44,7 +44,7 @@ parte da revisão de 26 jun.):
 | Widgets fantasma de chamadas antigas em `ringing` reaparecendo | Nenhuma rede de segurança fechava calls presas quando o webhook de término nunca chegava | `Wavoip::Calls::StaleCallTimeoutScheduler` + `Wavoip::AutoNoAnswerRingJob` (backend) e `isStaleWavoipRingingMessage` (frontend, filtro de 3 min) |
 | Gravação nunca aparecia no histórico | Conta não tinha o webhook `RECORD` habilitado no painel Wavoip | `Wavoip::Calls::DirectRecordingUrl` + `Wavoip::FetchDirectRecordingJob` — fallback via URL direta documentada (`storage.wavoip.com/{id}`) |
 | "Ligar de volta" falhava com mensagem genérica | Sem checagem de dispositivo restrito/lotado; erro de conexão sem tradução | `wavoipOutboundPreflight.js` (checagem compartilhada com o botão do painel de contato) + mensagem `CONNECT_FAILED` |
-| Webhook da Wavoip parou de entregar eventos silenciosamente | 502 transitório durante deploy — Wavoip não retentou nem voltou sozinho | Ver [operations-runbook.md](../operations-runbook.md#webhook-parou-de-chegar-sem-aviso) — requer reativação manual no painel Wavoip |
+| Webhook da Wavoip parou de entregar eventos silenciosamente | 502 transitório durante deploy — Wavoip não retentou nem voltou sozinho | Ver [operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026](../operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026) — reativação manual no painel Wavoip; código hardened 08 jul. 2026 |
 
 ## 04 jul. 2026 — segunda rodada (auditoria de confiabilidade)
 
@@ -52,3 +52,25 @@ Ver commits/specs do dia para detalhes. Resumo: lock atômico em schedulers, `Ca
 extraído para eliminar duplicação de "finalizar chamada" em 4 lugares, `DirectionInferrer`
 extraído do `PayloadNormalizer`, correções de memory leak e reconciliação de IDs no frontend.
 Detalhes completos no PR/diff correspondente.
+
+## 06 jul. 2026 — dismiss / cable ended
+
+| Problema | Correção |
+|----------|----------|
+| Mic permanecia aberto após `voice_call.ended` | `voiceCallCableRegistry.js` — `endSdkActiveCall(data.call_id)` antes de limpar store |
+| Segunda aba do mesmo agente continuava tocando após outro aceitar | `voiceCallCableRegistry.js` — dismiss quando `!isWavoipSdkCallOwned` mesmo para mesmo user |
+
+## 08 jul. 2026 — P0 hardening (Meta + Wavoip)
+
+Correções de bloqueadores de produção e sync de documentação:
+
+| Área | Correção |
+|------|----------|
+| Meta | `Voice::Provider::MetaCloud::Adapter` — channel injetado; `WhatsappCloudService` delega |
+| Meta | `Whatsapp::Calls::StaleCallTimeoutScheduler` + jobs `ringing`/`in_progress` |
+| Wavoip | `RecordHandler` — `enqueue_attachment` só quando `record_url` ainda não conhecido |
+| Wavoip | `StaleCallTimeoutScheduler` estendido para `in_progress` |
+| FE | QR `onBeforeUnmount`; `syncConnections` respeita call ativa; `isStaleWhatsappRingingMessage` |
+| FE | `whatsappVoiceCableRegistry.js` — registry cable Meta (paridade com Wavoip) |
+| Testes | 267 RSpec voice scope + ~165 Vitest (incl. `useWebRtcCallSession.spec.js`) |
+| Ops | Checklist verificação webhook datado 2026-07-08 no runbook — live pendente acesso ops |

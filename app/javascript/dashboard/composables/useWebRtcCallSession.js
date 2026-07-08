@@ -87,10 +87,76 @@ const RECORDER_MIME_CANDIDATES = [
   'audio/ogg;codecs=opus',
 ];
 
-// Outbound calls have no backend-supplied ice_servers (the call doesn't exist
-// at offer time). Without STUN the browser only sends host candidates and
-// browser→Meta media silently drops through any non-trivial NAT.
+// Outbound calls have no backend-supplied ice_servers at offer time; initiate
+// response carries Call.default_ice_servers and we apply via setConfiguration.
 const DEFAULT_OUTBOUND_ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+let iceRestartAttempted = false;
+
+const cleanup = () => {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    try {
+      mediaRecorder.stop();
+    } catch (_) {
+      /* noop */
+    }
+  }
+  if (audioContext && audioContext.state !== 'closed') {
+    audioContext.close().catch(() => {});
+  }
+  if (localStream) localStream.getTracks().forEach(t => t.stop());
+  if (remoteStream) remoteStream.getTracks().forEach(t => t.stop());
+  if (pc) pc.close();
+  if (remoteAudioEl) remoteAudioEl.srcObject = null;
+
+  pc = null;
+  localStream = null;
+  remoteStream = null;
+  mediaRecorder = null;
+  recorderChunks = [];
+  audioContext = null;
+  activeCallId = null;
+  pendingOutboundAnswers.clear();
+  recorderArmed = false;
+  iceRestartAttempted = false;
+};
+
+const applyIceServerConfig = iceServers => {
+  if (!pc || !iceServers?.length) return;
+  try {
+    pc.setConfiguration({ iceServers });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[WhatsApp Call] setConfiguration failed:', err);
+  }
+};
+
+const handleMediaConnectionFailure = async () => {
+  useAlert(translateFn('CONVERSATION.VOICE_WIDGET.MEDIA_CONNECTION_FAILED'));
+  const callId = activeCallId;
+  try {
+    if (callId) await requireCallsAPI().terminate(callId);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[WebRTC] terminate after media failure:', err);
+  }
+  cleanup();
+};
+
+const attachConnectionStateHandlers = () => {
+  if (!pc) return;
+  pc.oniceconnectionstatechange = () => {
+    if (pc.iceConnectionState !== 'failed') return;
+    if (!iceRestartAttempted) {
+      iceRestartAttempted = true;
+      pc.restartIce().catch(() => handleMediaConnectionFailure());
+      return;
+    }
+    handleMediaConnectionFailure();
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') handleMediaConnectionFailure();
+  };
+};
 
 const waitForIceGatheringComplete = peer =>
   new Promise(resolve => {
@@ -135,37 +201,11 @@ const setupRecorder = () => {
   mediaRecorder.start(RECORDING_TIMESLICE_MS);
 };
 
-const cleanup = () => {
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    try {
-      mediaRecorder.stop();
-    } catch (_) {
-      /* noop */
-    }
-  }
-  if (audioContext && audioContext.state !== 'closed') {
-    audioContext.close().catch(() => {});
-  }
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-  if (remoteStream) remoteStream.getTracks().forEach(t => t.stop());
-  if (pc) pc.close();
-  if (remoteAudioEl) remoteAudioEl.srcObject = null;
-
-  pc = null;
-  localStream = null;
-  remoteStream = null;
-  mediaRecorder = null;
-  recorderChunks = [];
-  audioContext = null;
-  activeCallId = null;
-  pendingOutboundAnswers.clear();
-  recorderArmed = false;
-};
-
 const buildPeerConnection = iceServers => {
   const config = iceServers && iceServers.length ? { iceServers } : {};
   pc = new RTCPeerConnection(config);
   remoteStream = new MediaStream();
+  attachConnectionStateHandlers();
   pc.ontrack = event => {
     // Reuse the same MediaStream object — the recorder's audioContext source
     // taps it once, so reassigning would orphan the recorder.
@@ -350,6 +390,7 @@ export function useWebRtcCallSession() {
       );
       if (response?.id) {
         activeCallId = response.id;
+        applyIceServerConfig(response.ice_servers || response.iceServers);
         // A connect webhook that raced ahead of this response was buffered;
         // apply our own by id now that we know it, then drop every buffered
         // answer (concurrent agents' calls aren't ours to apply).

@@ -221,10 +221,10 @@ class Custom::Whatsapp::Evolution::ConnectionService
 
   def persist_provider_config!(merged)
     Channel::Whatsapp.transaction do
-      Channel::Whatsapp.lock.find(channel.id).update_columns(
+      Channel::Whatsapp.lock.find(channel.id).update_columns( # rubocop:disable Rails/SkipsModelValidations
         provider_config: merged,
         updated_at: Time.current
-      ) # rubocop:disable Rails/SkipsModelValidations
+      )
     end
     channel.provider_config = merged
   end
