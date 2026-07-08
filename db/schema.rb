@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_26_121300) do
+ActiveRecord::Schema[7.1].define(version: 2026_07_04_151500) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -618,8 +618,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_26_121300) do
     t.jsonb "provider_config", default: {}
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["account_id", "phone_number"], name: "index_channel_wavoip_on_account_id_and_phone_number", unique: true
     t.index ["account_id"], name: "index_channel_wavoip_on_account_id"
-    t.index ["phone_number"], name: "index_channel_wavoip_on_phone_number", unique: true
     t.index ["webhook_key"], name: "index_channel_wavoip_on_webhook_key", unique: true
   end
 
@@ -653,8 +653,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_26_121300) do
     t.datetime "updated_at", null: false
     t.jsonb "message_templates", default: {}
     t.datetime "message_templates_last_updated", precision: nil
-    t.index "((provider_config ->> 'instance_name'::text))", name: "index_channel_whatsapp_evolution_instance_name", unique: true, where: "((provider)::text = 'evolution'::text)"
     t.index "((provider_config ->> 'instance_name'::text))", name: "index_channel_whatsapp_evolution_go_instance_name", unique: true, where: "((provider)::text = 'evolution_go'::text)"
+    t.index "((provider_config ->> 'instance_name'::text))", name: "index_channel_whatsapp_evolution_instance_name", unique: true, where: "((provider)::text = 'evolution'::text)"
     t.index ["phone_number"], name: "index_channel_whatsapp_on_phone_number", unique: true
   end
 
