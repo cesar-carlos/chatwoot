@@ -1,4 +1,5 @@
 module Enterprise::Whatsapp::Providers::WhatsappCloudService
+  # FORK: delegate Meta Cloud voice API to MetaCloud::Adapter
   def pre_accept_call(call_id, sdp_answer)
     meta_cloud_voice_adapter.pre_accept_call(call_id, sdp_answer)
   end
@@ -30,6 +31,6 @@ module Enterprise::Whatsapp::Providers::WhatsappCloudService
   private
 
   def meta_cloud_voice_adapter
-    @meta_cloud_voice_adapter ||= Voice::Provider::MetaCloud::Adapter.new(self)
+    @meta_cloud_voice_adapter ||= Voice::Provider::MetaCloud::Adapter.new(whatsapp_channel)
   end
 end

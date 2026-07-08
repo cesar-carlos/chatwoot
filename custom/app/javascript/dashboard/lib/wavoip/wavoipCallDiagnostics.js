@@ -12,7 +12,12 @@ const lastConnectivityAlertAt = new Map();
 const connectivityMessage = (issue, translateFn) => {
   const code = issue?.code || issue?.type || issue || 'GENERIC';
   if (translateFn) {
-    return translateFn(`CONVERSATION.WAVOIP_CONNECTIVITY.${code}`);
+    const key = `CONVERSATION.WAVOIP_CONNECTIVITY.${code}`;
+    const message = translateFn(key);
+    if (message === key) {
+      return translateFn('CONVERSATION.WAVOIP_CONNECTIVITY.GENERIC');
+    }
+    return message;
   }
   return 'Call connection issue';
 };

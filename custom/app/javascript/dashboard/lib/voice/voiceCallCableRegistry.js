@@ -7,7 +7,7 @@ import {
 } from 'customDashboard/lib/voice/callStoreMappers';
 import { isOutboundCallDirection } from 'customDashboard/lib/voice/voiceCallDirection';
 import {
-  clearActiveCall as clearSdkActiveCall,
+  endActiveCall as endSdkActiveCall,
   getActiveProviderCallId,
   isWavoipSdkCallOwned,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
@@ -121,7 +121,8 @@ export const createWavoipVoiceCableHandlers = t => ({
 
     if (
       data.accepted_by_agent_id &&
-      data.accepted_by_agent_id === currentUserId()
+      data.accepted_by_agent_id === currentUserId() &&
+      isWavoipSdkCallOwned(data.call_id)
     ) {
       return;
     }
@@ -169,7 +170,9 @@ export const createWavoipVoiceCableHandlers = t => ({
         isWavoipSdkCallOwned(callEntry.wavoipOfferId));
 
     if (ownsActiveSession) {
-      clearSdkActiveCall();
+      endSdkActiveCall(
+        data.call_id || callEntry.callSid || callEntry.wavoipOfferId
+      );
     }
 
     if (

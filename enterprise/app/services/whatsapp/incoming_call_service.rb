@@ -45,6 +45,7 @@ class Whatsapp::IncomingCallService
 
       started_at = Time.zone.at(payload[:timestamp].to_i) if payload[:timestamp].present?
       update_call!(call, 'in_progress', started_at: started_at || Time.current)
+      Whatsapp::Calls::StaleCallTimeoutScheduler.new(call: call).schedule_in_progress_safety_net
       broadcast(call, 'voice_call.outbound_accepted')
     end
   end
@@ -58,7 +59,8 @@ class Whatsapp::IncomingCallService
       # row for it; the next status webhook (or a retry) will find it.
       return create_inbound_call(payload) if inbound_offer?(payload)
 
-      Rails.logger.warn "[WHATSAPP CALL] Outbound connect for unknown call #{payload[:id]}; skipping"
+      Rails.logger.warn "[WHATSAPP CALL] Outbound connect for unknown call #{payload[:id]}; scheduling retry"
+      Whatsapp::RetryOutboundConnectJob.set(wait: 2.seconds).perform_later(inbox.id, payload.to_h)
       return
     end
 
@@ -72,23 +74,35 @@ class Whatsapp::IncomingCallService
   end
 
   def create_inbound_call(payload)
-    unless inbox.channel.inbound_calls_enabled?
-      Rails.logger.info "[WHATSAPP CALL] Inbound calls disabled for inbox #{inbox.id}; rejecting call #{payload[:id]}"
-      inbox.channel.provider_service.reject_call(payload[:id])
-      return
-    end
+    return reject_disabled_inbound(payload) unless inbox.channel.inbound_calls_enabled?
 
-    sdp_offer = payload.dig(:session, :sdp)
-    extra_meta = { 'sdp_offer' => sdp_offer, 'ice_servers' => Call.default_ice_servers }
-    name = caller_profile_name(payload)
-    extra_meta['contact_name'] = name if name.present?
+    call = build_inbound_call(payload)
+    Whatsapp::Calls::StaleCallTimeoutScheduler.new(call: call).schedule
+    update_conversation(call)
+    broadcast_incoming(call, payload.dig(:session, :sdp))
+  end
 
-    call = Voice::InboundCallBuilder.perform!(
+  def reject_disabled_inbound(payload)
+    Rails.logger.info "[WHATSAPP CALL] Inbound calls disabled for inbox #{inbox.id}; rejecting call #{payload[:id]}"
+    inbox.channel.provider_service.reject_call(payload[:id])
+  end
+
+  def build_inbound_call(payload)
+    extra_meta = inbound_call_extra_meta(payload)
+    Voice::InboundCallBuilder.perform!(
       inbox: inbox, from_number: "+#{payload[:from]}", call_sid: payload[:id],
       provider: :whatsapp, extra_meta: extra_meta
     )
-    update_conversation(call)
-    broadcast_incoming(call, sdp_offer)
+  end
+
+  def inbound_call_extra_meta(payload)
+    extra_meta = {
+      'sdp_offer' => payload.dig(:session, :sdp),
+      'ice_servers' => Call.default_ice_servers
+    }
+    name = caller_profile_name(payload)
+    extra_meta['contact_name'] = name if name.present?
+    extra_meta
   end
 
   # Match strictly on wa_id (== calls[].from): in a batched payload missing this
@@ -115,7 +129,9 @@ class Whatsapp::IncomingCallService
       # Pin setup:active so browsers don't renegotiate when Meta echoes actpass.
       sdp_answer = payload.dig(:session, :sdp)&.gsub('a=setup:actpass', 'a=setup:active')
       call.update!(meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
-      broadcast(call, 'voice_call.outbound_connected', sdp_answer: sdp_answer)
+      # FORK: scope outbound_connected to initiating agent pubsub token
+      streams = outbound_connected_streams(call)
+      broadcast(call, 'voice_call.outbound_connected', streams: streams, sdp_answer: sdp_answer)
     end
   end
 
@@ -198,6 +214,12 @@ class Whatsapp::IncomingCallService
   def fallback_agent_streams
     user_ids = inbox.member_ids | inbox.account.administrators.ids
     User.where(id: user_ids).pluck(:pubsub_token).compact
+  end
+
+  # FORK: outbound_connected agent streams + ActionCableCallBroadcaster adapter
+  def outbound_connected_streams(call)
+    token = call.accepted_by_agent&.pubsub_token
+    token ? [token] : account_streams
   end
 
   def broadcast(call, event, streams: account_streams, **extra)

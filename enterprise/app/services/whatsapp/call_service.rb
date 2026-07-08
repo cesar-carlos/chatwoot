@@ -4,14 +4,9 @@ class Whatsapp::CallService
   def accept
     raise Voice::CallErrors::CallFailed, 'sdp_answer is required' if sdp_answer.blank?
 
-    # All side effects under the lock so a concurrent terminate cannot finalize
-    # the call between status update and the message/conversation/broadcast writes.
-    call.with_lock do
-      transition_to_in_progress!
-      update_message_status('in_progress')
-      claim_conversation_and_set_call_status
-      broadcast(:accepted, accepted_by_agent_id: agent.id)
-    end
+    call.with_lock { validate_accept_transition! }
+    forward_answer_to_meta!
+    commit_accept!
     call
   end
 
@@ -19,7 +14,11 @@ class Whatsapp::CallService
     call.with_lock do
       next if call.terminal? || call.in_progress?
 
-      invoke_provider!(:reject_call)
+      begin
+        invoke_provider!(:reject_call)
+      rescue Voice::CallErrors::CallFailed => e
+        Rails.logger.warn "[WHATSAPP CALL] reject Meta failed, finalizing locally: #{e.message}"
+      end
       call.update!(accepted_by_agent_id: agent.id) if call.accepted_by_agent_id.nil?
       finalize_call('failed', end_reason: 'agent_rejected')
     end
@@ -30,7 +29,11 @@ class Whatsapp::CallService
     call.with_lock do
       next if call.terminal?
 
-      invoke_provider!(:terminate_call)
+      begin
+        invoke_provider!(:terminate_call)
+      rescue Voice::CallErrors::CallFailed => e
+        Rails.logger.warn "[WHATSAPP CALL] terminate Meta failed, finalizing locally: #{e.message}"
+      end
       # Compute duration from started_at locally — the webhook arrives after the
       # call is already terminal and the idempotency guard there bails before it
       # can fill these fields, so we have to record them here.
@@ -47,15 +50,23 @@ class Whatsapp::CallService
 
   private
 
-  def transition_to_in_progress!
-    # Order matters: in_progress and terminal both make ringing? false, so we have to
-    # branch on in_progress? first to surface the distinct AlreadyAccepted state.
+  def validate_accept_transition!
     raise Voice::CallErrors::AlreadyAccepted, 'Call already accepted by another agent' if call.in_progress?
     raise Voice::CallErrors::NotRinging, 'Call is not in ringing state' unless call.ringing?
+  end
 
-    forward_answer_to_meta!
-    call.update!(status: 'in_progress', accepted_by_agent_id: agent.id, started_at: Time.current,
-                 meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
+  def commit_accept!
+    call.with_lock do
+      raise Voice::CallErrors::AlreadyAccepted, 'Call already accepted by another agent' if call.in_progress?
+      raise Voice::CallErrors::NotRinging, 'Call is not in ringing state' unless call.ringing?
+
+      call.update!(status: 'in_progress', accepted_by_agent_id: agent.id, started_at: Time.current,
+                   meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
+      Whatsapp::Calls::StaleCallTimeoutScheduler.new(call: call).schedule_in_progress_safety_net
+      update_message_status('in_progress')
+      claim_conversation_and_set_call_status
+      broadcast(:accepted, accepted_by_agent_id: agent.id)
+    end
   end
 
   def forward_answer_to_meta!

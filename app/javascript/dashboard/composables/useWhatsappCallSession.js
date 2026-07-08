@@ -1,3 +1,4 @@
+// FORK: thin wrapper over useWebRtcCallSession (WebRTC core extracted for multi-provider)
 import WhatsappCallsAPI from 'dashboard/api/channel/whatsapp/whatsappCallsAPI';
 import { useI18n } from 'vue-i18n';
 import {

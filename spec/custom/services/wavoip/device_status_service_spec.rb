@@ -8,6 +8,14 @@ RSpec.describe Wavoip::DeviceStatusService do
   let(:service) { described_class.new(channel: channel) }
 
   describe '#connection_payload' do
+    around do |example|
+      original_cache = Rails.cache
+      Rails.cache = ActiveSupport::Cache::MemoryStore.new
+      example.run
+    ensure
+      Rails.cache = original_cache
+    end
+
     it 'returns device status from channel config when live check is cached' do
       Rails.cache.write("wavoip:device_status:#{channel.id}", true, expires_in: 15.seconds)
       channel.update!(provider_config: channel.provider_config.merge('device_status' => 'open'))

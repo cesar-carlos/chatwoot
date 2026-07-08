@@ -1,3 +1,4 @@
+import i18n from 'dashboard/i18n';
 import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 
 const DEFAULT_ICON = '/brand-assets/logo_thumbnail.svg';
@@ -18,8 +19,12 @@ export function notifyIncomingWavoipOffer(offer, inbox) {
     inbox?.offer_notification_icon ||
     DEFAULT_ICON;
 
+  const incomingCallTitle = i18n.global.t(
+    'CONVERSATION.VOICE_CALL.INCOMING_CALL'
+  );
+
   // eslint-disable-next-line no-new -- browser Notification API requires constructor side effect
-  new Notification(peer.displayName || peer.phone || 'Incoming call', {
+  new Notification(peer.displayName || peer.phone || incomingCallTitle, {
     tag: `chatwoot-wavoip-offer-${offer.id}`,
     body: peer.phone || '',
     icon,

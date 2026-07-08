@@ -39,14 +39,13 @@ Não usar telefone no path nem secret em query: ambos aparecem com frequência e
 proxies e analytics. No painel Wavoip: ativar toggle do webhook e selecionar evento **CALL**.
 **Rotação:** Settings → regenerar → atualizar URL no painel Wavoip.
 
-### Rate limiting
+### Rate limiting ✅ **Implementado**
 
-| Limite | Valor sugerido |
-|--------|----------------|
-| Por `webhook_key` + IP | 120 req/min |
-| Resposta | `429` |
-
-Implementar em `Rack::Attack` ou middleware em `custom/` — não no controller.
+| Limite | Valor |
+|--------|-------|
+| Por `webhook_key` + IP | 120 req/min (`config/initializers/rack_attack.rb`) |
+| Payload máximo | 64 KB (`WavoipController::MAX_PAYLOAD_BYTES`) |
+| Resposta throttle | `429` |
 
 ---
 
@@ -101,7 +100,7 @@ Autorização: `authorize @call.inbox, :show?`. Spec: `spec/custom/controllers/a
 
 ---
 
-## 4. Evento `RECORD`
+## 5. Evento `RECORD`
 
 Webhook separado do `CALL` — entrega `record_url` e `record_status` após a ligação. Fixture: [fixtures/record_update.json](./fixtures/record_update.json).
 
@@ -111,7 +110,7 @@ Webhook separado do `CALL` — entrega `record_url` e `record_status` após a li
 | `record_url` | URL pública da gravação (`.ogg`) |
 | `record_status` | `READY`, `RECORDING`, `MIXING`, `DISABLED`, `EMPTY_RECORDING` |
 
-### 4.1 Pipeline
+### 5.1 Pipeline
 
 ```
 RECORD → PayloadNormalizer → RecordHandler → RecordingPolicy → AttachRecordingJob (:low)
@@ -132,9 +131,9 @@ Idempotência: mesmo `record_url` já em `meta` → não reenfileirar.
 
 ---
 
-## 5. ActionCable — contrato por provider
+## 6. ActionCable — contrato por provider
 
-### 5.1 `voice_call.incoming`
+### 6.1 `voice_call.incoming`
 
 | Campo | WhatsApp (Meta) | Wavoip |
 |-------|-----------------|--------|
@@ -149,14 +148,14 @@ Idempotência: mesmo `record_url` já em `meta` → não reenfileirar.
 
 Handler Wavoip: popular `calls` store **sem** SDP; áudio via SDK `offer` paralelo.
 
-### 5.2 `voice_call.outbound_connected`
+### 6.2 `voice_call.outbound_connected`
 
 | Provider | Usar? |
 |----------|-------|
 | WhatsApp | Sim — aplica `sdp_answer` |
 | Wavoip | **Não** — ignorar no registry; outbound 100% SDK |
 
-### 5.3 `voice_call.ended` / `voice_call.accepted`
+### 6.3 `voice_call.ended` / `voice_call.accepted`
 
 | Campo | Wavoip |
 |-------|--------|
@@ -165,26 +164,34 @@ Handler Wavoip: popular `calls` store **sem** SDP; áudio via SDK `offer` parale
 | `duration_seconds` | quando `completed` |
 | SDP | nunca |
 
-### 5.4 Implementação frontend
+### 6.4 Implementação frontend (dispatch real)
 
 ```javascript
+// app/javascript/dashboard/lib/voice/whatsappVoiceCableRegistry.js
+export const createWhatsappVoiceCableHandlers = () => ({
+  onIncoming(data) { /* SDP required */ },
+  onOutboundConnected(data) { /* applyOutboundAnswer */ },
+  // ...
+});
+
 // custom/.../lib/voice/voiceCallCableRegistry.js
-export const VOICE_CALL_CABLE_HANDLERS = {
-  whatsapp: whatsappVoiceCableHandlers,
-  wavoip: wavoipVoiceCableHandlers,
-};
+export const createWavoipVoiceCableHandlers = t => ({ /* no SDP */ });
 ```
 
-`actionCable.js` — único `# FORK:`:
+`actionCable.js` delega por `data.provider`:
 
 ```javascript
-const handler = VOICE_CALL_CABLE_HANDLERS[data?.provider];
-if (handler) handler.onIncoming(data);
+if (data?.provider === VOICE_CALL_PROVIDERS.WAVOIP) {
+  this.wavoipVoiceCableHandlers().onIncoming?.(data);
+  return;
+}
+if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
+this.whatsappVoiceCableHandlers().onIncoming(data);
 ```
 
 ---
 
-## 6. Push com aba fechada (pós-MVP)
+## 7. Push com aba fechada (pós-MVP)
 
 Web Push pode avisar sobre uma chamada, mas não mantém a conexão SDK nem a oferta viva.
 Portanto é best-effort e não faz parte do critério de atendimento inbound.
@@ -195,7 +202,7 @@ preferências do usuário e enviar apenas deep-link para a conversa. Não promet
 
 ---
 
-## 7. Logging e privacidade
+## 8. Logging e privacidade
 
 | Dado | Log produção |
 |------|--------------|

@@ -3,66 +3,105 @@
 require 'rails_helper'
 
 RSpec.describe Wavoip::Webhooks::DirectionInferrer do
-  def infer(payload, webhook_action: :create)
+  subject(:result) do
     described_class.new(
       payload: payload.with_indifferent_access,
       webhook_action: webhook_action,
       external_call_id: 'test_call_id'
-    ).infer
+    ).send(:infer)
   end
 
-  it 'uses the explicit INCOMING direction when endpoints do not disagree' do
-    expect(infer('direction' => 'INCOMING', 'phone' => '+5511999999999', 'caller' => '+5511888888888')).to eq(:incoming)
+  let(:webhook_action) { :create }
+
+  context 'when direction is explicit INCOMING and endpoints do not disagree' do
+    let(:payload) do
+      { 'direction' => 'INCOMING', 'phone' => '+5511999999999', 'caller' => '+5511888888888' }
+    end
+
+    it { is_expected.to eq(:incoming) }
   end
 
-  it 'maps OUTCOMING defensively to :outgoing' do
-    expect(infer('direction' => 'OUTCOMING')).to eq(:outgoing)
+  context 'when direction is OUTCOMING' do
+    let(:payload) { { 'direction' => 'OUTCOMING' } }
+
+    it { is_expected.to eq(:outgoing) }
   end
 
-  it 'treats the inbox being the caller as outgoing even if direction says INCOMING' do
-    expect(
-      infer(
+  context 'when inbox is the caller even if direction says INCOMING' do
+    let(:payload) do
+      {
         'direction' => 'INCOMING',
         'phone' => '5566999050312',
         'caller' => '5566999050312',
         'receiver' => '556697193168'
-      )
-    ).to eq(:outgoing)
+      }
+    end
+
+    it { is_expected.to eq(:outgoing) }
   end
 
-  it 'infers from caller/receiver when direction is absent' do
-    expect(
-      infer(
+  context 'when direction is absent but caller/receiver imply incoming' do
+    let(:payload) do
+      {
         'phone' => '5566999050312',
         'caller' => '5511888888888',
         'receiver' => '5566999050312'
-      )
-    ).to eq(:incoming)
+      }
+    end
+
+    it { is_expected.to eq(:incoming) }
   end
 
-  it 'falls back to status-based inference when nothing else resolves' do
-    expect(infer('status' => 'OUTGOING_RING')).to eq(:outgoing)
-    expect(infer('status' => 'INCOMING_RING')).to eq(:incoming)
+  context 'when direction must be inferred from status' do
+    it 'maps OUTGOING_RING to outgoing' do
+      expect(
+        described_class.new(
+          payload: { 'status' => 'OUTGOING_RING' }.with_indifferent_access,
+          webhook_action: :create,
+          external_call_id: 'test_call_id'
+        ).send(:infer)
+      ).to eq(:outgoing)
+    end
+
+    it 'maps INCOMING_RING to incoming' do
+      expect(
+        described_class.new(
+          payload: { 'status' => 'INCOMING_RING' }.with_indifferent_access,
+          webhook_action: :create,
+          external_call_id: 'test_call_id'
+        ).send(:infer)
+      ).to eq(:incoming)
+    end
   end
 
-  it 'returns nil when no signal is available' do
-    expect(infer('status' => 'ACTIVE')).to be_nil
+  context 'when no signal is available' do
+    let(:payload) { { 'status' => 'ACTIVE' } }
+
+    it { is_expected.to be_nil }
   end
 
-  it 'logs a warning only on CREATE with a fully blank direction' do
-    allow(Rails.env).to receive(:production?).and_return(false)
-    allow(Rails.logger).to receive(:warn)
+  describe 'logging' do
+    let(:payload) { { 'status' => 'ACTIVE' } }
 
-    infer({ 'status' => 'ACTIVE' }, webhook_action: :create)
+    it 'warns only on CREATE with a fully blank direction' do
+      allow(Rails.env).to receive(:production?).and_return(false)
+      allow(Rails.logger).to receive(:warn)
 
-    expect(Rails.logger).to have_received(:warn).with(/CALL CREATE missing direction/)
-  end
+      result
 
-  it 'does not log on UPDATE even when direction is blank' do
-    allow(Rails.logger).to receive(:warn)
+      expect(Rails.logger).to have_received(:warn).with(/CALL CREATE missing direction/)
+    end
 
-    infer({ 'status' => 'ACTIVE' }, webhook_action: :update)
+    context 'when webhook action is UPDATE' do
+      let(:webhook_action) { :update }
 
-    expect(Rails.logger).not_to have_received(:warn)
+      it 'does not log even when direction is blank' do
+        allow(Rails.logger).to receive(:warn)
+
+        result
+
+        expect(Rails.logger).not_to have_received(:warn)
+      end
+    end
   end
 end

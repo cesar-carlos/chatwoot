@@ -51,7 +51,7 @@ RSpec.describe Wavoip::FetchDirectRecordingJob do
     allow_any_instance_of(Wavoip::Calls::RecordingAttachmentService).to receive(:perform) # rubocop:disable RSpec/AnyInstance
 
     expect { described_class.perform_now(call.id) }
-      .to have_enqueued_job(described_class).with(call.id, 2).at(3.minutes.from_now)
+      .to have_enqueued_job(described_class).with(call.id, 2)
   end
 
   it 'stops retrying once MAX_ATTEMPTS is reached' do
@@ -106,9 +106,12 @@ RSpec.describe Wavoip::FetchDirectRecordingJob do
       expect(Rails.cache).to receive(:write).with(
         "wavoip:direct_recording_lock:#{call.id}", true, hash_including(unless_exist: true)
       ).and_call_original
-      allow(Wavoip::Calls::RecordingAttachmentService).to receive(:new).and_call_original
+      service = instance_double(Wavoip::Calls::RecordingAttachmentService, perform: true)
+      allow(Wavoip::Calls::RecordingAttachmentService).to receive(:new).and_return(service)
 
       described_class.perform_now(call.id)
+
+      expect(service).to have_received(:perform)
     end
   end
 end

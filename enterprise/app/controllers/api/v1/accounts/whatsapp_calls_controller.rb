@@ -31,6 +31,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     @upload_status = @call.message.with_lock { attach_recording_idempotently }
   end
 
+  # FORK: delegate outbound dial to OutboundWhatsappCallBuilder
   def initiate
     @call = Voice::OutboundWhatsappCallBuilder.perform!(
       conversation: @conversation,
@@ -99,6 +100,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     'uploaded'
   end
 
+  # FORK: delegate opt-in flow to CallPermissionRequestService
   # Meta error 138006 means the contact hasn't opted in yet; delegate opt-in
   # flow to the dedicated service (throttle, template, activity, WAMID record).
   # 422 (not 200) so clients treating 2xx as "call placed" can't mistake the

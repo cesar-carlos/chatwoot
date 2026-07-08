@@ -23,6 +23,19 @@ class Wavoip::Calls::StaleCallTimeoutScheduler
     Wavoip::AutoNoAnswerRingJob.set(wait: timeout_seconds.seconds).perform_later(call.id)
   end
 
+  def schedule_in_progress_safety_net
+    timeout = inbox.channel.provider_config['max_call_duration_seconds'].to_i
+    timeout = DEFAULT_IN_PROGRESS_TIMEOUT_SECONDS unless timeout.positive?
+
+    lock_key = "wavoip:stale_progress_lock:#{call.id}"
+    acquired = Rails.cache.write(lock_key, true, unless_exist: true, expires_in: (timeout + 60).seconds)
+    return unless acquired
+
+    Wavoip::StaleInProgressCallJob.set(wait: timeout.seconds).perform_later(call.id)
+  end
+
+  DEFAULT_IN_PROGRESS_TIMEOUT_SECONDS = 7200
+
   private
 
   attr_reader :call, :inbox

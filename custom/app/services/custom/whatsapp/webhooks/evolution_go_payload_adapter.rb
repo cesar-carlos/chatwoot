@@ -16,7 +16,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
       {}
     end
 
-    def build_key(info) # rubocop:disable Metrics/CyclomaticComplexity
+    def build_key(info)
       info = info.with_indifferent_access
       dig = Custom::Whatsapp::EvolutionGo::FieldDig
       from_me = ActiveModel::Type::Boolean.new.cast(dig.dig_field(info, 'IsFromMe', 'isFromMe'))

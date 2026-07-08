@@ -1,4 +1,5 @@
 import TwilioVoiceClient from 'dashboard/api/channel/voice/twilioVoiceClient';
+// FORK: browser voice teardown via voiceSessionRegistry
 import { isBrowserVoiceProvider } from 'customDashboard/lib/voice/browserVoiceProviders';
 import { teardownBrowserVoiceSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { TERMINAL_STATUSES } from 'dashboard/helper/voice';
@@ -38,6 +39,7 @@ export const useCallsStore = defineStore('calls', {
         return;
       }
 
+      // FORK: keep outbound Wavoip widget while SDK session is live
       if (
         call?.provider === VOICE_CALL_PROVIDERS.WAVOIP &&
         call?.callDirection === 'outbound' &&
@@ -51,6 +53,7 @@ export const useCallsStore = defineStore('calls', {
 
     addCall(callData) {
       if (!callData?.callSid) return;
+      // FORK: merge Wavoip webhook/SDK call ids into one store row
       // Wavoip's webhook call_id and the SDK's Offer.id can diverge; match by
       // those alias ids too so a race between the two paths merges into one
       // row instead of leaving two widgets until something else reconciles

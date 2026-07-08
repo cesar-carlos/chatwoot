@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useBranding } from 'shared/composables/useBranding';
 
 const props = defineProps({
   inbox: {
@@ -14,6 +15,7 @@ const props = defineProps({
 });
 
 const { t } = useI18n();
+const { replaceInstallationName } = useBranding();
 
 const items = computed(() => {
   const chatwootEnabled = props.inbox.call_recording_enabled !== false;
@@ -36,7 +38,9 @@ const items = computed(() => {
     },
     {
       key: 'chatwoot_toggle',
-      label: t('INBOX_MGMT.WAVOIP_RECORDING_CHECKLIST.CHATWOOT_TOGGLE'),
+      label: replaceInstallationName(
+        t('INBOX_MGMT.WAVOIP_RECORDING_CHECKLIST.CHATWOOT_TOGGLE')
+      ),
       ok: chatwootEnabled,
       manual: false,
     },

@@ -91,10 +91,7 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
   end
 
   def secondary_source_id_exists?(source_id)
-    inbox.messages.where(
-      'content_attributes::jsonb @> ?',
-      { evolution_secondary_source_ids: [source_id] }.to_json
-    ).exists?
+    inbox.messages.exists?(['content_attributes::jsonb @> ?', { evolution_secondary_source_ids: [source_id] }.to_json])
   end
 
   def skip_remote_jid?(remote_jid)

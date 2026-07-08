@@ -4,6 +4,8 @@
 class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseService
   include Custom::Whatsapp::Providers::EvolutionServiceOutbound
 
+  CAPTIONLESS_MEDIA_TYPES = %w[audio sticker].freeze
+
   def send_message(phone_number, message)
     @message = message
 
@@ -210,9 +212,7 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     quoted = build_quoted_context(phone_number, message)
     delay = outbound_delay
     mediatype = attachment_mediatype(attachment)
-    if mediatype == 'audio'
-      return send_audio_attachment(phone_number, media_source, quoted, delay)
-    end
+    return send_audio_attachment(phone_number, media_source, quoted, delay) if mediatype == 'audio'
 
     api_client.send_media(
       number: phone_number,
@@ -248,11 +248,13 @@ class Custom::Whatsapp::Providers::EvolutionService < Whatsapp::Providers::BaseS
     'document'
   end
 
+  def captionless_attachment?(attachment)
+    CAPTIONLESS_MEDIA_TYPES.include?(attachment_mediatype(attachment))
+  end
+
   def send_complementary_text_for_captionless_attachments!(phone_number, message)
     return if message.content.blank?
-    return unless message.attachments.any? do |attachment|
-      %w[audio sticker].include?(attachment_mediatype(attachment))
-    end
+    return unless message.attachments.any? { |attachment| captionless_attachment?(attachment) }
 
     response = api_client.send_text(
       number: phone_number,

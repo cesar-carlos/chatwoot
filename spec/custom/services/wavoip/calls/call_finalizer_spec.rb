@@ -50,7 +50,9 @@ RSpec.describe Wavoip::Calls::CallFinalizer do
 
       described_class.sync_message_and_conversation!(call)
 
-      expect(message.reload.content_attributes.dig('data', 'accepted_by')).to eq(agent.id)
+      expect(message.reload.content_attributes.dig('data', 'accepted_by')).to eq(
+        { 'id' => agent.id, 'name' => agent.name }
+      )
     end
 
     it 'accepts an explicit agent override (nil for system-driven finalizations)' do

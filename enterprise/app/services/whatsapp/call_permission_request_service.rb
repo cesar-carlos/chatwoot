@@ -12,6 +12,8 @@ class Whatsapp::CallPermissionRequestService
   pattr_initialize [:conversation!, :agent!]
 
   def perform
+    conversation.reload if conversation.has_changes_to_save?
+
     status = nil
 
     conversation.with_lock do
