@@ -25,6 +25,9 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     evolution_go_import
     evolution_go_diagnostics
     evolution_go_test_webhook
+    evolution_go_logout
+    evolution_go_sync_webhook
+    evolution_go_pair
   ]
   # rubocop:enable Rails/LexicallyScopedActionFilter
 

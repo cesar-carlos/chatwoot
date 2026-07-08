@@ -21,6 +21,8 @@ Substituir por capturas reais no [E2E](../../doc/feature/whatsapp-provider/evolu
 | `message_revoke.json` | Webhook delete/revoke | `MessageDeleteSyncService` |
 | `history_sync.json` | Webhook `HISTORY_SYNC` | `HistorySyncProcessor` (⚠️ sintética) |
 | `message_inbound_group.json` | Webhook `MESSAGE` grupo | `EvolutionGoNormalizer` group path (⚠️ sintética) |
+| `message_inbound_location.json` | Webhook `MESSAGE` location | `EvolutionGoNormalizer` location path |
+| `pair_response.json` | `POST /instance/pair` | Pair API + `ConnectionService#pair!` |
 
 ---
 
@@ -35,7 +37,11 @@ Substituir por capturas reais no [E2E](../../doc/feature/whatsapp-provider/evolu
 | `source_id` inbound 1:1 | `data.key.id` |
 | `source_id` inbound grupo | JID `@g.us` completo |
 | Texto simples | `message.conversation` |
-| Eventos webhook | `MESSAGE`, `CONNECTION`, `QRCODE` |
+| Eventos webhook | `MESSAGE`, `CONNECTION`, `QRCODE`, `READ_RECEIPT`, delete/edit, `HISTORY_SYNC`, `GROUP`* |
+| Pair response | `data.PairingCode` |
+| Location inbound | `message.locationMessage.degreesLatitude/Longitude` |
+
+\* `GROUP` apenas quando `ignore_groups: false`
 
 ---
 

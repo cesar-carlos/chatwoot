@@ -132,4 +132,12 @@ export const channelActions = {
     const response = await InboxesAPI.postEvolutionGoImport(inboxId);
     return response.data;
   },
+  evolutionGoSyncWebhook: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionGoSyncWebhook(inboxId);
+    return response.data;
+  },
+  evolutionGoPair: async (_ctx, { inboxId, phone }) => {
+    const response = await InboxesAPI.postEvolutionGoPair(inboxId, phone);
+    return response.data;
+  },
 };

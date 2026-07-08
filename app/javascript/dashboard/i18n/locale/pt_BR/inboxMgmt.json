@@ -1259,6 +1259,10 @@
           "TEST_WEBHOOK": "Testar pipeline do webhook",
           "TEST_WEBHOOK_SUCCESS": "Evento de teste enfileirado com sucesso.",
           "TEST_WEBHOOK_ERROR": "Não foi possível enfileirar o evento de teste.",
+          "SYNC_WEBHOOK": "Sincronizar eventos do webhook",
+          "SYNC_WEBHOOK_SUCCESS": "Inscrição do webhook sincronizada com o Evolution Go.",
+          "SYNC_WEBHOOK_ERROR": "Não foi possível sincronizar a inscrição do webhook.",
+          "INSTANCE_NAME": "Nome da instância",
           "LOADING": "Carregando diagnóstico…",
           "INBOUND_DELETE_SKIPPED": "{count} exclusões do cliente ignoradas (mensagem não encontrada)",
           "INBOUND_EDIT_SKIPPED": "{count} edições do cliente ignoradas (mensagem não encontrada)"

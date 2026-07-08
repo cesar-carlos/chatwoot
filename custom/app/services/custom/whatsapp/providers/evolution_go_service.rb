@@ -7,6 +7,8 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
     @message = message
     if contact_attachment?(message)
       send_contact_card_message(phone_number, message)
+    elsif location_attachment?(message)
+      send_location_message(phone_number, message)
     elsif message.attachments.present?
       send_attachment_message(phone_number, message)
     elsif input_select_items(message).present?
@@ -110,6 +112,26 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
     message_id = process_response(response, message)
     mark_incoming_read_after_reply(phone_number, message) if message_id.present?
     message_id
+  end
+
+  def send_location_message(phone_number, message)
+    attachment = message.attachments.first
+    response = api_client.send_location(
+      number: phone_number,
+      latitude: attachment.coordinates_lat,
+      longitude: attachment.coordinates_long,
+      name: attachment.fallback_title.presence,
+      quoted: build_quoted_context(phone_number, message),
+      delay: outbound_delay,
+      **delivery_options(phone_number, message)
+    )
+    message_id = process_response(response, message)
+    mark_incoming_read_after_reply(phone_number, message) if message_id.present?
+    message_id
+  end
+
+  def location_attachment?(message)
+    message.attachments.one? && message.attachments.first.location?
   end
 
   def send_input_select_message(phone_number, message)

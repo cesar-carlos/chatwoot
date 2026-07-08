@@ -34,10 +34,13 @@ const {
   connectionStatus,
   qrcodeBase64,
   pairingCode,
+  pairingPhone,
   isLoading,
   isRefreshing,
+  isRequestingPairing,
   qrRefreshError,
   requestNewQr,
+  requestPairingCode,
   startSession,
   stopSession,
   applyPayload,
@@ -235,6 +238,34 @@ defineExpose({ open: openModal, close: closeModal, applyPayload });
           })
         }}
       </p>
+
+      <div
+        v-if="!pairingCode && !showQr"
+        class="flex w-full max-w-sm flex-col gap-2 text-left"
+      >
+        <label class="text-xs font-medium text-n-slate-11">
+          {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.PAIRING_PHONE_LABEL') }}
+        </label>
+        <input
+          v-model="pairingPhone"
+          type="tel"
+          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-2 text-sm text-n-slate-12"
+          :placeholder="
+            t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.PAIRING_PHONE_PLACEHOLDER')
+          "
+        />
+        <Button
+          type="button"
+          variant="faded"
+          :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.REQUEST_PAIRING_CODE')"
+          :is-loading="isRequestingPairing"
+          :disabled="isRequestingPairing || !pairingPhone"
+          @click="requestPairingCode(pairingPhone)"
+        />
+        <p class="text-xs text-n-slate-10">
+          {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.QR_MODAL.PAIRING_HINT') }}
+        </p>
+      </div>
     </div>
 
     <template #footer>

@@ -72,6 +72,12 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     get('/instance/qr', headers: instance_headers)
   end
 
+  def pair(phone:, subscribe: nil)
+    body = { phone: normalize_number(phone) }
+    body[:subscribe] = Array.wrap(subscribe).presence if subscribe.present?
+    post('/instance/pair', body, headers: instance_headers)
+  end
+
   def connection_status
     get('/instance/status', headers: instance_headers)
   end
@@ -112,6 +118,20 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     body[:delay] = delay if delay.present?
     body[:formatJid] = format_jid unless format_jid.nil?
     post('/send/sticker', body, headers: instance_headers)
+  end
+
+  def send_location(number:, latitude:, longitude:, name: nil, address: nil, quoted: nil, delay: nil, format_jid: nil)
+    body = {
+      number: normalize_number(number),
+      latitude: latitude,
+      longitude: longitude
+    }
+    body[:name] = name if name.present?
+    body[:address] = address if address.present?
+    body[:quoted] = quoted if quoted.present?
+    body[:delay] = delay if delay.present?
+    body[:formatJid] = format_jid unless format_jid.nil?
+    post('/send/location', body, headers: instance_headers)
   end
 
   def send_buttons(number:, title:, description:, footer:, buttons:, **options)
@@ -171,6 +191,29 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
 
   def advanced_settings(instance_id)
     get("/instance/#{instance_id}/advanced-settings", headers: instance_headers)
+  end
+
+  def instance_info(instance_id)
+    get("/instance/info/#{instance_id}", headers: admin_headers)
+  end
+
+  def instance_logs(instance_id, start_date: nil, end_date: nil, level: nil)
+    query = { start_date: start_date, end_date: end_date, level: level }.compact
+    path = "/instance/logs/#{instance_id}"
+    path = "#{path}?#{URI.encode_www_form(query)}" if query.present?
+    get(path, headers: admin_headers)
+  end
+
+  def set_presence(number:, state:, is_audio: false)
+    post(
+      '/message/presence',
+      { number: normalize_number(number), state: state.to_s, isAudio: is_audio },
+      headers: instance_headers
+    )
+  end
+
+  def user_check(number:)
+    post('/user/check', { number: normalize_number(number) }, headers: instance_headers)
   end
 
   def update_advanced_settings(instance_id, settings:)
