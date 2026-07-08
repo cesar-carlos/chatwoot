@@ -42,7 +42,7 @@ Doc: [create-a-new-instance](https://docs.evolutionfoundation.com.br/evolution-g
   "name": "minha-instancia",
   "token": "uuid-opcional",
   "proxy": {
-    "address": "proxy.example.com",
+    "host": "proxy.example.com",
     "port": "8080",
     "username": "",
     "password": ""
@@ -334,8 +334,7 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 | `POST /message/react` | 3 | — |
 | `POST /message/edit` | UX | `EditSyncService` (opt-in `sync_edit_to_whatsapp`) |
 | `POST /message/delete` | UX | `DeleteSyncService` (opt-in `sync_delete_to_whatsapp`) |
-| `POST /message/downloadimage` | 2 | `MediaDownloadJob` |
-| `POST /message/downloadmedia` | 2 | fallback download |
+| `POST /message/downloadmedia` | 2 | `MediaDownloadJob` — único endpoint de download no swagger atual |
 
 ### History sync (Fase 4)
 
@@ -343,7 +342,9 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 POST /chat/history-sync
 ```
 
-Body: `{ "chat": "5511...@s.whatsapp.net", "days": 7 }` — dispara eventos `HISTORY_SYNC` com batch de mensagens.
+Body (swagger): `{ "count": 100, "messageInfo": { "chat": "5511...@s.whatsapp.net" } }` — dispara eventos `HISTORY_SYNC` com batch de mensagens.
+
+`ApiClient#history_sync` usa a mensagem mais antiga conhecida do chat quando disponível; **validar comportamento real no E2E** (body anterior `{ chat, days }` era no-op).
 
 Componentes: `ApiClient#history_sync`, `Import::MessagesImporter`, `HistorySyncProcessor`.
 
@@ -367,9 +368,17 @@ Fixture sintética: `spec/fixtures/evolution_go/history_sync.json` — **validar
 
 | Método | Path | Descrição |
 |--------|------|-----------|
+| `GET` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_connection` | Status + QR sob demanda (`include_qr=true` no query) |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_reconnect` | Reconnect + re-subscribe webhook |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_logout` | Logout da sessão WhatsApp |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_pair` | Pairing code (alternativa ao QR) |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_sync_webhook` | Re-envia `webhookUrl` + subscribe |
 | `GET` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_diagnostics` | Webhook URL, import status, `mutation_stats` |
-| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_test_webhook` | Enfileira MESSAGE de teste |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_test_webhook` | Ping webhook — atualiza `last_webhook_at` sem criar contato |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_import` | Força import contatos (+ messages se habilitado) |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/evolution_go_server_check` | Valida `base_url` + SSRF guard (wizard step 1) |
+
+Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token=SECRET`
 
 ---
 
@@ -385,7 +394,15 @@ Demais rotas de grupo: ver [documentation-links.md § Group](./documentation-lin
 
 ## 7. User / Label
 
-Ver [documentation-links.md](./documentation-links.md) — fora do escopo inbox Chatwoot MVP.
+Usados pelo import e enriquecimento de contatos:
+
+| Método | Path | Uso fork |
+|--------|------|----------|
+| `GET` | `/user/contacts` | `ContactsImporter` |
+| `POST` | `/user/check` | `ContactEnrichmentService` — body `{ "number": ["5511..."] }` (array) |
+| `GET` | `/user/profile-picture` | Avatar (quando habilitado) |
+
+Labels: fora do escopo inbox Chatwoot MVP — ver [documentation-links.md](./documentation-links.md).
 
 ---
 

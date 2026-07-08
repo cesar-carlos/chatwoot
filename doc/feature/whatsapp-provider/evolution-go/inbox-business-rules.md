@@ -131,7 +131,7 @@ Doc create: [create-a-new-instance](https://docs.evolutionfoundation.com.br/evol
 
 | Campo fork | Campo Go `proxy` | Fase |
 |------------|------------------|------|
-| `proxy_host` | `address` | 1 (wizard) |
+| `proxy_host` | `host` | 1 (wizard) |
 | `proxy_port` | `port` | 1 |
 | `proxy_username` | `username` | 1 |
 | `proxy_password` | `password` | 1 |
@@ -223,7 +223,7 @@ Ocultar: templates Meta, campanhas, embedded signup, health cloud, voz Meta.
 | `import_contacts` | `false` | `GET /user/contacts` + enrichment `/user/info`, `/user/avatar` |
 | `import_on_connect` | `false` | Dispara `ImportJob` ao `connection_status: open` |
 | `import_messages` | `false` | `POST /chat/history-sync` → webhook `HISTORY_SYNC` |
-| `days_limit_import_messages` | `7` | Body `days` no history-sync |
+| `days_limit_import_messages` | `7` | Janela lógica; body swagger `{ count, messageInfo }` no history-sync |
 
 Mensagens históricas recebem `content_attributes.history_import: true`.
 

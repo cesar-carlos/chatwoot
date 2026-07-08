@@ -6,7 +6,7 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
   def process_statuses
     return super unless evolution_go_channel?
 
-    statuses = Array.wrap(@processed_params[:statuses]).map(&:with_indifferent_access).compact
+    statuses = Array.wrap(@processed_params[:statuses]).filter_map(&:with_indifferent_access)
     return if statuses.blank?
 
     statuses.each do |status|

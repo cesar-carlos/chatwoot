@@ -145,10 +145,8 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
   end
 
   describe '#download_media' do
-    it 'uses downloadmedia first and falls back to downloadimage' do
+    it 'posts to /message/downloadmedia' do
       stub_request(:post, 'https://go.example.com/message/downloadmedia')
-        .to_return(status: 404, body: { error: 'not found' }.to_json)
-      stub_request(:post, 'https://go.example.com/message/downloadimage')
         .to_return(status: 200, body: { base64: Base64.strict_encode64('bytes') }.to_json)
 
       envelope = {

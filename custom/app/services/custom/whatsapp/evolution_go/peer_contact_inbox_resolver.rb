@@ -78,9 +78,7 @@ class Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver
     remote_jid = jid_resolver.resolve_message_jid(key_data)
     phone = jid_resolver.phone_from_message_key(key_data)
 
-    if remote_jid.end_with?('@lid') && phone.blank?
-      return create_lid_contact_inbox!(remote_jid)
-    end
+    return create_lid_contact_inbox!(remote_jid) if remote_jid.end_with?('@lid') && phone.blank?
 
     return if phone.blank?
 
