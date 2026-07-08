@@ -232,10 +232,11 @@ const requestEmbeddedSignupAccess = () => {
         </p>
       </div>
 
-      <div class="flex gap-6 justify-start">
+      <div class="grid max-w-4xl grid-cols-2 gap-6 sm:grid-cols-4">
         <ChannelSelector
           v-for="provider in availableProviders"
           :key="provider.key"
+          class="w-full"
           :title="provider.title"
           :description="provider.description"
           :icon="provider.icon"
