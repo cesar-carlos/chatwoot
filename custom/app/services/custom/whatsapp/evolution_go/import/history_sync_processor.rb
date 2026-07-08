@@ -40,8 +40,14 @@ class Custom::Whatsapp::EvolutionGo::Import::HistorySyncProcessor
     normalized = Custom::Whatsapp::Webhooks::EvolutionGoNormalizer.new(channel, envelope).perform
     return false if normalized.blank?
 
-    Custom::Whatsapp::EvolutionGo::InboundMessageProcessor.process(channel, normalized)
-    stamp_imported_message!(extract_source_id(record))
+    source_id = extract_source_id(record)
+    return false if source_id.present? && channel.inbox.messages.exists?(source_id: source_id)
+
+    Custom::Whatsapp::EvolutionGo::InboundMessageProcessor.process(
+      channel,
+      normalized.merge(phone_number: channel.phone_number)
+    )
+    stamp_imported_message!(source_id)
     true
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] history sync import failed: #{e.message}")

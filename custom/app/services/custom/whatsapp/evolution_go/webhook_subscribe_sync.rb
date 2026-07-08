@@ -33,12 +33,9 @@ class Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync
     )
     Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(response, 'Failed to sync Evolution Go webhook subscription')
 
-    connection_service.persist_provider_config!(
-      provider_config.merge(
-        'webhook_subscribe' => events,
-        'connection_status' => 'connecting'
-      )
-    )
+    attrs = { 'webhook_subscribe' => events }
+    attrs['connection_status'] = 'connecting' unless provider_config['connection_status'] == 'open'
+    connection_service.persist_provider_config!(provider_config.merge(attrs))
     events
   end
 

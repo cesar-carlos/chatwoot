@@ -28,7 +28,7 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::StatusNormalizer
     }
   end
 
-  def map_receipt_status(data)
+  def map_receipt_status(data) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     state = (data[:receipt_state] || data[:state] || data[:State]).to_s
     type = (data[:receipt_type] || data[:Type] || data[:type]).to_s.downcase
 

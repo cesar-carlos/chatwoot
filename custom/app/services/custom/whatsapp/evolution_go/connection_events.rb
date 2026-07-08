@@ -51,11 +51,17 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
     state = map_connection_state(data, event: envelope[:event])
     return if state.blank?
 
+    previous_status = provider_config['connection_status']
     connection_service.update_connection_status(state)
     jid = dig_field(data.with_indifferent_access, 'jid', 'Jid', 'JID') if data.is_a?(Hash)
     connection_service.sync_phone_from_jid!(jid) if state == 'open' && jid.present?
     connection_service.sync_phone_number! if state == 'open'
     broadcast({ connection_status: state, phone_number: channel.phone_number }.compact)
+    notify_disconnection!(previous_status, state)
+  end
+
+  def provider_config
+    channel.provider_config || {}
   end
 
   def handle_qrcode_event(envelope)
@@ -73,7 +79,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
     )
   end
 
-  def map_connection_state(data, event: nil)
+  def map_connection_state(data, event: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     event_state = state_from_event_name(event)
     return event_state if event_state.present?
 
@@ -115,5 +121,14 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
 
   def broadcast(payload)
     connection_service.broadcast_connection_event(payload)
+  end
+
+  def notify_disconnection!(previous_status, state)
+    return unless state == 'close' && previous_status != 'close'
+
+    inbox = channel.inbox
+    return if inbox.blank?
+
+    Custom::Whatsapp::EvolutionGo::Broadcaster.new(inbox: inbox).broadcast_disconnected
   end
 end

@@ -57,7 +57,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
     channel.provider_config || {}
   end
 
-  def persist_create_response!(response)
+  def persist_create_response!(response) # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     data = api_client.unwrap(response, context: 'create_instance')
     token = api_client.dig_field(data, 'token', 'Token').to_s.strip
     instance_id = api_client.dig_field(data, 'id', 'Id', 'ID').to_s
@@ -76,7 +76,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
       'connection_status' => 'connecting',
       'webhook_token' => provider_config['webhook_token'].presence || SecureRandom.hex(16),
       'webhook_subscribe' => provider_config['webhook_subscribe'].presence ||
-        Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.canonical_events(provider_config)
+                             Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.canonical_events(provider_config)
     }
     connection_service.persist_provider_config!(provider_config.merge(attrs.stringify_keys))
     @api_client = nil

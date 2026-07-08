@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize
 module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   MESSAGE_TYPE_MAP = {
     'conversation' => 'text',
@@ -37,7 +38,7 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     end
 
     return 'location' if message['locationMessage'].present? || message[:locationMessage].present? ||
-                        message['liveLocationMessage'].present? || message[:liveLocationMessage].present?
+                         message['liveLocationMessage'].present? || message[:liveLocationMessage].present?
 
     body = extract_text_body(message)
     return 'text' if body.present?
@@ -194,3 +195,4 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid)
   end
 end
+# rubocop:enable Metrics/ModuleLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/AbcSize

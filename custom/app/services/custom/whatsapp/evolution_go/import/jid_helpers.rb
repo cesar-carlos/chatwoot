@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/CyclomaticComplexity
 module Custom::Whatsapp::EvolutionGo::Import::JidHelpers
   private
 
@@ -47,3 +48,4 @@ module Custom::Whatsapp::EvolutionGo::Import::JidHelpers
     Array.wrap(data).map { |entry| entry.is_a?(Hash) ? entry.stringify_keys : entry }
   end
 end
+# rubocop:enable Metrics/CyclomaticComplexity
