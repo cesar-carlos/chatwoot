@@ -116,8 +116,12 @@ export const channelActions = {
     const response = await InboxesAPI.postEvolutionImport(inboxId);
     return response.data;
   },
-  fetchEvolutionGoConnection: async (_ctx, inboxId) => {
-    const response = await InboxesAPI.getEvolutionGoConnection(inboxId);
+  fetchEvolutionGoConnection: async (_ctx, payload) => {
+    const inboxId = typeof payload === 'object' ? payload.inboxId : payload;
+    const includeQr = typeof payload === 'object' ? payload.includeQr : false;
+    const response = await InboxesAPI.getEvolutionGoConnection(inboxId, {
+      includeQr,
+    });
     return response.data;
   },
   evolutionGoReconnect: async (_ctx, inboxId) => {

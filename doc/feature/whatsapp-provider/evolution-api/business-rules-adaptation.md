@@ -106,7 +106,7 @@ Legenda **Decisão fork:**
 | Bot `123456` / `CHATWOOT_BOT_CONTACT` | Wizard QR |
 | `WAID:` prefix `source_id` | `key.id` Baileys |
 | `chatwoot-import-helper` SQL | Proibido no fork |
-| `syncLostMessages` cron 30 min | Opcional futuro; não MVP |
+| `syncLostMessages` cron 30 min | **Portado** — opt-in via `sync_lost_messages` + `LostMessagesReconciliationService` |
 | Labels automáticas por `nameInbox` | Labels CW manuais/automações |
 | `webhookUrl` `/chatwoot/webhook/` | `/webhooks/evolution/:instance` |
 

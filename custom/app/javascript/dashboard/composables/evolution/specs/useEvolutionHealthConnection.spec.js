@@ -119,6 +119,26 @@ describe('useEvolutionHealthConnection', () => {
     expect(useAlert).toHaveBeenCalled();
   });
 
+  it('resolves inbox id from a getter function ref', async () => {
+    dispatchMock.mockResolvedValue({ connection_status: 'open' });
+    scope = effectScope(true);
+    const inbox = {
+      id: 99,
+      provider_config: { connection_status: 'open' },
+    };
+    const { connectionStatus } = scope.run(() =>
+      useEvolutionHealthConnection(() => inbox)
+    );
+
+    await nextTick();
+
+    expect(connectionStatus.value).toBe('open');
+    expect(dispatchMock).toHaveBeenCalledWith(
+      'inboxes/fetchEvolutionConnection',
+      99
+    );
+  });
+
   it('opens the QR modal after a successful restart', async () => {
     scope = effectScope(true);
     dispatchMock.mockImplementation(action => {

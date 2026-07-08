@@ -196,7 +196,12 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     return true if number.blank?
 
     response = api_client.user_check(number: number)
-    return true unless response.success?
+    unless response.success?
+      Rails.logger.warn(
+        "[EVOLUTION_GO] user/check failed for contact #{contact.id}: HTTP #{response.code}"
+      )
+      return false
+    end
 
     parsed = response.parsed_response
     data = parsed.is_a?(Hash) ? (parsed['data'] || parsed) : {}
@@ -206,6 +211,6 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     ActiveModel::Type::Boolean.new.cast(data['Exists'])
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] user/check failed for contact #{contact.id}: #{e.message}")
-    true
+    false
   end
 end

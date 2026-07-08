@@ -142,7 +142,9 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless evolution_go_channel?(channel)
 
-    payload = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel).connection_payload
+    payload = Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel).connection_payload(
+      include_qr: ActiveModel::Type::Boolean.new.cast(params[:include_qr])
+    )
     render json: payload
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.error "[EVOLUTION_GO] evolution_go_connection failed: #{e.log_message}"
@@ -233,8 +235,14 @@ module Custom::Api::V1::Accounts::InboxesController
   def evolution_go_server_check
     authorize Inbox, :create?
 
+    base_url = params.require(:base_url)
+    unless Custom::Whatsapp::EvolutionGo::UrlSafetyGuard.safe?(base_url)
+      return render json: { ok: false, error: 'Evolution Go server unreachable' },
+                    status: :unprocessable_entity
+    end
+
     client = Custom::Whatsapp::EvolutionGo::ApiClient.new(
-      base_url: params.require(:base_url),
+      base_url: base_url,
       global_api_key: params[:global_api_key]
     )
     response = client.server_ok

@@ -7,7 +7,7 @@ Hoje o repositório tem um provider alternativo **implementado** e outros **apen
 | Provider | Chave | Estado |
 |----------|-------|--------|
 | Evolution API (Node/Baileys) | `evolution` | ✅ código em `custom/` + specs |
-| Evolution Go (whatsmeow) | `evolution_go` | 📄 planejamento |
+| Evolution Go (whatsmeow) | `evolution_go` | ✅ código em `custom/` + specs |
 | Z-API | `zapi` | ✅ [z-api/](./z-api/) |
 | NotificaMe / genéricos | — | 📄 comparação apenas |
 

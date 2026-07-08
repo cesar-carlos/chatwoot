@@ -127,7 +127,7 @@ apikey: <instance-token>
 | **Send text path** | `POST /message/sendText/{name}` | `POST /send/text` |
 | **Licença** | Depende do deploy | Obrigatória no painel Go |
 | **PostgreSQL** | Opcional (Redis comum) | Obrigatório |
-| **Código fork hoje** | `custom/.../evolution/` implementado | Somente docs |
+| **Código fork hoje** | `custom/.../evolution/` implementado | `custom/.../evolution_go/` implementado |
 | **Reusar adapter do outro** | ❌ Nunca | ❌ Nunca |
 
 **Regra:** um inbox = um provider. Não misturar Node e Go na mesma instância ou rota webhook.

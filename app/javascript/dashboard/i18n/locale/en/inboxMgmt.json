@@ -453,7 +453,8 @@
         "CONNECT": {
           "TITLE": "Inbox created",
           "DESCRIPTION": "Scan the QR code with WhatsApp to finish linking this inbox.",
-          "OPEN_QR": "Open QR scanner"
+          "OPEN_QR": "Open QR scanner",
+          "CONFIGURE_LATER": "Configure later"
         },
         "API": {
           "ERROR_MESSAGE": "Could not create the Evolution inbox. Check URL, API key, and instance name."

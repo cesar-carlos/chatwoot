@@ -423,14 +423,14 @@ Inbound mídia (webhook `webhookBase64: false`): Chatwoot chama `POST /chat/getB
 | `POST /message/sendSticker/:instanceName` | 3 | Upload |
 | `POST /message/sendPoll/:instanceName` | 3 | Enquete |
 
-### Interativos (Fase 3 — não implementado no fork)
+### Interativos e contato (implementados no fork)
 
 | Endpoint | Doc | Status fork |
 |----------|-----|-------------|
-| `POST /message/sendButtons/:instanceName` | [send-buttons](https://docs.evolutionfoundation.com.br/evolution-api/send-buttons) | ⏸️ Deferido — `input_select` usa lista numerada via `sendText` |
-| `POST /message/sendList/:instanceName` | [send-list](https://docs.evolutionfoundation.com.br/evolution-api/send-list) | ⏸️ Deferido |
+| `POST /message/sendButtons/:instanceName` | [send-buttons](https://docs.evolutionfoundation.com.br/evolution-api/send-buttons) | ✅ `input_select` com ≤3 itens |
+| `POST /message/sendList/:instanceName` | [send-list](https://docs.evolutionfoundation.com.br/evolution-api/send-list) | ✅ `input_select` com >3 itens |
+| `POST /message/sendContact/:instanceName` | [send-contact](https://docs.evolutionfoundation.com.br/evolution-api/send-contact) | ✅ cartão de contato outbound |
 | `POST /message/sendLocation/:instanceName` | [send-location](https://docs.evolutionfoundation.com.br/evolution-api/send-location) | ⏸️ Fase 3+ |
-| `POST /message/sendContact/:instanceName` | [send-contact](https://docs.evolutionfoundation.com.br/evolution-api/send-contact) | ⏸️ Fase 3+ |
 | `POST /message/sendReaction/:instanceName` | [send-reaction](https://docs.evolutionfoundation.com.br/evolution-api/send-reaction) | ⏸️ Fase 3+ |
 
 ---

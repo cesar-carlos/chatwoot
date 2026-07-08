@@ -199,7 +199,10 @@ function buildProviderConfig() {
     import_messages: state.importMessages,
     import_on_connect: state.importOnConnect,
     sync_lost_messages: state.syncLostMessages,
-    days_limit_import_messages: Number(state.daysLimitImportMessages) || 7,
+    days_limit_import_messages: Math.min(
+      365,
+      Math.max(1, Number(state.daysLimitImportMessages) || 7)
+    ),
   };
 
   delete config.api_key;

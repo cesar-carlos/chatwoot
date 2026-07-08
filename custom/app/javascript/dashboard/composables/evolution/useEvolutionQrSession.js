@@ -19,6 +19,7 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
   let sessionStartedConnected = false;
   let hasEmittedConnected = false;
   let refreshInFlight = null;
+  let sessionToken = 0;
 
   function isConnected() {
     return connectionStatus.value === 'open';
@@ -39,6 +40,7 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
   }
 
   function stopSession() {
+    sessionToken += 1;
     stopPolling();
     clearExpiryTimer();
     refreshInFlight = null;
@@ -53,6 +55,9 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
     if (normalized.qrcodeBase64) {
       qrcodeBase64.value = normalized.qrcodeBase64;
       qrRefreshError.value = false;
+      if (!isConnected()) {
+        armQrExpiryTimer();
+      }
     }
     if (normalized.pairingCode) {
       pairingCode.value = normalized.pairingCode;
@@ -112,19 +117,26 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
 
   async function requestNewQr() {
     const id = unref(inboxId);
-    if (!id || isRefreshing.value) return;
+    if (!id || isRefreshing.value) {
+      if (!isConnected() && !isRefreshing.value) {
+        armQrExpiryTimer();
+      }
+      return { ok: false };
+    }
 
     isRefreshing.value = true;
     try {
       const payload = await store.dispatch('inboxes/evolutionReconnect', id);
       applyPayload(payload);
       qrRefreshError.value = false;
+      return { ok: true };
     } catch (error) {
       if (isInboxNotFoundError(error)) {
         handleInboxNotFound();
       } else {
         qrRefreshError.value = true;
       }
+      return { ok: false, error };
     } finally {
       isRefreshing.value = false;
       if (!isConnected()) {
@@ -141,6 +153,7 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
   }
 
   async function startSession({ fetchFreshQr = false } = {}) {
+    const token = sessionToken;
     sessionStartedConnected = isConnected();
     hasEmittedConnected = false;
     qrRefreshError.value = false;
@@ -149,8 +162,11 @@ export function useEvolutionQrSession({ inboxId, store, onConnected }) {
       await requestNewQr();
     } else {
       await refreshConnection();
+      if (token !== sessionToken) return;
       armQrExpiryTimer();
     }
+
+    if (token !== sessionToken) return;
     startPolling();
   }
 

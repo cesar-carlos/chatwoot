@@ -49,7 +49,7 @@ class Webhooks::EvolutionController < ActionController::API
   end
 
   def sanitized_job_payload
-    payload = webhook_payload.except('apikey', 'api_key', :apikey, :api_key)
+    payload = webhook_payload.except('apikey', 'api_key', 'token', :apikey, :api_key, :token)
     payload['event'] = Custom::Whatsapp::Evolution::EventNames.normalize(payload['event']) if payload['event'].present?
     payload
   end

@@ -5,6 +5,7 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfig
 
   WEBHOOK_EVENTS = %w[
     MESSAGE
+    SEND_MESSAGE
     CONNECTION
     QRCODE
     READ_RECEIPT
@@ -14,6 +15,8 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfig
     MESSAGE_EDIT
     HISTORY_SYNC
   ].freeze
+
+  WEBHOOK_SUBSCRIBE_KEYS = %w[ignore_from_me_echo ignore_groups].freeze
 
   RUNTIME_KEYS = %w[
     connection_status
@@ -77,6 +80,10 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfig
 
   def self.proxy_change?(before_config, after_config)
     config_changed?(before_config, after_config, PROXY_KEYS)
+  end
+
+  def self.webhook_subscribe_change?(before_config, after_config)
+    config_changed?(before_config, after_config, WEBHOOK_SUBSCRIBE_KEYS)
   end
 
   def self.config_changed?(before_config, after_config, keys)

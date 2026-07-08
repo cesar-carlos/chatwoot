@@ -132,9 +132,10 @@ class Inboxes extends CacheEnabledApiClient {
   }
 
   // FORK: Evolution Go connection / QR polling
-  getEvolutionGoConnection(inboxId) {
+  getEvolutionGoConnection(inboxId, { includeQr = false } = {}) {
     return axios.get(`${this.url}/${inboxId}/evolution_go_connection`, {
       timeout: EVOLUTION_CONNECTION_TIMEOUT_MS,
+      params: includeQr ? { include_qr: true } : {},
     });
   }
 

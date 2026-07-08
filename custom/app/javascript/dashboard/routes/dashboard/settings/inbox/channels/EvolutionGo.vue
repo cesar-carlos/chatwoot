@@ -304,6 +304,7 @@ async function createChannel() {
       ref="qrModalRef"
       v-model="isQrModalOpen"
       :inbox-id="inboxId"
+      fetch-fresh-qr
       @connected="onWizardConnected"
     />
   </div>

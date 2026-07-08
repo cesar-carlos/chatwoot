@@ -6,10 +6,10 @@ class Custom::Whatsapp::EvolutionGo::WebhookTestService
   def perform
     enqueued_at = Time.current.iso8601
     Webhooks::WhatsappEventsJob.perform_later(test_payload.merge(enqueued_at: enqueued_at))
-    channel.reload
-    config = (channel.provider_config || {}).stringify_keys
-    merged = config.merge('last_webhook_at' => enqueued_at)
-    channel.update_columns(provider_config: merged, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+    Custom::Whatsapp::EvolutionGo::ProviderConfigMerger.merge!(
+      channel,
+      'last_webhook_at' => enqueued_at
+    )
 
     { ok: true, enqueued_at: enqueued_at }
   end
@@ -20,6 +20,7 @@ class Custom::Whatsapp::EvolutionGo::WebhookTestService
     config = channel.provider_config || {}
     {
       event: 'MESSAGE',
+      evolution_go_test_webhook: true,
       evolution_go_instance_name: config['instance_name'],
       channel_id: channel.id,
       data: {

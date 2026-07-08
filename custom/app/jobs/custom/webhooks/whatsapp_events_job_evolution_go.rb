@@ -17,6 +17,11 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       return
     end
 
+    if ActiveModel::Type::Boolean.new.cast(params[:evolution_go_test_webhook])
+      Rails.logger.info("[EVOLUTION_GO] webhook test pipeline ok channel=#{channel.id}")
+      return
+    end
+
     dispatch_evolution_go_event(channel, params)
   end
 
@@ -42,6 +47,8 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def dispatch_evolution_go_event(channel, params)
+    params[:event] = Custom::Whatsapp::EvolutionGo::EventNames.normalize(params[:event])
+
     case params[:event].to_s.upcase
     when 'MESSAGE'
       process_message_event(channel, params)
@@ -51,14 +58,14 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       process_edit_event(channel, params)
     when 'READ_RECEIPT', 'RECEIPT'
       process_read_receipt_event(channel, params)
-    when 'CONNECTION', 'CONNECTED', 'DISCONNECTED', 'LOGGEDOUT', 'QRCODE'
+    when 'CONNECTION', 'CONNECTED', 'DISCONNECTED', 'LOGGEDOUT', 'LOGGED_OUT', 'QRCODE', 'QR_CODE'
       Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel).handle_event(params)
     when 'HISTORY_SYNC'
       process_history_sync_event(channel, params)
     when 'GROUP'
       process_group_event(channel, params)
     when 'SEND_MESSAGE'
-      Rails.logger.info("[EVOLUTION_GO] ignored outbound echo event=#{params[:event]} channel=#{channel.id}")
+      process_send_message_event(channel, params)
     else
       Rails.logger.info("[EVOLUTION_GO] ignored event=#{params[:event]} channel=#{channel.id}")
     end
@@ -210,8 +217,29 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     ActiveModel::Type::Boolean.new.cast(config['mark_inbound_edited'])
   end
 
+  def process_send_message_event(channel, params)
+    if ignore_from_me_echo?(channel)
+      Rails.logger.info("[EVOLUTION_GO] ignored outbound echo event=#{params[:event]} channel=#{channel.id}")
+      return
+    end
+
+    delete_key = inbound_delete_key(channel, params)
+    if delete_key.present?
+      process_inbound_delete(channel, delete_key)
+      return
+    end
+
+    edit_payload = inbound_edit_payload(channel, params)
+    if edit_payload.present?
+      process_inbound_edit(channel, edit_payload)
+      return
+    end
+
+    process_from_me_message(channel, params)
+  end
+
   def process_from_me_message(channel, params)
-    sender_id = outgoing_sender_id(params[:data])
+    sender_id = outgoing_sender_id(channel, params[:data])
     Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id) do
       Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService.new(channel: channel, data: params[:data]).perform
     end
@@ -234,7 +262,7 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     ActiveModel::Type::Boolean.new.cast(config['ignore_from_me_echo'])
   end
 
-  def outgoing_sender_id(data)
+  def outgoing_sender_id(channel, data)
     canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
     key = canonical['key'] || canonical[:key] || {}
     jid = key['remoteJid'] || key[:remoteJid]
