@@ -49,7 +49,10 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
     super
   end
 
-  def create_regular_message(message)
+  # Enqueue after the inbound transaction commits. perform_later inside
+  # create_regular_message races Sidekiq against an uncommitted Message row
+  # (MediaDownloadJob then Message.find_by → nil and silently drops the file).
+  def process_messages
     super
     enqueue_pending_evolution_go_media_download if evolution_go_channel?
   end

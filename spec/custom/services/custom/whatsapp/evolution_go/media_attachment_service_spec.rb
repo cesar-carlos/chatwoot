@@ -80,4 +80,32 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MediaAttachmentService do
     expect(message.reload.content_attributes['evolution_go_media_failed']).to be(true)
     expect(message.content_attributes['evolution_go_media_error']).to eq('Empty media response from Evolution Go')
   end
+
+  it 'attaches from webhook inline base64 without calling downloadmedia' do
+    file_bytes = Base64.strict_encode64('inline document body')
+    envelope = {
+      key: { id: 'MEDIA-INLINE' },
+      message: {
+        base64: file_bytes,
+        documentMessage: { mimetype: 'text/plain', fileName: 'anotacoes.txt' }
+      }
+    }
+
+    expect(api_client).not_to receive(:download_media)
+
+    described_class.new(
+      channel: channel,
+      message: message,
+      attachment_payload: {
+        filename: 'anotacoes.txt',
+        mimetype: 'text/plain',
+        _evolution_go_message: envelope
+      },
+      message_type: 'document'
+    ).perform
+
+    expect(message.attachments.count).to eq(1)
+    expect(message.attachments.first.file.download).to eq('inline document body')
+    expect(message.reload.content_attributes.dig('evolution_go_media_envelope', 'message', 'base64')).to be_nil
+  end
 end
