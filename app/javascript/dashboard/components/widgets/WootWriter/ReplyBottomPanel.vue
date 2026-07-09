@@ -97,6 +97,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    // FORK: webcam photo capture
+    showWebcamButton: {
+      type: Boolean,
+      default: false,
+    },
     conversationId: {
       type: Number,
       required: true,
@@ -137,6 +142,7 @@ export default {
     'selectContentTemplate',
     'toggleQuotedReply',
     'openShareContact',
+    'openWebcamCapture',
   ],
   setup(props) {
     const { setSignatureFlagForInbox, fetchSignatureFlagFromUISettings } =
@@ -327,6 +333,16 @@ export default {
         faded
         sm
         @click="$emit('openShareContact')"
+      />
+      <!-- FORK: webcam photo capture -->
+      <NextButton
+        v-if="showWebcamButton"
+        v-tooltip.top-end="$t('CONVERSATION.WEBCAM_CAPTURE.TOOLTIP')"
+        icon="i-ph-camera"
+        slate
+        faded
+        sm
+        @click="$emit('openWebcamCapture')"
       />
       <NextButton
         v-if="showAudioRecorderButton"

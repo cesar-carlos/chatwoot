@@ -30,6 +30,7 @@ import {
 import WhatsappTemplates from './WhatsappTemplates/Modal.vue';
 import ContentTemplates from './ContentTemplates/ContentTemplatesModal.vue';
 import ShareContactDialog from './ShareContact/ShareContactDialog.vue';
+import WebcamCaptureDialog from './WebcamCapture/WebcamCaptureDialog.vue';
 import { MESSAGE_MAX_LENGTH } from 'shared/helpers/MessageTypeHelper';
 import inboxMixin, { INBOX_FEATURES } from 'shared/mixins/inboxMixin';
 import { trimContent, debounce, getRecipients } from '@chatwoot/utils';
@@ -57,6 +58,7 @@ import {
 } from 'dashboard/helper/editorHelper';
 import { useCopilotReply } from 'dashboard/composables/useCopilotReply';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
+import { useWebcamAvailability } from 'dashboard/composables/useWebcamAvailability';
 import { isFileTypeAllowedForChannel } from 'shared/helpers/FileHelper';
 
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
@@ -82,6 +84,7 @@ export default {
     ContentTemplates,
     WhatsappTemplates,
     ShareContactDialog,
+    WebcamCaptureDialog,
     WootMessageEditor,
     QuotedEmailPreview,
     CopilotEditorSection,
@@ -102,6 +105,9 @@ export default {
     const messageEditor = useTemplateRef('messageEditor');
     const copilot = useCopilotReply();
     const shortcutKey = useKbd(['$mod', '+', 'enter']);
+    // FORK: webcam photo capture
+    const { hasWebcam, refreshDevices: refreshWebcamDevices } =
+      useWebcamAvailability();
 
     return {
       uiSettings,
@@ -113,6 +119,8 @@ export default {
       messageEditor,
       copilot,
       shortcutKey,
+      hasWebcam,
+      refreshWebcamDevices,
     };
   },
   data() {
@@ -483,6 +491,12 @@ export default {
       }
       return false;
     },
+    // FORK: webcam photo capture
+    showWebcamButton() {
+      if (this.isEditorDisabled || this.isRecordingAudio) return false;
+      if (!this.hasWebcam) return false;
+      return this.showFileUpload || this.isOnPrivateNote;
+    },
   },
   watch: {
     currentChat(conversation, oldConversation) {
@@ -811,6 +825,19 @@ export default {
     // FORK: share contact card
     openShareContactDialog() {
       this.$refs.shareContactDialog?.open();
+    },
+    // FORK: webcam photo capture
+    openWebcamCaptureDialog() {
+      this.$refs.webcamCaptureDialog?.open();
+    },
+    onWebcamPhotoCaptured(file) {
+      if (!file) return;
+      this.onFileUpload({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        file,
+      });
     },
     async onShareContact(contact) {
       const phoneNumber = contact.phone_number || contact.phoneNumber;
@@ -1482,6 +1509,7 @@ export default {
         :enable-whats-app-templates="showWhatsappTemplates"
         :enable-content-templates="showContentTemplates"
         :show-share-contact-button="showShareContactButton"
+        :show-webcam-button="showWebcamButton"
         :inbox="inbox"
         :is-on-private-note="isOnPrivateNote"
         :is-recording-audio="isRecordingAudio"
@@ -1508,6 +1536,7 @@ export default {
         @select-whatsapp-template="openWhatsappTemplateModal"
         @select-content-template="openContentTemplateModal"
         @open-share-contact="openShareContactDialog"
+        @open-webcam-capture="openWebcamCaptureDialog"
         @toggle-insert-article="toggleInsertArticle"
         @toggle-quoted-reply="toggleQuotedReply"
       />
@@ -1534,6 +1563,13 @@ export default {
       ref="shareContactDialog"
       :conversation-contact="currentContact"
       @share="onShareContact"
+    />
+
+    <!-- FORK: webcam photo capture -->
+    <WebcamCaptureDialog
+      ref="webcamCaptureDialog"
+      @capture="onWebcamPhotoCaptured"
+      @devices-granted="refreshWebcamDevices"
     />
 
     <woot-confirm-modal
