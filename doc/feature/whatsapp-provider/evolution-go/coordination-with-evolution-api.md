@@ -1,10 +1,10 @@
 # Coordenação — Evolution Go vs Evolution API (Node)
 
-Como o provider **`evolution_go`** se relaciona com **`evolution`** já em implementação no fork.
+Como o provider **`evolution_go`** se relaciona com **`evolution`** no fork.
 
-**Estado Node (jun/2026):** Fase 0–3 em `custom/app/services/custom/whatsapp/evolution/` — ver [../evolution-api/tasks.md](../evolution-api/tasks.md).
+**Estado Node:** implementado em `custom/app/services/custom/whatsapp/evolution/` — ver [../evolution-api/README.md](../evolution-api/README.md).
 
-**Estado Go:** somente documentação — ver [status.md](./status.md).
+**Estado Go:** implementado em `custom/app/services/custom/whatsapp/evolution_go/` — ver [status.md](./status.md). E2E com servidor real pendente.
 
 ---
 
@@ -17,114 +17,112 @@ Como o provider **`evolution_go`** se relaciona com **`evolution`** já em imple
 | Webhook route | `/webhooks/evolution/:instance_name` | `/webhooks/evolution_go/:instance_name` |
 | ActionCable | `evolution:connection:{id}` | `evolution_go:connection:{id}` |
 | ApiClient paths | Node Baileys API | Go `/send/text`, connect inline webhook |
+| Wizard Vue | `Evolution.vue` | `EvolutionGo.vue` |
 
 **Nunca** compartilhar `ApiClient` ou `Normalizer` entre os dois.
 
 ---
 
-## O que REUSAR (Fase 0)
+## O que foi reutilizado (Fase 0)
 
-| Componente | Reuso |
-|------------|-------|
-| `MessagingProvider::Registry` | ✅ Registrar entrada `evolution_go` |
-| `# FORK:` `PROVIDERS` | ✅ Adicionar `'evolution_go'` na mesma linha |
-| Prepend `Channel::Whatsapp#provider_service` | ✅ Já existe se Node implementado |
-| Prepend `WhatsappEventsJob` | ✅ Adicionar branch `evolution_go_envelope?` |
-| Prepend `MessageWindowService` | ✅ Incluir `evolution_go` na capability |
-| Padrão `EvolutionController` webhook | ✅ Copiar estrutura para `EvolutionGoController` |
+| Componente | Situação |
+|------------|----------|
+| `MessagingProvider::Registry` | ✅ `evolution_go` registrado (posicional) |
+| `# FORK:` `PROVIDERS` | ✅ `%w[default whatsapp_cloud evolution evolution_go]` |
+| Prepend `Channel::Whatsapp#provider_service` | ✅ gateway-aware |
+| Prepend `WhatsappEventsJob` | ✅ branch `evolution_go_envelope?` |
+| Prepend `MessageWindowService` | ✅ capability `unlimited_session` |
+| Padrão webhook controller | ✅ `EvolutionGoController` |
+| Grupos / mutex | ✅ reuso pontual de `Evolution::GroupContactService`, `MessageMutex`, etc. |
 
 ---
 
-## O que NÃO compartilhar
+## O que NÃO é compartilhado
 
 | Componente | Motivo |
 |------------|--------|
 | `Evolution::ApiClient` | Paths e auth diferentes |
 | `EvolutionNormalizer` | Evento `MESSAGES_UPSERT` vs `MESSAGE` |
 | `ConnectionService` | `set_webhook` vs connect body |
-| Componente wizard Vue raiz | Campos `global_api_key` + token Go distintos |
-| Fixtures | Pastas separadas |
+| Wizard Vue raiz | Campos `global_api_key` + token Go distintos |
+| Fixtures | Pastas `spec/fixtures/evolution/` vs `evolution_go/` |
 
 ---
 
-## O que REUSAR no frontend (composable)
+## Frontend — o que existe vs o que foi planejado
 
-Extrair de `EvolutionWhatsapp.vue` um composable **`useGatewayWhatsappWizard`**:
+| Planejado (ADR antigo) | Implementado |
+|------------------------|--------------|
+| `EvolutionGoWhatsapp.vue` | `EvolutionGo.vue` |
+| `useGatewayWhatsappWizard.js` compartilhado | **Não extraído** — composables dedicados sob `composables/evolution_go/` |
+| Gates `isEvolutionGoWhatsAppChannel` | `isGatewayWhatsAppProvider` / `isGatewayWhatsAppInbox` em `lib/whatsapp/gatewayProviders.js` (+ helpers por provider nas settings) |
 
-| Lógica compartilhada | Evolution Node | Evolution Go |
-|---------------------|----------------|--------------|
-| Polling QR / status | ✅ | ✅ |
-| ActionCable connection | canal diferente | `evolution_go:connection:{id}` |
-| Stepper 3 passos | ✅ | ✅ |
-| Health check `server/ok` | opcional | **recomendado** Step 1 |
-| REST direto no browser | ❌ | ❌ — sempre via backend |
+Composables Go:
 
-Componentes finos: `EvolutionGoWhatsapp.vue` importa o composable + campos específicos (`global_api_key`, modo instância existente).
+| Arquivo | Papel |
+|---------|-------|
+| `useEvolutionGoQrSession.js` | QR modal + polling |
+| `useEvolutionGoHealthConnection.js` | reconnect / logout / status |
+| `useEvolutionGoImportStatus.js` | polling import |
+| `evolutionGoCableRegistry.js` | ActionCable |
 
-Detalhe: [frontend-wizard-spec.md § Composable](./frontend-wizard-spec.md#composable-compartilhado).
+Extrair um `useGatewayWhatsappWizard` genérico permanece **opcional** (DRY futuro) — não bloqueia operação.
 
 ---
 
 ## PROVIDERS whitelist
 
-**Fork atual (jun/2026):** só `evolution` está na constante — `evolution_go` entra no mesmo `# FORK:` quando implementar:
+**Código atual:**
 
 ```ruby
-# app/models/channel/whatsapp.rb — estado atual
-PROVIDERS = %w[default whatsapp_cloud evolution].freeze
-
-# alvo ao implementar Go:
-PROVIDERS = %w[default whatsapp_cloud evolution evolution_go zapi notificame].freeze
+# app/models/channel/whatsapp.rb
+PROVIDERS = %w[default whatsapp_cloud evolution evolution_go].freeze
 ```
 
 ---
 
 ## Registry
 
+**Código atual** (`custom/config/initializers/messaging_provider_registry.rb`):
+
 ```ruby
-# evolution já registrado — adicionar:
-MessagingProvider::Registry.register('evolution_go') do |channel|
-  Custom::Whatsapp::Providers::EvolutionGoService.new(whatsapp_channel: channel)
-end
+MessagingProvider::Registry.register(
+  'evolution_go',
+  Custom::Whatsapp::Providers::EvolutionGoService
+)
 ```
+
+Formato **posicional** (igual ao Node) — não usar bloco `|channel|`.
 
 ---
 
 ## Job prepend — detecção de envelope
 
-> **⚠️ ALERTA CRÍTICO — prepend collision:** O prepend evolution Node (`Custom::Webhooks::WhatsappEventsJob`) detecta `evolution_envelope?` verificando `params[:event].present? && params[:instance_name ou :instance].present?`. Evolution Go tem **o mesmo formato de envelope**, então **sem isolamento o prepend Node consumiria e descartaria silenciosamente os eventos Go**, nunca chamando `super`.
+> **⚠️ ALERTA CRÍTICO — prepend collision:** O prepend evolution Node detecta `evolution_envelope?` via `params[:event]` + `instance_name`/`instance`. Evolution Go tem o mesmo formato de envelope — **sem isolamento o prepend Node consumiria e descartaria eventos Go**.
 
-**Solução (ADR §27):**
+**Solução implementada (ADR §27):**
 
-1. `EvolutionGoController#sanitized_job_payload` injeta `evolution_go_instance_name:` (não `instance_name:`) e remove o campo `instance` do payload bruto.
-2. O prepend evolution_go detecta por `params[:evolution_go_instance_name].present?` — campo injetado exclusivamente pelo controller Go.
-3. O prepend evolution node deve usar `return super(params)` (não `return`) quando o canal não é encontrado — tarefa I0.7 em [tasks.md](./tasks.md).
+1. `EvolutionGoController#sanitized_job_payload` remove `instance` e o job recebe `evolution_go_instance_name:` (não `instance_name:`).
+2. Prepend Go: `params[:evolution_go_instance_name].present?`.
+3. Prepend Node: `return super(params)` quando canal não encontrado.
 
 ```ruby
-# EvolutionGoController (correto)
+# EvolutionGoController (implementado)
 def sanitized_job_payload
-  raw = params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
-  raw.delete('instance')   # remove campo ambíguo
-  raw
+  payload = params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
+  payload.delete('instance')
+  payload
 end
 
-def process_payload
-  Webhooks::WhatsappEventsJob.perform_later(
-    sanitized_job_payload.merge(
-      evolution_go_instance_name: params[:instance_name],  # chave distinta!
-      channel_id: @channel.id
-    )
-  )
-  head :ok
-end
+# process_payload mergeia:
+#   evolution_go_instance_name: params[:instance_name], channel_id: @channel.id
 
-# Prepend evolution_go
 def evolution_go_envelope?(params)
   params[:evolution_go_instance_name].present?
 end
 ```
 
-**⚠️ NÃO usar** `params[:event].in?(%w[MESSAGE ...]) && params[:instance].present?` como critério — ambíguo com evolution node. Ver [decisions.md §27](./decisions.md).
+**⚠️ NÃO usar** `params[:event]` + `params[:instance]` como critério Go — ambíguo com Node. Ver [decisions.md §27](./decisions.md).
 
 ---
 
@@ -132,28 +130,10 @@ end
 
 Dois cards distintos:
 
-| Card | Provider |
-|------|----------|
-| Evolution API | `evolution` |
-| Evolution Go | `evolution_go` |
-
-Componentes separados: `EvolutionWhatsapp.vue` vs `EvolutionGoWhatsapp.vue` — lógica comum em `useGatewayWhatsappWizard` (ver acima).
-
----
-
-## Ordem de implementação sugerida
-
-```
-I0 Fase 0 (registry) → I1 Fase 1 MVP
-                              │
-                              └── E1 E2E (paralelo) — fixtures reais
-```
-
-1. **Fase 0** — [tasks.md](./tasks.md)
-2. **Node** E2E pendente — não bloqueia Go Fase 0
-3. **Go Fase 1** — contratos Postman/ADRs; fixtures refinadas no E2E
-
-Implementar prepend `WhatsappEventsJob` branch Go **com specs** — evita regressão no Node.
+| Card | Provider | Componente |
+|------|----------|------------|
+| Evolution API | `evolution` | `Evolution.vue` |
+| Evolution Go | `evolution_go` | `EvolutionGo.vue` |
 
 ---
 
@@ -173,4 +153,4 @@ Implementar prepend `WhatsappEventsJob` branch Go **com specs** — evita regres
 |--------|-----------|
 | Diferenças API | [differences-from-evolution-api.md](./differences-from-evolution-api.md) |
 | Node implementado | [../evolution-api/README.md](../evolution-api/README.md) |
-| Status doc Go | [status.md](./status.md) |
+| Status Go | [status.md](./status.md) |

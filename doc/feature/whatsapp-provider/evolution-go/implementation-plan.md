@@ -131,7 +131,7 @@ POST /send/text
 | # | Entrega |
 |---|---------|
 | 1.9 | Card "Evolution Go" em `Whatsapp.vue` (`// FORK:` import) |
-| 1.10 | `EvolutionGoWhatsapp.vue` — Step 1: `base_url`, `global_api_key` + `GET /server/ok` health check |
+| 1.10 | `EvolutionGo.vue` — Step 1: `base_url`, `global_api_key` + `GET /server/ok` health check |
 | 1.11 | Step 2: `instance_name` (criar) ou `instance_token` (existente) + proxy opcional |
 | 1.12 | Step 3: QR / pairing code — ActionCable + polling 3s |
 | 1.13 | `useEvolutionGoConnection.js` composable |
@@ -189,9 +189,14 @@ custom/
 │   ├── providers/evolution_go_service.rb
 │   └── webhooks/evolution_go_normalizer.rb
 └── app/javascript/dashboard/
-    ├── channels/EvolutionGoWhatsapp.vue
-    └── composables/useEvolutionGoConnection.js
+    ├── channels/EvolutionGo.vue
+    ├── settingsPage/EvolutionGo{Settings,Health}Page.vue
+    ├── components/evolution_go/EvolutionGoQrScanModal.vue
+    ├── composables/evolution_go/useEvolutionGo{QrSession,HealthConnection,ImportStatus}.js
+    └── lib/evolution_go/evolutionGoCableRegistry.js
 ```
+
+> Árvore ilustrativa da Fase 1 — o código atual tem dezenas de services sob `evolution_go/` (import, sync, diagnostics, etc.). Fonte de verdade: [status.md](./status.md).
 
 ### Upstream mínimo (`# FORK:`)
 

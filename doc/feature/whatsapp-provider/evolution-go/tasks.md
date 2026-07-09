@@ -14,7 +14,7 @@
 | I4 | Import histórico (`HISTORY_SYNC`, `MessagesImporter`, UI `import_messages`) | ✅ código · ⚠️ E2E |
 | G1 | Grupos WhatsApp (`ignore_groups: false` → conversa por grupo) | ✅ código · ⚠️ E2E |
 | E1 | Checklist E2E completo | ⚠️ pendente (operador) |
-| I3 | Fase 3 — interativos, presence | ❌ |
+| I3 | Fase 3 — location/contact/sticker/input_select ✅; presence wiring / poll / link / reactions | ⚠️ parcial |
 
 ## I2 — Fase 2 (concluída)
 
