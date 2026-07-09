@@ -26,6 +26,14 @@ import {
   clearActiveCall,
   getActiveProviderCallId,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import { closeIncomingWavoipOfferNotification } from 'customDashboard/composables/wavoip/useWavoipNotifications';
+
+const closeOfferNotificationsForCall = (callSid, call) => {
+  closeIncomingWavoipOfferNotification(callSid);
+  if (call?.wavoipOfferId) {
+    closeIncomingWavoipOfferNotification(call.wavoipOfferId);
+  }
+};
 
 export function useWavoipCallSession() {
   const store = useStore();
@@ -63,7 +71,15 @@ export function useWavoipCallSession() {
       await waitForPendingOffer(callId);
     }
 
+    const callsStore = useCallsStore();
+    const storeCall = callsStore.calls.find(
+      c => c.callSid === callId || c.wavoipOfferId === callId
+    );
+
     const sdkCall = await acceptOffer(callId);
+    // Accepting agent: drop the OS notification immediately so it does not
+    // linger while the call is already live in this tab.
+    closeOfferNotificationsForCall(callId, storeCall);
     setActiveCall(sdkCall, { providerCallId: callId, inboxId });
     removePendingOffer(callId);
     await recordAcceptedBy(callId);
@@ -72,8 +88,13 @@ export function useWavoipCallSession() {
   };
 
   const rejectIncomingCall = async callId => {
+    const callsStore = useCallsStore();
+    const storeCall = callsStore.calls.find(
+      c => c.callSid === callId || c.wavoipOfferId === callId
+    );
+    closeOfferNotificationsForCall(callId, storeCall);
     await rejectOffer(callId);
-    useCallsStore().dismissCall(callId);
+    callsStore.dismissCall(callId);
   };
 
   const endActiveCallSession = async callIdOverride => {

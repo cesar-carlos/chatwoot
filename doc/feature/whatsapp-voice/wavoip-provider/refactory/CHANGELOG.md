@@ -74,3 +74,26 @@ Correções de bloqueadores de produção e sync de documentação:
 | FE | `whatsappVoiceCableRegistry.js` — registry cable Meta (paridade com Wavoip) |
 | Testes | 267 RSpec voice scope + ~165 Vitest (incl. `useWebRtcCallSession.spec.js`) |
 | Ops | Checklist verificação webhook datado 2026-07-08 no runbook — live pendente acesso ops |
+
+## 09 jul. 2026 — multiagente: parar notificação após accept + hardening
+
+Bug reportado: após o primeiro agente aceitar, outros agentes continuavam vendo ring/push
+porque a call permanece `ringing` até o webhook `ACTIVE`.
+
+| ID | Título | Severidade | Status |
+|----|--------|------------|--------|
+| BUG-RING-01 | Escalação / push / cable re-notificavam após claim | Alta | ✅ |
+| IMP-01 | `Wavoip::Calls::ClaimGuard` — `accepted_by_agent_id` (não cache-only) | — | ✅ |
+| IMP-02 | `ClearIncomingNotificationsService` no `voice_call.accepted` / `ended` | — | ✅ |
+| IMP-03 | FE: `markCallDismissed` + fechar OS Notification no dismiss / accept / reject | — | ✅ |
+| IMP-04 | FE: consome `escalated: true` (não reabre widget dismissed/active) | — | ✅ |
+| IMP-05 | `useCallSession` delega mais ao `voiceSessionRegistry` (helpers de provider) | — | ✅ |
+| REV-01 | `POST /join` retorna 409 se outro agente já tem `JoiningAgentCache` | Alta | ✅ |
+| REV-02 | `onAccepted` dismiss mesmo com `isCallJoining`; 2ª aba same-user sem toast | Média | ✅ |
+
+**Comportamento esperado (doc M1):** primeiro `accept()` / PATCH → `voice_call.accepted` + clear
+notificações in-app; EscalateRingJob e InboundPushService no-op se `ClaimGuard.claimed?`
+(`accepted_by_agent_id`); outros agentes dismiss via cable/`acceptedElsewhere` e param de tocar.
+`JoiningAgentCache` só evita double-join/accept (409), sem silenciar ring sozinho.
+
+Validação browser E2E (2 agentes) permanece no checklist ops — ver [operations-runbook.md](../operations-runbook.md) G0.4 / M1.

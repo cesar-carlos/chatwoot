@@ -148,6 +148,14 @@ HANDLERS = {
 | `Calls::Broadcaster` | ActionCable `voice_call.*` com `provider: wavoip` | — |
 | `Calls::IncomingCallRecipients` | Resolve agentes para cable + push (online → fallback configurável) | WebRTC |
 | `Calls::InboundPushService` | Notificação in-app `voice_call_incoming` | Usa `IncomingCallRecipients` |
+| `Calls::ClaimGuard` | `accepted_by_agent_id` presente → call já accepted | Multiagente |
+| `Calls::ClearIncomingNotificationsService` | Destroy `voice_call_incoming` da conversa | Após accept / ended |
+
+**Parar ring após accept (09 jul. 2026):** enquanto o status ainda é `ringing` (webhook `ACTIVE` pendente),
+`ClaimGuard.claimed?` (só `accepted_by_agent_id`) bloqueia `broadcast_incoming`, `broadcast_escalated_ring`,
+`EscalateRingJob` e `InboundPushService`. `JoiningAgentCache` impede double-accept no join/PATCH, mas
+**não** silencia escalate/push sozinho — evita ring preso se o PATCH falhar após o join.
+`broadcast_agent_accepted` limpa notificações in-app via `ClearIncomingNotificationsService`.
 
 ### 3.4 Mapeamento status Wavoip → Chatwoot
 
@@ -273,7 +281,7 @@ export function useWavoipCallSession() {
 | `lib/wavoip/wavoipSdkPort.js` | ~40 | Infrastructure — único import `@wavoip/wavoip-api` |
 | `lib/wavoip/wavoipClientRegistry.js` | ~80 | Map `inboxId → Wavoip`; usa `wavoipSdkPort` |
 | `lib/voice/browserVoiceProviders.js` | ~40 | `isBrowserVoiceProvider()` — evita FORK em 4+ Vue |
-| `lib/voice/voiceCallCableRegistry.js` | ~80 | Port `VoiceCallCableHandlers` |
+| `lib/voice/voiceCallCableRegistry.js` | ~220 | Port `VoiceCallCableHandlers` |
 | `lib/voice/callStoreMappers.js` | ~80 | `mapCableToStoreEntry` / `mapWavoipOfferToStoreEntry` |
 | `lib/voice/voiceSessionRegistry.js` | ~60 | Port factory `BrowserVoiceSession` |
 | `composables/wavoip/useWavoipConnection.js` | ~120 | `new Wavoip({ tokens, platform: 'chatwoot' })`; connect on online |

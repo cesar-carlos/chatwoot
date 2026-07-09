@@ -97,6 +97,16 @@ RSpec.describe Api::V1::Accounts::CallsController, type: :request do
       expect(response).to have_http_status(:conflict)
     end
 
+    it 'returns conflict on join when another agent already holds the join cache' do
+      Wavoip::Calls::JoiningAgentCache.write(call.id, other_agent.id)
+
+      post "/api/v1/accounts/#{account.id}/calls/#{call.id}/join",
+           headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:conflict)
+      expect(Wavoip::Calls::JoiningAgentCache.read(call.id)).to eq(other_agent.id)
+    end
+
     it 'returns unauthorized when the agent is not an inbox member' do
       outsider = create(:user, account: account, role: :agent)
 

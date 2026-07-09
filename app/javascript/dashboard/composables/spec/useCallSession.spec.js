@@ -9,14 +9,28 @@ const connectForInboxMock = vi.fn();
 const teardownWavoipActiveCallMock = vi.fn();
 const removePendingOfferMock = vi.fn();
 
-vi.mock('customDashboard/lib/voice/voiceSessionRegistry', () => ({
-  getBrowserVoiceSession: () => ({
-    connectForInbox: connectForInboxMock,
-    acceptIncomingCall: acceptIncomingCallMock,
-    rejectIncomingCall: rejectIncomingCallMock,
-  }),
-  teardownWavoipActiveCall: () => teardownWavoipActiveCallMock(),
-}));
+vi.mock('customDashboard/lib/voice/voiceSessionRegistry', async () => {
+  const actual = await vi.importActual(
+    'customDashboard/lib/voice/voiceSessionRegistry'
+  );
+  return {
+    ...actual,
+    getBrowserVoiceSession: () => ({
+      connectForInbox: connectForInboxMock,
+      acceptIncomingCall: acceptIncomingCallMock,
+      rejectIncomingCall: rejectIncomingCallMock,
+    }),
+    teardownWavoipActiveCall: () => teardownWavoipActiveCallMock(),
+    cleanupAfterBrowserVoiceJoinFailure: (call, callSid) => {
+      if (call?.provider === 'wavoip') {
+        teardownWavoipActiveCallMock();
+        removePendingOfferMock(callSid);
+        return true;
+      }
+      return false;
+    },
+  };
+});
 
 vi.mock('customDashboard/composables/wavoip/useWavoipIncomingOffer', () => ({
   removePendingOffer: (...args) => removePendingOfferMock(...args),

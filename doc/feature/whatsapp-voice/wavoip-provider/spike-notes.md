@@ -25,7 +25,7 @@
 | Pipeline webhook | ✅ OK — aceita `caller`/`receiver` (fix 26 jun.); inbound I2/O2 passam via `bin/wavoip-pilot-verify` |
 | SDK outbound | ✅ RINGING → ACTIVE comprovado (headless + browser parcial) |
 | **W1** (painel Wavoip) | ⚠️ Pendente — toggle CALL + linha CALL no histórico do painel em chamada live |
-| **G0.4 / M1** (multiagente browser) | ❌ Pendente — `acceptedElsewhere` + `voice_call.accepted` |
+| **G0.4 / M1** (multiagente browser) | ⚠️ Código ✅ (ClaimGuard + clear notifs 09 jul.) — browser E2E ainda pendente |
 | **O1 / D1 / F1** (browser E2E) | ❌ Pendente — outbound bidirecional, dismiss, accept fail |
 
 **Bloqueadores piloto:** W1 live panel proof + G0.4 browser E2E — **não** contradição de código vs. vendor; pipeline pronto quando bytes chegam.
@@ -36,7 +36,7 @@
 |------|-----------|--------|
 | **W1** | Webhook CALL no painel Wavoip em chamada live | ⚠️ _pending live panel_ |
 | **O1** | Outbound browser bidirecional | ⚠️ _pending (browser)_ |
-| **M1 / G0.4** | Multiagente — toast + `acceptedElsewhere` | ❌ _pending (browser)_ |
+| **M1 / G0.4** | Multiagente — toast + `acceptedElsewhere` | ⚠️ código ✅; _pending browser_ |
 | **D1** | Dismiss ✕ inbound → SDK reject | ⚠️ _pending (browser)_ |
 | **F1** | Accept falha / timeout | ⚠️ _pending (browser)_ |
 | **I1 / I2** | Inbound peer + caller/receiver | ✅ Pass (automated + fixtures live) |
@@ -243,9 +243,15 @@ Fixture (simulated, prior run): [fixtures/call_create_outbound_live_e2e.json](./
 
 ### Escalação (`escalated: true`)
 
-`broadcast_escalated_ring` envia `voice_call.incoming` com `escalated: true` no payload. O frontend
-não consome esse flag; após dismiss local (`isCallDismissed`), re-rings de escalação são ignorados
-no cable handler (`voiceCallCableRegistry.onIncoming`).
+`broadcast_escalated_ring` envia `voice_call.incoming` com `escalated: true` no payload.
+O frontend **consome** o flag em `voiceCallCableRegistry.onIncoming`:
+
+- Se a call já está `isActive` ou foi `isCallDismissed` → ignora (não reabre widget)
+- Caso contrário → adiciona/atualiza a entry com `escalated: true` no store
+
+Backend: `Wavoip::Calls::ClaimGuard` bloqueia escalação/push/incoming assim que
+`accepted_by_agent_id` está persistido — mesmo com status ainda `ringing`.
+`JoiningAgentCache` só serializa join/PATCH (409 se outro agente já claimou).
 
 ---
 

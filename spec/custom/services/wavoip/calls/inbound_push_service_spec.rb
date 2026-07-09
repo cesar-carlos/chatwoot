@@ -28,6 +28,14 @@ RSpec.describe Wavoip::Calls::InboundPushService do
     agent.notification_settings.find_by(account: account).update!(push_voice_call_incoming: true)
   end
 
+  around do |example|
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = original_cache
+  end
+
   it 'creates voice_call_incoming notification for inbox members' do
     expect do
       described_class.new(call: call, inbox: inbox).perform
@@ -45,5 +53,21 @@ RSpec.describe Wavoip::Calls::InboundPushService do
     expect do
       described_class.new(call: call, inbox: inbox).perform
     end.to change { offline_agent.notifications.voice_call_incoming.count }.by(1)
+  end
+
+  it 'does not create notifications after an agent accepted the call' do
+    call.update!(accepted_by_agent_id: agent.id)
+
+    expect do
+      described_class.new(call: call, inbox: inbox).perform
+    end.not_to change { agent.notifications.voice_call_incoming.count }
+  end
+
+  it 'still creates notifications when only JoiningAgentCache is set' do
+    Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
+
+    expect do
+      described_class.new(call: call, inbox: inbox).perform
+    end.to change { agent.notifications.voice_call_incoming.count }.by(1)
   end
 end

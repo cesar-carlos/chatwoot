@@ -22,7 +22,6 @@ import {
 } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 import { shouldIgnoreInboundWavoipCable } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
 import {
-  isCallJoining,
   isCallDismissed,
 } from 'dashboard/composables/useCallSession';
 
@@ -59,7 +58,12 @@ const scheduleGhostWidgetFallback = (callId, callEntry) => {
 
 export const createWavoipVoiceCableHandlers = t => ({
   onIncoming(data) {
-    if (isCallDismissed(data.call_id)) return;
+    if (
+      isCallDismissed(data.call_id) ||
+      (data.id != null && isCallDismissed(String(data.id)))
+    ) {
+      return;
+    }
 
     const callsStore = useCallsStore();
     if (shouldIgnoreInboundWavoipCable(data, { calls: callsStore.calls })) {
@@ -67,6 +71,20 @@ export const createWavoipVoiceCableHandlers = t => ({
     }
 
     const existing = findWavoipCallForCableEvent(callsStore.calls, data);
+
+    // Escalated re-ring (timeout fallback): never re-surface a call this agent
+    // already dismissed or is already handling. Backend ClaimGuard also skips
+    // when claimed — this is defense in depth for late cable events.
+    if (data.escalated) {
+      if (
+        existing?.isActive ||
+        (existing?.callSid && isCallDismissed(existing.callSid)) ||
+        (existing?.wavoipOfferId && isCallDismissed(existing.wavoipOfferId))
+      ) {
+        return;
+      }
+    }
+
     const offerEntry =
       pendingOffers.get(data.call_id) ||
       (existing?.wavoipOfferId && pendingOffers.get(existing.wavoipOfferId));
@@ -80,6 +98,7 @@ export const createWavoipVoiceCableHandlers = t => ({
       awaitingSdkOffer: !offerEntry,
       wavoipOfferId:
         offerEntry?.offer?.id || existing?.wavoipOfferId || data.call_id,
+      escalated: Boolean(data.escalated) || Boolean(existing?.escalated),
     };
 
     callsStore.addCall(existing ? { ...existing, ...entry } : entry);
@@ -107,7 +126,6 @@ export const createWavoipVoiceCableHandlers = t => ({
     if (!callEntry) return;
 
     if (callEntry.isActive) return;
-    if (isCallJoining()) return;
 
     const activeId = getActiveProviderCallId();
     if (
@@ -119,6 +137,7 @@ export const createWavoipVoiceCableHandlers = t => ({
       return;
     }
 
+    // Same user already owns the SDK session on this tab — keep the live call.
     if (
       data.accepted_by_agent_id &&
       data.accepted_by_agent_id === currentUserId() &&
@@ -127,13 +146,24 @@ export const createWavoipVoiceCableHandlers = t => ({
       return;
     }
 
-    const agentName = data.accepted_by_agent_name;
+    // Another agent (or this user on another tab) accepted. Always dismiss the
+    // ringing widget — including while this tab is mid-join — so cable-only
+    // agents without SDK `acceptedElsewhere` do not keep ringing.
+    const acceptedBySelf =
+      data.accepted_by_agent_id &&
+      data.accepted_by_agent_id === currentUserId();
 
-    useAlert(
-      agentName
-        ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
-        : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
-    );
+    // Same-user other tab: silent dismiss (no "accepted elsewhere" toast).
+    // Other agent: toast even if this tab is mid-join.
+    if (!acceptedBySelf) {
+      const agentName = data.accepted_by_agent_name;
+      useAlert(
+        agentName
+          ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
+          : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
+      );
+    }
+
     dismissWavoipCallFromStore(
       data.call_id,
       callEntry.callSid,

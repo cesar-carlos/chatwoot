@@ -7,6 +7,10 @@ import {
   endActiveCall as endSdkActiveCall,
   clearActiveCall as clearSdkActiveCall,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import { removePendingOffer } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
+import { isBrowserVoiceProvider } from 'customDashboard/lib/voice/browserVoiceProviders';
+import { isInbound } from 'dashboard/helper/voice';
+import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 
 export const VOICE_SESSION_REGISTRY = {
@@ -28,6 +32,40 @@ export function getBrowserVoiceSession(provider) {
   const factory = VOICE_SESSION_REGISTRY[provider];
   if (!factory) return null;
   return factory();
+}
+
+export function isWavoipVoiceCall(call) {
+  return call?.provider === VOICE_CALL_PROVIDERS.WAVOIP;
+}
+
+export function isWhatsappVoiceCall(call) {
+  return call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP;
+}
+
+/** True when dismiss should SDK-reject (inbound Wavoip still ringing). */
+export function shouldRejectWavoipInboundOnDismiss(call) {
+  if (!isWavoipVoiceCall(call) || call?.isActive) return false;
+  return (
+    isInbound(call?.callDirection) ||
+    call?.callDirection === VOICE_CALL_DIRECTION.INCOMING
+  );
+}
+
+/**
+ * Provider-specific cleanup after join/accept failure.
+ * Returns whether the local store entry should be dismissed.
+ */
+export function cleanupAfterBrowserVoiceJoinFailure(call, callSid) {
+  if (isWavoipVoiceCall(call)) {
+    teardownWavoipActiveCall();
+    removePendingOffer(callSid);
+    return true;
+  }
+  if (isWhatsappVoiceCall(call) || isBrowserVoiceProvider(call?.provider)) {
+    cleanupWhatsappSession();
+    return false;
+  }
+  return false;
 }
 
 export function teardownWavoipActiveCall() {

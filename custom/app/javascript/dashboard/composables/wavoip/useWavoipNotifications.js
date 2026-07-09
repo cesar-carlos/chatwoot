@@ -2,11 +2,26 @@ import i18n from 'dashboard/i18n';
 import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 
 const DEFAULT_ICON = '/brand-assets/logo_thumbnail.svg';
+// Page-context Notification instances — getNotifications() is SW-only.
+const openOfferNotifications = new Map();
+
+const offerNotificationTag = offerId => `chatwoot-wavoip-offer-${offerId}`;
+
+export function closeIncomingWavoipOfferNotification(offerId) {
+  if (!offerId) return;
+
+  const notification = openOfferNotifications.get(offerId);
+  if (!notification) return;
+
+  openOfferNotifications.delete(offerId);
+  notification.close();
+}
 
 export function notifyIncomingWavoipOffer(offer, inbox) {
   if (typeof Notification === 'undefined') return;
   if (Notification.permission !== 'granted') return;
   if (document.visibilityState === 'visible') return;
+  if (!offer?.id) return;
 
   const enabled =
     inbox?.provider_config?.offer_notification_enabled !== false &&
@@ -23,12 +38,22 @@ export function notifyIncomingWavoipOffer(offer, inbox) {
     'CONVERSATION.VOICE_CALL.INCOMING_CALL'
   );
 
-  // eslint-disable-next-line no-new -- browser Notification API requires constructor side effect
-  new Notification(peer.displayName || peer.phone || incomingCallTitle, {
-    tag: `chatwoot-wavoip-offer-${offer.id}`,
-    body: peer.phone || '',
-    icon,
-  });
+  closeIncomingWavoipOfferNotification(offer.id);
+
+  const notification = new Notification(
+    peer.displayName || peer.phone || incomingCallTitle,
+    {
+      tag: offerNotificationTag(offer.id),
+      body: peer.phone || '',
+      icon,
+    }
+  );
+  openOfferNotifications.set(offer.id, notification);
+  notification.onclose = () => {
+    if (openOfferNotifications.get(offer.id) === notification) {
+      openOfferNotifications.delete(offer.id);
+    }
+  };
 }
 
 export function requestWavoipNotificationPermission() {

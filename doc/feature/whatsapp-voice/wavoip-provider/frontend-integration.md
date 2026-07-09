@@ -164,6 +164,10 @@ Comportamento implementado em `FloatingCallWidget.vue`, `CallCard.vue`, `useCall
 |---------------|---------------|
 | Tocar enquanto inbound não atendida | `ringingInbound` watcher em `FloatingCallWidget` |
 | Parar ao aceitar / encerrar todas | Watcher desliga quando `!ringingInbound \|\| hasActiveCall` |
+| **Outro agente aceitou** | Cable `voice_call.accepted` / SDK `acceptedElsewhere` → `markCallDismissed` + dismiss store + `closeIncomingWavoipOfferNotification` (dismiss mesmo se `isCallJoining`; 2ª aba same-user sem toast) |
+| **Este agente aceitou (aba em background)** | `useWavoipCallSession.acceptIncomingCall` fecha a OS Notification local imediatamente |
+| **Este agente rejeitou** | `rejectIncomingCall` fecha OS Notification + SDK reject + dismiss store |
+| **Escalação (`escalated: true`)** | `onIncoming` ignora se call já active/dismissed; senão grava `escalated` no store |
 | **Rejeitar (✕) ou recusar** | `silenceCallRingtone(callSid, call)` em `rejectIncomingCall` / `dismissCall` **antes** do round-trip SDK — som para na hora **só neste agente**; outros dispositivos/agentes continuam tocando |
 | **Chamador desligou** | SDK `offer.on('unanswered'/'ended')` + cable `onEnded` → toast `CONVERSATION.WAVOIP_CALL.CALLER_ENDED` + dismiss no store |
 | **Silenciar toque (bell)** | Botão no `CallCard` (incoming only) → `toggleRingtoneMute` → `localStorage` key `call_ringtone_muted_{userId}` |

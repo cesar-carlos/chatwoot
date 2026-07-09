@@ -46,7 +46,6 @@ vi.mock('dashboard/composables', () => ({
 }));
 
 vi.mock('dashboard/composables/useCallSession', () => ({
-  isCallJoining: vi.fn(() => false),
   isCallDismissed: vi.fn(() => false),
   markCallDismissed: vi.fn(),
 }));
@@ -67,7 +66,6 @@ import {
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import {
   isCallDismissed,
-  isCallJoining,
 } from 'dashboard/composables/useCallSession';
 import { createWavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
 import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
@@ -99,6 +97,47 @@ describe('wavoipVoiceCableHandlers', () => {
       });
 
       expect(store.calls).toHaveLength(0);
+    });
+
+    it('ignores escalated re-ring when the call is already active or dismissed', () => {
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'esc_001',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+      store.setCallActive('esc_001');
+
+      wavoipVoiceCableHandlers.onIncoming({
+        call_id: 'esc_001',
+        id: 90,
+        conversation_id: 1,
+        inbox_id: 2,
+        provider: 'wavoip',
+        escalated: true,
+      });
+
+      expect(store.calls).toHaveLength(1);
+      expect(store.calls[0].isActive).toBe(true);
+    });
+
+    it('marks escalated flag on store entry for first escalated ring', () => {
+      const store = useCallsStore();
+
+      wavoipVoiceCableHandlers.onIncoming({
+        call_id: 'esc_new',
+        id: 91,
+        conversation_id: 3,
+        inbox_id: 2,
+        provider: 'wavoip',
+        call_direction: 'inbound',
+        escalated: true,
+        caller: { name: 'Bob', phone: '+5511' },
+      });
+
+      expect(store.calls[0].escalated).toBe(true);
     });
 
     it('merges pending SDK offer when cable arrives after offer', () => {
@@ -228,10 +267,6 @@ describe('wavoipVoiceCableHandlers', () => {
   });
 
   describe('onAccepted', () => {
-    beforeEach(() => {
-      isCallJoining.mockReturnValue(false);
-    });
-
     it('dismisses ringing call when another agent accepted', () => {
       const store = useCallsStore();
       store.addCall({
@@ -293,7 +328,7 @@ describe('wavoipVoiceCableHandlers', () => {
       expect(store.calls.some(c => c.callSid === 'acc_self')).toBe(true);
     });
 
-    it('dismisses when the current user accepted in another tab', () => {
+    it('silently dismisses when the current user accepted in another tab', () => {
       isWavoipSdkCallOwned.mockReturnValue(false);
       const store = useCallsStore();
       store.addCall({
@@ -307,14 +342,14 @@ describe('wavoipVoiceCableHandlers', () => {
       wavoipVoiceCableHandlers.onAccepted({
         call_id: 'acc_other_tab',
         accepted_by_agent_id: 99,
+        accepted_by_agent_name: 'Self',
       });
 
-      expect(useAlert).toHaveBeenCalled();
+      expect(useAlert).not.toHaveBeenCalled();
       expect(store.calls.some(c => c.callSid === 'acc_other_tab')).toBe(false);
     });
 
-    it('does not dismiss while this tab is joining the call', () => {
-      isCallJoining.mockReturnValue(true);
+    it('dismisses while this tab is joining when another agent accepted', () => {
       const store = useCallsStore();
       store.addCall({
         callSid: 'acc_joining',
@@ -327,10 +362,13 @@ describe('wavoipVoiceCableHandlers', () => {
       wavoipVoiceCableHandlers.onAccepted({
         call_id: 'acc_joining',
         accepted_by_agent_id: 42,
+        accepted_by_agent_name: 'Maria',
       });
 
-      expect(useAlert).not.toHaveBeenCalled();
-      expect(store.calls.some(c => c.callSid === 'acc_joining')).toBe(true);
+      expect(useAlert).toHaveBeenCalledWith(
+        'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY'
+      );
+      expect(store.calls.some(c => c.callSid === 'acc_joining')).toBe(false);
     });
 
     it('dismisses when webhook call_id differs from SDK offer id', () => {

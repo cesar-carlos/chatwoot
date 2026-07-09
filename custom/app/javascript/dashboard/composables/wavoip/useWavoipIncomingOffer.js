@@ -2,7 +2,10 @@ import { useI18n } from 'vue-i18n';
 import { useStore } from 'vuex';
 import { useCallsStore } from 'dashboard/stores/calls';
 import { useAlert } from 'dashboard/composables';
-import { notifyIncomingWavoipOffer } from 'customDashboard/composables/wavoip/useWavoipNotifications';
+import {
+  closeIncomingWavoipOfferNotification,
+  notifyIncomingWavoipOffer,
+} from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import {
   findWavoipCallForOffer,
   mapWavoipOfferToStoreEntry,
@@ -15,7 +18,10 @@ import {
 import { unwrapWavoipSdkResult } from 'customDashboard/lib/wavoip/wavoipSdkResult';
 import { shouldIgnoreInboundWavoipOffer } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
 import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
-import { isCallDismissed } from 'dashboard/composables/useCallSession';
+import {
+  isCallDismissed,
+  markCallDismissed,
+} from 'dashboard/composables/useCallSession';
 
 const pendingOffers = new Map();
 const boundInboxIds = new Set();
@@ -88,13 +94,21 @@ const dismissOfferFromStore = (offer, { alertKey, t, alertParams } = {}) => {
   const callsStore = useCallsStore();
   const callSids = new Set([offer.id]);
   callsStore.calls.forEach(call => {
-    if (call.callSid === offer.id || call.wavoipOfferId === offer.id) {
+    if (
+      call.callSid === offer.id ||
+      call.wavoipOfferId === offer.id ||
+      (call.callId != null && String(call.callId) === String(offer.id))
+    ) {
       callSids.add(call.callSid);
+      if (call.wavoipOfferId) callSids.add(call.wavoipOfferId);
+      if (call.callId != null) callSids.add(String(call.callId));
     }
   });
 
+  closeIncomingWavoipOfferNotification(offer.id);
   callSids.forEach(callSid => {
     removePendingOffer(callSid);
+    markCallDismissed(callSid);
     callsStore.dismissCall(callSid);
   });
 };

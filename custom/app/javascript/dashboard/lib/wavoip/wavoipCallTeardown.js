@@ -1,6 +1,7 @@
 import { useCallsStore } from 'dashboard/stores/calls';
 import { markCallDismissed } from 'dashboard/composables/useCallSession';
 import { removePendingOffer } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
+import { closeIncomingWavoipOfferNotification } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 
 const collectWavoipCallIds = (callsStore, callIds) => {
   const ids = new Set(callIds.filter(Boolean));
@@ -26,6 +27,7 @@ export function removeWavoipCallFromStore(...callIds) {
   const ids = collectWavoipCallIds(callsStore, callIds);
 
   ids.forEach(callSid => {
+    closeIncomingWavoipOfferNotification(callSid);
     removePendingOffer(callSid);
     callsStore.removeCall(callSid);
   });
@@ -37,6 +39,7 @@ export function dismissWavoipCallFromStore(...callIds) {
   const ids = collectWavoipCallIds(callsStore, callIds);
 
   ids.forEach(callSid => {
+    closeIncomingWavoipOfferNotification(callSid);
     removePendingOffer(callSid);
     markCallDismissed(callSid);
     callsStore.dismissCall(callSid);

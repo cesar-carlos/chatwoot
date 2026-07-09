@@ -5,6 +5,7 @@ class Wavoip::Calls::InboundPushService
 
   def perform
     return unless call.incoming?
+    return if Wavoip::Calls::ClaimGuard.claimed?(call)
     return if conversation.blank?
 
     agents = agents_for_notification.to_a
