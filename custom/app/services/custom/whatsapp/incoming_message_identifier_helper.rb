@@ -25,14 +25,17 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
     end
 
     attrs = super
-    return attrs unless evolution_channel?
+    return attrs unless evolution_gateway_channel?
 
     enrich_evolution_contact_attributes!(attrs)
   end
 
   def set_contact_from_message
     super
-    enqueue_evolution_contact_enrichment if evolution_channel? && @contact.present? && !whatsapp_group_inbound?
+    return if @contact.blank? || whatsapp_group_inbound?
+
+    enqueue_evolution_contact_enrichment if evolution_channel?
+    enqueue_evolution_go_contact_enrichment if evolution_go_channel?
   end
 
   private
@@ -45,13 +48,17 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
     inbox.channel.is_a?(Channel::Whatsapp) && inbox.channel.provider == 'evolution_go'
   end
 
+  def evolution_gateway_channel?
+    evolution_channel? || evolution_go_channel?
+  end
+
   def whatsapp_group_inbound?
-    whatsapp_group_provider? &&
+    evolution_gateway_channel? &&
       Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid_from_message)
   end
 
   def whatsapp_group_provider?
-    evolution_channel? || evolution_go_channel?
+    evolution_gateway_channel?
   end
 
   def enrich_evolution_contact_attributes!(attrs)
@@ -59,9 +66,12 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
     return attrs if remote_jid.blank?
 
     attrs[:identifier] = remote_jid if remote_jid.end_with?('@lid')
-    attrs[:additional_attributes] = (attrs[:additional_attributes] || {}).merge(
-      Custom::Whatsapp::Evolution::ContactEnrichmentService::EVOLUTION_REMOTE_JID_KEY => remote_jid
-    )
+    jid_key = if evolution_go_channel?
+                Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY
+              else
+                Custom::Whatsapp::Evolution::ContactEnrichmentService::EVOLUTION_REMOTE_JID_KEY
+              end
+    attrs[:additional_attributes] = (attrs[:additional_attributes] || {}).merge(jid_key => remote_jid)
     attrs
   end
 
@@ -103,7 +113,7 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
 
   def enqueue_evolution_contact_enrichment
     remote_jid = remote_jid_from_message
-    push_name = @processed_params.dig(:contacts, 0, :profile, :name).to_s.strip.presence
+    push_name = contact_push_name
     return unless Custom::Whatsapp::Evolution::ContactEnrichmentService.should_enqueue?(
       contact: @contact,
       remote_jid: remote_jid,
@@ -118,6 +128,29 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
         push_name: push_name
       }.compact
     )
+  end
+
+  def enqueue_evolution_go_contact_enrichment
+    remote_jid = remote_jid_from_message
+    push_name = contact_push_name
+    return unless Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.should_enqueue?(
+      contact: @contact,
+      remote_jid: remote_jid,
+      push_name: push_name
+    )
+
+    Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob.perform_later(
+      inbox.channel.id,
+      @contact.id,
+      {
+        remote_jid: remote_jid,
+        push_name: push_name
+      }.compact
+    )
+  end
+
+  def contact_push_name
+    @processed_params.dig(:contacts, 0, :profile, :name).to_s.strip.presence
   end
 end
 

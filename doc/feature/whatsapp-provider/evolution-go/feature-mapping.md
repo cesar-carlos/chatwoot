@@ -25,7 +25,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | CSAT survey | — | ❌ | — |
 | Campanhas | — | ❌ | — |
 | `source_id` | `data.Info.ID` | ✅ | `process_response` |
-| Typing | `POST /message/presence` | ⚠️ | `ApiClient#set_presence` existe; **não** ligado ao dashboard |
+| Typing | `POST /message/presence` | ✅ | `TypingListener` → `PresenceSyncJob` → `ApiClient#set_presence` (skip private notes) |
 | Mark read outbound | `POST /message/markread` | ✅ | `mark_read_on_reply`, `mark_read_on_open` |
 | Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + `DeleteSyncService` |
 | Edit message | `POST /message/edit` | ✅ | `sync_edit_to_whatsapp` + `EditSyncService` (opt-in) |
@@ -39,10 +39,12 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Texto | `MESSAGE` | ✅ | `EvolutionGoNormalizer` |
 | Mídia | `MESSAGE` (imageMessage, etc.) | ✅ | Normalizer + `ApiClient#download_media` |
 | Location | `MESSAGE` locationMessage | ✅ | Normalizer |
+| Contact card | `MESSAGE` contactMessage | ✅ | Normalizer → `contacts` payload |
+| Button/list reply | `buttonsResponseMessage` / `listResponseMessage` | ✅ | texto com label selecionado |
 | Status read | `READ_RECEIPT` | ✅ | → `statuses[]` flat (batch) |
 | Dedup | — | ✅ | `lock_message_source_id!` (upstream) |
-| Contato/conversa | — | ✅ | `IncomingMessageEvolutionGo` |
-| Reply threading | `quoted` no data | ✅ | `process_in_reply_to` |
+| Contato/conversa | — | ✅ | `IncomingMessageEvolutionGo` + enrichment Go |
+| Reply threading | `contextInfo.stanzaId` | ✅ | `add_reply_context!` → `in_reply_to_external_id` |
 | Client delete | `MESSAGE` revoke / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` |
 | Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` | ✅ | `MessageEditSyncService` |
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
@@ -137,6 +139,6 @@ Ver [../whatsapp-voice/README.md](../../whatsapp-voice/README.md).
 | **0** | Registry, PROVIDERS, prepends | ✅ |
 | **1** | Texto in/out, QR, connect, webhook, wizard | ✅ |
 | **2** | Mídia, READ_RECEIPT, markread, settings, proxy delete | ✅ |
-| **3** | Location, contact, sticker, input_select→buttons/list | ✅ parcial (presence wiring / poll / link / reactions pendentes) |
+| **3** | Location, contact, sticker, input_select→buttons/list, presence typing | ✅ (poll / link / reactions outbound pendentes) |
 | **4** | HISTORY_SYNC import | ✅ código · ⚠️ E2E fixture |
 | **UX** | Avisos, diagnóstico, confirmações, grupos, delete/edit sync | ✅ |

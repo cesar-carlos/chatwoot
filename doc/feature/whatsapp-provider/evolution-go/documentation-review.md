@@ -148,5 +148,5 @@ Cruzamento código `custom/.../evolution_go/` × docs. **Conclusão:** docs de s
 | Fixtures JSON reais | Sem instância Go | [validation-checklist.md](./validation-checklist.md) E2E |
 | JID field real no `GET /instance/status` | Formato Go não confirmado | Capturar no E2E |
 | `CONNECTION` payload real | Template sintético | `connection_event.json` E2E |
-| Presence → typing dashboard | Não wired | Conectar `ApiClient#set_presence` |
+| Presence → typing dashboard | ✅ | `TypingListener` + `PresenceSyncJob` + `ApiClient#set_presence` |
 | Versão Go congelada | Operador informa | `evolution-target-version.txt` |

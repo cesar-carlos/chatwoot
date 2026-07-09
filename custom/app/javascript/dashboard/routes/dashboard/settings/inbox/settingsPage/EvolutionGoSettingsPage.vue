@@ -55,7 +55,9 @@ function loadState() {
     importOnConnect: config.import_on_connect === true,
     importContacts: config.import_contacts === true,
     importMessages: config.import_messages === true,
-    daysLimitImportMessages: config.days_limit_import_messages || 7,
+    // Stored as days_limit_import_messages for backward compatibility; value is
+    // the Evolution Go history-sync `count` (messages per chat), not days.
+    daysLimitImportMessages: config.days_limit_import_messages || 100,
     markInboundDeleted: config.mark_inbound_deleted !== false,
     markInboundEdited: config.mark_inbound_edited !== false,
     syncDeleteToWhatsapp: config.sync_delete_to_whatsapp === true,
@@ -126,7 +128,10 @@ function buildProviderConfig() {
     merge_brazil_contacts: state.mergeBrazilContacts,
     import_contacts: state.importContacts,
     import_messages: state.importMessages,
-    days_limit_import_messages: Number(state.daysLimitImportMessages) || 7,
+    days_limit_import_messages: Math.min(
+      Math.max(Number(state.daysLimitImportMessages) || 100, 1),
+      1000
+    ),
     import_on_connect: state.importOnConnect,
     mark_inbound_deleted: state.markInboundDeleted,
     mark_inbound_edited: state.markInboundEdited,
@@ -487,16 +492,16 @@ async function removeProxy() {
       </p>
       <SettingsFieldSection
         v-if="state.importMessages"
-        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.DAYS_LIMIT.LABEL')"
+        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.HISTORY_COUNT.LABEL')"
         :help-text="
-          t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.DAYS_LIMIT.DESCRIPTION')
+          t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.HISTORY_COUNT.DESCRIPTION')
         "
       >
         <Input
           v-model="state.daysLimitImportMessages"
           type="number"
           min="1"
-          max="365"
+          max="1000"
         />
       </SettingsFieldSection>
       <SettingsToggleSection

@@ -223,7 +223,7 @@ Ocultar: templates Meta, campanhas, embedded signup, health cloud, voz Meta.
 | `import_contacts` | `false` | `GET /user/contacts` + enrichment `/user/info`, `/user/avatar` |
 | `import_on_connect` | `false` | Dispara `ImportJob` ao `connection_status: open` |
 | `import_messages` | `false` | `POST /chat/history-sync` → webhook `HISTORY_SYNC` |
-| `days_limit_import_messages` | `7` | Janela lógica; body swagger `{ count, messageInfo }` no history-sync |
+| `days_limit_import_messages` | `100` | `count` de mensagens por chat no history-sync (nome legado; não é janela em dias) |
 
 Mensagens históricas recebem `content_attributes.history_import: true`.
 

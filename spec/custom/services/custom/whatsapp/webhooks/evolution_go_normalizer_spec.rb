@@ -202,4 +202,79 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
 
     expect(result[:messages].first[:text][:body]).to eq('[Reaction message]')
   end
+
+  it 'normalizes inbound contactMessage payloads' do
+    contact_fixture = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'CONTACT1'
+        },
+        'message' => {
+          'contactMessage' => {
+            'displayName' => 'Maria Silva',
+            'vcard' => "BEGIN:VCARD\nVERSION:3.0\nN:;Maria;;;\nFN:Maria Silva\nTEL;type=CELL;waid=5511888888888:+55 11 88888-8888\nEND:VCARD"
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, contact_fixture).perform
+
+    aggregate_failures do
+      expect(result[:messages].first[:type]).to eq('contacts')
+      expect(result[:messages].first[:contacts].first[:name][:formatted_name]).to eq('Maria Silva')
+      expect(result[:messages].first[:contacts].first[:phones].first[:phone]).to eq('5511888888888')
+    end
+  end
+
+  it 'attaches reply context from contextInfo.stanzaId' do
+    reply_fixture = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'REPLY1'
+        },
+        'message' => {
+          'extendedTextMessage' => {
+            'text' => 'Replying here',
+            'contextInfo' => { 'stanzaId' => 'ORIGINAL1' }
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, reply_fixture).perform
+
+    expect(result[:messages].first[:context]).to eq(id: 'ORIGINAL1')
+    expect(result[:messages].first[:text][:body]).to eq('Replying here')
+  end
+
+  it 'normalizes buttonsResponseMessage as text with selected label' do
+    button_fixture = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'BTN1'
+        },
+        'message' => {
+          'buttonsResponseMessage' => {
+            'selectedButtonId' => 'opt_1',
+            'selectedDisplayText' => 'Yes, please'
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, button_fixture).perform
+
+    expect(result[:messages].first[:type]).to eq('text')
+    expect(result[:messages].first[:text][:body]).to eq('Yes, please')
+  end
 end

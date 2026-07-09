@@ -36,7 +36,8 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults
     'sync_delete_to_whatsapp' => false,
     'sync_edit_to_whatsapp' => false,
     'import_messages' => false,
-    'days_limit_import_messages' => 7,
+    # Message count for POST /chat/history-sync `count` (key name kept for saved configs).
+    'days_limit_import_messages' => 100,
     'connection_status' => 'close',
     'webhook_token' => nil,
     'webhook_subscribe' => Custom::Whatsapp::EvolutionGo::ProviderConfig::WEBHOOK_EVENTS

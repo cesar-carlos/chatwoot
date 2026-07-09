@@ -7,13 +7,13 @@ class Custom::Whatsapp::EvolutionGo::MarkReadService
     return unless evolution_go_inbox?
     return unless mark_read_on_open?
 
-    phone_number = conversation.contact&.phone_number
-    return if phone_number.blank?
+    peer = mark_read_peer
+    return if peer.blank?
 
     ids = unread_incoming_source_ids
     return if ids.blank?
 
-    api_client.mark_messages_read(number: phone_number, ids: ids)
+    api_client.mark_messages_read(number: peer, ids: ids)
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION_GO] mark read on open failed conversation=#{conversation.id}: #{e.message}"
   end
@@ -28,6 +28,19 @@ class Custom::Whatsapp::EvolutionGo::MarkReadService
   def mark_read_on_open?
     config = conversation.inbox.channel.provider_config || {}
     ActiveModel::Type::Boolean.new.cast(config['mark_read_on_open'])
+  end
+
+  # Prefer phone for 1:1; fall back to contact_inbox source_id so group chats
+  # (`@g.us`) and LID peers still receive read receipts.
+  def mark_read_peer
+    phone = conversation.contact&.phone_number.to_s.gsub(/\D/, '')
+    return phone if phone.present?
+
+    source_id = conversation.contact_inbox&.source_id.to_s
+    return source_id if source_id.include?('@')
+
+    digits = source_id.gsub(/\D/, '')
+    digits.presence
   end
 
   def unread_incoming_source_ids
