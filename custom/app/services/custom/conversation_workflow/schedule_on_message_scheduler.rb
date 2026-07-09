@@ -1,3 +1,12 @@
+# Schedules a delayed job when a message starts (or continues) a waiting episode.
+#
+# Per-message coverage (calendar time only):
+#   - incoming → agent_no_reply, first_response_overdue
+#   - outgoing → customer_no_reply
+#
+# Cron-only (SchedulerJob every 5 min): conversation_inactivity, unassigned_too_long,
+# pending_stale, and ANY rule with respect_business_hours — business-hours elapsed time
+# cannot be expressed as a fixed Sidekiq delay.
 class Custom::ConversationWorkflow::ScheduleOnMessageScheduler
   REDIS_KEY_PREFIX = 'conversation_workflow:schedule'.freeze
   MIN_WAIT_SECONDS = 1

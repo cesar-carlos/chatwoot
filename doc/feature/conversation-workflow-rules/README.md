@@ -43,9 +43,9 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 ## Objetivos do produto
 
 1. **Várias regras** por conta (não config global única).
-2. Dois gatilhos temporais:
-   - **Inatividade geral** (`last_activity_at`)
-   - **Agente não respondeu** (`waiting_since`)
+2. Seis gatilhos temporais (ver [business-rules.md](./business-rules.md) §1):
+   - Inatividade / cliente não respondeu (`auto_resolve_conversations`)
+   - Agente não respondeu / first response / unassigned / pending stale (`conversation_agent_no_reply_rules`)
 3. Filtro por **inbox** + **condições** (assignee, team, labels, priority).
 4. **Múltiplas ações** via `Custom::ConversationWorkflow::ActionService` (wrapper sobre `ActionService`).
 5. **Escalonamento em níveis** = múltiplas regras com durações distintas.
@@ -71,17 +71,18 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 | Tópico | Decisão |
 |--------|---------|
-| Scheduler | Cron 5 min; job per-message em incoming (Fase 3) |
-| Dedup `agent_no_reply` | `(rule_id, conversation_id, waiting_since_epoch)` |
-| Dedup inatividade | Chave por `last_activity_at_epoch` |
+| Scheduler | Cron 5 min (todos os triggers); per-message em incoming (`agent_no_reply`, `first_response_overdue`) e outgoing (`customer_no_reply`) |
+| Business hours | Opt-in por regra; **só cron** (delay Sidekiq não expressa horário útil) |
+| Dedup waiting | `(rule_id, conversation_id, waiting_since_epoch)` — `agent_no_reply`, `first_response_overdue` |
+| Dedup activity | `(rule_id, conversation_id, last_activity_epoch)` — inatividade, pending, unassigned, customer_no_reply |
 | Tiered SLA | **Múltiplas regras** (ex.: 15 min / 2h / 24h), uma por tier |
-| Feature flags | `auto_resolve_conversations` → inatividade; **`conversation_agent_no_reply_rules`** → agente não respondeu |
+| Feature flags | `auto_resolve_conversations` → inatividade + `customer_no_reply`; **`conversation_agent_no_reply_rules`** → waiting / unassigned / pending |
 | `send_message` | Default **não** zera `waiting_since`; opt-in `counts_as_agent_reply` por ação |
 | Activity audit | `Current.executed_by = ConversationWorkflowRule` + i18n |
 | i18n | en + pt_BR |
 | Required attrs | Fase 4 — `Custom::Conversations::ResolveService` + `skip_required_attributes` para sistema |
 | SLA Enterprise | Escopo distinto — SLA = contrato; workflow = automação operacional |
-| Automação UI (Opção D) | Fase 4 — eventos sintéticos `conversation_inactivity_threshold`, `conversation_agent_no_reply` |
+| Automação UI (Opção D) | Fase 4 — 6 eventos sintéticos (um por trigger) |
 
 ---
 
@@ -97,4 +98,4 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 ---
 
-*Última atualização: jun/2026 — menu **Regras de conversa**, go-live checklist*
+*Última atualização: jul/2026 — 6 gatilhos, índices extended, runtime per-message vs cron documentado*
