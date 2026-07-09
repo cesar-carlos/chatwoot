@@ -26,9 +26,22 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
 
   UNSUPPORTED_TYPE_PLACEHOLDERS = {
     'reactionMessage' => '[Reaction message]',
-    'listMessage' => '[List message]',
-    'listResponseMessage' => '[List message]'
+    'listMessage' => '[List message]'
   }.freeze
+
+  CONTEXT_INFO_MESSAGE_KEYS = %w[
+    extendedTextMessage
+    imageMessage
+    videoMessage
+    audioMessage
+    documentMessage
+    stickerMessage
+    contactMessage
+    locationMessage
+    buttonsResponseMessage
+    templateButtonReplyMessage
+    listResponseMessage
+  ].freeze
 
   private
 
@@ -78,6 +91,7 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
     return 'location' if message['locationMessage'].present? || message['liveLocationMessage'].present?
     return 'contacts' if message['contactMessage'].present? || message['contactsArrayMessage'].present?
     return 'text' if message['conversation'].present? || message['extendedTextMessage'].present?
+    return 'text' if interactive_reply_body(message).present?
 
     nil
   end
@@ -181,7 +195,7 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
 
   def extract_context_info(data)
     message = data['message'] || {}
-    %w[extendedTextMessage imageMessage videoMessage audioMessage documentMessage stickerMessage].each do |type|
+    CONTEXT_INFO_MESSAGE_KEYS.each do |type|
       context_info = message.dig(type, 'contextInfo')
       return context_info if context_info.present?
     end
@@ -206,10 +220,35 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
            message.dig('extendedTextMessage', 'text') ||
            message.dig('imageMessage', 'caption') ||
            message.dig('videoMessage', 'caption') ||
-           message.dig('documentMessage', 'caption')
+           message.dig('documentMessage', 'caption') ||
+           interactive_reply_body(message)
     return body if body.present?
 
     unsupported_placeholder(data['message'])
+  end
+
+  def interactive_reply_body(message)
+    message = (message || {}).with_indifferent_access
+
+    button = message['buttonsResponseMessage']
+    if button.present?
+      button = button.with_indifferent_access
+      return button['selectedDisplayText'].presence || button['selectedButtonId'].presence
+    end
+
+    template = message['templateButtonReplyMessage']
+    if template.present?
+      template = template.with_indifferent_access
+      return template['selectedDisplayText'].presence || template['selectedId'].presence
+    end
+
+    list = message['listResponseMessage']
+    return if list.blank?
+
+    list = list.with_indifferent_access
+    list.dig('singleSelectReply', 'selectedRowId').presence ||
+      list['title'].presence ||
+      list['description'].presence
   end
 
   def unsupported_message_type?(message)

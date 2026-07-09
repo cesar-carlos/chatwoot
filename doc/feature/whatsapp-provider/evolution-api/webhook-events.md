@@ -172,6 +172,13 @@ Target para `Whatsapp::IncomingMessageService` (formato 360dialog-like):
 | `audioMessage` | `audio` |
 | `videoMessage` | `video` |
 | `stickerMessage` | `sticker` |
+| `locationMessage` / `liveLocationMessage` | `location` |
+| `contactMessage` / `contactsArrayMessage` | `contacts` |
+| `buttonsResponseMessage` / `templateButtonReplyMessage` | `text` (label/id selecionado) |
+| `listResponseMessage` | `text` (row id / title) |
+| `reactionMessage` | `text` placeholder `[Reaction message]` |
+
+Reply threading: `contextInfo.stanzaId` → `message.context.id` (paridade com Go).
 
 ### Mídia inbound
 

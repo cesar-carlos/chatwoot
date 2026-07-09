@@ -49,6 +49,8 @@ Status geral do domínio: [../STATUS.md](../STATUS.md)
 - mídia, sync de status, sync de contatos e import
 - bypass da janela de 24h para sessão livre
 - settings específicos de Evolution no dashboard
+- inbound contacts, reply context, button/list replies
+- typing indicator → `POST /chat/sendPresence`
 
 ## Pontos que continuam importantes
 

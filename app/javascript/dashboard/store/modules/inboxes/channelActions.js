@@ -116,6 +116,10 @@ export const channelActions = {
     const response = await InboxesAPI.postEvolutionImport(inboxId);
     return response.data;
   },
+  evolutionRefreshContacts: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.postEvolutionRefreshContacts(inboxId);
+    return response.data;
+  },
   fetchEvolutionGoConnection: async (_ctx, payload) => {
     const inboxId = typeof payload === 'object' ? payload.inboxId : payload;
     const includeQr = typeof payload === 'object' ? payload.includeQr : false;
@@ -134,6 +138,11 @@ export const channelActions = {
   },
   evolutionGoImport: async (_ctx, inboxId) => {
     const response = await InboxesAPI.postEvolutionGoImport(inboxId);
+    return response.data;
+  },
+  evolutionGoRefreshContacts: async (_ctx, inboxId) => {
+    const response =
+      await InboxesAPI.postEvolutionGoRefreshContacts(inboxId);
     return response.data;
   },
   evolutionGoSyncWebhook: async (_ctx, inboxId) => {

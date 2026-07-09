@@ -188,6 +188,8 @@ flowchart TB
 | 3.5 | `logout` / `restart` instance nos settings | ✅ |
 | 3.6 | `merge_brazil_contacts` | ✅ |
 | 3.7 | Reavaliar `EvolutionWebhookJob` dedicado se prepend causar regressão ([decisions.md §16](./decisions.md)) | ⏸️ deferido |
+| 3.8 | Inbound button/list reply → texto (não placeholder) | ✅ jul/2026 |
+| 3.9 | Typing dashboard → `POST /chat/sendPresence` | ✅ jul/2026 |
 
 **Estimativa:** 2–3 semanas
 

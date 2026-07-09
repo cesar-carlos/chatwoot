@@ -170,6 +170,54 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionNormalizer do
       expect(result.dig(:messages, 0, :text, :body)).to eq('[Reaction message]')
     end
 
+    it 'normalizes buttonsResponseMessage as text with selected label' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['message'] = {
+        'buttonsResponseMessage' => {
+          'selectedButtonId' => 'opt-1',
+          'selectedDisplayText' => 'Option One'
+        }
+      }
+      envelope['data']['messageType'] = 'buttonsResponseMessage'
+
+      result = normalize(envelope)
+
+      expect(result.dig(:messages, 0, :text, :body)).to eq('Option One')
+    end
+
+    it 'normalizes listResponseMessage as text with selected row id' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['message'] = {
+        'listResponseMessage' => {
+          'title' => 'Chosen row',
+          'singleSelectReply' => { 'selectedRowId' => 'row-2' }
+        }
+      }
+      envelope['data']['messageType'] = 'listResponseMessage'
+
+      result = normalize(envelope)
+
+      expect(result.dig(:messages, 0, :text, :body)).to eq('row-2')
+    end
+
+    it 'attaches reply context from stanzaId' do
+      envelope = load_fixture('messages_upsert_text')
+      envelope['data']['message'] = {
+        'extendedTextMessage' => {
+          'text' => 'Reply body',
+          'contextInfo' => { 'stanzaId' => 'ORIG-MSG-123' }
+        }
+      }
+      envelope['data']['messageType'] = 'extendedTextMessage'
+
+      result = normalize(envelope)
+
+      aggregate_failures do
+        expect(result.dig(:messages, 0, :text, :body)).to eq('Reply body')
+        expect(result.dig(:messages, 0, :context, :id)).to eq('ORIG-MSG-123')
+      end
+    end
+
     it 'unwraps ephemeral messages before normalization' do
       envelope = load_fixture('messages_upsert_text')
       envelope['data']['message'] = {

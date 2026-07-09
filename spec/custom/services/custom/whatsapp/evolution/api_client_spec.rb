@@ -27,6 +27,22 @@ RSpec.describe Custom::Whatsapp::Evolution::ApiClient do
     end
   end
 
+  describe '#send_presence' do
+    it 'POSTs /chat/sendPresence with number, presence and delay' do
+      response = instance_double(HTTParty::Response, success?: true, parsed_response: { 'presence' => 'composing' })
+
+      expect(HTTParty).to receive(:post).with(
+        'https://evo.example.com/chat/sendPresence/test-instance',
+        hash_including(
+          headers: hash_including('apikey' => 'test-api-key'),
+          body: { number: '5511999999999', presence: 'composing', delay: 3000 }.to_json
+        )
+      ).and_return(response)
+
+      expect(client.send_presence(number: '5511999999999', presence: 'composing', delay: 3000)).to eq(response)
+    end
+  end
+
   describe '.raise_unless_success!' do
     it 'raises ApiError when response is not successful' do
       response = instance_double(HTTParty::Response, success?: false, code: 404, parsed_response: { 'message' => 'not found' })

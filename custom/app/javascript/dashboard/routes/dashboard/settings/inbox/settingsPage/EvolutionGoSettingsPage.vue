@@ -26,6 +26,7 @@ const store = useStore();
 const isSaving = ref(false);
 const isRemovingProxy = ref(false);
 const isImporting = ref(false);
+const isRefreshingContacts = ref(false);
 const showImportConfirmModal = ref(false);
 const importStatus = ref(null);
 
@@ -221,6 +222,30 @@ async function runImport() {
 async function confirmImport() {
   showImportConfirmModal.value = false;
   await runImport();
+}
+
+async function refreshContactProfiles() {
+  if (isRefreshingContacts.value) return;
+
+  isRefreshingContacts.value = true;
+  try {
+    const payload = await store.dispatch(
+      'inboxes/evolutionGoRefreshContacts',
+      props.inbox.id
+    );
+    useAlert(
+      t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_SUCCESS', {
+        count: payload.enqueued || 0,
+      })
+    );
+  } catch (error) {
+    useAlert(
+      error?.response?.data?.error ||
+        t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_ERROR')
+    );
+  } finally {
+    isRefreshingContacts.value = false;
+  }
 }
 
 function importStatusLabel(status) {
@@ -538,7 +563,15 @@ async function removeProxy() {
           {{ importStatus.error }}
         </p>
       </div>
-      <div class="flex justify-end">
+      <div class="flex justify-end gap-2 flex-wrap">
+        <NextButton
+          :label="
+            t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN')
+          "
+          :is-loading="isRefreshingContacts"
+          slate
+          @click="refreshContactProfiles"
+        />
         <NextButton
           :label="t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.RUN')"
           :is-loading="isImporting"
@@ -546,6 +579,13 @@ async function removeProxy() {
           @click="requestImport"
         />
       </div>
+      <p class="text-sm text-n-slate-11">
+        {{
+          t(
+            'INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.DESCRIPTION'
+          )
+        }}
+      </p>
     </SettingsAccordion>
 
     <SettingsAccordion
