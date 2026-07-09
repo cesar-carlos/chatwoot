@@ -1245,6 +1245,10 @@
             "LABEL": "History window (days)",
             "DESCRIPTION": "Only request messages from the last N days (1–365) for each contact during import."
           },
+          "HISTORY_COUNT": {
+            "LABEL": "Messages per chat",
+            "DESCRIPTION": "How many messages to request per contact via Evolution Go history-sync (1–1000). This maps to the API `count` field, not a day window."
+          },
           "MESSAGES_REQUIRES_CONTACTS": "Message history import runs after contacts are imported (enable Import contacts or run import with both options)."
         },
         "MARK_INBOUND_DELETED": {

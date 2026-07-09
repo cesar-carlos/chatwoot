@@ -113,7 +113,7 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 | `import_contacts` | `false` | Import manual ou `import_on_connect` |
 | `import_on_connect` | `false` | Disparar import ao conectar |
 | `import_messages` | `false` | Histórico via `HISTORY_SYNC` |
-| `days_limit_import_messages` | `7` | Janela em dias para history sync |
+| `days_limit_import_messages` | `100` | Message **count** for `POST /chat/history-sync` `count` (legacy key name; not a day window) |
 
 ### Runtime import / diagnóstico (somente leitura na UI)
 
@@ -155,7 +155,7 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
   "import_on_connect": false,
   "import_contacts": false,
   "import_messages": false,
-  "days_limit_import_messages": 7,
+  "days_limit_import_messages": 100,
   "sync_delete_to_whatsapp": false,
   "sync_edit_to_whatsapp": false
 }

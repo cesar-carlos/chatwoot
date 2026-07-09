@@ -11,7 +11,9 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     'videoMessage' => 'video',
     'stickerMessage' => 'sticker',
     'locationMessage' => 'location',
-    'liveLocationMessage' => 'location'
+    'liveLocationMessage' => 'location',
+    'contactMessage' => 'contacts',
+    'contactsArrayMessage' => 'contacts'
   }.freeze
 
   MEDIA_MESSAGE_KEYS = %w[
@@ -24,21 +26,37 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
 
   UNSUPPORTED_TYPE_PLACEHOLDERS = {
     'reactionMessage' => '[Reaction message]',
-    'listMessage' => '[List message]',
-    'listResponseMessage' => '[List message]'
+    'listMessage' => '[List message]'
   }.freeze
+
+  CONTEXT_INFO_MESSAGE_KEYS = %w[
+    extendedTextMessage
+    imageMessage
+    videoMessage
+    audioMessage
+    documentMessage
+    stickerMessage
+    contactMessage
+    locationMessage
+    buttonsResponseMessage
+    templateButtonReplyMessage
+    listResponseMessage
+  ].freeze
 
   private
 
   def map_message_type(message)
     return nil if message.blank?
 
+    message = message.with_indifferent_access
+
     MEDIA_MESSAGE_KEYS.each do |key|
-      return MESSAGE_TYPE_MAP[key] if message[key].present? || message[key.to_sym].present?
+      return MESSAGE_TYPE_MAP[key] if message[key].present?
     end
 
-    return 'location' if message['locationMessage'].present? || message[:locationMessage].present? ||
-                         message['liveLocationMessage'].present? || message[:liveLocationMessage].present?
+    return 'location' if message['locationMessage'].present? || message['liveLocationMessage'].present?
+    return 'contacts' if message['contactMessage'].present? || message['contactsArrayMessage'].present?
+    return 'text' if interactive_reply_body(message).present?
 
     body = extract_text_body(message)
     return 'text' if body.present?
@@ -83,6 +101,8 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
       true
     when 'location'
       apply_location_payload!(message_hash, data)
+    when 'contacts'
+      apply_contacts_payload!(message_hash, data)
     else
       false
     end
@@ -103,10 +123,56 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
            message.dig('extendedTextMessage', 'text') ||
            message.dig('imageMessage', 'caption') ||
            message.dig('videoMessage', 'caption') ||
-           message.dig('documentMessage', 'caption')
+           message.dig('documentMessage', 'caption') ||
+           interactive_reply_body(message)
     return body if body.present?
 
     unsupported_placeholder(message)
+  end
+
+  def interactive_reply_body(message)
+    message = (message || {}).with_indifferent_access
+
+    button = message['buttonsResponseMessage']
+    if button.present?
+      button = button.with_indifferent_access
+      return button['selectedDisplayText'].presence || button['selectedButtonId'].presence
+    end
+
+    template = message['templateButtonReplyMessage']
+    if template.present?
+      template = template.with_indifferent_access
+      return template['selectedDisplayText'].presence || template['selectedId'].presence
+    end
+
+    list = message['listResponseMessage']
+    return if list.blank?
+
+    list = list.with_indifferent_access
+    list.dig('singleSelectReply', 'selectedRowId').presence ||
+      list['title'].presence ||
+      list['description'].presence
+  end
+
+  def add_reply_context!(message_hash, data)
+    context_info = extract_context_info(data)
+    return if context_info.blank?
+
+    stanza_id = context_info['stanzaId'] || context_info[:stanzaId]
+    return if stanza_id.blank?
+
+    message_hash[:context] = { id: stanza_id }
+  end
+
+  def extract_context_info(data)
+    message = (data['message'] || data[:message] || {}).with_indifferent_access
+    CONTEXT_INFO_MESSAGE_KEYS.each do |type|
+      context_info = message.dig(type, 'contextInfo')
+      return context_info.with_indifferent_access if context_info.present?
+    end
+
+    top_level = data['contextInfo'] || data[:contextInfo]
+    top_level.present? ? top_level.with_indifferent_access : nil
   end
 
   def unsupported_placeholder(message)
@@ -145,6 +211,50 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
 
     message_hash[:text] = { body: [name, address, maps_url].compact.join(' — ') } if name.present? || address.present?
     true
+  end
+
+  def apply_contacts_payload!(message_hash, data)
+    message = (data['message'] || data[:message] || {}).with_indifferent_access
+    contacts = extract_contacts(message)
+    return false if contacts.blank?
+
+    message_hash[:contacts] = contacts
+    true
+  end
+
+  def extract_contacts(message)
+    if message['contactsArrayMessage'].present?
+      Array.wrap(message.dig('contactsArrayMessage', 'contacts')).filter_map do |entry|
+        entry = (entry || {}).with_indifferent_access
+        build_contact_hash(entry['contactMessage'] || entry)
+      end
+    elsif message['contactMessage'].present?
+      [build_contact_hash(message['contactMessage'])].compact
+    else
+      []
+    end
+  end
+
+  def build_contact_hash(contact)
+    return nil if contact.blank?
+
+    contact = contact.with_indifferent_access
+    display_name = contact['displayName'].presence
+    vcard = contact['vcard'].to_s
+    phone = vcard[/waid=\d+:(\+?[\d\s()-]+)/, 1] || vcard[/TEL[^:]*:([^\n]+)/, 1]
+    phone_list = if phone.present?
+                   [{ phone: phone.gsub(/\D/, '').presence || phone.strip }]
+                 else
+                   [{ phone: 'Phone number is not available' }]
+                 end
+
+    {
+      name: {
+        formatted_name: display_name,
+        first_name: display_name
+      }.compact,
+      phones: phone_list
+    }
   end
 
   def convert_markdown_inbound?

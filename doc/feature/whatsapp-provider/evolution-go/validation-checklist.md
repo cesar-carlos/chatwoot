@@ -133,7 +133,13 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Pairing code via `POST evolution_go_pair` com `{ phone }` retorna `pairing_code`
 - [ ] Location inbound (`message_inbound_location.json`) → attachment no Chatwoot
 - [ ] Location outbound (agente envia pin) → `POST /send/location`
-- [ ] `POST /chat/history-sync` body `{ count, messageInfo }` + evento `HISTORY_SYNC` real (salvar fixture)
+- [ ] `POST /chat/history-sync` body `{ count, messageInfo }` (`count` = mensagens, não dias) + evento `HISTORY_SYNC` real (salvar fixture)
+- [ ] Contato inbound (`contactMessage`) → attachment contact no Chatwoot
+- [ ] Reply no WhatsApp → mensagem no CW com `in_reply_to_external_id` (contextInfo.stanzaId)
+- [ ] Button/list reply inbound → texto com label selecionado
+- [ ] Typing no dashboard → `POST /message/presence` (`composing` / `paused`); nota privada não envia
+- [ ] Mark-read ao abrir conversa de grupo (`@g.us`) envia `/message/markread`
+- [ ] Contato 1:1 inbound enriquece avatar/perfil (`ContactEnrichmentJob`)
 - [ ] Echo celular (`SEND_MESSAGE` / `fromMe`) aparece como outgoing no Chatwoot
 - [ ] `evolution_go_server_check` bloqueia URLs internas (SSRF guard)
 
