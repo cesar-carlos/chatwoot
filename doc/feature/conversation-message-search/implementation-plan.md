@@ -2,100 +2,101 @@
 
 Este é o **documento normativo** da feature. Os demais arquivos desta pasta preservam investigação, alternativas e referências visuais, mas não substituem as decisões abaixo.
 
-**Reavaliado em:** 19 de junho de 2026
+**Reavaliado em:** 9 de julho de 2026
 
-**Estado:** implementado (MVP + melhorias P1/P2 selecionadas — ver §14)
+**Estado:** implementado (MVP + melhorias P1/P2 — ver §14). As secções §1–§4 e §7–§8 abaixo refletem o **estado vigente no código**, não o rascunho MVP original.
 
 ---
 
 ## 1. Resultado esperado
 
-O agente abre o menu ⋮ da conversa, seleciona **Pesquisar nesta conversa**, digita pelo menos 2 caracteres e recebe resultados de todo o histórico acessível da conversa.
+O agente abre a pesquisa via menu ⋮, lupa do painel lateral, ⌘F / Ctrl+F ou command bar, digita pelo menos 2 caracteres e recebe resultados de todo o histórico acessível da conversa.
 
 A busca cobre:
 
 - conteúdo de mensagens;
+- assunto de e-mail (`content_attributes.email.subject`);
 - notas privadas;
 - templates;
 - transcrições de áudio já persistidas em `attachments.meta`.
 
-Ao selecionar um resultado, a aplicação garante que a mensagem esteja carregada, fecha o dialog, faz scroll e aplica o highlight existente.
+Ao selecionar um resultado, a aplicação garante que a mensagem esteja carregada, fecha o painel, faz scroll e aplica o highlight existente.
 
 ---
 
-## 2. Escopo da primeira entrega
+## 2. Escopo entregue
 
-A primeira entrega deve ser um único corte vertical pronto para uso. As etapas abaixo são checkpoints de implementação, não releases parciais.
+Entrega vertical pronta para uso (checkpoints históricos A–C + P1/P2 selecionados).
 
 ### Incluído
 
-- um endpoint: `GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search`;
+- endpoint `GET .../messages/search` com `q`, `page`, `from`;
 - autorização herdada de `Conversations::BaseController`;
-- busca em texto e transcrição;
-- paginação de 15 resultados com `has_more`, sem `COUNT DISTINCT`;
-- dialog aberto pelo `MoreActions`;
-- estados idle, loading, vazio e erro;
-- inserção direta do resultado no histórico quando ele não estiver no DOM;
-- scroll e highlight;
-- indicador de nota privada e de match em transcrição;
-- cancelamento de requests obsoletas com `AbortController`;
-- validação de performance com uma conversa grande;
-- i18n em inglês, conforme `chatwoot-core.mdc`.
+- busca em texto, assunto de e-mail e transcrição;
+- motores ILIKE / unaccent / GIN / OpenSearch (com fallback SQL);
+- paginação de 15 resultados com `has_more`, `max_results` 100;
+- painel lateral (`ConversationMessageSearchPanel`) + menu ⋮ / ⌘F / command bar;
+- filtros remetente, buscas recentes, infinite scroll, analytics;
+- `INSERT_MESSAGES_AROUND` + poda de mensagens injetadas (50);
+- scroll, highlight, `AbortController`, rate limit;
+- i18n `en` (e locales fork `pt` / `pt_BR`);
+- specs RSpec + Vitest.
 
-### Não incluído
+### Fora de escopo / pendente operacional
 
-- OpenSearch ou GIN;
-- filtros por remetente/data;
-- atalhos globais;
-- buscas recentes;
-- analytics;
-- mudanças na pesquisa global;
-- specs automatizadas, salvo solicitação explícita.
+- `EXPLAIN` em conversa grande de produção;
+- matriz de aceite §11 cenários manuais restantes;
+- reindex OpenSearch em contas com índice antigo (ver rake `reindex_hints`).
 
 ---
 
-## 3. Decisões consolidadas
+## 3. Decisões consolidadas (vigentes)
 
 | Tema | Decisão |
 |------|---------|
-| Entrada | Item no menu ⋮, antes de “Enviar transcrição” |
-| UI | `components-next/Dialog`, `position="top"`, `width="lg"` |
+| Entrada | Menu ⋮, `SidepanelSwitch`, ⌘F / Ctrl+F, command bar |
+| UI | Painel lateral `ConversationMessageSearchPanel` (não Dialog) |
 | Estado | Local no composable; não reutilizar `conversationSearch` |
 | API | Endpoint scoped à conversa; não estender `/search/messages` |
-| Busca | `ILIKE` em conteúdo e metadados de transcrição |
+| Busca | ILIKE (+ unaccent) / GIN / OpenSearch em content, subject e transcrição |
 | Histórico | Sem corte de 3 meses |
-| Paginação | 15 por página; buscar 16 e responder `has_more` |
-| Scroll | Mesclar diretamente o resultado já retornado pela busca |
-| Store | Reutilizar `SET_MISSING_MESSAGES` com array previamente mesclado |
-| Highlight | Aplicar temporariamente a classe visual já usada pela bolha |
+| Paginação | 15 por página; buscar 16 e responder `has_more`; teto 100 |
+| Scroll | Injetar resultado via `INSERT_MESSAGES_AROUND`; fallback `getPreviousMessages` |
+| Store | Mutations fork + registry/poda de IDs injetados pela busca |
+| Highlight | Classe temporária na bolha; `prefers-reduced-motion` → ring |
 | Concorrência | Cancelar a request anterior com `AbortController` |
 | Notas privadas | Mesma fronteira do endpoint normal de mensagens |
-| Memória | Medir crescimento; implementar limite seguro sem poda cega |
-| Acentos | Avaliar `unaccent` somente após medição e desenho de índice |
+| Memória | Poda de até 50 mensagens injetadas por conversa |
+| Acentos | Extensão `unaccent` + índice funcional GIN trigram |
 | Fork | Ruby novo em `custom/`; hooks upstream mínimos com `FORK:` |
-| Frontend | Arquivos novos na árvore existente do dashboard |
-| Traduções | Somente `en/conversation.json` |
+| Frontend | Arquivos novos + composables em `composables/fork/` |
+| Traduções | `en/conversation.json` (obrigatório); `pt`/`pt_BR` no fork |
 
 ---
 
-## 4. Arquitetura mínima
+## 4. Arquitetura vigente
 
 ```text
-MoreActions
-  └── ConversationMessageSearchDialog
-        ├── useConversationMessageSearch
-        │     └── ConversationMessageSearchAPI
-        ├── ConversationMessageSearchResultItem
-        └── useScrollToConversationMessage
-              ├── SET_MISSING_MESSAGES
-              └── SCROLL_TO_MESSAGE
+MoreActions / SidepanelSwitch / ⌘F
+  └── ConversationMessageSearchPanel
+        └── ConversationMessageSearchView
+              ├── useConversationMessageSearch
+              │     └── ConversationMessageSearchAPI
+              ├── ConversationMessageSearchResultItem
+              └── useScrollToConversationMessage
+                    ├── INSERT_MESSAGES_AROUND
+                    ├── REGISTER / PRUNE_SEARCH_INJECTED
+                    ├── MessageApi.getPreviousMessages (fallback)
+                    └── SCROLL_TO_MESSAGE
 
 GET messages/search
   └── MessagesController#search (prepend)
         └── Custom::ConversationMessageSearchFinder
+              ├── MatchingIds / ContentPredicate (SQL)
+              └── Message.search (OpenSearch, se advanced_search)
 ```
 
-O service intermediário foi removido do plano. No MVP ele apenas repassaria argumentos ao finder, sem orquestrar outra ação. Se GIN/OpenSearch forem implementados, extrair estratégias nessa ocasião.
+Sem service intermediário: o controller valida params e delega ao finder.
 
 ---
 
@@ -104,7 +105,7 @@ O service intermediário foi removido do plano. No MVP ele apenas repassaria arg
 ### Request
 
 ```http
-GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search?q=contrato&page=1
+GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search?q=contrato&page=1&from=contact
 ```
 
 `conversation_id` é o `display_id`, como nas demais rotas de mensagens.
@@ -113,6 +114,7 @@ GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search?
 |-----------|-------|
 | `q` | obrigatório; trim; 2 a 200 caracteres |
 | `page` | opcional; inteiro positivo; default 1 |
+| `from` | opcional; `contact` \| `agent` \| `private` \| `contact:N` \| `agent:N` |
 
 ### Response
 
@@ -122,6 +124,7 @@ GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search?
     {
       "id": 123,
       "content": "Texto da mensagem",
+      "matched_on": "content",
       "message_type": 0,
       "created_at": 1781800000,
       "private": false,
@@ -131,7 +134,9 @@ GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search?
   ],
   "meta": {
     "current_page": 1,
-    "has_more": true
+    "has_more": true,
+    "max_results": 100,
+    "search_engine": "ilike_unaccent"
   }
 }
 ```
@@ -142,8 +147,9 @@ GET /api/v1/accounts/:account_id/conversations/:conversation_id/messages/search?
 | `401/403` | autenticação ou autorização |
 | `404` | conversa inexistente |
 | `422` | query ou página inválida |
+| `429` | rate limit (30 req/min por user+conversa) |
 
-O payload reutiliza `api/v1/models/_message.json.jbuilder`.
+O payload reutiliza `api/v1/models/_message.json.jbuilder` + `matched_on` opcional.
 
 ---
 
@@ -298,144 +304,77 @@ Não adicionar índice novo sem evidência desta medição.
 
 **Status:** script e resultados iniciais documentados em §6.1.1. Repetir em conversa grande antes de merge em produção.
 
-### 6.2 Notas privadas e autorização
-
-### 7.1 Arquivos novos
+### 7.1 Arquivos
 
 ```text
 app/javascript/dashboard/api/conversationMessageSearch.js
 app/javascript/dashboard/composables/fork/useConversationMessageSearch.js
+app/javascript/dashboard/composables/fork/useConversationMessageSearchPanel.js
 app/javascript/dashboard/composables/fork/useScrollToConversationMessage.js
+app/javascript/dashboard/composables/fork/conversationMessageSearchDisplay.js
 app/javascript/dashboard/components/widgets/conversation/ConversationMessageSearch/
-├── ConversationMessageSearchDialog.vue
+├── ConversationMessageSearchPanel.vue
+├── ConversationMessageSearchView.vue
 └── ConversationMessageSearchResultItem.vue
 ```
 
-Não criar um componente `Form` que apenas encapsule um `Input`; isso seria abstração prematura. O dialog orquestra UI e os composables concentram a lógica.
+O painel orquestra UI; os composables concentram a lógica.
 
 ### 7.2 API e busca
 
-`conversationMessageSearch.js` segue o padrão de `ApiClient` existente. O método recebe `signal` e o encaminha ao Axios:
-
 ```javascript
-search({ conversationId, query, page = 1, signal })
+search({ conversationId, query, page = 1, from, signal })
 ```
 
-`useConversationMessageSearch` mantém:
+`useConversationMessageSearch` mantém query, results, paginação, `fromFilter`, recentes (`sessionStorage`), debounce 500 ms, `AbortController`, e append sem duplicar IDs. Sem request com menos de 2 caracteres. Cancelamento não é erro de UI.
 
-- `query`;
-- `results`;
-- `currentPage`;
-- `hasMore`;
-- `isSearching`;
-- `error`;
-- debounce de 500 ms;
-- um `AbortController` para a request atual;
-- cancelamento físico da request anterior ao mudar query, conversa ou fechar o dialog;
-- proteção lógica adicional contra respostas antigas;
-- reset ao trocar de conversa ou query;
-- append ao carregar mais, sem duplicar IDs.
+### 7.3 Painel
 
-Não fazer request com menos de 2 caracteres.
+`ConversationMessageSearchPanel` + `ConversationMessageSearchView`:
 
-Cancelamento por `AbortController` não é erro de UI: não mostrar toast quando Axios indicar request cancelada.
-
-O composable preserva o payload original em snake_case para eventual merge no Vuex. O `ResultItem` cria apenas uma visão camelCase para renderização; não substituir o objeto bruto que veio da API.
-
-### 7.3 Dialog
-
-O dialog:
-
-- expõe `open()` e `close()`;
-- recebe foco no input ao abrir;
-- fecha com Esc/click outside pelo comportamento do `Dialog`;
-- mostra hint para query curta;
-- apresenta loading, vazio e erro;
-- mantém resultados em uma área com scroll;
-- desabilita nova seleção enquanto estiver localizando uma mensagem;
-- usa somente Tailwind e strings i18n.
-
-Não é necessário alterar `MessagesView` para mostrar loading. O item selecionado mantém estado de carregamento no dialog enquanto a mensagem é inserida; o dialog fecha assim que o salto pode ser executado.
+- foco no input ao abrir; Esc fecha;
+- hint, loading, vazio, erro, filtros, recentes, infinite scroll;
+- ↑↓ + Enter para navegar/selecionar;
+- desabilita seleção enquanto localiza a mensagem.
 
 ### 7.4 Resultado
 
-O item mostra:
+O item mostra autor, timestamp, snippet com highlight, badge de nota privada e badge de microfone em match de transcrição.
 
-- autor;
-- timestamp;
-- snippet com highlight;
-- badge de nota privada;
-- badge de microfone quando a query corresponde à transcrição.
+Snippet via `buildSearchResultDisplayMessage`: prioriza subject quando o match é só no assunto; usa `readTranscriptText` para áudio; respeita `matched_on` da API (`content` | `transcription`).
 
-Para áudio, usar `readTranscriptText`. Não depender da leitura snake_case de attachments em `MessageContent` depois de `useCamelCase`.
+### 7.5 Integração
 
-Inferência do match:
-
-1. verificar se `message.content` contém a query;
-2. verificar transcrição dos attachments de áudio;
-3. mostrar badge de transcrição quando houver match na transcrição, mesmo que também exista conteúdo.
-
-Não é necessário adicionar `matched_on` ao contrato MVP.
-
-### 7.5 Integração no menu
-
-Alterar `MoreActions.vue` com blocos `// FORK:` autocontidos:
-
-- import do dialog;
-- `ref`;
-- item `search_in_conversation`;
-- branch no `handleActionClick`;
-- instância do dialog no template.
-
-Não remover a prop ignorada de `ConversationHeader` nem limpar `ConversationView` nesta entrega: são débitos independentes e aumentariam a superfície de conflito.
+- `MoreActions.vue` — item menu + ⌘F + command bar (`// FORK:`)
+- `SidepanelSwitch.vue` + `ConversationView` — painel lateral
+- `useConversationMessageSearchPanel` — estado `is_message_search_panel_open`
 
 ---
 
 ## 8. Salto robusto para a mensagem
 
-O resultado da busca já usa o mesmo partial de mensagem do histórico, portanto uma segunda request é desnecessária no caminho normal.
-
 `useScrollToConversationMessage` recebe a **mensagem bruta selecionada** e executa:
 
-1. Se `#message{id}` existe, seguir ao passo 5.
-2. Mesclar a mensagem selecionada com as mensagens atuais por ID e ordenar por `created_at`.
-3. Commitar o array completo com a mutation existente `SET_MISSING_MESSAGES`.
-4. Aguardar render (`nextTick`) e confirmar novamente que o elemento existe.
-5. Fechar o dialog e emitir `BUS_EVENTS.SCROLL_TO_MESSAGE`.
-6. Adicionar `bg-n-alpha-1` ao elemento e removê-la após 1 segundo. Essa é a mesma classe usada pelo highlight atual da bolha e evita alterar a URL ou o componente upstream.
-7. Se o alvo não existir após o merge, manter/fechar o dialog de forma consistente e exibir `MESSAGE_NOT_FOUND`; nunca emitir o evento que cairia em `scrollToBottom()`.
+1. Se `#message{id}` existe, ir ao passo 5.
+2. Injetar a mensagem com `INSERT_MESSAGES_AROUND` e registar IDs novos (`REGISTER_SEARCH_INJECTED` + `PRUNE_SEARCH_INJECTED`).
+3. Aguardar `nextTick` e reconfirmar o elemento.
+4. Se ainda ausente, fallback `MessageApi.getPreviousMessages` com janela `messageId ± 100` e nova injeção.
+5. Fechar o painel e emitir `BUS_EVENTS.SCROLL_TO_MESSAGE` **somente** se o elemento existir.
+6. Highlight temporário (`bg-n-alpha-1` ou ring se `prefers-reduced-motion`).
+7. Se o alvo não existir: toast `MESSAGE_NOT_FOUND`; **não** emitir scroll.
 
-Com isso, não são necessários:
-
-- `INSERT_MESSAGES_AROUND`;
-- novo mutation type;
-- alteração em `MessagesView`;
-- alteração em `Message.vue`;
-- `route.query.messageId`;
-- segunda request de mensagens;
-- janela arbitrária `messageId ± 100`.
-
-Ao mesclar, ler o estado mais recente imediatamente antes do commit para reduzir disputa com mensagens recebidas em tempo real (`useScrollToConversationMessage` — segunda leitura de `getSelectedChat.messages` antes de `SET_MISSING_MESSAGES`).
+`MessagesView#onScrollToMessage` (FORK): se `messageId` foi pedido e o elemento não está no DOM, **não** faz `scrollToBottom()` — só faz scroll ao fundo quando o evento vem sem `messageId` (comportamento upstream de “ir ao fim”).
 
 ### 8.1 Limite de crescimento no Vuex
 
 Saltos repetidos não devem fazer o histórico crescer sem limite.
 
-No MVP:
+Implementado:
 
-- medir o tamanho de `chat.messages` após uma sequência manual de pelo menos 100 saltos;
-- confirmar que cada salto adiciona no máximo uma mensagem;
-- não implementar poda cega por tamanho do array.
-
-Pós-MVP, antes de adicionar atalhos que aumentem muito o uso:
-
-- manter um registro por conversa dos IDs que **não estavam no store** e foram inseridos pela busca;
-- limitar esse registro, inicialmente, a 50 mensagens;
-- ao ultrapassar o limite, remover primeiro os IDs de busca mais antigos, protegendo alvo atual e mensagens visíveis;
-- retirar um ID do registro quando ele passar a fazer parte de uma página normal carregada;
-- limpar o registro ao trocar/limpar a conversa selecionada.
-
-Essa melhoria exige integração com o carregamento normal de páginas para distinguir proveniência. Não ampliar hooks upstream no MVP apenas para implementar a poda.
+- registry por conversa dos IDs injetados pela busca (`searchInjectedByConversationId`);
+- limite de 50 mensagens; ao ultrapassar, remove os mais antigos protegendo alvo e viewport;
+- `DEREGISTER_SEARCH_INJECTED` quando IDs entram via paginação normal (`fetchPreviousMessages`);
+- limpar o registry ao trocar/limpar a conversa selecionada.
 
 ---
 
@@ -585,7 +524,9 @@ Imprimir checklist: `rake conversation_message_search:acceptance`
 - GIN global: assunto de e-mail em `filter_messages_with_gin`
 - Poda Vuex de mensagens injetadas (§8.1): `REGISTER/PRUNE/DEREGISTER/CLEAR_SEARCH_INJECTED`
 - `MatchedOn` com `fold_text` Ruby (sem round-trips DB)
-- Guard `MessagesView#onScrollToMessage` — não faz `scrollToBottom` se alvo ausente
+- Guard `MessagesView#onScrollToMessage` — não faz `scrollToBottom` se `messageId` pedido e elemento ausente
+- OpenSearch: over-fetch + skip de hits não pesquisáveis para `has_more` / páginas estáveis
+- Snippet de assunto de e-mail no result item (`conversationMessageSearchDisplay`)
 - Rake `conversation_message_search:reindex_hints`
 
 **Ainda pendente (validação operacional):**

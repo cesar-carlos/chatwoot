@@ -66,9 +66,10 @@ A pesquisa global SQL **não** busca transcrição de áudio; in-conversation **
 
 Fluxo ao clicar num resultado:
 
-1. Injeta mensagem no store (`INSERT_MESSAGES_AROUND`)
+1. Injeta mensagem no store (`INSERT_MESSAGES_AROUND`) + registry/poda
 2. Se não estiver no DOM, busca janela via `MessageApi.getPreviousMessages`
-3. Emite `SCROLL_TO_MESSAGE` + highlight temporário
+3. Emite `SCROLL_TO_MESSAGE` + highlight temporário (só se o elemento existir)
+4. `MessagesView`: se `messageId` pedido e elemento ausente, **não** faz `scrollToBottom`
 
 ---
 
@@ -79,9 +80,9 @@ Fluxo ao clicar num resultado:
 | Reindex OpenSearch após campo `deleted` | P2 | `rake conversation_message_search:reindex_hints` |
 | Erros API do controller em inglês | P3 | Frontend mapeia 422 principais |
 | Specs OpenSearch reais (sem stub) | P3 | Requer cluster em CI |
-| Excluir `deleted` do índice na origem (skip callback) | P3 | Filtro `where` já resolve páginas curtas |
+| Excluir `deleted` do índice na origem (skip callback) | P3 | Filtro `where` + over-fetch já estabilizam páginas |
 
-**Resolvido nesta rodada:** OpenSearch `deleted` na query; `MessagesView` sem fallback `scrollToBottom`; poda Vuex §8.1; GIN global com assunto de e-mail.
+**Resolvido:** OpenSearch `deleted` na query + over-fetch pós-filtro; guard `MessagesView` (sem `scrollToBottom` se `messageId` ausente no DOM); poda Vuex §8.1; GIN global com assunto de e-mail; snippet de subject no result item.
 
 ---
 
@@ -93,7 +94,7 @@ Fluxo ao clicar num resultado:
 | `spec/custom/finders/..._finder_spec.rb` | Finder SQL + OpenSearch stub + `transcribed_text` legado |
 | `spec/presenters/messages/search_data_presenter_spec.rb` | `deleted`, transcrição Groq |
 | `spec/custom/lib/custom/message_search/` | `ContentAttributes`, `Tsquery` |
-| Vitest `composables/fork/spec/` | Erros, painel, busca, scroll, mutations poda |
+| Vitest `composables/fork/spec/` | Erros, painel, busca, scroll, mutations poda, display (subject) |
 
 Comandos: `rake conversation_message_search:acceptance` · `rake conversation_message_search:smoke[...]` · `rake conversation_message_search:reindex_hints`
 

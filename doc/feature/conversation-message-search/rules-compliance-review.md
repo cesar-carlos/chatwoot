@@ -327,15 +327,16 @@ Duplica `SearchService`. Aceitável no MVP; **P2** extrair para `Search::DEFAULT
 
 ### 9.1 Estado real
 
-Feature **implementada** no fork (`custom/` + integração frontend). Atualização pós-correções (poda Vuex, OpenSearch `deleted`, guard `MessagesView`).
+Feature **implementada** no fork (`custom/` + integração frontend). Atualização jul/2026: guard `MessagesView`, OpenSearch over-fetch, snippet de subject.
 
 | Artefato planejado | Encontrado |
 |--------------------|------------|
 | `Custom::ConversationMessageSearchFinder` | ✅ |
 | `MessagesController#search` + rota | ✅ |
-| `ConversationMessageSearch/*` (Vue) | ✅ |
+| `ConversationMessageSearch/*` (Vue) | ✅ painel lateral (não Dialog) |
 | Item em `MoreActions.vue` + painel lateral | ✅ |
 | `INSERT_MESSAGES_AROUND` + poda §8.1 | ✅ |
+| Guard `MessagesView#onScrollToMessage` | ✅ — sem `scrollToBottom` se `messageId` ausente |
 | `conversationSearch.js` (store) | ✅ — **pesquisa global**, não in-conversation |
 
 ### 9.2 Veredito pós-reavaliação
@@ -344,7 +345,7 @@ O plano revisado (secções 1–8) permanece **válido e conforme** às rules. R
 
 | # | Risco | Mitigação documentada |
 |---|-------|----------------------|
-| R1 | `MessagesView#onScrollToMessage` faz `scrollToBottom()` se mensagem não está no DOM | Fase B: `useScrollToConversationMessage` + mutation fork |
+| R1 | `MessagesView#onScrollToMessage` faz `scrollToBottom()` se elemento não existe | ✅ Guard FORK: só `scrollToBottom` sem `messageId`; busca emite toast |
 | R2 | `SET_MISSING_MESSAGES` **replace** o array; `SET_PREVIOUS_CONVERSATIONS` só `unshift` | Nova mutation `INSERT_MESSAGES_AROUND` — ver [implementation-plan.md](./implementation-plan.md) §2.2 |
 | R3 | `MessageContent.vue` usa `file_type` / `transcribed_text` (snake); API com `useCamelCase` não exibe áudio | ResultItem espelha `SearchResultMessageItem` + `readTranscriptText` |
 | R4 | Escopo UX (19 P0 + 32 UX-M) vs `chatwoot-core` MVP | Fases A/B/C — não entregar tudo de uma vez |

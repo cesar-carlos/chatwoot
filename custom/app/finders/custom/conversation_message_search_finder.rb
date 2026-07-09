@@ -1,6 +1,9 @@
 class Custom::ConversationMessageSearchFinder
   PER_PAGE = 15
   MAX_RESULTS = 100
+  # Extra hits per OpenSearch round-trip to absorb stale deleted/activity docs after filter.
+  OPENSEARCH_FETCH_PAD = 5
+  OPENSEARCH_MAX_ROUNDS = 5
 
   attr_reader :matched_on_by_id
 
@@ -48,26 +51,59 @@ class Custom::ConversationMessageSearchFinder
   end
 
   def perform_opensearch
-    offset = (@page - 1) * PER_PAGE
-    return [] if offset >= MAX_RESULTS
+    page_offset = (@page - 1) * PER_PAGE
+    return [] if page_offset >= MAX_RESULTS
 
-    limit = [PER_PAGE + 1, MAX_RESULTS - offset].min
+    target = [PER_PAGE + 1, MAX_RESULTS - page_offset].min
+    collected = []
+    skipped = 0
+    cursor = 0
 
-    results = Message.search(
-      @query.to_s.strip,
-      fields: %w[content attachments.transcribed_text content_attributes.email.subject],
-      where: Custom::MessageSearch::FromFilter.opensearch_conditions(@conversation, @from),
-      order: { created_at: :desc },
-      offset: offset,
-      limit: limit,
-      load: true,
-      includes: [:attachments, :sender]
-    )
+    OPENSEARCH_MAX_ROUNDS.times do
+      remaining_cap = MAX_RESULTS - cursor
+      break if remaining_cap <= 0
 
-    filter_searchable_messages(Array(results))
+      still_need = (page_offset - skipped) + (target - collected.size)
+      break if still_need <= 0
+
+      batch_size = [still_need + OPENSEARCH_FETCH_PAD, remaining_cap].min
+      batch = fetch_opensearch_batch(cursor, batch_size)
+      break if batch.empty?
+
+      filter_searchable_messages(batch).each do |message|
+        if skipped < page_offset
+          skipped += 1
+          next
+        end
+
+        collected << message
+        break if collected.size >= target
+      end
+
+      cursor += batch.size
+      break if collected.size >= target
+      break if batch.size < batch_size
+    end
+
+    collected
   rescue Faraday::ConnectionFailed, Searchkick::Error, Elasticsearch::Transport::Transport::Error => e
     Rails.logger.warn("OpenSearch unavailable for in-conversation search, falling back to SQL: #{e.message}")
     perform_sql
+  end
+
+  def fetch_opensearch_batch(offset, limit)
+    Array(
+      Message.search(
+        @query.to_s.strip,
+        fields: %w[content attachments.transcribed_text content_attributes.email.subject],
+        where: Custom::MessageSearch::FromFilter.opensearch_conditions(@conversation, @from),
+        order: { created_at: :desc },
+        offset: offset,
+        limit: limit,
+        load: true,
+        includes: [:attachments, :sender]
+      )
+    )
   end
 
   def scoped_messages
