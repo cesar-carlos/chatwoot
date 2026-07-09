@@ -20,8 +20,10 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
       return
     end
 
-    @processed_params[:statuses] = [status]
-    super
+    update_whatsapp_identifiers_from_status(status)
+    update_message_with_status(@message, status)
+  rescue ArgumentError => e
+    Rails.logger.error "Error while processing Evolution Go status update #{e.message}"
   end
 
   def defer_evolution_go_status(status)
@@ -109,4 +111,3 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
 end
 
 Whatsapp::IncomingMessageBaseService.prepend(Custom::Whatsapp::IncomingMessageEvolutionGo)
-Whatsapp::IncomingMessageServiceHelpers.prepend(Custom::Whatsapp::IncomingMessageEvolutionGo)
