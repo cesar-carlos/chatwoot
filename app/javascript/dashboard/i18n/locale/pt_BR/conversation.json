@@ -108,6 +108,24 @@
         "CURRENT_CONTACT_LABEL": "Compartilhar contato desta conversa"
       }
     },
+    "WEBCAM_CAPTURE": {
+      "TOOLTIP": "Tirar uma foto",
+      "MODAL": {
+        "TITLE": "Tirar uma foto",
+        "DESCRIPTION": "Capture uma imagem da webcam para anexar a esta conversa.",
+        "STARTING": "Iniciando câmera…",
+        "CAPTURE": "Capturar",
+        "RETAKE": "Tirar de novo",
+        "RETRY": "Tentar de novo",
+        "CONFIRM": "Usar foto",
+        "CANCEL": "Cancelar"
+      },
+      "ERROR": {
+        "PERMISSION": "A permissão da câmera foi negada. Autorize no navegador e tente de novo.",
+        "NOT_FOUND": "Nenhuma câmera foi encontrada neste dispositivo.",
+        "GENERIC": "Não foi possível abrir a câmera. Tente de novo."
+      }
+    },
     "NO_CONTENT": "Nenhum conteúdo a ser exibido",
     "SHARED_ATTACHMENT": {
       "CONTACT": "{sender} compartilhou um contato",

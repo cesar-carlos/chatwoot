@@ -110,6 +110,24 @@
         "CURRENT_CONTACT_LABEL": "Share contact from this conversation"
       }
     },
+    "WEBCAM_CAPTURE": {
+      "TOOLTIP": "Take a photo",
+      "MODAL": {
+        "TITLE": "Take a photo",
+        "DESCRIPTION": "Capture an image from your webcam to attach to this conversation.",
+        "STARTING": "Starting camera…",
+        "CAPTURE": "Capture",
+        "RETAKE": "Retake",
+        "RETRY": "Try again",
+        "CONFIRM": "Use photo",
+        "CANCEL": "Cancel"
+      },
+      "ERROR": {
+        "PERMISSION": "Camera permission was denied. Allow access in the browser settings and try again.",
+        "NOT_FOUND": "No camera was found on this device.",
+        "GENERIC": "Could not open the camera. Please try again."
+      }
+    },
     "NO_CONTENT": "No content to display",
     "SHARED_ATTACHMENT": {
       "CONTACT": "{sender} has shared a contact",
