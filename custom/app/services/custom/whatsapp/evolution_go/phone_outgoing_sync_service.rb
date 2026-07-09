@@ -11,6 +11,7 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
     key = canonical['key'] || canonical[:key] || {}
     return if skip_sync?(key)
+    return if protocol_only_message?(canonical)
 
     process_sync!(canonical, key)
   rescue StandardError
@@ -172,5 +173,17 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
 
   def jid_resolver
     @jid_resolver ||= Custom::Whatsapp::EvolutionGo::JidResolver.new(config)
+  end
+
+  def protocol_only_message?(canonical)
+    message = (canonical['message'] || canonical[:message] || {}).with_indifferent_access
+    return false if message.blank?
+
+    substantive_keys = message.keys.map(&:to_s) - %w[messageContextInfo]
+    return false unless substantive_keys == %w[protocolMessage]
+
+    protocol = message[:protocolMessage].to_h.with_indifferent_access
+    Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.revoke_type?(protocol[:type]) ||
+      Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.edit_type?(protocol[:type])
   end
 end

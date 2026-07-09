@@ -28,6 +28,16 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor do
       expect(key[:id]).to eq('MSG-DELETE-1')
     end
 
+    it 'extracts revoke key when protocol key uses PascalCase ID and remoteJID' do
+      payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_revoke_pascal_case.json').read)
+
+      key = described_class.extract_delete_key(payload['data'], event: 'MESSAGE')
+
+      expect(key[:id]).to eq('3EB02445B521333CBE35E4')
+      expect(key[:remoteJid]).to eq('216075593625789@lid')
+      expect(key[:fromMe]).to be(true)
+    end
+
     it 'returns nil for regular text messages' do
       payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_inbound.json').read)
 

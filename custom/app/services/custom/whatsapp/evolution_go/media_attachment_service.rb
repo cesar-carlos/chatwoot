@@ -39,7 +39,10 @@ class Custom::Whatsapp::EvolutionGo::MediaAttachmentService
     end
 
     tempfile = build_tempfile(response.parsed_response)
-    return if tempfile.blank?
+    if tempfile.blank?
+      mark_media_failed!('Empty media response from Evolution Go')
+      return
+    end
 
     begin
       create_attachment!(tempfile)
@@ -103,7 +106,10 @@ class Custom::Whatsapp::EvolutionGo::MediaAttachmentService
     tempfile.write(Custom::Whatsapp::Evolution::MediaDecoder.decode!(base64))
     tempfile.rewind
 
-    filename = parsed['fileName'] || attachment_payload[:filename] || "media#{extension}"
+    filename = response_field(parsed, 'fileName', 'FileName') ||
+               response_field(nested_data(parsed), 'fileName', 'FileName') ||
+               attachment_payload[:filename] ||
+               "media#{extension}"
     filename = "#{filename}#{extension}" if File.extname(filename.to_s).blank? && extension.present?
 
     tempfile.define_singleton_method(:original_filename) { filename }
@@ -121,18 +127,37 @@ class Custom::Whatsapp::EvolutionGo::MediaAttachmentService
   end
 
   def resolve_content_type(parsed, base64)
-    parsed['mimetype'].presence ||
+    data = nested_data(parsed)
+    response_field(parsed, 'mimetype', 'MimeType') ||
+      response_field(data, 'mimetype', 'MimeType') ||
       attachment_payload[:mimetype].presence ||
       Custom::Whatsapp::Evolution::MediaDecoder.mime_type_from_data_url(base64) ||
       'application/octet-stream'
   end
 
   def extension_for_media(parsed, content_type = nil)
-    filename = parsed['fileName'] || attachment_payload[:filename]
+    data = nested_data(parsed)
+    filename = response_field(parsed, 'fileName', 'FileName') ||
+               response_field(data, 'fileName', 'FileName') ||
+               attachment_payload[:filename]
     ext = File.extname(filename.to_s)
     return ext if ext.present?
 
-    mimetype_extension(content_type || parsed['mimetype'] || attachment_payload[:mimetype])
+    mimetype = response_field(parsed, 'mimetype', 'MimeType') ||
+               response_field(data, 'mimetype', 'MimeType') ||
+               attachment_payload[:mimetype]
+    mimetype_extension(content_type || mimetype)
+  end
+
+  def nested_data(parsed)
+    data = parsed['data'] if parsed.is_a?(Hash)
+    data.is_a?(Hash) ? data.with_indifferent_access : {}
+  end
+
+  def response_field(hash, *keys)
+    return nil unless hash.is_a?(Hash)
+
+    Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(hash.with_indifferent_access, *keys)
   end
 
   def mimetype_extension(mimetype)

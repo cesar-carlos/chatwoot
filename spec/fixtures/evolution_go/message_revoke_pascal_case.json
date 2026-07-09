@@ -1,0 +1,28 @@
+{
+  "event": "Message",
+  "instance": "cesar",
+  "data": {
+    "Info": {
+      "ID": "AC2D18D6D448FA960E77331E4A6F3737",
+      "Chat": "216075593625789@lid",
+      "Sender": "61203418243281@lid",
+      "RecipientAlt": "556699050312@s.whatsapp.net",
+      "IsFromMe": true,
+      "Timestamp": "2026-07-09T11:39:03-03:00",
+      "Type": "text"
+    },
+    "Message": {
+      "messageContextInfo": {
+        "deviceListMetadataVersion": 2
+      },
+      "protocolMessage": {
+        "key": {
+          "ID": "3EB02445B521333CBE35E4",
+          "fromMe": true,
+          "remoteJID": "216075593625789@lid"
+        },
+        "type": 0
+      }
+    }
+  }
+}
