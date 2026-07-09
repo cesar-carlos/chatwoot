@@ -179,19 +179,22 @@ Confirmado na collection Postman **[Evolution GO](https://www.postman.com/agenci
 | Get settings | `GET` | `/instance/{instanceId}/advanced-settings` | `instance_token` | 2 |
 | Update settings | `PUT` | `/instance/{instanceId}/advanced-settings` | `instance_token` | 2 |
 
-Body Postman (confirmar casing no E2E — OpenAPI create usa camelCase diferente):
+Body (OpenAPI `AdvancedSettings` — confirmed on runtime Swagger jul/2026):
 
 ```json
 {
-  "rejectCalls": false,
-  "rejectCallMessage": "",
+  "ignoreGroups": true,
+  "rejectCall": false,
+  "msgRejectCall": "",
   "readMessages": false,
-  "readStatus": false,
+  "ignoreStatus": true,
   "alwaysOnline": false
 }
 ```
 
-Mapeamento fork ↔ OpenAPI create response — ver [provider-config-mapping.md § Grupo 2](./provider-config-mapping.md) e [decisions.md §26](./decisions.md).
+Older Postman samples used `rejectCalls` / `rejectCallMessage` / `readStatus` — **do not send those**; `SettingsSync` writes the OpenAPI keys above.
+
+Mapeamento fork ↔ OpenAPI — ver [provider-config-mapping.md § Grupo 2](./provider-config-mapping.md) e [decisions.md §26](./decisions.md).
 
 **`POST /instance/reconnect`:** existe no Postman — **não usar** no fork (ADR §24); usar sempre `connect` com webhook.
 
@@ -327,6 +330,8 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 { "number": "5511999999999", "state": "composing", "isAudio": false }
 ```
 
+**Fork wiring:** dashboard `conversation.typing_on` / `typing_off` → `Custom::Whatsapp::EvolutionGo::TypingListener` (async dispatcher) → `PresenceSyncJob` → `ApiClient#set_presence`. Private notes (`is_private: true`) are skipped. Group chats use `contact_inbox.source_id` (`@g.us`) when phone is blank.
+
 ### React / Edit / Delete
 
 | Path | Fase fork | Componente |
@@ -344,7 +349,9 @@ POST /chat/history-sync
 
 Body (swagger): `{ "count": 100, "messageInfo": { "chat": "5511...@s.whatsapp.net" } }` — dispara eventos `HISTORY_SYNC` com batch de mensagens.
 
-`ApiClient#history_sync` usa a mensagem mais antiga conhecida do chat quando disponível; **validar comportamento real no E2E** (body anterior `{ chat, days }` era no-op).
+`count` is **message quantity**, not days. `MessagesImporter` reads `provider_config.days_limit_import_messages` (legacy key name) and sends it as `count` (default **100**, clamp 1–1000).
+
+`ApiClient#history_sync` uses `{ chat: "<jid string>" }` inside `messageInfo` (string form accepted by Go; OpenAPI also documents `types.JID` object — validate on E2E).
 
 Componentes: `ApiClient#history_sync`, `Import::MessagesImporter`, `HistorySyncProcessor`.
 
@@ -400,7 +407,10 @@ Usados pelo import e enriquecimento de contatos:
 |--------|------|----------|
 | `GET` | `/user/contacts` | `ContactsImporter` |
 | `POST` | `/user/check` | `ContactEnrichmentService` — body `{ "number": ["5511..."] }` (array) |
-| `GET` | `/user/profile-picture` | Avatar (quando habilitado) |
+| `POST` | `/user/avatar` | Avatar no enrichment (`preview` opcional) |
+| `POST` | `/user/info` | Perfil no enrichment — body `CheckUserStruct` |
+
+> `POST /user/profilePicture` no Swagger é **set** da foto do perfil da instância, não get de avatar de contato.
 
 Labels: fora do escopo inbox Chatwoot MVP — ver [documentation-links.md](./documentation-links.md).
 

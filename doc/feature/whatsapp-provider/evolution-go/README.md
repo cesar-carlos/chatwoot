@@ -59,7 +59,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
 - sem provisionar o servidor Go dentro deste repositório
 
-**Pendente:** E2E com servidor real; presence wiring no dashboard; poll/link/reactions.
+**Pendente:** E2E com servidor real; poll/link/reactions outbound; proxy edit em instância existente.
 
 ## Onde este provider encosta no código atual
 

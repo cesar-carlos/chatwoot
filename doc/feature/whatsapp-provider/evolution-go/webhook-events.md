@@ -135,7 +135,7 @@ CHAT_PRESENCE, CALL, CONNECTION, LABEL, CONTACT, GROUP, NEWSLETTER, QRCODE
 | `CONNECTION` | Sessão | 1 | `connection_status` |
 | `QRCODE` | Sessão | 1 | QR wizard |
 | `PRESENCE` | Presença | — | Ignorar |
-| `CHAT_PRESENCE` | Typing | 3 | Opcional → `message/presence` |
+| `CHAT_PRESENCE` | Typing | — | Ignorar inbound (outbound typing via dashboard → `/message/presence`) |
 | `HISTORY_SYNC` | Histórico | 4 | `HistorySyncProcessor` + `content_attributes.history_import` |
 | `MESSAGE_DELETE`, `MESSAGES_DELETE` | Delete cliente | UX | `MessageDeleteSyncService` |
 | `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX | `MessageEditSyncService` |

@@ -55,6 +55,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
     message_hash = build_message_hash(data.merge('message' => message_body), wa_id, message_type, key)
     return if message_hash.blank?
 
+    add_reply_context!(message_hash, data.merge('message' => message_body))
     attach_participant_metadata!(message_hash, key)
 
     contact_name = group_contact_name(key, data)
