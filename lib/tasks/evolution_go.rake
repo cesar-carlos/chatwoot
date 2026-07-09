@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/BlockLength
 namespace :evolution_go do
   desc 'Sync webhook subscriptions for all Evolution Go channels'
   task sync_webhooks: :environment do
@@ -75,3 +76,4 @@ namespace :evolution_go do
     puts "[EVOLUTION_GO] repair_corrupt_media complete #{stats.inspect}"
   end
 end
+# rubocop:enable Metrics/BlockLength

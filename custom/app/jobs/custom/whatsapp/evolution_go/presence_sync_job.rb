@@ -3,7 +3,7 @@
 class Custom::Whatsapp::EvolutionGo::PresenceSyncJob < ApplicationJob
   queue_as :default
 
-  def perform(conversation_id, typing_on, is_private = false)
+  def perform(conversation_id, typing_on, is_private: false)
     return if ActiveModel::Type::Boolean.new.cast(is_private)
 
     conversation = Conversation.find_by(id: conversation_id)

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- enrichment mirrors Evolution Go contact profile fetch
 class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   ENRICHMENT_COOLDOWN = 24.hours
   WHATSAPP_STATUS_KEY = 'whatsapp_status'
@@ -235,3 +236,4 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     false
   end
 end
+# rubocop:enable Metrics/ClassLength

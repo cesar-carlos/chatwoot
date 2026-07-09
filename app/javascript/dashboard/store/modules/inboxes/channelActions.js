@@ -141,8 +141,7 @@ export const channelActions = {
     return response.data;
   },
   evolutionGoRefreshContacts: async (_ctx, inboxId) => {
-    const response =
-      await InboxesAPI.postEvolutionGoRefreshContacts(inboxId);
+    const response = await InboxesAPI.postEvolutionGoRefreshContacts(inboxId);
     return response.data;
   },
   evolutionGoSyncWebhook: async (_ctx, inboxId) => {

@@ -154,15 +154,21 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
     return false unless response.success?
 
     apply_profile(response.parsed_response)
-    # apply_profile already syncs profilePictureUrl when present; fall back to
-    # the dedicated picture endpoint only when the profile payload had no URL.
-    picture_in_profile = response.parsed_response.is_a?(Hash) &&
-                         response.parsed_response['profilePictureUrl'].to_s.present?
-    fetch_profile_picture!(number) if !picture_in_profile && (force || !contact.avatar.attached?)
+    sync_missing_profile_picture!(number, response.parsed_response)
     true
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION] contact enrichment failed for contact #{contact.id}: #{e.message}")
     false
+  end
+
+  def sync_missing_profile_picture!(number, profile)
+    # apply_profile already syncs profilePictureUrl when present; fall back to
+    # the dedicated picture endpoint only when the profile payload had no URL.
+    picture_in_profile = profile.is_a?(Hash) && profile['profilePictureUrl'].to_s.present?
+    return if picture_in_profile
+    return unless force || !contact.avatar.attached?
+
+    fetch_profile_picture!(number)
   end
 
   def profile_fetch_needed?

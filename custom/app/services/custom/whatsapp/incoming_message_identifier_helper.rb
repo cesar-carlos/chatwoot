@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength -- group + LID identity resolution for Evolution inbound
 module Custom::Whatsapp::IncomingMessageIdentifierHelper
   def find_or_create_contact_inbox(source_ids:, contact_attributes:)
     if whatsapp_group_inbound?
@@ -153,5 +154,6 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
     @processed_params.dig(:contacts, 0, :profile, :name).to_s.strip.presence
   end
 end
+# rubocop:enable Metrics/ModuleLength
 
 Whatsapp::IncomingMessageIdentifierHelper.prepend_mod_with('Whatsapp::IncomingMessageIdentifierHelper')

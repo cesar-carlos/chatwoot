@@ -14,8 +14,10 @@
 #
 # Indexes
 #
+# rubocop:disable Layout/LineLength
 #  index_channel_whatsapp_evolution_go_instance_name  (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution_go'::text)
 #  index_channel_whatsapp_evolution_instance_name     (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution'::text)
+# rubocop:enable Layout/LineLength
 #  index_channel_whatsapp_on_phone_number             (phone_number) UNIQUE
 #
 
