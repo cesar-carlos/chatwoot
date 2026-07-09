@@ -86,7 +86,7 @@ Reutilizar partial `api/v1/models/_message.json.jbuilder` + campo opcional `matc
 
 ```javascript
 // GET ${accountScoped}/conversations/${conversationId}/messages/search
-search({ conversationId, q, page = 1 }) { ... }
+search({ conversationId, query, page = 1, from, signal }) { ... }
 ```
 
 ---

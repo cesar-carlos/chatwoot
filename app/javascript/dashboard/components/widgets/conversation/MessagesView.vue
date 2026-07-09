@@ -335,6 +335,8 @@ export default {
     removeBusListeners() {
       emitter.off(BUS_EVENTS.SCROLL_TO_MESSAGE, this.onScrollToMessage);
     },
+    // FORK: when messageId is set but element is missing, skip scrollToBottom
+    // (in-conversation search already shows MESSAGE_NOT_FOUND)
     onScrollToMessage({ messageId = '' } = {}) {
       this.$nextTick(() => {
         const messageElement = document.getElementById('message' + messageId);
@@ -342,7 +344,7 @@ export default {
           this.isProgrammaticScroll = true;
           messageElement.scrollIntoView({ behavior: 'smooth' });
           this.fetchPreviousMessages();
-        } else {
+        } else if (!messageId) {
           this.scrollToBottom();
         }
       });

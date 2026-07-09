@@ -2,7 +2,7 @@
 
 Planejamento para busca no contexto da conversa aberta, incluindo **texto e transcrições de áudio**.
 
-> **Fonte normativa:** [implementation-plan.md](./implementation-plan.md), consolidado e reavaliado contra o código em 19 de junho de 2026. Os outros documentos preservam a investigação e servem como referência, mas podem conter alternativas superadas.
+> **Fonte normativa:** [implementation-plan.md](./implementation-plan.md), consolidado e reavaliado contra o código em 9 de julho de 2026. Os outros documentos preservam a investigação e servem como referência, mas podem conter alternativas superadas.
 
 ## Documentos
 
@@ -27,21 +27,23 @@ Planejamento para busca no contexto da conversa aberta, incluindo **texto e tran
 | Mudança no backend? | **1 endpoint novo** — `GET .../messages/search` ([api-endpoints.md](./api-endpoints.md)) |
 | Mais completo que global SQL? | **Sim** (global ILIKE não busca transcrição; OpenSearch sim) |
 | Entrada UI | Menu ⋮ / painel lateral / ⌘F — Pesquisar nesta conversa |
-| Scroll antigo | Mescla diretamente o resultado já retornado pela busca |
+| Scroll antigo | `INSERT_MESSAGES_AROUND` + fallback `getPreviousMessages` |
 | Paginação | 15 resultados + `has_more`, sem `COUNT DISTINCT` |
 | Requests | Debounce + cancelamento via `AbortController` |
-| Alterações upstream | Rota, hook do controller e integração em `MoreActions` |
+| Alterações upstream | Rota, hook do controller, `MoreActions`, guard `MessagesView` |
 
 ## Status da implementação
 
-| Camada | Estado (jun/2026) |
+| Camada | Estado (jul/2026) |
 |--------|-------------------|
 | Backend (`custom/` finder, controller, rota) | ✅ Implementado |
 | Frontend (painel lateral, composables, API) | ✅ Implementado |
-| Specs RSpec + Vitest | ✅ Implementado (API, finder, presenter, poda Vuex, scroll) |
+| Specs RSpec + Vitest | ✅ Implementado (API, finder, presenter, poda Vuex, scroll, display) |
 | Baseline `EXPLAIN ANALYZE` (dev local) | ✅ Documentado em `implementation-plan.md` §6.1.1 |
 | Poda mensagens injetadas (50) | ✅ `searchInjectedByConversationId` + mutations fork |
-| OpenSearch `deleted` + transcrição unificada | ✅ Código; reindex via `rake conversation_message_search:reindex_hints` |
+| OpenSearch `deleted` + over-fetch pós-filtro | ✅ Código; reindex via `rake conversation_message_search:reindex_hints` |
+| Guard `MessagesView` (sem `scrollToBottom` se alvo ausente) | ✅ Implementado |
+| Snippet assunto de e-mail no result item | ✅ Implementado |
 | `EXPLAIN` em conversa grande (produção) | ⏳ `rake conversation_message_search:explain` |
 | Matriz de aceite §11 | ⏳ `rake conversation_message_search:acceptance` + teste manual |
 
