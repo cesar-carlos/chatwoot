@@ -48,26 +48,28 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 | Projetar o frontend | [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
 | Validar com servidor real | [validation-checklist.md](./validation-checklist.md) |
 
-## Escopo planejado
+## Escopo (implementado)
 
 - inbox `provider: 'evolution_go'` em `Channel::Whatsapp`
 - connect + QR + webhook via REST
-- envio e recebimento de texto no MVP
-- mídia, status e advanced settings em fases seguintes
+- texto, mídia, location, contact, sticker, input_select→buttons/list
+- READ_RECEIPT, mark-read, advanced settings / proxy
 - import contatos, delete/edit inbound, sync delete/edit outbound (opt-in)
 - diagnóstico operacional e import histórico via `HISTORY_SYNC`
 - grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
 - sem provisionar o servidor Go dentro deste repositório
+
+**Pendente:** E2E com servidor real; presence wiring no dashboard; poll/link/reactions.
 
 ## Onde este provider encosta no código atual
 
 | Área | Ponto de extensão |
 |------|-------------------|
 | Model | `app/models/channel/whatsapp.rb` + `custom/app/models/custom/channel/whatsapp.rb` |
-| Registry | `custom/lib/messaging_provider/registry.rb` |
-| Job | `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` |
+| Registry | `custom/config/initializers/messaging_provider_registry.rb` |
+| Job | `custom/app/jobs/custom/webhooks/whatsapp_events_job_evolution_go.rb` |
 | Janela 24h | `custom/app/services/custom/conversations/message_window_service.rb` |
-| Frontend | wizard/settings do provider Evolution como base |
+| Frontend | `EvolutionGo.vue`, Settings/Health pages, composables `evolution_go/` |
 
 ## Documentos de apoio
 

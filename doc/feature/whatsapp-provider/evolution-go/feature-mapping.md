@@ -1,8 +1,8 @@
 # Mapeamento de features — `evolution_go` no Chatwoot
 
-Checklist feature a feature para implementação. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
+Checklist feature a feature vs código. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
 
-**Legenda:** ✅ adapter simples · ⚠️ não trivial · ❌ N/A MVP · 🔧 prepend/FORK
+**Última sync código:** 09/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
 
 ---
 
@@ -10,24 +10,25 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 
 | Feature Chatwoot | API Evolution Go | Fase | Componente |
 |------------------|------------------|------|------------|
-| Texto | `POST /send/text` | 1 | `EvolutionGoService#send_message` |
-| Mídia | `POST /send/media` | 2 | `send_attachment_message` |
-| Location | `POST /send/location` | 3 | — |
-| Contact card | `POST /send/contact` | 3 | — |
-| Link preview | `POST /send/link` | 3 | — |
-| Sticker | `POST /send/sticker` | 3 | — |
-| Poll | `POST /send/poll` | 3 | — |
+| Texto | `POST /send/text` | ✅ | `EvolutionGoService#send_message` |
+| Mídia | `POST /send/media` | ✅ | `send_attachment_message` |
+| Location | `POST /send/location` | ✅ | `send_location_message` |
+| Contact card | `POST /send/contact` | ✅ | `send_contact_card_message` |
+| Link preview | `POST /send/link` | ❌ | Não wired no service |
+| Sticker | `POST /send/sticker` | ✅ | via attachment path |
+| Poll | `POST /send/poll` | ❌ | Não wired |
 | Voice note PTT | — | ❌ | Não documentado Go |
 | Templates WABA | — | ❌ | `send_templates_as_text` → texto |
-| Reply/quote | `quoted: { messageId, participant }` | 2 | override send |
-| Interativos CW | — | ❌ | Sem paridade Meta buttons |
+| Reply/quote | `quoted: { messageId, participant }` | ✅ | outbound quoted |
+| Input select → buttons/list | `POST /send/buttons`, `/send/list` | ✅ parcial | `dispatch_input_select` |
+| Interativos Meta (CW) | — | ❌ | Sem paridade WABA |
 | CSAT survey | — | ❌ | — |
 | Campanhas | — | ❌ | — |
-| `source_id` | `data.Info.ID` | 1 | `process_response` |
-| Typing | `POST /message/presence` | 3 | — |
-| Mark read outbound | `POST /message/markread` | 2 | `mark_read_on_reply`, `mark_read_on_open` |
-| Delete for everyone | `POST /message/delete` | UX | `sync_delete_to_whatsapp` + `DeleteSyncService` |
-| Edit message | `POST /message/edit` | UX | `sync_edit_to_whatsapp` + `EditSyncService` (opt-in) |
+| `source_id` | `data.Info.ID` | ✅ | `process_response` |
+| Typing | `POST /message/presence` | ⚠️ | `ApiClient#set_presence` existe; **não** ligado ao dashboard |
+| Mark read outbound | `POST /message/markread` | ✅ | `mark_read_on_reply`, `mark_read_on_open` |
+| Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + `DeleteSyncService` |
+| Edit message | `POST /message/edit` | ✅ | `sync_edit_to_whatsapp` + `EditSyncService` (opt-in) |
 
 ---
 
@@ -35,18 +36,19 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 
 | Feature | Evento Go | Fase | Componente |
 |---------|-----------|------|------------|
-| Texto | `MESSAGE` | 1 | `EvolutionGoNormalizer` |
-| Mídia | `MESSAGE` (imageMessage, etc.) | 2 | Normalizer + `ApiClient#download_media` |
-| Status read | `READ_RECEIPT` | 2 | → `statuses[]` flat |
-| Dedup | — | 1 | `lock_message_source_id!` (upstream) |
-| Contato/conversa | — | 1 | `IncomingMessageBaseService` |
-| Reply threading | `quoted` no data | 2 | `process_in_reply_to` |
-| Client delete | `MESSAGE` revoke / `MESSAGE_DELETE` | UX | `MessageDeleteSyncService` |
-| Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` | UX | `MessageEditSyncService` |
-| History import | `HISTORY_SYNC` | 4 | `HistorySyncProcessor` |
-| Reações | reaction no MESSAGE | 3 | ignorar ou placeholder |
-| Grupos | `MESSAGE` com `@g.us` | UX | `EvolutionGoNormalizer` + `GroupContactService` quando `ignore_groups: false` |
-| Echo fromMe | `MESSAGE` fromMe | 1 | filtrar |
+| Texto | `MESSAGE` | ✅ | `EvolutionGoNormalizer` |
+| Mídia | `MESSAGE` (imageMessage, etc.) | ✅ | Normalizer + `ApiClient#download_media` |
+| Location | `MESSAGE` locationMessage | ✅ | Normalizer |
+| Status read | `READ_RECEIPT` | ✅ | → `statuses[]` flat (batch) |
+| Dedup | — | ✅ | `lock_message_source_id!` (upstream) |
+| Contato/conversa | — | ✅ | `IncomingMessageEvolutionGo` |
+| Reply threading | `quoted` no data | ✅ | `process_in_reply_to` |
+| Client delete | `MESSAGE` revoke / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` |
+| Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` | ✅ | `MessageEditSyncService` |
+| History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
+| Reações | reaction no MESSAGE | ❌ | ignorar |
+| Grupos | `MESSAGE` com `@g.us` | ✅ | Normalizer + `GroupContactService` quando `ignore_groups: false` · ⚠️ E2E |
+| Echo fromMe | `MESSAGE` / `SEND_MESSAGE` fromMe | ✅ | filtrar ou `PhoneOutgoingSyncService` |
 
 ---
 
@@ -90,14 +92,14 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 
 | Feature | API | Fase |
 |---------|-----|------|
-| Create | `POST /instance/create` | 1 |
-| Connect + webhook | `POST /instance/connect` | 1 |
-| QR | `GET /instance/qr` | 1 |
-| Pairing | `POST /instance/pair` | 1 |
-| Status | `GET /instance/status` | 1 |
-| Disconnect | `POST /instance/disconnect` | 3 |
-| Logout | `DELETE /instance/logout` | 3 |
-| Delete | `DELETE /instance/delete/{id}` | 3 |
+| Create | `POST /instance/create` | ✅ |
+| Connect + webhook | `POST /instance/connect` | ✅ |
+| QR | `GET /instance/qr` | ✅ |
+| Pairing | `POST /instance/pair` | ✅ |
+| Status | `GET /instance/status` | ✅ |
+| Disconnect | `POST /instance/disconnect` | ✅ |
+| Logout | `DELETE /instance/logout` | ✅ (health UI) |
+| Delete | teardown no destroy inbox | ✅ |
 
 ---
 
@@ -105,14 +107,14 @@ Checklist feature a feature para implementação. Complementa [../feature-mappin
 
 | UI | Fase | Doc |
 |----|------|-----|
-| Wizard 3 steps | 1 | [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
-| QR / pairing | 1 | idem |
-| Connection badge | 2 | [inbox-business-rules.md](./inbox-business-rules.md) |
-| Settings abas | 2+ | [inbox-business-rules.md](./inbox-business-rules.md) |
-| Diagnóstico + test webhook | UX | `EvolutionGoHealthPage` |
-| Import polling | UX | `useEvolutionGoImportStatus` |
-| Delete confirm WhatsApp sync | UX | `MessageContextMenu` |
-| `isEvolutionGoWhatsAppChannel` | 1 | idem |
+| Wizard 3 steps | ✅ | `EvolutionGo.vue` — [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
+| QR / pairing | ✅ | modal + pair API |
+| Connection badge / health | ✅ | `EvolutionGoHealthPage` |
+| Settings | ✅ | `EvolutionGoSettingsPage` |
+| Diagnóstico + test webhook | ✅ | health page |
+| Import polling | ✅ | `useEvolutionGoImportStatus` |
+| Delete confirm WhatsApp sync | ✅ | `MessageContextMenu` |
+| Gateway gates | ✅ | `isGatewayWhatsAppProvider` / `isGatewayWhatsAppInbox` |
 
 ---
 
@@ -130,11 +132,11 @@ Ver [../whatsapp-voice/README.md](../../whatsapp-voice/README.md).
 
 ## Fases × entregáveis
 
-| Fase | Features |
-|------|----------|
-| **0** | Registry, PROVIDERS, prepends |
-| **1** | Texto in/out, QR, connect, webhook, wizard |
-| **2** | Mídia, READ_RECEIPT, markread, settings, proxy delete |
-| **3** | Reply, presence, react, sticker, location |
-| **4** | HISTORY_SYNC import (✅ código; E2E fixture pendente) |
-| **UX** | Avisos settings, diagnóstico, confirmações, defaults novos inboxes |
+| Fase | Features | Estado |
+|------|----------|--------|
+| **0** | Registry, PROVIDERS, prepends | ✅ |
+| **1** | Texto in/out, QR, connect, webhook, wizard | ✅ |
+| **2** | Mídia, READ_RECEIPT, markread, settings, proxy delete | ✅ |
+| **3** | Location, contact, sticker, input_select→buttons/list | ✅ parcial (presence wiring / poll / link / reactions pendentes) |
+| **4** | HISTORY_SYNC import | ✅ código · ⚠️ E2E fixture |
+| **UX** | Avisos, diagnóstico, confirmações, grupos, delete/edit sync | ✅ |

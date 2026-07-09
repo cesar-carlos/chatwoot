@@ -156,7 +156,7 @@ Reusar prepend da Fase 0 com capability `unlimited_session: true`.
 | **ApiClient** | Classe nova `EvolutionGo::ApiClient` |
 | **Normalizer** | Classe nova — mapear `MESSAGE` não `MESSAGES_UPSERT` |
 | **Infra Fase 0** | Compartilhar registry + prepends |
-| **Wizard Vue** | Componente `EvolutionGoWhatsapp.vue` + composable compartilhado `useGatewayWhatsappWizard` — ver [frontend-wizard-spec.md](./frontend-wizard-spec.md) e [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) |
+| **Wizard Vue** | Componente `EvolutionGo.vue` + composables dedicados (`useEvolutionGoQrSession`, health, import) — `useGatewayWhatsappWizard` compartilhado **não** foi extraído; ver [frontend-wizard-spec.md](./frontend-wizard-spec.md) e [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) |
 
 ---
 
@@ -307,8 +307,12 @@ Detalhe operação: [troubleshooting.md § Reconnect](./troubleshooting.md).
 | **Endpoint** | `POST /message/downloadmedia` only (body `{ message }`) |
 | **`ApiClient`** | `download_media` — no `/message/downloadimage` fallback (absent from current swagger) |
 | **Job queue** | `MediaDownloadJob` on `:default` |
+| **Resposta Go** | `data.base64` = **data URL completa** (`data:<mime>;base64,...`) via `dataurl.String()` — **não** base64 puro |
+| **Decode Chatwoot** | `MediaDecoder` deve strip do prefixo `data:...;base64,` antes de `Base64.decode64` |
 
-**Status:** **✅ Atualizado** (jul/2026) — swagger jun/2026 lists only `downloadmedia`.
+**Bug jul/2026:** sem strip, blobs Active Storage ficam corrompidos (magic `75ab5a6a…`); PDF viewer mostra "Falha ao carregar documento PDF". Afeta documento, imagem, áudio, etc.
+
+**Status:** **✅ Atualizado** (09/jul/2026) — fix em `MediaDecoder#strip_data_url_prefix`.
 
 ---
 
