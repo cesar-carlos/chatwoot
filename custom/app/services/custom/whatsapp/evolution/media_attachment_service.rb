@@ -105,7 +105,10 @@ class Custom::Whatsapp::Evolution::MediaAttachmentService
     ext = File.extname(filename.to_s)
     return ext if ext.present?
 
-    mimetype = (content_type || parsed['mimetype'] || attachment_payload[:mimetype]).to_s
-    MIME_EXTENSION_PATTERNS.find { |pattern, _| mimetype.match?(pattern) }&.last || '.bin'
+    mimetype_extension(content_type || parsed['mimetype'] || attachment_payload[:mimetype])
+  end
+
+  def mimetype_extension(mimetype)
+    MIME_EXTENSION_PATTERNS.find { |pattern, _| mimetype.to_s.match?(pattern) }&.last || '.bin'
   end
 end

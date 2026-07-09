@@ -20,7 +20,7 @@ class Custom::Whatsapp::Evolution::TypingListener < BaseListener
     Custom::Whatsapp::Evolution::PresenceSyncJob.perform_later(
       conversation.id,
       typing_on,
-      false
+      is_private: false
     )
   end
 

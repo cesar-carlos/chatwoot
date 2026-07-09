@@ -54,41 +54,53 @@ class Custom::ConversationMessageSearchFinder
     page_offset = (@page - 1) * PER_PAGE
     return [] if page_offset >= MAX_RESULTS
 
+    collect_opensearch_page(page_offset)
+  rescue Faraday::ConnectionFailed, Searchkick::Error, Elasticsearch::Transport::Transport::Error => e
+    Rails.logger.warn("OpenSearch unavailable for in-conversation search, falling back to SQL: #{e.message}")
+    perform_sql
+  end
+
+  def collect_opensearch_page(page_offset)
     target = [PER_PAGE + 1, MAX_RESULTS - page_offset].min
     collected = []
     skipped = 0
     cursor = 0
 
     OPENSEARCH_MAX_ROUNDS.times do
-      remaining_cap = MAX_RESULTS - cursor
-      break if remaining_cap <= 0
+      batch, batch_size = next_opensearch_batch(cursor, page_offset, skipped, target, collected.size)
+      break if batch.blank?
 
-      still_need = (page_offset - skipped) + (target - collected.size)
-      break if still_need <= 0
-
-      batch_size = [still_need + OPENSEARCH_FETCH_PAD, remaining_cap].min
-      batch = fetch_opensearch_batch(cursor, batch_size)
-      break if batch.empty?
-
-      filter_searchable_messages(batch).each do |message|
-        if skipped < page_offset
-          skipped += 1
-          next
-        end
-
-        collected << message
-        break if collected.size >= target
-      end
-
+      skipped, collected = absorb_opensearch_batch(batch, page_offset, skipped, collected, target)
       cursor += batch.size
-      break if collected.size >= target
-      break if batch.size < batch_size
+      break if collected.size >= target || batch.size < batch_size
     end
 
     collected
-  rescue Faraday::ConnectionFailed, Searchkick::Error, Elasticsearch::Transport::Transport::Error => e
-    Rails.logger.warn("OpenSearch unavailable for in-conversation search, falling back to SQL: #{e.message}")
-    perform_sql
+  end
+
+  def next_opensearch_batch(cursor, page_offset, skipped, target, collected_size)
+    remaining_cap = MAX_RESULTS - cursor
+    return [[], 0] if remaining_cap <= 0
+
+    still_need = (page_offset - skipped) + (target - collected_size)
+    return [[], 0] if still_need <= 0
+
+    batch_size = [still_need + OPENSEARCH_FETCH_PAD, remaining_cap].min
+    [fetch_opensearch_batch(cursor, batch_size), batch_size]
+  end
+
+  def absorb_opensearch_batch(batch, page_offset, skipped, collected, target)
+    filter_searchable_messages(batch).each do |message|
+      if skipped < page_offset
+        skipped += 1
+        next
+      end
+
+      collected << message
+      break if collected.size >= target
+    end
+
+    [skipped, collected]
   end
 
   def fetch_opensearch_batch(offset, limit)
