@@ -470,6 +470,11 @@ const actions = {
 
   updateMessage({ commit, dispatch, rootGetters, state }, message) {
     commit(types.ADD_MESSAGE, message);
+    // FORK: Evolution Go attaches media asynchronously; message.updated must
+    // also refresh conversation attachments so caption+file bubbles update live.
+    if (message.attachments?.length) {
+      commit(types.ADD_CONVERSATION_ATTACHMENTS, message);
+    }
 
     const contactInfoRequest =
       message.content_attributes?.whatsapp_contact_info;

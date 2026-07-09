@@ -13,8 +13,11 @@ class Custom::Whatsapp::EvolutionGo::MediaDownloadJob < ApplicationJob
   def perform(channel_id, message_id, attachment_payload, message_type)
     @media_lock_acquired = false
     channel = Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution_go')
+    return if channel.blank?
+
     message = Message.find_by(id: message_id)
-    return if channel.blank? || message.blank?
+    # Retry when the inbound transaction has not committed yet (enqueue race).
+    raise ActiveRecord::RecordNotFound, "Evolution Go media message_id=#{message_id} not found" if message.blank?
     return if message.attachments.exists?
 
     acquire_media_lock!(message_id)

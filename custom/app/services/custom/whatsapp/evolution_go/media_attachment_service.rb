@@ -27,9 +27,32 @@ class Custom::Whatsapp::EvolutionGo::MediaAttachmentService
   private
 
   def attach_from_go_message!(evolution_go_message)
-    persist_media_envelope!(evolution_go_message)
+    envelope = evolution_go_message.with_indifferent_access
+    persist_media_envelope!(envelope)
 
-    response = api_client.download_media(evolution_go_message)
+    tempfile = build_tempfile_from_inline_base64(envelope) || download_tempfile_from_api(envelope)
+    if tempfile.blank?
+      mark_media_failed!('Empty media response from Evolution Go')
+      return
+    end
+
+    begin
+      create_attachment!(tempfile)
+      broadcast_message_updated!
+    ensure
+      tempfile.close!
+    end
+  end
+
+  def download_tempfile_from_api(envelope)
+    # downloadmedia expects the Baileys message body without the webhook inline base64.
+    api_envelope = envelope.deep_dup
+    message_body = api_envelope[:message] || api_envelope['message']
+    message_body = message_body.with_indifferent_access if message_body.is_a?(Hash)
+    message_body&.delete(:base64)
+    message_body&.delete('base64')
+
+    response = api_client.download_media(api_envelope)
     unless response.success?
       raise Custom::Whatsapp::EvolutionGo::ApiError.new(
         'Failed to download Evolution Go media',
@@ -38,17 +61,23 @@ class Custom::Whatsapp::EvolutionGo::MediaAttachmentService
       )
     end
 
-    tempfile = build_tempfile(response.parsed_response)
-    if tempfile.blank?
-      mark_media_failed!('Empty media response from Evolution Go')
-      return
-    end
+    build_tempfile(response.parsed_response)
+  end
 
-    begin
-      create_attachment!(tempfile)
-    ensure
-      tempfile.close!
-    end
+  def build_tempfile_from_inline_base64(envelope)
+    message_body = envelope[:message] || envelope['message']
+    return nil unless message_body.is_a?(Hash)
+
+    base64 = message_body.with_indifferent_access[:base64]
+    return nil if base64.blank?
+
+    build_tempfile(
+      {
+        'base64' => base64,
+        'mimetype' => attachment_payload[:mimetype],
+        'fileName' => attachment_payload[:filename]
+      }.compact
+    )
   end
 
   def create_attachment!(tempfile)
@@ -63,13 +92,23 @@ class Custom::Whatsapp::EvolutionGo::MediaAttachmentService
     )
   end
 
+  # Persist metadata without the webhook inline base64 (can be multi-MB) and without
+  # firing message.updated before the attachment exists (UI would show caption-only).
   def persist_media_envelope!(evolution_go_message)
+    envelope = evolution_go_message.deep_stringify_keys
+    message_body = envelope['message']
+    if message_body.is_a?(Hash)
+      message_body = message_body.dup
+      message_body.delete('base64')
+      envelope['message'] = message_body
+    end
+
     attrs = message.content_attributes.stringify_keys.merge(
-      'evolution_go_media_envelope' => evolution_go_message.deep_stringify_keys,
+      'evolution_go_media_envelope' => envelope,
       'evolution_go_media_failed' => false,
       'evolution_go_media_error' => nil
     )
-    message.update!(content_attributes: attrs)
+    message.update_columns(content_attributes: attrs, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] failed to persist media envelope message=#{message.id}: #{e.message}")
   end
@@ -80,6 +119,12 @@ class Custom::Whatsapp::EvolutionGo::MediaAttachmentService
       'evolution_go_media_error' => error_message
     )
     message.update!(content_attributes: attrs)
+  end
+
+  def broadcast_message_updated!
+    message.reload.send_update_event
+  rescue StandardError => e
+    Rails.logger.warn("[EVOLUTION_GO] failed to broadcast media update message=#{message.id}: #{e.message}")
   end
 
   def api_client
