@@ -42,8 +42,16 @@ module Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor
     return if key.blank?
 
     key = key.with_indifferent_access
-    return if key[:id].blank?
+    id = Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(key, 'id', 'ID', 'Id')
+    return if id.blank?
 
-    key.slice(:id, :remoteJid, :fromMe, :participant)
+    {
+      id: id,
+      remoteJid: Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(key, 'remoteJid', 'remoteJID', 'RemoteJid'),
+      fromMe: ActiveModel::Type::Boolean.new.cast(
+        Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(key, 'fromMe', 'FromMe')
+      ),
+      participant: Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(key, 'participant', 'Participant')
+    }.compact
   end
 end

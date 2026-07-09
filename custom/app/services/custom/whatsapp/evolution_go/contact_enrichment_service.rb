@@ -175,26 +175,104 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     return false if number.blank?
     return false if contact.avatar.attached? && !force
 
-    response = api_client.user_avatar(number: number, preview: false)
-    return false unless response.success?
+    # preview: true returns a smaller payload and is more reliable for bulk refresh
+    response = api_client.user_avatar(number: number, preview: true)
+    unless response.success?
+      Rails.logger.warn(
+        "[EVOLUTION_GO] user/avatar failed for contact #{contact.id}: HTTP #{response.code}"
+      )
+      return false
+    end
 
-    url = avatar_url_from_response(response.parsed_response)
-    return false if url.blank?
+    attach_avatar_from_response!(response.parsed_response)
+  rescue Custom::Whatsapp::EvolutionGo::ApiError, *Custom::Whatsapp::EvolutionGo::ApiClient::NETWORK_ERRORS => e
+    Rails.logger.warn("[EVOLUTION_GO] user/avatar error for contact #{contact.id}: #{e.message}")
+    false
+  end
 
-    prepare_avatar_resync! if force
-    ::Avatar::AvatarFromUrlJob.perform_later(contact, url)
-    true
+  def attach_avatar_from_response!(parsed)
+    url = avatar_url_from_response(parsed)
+    if url.present?
+      prepare_avatar_resync! if force
+      ::Avatar::AvatarFromUrlJob.perform_later(contact, url)
+      return true
+    end
+
+    base64 = avatar_base64_from_response(parsed)
+    if base64.present?
+      attach_avatar_from_base64!(base64)
+      return true
+    end
+
+    Rails.logger.info("[EVOLUTION_GO] user/avatar returned no URL/base64 for contact #{contact.id}")
+    false
   end
 
   def avatar_url_from_response(parsed)
-    data = parsed.is_a?(Hash) ? (parsed['data'] || parsed) : {}
-    data = data.with_indifferent_access if data.respond_to?(:with_indifferent_access)
+    data = nested_response_data(parsed)
     [
       data['URL'],
       data['url'],
+      data['ProfilePictureUrl'],
+      data['profilePictureUrl'],
+      parsed.is_a?(Hash) ? parsed['avatar_url'] : nil
+    ].filter_map { |value| value.to_s.strip.presence }.find { |value| value.start_with?('http') }
+  end
+
+  def avatar_base64_from_response(parsed)
+    data = nested_response_data(parsed)
+    [
       data['avatar'],
+      data['Avatar'],
+      data['base64'],
+      data['Base64'],
       parsed.is_a?(Hash) ? parsed['avatar'] : nil
     ].filter_map { |value| value.to_s.strip.presence }.first
+  end
+
+  def nested_response_data(parsed)
+    return {} unless parsed.is_a?(Hash)
+
+    data = parsed['data'] || parsed
+    data.is_a?(Hash) ? data.with_indifferent_access : {}.with_indifferent_access
+  end
+
+  def attach_avatar_from_base64!(base64)
+    bytes = Custom::Whatsapp::Evolution::MediaDecoder.decode!(base64)
+    return false if bytes.blank?
+
+    content_type = avatar_content_type_for(base64, bytes)
+    return false unless Avatarable::ALLOWED_AVATAR_CONTENT_TYPES.include?(content_type)
+
+    prepare_avatar_resync! if force || contact.avatar.attached?
+    contact.avatar.attach(
+      io: StringIO.new(bytes),
+      filename: "evolution-go-avatar-#{contact.id}.#{avatar_extension_for(content_type)}",
+      content_type: content_type
+    )
+    true
+  rescue ArgumentError => e
+    Rails.logger.warn("[EVOLUTION_GO] avatar base64 rejected for contact #{contact.id}: #{e.message}")
+    false
+  end
+
+  def avatar_content_type_for(base64, bytes)
+    Custom::Whatsapp::Evolution::MediaDecoder.mime_type_from_data_url(base64) ||
+      detect_image_content_type(bytes)
+  end
+
+  def avatar_extension_for(content_type)
+    extension = content_type.to_s.split('/').last
+    extension == 'jpeg' ? 'jpg' : extension
+  end
+
+  def detect_image_content_type(bytes)
+    return 'image/png' if bytes.start_with?("\x89PNG".b)
+    return 'image/jpeg' if bytes.start_with?("\xFF\xD8\xFF".b)
+    return 'image/gif' if bytes.start_with?('GIF87a', 'GIF89a')
+    return 'image/webp' if bytes.bytesize >= 12 && bytes[0, 4] == 'RIFF' && bytes[8, 4] == 'WEBP'
+
+    'image/jpeg'
   end
 
   def prepare_avatar_resync!
@@ -222,18 +300,49 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
       Rails.logger.warn(
         "[EVOLUTION_GO] user/check failed for contact #{contact.id}: HTTP #{response.code}"
       )
-      return false
+      # Don't block enrichment/avatar when the check endpoint is unavailable.
+      return true
     end
 
-    parsed = response.parsed_response
-    data = parsed.is_a?(Hash) ? (parsed['data'] || parsed) : {}
-    exists = data['exists']
-    return exists if exists.in?([true, false])
-
-    ActiveModel::Type::Boolean.new.cast(data['Exists'])
+    parse_user_check_exists?(response.parsed_response)
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] user/check failed for contact #{contact.id}: #{e.message}")
-    false
+    true
+  end
+
+  # Evolution Go returns `{ data: { Users: [{ IsInWhatsapp: true, ... }] } }`
+  # (see docs check-a-user). Older shapes may use top-level `exists`/`Exists`.
+  def parse_user_check_exists?(parsed)
+    data = nested_response_data(parsed)
+    users_flag = users_collection_in_whatsapp?(data[:Users] || data[:users])
+    return users_flag unless users_flag.nil?
+
+    exists = data[:exists]
+    return exists if exists.in?([true, false])
+    return ActiveModel::Type::Boolean.new.cast(data[:Exists]) if data.key?(:Exists)
+
+    # Unknown successful payload — proceed with enrichment rather than skipping avatars.
+    true
+  end
+
+  def users_collection_in_whatsapp?(users)
+    return users.any? { |user| user_in_whatsapp?(user) } if users.is_a?(Array)
+    return users.values.any? { |user| user_in_whatsapp?(user) } if users.is_a?(Hash)
+
+    nil
+  end
+
+  def user_in_whatsapp?(user)
+    return false if user.blank?
+
+    user = user.with_indifferent_access
+    flag = user[:IsInWhatsapp]
+    flag = user[:isInWhatsapp] if flag.nil?
+    flag = user[:exists] if flag.nil?
+    flag = user[:Exists] if flag.nil?
+    return false if flag.nil?
+
+    ActiveModel::Type::Boolean.new.cast(flag)
   end
 end
 # rubocop:enable Metrics/ClassLength
