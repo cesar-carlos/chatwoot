@@ -1072,6 +1072,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_09_24_120000) do
     t.index ["account_id", "id"], name: "index_conversations_on_id_and_account_id"
     t.index ["account_id", "inbox_id", "status", "assignee_id"], name: "conv_acid_inbid_stat_asgnid_idx"
     t.index ["account_id", "last_activity_at"], name: "index_conv_workflow_inactivity", where: "(status = 0)"
+    t.index ["account_id", "last_activity_at"], name: "index_conv_workflow_pending_stale", where: "(status = 2)"
     t.index ["account_id", "status", "created_at"], name: "index_conversations_on_account_id_status_created_at"
     t.index ["account_id", "waiting_since"], name: "index_conv_workflow_waiting", where: "((status = 0) AND (waiting_since IS NOT NULL))"
     t.index ["account_id"], name: "index_conversations_on_account_id"

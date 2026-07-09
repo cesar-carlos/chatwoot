@@ -175,17 +175,25 @@ Usar **`Custom::ConversationWorkflow::ActionService`** (não `AutomationRules::A
 
 ## 4. Deduplicação
 
-### 4.1 `agent_no_reply`
+| Trigger | Chave |
+|---------|-------|
+| `agent_no_reply`, `first_response_overdue` | `(rule_id, conversation_id, waiting_since_epoch)` |
+| `conversation_inactivity`, `pending_stale`, `unassigned_too_long`, `customer_no_reply` | `(rule_id, conversation_id, last_activity_epoch)` |
 
-- Chave: `(rule_id, conversation_id, waiting_since_epoch)`
-- Tabela: `conversation_workflow_rule_executions`
-- Reset: novo episódio de espera → nova chave
+- Tabela: `conversation_workflow_rule_executions` (índices parciais únicos)
+- Reset: novo episódio (novo epoch) → nova chave
+- `unassigned_too_long`: ao assignar, `clear_unassigned_too_long_for!` limpa executions da conversa
 
-### 4.2 `conversation_inactivity`
+## 4.1 Runtime: per-message vs cron
 
-- Após `resolve_on_match`, conversa sai do scope
-- Alternativa pré-resolve: dedup por `(rule_id, conversation_id, last_activity_at_epoch)`
+| Trigger | Per-message | Cron |
+|---------|:-----------:|:----:|
+| `agent_no_reply`, `first_response_overdue` | ✅ incoming | ✅ |
+| `customer_no_reply` | ✅ outgoing | ✅ |
+| `conversation_inactivity`, `unassigned_too_long`, `pending_stale` | ❌ | ✅ |
+| Qualquer + `respect_business_hours` | ❌ | ✅ |
 
+Business hours não agenda Sidekiq delay — só o cron de 5 min avalia elapsed útil.
 ---
 
 ## 5. Legacy e coexistência
@@ -225,8 +233,8 @@ Usar **`Custom::ConversationWorkflow::ActionService`** (não `AutomationRules::A
 
 | Flag | Gatilho |
 |------|---------|
-| `auto_resolve_conversations` | `conversation_inactivity` |
-| `conversation_agent_no_reply_rules` | `agent_no_reply` |
+| `auto_resolve_conversations` | `conversation_inactivity`, `customer_no_reply` |
+| `conversation_agent_no_reply_rules` | `agent_no_reply`, `first_response_overdue`, `unassigned_too_long`, `pending_stale` |
 | `conversation_required_attributes` | Inalterado |
 
 Config: **administrator**.
@@ -248,20 +256,21 @@ Config: **administrator**.
 ## 10. Runtime (matriz)
 
 ```
-Para cada conta com regras ativas:
-  Para cada regra (position ASC):
-    IF NOT feature_flag(trigger_type) → skip
-    scope = InactivityScope | AgentNoReplyScope (+ inbox_ids)
-    conversations = scope.limit(BULK_ACTIONS_LIMIT)
-    Para cada conversa:
-      IF conditions present → ConditionsFilterService
-      IF dedup key exists → skip
-      ConversationWorkflow::ActionService.perform(actions)
-      IF inactivity + resolve_on_match → resolve (ResolveService Fase 4)
-      INSERT dedup execution
-      Activity message com rule name
+Cron (*/5) e/ou ScheduleOnMessageJob:
+  Para cada conta com regras ativas:
+    Para cada regra (position ASC):
+      IF NOT feature_flag(trigger_type) → skip
+      scope = Scope do trigger (+ inbox_ids, cutoff se calendar time)
+      conversations = scope.limit(BULK_ACTIONS_LIMIT)
+      Para cada conversa:
+        IF ScopeMatcher / ThresholdMatcher falha → skip
+        IF conditions present → ConditionsFilterService
+        IF claim_execution! falha (dedup) → skip
+        ConversationWorkflow::ActionService.perform(actions)
+        IF inactivity + resolve_on_match → ResolveService
+        Activity message + AutomationEventDispatcher
 ```
 
 ---
 
-*Última atualização: jun/2026 — melhorias incorporadas*
+*Última atualização: jul/2026 — 6 gatilhos, flags, dedup e runtime alinhados ao código*
