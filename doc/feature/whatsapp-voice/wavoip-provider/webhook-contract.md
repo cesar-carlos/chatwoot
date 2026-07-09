@@ -145,8 +145,10 @@ Idempotência: mesmo `record_url` já em `meta` → não reenfileirar.
 | `caller` | `{ phone, name }` | `{ phone, name? }` |
 | `sdp_offer` | **obrigatório** | **ausente** |
 | `ice_servers` | sim | **ausente** |
+| `escalated` | — | `true` em re-ring de timeout (`EscalateRingJob`); FE ignora se call active/dismissed |
 
 Handler Wavoip: popular `calls` store **sem** SDP; áudio via SDK `offer` paralelo.
+Após `accepted_by_agent_id` (`ClaimGuard`), backend **não** reenvia incoming/escalated/push.
 
 ### 6.2 `voice_call.outbound_connected`
 

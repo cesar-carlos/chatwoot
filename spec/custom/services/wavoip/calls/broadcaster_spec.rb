@@ -105,6 +105,33 @@ RSpec.describe Wavoip::Calls::Broadcaster do
     expect(payloads.first.last[:data][:call_id]).to eq('broadcast_test_001')
   end
 
+  it 'clears voice_call_incoming notifications when an agent accepts' do
+    clearer = instance_double(Wavoip::Calls::ClearIncomingNotificationsService, perform: true)
+    allow(Wavoip::Calls::ClearIncomingNotificationsService).to receive(:new)
+      .with(call: call)
+      .and_return(clearer)
+    allow(ActionCable.server).to receive(:broadcast)
+
+    described_class.new(inbox: inbox).broadcast_agent_accepted(
+      call,
+      accepted_by_agent_id: online_agent.id
+    )
+
+    expect(clearer).to have_received(:perform)
+  end
+
+  it 'does not rebroadcast incoming after an agent accepted' do
+    call.update!(accepted_by_agent_id: online_agent.id)
+    broadcaster = described_class.new(inbox: inbox)
+    payloads = []
+    allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
+
+    broadcaster.broadcast_incoming(call)
+    broadcaster.broadcast_escalated_ring(call)
+
+    expect(payloads).to be_empty
+  end
+
   it 'broadcasts escalated ring to broad fallback recipients' do
     admin = create(:user, :administrator, account: account)
     create(:inbox_member, inbox: inbox, user: offline_agent)

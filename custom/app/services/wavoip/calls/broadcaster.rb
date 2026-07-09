@@ -7,6 +7,7 @@ class Wavoip::Calls::Broadcaster
 
   def broadcast_incoming(call)
     return unless call.incoming?
+    return if call_already_claimed?(call)
 
     contact = call.contact
     streams = agent_streams(call)
@@ -21,6 +22,7 @@ class Wavoip::Calls::Broadcaster
 
   def broadcast_escalated_ring(call)
     return unless call.incoming?
+    return if call_already_claimed?(call)
 
     contact = call.contact
     streams = escalated_streams(call)
@@ -48,6 +50,7 @@ class Wavoip::Calls::Broadcaster
       accepted_by_agent_id: accepted_by_agent_id,
       accepted_by_agent_name: agent&.available_name || agent&.name
     )
+    Wavoip::Calls::ClearIncomingNotificationsService.new(call: call).perform
   end
 
   def broadcast_ended(call)
@@ -58,11 +61,17 @@ class Wavoip::Calls::Broadcaster
       duration_seconds: call.duration_seconds,
       end_reason: call.end_reason
     )
+    Wavoip::Calls::ClearIncomingNotificationsService.new(call: call).perform
   end
 
   private
 
   attr_reader :inbox
+
+  def call_already_claimed?(call)
+    # Alias kept for readability at broadcast call sites.
+    Wavoip::Calls::ClaimGuard.claimed?(call)
+  end
 
   def agent_streams(call)
     Wavoip::Calls::IncomingCallRecipients.new(

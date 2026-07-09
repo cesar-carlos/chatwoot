@@ -18,6 +18,10 @@ vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
   teardownAllWavoipClients,
 }));
 
+vi.mock('customDashboard/composables/wavoip/useWavoipIncomingOffer', () => ({
+  removePendingOffer: vi.fn(),
+}));
+
 vi.mock('dashboard/composables/useWhatsappCallSession', () => ({
   useWhatsappCallSession: vi.fn(),
   cleanupWhatsappSession,
@@ -37,9 +41,14 @@ import {
   registerWavoipCallSession,
   teardownBrowserVoiceSession,
   teardownWavoipActiveCall,
+  isWavoipVoiceCall,
+  isWhatsappVoiceCall,
+  shouldRejectWavoipInboundOnDismiss,
+  cleanupAfterBrowserVoiceJoinFailure,
   VOICE_SESSION_REGISTRY,
 } from '../voiceSessionRegistry';
 import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
+import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 
 describe('voiceSessionRegistry', () => {
   beforeEach(() => {
@@ -78,6 +87,45 @@ describe('voiceSessionRegistry', () => {
       registerWavoipCallSession(null);
 
       expect(getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP)).toBeNull();
+    });
+  });
+
+  describe('provider helpers', () => {
+    it('detects Wavoip and WhatsApp calls', () => {
+      expect(
+        isWavoipVoiceCall({ provider: VOICE_CALL_PROVIDERS.WAVOIP })
+      ).toBe(true);
+      expect(
+        isWhatsappVoiceCall({ provider: VOICE_CALL_PROVIDERS.WHATSAPP })
+      ).toBe(true);
+    });
+
+    it('rejects inbound Wavoip dismiss only while still ringing', () => {
+      expect(
+        shouldRejectWavoipInboundOnDismiss({
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          callDirection: VOICE_CALL_DIRECTION.INCOMING,
+          isActive: false,
+        })
+      ).toBe(true);
+      expect(
+        shouldRejectWavoipInboundOnDismiss({
+          provider: VOICE_CALL_PROVIDERS.WAVOIP,
+          callDirection: VOICE_CALL_DIRECTION.INCOMING,
+          isActive: true,
+        })
+      ).toBe(false);
+    });
+
+    it('cleans up Wavoip join failures and dismisses the store entry', () => {
+      expect(
+        cleanupAfterBrowserVoiceJoinFailure(
+          { provider: VOICE_CALL_PROVIDERS.WAVOIP },
+          'sid_1'
+        )
+      ).toBe(true);
+      expect(endSdkActiveCall).toHaveBeenCalled();
+      expect(clearSdkActiveCall).toHaveBeenCalled();
     });
   });
 

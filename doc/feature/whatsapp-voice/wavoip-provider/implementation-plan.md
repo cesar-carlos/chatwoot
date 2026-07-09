@@ -80,16 +80,17 @@ Registry (`lib/voice/`), composables (`composables/wavoip/`), `WavoipConnectionH
 ### Piloto restante
 
 - [ ] **W1** — prova live no painel Wavoip: toggle CALL + linha CALL no histórico durante chamada real (não só DEVICE)
-- [ ] **G0.4 / M1** — multiagente browser (`acceptedElsewhere` + `voice_call.accepted`) — [operations-runbook.md](./operations-runbook.md)
+- [ ] **G0.4 / M1** — multiagente browser E2E (`acceptedElsewhere` + `voice_call.accepted`) — código ✅ 09 jul.; falta validação com 2 browsers — [operations-runbook.md](./operations-runbook.md)
 - [ ] **O1 / D1 / F1** — E2E browser (outbound bidirecional, dismiss inbound, accept fail)
 - [x] Pipeline caller/receiver + I2/O2 — `bin/wavoip-pilot-verify` e fixtures live
 
-### Corrigido (Jun 2026)
+### Corrigido (Jun–Jul 2026)
 
 - [x] `WavoipCallingPage` — lê `wavoip_webhook_url` / `wavoip_setup_pending` com fallbacks camelCase
 - [x] **Audit fixes (20 jun. 2026):** `source_id` digits-only via `prepend_mod_with` em `Voice::InboundCallBuilder`; teardown SDK scoped por call; guard `inbound_calls_enabled` server-side; `channel_wavoip` em `voice_enabled?`; idempotência `CallUpsertService`; rotação de webhook key; specs Dispatcher/ConversationLinker/DeviceHandler
 - [x] **Audit fixes (24 jun. 2026):** `apply_status!` retorno correto; guard `voice_enabled?` no upsert; `ENDED`→`no_answer` se nunca `in_progress`; `accepted_by_agent_id` com `with_lock` no PATCH; reply rejeitada limpa flags
 - [x] **UX ringtone (27 jun. 2026):** `silenceCallRingtone` no reject/dismiss; `useCallRingtonePreference` + botão bell no `CallCard`; reconciliação cable/SDK (`wavoipOfferId`, `findWavoipCallForOffer`); toast `CALLER_ENDED` em SDK e cable
+- [x] **Multiagente ring stop (09 jul. 2026):** `ClaimGuard` + `ClearIncomingNotificationsService`; FE `markCallDismissed` / close OS Notification / `escalated` no cable; helpers no `voiceSessionRegistry` — [refactory/CHANGELOG.md](./refactory/CHANGELOG.md)
 
 ---
 

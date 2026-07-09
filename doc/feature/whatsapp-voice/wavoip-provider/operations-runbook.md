@@ -230,6 +230,10 @@ Ver [Troubleshooting Wavoip](https://wavoip.gitbook.io/api/wavoip-api/referencia
 
 Comportamento esperado com **um token por inbox**. Primeiro `accept()` ganha. Demais agentes veem toast e ring para.
 
+Backend (09 jul. 2026): `ClaimGuard` (`accepted_by_agent_id`) + `ClearIncomingNotificationsService`
+garantem que escalação/push não re-notificam e que notificações in-app `voice_call_incoming` somem
+no accept. `JoiningAgentCache` serializa join/PATCH (409). Frontend fecha OS Notification e marca
+`isCallDismissed` para ignorar re-rings `escalated`; `onAccepted` dismiss mesmo mid-join.
 ### Gravação ausente
 
 | Causa | Ação |
@@ -310,7 +314,7 @@ Prerequisite: only one browser client per device token (close Wavoip panel durin
 | Gate | Ferramenta | Critério Pass | Status |
 |------|------------|---------------|--------|
 | **W1** | Chamada live + nginx/Sidekiq | POST CALL do painel Wavoip correlacionado com SDK | Pendente — validar em produção |
-| **G0.4 / M1** | 2 browsers/agentes | `acceptedElsewhere` + PATCH único | Pendente — procedimento acima |
+| **G0.4 / M1** | 2 browsers/agentes | `acceptedElsewhere` + PATCH único; ring/push param nos outros | Código ✅ (09 jul. — ClaimGuard + clear notifs); **browser E2E** pendente |
 | **O1** | Outbound browser | Áudio bidirecional no dashboard | Pendente |
 | **I1/I2** | `bin/wavoip-pilot-verify` | Pipeline in-process | Pass — revalidar após deploy |
 | **D1 / F1** | Inbound UX | dismiss→reject; accept fail recovery | Pendente |
