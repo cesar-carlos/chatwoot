@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 08/jul/2026 (code review + latency + bug fixes) · **Integração completa; E2E operador pendente**
+**Última revisão:** 09/jul/2026 (doc sync vs código) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -66,6 +66,10 @@
 - ActionCable + polling QR
 
 ### API inbox (custom controller)
+- `GET evolution_go_connection`
+- `POST evolution_go_reconnect`
+- `POST evolution_go_logout`
+- `POST evolution_go_server_check` (collection)
 - `GET evolution_go_diagnostics`
 - `POST evolution_go_test_webhook`
 - `POST evolution_go_sync_webhook`

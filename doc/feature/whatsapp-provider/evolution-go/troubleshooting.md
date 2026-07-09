@@ -214,3 +214,5 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 | Payload webhook desconhecido | Salvar raw JSON → fixture + atualizar normalizer |
 | `READ_RECEIPT` formato diferente | Spike Fase 2 |
 | Mídia inbound falha | `POST /message/downloadmedia` only ([decisions.md §25](./decisions.md)) |
+| PDF/imagem abre com "Falha ao carregar" | Go devolve `data:<mime>;base64,...` em `data.base64`; Chatwoot deve strip do prefixo via `MediaDecoder` — blobs corrompidos têm magic `75ab5a6a…` |
+| Recuperar blobs já salvos | `RAILS_ENV=production dry_run=1 limit=50 bundle exec rake evolution_go:repair_corrupt_media` depois `dry_run=0` |

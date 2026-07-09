@@ -103,7 +103,7 @@ Evolution Go tem **o mesmo envelope** (`event` + `instance`). Sem cuidado:
 |---------|-------------|-------|-------|
 | `error-handling.md` | ✅ | ❌ | Evolution Go tem runbook de erros |
 | `troubleshooting.md` | ✅ | ❌ | Z-API cria após piloto |
-| `ConnectionEvents` separado | ❌ (inline no `ConnectionService`) | ✅ | Ambas válidas — evitar drift futuro |
+| `ConnectionEvents` separado | ✅ `EvolutionGo::ConnectionEvents` | ✅ | Alinhado com Node/Z-API |
 | `Broadcaster` dedicado | ✅ | ❌ | `EvolutionGo::Broadcaster` + disconnect toast |
 
 ---
@@ -121,11 +121,32 @@ Evolution Go tem **o mesmo envelope** (`event` + `instance`). Sem cuidado:
 
 ---
 
-## O que ainda falta (não bloqueante Fase 1)
+## Revisão 09/jul/2026 (doc sync vs código)
+
+Cruzamento código `custom/.../evolution_go/` × docs. **Conclusão:** docs de status/tasks estavam majoritariamente corretos; vários docs de *planejamento* ainda descreviam Go como “só documentação” ou features já shipped como Fase 3.
+
+| Arquivo | Drift | Correção |
+|---------|-------|----------|
+| [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) | “Estado Go: somente documentação”; PROVIDERS sem `evolution_go`; registry em bloco; `EvolutionGoWhatsapp` / `useGatewayWhatsappWizard` | Reescrito para estado implementado |
+| [feature-mapping.md](./feature-mapping.md) | Location/contact/sticker/logout ainda “Fase 3” | Marcados ✅ / parcial |
+| [frontend-wizard-spec.md](./frontend-wizard-spec.md) | Nome `EvolutionGoWhatsapp.vue`; composable compartilhado como se existisse | Nomes reais + nota “não implementado” |
+| [decisions.md](./decisions.md) §11 | Wizard ADR desatualizado | Aponta `EvolutionGo.vue` + composables dedicados |
+| [README.md](./README.md) / [status.md](./status.md) / [tasks.md](./tasks.md) | Escopo “planejado”; API inbox incompleta; I3 ❌ | Ajustados |
+
+| Aspecto planejado | Código real |
+|-------------------|-------------|
+| `ConnectionEvents` inline no `ConnectionService` | ✅ classe separada `EvolutionGo::ConnectionEvents` |
+| `useGatewayWhatsappWizard` | ❌ não existe — composables `evolution_go/*` |
+| `EvolutionGoWhatsapp.vue` | `EvolutionGo.vue` |
+
+---
+
+## O que ainda falta (não bloqueante)
 
 | Item | Bloqueio | Ação |
 |------|----------|------|
-| Fixtures JSON reais | Sem instância Go | validation-checklist E2E |
+| Fixtures JSON reais | Sem instância Go | [validation-checklist.md](./validation-checklist.md) E2E |
 | JID field real no `GET /instance/status` | Formato Go não confirmado | Capturar no E2E |
 | `CONNECTION` payload real | Template sintético | `connection_event.json` E2E |
+| Presence → typing dashboard | Não wired | Conectar `ApiClient#set_presence` |
 | Versão Go congelada | Operador informa | `evolution-target-version.txt` |

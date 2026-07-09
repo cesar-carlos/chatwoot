@@ -10,7 +10,7 @@ Planejamento frontend **implementado** (jul/2026). Componentes reais abaixo; est
 
 | Local | Mudança fork |
 |-------|--------------|
-| `app/javascript/dashboard/routes/dashboard/settings/inbox/channels/Whatsapp.vue` | `// FORK:` import `EvolutionGoWhatsapp.vue` |
+| `app/javascript/dashboard/routes/dashboard/settings/inbox/channels/Whatsapp.vue` | `// FORK:` import `EvolutionGo.vue` |
 | Card | **"Evolution Go"** — subtítulo "High-performance WhatsApp (Go / whatsmeow)" |
 | Ícone | `i-woot-evolution-color` ou asset `evolution-go-logo.png` |
 | Provider persistido | `provider: 'evolution_go'` |
@@ -99,12 +99,12 @@ Componentes: `EvolutionGo.vue` (wizard), `EvolutionGoSettingsPage.vue`, `Evoluti
 
 ```mermaid
 sequenceDiagram
-  participant UI as EvolutionGoWhatsapp.vue
+  participant UI as EvolutionGo.vue
   participant API as Chatwoot API
   participant CS as ConnectionService
   participant GO as Evolution Go
 
-  UI->>API: POST /evolution_go/inboxes
+  UI->>API: POST inboxes (provider evolution_go)
   API->>CS: provision_new_inbox!
   CS->>GO: POST /instance/create (global key)
   GO-->>CS: instance_token, instance_id
@@ -113,9 +113,10 @@ sequenceDiagram
   CS-->>API: inbox_id, connection_status
   API-->>UI: 201 + inbox_id
 
-  loop Polling ou ActionCable
-    UI->>API: GET /evolution_go/inboxes/:id/connection
-    API->>GO: GET /instance/status + /instance/qr
+  Note over UI: QR sob demanda no modal (não no create sync)
+  loop Polling health ou ActionCable
+    UI->>API: GET .../evolution_go_connection
+    API->>GO: GET /instance/status (+ /instance/qr se include_qr)
     GO-->>API: Connected, Qrcode
     API-->>UI: qr_code, connection_status
   end
@@ -256,14 +257,10 @@ Chaves mínimas:
 
 ---
 
-## Composable compartilhado
+## Composable compartilhado (não implementado)
 
-Ver [coordination-with-evolution-api.md § Composable](./coordination-with-evolution-api.md#o-que-reusar-no-frontend-composable).
+O plano original previa `useGatewayWhatsappWizard.js` compartilhado com Evolution Node.
 
-Arquivo alvo: `custom/app/javascript/dashboard/composables/useGatewayWhatsappWizard.js`
+**Realidade (jul/2026):** composables **dedicados** sob `custom/app/javascript/dashboard/composables/evolution_go/` + `lib/evolution_go/evolutionGoCableRegistry.js`. Gates comuns em `lib/whatsapp/gatewayProviders.js`.
 
-| Export | Responsabilidade |
-|--------|------------------|
-| `pollConnectionStatus` | polling QR/status 3s |
-| `subscribeConnectionChannel` | ActionCable por provider |
-| `validateBaseUrl` | URL sem trailing slash |
+Extrair um wizard genérico permanece opcional — ver [coordination-with-evolution-api.md](./coordination-with-evolution-api.md#frontend--o-que-existe-vs-o-que-foi-planejado).

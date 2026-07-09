@@ -5,7 +5,8 @@ class Custom::Whatsapp::Evolution::MediaAttachmentService
     [%r{image/png}, '.png'],
     [%r{image/}, '.jpg'],
     [%r{video/}, '.mp4'],
-    [%r{audio/}, '.ogg']
+    [%r{audio/}, '.ogg'],
+    [%r{application/pdf}, '.pdf']
   ].freeze
 
   pattr_initialize [:channel!, :message!, :attachment_payload!, :message_type!]
@@ -82,26 +83,29 @@ class Custom::Whatsapp::Evolution::MediaAttachmentService
     base64 = parsed['base64']
     return nil if base64.blank?
 
-    extension = extension_for_media(parsed)
+    content_type = parsed['mimetype'].presence ||
+                   attachment_payload[:mimetype].presence ||
+                   Custom::Whatsapp::Evolution::MediaDecoder.mime_type_from_data_url(base64) ||
+                   'application/octet-stream'
+    extension = extension_for_media(parsed, content_type)
     tempfile = Tempfile.new(['evolution-media', extension])
     tempfile.binmode
     tempfile.write(Custom::Whatsapp::Evolution::MediaDecoder.decode!(base64))
     tempfile.rewind
 
     filename = parsed['fileName'] || attachment_payload[:filename] || "media#{extension}"
-    content_type = parsed['mimetype'] || attachment_payload[:mimetype] || 'application/octet-stream'
 
     tempfile.define_singleton_method(:original_filename) { filename }
     tempfile.define_singleton_method(:content_type) { content_type }
     tempfile
   end
 
-  def extension_for_media(parsed)
+  def extension_for_media(parsed, content_type = nil)
     filename = parsed['fileName'] || attachment_payload[:filename]
     ext = File.extname(filename.to_s)
     return ext if ext.present?
 
-    mimetype = (parsed['mimetype'] || attachment_payload[:mimetype]).to_s
+    mimetype = (content_type || parsed['mimetype'] || attachment_payload[:mimetype]).to_s
     MIME_EXTENSION_PATTERNS.find { |pattern, _| mimetype.match?(pattern) }&.last || '.bin'
   end
 end
