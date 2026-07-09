@@ -5,6 +5,7 @@ import { dynamicTime } from 'shared/helpers/timeHelper';
 import { ATTACHMENT_TYPES } from 'dashboard/components-next/message/constants.js';
 import { readTranscriptText } from 'dashboard/composables/fork/useTranscriptText';
 import { textIncludesFoldedQuery } from 'dashboard/composables/fork/messageSearchText';
+import { buildSearchResultDisplayMessage } from 'dashboard/composables/fork/conversationMessageSearchDisplay';
 import { useCamelCase } from 'dashboard/composables/useTransformKeys';
 
 import Icon from 'dashboard/components-next/icon/Icon.vue';
@@ -65,34 +66,22 @@ const isTranscriptionMatch = computed(() => {
 const contentMatchesQuery = computed(() => {
   if (props.message.matched_on === 'content') return true;
 
-  return textIncludesFoldedQuery(props.message.content, props.searchQuery);
+  return (
+    textIncludesFoldedQuery(props.message.content, props.searchQuery) ||
+    textIncludesFoldedQuery(
+      props.message.content_attributes?.email?.subject,
+      props.searchQuery
+    )
+  );
 });
 
-const displayMessage = computed(() => {
-  if (contentMatchesQuery.value) {
-    return props.message;
-  }
-
-  if (isTranscriptionMatch.value && transcriptText.value) {
-    return {
-      ...props.message,
-      content: transcriptText.value,
-    };
-  }
-
-  if (props.message.content?.trim()) {
-    return props.message;
-  }
-
-  if (!transcriptText.value) {
-    return props.message;
-  }
-
-  return {
-    ...props.message,
-    content: transcriptText.value,
-  };
-});
+const displayMessage = computed(() =>
+  buildSearchResultDisplayMessage({
+    message: props.message,
+    searchQuery: props.searchQuery,
+    transcriptText: transcriptText.value,
+  })
+);
 
 const authorName = computed(() => {
   const { sender } = props.message;

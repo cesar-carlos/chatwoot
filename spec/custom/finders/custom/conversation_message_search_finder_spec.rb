@@ -326,6 +326,37 @@ RSpec.describe Custom::ConversationMessageSearchFinder do
       expect(filtered.map(&:id)).to eq([valid_message.id])
     end
 
+    it 'over-fetches and skips non-searchable hits so has_more stays accurate' do
+      searchable = Array.new(16) do |index|
+        create(
+          :message,
+          conversation: conversation,
+          account: account,
+          inbox: inbox,
+          content: "opensearch contract hit #{index}",
+          message_type: :incoming,
+          sender: contact,
+          created_at: (index + 1).minutes.ago
+        )
+      end
+
+      # Stale index docs: deleted/activity interleaved before searchable hits
+      stale_prefix = [deleted_message, activity_message]
+      search_hits = stale_prefix + searchable
+
+      allow(Message).to receive(:search) do |*_args, **kwargs|
+        offset = kwargs[:offset] || 0
+        limit = kwargs[:limit] || 16
+        search_hits.slice(offset, limit) || []
+      end
+
+      results = opensearch_finder.perform
+
+      expect(results.length).to eq(described_class::PER_PAGE)
+      expect(opensearch_finder.has_more?).to be(true)
+      expect(results.map(&:id)).to eq(searchable.first(described_class::PER_PAGE).map(&:id))
+    end
+
     it 'falls back to sql when opensearch is unavailable' do
       Message.define_singleton_method(:search) do |*_args, **_kwargs|
         raise Faraday::ConnectionFailed, 'cluster down'
