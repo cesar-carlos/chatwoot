@@ -353,6 +353,11 @@ const actions = {
 
   updateMessage({ commit, rootGetters }, message) {
     commit(types.ADD_MESSAGE, message);
+    // FORK: Evolution Go attaches media asynchronously; message.updated must
+    // also refresh conversation attachments so caption+file bubbles update live.
+    if (message.attachments?.length) {
+      commit(types.ADD_CONVERSATION_ATTACHMENTS, message);
+    }
     handleVoiceCallUpdated(
       commit,
       message,
