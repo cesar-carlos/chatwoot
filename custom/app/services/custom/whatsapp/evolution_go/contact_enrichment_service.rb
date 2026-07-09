@@ -54,7 +54,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
 
   private
 
-  attr_reader :channel, :contact
+  attr_reader :channel, :contact, :force
 
   def api_client
     @api_client ||= Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel)
@@ -171,17 +171,38 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   end
 
   def fetch_and_apply_avatar!(number)
-    return false if number.blank? || contact.avatar.attached?
+    return false if number.blank?
+    return false if contact.avatar.attached? && !force
 
     response = api_client.user_avatar(number: number, preview: false)
     return false unless response.success?
 
-    parsed = response.parsed_response
-    base64 = parsed['avatar'] || parsed.dig('data', 'avatar')
-    return false if base64.blank?
+    url = avatar_url_from_response(response.parsed_response)
+    return false if url.blank?
 
-    Custom::Avatar::AvatarFromBase64Job.perform_later(contact, base64)
+    prepare_avatar_resync! if force
+    ::Avatar::AvatarFromUrlJob.perform_later(contact, url)
     true
+  end
+
+  def avatar_url_from_response(parsed)
+    data = parsed.is_a?(Hash) ? (parsed['data'] || parsed) : {}
+    data = data.with_indifferent_access if data.respond_to?(:with_indifferent_access)
+    [
+      data['URL'],
+      data['url'],
+      data['avatar'],
+      parsed.is_a?(Hash) ? parsed['avatar'] : nil
+    ].filter_map { |value| value.to_s.strip.presence }.first
+  end
+
+  def prepare_avatar_resync!
+    contact.avatar.purge if contact.avatar.attached?
+
+    additional = contact.additional_attributes.stringify_keys
+    additional.delete('last_avatar_sync_at')
+    additional.delete('avatar_url_hash')
+    contact.update_columns(additional_attributes: additional) # rubocop:disable Rails/SkipsModelValidations
   end
 
   def mark_enriched!

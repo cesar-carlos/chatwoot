@@ -199,6 +199,20 @@ class Custom::Whatsapp::Evolution::ApiClient
     post("/chat/markMessageAsRead/#{@instance_name}", { readMessages: read_messages })
   end
 
+  # Chat-level typing indicator. Evolution requires `delay` (ms); the server
+  # holds the HTTP request for that duration then forces `paused`. Keep delays
+  # short so Sidekiq workers are not blocked.
+  def send_presence(number:, presence:, delay:)
+    post(
+      "/chat/sendPresence/#{@instance_name}",
+      {
+        number: normalize_number(number),
+        presence: presence.to_s,
+        delay: delay.to_i
+      }
+    )
+  end
+
   def delete_message_for_everyone(id:, remote_jid:, from_me:)
     delete(
       "/chat/deleteMessageForEveryone/#{@instance_name}",

@@ -151,7 +151,7 @@ GET /instance/fetchInstances
 
 ---
 
-### Presença
+### Presença da instância
 
 ```
 POST /instance/setPresence/:instanceName
@@ -161,6 +161,22 @@ POST /instance/setPresence/:instanceName
 Valores: `unavailable`, `available`, `composing`, `recording`, `paused`
 
 **Doc:** https://docs.evolutionfoundation.com.br/evolution-api/set-presence
+
+Uso no fork: **não** ligado ao typing do dashboard. Serve para presença global da sessão WhatsApp.
+
+### Presença por chat (typing)
+
+```
+POST /chat/sendPresence/:instanceName
+{ "number": "5511999999999", "presence": "composing", "delay": 3000 }
+```
+
+- `presence`: `composing` | `recording` | `paused` | `available` | `unavailable`
+- `delay` (ms) é **obrigatório** no schema Evolution v2.3.x — o servidor segura o HTTP pelo delay e depois força `paused`
+- Fork: `ApiClient#send_presence` + `PresenceSyncService` / `TypingListener` (dashboard `conversation.typing_on` / `typing_off`)
+- Delay curto no composing (`3000`) para não bloquear Sidekiq; Chatwoot reemite typing enquanto o agente digita
+
+Listado em [postman-validation.md](./postman-validation.md) (`Send Presence (chat)`).
 
 ---
 

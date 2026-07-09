@@ -184,14 +184,13 @@ Corpo da mensagem
 | `locationMessage`, `liveLocationMessage` | Texto + link Google Maps |
 | `contactMessage`, `contactsArrayMessage` | vCard formatado |
 | `listMessage` | Menu lista em markdown |
-| `listResponseMessage` | Resposta de lista |
+| `listResponseMessage` | Resposta de lista → texto (selectedRowId / title) |
+| `buttonsResponseMessage` / `templateButtonReplyMessage` | Resposta de botão → texto (displayText / id) |
 | `reactionMessage` | Mensagem com `contextInfo.stanzaId` |
 | `externalAdReply` (ads) | Thumbnail 320×180 + título + body + URL |
 | Ephemeral | Unwrap `ephemeralMessage.message` |
 
-**Não documentado antes:** ads, listas, list response, view once, reações.
-
-**Provider nativo:** Fase 2–3 no normalizer — MVP pode placeholder `unsupported` para tipos complexos.
+**Provider nativo (jul/2026):** contacts, location, sticker, reply context e button/list replies mapeados no `PayloadBuilders`; reações ainda como placeholder.
 
 ---
 

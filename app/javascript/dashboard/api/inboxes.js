@@ -131,6 +131,10 @@ class Inboxes extends CacheEnabledApiClient {
     return axios.post(`${this.url}/${inboxId}/evolution_import`);
   }
 
+  postEvolutionRefreshContacts(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_refresh_contacts`);
+  }
+
   // FORK: Evolution Go connection / QR polling
   getEvolutionGoConnection(inboxId, { includeQr = false } = {}) {
     return axios.get(`${this.url}/${inboxId}/evolution_go_connection`, {
@@ -149,6 +153,10 @@ class Inboxes extends CacheEnabledApiClient {
 
   postEvolutionGoImport(inboxId) {
     return axios.post(`${this.url}/${inboxId}/evolution_go_import`);
+  }
+
+  postEvolutionGoRefreshContacts(inboxId) {
+    return axios.post(`${this.url}/${inboxId}/evolution_go_refresh_contacts`);
   }
 
   getEvolutionGoDiagnostics(inboxId) {

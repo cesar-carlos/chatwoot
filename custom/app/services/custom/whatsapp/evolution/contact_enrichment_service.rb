@@ -130,9 +130,20 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
   end
 
   def sync_avatar_from_url(url)
-    return if url.blank? || contact.avatar.attached?
+    return if url.blank?
+    return if contact.avatar.attached? && !force
 
+    prepare_avatar_resync! if force
     ::Avatar::AvatarFromUrlJob.perform_later(contact, url)
+  end
+
+  def prepare_avatar_resync!
+    contact.avatar.purge if contact.avatar.attached?
+
+    additional = contact.additional_attributes.stringify_keys
+    additional.delete('last_avatar_sync_at')
+    additional.delete('avatar_url_hash')
+    contact.update_columns(additional_attributes: additional) # rubocop:disable Rails/SkipsModelValidations
   end
 
   def fetch_and_apply_profile!
@@ -143,7 +154,11 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentService
     return false unless response.success?
 
     apply_profile(response.parsed_response)
-    fetch_profile_picture!(number) unless contact.avatar.attached?
+    # apply_profile already syncs profilePictureUrl when present; fall back to
+    # the dedicated picture endpoint only when the profile payload had no URL.
+    picture_in_profile = response.parsed_response.is_a?(Hash) &&
+                         response.parsed_response['profilePictureUrl'].to_s.present?
+    fetch_profile_picture!(number) if !picture_in_profile && (force || !contact.avatar.attached?)
     true
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION] contact enrichment failed for contact #{contact.id}: #{e.message}")

@@ -227,3 +227,25 @@ T5 (specs) — ✅ ~42 examples em `spec/custom/` (Evolution provider) + Playwri
 | Docs: `webhook-events.md`, `decisions.md` §12/16, `spec-design.md` §6/11 | docs | ✅ |
 | Specs ampliados (import lock, dispatcher, connection, reconciliation, deferred, JS cable/QR) | cobertura | ✅ |
 | Smoke E2E checklist §2–4 (webhook inbound, QR, mídia outbound) | validação manual | ⏸️ requer Evolution + QR scan |
+
+**Revisão (2026-07-09 — paridade inbound + typing):**
+
+| Item | Categoria | Status |
+|------|-----------|--------|
+| Inbound `buttonsResponseMessage` / `templateButtonReplyMessage` / `listResponseMessage` → texto | bug/paridade Go | ✅ `payload_builders#interactive_reply_body` |
+| `contextInfo` também em replies interativos | paridade | ✅ `CONTEXT_INFO_MESSAGE_KEYS` |
+| Typing dashboard → `POST /chat/sendPresence` | funcionalidade | ✅ `PresenceSyncService` + `TypingListener` + `ApiClient#send_presence` |
+| Doc: `spec-design` ainda dizia buttons/list deferidos | doc gap | ✅ alinhado com `sendButtons`/`sendList` |
+| Doc: `api-reference` distingue `setPresence` (instância) vs `sendPresence` (chat) | doc | ✅ |
+| Specs normalizer + presence + typing listener | cobertura | ✅ |
+
+**Revisão (2026-07-09 — refresh manual de contatos):**
+
+| Item | Categoria | Status |
+|------|-----------|--------|
+| `force: true` rebaixa avatar (purge + limpa hash/rate-limit) | bug | ✅ Node + Go enrichment |
+| Go avatar via URL (`/user/avatar` → `data.URL`) em vez de base64 | bug | ✅ |
+| `ContactsRefreshService` — todos os contatos do inbox | funcionalidade | ✅ |
+| API `POST …/evolution_refresh_contacts` | transport | ✅ |
+| Botão settings inbox "Refresh all contact profiles" | UI | ✅ |
+| Lock Redis 30 min anti-duplicata | concorrência | ✅ |

@@ -1093,6 +1093,14 @@
             "RUNNING": "Running",
             "COMPLETED": "Completed",
             "FAILED": "Failed"
+          },
+          "REFRESH_CONTACTS": {
+            "LABEL": "Refresh contact profiles",
+            "DESCRIPTION": "Re-fetch name, status, and profile photo from WhatsApp for every contact in this inbox. Runs in the background and may take a while on large inboxes.",
+            "RUN": "Refresh all contact profiles",
+            "RUN_SUCCESS": "Contact profile refresh started for {count} contacts.",
+            "RUN_ERROR": "Could not start contact profile refresh.",
+            "ALREADY_RUNNING": "A contact profile refresh is already running for this inbox."
           }
         },
         "PROXY_SECTION": "Proxy",
