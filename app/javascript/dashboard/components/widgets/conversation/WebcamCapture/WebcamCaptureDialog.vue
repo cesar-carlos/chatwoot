@@ -6,7 +6,7 @@ import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import WebcamCaptureView from './WebcamCaptureView.vue';
 import { useWebcamCapture } from 'dashboard/composables/useWebcamCapture';
 
-const emit = defineEmits(['capture', 'devices-granted']);
+const emit = defineEmits(['capture', 'devicesGranted']);
 
 const { t } = useI18n();
 const dialogRef = ref(null);
@@ -30,7 +30,7 @@ const disableConfirmButton = computed(() => !capturedFile.value);
 const startCamera = async () => {
   const mediaStream = await startStream();
   if (mediaStream) {
-    emit('devices-granted');
+    emit('devicesGranted');
   }
 };
 

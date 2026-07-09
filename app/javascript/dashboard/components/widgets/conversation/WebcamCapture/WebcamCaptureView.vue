@@ -32,7 +32,7 @@ const props = defineProps({
   },
 });
 
-const emit = defineEmits(['capture', 'retake', 'retry', 'video-ready']);
+const emit = defineEmits(['capture', 'retake', 'retry', 'videoReady']);
 
 const { t } = useI18n();
 const videoEl = ref(null);
@@ -72,7 +72,7 @@ onBeforeUnmount(() => {
 
 const onLoadedMetadata = () => {
   const ready = Boolean(videoEl.value?.videoWidth);
-  emit('video-ready', ready);
+  emit('videoReady', ready);
 };
 
 const handleCapture = () => {

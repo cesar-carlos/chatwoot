@@ -60,7 +60,7 @@ RSpec.describe Wavoip::Calls::InboundPushService do
 
     expect do
       described_class.new(call: call, inbox: inbox).perform
-    end.not_to change { agent.notifications.voice_call_incoming.count }
+    end.not_to(change { agent.notifications.voice_call_incoming.count })
   end
 
   it 'still creates notifications when only JoiningAgentCache is set' do

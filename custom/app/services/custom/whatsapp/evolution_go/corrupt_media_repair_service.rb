@@ -8,9 +8,7 @@ class Custom::Whatsapp::EvolutionGo::CorruptMediaRepairService
     return { status: :skipped, reason: 'no_blob' } if blob.blank?
 
     bytes = blob.download
-    unless Custom::Whatsapp::EvolutionGo::CorruptMediaRepair.corrupt_data_url_blob?(bytes)
-      return { status: :skipped, reason: 'not_corrupt_data_url' }
-    end
+    return { status: :skipped, reason: 'not_corrupt_data_url' } unless Custom::Whatsapp::EvolutionGo::CorruptMediaRepair.corrupt_data_url_blob?(bytes)
 
     recovered = Custom::Whatsapp::EvolutionGo::CorruptMediaRepair.recover(bytes)
     return { status: :failed, reason: 'recover_failed' } if recovered.blank?

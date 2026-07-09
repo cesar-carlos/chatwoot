@@ -230,19 +230,26 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
   def interactive_reply_body(message)
     message = (message || {}).with_indifferent_access
 
-    button = message['buttonsResponseMessage']
-    if button.present?
-      button = button.with_indifferent_access
-      return button['selectedDisplayText'].presence || button['selectedButtonId'].presence
-    end
+    button_reply_body(message['buttonsResponseMessage']) ||
+      template_reply_body(message['templateButtonReplyMessage']) ||
+      list_reply_body(message['listResponseMessage'])
+  end
 
-    template = message['templateButtonReplyMessage']
-    if template.present?
-      template = template.with_indifferent_access
-      return template['selectedDisplayText'].presence || template['selectedId'].presence
-    end
+  def button_reply_body(button)
+    return if button.blank?
 
-    list = message['listResponseMessage']
+    button = button.with_indifferent_access
+    button['selectedDisplayText'].presence || button['selectedButtonId'].presence
+  end
+
+  def template_reply_body(template)
+    return if template.blank?
+
+    template = template.with_indifferent_access
+    template['selectedDisplayText'].presence || template['selectedId'].presence
+  end
+
+  def list_reply_body(list)
     return if list.blank?
 
     list = list.with_indifferent_access

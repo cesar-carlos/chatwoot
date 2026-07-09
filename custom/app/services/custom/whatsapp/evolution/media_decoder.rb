@@ -5,7 +5,7 @@ module Custom::Whatsapp::Evolution::MediaDecoder
   # Evolution Go `/message/downloadmedia` returns a full data URL in `data.base64`
   # (e.g. `data:application/pdf;base64,JVBERi0...`). Decoding the prefix as
   # base64 produces corrupt blobs (magic `75ab5a6a...`) that PDF/image viewers reject.
-  DATA_URL_PATTERN = %r{\Adata:([^;,]+)?(?:;[^,]*)*;base64,}i
+  DATA_URL_PATTERN = /\Adata:([^;,]+)?(?:;[^,]*)*;base64,/i
 
   module_function
 
