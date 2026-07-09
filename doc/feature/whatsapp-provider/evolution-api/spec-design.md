@@ -69,6 +69,8 @@ Custom::Whatsapp::Evolution::ApiClient.new(
 | `#delete_message_for_everyone(id:, remote_jid:, from_me:)` | `DELETE /chat/deleteMessageForEveryone/:instance` | `Hash` |
 | `#find_chatwoot_integration` | `GET /chatwoot/find/:instance` | `Hash` — verificação pós-provision |
 | `#mark_message_as_read(read_messages:)` | `POST /chat/markMessageAsRead/:instance` | `Hash` |
+| `#send_presence(number:, presence:, delay:)` | `POST /chat/sendPresence/:instance` | `Hash` — typing por chat |
+| `#send_buttons` / `#send_list` / `#send_contact` | `POST /message/sendButtons|sendList|sendContact/:instance` | `Hash` |
 | `#find_contacts(page:, offset:, where:)` | `POST /chat/findContacts/:instance` | `Array` |
 | `#find_messages(page:, offset:, where:)` | `POST /chat/findMessages/:instance` | `Array` |
 | `#get_base64_from_media_message(message:)` | `POST /chat/getBase64FromMediaMessage/:instance` | `Hash` |
@@ -76,7 +78,7 @@ Custom::Whatsapp::Evolution::ApiClient.new(
 | `#fetch_profile(number:)` | `POST /chat/fetchProfile/:instance` | `Hash` |
 | `#fetch_business_profile(number:)` | `POST /chat/fetchBusinessProfile/:instance` | `Hash` |
 
-> **Deferido Fase 3:** `#send_buttons` / `#send_list` — `EvolutionService#send_input_select_message` usa fallback `sendText` com lista numerada.
+> **Implementado:** `#send_buttons` / `#send_list` via `EvolutionService#send_input_select_message` (≤3 botões, >3 lista).
 
 ### `#send_text` — fallback doc vs código
 
@@ -288,9 +290,20 @@ api_client.send_media(
 )
 ```
 
-### `#send_interactive_text_message` (Fase 3)
+### `#send_input_select_message`
 
-`input_select` com ≤10 itens → lista numerada via `send_text` (não usa `sendButtons`/`sendList` da Evolution).
+`input_select` com ≤3 itens → `sendButtons`; >3 → `sendList`.
+
+### Typing presence
+
+`TypingListener` → `PresenceSyncJob` → `PresenceSyncService` → `ApiClient#send_presence` (`/chat/sendPresence`).
+
+Arquivos:
+- `custom/app/listeners/custom/whatsapp/evolution/typing_listener.rb`
+- `custom/app/jobs/custom/whatsapp/evolution/presence_sync_job.rb`
+- `custom/app/services/custom/whatsapp/evolution/presence_sync_service.rb`
+
+Registrado em `Custom::AsyncDispatcher` junto com o listener Go.
 
 ---
 

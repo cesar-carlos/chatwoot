@@ -57,6 +57,7 @@
 - Outbound delete: `DeleteSyncService` + hook `EvolutionGoDeleteSync` em `Message`
 - Outbound edit (opt-in): `EditSyncService` + hook `EvolutionGoEditSync` em `Message`
 - Import contatos: `ImportService`, `ContactsImporter`, enrichment (`/user/info`, `/user/avatar`)
+- Refresh manual de perfis/fotos de **todos** os contatos do inbox: `ContactsRefreshService` + `POST …/evolution_go_refresh_contacts` (settings UI)
 - Import histórico: `MessagesImporter`, `HistorySyncProcessor`, evento `HISTORY_SYNC`
 - Diagnóstico: `DiagnosticsService`, `WebhookTestService`, `MutationStatsRecorder`
 - Grupos: `EvolutionGoNormalizer` (group JID + participant), `GroupContactService` / `GroupParticipantService`, `ApiClient#group_info`, `GroupMetadataService` (provider-aware), `PhoneOutgoingSyncService` (outbound grupo)

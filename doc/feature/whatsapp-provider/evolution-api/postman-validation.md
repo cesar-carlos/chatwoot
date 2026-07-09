@@ -158,7 +158,7 @@ Body: `number`, `callDuration` (1–15), `isVideo?`.
 | Fetch Profile Picture | `POST` | `/chat/fetchProfilePictureUrl/:instanceName` | — |
 | Get Base64 Media | `POST` | `/chat/getBase64FromMediaMessage/:instanceName` | 2 (mídia inbound) |
 | Update Message | `POST` | `/chat/updateMessage/:instanceName` | — |
-| Send Presence (chat) | `POST` | `/chat/sendPresence/:instanceName` | — |
+| Send Presence (chat) | `POST` | `/chat/sendPresence/:instanceName` | ✅ typing (`PresenceSyncService`) |
 | Block User | `POST` | `/chat/updateBlockStatus/:instanceName` | — |
 
 ---

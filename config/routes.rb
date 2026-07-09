@@ -288,11 +288,13 @@ Rails.application.routes.draw do
             post :evolution_logout, on: :member
             post :evolution_restart, on: :member
             post :evolution_import, on: :member
+            post :evolution_refresh_contacts, on: :member
             # FORK: Evolution Go QR / connection polling
             get :evolution_go_connection, on: :member
             post :evolution_go_reconnect, on: :member
             post :evolution_go_logout, on: :member
             post :evolution_go_import, on: :member
+            post :evolution_go_refresh_contacts, on: :member
             get :evolution_go_diagnostics, on: :member
             post :evolution_go_test_webhook, on: :member
             post :evolution_go_sync_webhook, on: :member

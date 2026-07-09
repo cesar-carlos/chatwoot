@@ -137,6 +137,17 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: import_payload_for(channel.reload)
   end
 
+  def evolution_refresh_contacts
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_channel?(channel)
+
+    result = Custom::Whatsapp::Evolution::ContactsRefreshService.new(channel: channel).perform
+    render json: result
+  rescue Custom::Whatsapp::Evolution::ContactsRefreshService::AlreadyRunningError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def evolution_go_connection
     authorize @inbox, :update?
     channel = @inbox.channel
@@ -184,6 +195,17 @@ module Custom::Api::V1::Accounts::InboxesController
 
     Custom::Whatsapp::EvolutionGo::ImportJob.perform_later(channel.id, force: true)
     render json: import_payload_for(channel.reload)
+  end
+
+  def evolution_go_refresh_contacts
+    authorize @inbox, :update?
+    channel = @inbox.channel
+    return head :not_found unless evolution_go_channel?(channel)
+
+    result = Custom::Whatsapp::EvolutionGo::ContactsRefreshService.new(channel: channel).perform
+    render json: result
+  rescue Custom::Whatsapp::EvolutionGo::ContactsRefreshService::AlreadyRunningError => e
+    render json: { error: e.message }, status: :unprocessable_entity
   end
 
   def evolution_go_diagnostics
