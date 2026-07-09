@@ -10,7 +10,7 @@ Plano revisado com melhorias P0–P2 incorporadas.
 
 ## Context
 
-Evoluir Fluxos de Conversa de config global para **regras multi-inbox** com dois gatilhos temporais, condições, ações ricas e migração segura do legacy.
+Evoluir Fluxos de Conversa de config global para **regras multi-inbox** com seis gatilhos temporais, condições, ações ricas e migração segura do legacy.
 
 ## Objective
 
@@ -94,15 +94,15 @@ flowchart TB
 | `name`, `description` | string/text | |
 | `active` | boolean | default true |
 | `position` | integer | |
-| `trigger_type` | enum | `conversation_inactivity` \| `agent_no_reply` |
+| `trigger_type` | enum | `conversation_inactivity` \| `agent_no_reply` \| `first_response_overdue` \| `unassigned_too_long` \| `pending_stale` \| `customer_no_reply` |
 | `duration_minutes` | integer | 10..1439856 |
 | `inbox_ids` | jsonb | null = all |
 | `ignore_waiting` | boolean | inatividade |
 | `resolve_on_match` | boolean | inatividade |
 | `message` | text | template cliente |
-| `conditions` | jsonb | Fase 2 |
+| `conditions` | jsonb | assignee_id, team_id, labels, priority |
 | `actions` | jsonb | pode incluir `counts_as_agent_reply` |
-| `options` | jsonb | Fase 2.1: `require_no_first_reply`, `statuses[]` |
+| `options` | jsonb | `require_no_first_reply`, `statuses[]`, `respect_business_hours` |
 
 ### `conversation_workflow_rule_executions`
 
@@ -125,16 +125,29 @@ flowchart TB
 ### Índices (migration)
 
 ```sql
--- Preferir parcial se PG permitir; senão composto simples
-CREATE INDEX idx_conv_workflow_waiting
+-- Open + waiting (agent_no_reply, first_response_overdue)
+CREATE INDEX index_conv_workflow_waiting
   ON conversations (account_id, waiting_since)
   WHERE status = 0 AND waiting_since IS NOT NULL;
 
-CREATE INDEX idx_conv_workflow_inactivity
+-- Open inactivity (conversation_inactivity)
+CREATE INDEX index_conv_workflow_inactivity
   ON conversations (account_id, last_activity_at)
   WHERE status = 0;
+
+-- Pending stale (status = 2)
+CREATE INDEX index_conv_workflow_pending_stale
+  ON conversations (account_id, last_activity_at)
+  WHERE status = 2;
+
+-- Unassigned too long
+CREATE INDEX index_conv_workflow_unassigned
+  ON conversations (account_id, created_at)
+  WHERE status = 0 AND assignee_id IS NULL;
 ```
 
+Migrations: `20260618130200_add_conversation_workflow_conversation_indexes.rb`,
+`20260709120000_add_conversation_workflow_extended_trigger_indexes.rb`.
 ---
 
 ## Backend (`custom/`)
@@ -382,8 +395,17 @@ Manter leitura `auto_resolve_*` 1 release com log deprecation.
 |---|--------|------|
 | 4.1 | `Conversations::ResolveService` + required attrs backend | Done |
 | 4.2 | `skip_required_attributes: true` para workflow system resolve | Done |
-| 4.3 | Eventos Automação: `conversation_inactivity_threshold`, `conversation_agent_no_reply` | Done |
+| 4.3 | Eventos Automação: 6 sintéticos (um por trigger) | Done |
 | 4.4 | Doc fronteira SLA vs workflow | Done |
+
+---
+
+## Runtime: per-message vs cron
+
+Ver [current-state.md](./current-state.md) § Runtime. Resumo:
+
+- **Per-message:** `agent_no_reply` / `first_response_overdue` (incoming), `customer_no_reply` (outgoing) — só com calendar time (`respect_business_hours` false).
+- **Cron only:** `conversation_inactivity`, `unassigned_too_long`, `pending_stale`, e qualquer regra com business hours.
 
 ---
 
@@ -440,4 +462,4 @@ Manter leitura `auto_resolve_*` 1 release com log deprecation.
 
 ---
 
-*Última atualização: jun/2026 — melhorias P0–P2 incorporadas*
+*Última atualização: jul/2026 — 6 gatilhos no schema, índices extended, runtime documentado*

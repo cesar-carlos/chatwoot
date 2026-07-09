@@ -26,6 +26,7 @@
 | UX refactor + menu split | — | jun/2026 — `conversationRules/` components, sidebar independente, `tm()` tiered SLA fix |
 | ScheduleOnMessageScheduler | — | jun/2026 — delay desde `waiting_since`, dedup Redis, specs |
 | Gatilhos estendidos + UX | — | jun/2026 — 4 novos triggers, cards, presets, preview, abas lista |
+| Índices pending/unassigned + docs runtime | — | jul/2026 — `index_conv_workflow_pending_stale`, `index_conv_workflow_unassigned`; docs 6 eventos Automação / per-message vs cron |
 
 ---
 
@@ -40,4 +41,4 @@
 
 ---
 
-*Última atualização: jun/2026 — UX refactor + menu split incorporados*
+*Última atualização: jul/2026 — índices extended + docs runtime*

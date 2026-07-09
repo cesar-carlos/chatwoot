@@ -67,7 +67,8 @@ Componentes em `conversationRules/components/`:
 | Message hook | `custom/app/models/custom/message.rb` + `custom/app/models/custom/message/workflow_rules_scheduler.rb` |
 | Scheduler | `custom/app/jobs/custom/conversation_workflow/scheduler_job.rb` |
 | Per-message job | `custom/app/jobs/custom/conversation_workflow/schedule_on_message_job.rb` |
-| Per-message scheduler | `custom/app/services/custom/conversation_workflow/schedule_on_message_scheduler.rb` — incoming (`agent_no_reply`, `first_response_overdue`) + outgoing (`customer_no_reply`); dedup Redis por epoch |
+| Per-message scheduler | `custom/app/services/custom/conversation_workflow/schedule_on_message_scheduler.rb` — incoming (`agent_no_reply`, `first_response_overdue`) + outgoing (`customer_no_reply`); skip se `respect_business_hours`; dedup Redis por epoch |
+| Indexes | `index_conv_workflow_waiting`, `_inactivity`, `_pending_stale`, `_unassigned` |
 | Preview API | `POST /conversation_workflow_rules/preview_count` |
 | Account processor | `custom/app/services/custom/conversation_workflow/account_processor.rb` — itera regras com gate de feature flag |
 | Executor | `custom/app/services/custom/conversation_workflow/rule_executor.rb` |
@@ -122,12 +123,18 @@ Campo em `conversations.waiting_since`. Usado por:
 
 ## Automação (integração Fase 4)
 
-Eventos sintéticos disparados após match de workflow rule:
+Eventos sintéticos disparados após match de workflow rule (`AutomationEventDispatcher`):
 
-- `conversation_inactivity_threshold`
-- `conversation_agent_no_reply`
+| Trigger | Evento Automação |
+|---------|------------------|
+| `conversation_inactivity` | `conversation_inactivity_threshold` |
+| `agent_no_reply` | `conversation_agent_no_reply` |
+| `first_response_overdue` | `conversation_first_response_overdue` |
+| `unassigned_too_long` | `conversation_unassigned_too_long` |
+| `pending_stale` | `conversation_pending_stale` |
+| `customer_no_reply` | `conversation_customer_no_reply` |
 
-Constantes em `app/javascript/dashboard/routes/dashboard/settings/automation/constants.js` (`// FORK:`).
+Constantes em `automation/constants.js` e `conversationRules/constants.js` (`WORKFLOW_AUTOMATION_EVENTS`).
 
 ---
 
@@ -190,16 +197,40 @@ Checklist obrigatório antes de go-live:
 
 ---
 
+## Runtime: per-message vs cron
+
+| Trigger | Per-message | Cron (*/5) | Notas |
+|---------|:-----------:|:----------:|-------|
+| `agent_no_reply` | ✅ incoming | ✅ | Skip se `respect_business_hours` |
+| `first_response_overdue` | ✅ incoming | ✅ | Skip se já houve first reply |
+| `customer_no_reply` | ✅ outgoing | ✅ | Skip se `respect_business_hours` |
+| `conversation_inactivity` | ❌ | ✅ | Só cron |
+| `unassigned_too_long` | ❌ | ✅ | Só cron; limpa dedup ao assign (`clear_unassigned_too_long_for!`) |
+| `pending_stale` | ❌ | ✅ | Só cron |
+| Qualquer + `respect_business_hours` | ❌ | ✅ | Delay Sidekiq não expressa horário útil |
+
+## Índices de conversa (scheduler)
+
+| Índice | WHERE | Triggers |
+|--------|-------|----------|
+| `index_conv_workflow_waiting` | `status = 0 AND waiting_since IS NOT NULL` | agent_no_reply, first_response_overdue |
+| `index_conv_workflow_inactivity` | `status = 0` | conversation_inactivity |
+| `index_conv_workflow_pending_stale` | `status = 2` | pending_stale |
+| `index_conv_workflow_unassigned` | `status = 0 AND assignee_id IS NULL` | unassigned_too_long |
+
+`customer_no_reply` usa subquery em `messages` (sem índice dedicado).
+
 ## Limitações conhecidas
 
 | Limitação | Detalhe |
 |-----------|---------|
-| `BULK_ACTIONS_LIMIT` | 100 conversas por execução do scheduler |
+| `BULK_ACTIONS_LIMIT` | 100 conversas por execução do scheduler / regra |
 | Cron backstop | `SchedulerJob` a cada 5 min (complementa job per-message) |
+| Business hours | Sem per-message — atraso até ~5 min após threshold em horário útil |
 | `send_attachment` | Não suportado — oculto na UI; ação loga warning se presente via API |
 | `ActionService` | Erros por ação engolidos (`StandardError`) — sem feedback ao admin na UI |
 | Histórico de execuções | Tabela `conversation_workflow_rule_executions` existe; sem UI de auditoria |
 
 ---
 
-*Última atualização: jun/2026 — 6 gatilhos, UX cards/presets/preview, abas na lista*
+*Última atualização: jul/2026 — índices extended, runtime per-message vs cron, 6 eventos Automação*

@@ -12,6 +12,8 @@ class ConversationWorkflowRule < ApplicationRecord
   }
 
   SCHEDULABLE_ON_INCOMING = %w[agent_no_reply first_response_overdue].freeze
+  # customer_no_reply is scheduled from outgoing messages (see WorkflowRulesScheduler).
+  # conversation_inactivity / unassigned_too_long / pending_stale / business-hours rules: cron only.
 
   def self.schedulable_on_incoming?(trigger_type)
     SCHEDULABLE_ON_INCOMING.include?(trigger_type)
