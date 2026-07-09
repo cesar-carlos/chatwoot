@@ -35,6 +35,7 @@ vi.mock('vuex', () => ({
 
 vi.mock('customDashboard/composables/wavoip/useWavoipNotifications', () => ({
   notifyIncomingWavoipOffer: vi.fn(),
+  closeIncomingWavoipOfferNotification: vi.fn(),
 }));
 
 vi.mock('customDashboard/lib/wavoip/wavoipClientRegistry', () => ({
@@ -58,7 +59,10 @@ vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
   isOutboundInitiationActive,
 }));
 
-import { notifyIncomingWavoipOffer } from 'customDashboard/composables/wavoip/useWavoipNotifications';
+import {
+  closeIncomingWavoipOfferNotification,
+  notifyIncomingWavoipOffer,
+} from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import {
   pendingOffers,
   removePendingOffer,
@@ -66,6 +70,7 @@ import {
   waitForPendingOffer,
 } from '../useWavoipIncomingOffer';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
+import { isCallDismissed } from 'dashboard/composables/useCallSession';
 
 const createOffer = id => {
   const handlers = {};
@@ -94,6 +99,7 @@ describe('useWavoipIncomingOffer', () => {
     getRingingProviderCallId.mockReset().mockReturnValue(null);
     isOutboundInitiationActive.mockReset().mockReturnValue(false);
     notifyIncomingWavoipOffer.mockClear();
+    closeIncomingWavoipOfferNotification.mockClear();
     setActivePinia(createPinia());
   });
 
@@ -115,6 +121,10 @@ describe('useWavoipIncomingOffer', () => {
     expect(mockAlert).toHaveBeenCalledWith(
       'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE'
     );
+    expect(closeIncomingWavoipOfferNotification).toHaveBeenCalledWith(
+      offer.id
+    );
+    expect(isCallDismissed(offer.id)).toBe(true);
     expect(pendingOffers.has(offer.id)).toBe(false);
     expect(store.calls.some(c => c.callSid === offer.id)).toBe(false);
   });

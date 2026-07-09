@@ -8,16 +8,18 @@ import { useAlert } from 'dashboard/composables';
 import {
   useWhatsappCallSession,
   sendWhatsappTerminateBeacon,
-  cleanupWhatsappSession,
 } from 'dashboard/composables/useWhatsappCallSession';
-import { handleVoiceCallCreated, isInbound } from 'dashboard/helper/voice';
+import { handleVoiceCallCreated } from 'dashboard/helper/voice';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
+import { isBrowserVoiceProvider } from 'customDashboard/lib/voice/browserVoiceProviders';
 // FORK: Wavoip voice session registry (factory wired in Phase 2)
 import {
   getBrowserVoiceSession,
-  teardownWavoipActiveCall,
+  isWavoipVoiceCall,
+  isWhatsappVoiceCall,
+  shouldRejectWavoipInboundOnDismiss,
+  cleanupAfterBrowserVoiceJoinFailure,
 } from 'customDashboard/lib/voice/voiceSessionRegistry';
-import { removePendingOffer } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { isWavoipInboxRestricted } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import {
   CONTENT_TYPES,
@@ -26,17 +28,14 @@ import {
 } from 'dashboard/components-next/message/constants';
 import Timer from 'dashboard/helper/Timer';
 
-const isWhatsappCall = call => call?.provider === VOICE_CALL_PROVIDERS.WHATSAPP;
-// FORK: Wavoip browser voice session dispatch
-const isWavoipCall = call => call?.provider === VOICE_CALL_PROVIDERS.WAVOIP;
-const isBrowserVoiceCall = call => isWhatsappCall(call) || isWavoipCall(call);
+const isBrowserVoiceCall = call => isBrowserVoiceProvider(call?.provider);
 
 const resolveBrowserVoiceSession = (
   call,
   { whatsappSession, browserVoiceSessionFor }
 ) => {
-  if (isWhatsappCall(call)) return whatsappSession;
-  if (isWavoipCall(call)) {
+  if (isWhatsappVoiceCall(call)) return whatsappSession;
+  if (isWavoipVoiceCall(call)) {
     return browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
   }
   return null;
@@ -162,23 +161,18 @@ const buildCallActions = ({
 
   const endCall = async ({ conversationId, inboxId, callSid }) => {
     const call = findCall(callSid);
-    if (isWhatsappCall(call)) {
-      // Pass call.callId so a wiped module state (e.g. a prior accept attempt
-      // tore down the WebRTC session) doesn't stop us hitting /terminate.
-      await whatsappSession.endActiveCall(call?.callId);
-      globalDurationTimer?.stop();
-      callsStore.clearActiveCall();
-      return;
-    }
+    const browserSession = resolveBrowserVoiceSession(call, {
+      whatsappSession,
+      browserVoiceSessionFor,
+    });
 
-    if (isWavoipCall(call)) {
-      // FORK: end active Wavoip call via browser voice session
-      const session = resolveBrowserVoiceSession(call, {
-        whatsappSession,
-        browserVoiceSessionFor,
-      });
-      if (session?.endActiveCall) await session.endActiveCall(call?.callSid);
+    if (browserSession?.endActiveCall) {
+      // WhatsApp: pass call.callId so a wiped module state still hits /terminate.
+      // Wavoip: pass callSid (SDK / store key).
+      const endId = isWhatsappVoiceCall(call) ? call?.callId : call?.callSid;
+      await browserSession.endActiveCall(endId);
       globalDurationTimer?.stop();
+      if (isWhatsappVoiceCall(call)) callsStore.clearActiveCall();
       return;
     }
 
@@ -213,36 +207,37 @@ const buildCallActions = ({
 
     globalIsJoining.value = true;
     try {
-      if (isWhatsappCall(call)) {
-        await whatsappSession.acceptIncomingCall({
-          callId: call.callId,
-          sdpOffer: call.sdpOffer,
-          iceServers: call.iceServers,
-        });
-        callsStore.setCallActive(callSid);
-        globalDurationTimer?.start();
-        return { callId: call.callId };
-      }
+      const browserSession = resolveBrowserVoiceSession(call, {
+        whatsappSession,
+        browserVoiceSessionFor,
+      });
 
-      if (isWavoipCall(call)) {
-        // FORK: accept inbound Wavoip call via SDK session
+      if (isWavoipVoiceCall(call)) {
+        // FORK: Wavoip restricted-device gate / missing session before SDK accept
         if (isWavoipInboxRestricted(call.inboxId)) {
           useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
           return null;
         }
-        const session = resolveBrowserVoiceSession(call, {
-          whatsappSession,
-          browserVoiceSessionFor,
-        });
-        if (!session?.acceptIncomingCall) {
+        if (!browserSession?.acceptIncomingCall) {
           useAlert(t('CONVERSATION.WAVOIP_CALL.CLIENT_UNAVAILABLE'));
           return null;
         }
-        await session.acceptIncomingCall({
-          callId: call.callSid,
-          inboxId: call.inboxId,
-          conversationId: call.conversationId,
-        });
+      }
+
+      if (browserSession?.acceptIncomingCall) {
+        if (isWhatsappVoiceCall(call)) {
+          await browserSession.acceptIncomingCall({
+            callId: call.callId,
+            sdpOffer: call.sdpOffer,
+            iceServers: call.iceServers,
+          });
+        } else {
+          await browserSession.acceptIncomingCall({
+            callId: call.callSid,
+            inboxId: call.inboxId,
+            conversationId: call.conversationId,
+          });
+        }
         callsStore.setCallActive(callSid);
         globalDurationTimer?.start();
         return { callId: call.callId };
@@ -274,7 +269,7 @@ const buildCallActions = ({
         TwilioVoiceClient.endClientCall();
         markDismissed(callSid);
         callsStore.dismissCall(callSid);
-      } else if (!isWhatsappCall(call)) {
+      } else if (!isWhatsappVoiceCall(call) && !isWavoipVoiceCall(call)) {
         // Tear down the Twilio Device on any other join error so a retry
         // starts from a clean state — joinClientCall can leave the device
         // half-initialized after a network blip.
@@ -282,14 +277,9 @@ const buildCallActions = ({
       }
       // eslint-disable-next-line no-console
       console.error('Failed to join call:', error);
-      if (isWavoipCall(call)) {
-        // FORK: tear down Wavoip session after join failure
-        teardownWavoipActiveCall();
-        removePendingOffer(callSid);
+      if (cleanupAfterBrowserVoiceJoinFailure(call, callSid)) {
         markDismissed(callSid);
         callsStore.dismissCall(callSid);
-      } else {
-        cleanupWhatsappSession();
       }
       return null;
     } finally {
@@ -306,21 +296,21 @@ const buildCallActions = ({
     // reject so there's no audible gap while the provider round-trips.
     silenceCallRingtone(callSid, call);
     try {
-      if (isWhatsappCall(call) && call?.callId) {
+      const browserSession = resolveBrowserVoiceSession(call, {
+        whatsappSession,
+        browserVoiceSessionFor,
+      });
+
+      if (browserSession) {
         if (call.callDirection === VOICE_CALL_DIRECTION.OUTBOUND) {
-          // Outbound calls that are still ringing must be terminated, not
-          // rejected (reject is the inbound-side verb on Meta's API).
-          await whatsappSession.endActiveCall(call.callId);
-        } else {
-          await whatsappSession.rejectIncomingCall(call.callId);
-        }
-      } else if (isWavoipCall(call)) {
-        // FORK: reject/dismiss Wavoip call via SDK session
-        const session = browserVoiceSessionFor(VOICE_CALL_PROVIDERS.WAVOIP);
-        if (call.callDirection === VOICE_CALL_DIRECTION.OUTBOUND) {
-          await session?.endActiveCall?.();
-        } else {
-          await session?.rejectIncomingCall?.(call.callSid);
+          // Outbound still ringing: terminate, don't reject (inbound verb).
+          const endId = isWhatsappVoiceCall(call) ? call.callId : undefined;
+          await browserSession.endActiveCall?.(endId);
+        } else if (isWhatsappVoiceCall(call) && call?.callId) {
+          await browserSession.rejectIncomingCall(call.callId);
+        } else if (isWavoipVoiceCall(call)) {
+          // FORK: reject/dismiss Wavoip call via SDK session
+          await browserSession.rejectIncomingCall?.(call.callSid);
         }
       } else if (call?.inboxId && call?.conversationId) {
         // Twilio incoming reject: agent hasn't joined the Device yet, so
@@ -343,11 +333,8 @@ const buildCallActions = ({
   const dismissCall = async callSid => {
     const call = findCall(callSid);
     silenceCallRingtone(callSid, call);
-    const isWavoipInboundDirection =
-      isInbound(call?.callDirection) ||
-      call?.callDirection === VOICE_CALL_DIRECTION.INCOMING;
-    if (isWavoipCall(call) && isWavoipInboundDirection && !call?.isActive) {
-      // FORK: dismiss inbound Wavoip rings via SDK reject
+    // FORK: dismiss inbound Wavoip rings via SDK reject
+    if (shouldRejectWavoipInboundOnDismiss(call)) {
       await rejectIncomingCall(callSid);
       return;
     }

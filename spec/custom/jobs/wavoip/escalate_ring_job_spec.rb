@@ -24,6 +24,14 @@ RSpec.describe Wavoip::EscalateRingJob do
     account.enable_features!('channel_voice', 'channel_wavoip')
   end
 
+  around do |example|
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = original_cache
+  end
+
   it 'broadcasts escalated ring when call is still ringing' do
     broadcaster = instance_double(Wavoip::Calls::Broadcaster, broadcast_escalated_ring: true)
     allow(Wavoip::Calls::Broadcaster).to receive(:new).with(inbox: inbox).and_return(broadcaster)
@@ -41,6 +49,28 @@ RSpec.describe Wavoip::EscalateRingJob do
     described_class.perform_now(call.id)
 
     expect(Wavoip::Calls::Broadcaster).not_to have_received(:new)
+  end
+
+  it 'does nothing when an agent already accepted while still ringing' do
+    agent = create(:user, account: account, role: :agent)
+    call.update!(accepted_by_agent_id: agent.id)
+    broadcaster = instance_double(Wavoip::Calls::Broadcaster)
+    allow(Wavoip::Calls::Broadcaster).to receive(:new).and_return(broadcaster)
+
+    described_class.perform_now(call.id)
+
+    expect(Wavoip::Calls::Broadcaster).not_to have_received(:new)
+  end
+
+  it 'still escalates when only JoiningAgentCache is set (accept not persisted yet)' do
+    agent = create(:user, account: account, role: :agent)
+    Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
+    broadcaster = instance_double(Wavoip::Calls::Broadcaster, broadcast_escalated_ring: true)
+    allow(Wavoip::Calls::Broadcaster).to receive(:new).with(inbox: inbox).and_return(broadcaster)
+
+    described_class.perform_now(call.id)
+
+    expect(broadcaster).to have_received(:broadcast_escalated_ring).with(call)
   end
 
   it 'does not broadcast when offline fallback is none' do

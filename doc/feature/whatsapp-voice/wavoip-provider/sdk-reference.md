@@ -256,7 +256,10 @@ Emitido por `Wavoip::Calls::Broadcaster#broadcast_agent_accepted` quando:
 - Agente aceita no browser → `PATCH /api/v1/accounts/:id/calls/:id`
 - Webhook inbound `ACTIVE` → `CallUpsertService#emit_broadcasts`
 
-Payload inclui `accepted_by_agent_id`. Handler `voiceCallCableRegistry.onAccepted` dispensa outras abas exceto a que aceitou (`getActiveProviderCallId` / `accepted_by_agent_id === currentUser`).
+Payload inclui `accepted_by_agent_id`. Handler `voiceCallCableRegistry.onAccepted`:
+aba que possui a sessão SDK (`isWavoipSdkCallOwned`) mantém a call; demais abas
+dismissam o widget (same-user sem toast; outro agente com toast `ACCEPTED_ELSEWHERE`).
+Dismiss ocorre mesmo se a aba estiver mid-join (`isCallJoining`).
 
 ### 7.6 Dismiss vs reject (inbound)
 

@@ -146,7 +146,7 @@ Se o fork **não** usar `whatsapp_cloud`, restrições da Meta na API oficial de
 |---|--------|------------|-----|
 | 1 | Assimetria Twilio vs WhatsApp no backend | **Baixa** | Twilio e WhatsApp têm adapters (`Twilio::Adapter`, `MetaCloud::Adapter`); falta só `Voice::Provider::WhatsappCalling::Base` formal |
 | 2 | `useWebRtcCallSession.js` concentra WebRTC | Média | Extraído de `useWhatsappCallSession` (wrapper fino); recorder + API + beacon ainda num módulo |
-| 3 | `useCallSession.js` com branching `isWhatsappCall` | Média | Wavoip e WhatsApp usam registries (`voiceSessionRegistry`, `whatsappVoiceCableRegistry`); `useCallSession` ainda tem branches por provider |
+| 3 | `useCallSession.js` com branching `isWhatsappCall` | Baixa | Helpers no `voiceSessionRegistry` (`isWavoipVoiceCall`, `cleanupAfterBrowserVoiceJoinFailure`, …); join/end/reject usam sessão via registry (09 jul. 2026) |
 | 4 | Model `Call` mistura concerns Twilio + WhatsApp | Baixa | Pragmático no EE; novo enum exige edição `# FORK:` porque `Call` não expõe hook |
 | ~~5~~ | ~~Permissão outbound no controller~~ | ✅ Resolvido | `Whatsapp::CallPermissionRequestService` (jun. 2026) |
 
@@ -177,7 +177,7 @@ Detalhes: [architecture-and-flow.md §12–14](./architecture-and-flow.md) · [s
 
 | Prioridade | Melhoria | Onde | Esforço | Status |
 |------------|----------|------|---------|--------|
-| **P0** | Registry de sessões/eventos por provider em `useCallSession` + `actionCable.js` | `# FORK:` mínimo | 2–3 dias | Parcial — registries por provider; `useCallSession` ainda brancha |
+| **P0** | Registry de sessões/eventos por provider em `useCallSession` + `actionCable.js` | `# FORK:` mínimo | 2–3 dias | Quase done — cable registries + helpers no `voiceSessionRegistry`; Twilio ainda brancha no facade |
 | ~~**P1**~~ | ~~Extrair `useWebRtcCallSession(callsAPI)`~~ | FE | ~1 semana | ✅ Done |
 | ~~**P1**~~ | ~~`Voice::Provider::MetaCloud::Adapter`~~ | `enterprise/` | 3–5 dias | ✅ Done (jul. 2026) |
 | ~~**P1**~~ | ~~`Voice::OutboundWhatsappCallBuilder`~~ | `enterprise/` | 2–3 dias | ✅ Done |
