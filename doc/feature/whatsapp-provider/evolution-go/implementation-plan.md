@@ -126,7 +126,9 @@ POST /send/text
 → source_id = response.dig('data', 'Info', 'ID') || response.dig('data', 'messageId')
 ```
 
-### Frontend (wizard — 3 steps)
+### Frontend (wizard — ver [frontend-wizard-spec.md](./frontend-wizard-spec.md))
+
+> **Nota (jul/2026):** Implementação real = 2 telas (`form` + `connect`) + modal QR; composables em `evolution_go/*` (não `useEvolutionGoConnection.js`).
 
 | # | Entrega |
 |---|---------|

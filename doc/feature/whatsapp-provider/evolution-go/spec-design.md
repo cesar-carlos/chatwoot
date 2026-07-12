@@ -155,7 +155,7 @@ def perform
 # ou { statuses: } para READ_RECEIPT (Fase 2)
 
 def filtered?(data)
-  # fromMe, @g.us, status@broadcast
+  # ignore_from_me_echo, ignore_groups (config); status@broadcast sempre
 end
 
 def extract_phone(key)
@@ -168,7 +168,7 @@ end
 | `event` | Output |
 |---------|--------|
 | `MESSAGE` | `{ contacts:, messages: }` |
-| `READ_RECEIPT` | `{ statuses: }` (Fase 2) |
+| `READ_RECEIPT` | `{ statuses: }` via `EvolutionGoReadReceiptNormalizer` |
 | `CONNECTION`, `QRCODE` | `nil` — ConnectionService |
 
 ---
@@ -194,18 +194,19 @@ def authenticate_webhook!
   return head :not_found unless @channel
 
   secret = @channel.provider_config['webhook_token'].to_s.strip
-  token = params[:token].to_s.strip
+  query_token = params[:token].to_s.strip
+  bearer = request.headers['Authorization'].to_s.remove(/^Bearer /i).strip
+  provided = query_token.presence || bearer
   return head :unauthorized unless secret.present? &&
-    ActiveSupport::SecurityUtils.secure_compare(token, secret)
+    provided.present? && ActiveSupport::SecurityUtils.secure_compare(provided, secret)
 end
 
 private
 
 def sanitized_job_payload
-  # ⚠️ CRÍTICO: usar 'evolution_go_instance_name' NÃO ':instance_name'
-  # para evitar que o prepend evolution Node consuma este payload
-  # (ver decisions.md §27 + coordination-with-evolution-api.md § Prepend collision)
-  params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
+  payload = params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
+  payload.delete('instance')
+  payload
 end
 ```
 
@@ -244,7 +245,7 @@ class EvolutionGoConnectionChannel < ApplicationCable::Channel
 end
 ```
 
-`ConnectionService#broadcast_connection_event` emite para `evolution_go:connection:{inbox.id}`. Frontend `useEvolutionGoConnection.js` subscreve para QR + connection status.
+`ConnectionService#broadcast_connection_event` emite para `evolution_go:connection:{inbox.id}`. Frontend `evolutionGoCableRegistry.js` + `useEvolutionGoQrSession.js` subscrevem para QR + connection status.
 
 ---
 
@@ -295,34 +296,42 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def dispatch_evolution_go_event(channel, params)
-    case params[:event]
+    params[:event] = Custom::Whatsapp::EvolutionGo::EventNames.normalize(params[:event])
+
+    case params[:event].to_s.upcase
     when 'MESSAGE'
-      normalized = Custom::Whatsapp::Webhooks::EvolutionGoNormalizer.new(channel, params).perform
-      super(normalized.merge(phone_number: channel.phone_number)) if normalized.present?
-    when 'CONNECTION', 'QRCODE'
-      Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel).handle_event(params)
-    when 'READ_RECEIPT'
-      # Fase 2
+      process_message_event(channel, params)  # delete/edit, fromMe echo, normalizer
     when 'SEND_MESSAGE'
-      nil  # echo outbound — ignorar
+      process_send_message_event(channel, params)
+    when 'MESSAGE_DELETE', 'MESSAGES_DELETE', 'DELETE'
+      process_delete_event(channel, params)
+    when 'MESSAGES_EDITED', 'MESSAGE_EDIT', 'SEND_MESSAGE_UPDATE'
+      process_edit_event(channel, params)
+    when 'READ_RECEIPT', 'RECEIPT'
+      process_read_receipt_event(channel, params)
+    when 'CONNECTION', 'QRCODE', 'LOGGED_OUT', ...
+      ConnectionService.new(channel: channel).handle_event(params)
+    when 'HISTORY_SYNC'
+      Import::HistorySyncProcessor
+    when 'GROUP'
+      GroupMetadataFetchJob (se ignore_groups: false)
     end
   end
 end
 ```
 
-> **`evolution_go_envelope?` simplificado:** a detecção primária é `params[:evolution_go_instance_name].present?` — injetado somente pelo `EvolutionGoController`. O `channel_id` lookup é fallback defensivo. Não usar `params[:event]` + `params[:instance]` como critério — ambíguo com evolution node.
+> Implementação completa: `custom/app/jobs/custom/webhooks/whatsapp_events_job_evolution_go.rb`. Entrega via `InboundMessageProcessor` (não `super` direto no normalizer).
 
 ---
 
-## Specs pós-fixtures (Fase 1)
+## Specs (implementados)
 
-Após E2E, adicionar specs com fixtures reais (não mocks inventados):
-
-| Spec | Fixture |
-|------|---------|
-| `spec/custom/whatsapp/evolution_go/normalizer_spec.rb` | `message_inbound.json` |
-| `spec/custom/whatsapp/evolution_go/api_client_spec.rb` | `send_text_response.json` |
-| `spec/custom/webhooks/evolution_go_controller_spec.rb` | auth `?token=` |
+| Spec | Fixture / foco |
+|------|----------------|
+| `spec/custom/services/custom/whatsapp/webhooks/evolution_go_normalizer_spec.rb` | `message_inbound.json` |
+| `spec/custom/services/custom/whatsapp/evolution_go/api_client_spec.rb` | HTTP client |
+| `spec/custom/controllers/webhooks/evolution_go_controller_spec.rb` | auth `?token=` e Bearer |
+| `spec/custom/jobs/custom/webhooks/whatsapp_events_job_evolution_go_spec.rb` | roteamento eventos |
 
 ---
 

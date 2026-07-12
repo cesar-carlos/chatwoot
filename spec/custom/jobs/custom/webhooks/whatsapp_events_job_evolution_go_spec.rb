@@ -172,6 +172,96 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     end.not_to change(Message, :count)
   end
 
+  it 'soft deletes via MESSAGE protocol revoke' do
+    conversation = create(:conversation, account: account, inbox: inbox)
+    existing = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :incoming,
+      source_id: '3EB0DELETEDMSG123',
+      content: 'will be deleted'
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_revoke.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    Webhooks::WhatsappEventsJob.perform_now(job_payload)
+
+    existing.reload
+    expect(existing.content_attributes['deleted']).to be(true)
+  end
+
+  it 'updates content via MESSAGE protocol edit' do
+    conversation = create(:conversation, account: account, inbox: inbox)
+    existing = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :incoming,
+      source_id: '3EB0EDITEDMSG123',
+      content: 'original'
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_edit.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    Webhooks::WhatsappEventsJob.perform_now(job_payload)
+
+    existing.reload
+    expect(existing.content).to include('Texto atualizado pelo cliente')
+    expect(existing.content_attributes['edited']).to be(true)
+  end
+
+  it 'processes SEND_MESSAGE revoke even when ignore_from_me_echo is enabled' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => true)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+
+    conversation = create(:conversation, account: account, inbox: inbox)
+    existing = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      source_id: '3EB0PHONE-DELETE-1',
+      content: 'delete me'
+    )
+    payload = {
+      'event' => 'SEND_MESSAGE',
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id,
+      'data' => {
+        'Info' => {
+          'ID' => 'PROTOCOL-PHONE-REVOKE',
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => true
+        },
+        'Message' => {
+          'protocolMessage' => {
+            'type' => 'REVOKE',
+            'key' => {
+              'id' => '3EB0PHONE-DELETE-1',
+              'remoteJid' => '5511999999999@s.whatsapp.net',
+              'fromMe' => true
+            }
+          }
+        }
+      }
+    }
+
+    Webhooks::WhatsappEventsJob.perform_now(payload)
+
+    expect(existing.reload.content_attributes['deleted']).to be(true)
+  end
+
   it 'delegates unknown evolution_go channels to super without dropping' do
     payload = {
       'event' => 'MESSAGE',

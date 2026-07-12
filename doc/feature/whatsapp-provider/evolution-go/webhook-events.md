@@ -47,7 +47,7 @@ Evolution Go POST na `webhookUrl` configurada em `POST /instance/connect`:
 | `sender` | Ausente — usar `data.key.remoteJid` ou `myJid` do status |
 | `event: MESSAGES_UPSERT` | `event: MESSAGE` |
 
-**Auth webhook fork:** validar token na URL (`?token=`) ou header configurado — ver [decisions.md §2](./decisions.md). Não depender de `apikey` no envelope.
+**Auth webhook fork:** validar token na URL (`?token=`) ou `Authorization: Bearer {webhook_token}` — ver [decisions.md §2](./decisions.md).
 
 ### Retry Evolution Go
 
@@ -74,6 +74,7 @@ Configurar em `subscribe` no `POST /instance/connect`:
 [
   "MESSAGE",
   "SEND_MESSAGE",
+  "SEND_MESSAGE_UPDATE",
   "CONNECTION",
   "QRCODE",
   "READ_RECEIPT",
@@ -99,15 +100,15 @@ Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via he
 
 ### `SEND_MESSAGE` / phone echo sync
 
-`SEND_MESSAGE` is in the canonical subscribe list. Behavior depends on `ignore_from_me_echo` (default `true`):
+`SEND_MESSAGE` is in the canonical subscribe list. **Delete/edit protocol payloads are always handled first** (even when echo is ignored):
 
 | Setting | Behavior |
 |---------|----------|
-| `ignore_from_me_echo: true` | Event logged and dropped |
-| `ignore_from_me_echo: false` | `PhoneOutgoingSyncService` creates an **outgoing** message with `content_attributes.phone_sent: true`; contact resolved via `PeerContactInboxResolver` |
+| Protocol revoke/edit on `SEND_MESSAGE` | Always → `MessageDeleteSyncService` / `MessageEditSyncService` (inclui `fromMe`) |
+| `ignore_from_me_echo: true` | Echo de texto/mídia logado e dropado |
+| `ignore_from_me_echo: false` | `PhoneOutgoingSyncService` cria mensagem **outgoing** com `content_attributes.phone_sent: true`; contato via `PeerContactInboxResolver` |
 
-Same path for `MESSAGE` events with `fromMe: true`. Delete/edit protocol messages on `SEND_MESSAGE` are routed to delete/edit sync services before echo sync.
-
+Same path for `MESSAGE` events with `fromMe: true` (delete/edit before echo filter).
 ### Event name aliases (after normalization)
 
 | Normalized | Also accepted |
@@ -180,7 +181,7 @@ Lista completa: wiki `events-system.md` § Tipos de Eventos.
 | LID | `xxx@lid` + `remoteJidAlt` | Usar `remoteJidAlt` se presente |
 | Grupo | `120363...@g.us` | Filtrar se `ignore_groups: true`; senão `source_id` = JID grupo + `participant` no key |
 | Status | `status@broadcast` | Ignorar |
-| Echo | `fromMe: true` | Ignorar (hardcoded F1) |
+| Echo | `fromMe: true` | Filtrar se `ignore_from_me_echo: true` (default); senão `PhoneOutgoingSyncService` |
 
 ### Texto — `conversation` vs `extendedTextMessage`
 
@@ -194,10 +195,20 @@ Normalizer deve tentar, nesta ordem: `conversation` → `extendedTextMessage.tex
 
 ### Mídia (Fase 2)
 
-`data.message` pode conter:
+`data.message` / `data.Message` pode conter:
 
-- `imageMessage`, `documentMessage`, `audioMessage`, `videoMessage`
+- `imageMessage`, `documentMessage`, `audioMessage`, `videoMessage`, `stickerMessage`
 - URL ou base64 conforme config MinIO/S3 do servidor Go
+
+**Wrappers aninhados** — `EvolutionGoPayloadAdapter#unwrap_nested_message` desembrulha antes do normalizer:
+
+| Wrapper | Conteúdo interno |
+|---------|------------------|
+| `documentWithCaptionMessage` | `message.documentMessage` (+ caption) — comum em PDF/doc com legenda e no echo de `POST /send/media` |
+| `ephemeralMessage` | `message.*` |
+| `viewOnceMessage` / `viewOnceMessageV2` / `viewOnceMessageV2Extension` | `message.*` |
+
+Sem unwrap, `documentWithCaptionMessage` vira `[Unsupported message type]` no Chatwoot (echo phone / n8n → Go → webhook).
 
 ---
 
@@ -314,29 +325,56 @@ Target para `Whatsapp::IncomingMessageService` (formato 360dialog-like):
 | `messageTimestamp` | `messages[].timestamp` |
 | `message.imageMessage` etc. | `messages[].type` + attachment |
 
-### Filtros hardcoded (Fase 1)
+### Filtros inbound (configuráveis)
+
+Implementados em `EvolutionGoNormalizer#filtered?` e no job prepend **antes** do normalizer:
+
+| Condição | Comportamento | Config |
+|----------|---------------|--------|
+| `fromMe: true` | Ignorar ou echo sync | `ignore_from_me_echo` (default `true`) |
+| `@g.us` | Ignorar ou conversa de grupo | `ignore_groups` (default `true`) |
+| `status@broadcast` | Sempre ignorar | — |
 
 ```ruby
-# EvolutionGoNormalizer — antes de normalizar
-return nil if data.dig('key', 'fromMe') == true
-return nil if remote_jid&.end_with?('@g.us')
-return nil if remote_jid == 'status@broadcast'
+# EvolutionGoNormalizer#filtered?
+def echo_filtered?(key)
+  from_me?(key) && ignore_from_me_echo?
+end
+
+def group_filtered?(remote_jid)
+  ignore_groups? && group_jid?(remote_jid)
+end
 ```
+
+O job prepend trata delete/edit protocol em `MESSAGE` / `SEND_MESSAGE` **antes** do filtro `ignore_from_me_echo` e do normalizer. Soft-delete/edit aplica-se também a mensagens `fromMe` (agente/celular). Echo de texto/mídia só roda quando `ignore_from_me_echo: false`.
 
 ---
 
 ## Job prepend — roteamento
 
+`Custom::Webhooks::WhatsappEventsJobEvolutionGo` — detecção por `evolution_go_instance_name` (não `instance` / `instance_name`). Eventos normalizados via `EventNames.normalize` (PascalCase → SCREAMING_SNAKE).
+
 ```ruby
-case params['event']
+case params[:event].to_s.upcase
 when 'MESSAGE'
-  normalized = EvolutionGoNormalizer.new(channel, params).perform
-  super(normalized.merge(phone_number: channel.phone_number)) if normalized
-when 'READ_RECEIPT'
-  # Fase 2 — statuses
-when 'CONNECTION', 'QRCODE'
-  ConnectionService.new(channel).handle_event(params)
+  # delete/edit protocol → sync services; fromMe → echo ou drop; senão normalizer → InboundMessageProcessor
+when 'SEND_MESSAGE'
+  # delete/edit protocol sempre; echo texto/mídia só se ignore_from_me_echo: false
+when 'MESSAGE_DELETE', 'MESSAGES_DELETE', 'DELETE'
+  process_inbound_delete
+when 'MESSAGES_EDITED', 'MESSAGE_EDIT', 'SEND_MESSAGE_UPDATE'
+  process_inbound_edit
+when 'READ_RECEIPT', 'RECEIPT'
+  EvolutionGoReadReceiptNormalizer → InboundMessageProcessor
+when 'CONNECTION', 'CONNECTED', 'DISCONNECTED', 'LOGGEDOUT', 'LOGGED_OUT', 'QRCODE', 'QR_CODE'
+  ConnectionService#handle_event
+when 'HISTORY_SYNC'
+  Import::HistorySyncProcessor
+when 'GROUP'
+  GroupMetadataFetchJob (quando ignore_groups: false)
+else
+  log ignored
 end
 ```
 
-Ver [decisions.md §12](./decisions.md).
+Controller: `EvolutionGoController` injeta `evolution_go_instance_name`, remove `instance` do payload, enfileira em `queue: :default`. Ver [decisions.md §27](./decisions.md) e [spec-design.md](./spec-design.md).

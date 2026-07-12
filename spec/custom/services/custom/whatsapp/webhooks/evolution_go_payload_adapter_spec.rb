@@ -48,6 +48,35 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter do
       expect(result[:message][:conversation]).to eq('Hidden text')
     end
 
+    it 'unwraps documentWithCaptionMessage payloads from Evolution Go' do
+      data = {
+        'Info' => {
+          'ID' => 'DOC-CAPTION-1',
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'Type' => 'DocumentMessage'
+        },
+        'Message' => {
+          'documentWithCaptionMessage' => {
+            'message' => {
+              'documentMessage' => {
+                'URL' => 'https://mmg.whatsapp.net/example',
+                'mimetype' => 'application/pdf',
+                'fileName' => 'boleto.pdf',
+                'caption' => 'Documento solicitado'
+              }
+            }
+          }
+        }
+      }
+
+      result = described_class.canonicalize_data(data)
+
+      expect(result[:message][:documentMessage][:fileName]).to eq('boleto.pdf')
+      expect(result[:message][:documentMessage][:caption]).to eq('Documento solicitado')
+      expect(result[:message][:documentWithCaptionMessage]).to be_nil
+    end
+
     it 'maps fromMe payloads to the recipient peer JID' do
       data = {
         'Info' => {

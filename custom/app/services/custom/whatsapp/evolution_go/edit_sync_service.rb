@@ -9,8 +9,11 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
     return if message.source_id.blank?
     return unless message.outgoing?
 
+    chat = chat_jid
+    return if chat.blank?
+
     response = api_client.edit_message(
-      chat: chat_jid,
+      chat: chat,
       message_id: message.source_id,
       message: whatsapp_edit_body
     )
@@ -38,23 +41,37 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
   end
 
   def chat_jid
-    attrs = message.content_attributes || {}
-    jid = attrs['evolution_go_remote_jid'].presence || attrs[:evolution_go_remote_jid].presence
-    return jid if jid.present?
-
-    contact_jid = message.conversation.contact_inbox.source_id.to_s
-    return contact_jid if contact_jid.include?('@')
-
-    phone = contact_jid.gsub(/\D/, '')
-    return if phone.blank?
-
-    "#{phone}@s.whatsapp.net"
+    Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message)
   end
 
   def whatsapp_edit_body
     body = message.content.to_s
     prefix = Custom::Whatsapp::EvolutionGo::MessageEditSyncService::EDITED_PREFIX
-    body.start_with?(prefix) ? body.delete_prefix(prefix) : body
+    body = body.delete_prefix(prefix) if body.start_with?(prefix)
+    apply_outbound_text(body)
+  end
+
+  def apply_outbound_text(body)
+    text = body.to_s
+    text = Custom::Whatsapp::Evolution::MarkdownConverter.outbound(text) if convert_markdown_outbound?
+    return text unless sign_msg?
+
+    sender_name = message.sender&.available_name
+    return text if sender_name.blank?
+
+    "#{sender_name}:#{sign_delimiter}#{text}"
+  end
+
+  def convert_markdown_outbound?
+    ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['convert_markdown_outbound'])
+  end
+
+  def sign_msg?
+    ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['sign_msg'])
+  end
+
+  def sign_delimiter
+    (channel.provider_config || {})['sign_delimiter'].presence || "\n"
   end
 
   def api_client

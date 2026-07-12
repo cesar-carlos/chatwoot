@@ -45,6 +45,27 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService do
     expect(message.content_attributes['deleted_via_evolution_go_webhook']).to be(true)
   end
 
+  it 'soft deletes agent/phone messages when fromMe is true' do
+    outgoing = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      source_id: 'MSG-DELETE-OUT',
+      content: 'sent from phone'
+    )
+
+    described_class.new(
+      channel: channel,
+      data: { key: { id: 'MSG-DELETE-OUT', fromMe: true } }
+    ).perform
+
+    outgoing.reload
+    expect(outgoing.content_attributes['deleted']).to be(true)
+    expect(outgoing.content_attributes['deleted_via_evolution_go_webhook']).to be(true)
+  end
+
   it 'does nothing when mark_inbound_deleted is disabled' do
     channel.update!(
       provider_config: channel.provider_config.merge('mark_inbound_deleted' => false)
@@ -54,17 +75,6 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService do
     described_class.new(
       channel: channel,
       data: { key: { id: 'MSG-DELETE-1', fromMe: false } }
-    ).perform
-
-    expect(message.reload.content_attributes['deleted']).not_to be(true)
-  end
-
-  it 'ignores agent-side deletes (fromMe true)' do
-    message
-
-    described_class.new(
-      channel: channel,
-      data: { key: { id: 'MSG-DELETE-1', fromMe: true } }
     ).perform
 
     expect(message.reload.content_attributes['deleted']).not_to be(true)

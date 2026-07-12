@@ -20,7 +20,11 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::DeleteSyncService do
     )
   end
   let(:inbox) { channel.inbox }
-  let(:conversation) { create(:conversation, account: account, inbox: inbox) }
+  let(:contact) { create(:contact, account: account, phone_number: '+5511888888888') }
+  let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5511888888888') }
+  let(:conversation) do
+    create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+  end
   let(:message) do
     create(
       :message,
@@ -47,6 +51,46 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::DeleteSyncService do
     ).and_return(response)
 
     described_class.new(message: message).perform
+  end
+
+  it 'resolves LID chat jid from contact additional_attributes' do
+    contact.update!(
+      additional_attributes: {
+        Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY => '123456789012345@lid'
+      }
+    )
+    lid_message = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      source_id: 'OUT-LID-1',
+      content: 'hello'
+    )
+
+    expect(api_client).to receive(:delete_message).with(
+      chat: '123456789012345@lid',
+      message_id: 'OUT-LID-1'
+    ).and_return(response)
+
+    described_class.new(message: lid_message).perform
+  end
+
+  it 'skips incoming messages' do
+    incoming = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :incoming,
+      source_id: 'IN-MSG-1',
+      content: 'hello'
+    )
+
+    expect(api_client).not_to receive(:delete_message)
+
+    described_class.new(message: incoming).perform
   end
 
   it 'skips when sync_delete_to_whatsapp is disabled' do

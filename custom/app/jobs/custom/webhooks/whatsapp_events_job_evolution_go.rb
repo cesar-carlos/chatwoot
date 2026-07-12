@@ -218,11 +218,6 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def process_send_message_event(channel, params)
-    if ignore_from_me_echo?(channel)
-      Rails.logger.info("[EVOLUTION_GO] ignored outbound echo event=#{params[:event]} channel=#{channel.id}")
-      return
-    end
-
     delete_key = inbound_delete_key(channel, params)
     if delete_key.present?
       process_inbound_delete(channel, delete_key)
@@ -232,6 +227,11 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     edit_payload = inbound_edit_payload(channel, params)
     if edit_payload.present?
       process_inbound_edit(channel, edit_payload)
+      return
+    end
+
+    if ignore_from_me_echo?(channel)
+      Rails.logger.info("[EVOLUTION_GO] ignored outbound echo event=#{params[:event]} channel=#{channel.id}")
       return
     end
 

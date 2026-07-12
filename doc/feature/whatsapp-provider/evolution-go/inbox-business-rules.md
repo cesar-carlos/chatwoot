@@ -8,18 +8,16 @@ Regras do inbox `provider: 'evolution_go'` mapeadas para campos `provider_config
 
 ---
 
-## Escopo por fase
+## Escopo por fase (histórico — tudo implementado jul/2026)
 
-| Fase 1 (wizard + runtime) | Default fork | Fase 2+ (settings) |
-|---------------------------|--------------|-------------------|
-| `base_url`, `global_api_key`, `instance_name` | — | — |
-| `instance_token` (auto após create) | — | somente leitura |
-| Proxy opcional no create | `proxy_enabled: false` | delete proxy API |
-| QR + pairing + ActionCable | — | — |
-| `ignore_groups: true` | no create | advanced-settings UI |
-| Reabrir conversa resolvida | `inbox.lock_to_single_conversation` | Settings inbox nativo |
-| Webhook no connect | `subscribe` restrito | editar subscribe |
-| Filtros hardcoded | `@g.us`, `fromMe`, broadcast | `ignore_jids` UI |
+| Área | Onde vive | Default / notas |
+|------|-----------|-----------------|
+| Wizard + provision | `EvolutionGo.vue`, `ConnectionProvisioner` | `base_url`, `instance_name`, proxy opcional |
+| Settings | `EvolutionGoSettingsPage.vue` | `ignore_groups`, import, sync delete/edit, … |
+| Health + diagnóstico | `EvolutionGoHealthPage.vue` | reconnect, logout, sync webhook, test webhook |
+| Filtros inbound | `EvolutionGoNormalizer` + job prepend | `ignore_from_me_echo`, `ignore_groups`; `status@broadcast` sempre ignorado |
+| Webhook subscribe | `WebhookSubscribeSync` | Lista canônica + `GROUP` condicional; re-sync ao mudar flags |
+| Conversas | inbox settings + `provider_config` | `lock_to_single_conversation`, `merge_brazil_contacts` |
 
 ---
 
@@ -164,8 +162,8 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 | `convert_markdown_outbound` | `true` | 2 | CW → WA formatting |
 | `mark_read_on_reply` | `false` | 2 | → `POST /message/markread`; fallback: última não lida se sem reply target |
 | `send_random_delay` | via `delay` no send | 2 | Campo `delay` em SendText |
-| `sync_delete_to_whatsapp` | `false` | UX | Agente delete CW → `POST /message/delete` (opt-in, irreversível) |
-| `sync_edit_to_whatsapp` | `false` | UX | Hook em `Message#content` change → `POST /message/edit` (opt-in) |
+| `sync_delete_to_whatsapp` | `false` | UX | Agente delete **outgoing** CW → `POST /message/delete` (opt-in, irreversível); JID via `ChatJid` (message / contact LID / source_id) |
+| `sync_edit_to_whatsapp` | `false` | UX | Hook em `Message#content` change (outgoing) → `POST /message/edit` com markdown/signature (opt-in) |
 | `notify_send_errors_private` | `true` | 2 | Nota privada em falha de envio |
 
 **Quote reply:** `{ quoted: { messageId, participant } }` — schema Go, não Baileys.
@@ -178,8 +176,8 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 |-------|---------|------|---------------|
 | `ignore_from_me_echo` | `true` | 1 | Normalizer (configurável) |
 | `ignore_status` | `true` | 2 | `status@broadcast` |
-| `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → soft delete CW |
-| `mark_inbound_edited` | `true` | UX | Webhook edit → atualiza CW |
+| `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → soft delete CW (inclui `fromMe` / celular) |
+| `mark_inbound_edited` | `true` | UX | Webhook edit → atualiza CW (inclui `fromMe` / celular; skip noop / loop) |
 | `convert_markdown_inbound` | `true` | UX | Normalizer + edit sync |
 
 ### `source_id` inbound

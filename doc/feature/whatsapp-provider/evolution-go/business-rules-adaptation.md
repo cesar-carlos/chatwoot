@@ -28,8 +28,8 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 | `send_templates_as_text` | `true` | Sem WABA templates |
 | `ignore_from_me_echo` | `true` | Evitar duplicação outbound |
 | `proxy_enabled` | `false` | Opcional no wizard |
-| `mark_inbound_deleted` | `true` | Refletir delete do cliente no Chatwoot |
-| `mark_inbound_edited` | `true` | Refletir edit do cliente no Chatwoot |
+| `mark_inbound_deleted` | `true` | Refletir delete do cliente **e** do celular/agente no Chatwoot |
+| `mark_inbound_edited` | `true` | Refletir edit do cliente **e** do celular/agente no Chatwoot |
 | `import_on_connect` | `false` | Import manual/opt-in (evita carga ao conectar) |
 | `convert_markdown_inbound` | `true` | Paridade Evolution API |
 | `sync_delete_to_whatsapp` | `false` | Irreversível — opt-in explícito |

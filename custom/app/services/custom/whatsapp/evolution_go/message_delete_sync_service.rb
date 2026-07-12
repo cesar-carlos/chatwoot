@@ -10,7 +10,6 @@ class Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService
 
     key = extract_key
     return if key.blank? || key[:id].blank?
-    return if from_me?(key)
 
     message = find_message(key[:id])
     if message.blank?
@@ -33,10 +32,6 @@ class Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService
     Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.normalize_key(
       (data.with_indifferent_access[:key] || data).with_indifferent_access
     )
-  end
-
-  def from_me?(key)
-    ActiveModel::Type::Boolean.new.cast(key[:fromMe])
   end
 
   def find_message(source_id)

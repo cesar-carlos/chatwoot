@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 09/jul/2026 (doc sync vs código) · **Integração completa; E2E operador pendente**
+**Última revisão:** 12/jul/2026 (doc sync vs código) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -15,6 +15,7 @@
 | Fase 2 mídia, READ_RECEIPT, settings | ✅ |
 | Import contatos + enrichment | ✅ |
 | Inbound delete/edit (webhook → Chatwoot) | ✅ |
+| Phone/agent delete/edit sync (`fromMe`) | ✅ jul/2026 |
 | Outbound delete sync (`sync_delete_to_whatsapp`) | ✅ |
 | UX settings (avisos, polling import, confirmações) | ✅ |
 | Diagnóstico (`evolution_go_diagnostics`, test webhook) | ✅ |
@@ -34,6 +35,7 @@
 | Contact enrichment on inbound (Go path) | ✅ jul/2026 |
 | Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
 | Phone echo sync (`SEND_MESSAGE` / `fromMe`) | ✅ |
+| Unwrap `documentWithCaptionMessage` (PDF+caption) | ✅ jul/2026 |
 | Latency (webhook `:default`, debounce, async mark-read) | ✅ jul/2026 |
 | `ProviderConfigMerger` atomic runtime writes | ✅ jul/2026 |
 | `UrlSafetyGuard` on server check | ✅ jul/2026 |

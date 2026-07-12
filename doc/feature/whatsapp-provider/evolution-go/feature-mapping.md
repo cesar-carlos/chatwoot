@@ -2,7 +2,7 @@
 
 Checklist feature a feature vs código. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
 
-**Última sync código:** 09/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
+**Última sync código:** 12/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
 
 ---
 
@@ -20,7 +20,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Voice note PTT | — | ❌ | Não documentado Go |
 | Templates WABA | — | ❌ | `send_templates_as_text` → texto |
 | Reply/quote | `quoted: { messageId, participant }` | ✅ | outbound quoted |
-| Input select → buttons/list | `POST /send/buttons`, `/send/list` | ✅ parcial | `dispatch_input_select` |
+| Input select → buttons/list | `POST /send/button`, `/send/list` | ✅ parcial | `dispatch_input_select` |
 | Interativos Meta (CW) | — | ❌ | Sem paridade WABA |
 | CSAT survey | — | ❌ | — |
 | Campanhas | — | ❌ | — |
@@ -109,7 +109,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 
 | UI | Fase | Doc |
 |----|------|-----|
-| Wizard 3 steps | ✅ | `EvolutionGo.vue` — [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
+| Wizard form + connect + modal QR | ✅ | `EvolutionGo.vue` — [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
 | QR / pairing | ✅ | modal + pair API |
 | Connection badge / health | ✅ | `EvolutionGoHealthPage` |
 | Settings | ✅ | `EvolutionGoSettingsPage` |

@@ -7,6 +7,10 @@
 | Data | Escopo |
 |------|--------|
 | 24/jun/2026 | Revisão inicial — comparação cruzada com código Evolution Node implementado; gaps G1–G7 identificados e corrigidos |
+| 09/jul/2026 | Doc sync pós-implementação — status, coordination, feature-mapping |
+| 12/jul/2026 | Auditoria doc × código — correção de drift em webhook-events, frontend-wizard-spec, subscribe lists, api-reference |
+| 12/jul/2026 (pm) | `documentWithCaptionMessage` unwrap + troubleshooting n8n/`filename` |
+| 12/jul/2026 (pm2) | Delete/edit: fromMe sync, SEND_MESSAGE ordering, ChatJid LID, outbound guards |
 
 ---
 
@@ -82,8 +86,8 @@ Evolution Go tem **o mesmo envelope** (`event` + `instance`). Sem cuidado:
 | [spec-design.md](./spec-design.md) | Contratos Ruby | ✅ ApiError, ConnectionChannel, controller, registry, job prepend |
 | [tasks.md](./tasks.md) | Backlog | ✅ I0.6/I0.7, I1.1/I1.5/I1.6/I1.7 adicionados |
 | [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) | Coexistência | ✅ seção collision adicionada |
-| [api-reference.md](./api-reference.md) | Contratos REST | ✅ sem alteração necessária |
-| [webhook-events.md](./webhook-events.md) | Payloads | ✅ sem alteração necessária |
+| [api-reference.md](./api-reference.md) | Contratos REST | ✅ refresh_contacts, subscribe canônico (jul/2026) |
+| [webhook-events.md](./webhook-events.md) | Payloads | ✅ filtros configuráveis + job prepend (jul/2026) |
 | [provider-config-mapping.md](./provider-config-mapping.md) | JSONB | ✅ webhook_token corrigido |
 | [error-handling.md](./error-handling.md) | Erros HTTP | ✅ sem alteração (bem documentado) |
 | [implementation-plan.md](./implementation-plan.md) | Fases | ✅ webhook_token corrigido |
@@ -141,7 +145,26 @@ Cruzamento código `custom/.../evolution_go/` × docs. **Conclusão:** docs de s
 
 ---
 
-## O que ainda falta (não bloqueante)
+## Revisão 12/jul/2026 (doc × código — correções aplicadas)
+
+**Escopo:** Cruzamento `custom/.../evolution_go/` × 12 arquivos de documentação com drift identificado.
+
+**Veredito:** Integração implementada (fases 0–4). Documentação de **status** já estava alinhada; contratos técnicos de **planejamento** ainda descreviam MVP Fase 1.
+
+| Arquivo | Drift corrigido |
+|---------|-----------------|
+| [webhook-events.md](./webhook-events.md) | Filtros "hardcoded" → `ignore_from_me_echo` / `ignore_groups`; job prepend completo |
+| [provider-config-mapping.md](./provider-config-mapping.md) | Subscribe mínimo → lista canônica `WEBHOOK_EVENTS` |
+| [troubleshooting.md](./troubleshooting.md) | Subscribe reconnect → lista canônica |
+| [validation-checklist.md](./validation-checklist.md) | `WEBHOOK_SECRET` → `WEBHOOK_TOKEN`; subscribe canônico |
+| [frontend-wizard-spec.md](./frontend-wizard-spec.md) | Rotas API reais; 2 telas + modal; i18n `inboxMgmt.json`; critérios ✅ |
+| [api-reference.md](./api-reference.md) | `evolution_go_refresh_contacts`; subscribe connect; presence implementado; Bearer auth |
+| [feature-mapping.md](./feature-mapping.md) | `/send/button` (singular); wizard form+modal |
+| [spec-design.md](./spec-design.md) | Job prepend, Bearer auth, paths de spec reais |
+| [inbox-business-rules.md](./inbox-business-rules.md) | Escopo por fase → tabela implementado |
+| [README.md](./README.md) | Fases 0–4; refresh contacts |
+
+**Ainda pendente (não bloqueante):** E2E operador, fixtures JSON reais, `evolution-target-version.txt` preenchido.
 
 | Item | Bloqueio | Ação |
 |------|----------|------|
@@ -150,3 +173,34 @@ Cruzamento código `custom/.../evolution_go/` × docs. **Conclusão:** docs de s
 | `CONNECTION` payload real | Template sintético | `connection_event.json` E2E |
 | Presence → typing dashboard | ✅ | `TypingListener` + `PresenceSyncJob` + `ApiClient#set_presence` |
 | Versão Go congelada | Operador informa | `evolution-target-version.txt` |
+
+---
+
+## Revisão 12/jul/2026 (pm) — documentWithCaptionMessage
+
+**Escopo:** Bug n8n/PDF → Chatwoot mostrava `[Unsupported message type]` no echo de `POST /send/media` com caption.
+
+| Arquivo | Drift corrigido |
+|---------|-----------------|
+| [webhook-events.md](./webhook-events.md) | Wrappers aninhados (`documentWithCaptionMessage`, ephemeral, viewOnce) |
+| [troubleshooting.md](./troubleshooting.md) | Sintomas unsupported + payload n8n (`filename`, url HTTPS/base64) |
+| [api-reference.md](./api-reference.md) | Nota `filename` + echo webhook wrapped |
+| Código | `EvolutionGoPayloadAdapter#unwrap_nested_message` + specs |
+
+---
+
+## Revisão 12/jul/2026 (pm2) — delete/edit sync
+
+**Escopo:** Gaps em delete/edit (cliente, celular, Chatwoot → WA).
+
+| Arquivo / código | Correção |
+|------------------|----------|
+| Job `process_send_message_event` | Delete/edit **antes** de `ignore_from_me_echo` |
+| `MessageDeleteSyncService` / `MessageEditSyncService` | Aplicam `fromMe` (soft-delete/edit outgoing); edit skip noop + não inventa incoming |
+| `DeleteSyncService` / hook | Guard `outgoing?` |
+| `ChatJid` | Resolve LID em `contact.additional_attributes` |
+| `EditSyncService` | Markdown outbound + `sign_msg` |
+| `EvolutionGoEditSync` | Skip loop quando edit veio do webhook |
+| `WEBHOOK_EVENTS` | Inclui `SEND_MESSAGE_UPDATE` |
+| `HistorySyncProcessor` | Protocol delete/edit no import |
+| [webhook-events.md](./webhook-events.md), [provider-config-mapping.md](./provider-config-mapping.md), [inbox-business-rules.md](./inbox-business-rules.md), [validation-checklist.md](./validation-checklist.md), [status.md](./status.md) | Docs alinhados |

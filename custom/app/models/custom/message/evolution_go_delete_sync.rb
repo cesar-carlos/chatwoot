@@ -14,6 +14,7 @@ module Custom::Message::EvolutionGoDeleteSync
     channel = evolution_go_whatsapp_channel
     return false unless channel
     return false unless evolution_go_sync_delete_enabled?(channel)
+    return false unless outgoing?
     return false unless newly_marked_deleted_for_go_sync?
 
     true

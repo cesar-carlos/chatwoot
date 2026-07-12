@@ -170,6 +170,40 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     expect(result[:messages].first[:image][:caption]).to eq('Photo caption')
   end
 
+  it 'normalizes documentWithCaptionMessage as document with caption' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'DOC-CAPTION-1',
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'documentWithCaptionMessage' => {
+            'message' => {
+              'documentMessage' => {
+                'mimetype' => 'application/pdf',
+                'fileName' => 'boleto.pdf',
+                'caption' => 'Documento solicitado'
+              }
+            }
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    aggregate_failures do
+      expect(result[:messages].first[:type]).to eq('document')
+      expect(result[:messages].first[:document][:filename]).to eq('boleto.pdf')
+      expect(result[:messages].first[:document][:caption]).to eq('Documento solicitado')
+      expect(result[:messages].first[:text]).to be_nil
+    end
+  end
+
   it 'normalizes inbound location MESSAGE events' do
     location_fixture = JSON.parse(
       Rails.root.join('spec/fixtures/evolution_go/message_inbound_location.json').read

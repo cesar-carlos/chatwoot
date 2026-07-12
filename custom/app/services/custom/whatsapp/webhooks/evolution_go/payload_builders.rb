@@ -182,7 +182,13 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     type_key = UNSUPPORTED_TYPE_PLACEHOLDERS.keys.find { |key| message[key].present? }
     return UNSUPPORTED_TYPE_PLACEHOLDERS[type_key] if type_key
 
-    return nil if message.key?('viewOnceMessageV2') || message.key?('ephemeralMessage')
+    # Wrappers should already be unwrapped by EvolutionGoPayloadAdapter; if they
+    # remain, skip the generic placeholder so callers can retry unwrap.
+    return nil if message.key?('viewOnceMessageV2') ||
+                  message.key?('viewOnceMessage') ||
+                  message.key?('viewOnceMessageV2Extension') ||
+                  message.key?('ephemeralMessage') ||
+                  message.key?('documentWithCaptionMessage')
 
     message.keys.any? { |key| key.to_s.end_with?('Message') } ? '[Unsupported message type]' : nil
   end

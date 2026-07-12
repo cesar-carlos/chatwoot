@@ -6,6 +6,7 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfig
   WEBHOOK_EVENTS = %w[
     MESSAGE
     SEND_MESSAGE
+    SEND_MESSAGE_UPDATE
     CONNECTION
     QRCODE
     READ_RECEIPT
