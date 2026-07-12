@@ -106,7 +106,7 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 | `convert_markdown_outbound` | `true` | markdown → WA no outbound |
 | `mark_read_on_reply` | `false` | `POST /message/markread` ao responder |
 | `mark_read_on_open` | `true` | mark read ao abrir conversa |
-| `mark_inbound_deleted` | `true` | Cliente **ou** agente (celular) apaga no WA → soft delete no CW |
+| `mark_inbound_deleted` | `true` | Cliente **ou** agente (celular) apaga no WA → marca no CW (mantém texto + destaque deleted) |
 | `mark_inbound_edited` | `true` | Cliente **ou** agente (celular) edita no WA → atualiza CW |
 | `sync_delete_to_whatsapp` | `false` | Agente apaga **outgoing** no CW → delete no WA (opt-in) |
 | `sync_edit_to_whatsapp` | `false` | Conteúdo **outgoing** alterado no CW → edit no WA (opt-in; markdown/signature) |

@@ -11,8 +11,7 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
 
   def perform(channel_id, contact_id, attrs = {})
     @lock_acquired = false
-    channel = Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution')
-    contact = Contact.find_by(id: contact_id)
+    channel, contact = load_enrichment_targets(channel_id, contact_id)
     return if channel.blank? || contact.blank?
 
     attrs = attrs.with_indifferent_access
@@ -20,6 +19,21 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
     return unless acquire_in_flight_lock!(contact)
 
     @lock_acquired = true
+    run_enrichment!(channel, contact, attrs)
+  ensure
+    release_in_flight_lock!(contact) if contact && @lock_acquired
+  end
+
+  private
+
+  def load_enrichment_targets(channel_id, contact_id)
+    [
+      Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution'),
+      Contact.find_by(id: contact_id)
+    ]
+  end
+
+  def run_enrichment!(channel, contact, attrs)
     with_global_enrichment_slot do
       Custom::Whatsapp::Evolution::ContactEnrichmentService.new(
         channel: channel,
@@ -30,11 +44,7 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
         force: attrs[:force]
       ).perform
     end
-  ensure
-    release_in_flight_lock!(contact) if contact && @lock_acquired
   end
-
-  private
 
   def enrichment_allowed?(contact, attrs)
     return true if ActiveModel::Type::Boolean.new.cast(attrs[:force])

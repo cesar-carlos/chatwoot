@@ -188,7 +188,8 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
                   message.key?('viewOnceMessage') ||
                   message.key?('viewOnceMessageV2Extension') ||
                   message.key?('ephemeralMessage') ||
-                  message.key?('documentWithCaptionMessage')
+                  message.key?('documentWithCaptionMessage') ||
+                  message.key?('secretEncryptedMessage')
 
     message.keys.any? { |key| key.to_s.end_with?('Message') } ? '[Unsupported message type]' : nil
   end

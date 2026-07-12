@@ -54,6 +54,8 @@ const varaintBaseMap = {
   [MESSAGE_VARIANTS.EMAIL]: 'w-full',
   [MESSAGE_VARIANTS.UNSUPPORTED]:
     'bg-n-solid-amber/70 border border-dashed border-n-amber-12 text-n-amber-12',
+  [MESSAGE_VARIANTS.DELETED]:
+    'bg-n-ruby-3 border border-n-ruby-7 text-n-ruby-12',
 };
 
 const orientationMap = {

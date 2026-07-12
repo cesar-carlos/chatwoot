@@ -41,8 +41,10 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService do
     ).perform
 
     message.reload
+    expect(message.content).to eq('hello')
     expect(message.content_attributes['deleted']).to be(true)
     expect(message.content_attributes['deleted_via_evolution_go_webhook']).to be(true)
+    expect(message.content_attributes['deleted_at']).to be_present
   end
 
   it 'soft deletes agent/phone messages when fromMe is true' do
@@ -62,6 +64,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService do
     ).perform
 
     outgoing.reload
+    expect(outgoing.content).to eq('sent from phone')
     expect(outgoing.content_attributes['deleted']).to be(true)
     expect(outgoing.content_attributes['deleted_via_evolution_go_webhook']).to be(true)
   end

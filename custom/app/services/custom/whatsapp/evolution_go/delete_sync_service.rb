@@ -4,15 +4,9 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
   pattr_initialize [:message!]
 
   def perform
-    return unless evolution_go_channel?
-    return unless sync_delete_enabled?
-    return if message.source_id.blank?
-    return unless message.outgoing?
+    return unless can_sync?
 
-    chat = chat_jid
-    return if chat.blank?
-
-    response = api_client.delete_message(chat: chat, message_id: message.source_id)
+    response = api_client.delete_message(chat: chat_jid, message_id: message.source_id)
     return if response.success?
 
     Rails.logger.warn(
@@ -23,6 +17,14 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
   end
 
   private
+
+  def can_sync?
+    evolution_go_channel? &&
+      sync_delete_enabled? &&
+      message.source_id.present? &&
+      message.outgoing? &&
+      chat_jid.present?
+  end
 
   def evolution_go_channel?
     channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'
@@ -37,7 +39,7 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
   end
 
   def chat_jid
-    Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message)
+    @chat_jid ||= Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message)
   end
 
   def api_client

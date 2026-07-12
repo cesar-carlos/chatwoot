@@ -50,6 +50,8 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
     message_body = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.unwrap_nested_message(
       data['message'] || data[:message] || {}
     )
+    return if secret_encrypted_only?(message_body)
+
     wa_id = resolve_wa_id(key)
     message_type = map_message_type(message_body)
     message_hash = build_message_hash(data.merge('message' => message_body), wa_id, message_type, key)
@@ -63,6 +65,14 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
       contacts: [{ profile: { name: contact_name }, wa_id: wa_id }],
       messages: [message_hash]
     }
+  end
+
+  def secret_encrypted_only?(message)
+    message = (message || {}).with_indifferent_access
+    return false if message[:secretEncryptedMessage].blank?
+
+    substantive = message.keys.map(&:to_s) - %w[messageContextInfo secretEncryptedMessage]
+    substantive.empty?
   end
 
   def resolve_wa_id(key)

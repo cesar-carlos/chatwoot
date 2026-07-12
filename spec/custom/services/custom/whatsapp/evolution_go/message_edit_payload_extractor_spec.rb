@@ -25,6 +25,20 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor do
       expect(result[:edited_body]).to eq('Updated body')
     end
 
+    it 'detects Evolution Go secretEncryptedMessage edit envelopes' do
+      payload = JSON.parse(
+        Rails.root.join('spec/fixtures/evolution_go/message_edit_secret_encrypted.json').read
+      )
+
+      result = described_class.extract_edit_payload(payload['data'], event: 'MESSAGE')
+
+      aggregate_failures do
+        expect(result[:key][:id]).to eq('ACE6C86D3693CAD6E8EDEA53051A87BA')
+        expect(result[:edited_body]).to be_nil
+        expect(result[:encrypted_edit]).to be(true)
+      end
+    end
+
     it 'returns nil for regular text messages' do
       payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_inbound.json').read)
 

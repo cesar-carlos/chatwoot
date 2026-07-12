@@ -78,9 +78,9 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       return
     end
 
-    edit_payload = inbound_edit_payload(channel, params)
+    edit_payload = extract_edit_payload(params)
     if edit_payload.present?
-      process_inbound_edit(channel, edit_payload)
+      handle_inbound_edit_event(channel, edit_payload)
       return
     end
 
@@ -162,23 +162,41 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def process_edit_event(channel, params)
-    edit_payload = inbound_edit_payload(channel, params)
+    edit_payload = extract_edit_payload(params)
     return if edit_payload.blank?
 
-    process_inbound_edit(channel, edit_payload)
+    handle_inbound_edit_event(channel, edit_payload)
   end
 
-  def inbound_edit_payload(channel, params)
-    return unless mark_inbound_edited?(channel)
-
+  def extract_edit_payload(params)
     Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.extract_edit_payload(
       params[:data],
       event: params[:event]
     )
   end
 
+  def handle_inbound_edit_event(channel, edit_payload)
+    if encrypted_edit_envelope?(edit_payload)
+      Rails.logger.info(
+        "[EVOLUTION_GO] skipped encrypted edit envelope channel=#{channel.id} " \
+        "target=#{edit_payload.dig(:key, :id) || edit_payload.dig('key', 'id')}"
+      )
+      return
+    end
+
+    return unless mark_inbound_edited?(channel)
+
+    process_inbound_edit(channel, edit_payload)
+  end
+
+  def encrypted_edit_envelope?(edit_payload)
+    ActiveModel::Type::Boolean.new.cast(
+      edit_payload[:encrypted_edit] || edit_payload['encrypted_edit']
+    )
+  end
+
   def process_inbound_edit(channel, edit_payload)
-    key = edit_payload[:key] || edit_payload['key']
+    key = edit_payload[:key] || edit_payload['key'] || {}
     sender_id = key['remoteJid'] || key[:remoteJid] || key['id'] || key[:id]
     Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id) do
       Custom::Whatsapp::EvolutionGo::MessageEditSyncService.new(
@@ -224,9 +242,9 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       return
     end
 
-    edit_payload = inbound_edit_payload(channel, params)
+    edit_payload = extract_edit_payload(params)
     if edit_payload.present?
-      process_inbound_edit(channel, edit_payload)
+      handle_inbound_edit_event(channel, edit_payload)
       return
     end
 

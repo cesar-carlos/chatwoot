@@ -4,16 +4,26 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
   pattr_initialize [:message!]
 
   def perform
-    return unless evolution_go_channel?
-    return unless sync_edit_enabled?
-    return if message.source_id.blank?
-    return unless message.outgoing?
+    return unless can_sync?
 
-    chat = chat_jid
-    return if chat.blank?
+    dispatch_edit!
+  rescue StandardError => e
+    Rails.logger.warn "[EVOLUTION_GO] edit sync failed for message #{message.id}: #{e.message}"
+  end
 
+  private
+
+  def can_sync?
+    evolution_go_channel? &&
+      sync_edit_enabled? &&
+      message.source_id.present? &&
+      message.outgoing? &&
+      chat_jid.present?
+  end
+
+  def dispatch_edit!
     response = api_client.edit_message(
-      chat: chat,
+      chat: chat_jid,
       message_id: message.source_id,
       message: whatsapp_edit_body
     )
@@ -22,11 +32,7 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
     Rails.logger.warn(
       "[EVOLUTION_GO] edit sync HTTP #{response.code} for message #{message.id}"
     )
-  rescue StandardError => e
-    Rails.logger.warn "[EVOLUTION_GO] edit sync failed for message #{message.id}: #{e.message}"
   end
-
-  private
 
   def evolution_go_channel?
     channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'
@@ -41,7 +47,7 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
   end
 
   def chat_jid
-    Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message)
+    @chat_jid ||= Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message)
   end
 
   def whatsapp_edit_body

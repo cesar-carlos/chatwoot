@@ -219,6 +219,32 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     expect(existing.content_attributes['edited']).to be(true)
   end
 
+  it 'does not create unsupported placeholder for secretEncryptedMessage edits' do
+    conversation = create(:conversation, account: account, inbox: inbox)
+    create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :incoming,
+      source_id: 'ACE6C86D3693CAD6E8EDEA53051A87BA',
+      content: 'Teste edição'
+    )
+    payload = JSON.parse(
+      Rails.root.join('spec/fixtures/evolution_go/message_edit_secret_encrypted.json').read
+    )
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.not_to change(Message, :count)
+
+    expect(inbox.messages.where(content: '[Unsupported message type]')).to be_empty
+  end
+
   it 'processes SEND_MESSAGE revoke even when ignore_from_me_echo is enabled' do
     config = channel.provider_config.merge('ignore_from_me_echo' => true)
     channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations

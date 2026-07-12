@@ -10,16 +10,19 @@ module Custom::Message::EvolutionGoEditSync
   end
 
   def evolution_go_content_changed_for_sync?
-    channel = evolution_go_whatsapp_channel_for_edit
-    return false unless channel
-    return false unless evolution_go_sync_edit_enabled?(channel)
-    return false if source_id.blank?
-    return false unless outgoing?
-    return false if private?
-    return false unless saved_change_to_content?
-    return false if evolution_go_edit_originated_from_webhook?
+    return false unless evolution_go_edit_sync_eligible?
 
-    true
+    !evolution_go_edit_originated_from_webhook?
+  end
+
+  def evolution_go_edit_sync_eligible?
+    channel = evolution_go_whatsapp_channel_for_edit
+    channel.present? &&
+      evolution_go_sync_edit_enabled?(channel) &&
+      source_id.present? &&
+      outgoing? &&
+      !private? &&
+      saved_change_to_content?
   end
 
   def evolution_go_whatsapp_channel_for_edit
