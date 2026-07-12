@@ -17,6 +17,7 @@ module Custom::Message::EvolutionGoEditSync
     return false unless outgoing?
     return false if private?
     return false unless saved_change_to_content?
+    return false if evolution_go_edit_originated_from_webhook?
 
     true
   end
@@ -30,5 +31,14 @@ module Custom::Message::EvolutionGoEditSync
 
   def evolution_go_sync_edit_enabled?(channel)
     ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['sync_edit_to_whatsapp'])
+  end
+
+  # Avoid CW → WA → webhook → CW content rewrite → WA loop.
+  def evolution_go_edit_originated_from_webhook?
+    attrs = (content_attributes || {}).with_indifferent_access
+    return false unless ActiveModel::Type::Boolean.new.cast(attrs[:edited_via_evolution_go_webhook])
+
+    before = (content_attributes_before_last_save || {}).with_indifferent_access
+    !ActiveModel::Type::Boolean.new.cast(before[:edited_via_evolution_go_webhook])
   end
 end

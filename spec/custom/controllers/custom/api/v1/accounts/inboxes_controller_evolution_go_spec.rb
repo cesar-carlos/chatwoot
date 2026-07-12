@@ -85,4 +85,36 @@ RSpec.describe 'Evolution Go Inboxes API extensions', type: :request do
       expect(channel.reload.provider_config['connection_status']).to eq('close')
     end
   end
+
+  describe 'POST /api/v1/accounts/:account_id/inboxes/:id/evolution_go_refresh_contacts' do
+    before do
+      Redis::Alfred.delete(
+        format(Redis::RedisKeys::EVOLUTION_GO_CONTACTS_REFRESH_LOCK, channel_id: channel.id)
+      )
+    end
+
+    it 'enqueues contact profile refresh for inbox administrator' do
+      contact = create(:contact, account: account, phone_number: '+5511888888888')
+      create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511888888888')
+
+      expect(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to receive(:perform_later).with(
+        channel.id,
+        contact.id,
+        hash_including(force: true)
+      )
+
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/evolution_go_refresh_contacts",
+           headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['enqueued']).to eq(1)
+    end
+
+    it 'returns forbidden for non-administrator' do
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/evolution_go_refresh_contacts",
+           headers: agent.create_new_auth_token
+
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
 end

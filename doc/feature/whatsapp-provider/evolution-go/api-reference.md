@@ -68,7 +68,7 @@ Doc: [connect-to-instance](https://docs.evolutionfoundation.com.br/evolution-go/
 ```json
 {
   "webhookUrl": "https://chatwoot.example.com/webhooks/evolution_go/minha-instancia?token=SECRET",
-  "subscribe": ["MESSAGE", "CONNECTION", "QRCODE", "READ_RECEIPT"],
+  "subscribe": ["MESSAGE", "SEND_MESSAGE", "CONNECTION", "QRCODE", "READ_RECEIPT", "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"],
   "phone": "5511999999999",
   "immediate": false
 }
@@ -278,6 +278,9 @@ Doc: [send-a-media-message](https://docs.evolutionfoundation.com.br/evolution-go
 }
 ```
 
+- Campo canônico: **`filename`** (OpenAPI Go). `url` aceita HTTP(S) ou base64 string.
+- Resposta / webhook echo com caption costuma vir como `documentWithCaptionMessage` → unwrap em `EvolutionGoPayloadAdapter` ([webhook-events.md § Mídia](./webhook-events.md)).
+
 ### Outros send (Fase 3)
 
 | Path | Doc |
@@ -318,7 +321,7 @@ Doc: [get-message-status](https://docs.evolutionfoundation.com.br/evolution-go/g
 { "id": "3EB0XXXX" }
 ```
 
-### Chat presence / typing (Fase 3)
+### Chat presence / typing (implementado)
 
 ```
 POST /message/presence
@@ -383,9 +386,10 @@ Fixture sintética: `spec/fixtures/evolution_go/history_sync.json` — **validar
 | `GET` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_diagnostics` | Webhook URL, import status, `mutation_stats` |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_test_webhook` | Ping webhook — atualiza `last_webhook_at` sem criar contato |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_import` | Força import contatos (+ messages se habilitado) |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_refresh_contacts` | Refresh perfis/fotos de todos os contatos do inbox |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/evolution_go_server_check` | Valida `base_url` + SSRF guard (wizard step 1) |
 
-Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token=SECRET`
+Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token={webhook_token}` — auth alternativa: `Authorization: Bearer {webhook_token}`
 
 ---
 

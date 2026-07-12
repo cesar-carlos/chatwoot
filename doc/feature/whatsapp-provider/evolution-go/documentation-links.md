@@ -4,7 +4,7 @@
 
 **Base URL docs:** https://docs.evolutionfoundation.com.br/evolution-go/
 
-**Última revisão:** 22/jun/2026 — paths Fase 1 confirmados Postman + OpenAPI; inventário completo em [postman-validation.md](./postman-validation.md)
+**Última revisão:** 12/jul/2026 — paths Fase 1+ confirmados Postman + OpenAPI; inventário completo em [postman-validation.md](./postman-validation.md)
 
 **Manutenção:** `./sync-documentation-links.sh` — diff `llms.txt` vs este arquivo
 

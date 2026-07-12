@@ -13,10 +13,15 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
     key = (payload[:key] || {}).with_indifferent_access
     body = payload[:edited_body].presence || extract_edited_body(payload)
     return if key[:id].blank? || body.blank?
-    return if from_me?(key)
 
     original = channel.inbox.messages.find_by(source_id: key[:id])
     if original.blank?
+      # Agent/phone edits without a known CW message must not invent an incoming row.
+      if from_me?(key)
+        Custom::Whatsapp::EvolutionGo::MutationStatsRecorder.record!(channel, 'inbound_edit_skipped')
+        return
+      end
+
       created = create_edited_message(key, body, original)
       Custom::Whatsapp::EvolutionGo::MutationStatsRecorder.record!(channel, 'inbound_edit_skipped') unless created
       return
@@ -43,6 +48,9 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
 
   def update_original!(message, body)
     formatted_body = apply_inbound_formatting(body)
+    bare_current = message.content.to_s.delete_prefix(EDITED_PREFIX)
+    return if bare_current == formatted_body
+
     attrs = (message.content_attributes || {}).stringify_keys
     attrs['edited'] = true
     attrs['edited_at'] = Time.current.utc.iso8601(3)

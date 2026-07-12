@@ -108,16 +108,21 @@ Campo `phone` obrigatório — E.164 sem `+`.
 |-------|------|
 | Operador reconectou no painel Go sem `webhookUrl` | Usar botão **Reconnect** no Chatwoot — reenvia connect com URL + `subscribe` |
 | `webhook_token` rotacionado | `ConnectionService#reconnect!` com novo secret + atualizar URL no Go |
-| `subscribe` sem `MESSAGE` | Garantir `["MESSAGE","CONNECTION","QRCODE"]` em todo connect |
+| `subscribe` incompleto | Usar lista canônica via `WebhookSubscribeSync` — ver [webhook-events.md](./webhook-events.md) |
 
-**Regra:** todo `POST /instance/connect` do fork deve incluir:
+**Regra:** todo `POST /instance/connect` do fork deve incluir a lista canônica (gerenciada por `WebhookSubscribeSync`):
 
 ```json
 {
   "webhookUrl": "https://{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}",
-  "subscribe": ["MESSAGE", "CONNECTION", "QRCODE"]
+  "subscribe": [
+    "MESSAGE", "SEND_MESSAGE", "CONNECTION", "QRCODE", "READ_RECEIPT",
+    "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"
+  ]
 }
 ```
+
+Quando `ignore_groups: false`, incluir também `"GROUP"`. Botão **Sync webhook events** na health page ou `rake evolution_go:sync_webhooks`.
 
 Ver [decisions.md §23](./decisions.md).
 
@@ -216,7 +221,9 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 | Mídia inbound falha | `POST /message/downloadmedia` only ([decisions.md §25](./decisions.md)) |
 | PDF/imagem abre com "Falha ao carregar" | Go devolve `data:<mime>;base64,...` em `data.base64`; Chatwoot deve strip do prefixo via `MediaDecoder` — blobs corrompidos têm magic `75ab5a6a…` |
 | Recuperar blobs já salvos | `RAILS_ENV=production dry_run=1 limit=50 bundle exec rake evolution_go:repair_corrupt_media` depois `dry_run=0` |
-| `[Unsupported message type]` em mensagem do celular | Payload `protocolMessage` (revoke/edit) com `ID`/`remoteJID` PascalCase não reconhecido → phone echo sync criava placeholder; corrigido em `MessageDeletePayloadExtractor#normalize_key` + skip em `PhoneOutgoingSyncService` |
+| `[Unsupported message type]` em mensagem do celular | (1) Payload `protocolMessage` (revoke/edit) PascalCase → `MessageDeletePayloadExtractor#normalize_key` + skip em `PhoneOutgoingSyncService`. (2) PDF/doc com caption chega como `documentWithCaptionMessage` — sem unwrap vira placeholder; corrigido em `EvolutionGoPayloadAdapter#unwrap_nested_message` (jul/2026) |
+| PDF via n8n / API externa falha ou vira unsupported | `POST /send/media`: usar `filename` (não `fileName`); `type: "document"`; `url` = HTTPS público ou base64 string (não buffer binário); echo webhook com caption passa pelo unwrap acima |
+| Delete/edit no celular não reflete no CW | Corrigido jul/2026: sync services aplicam `fromMe`; `SEND_MESSAGE` processa protocol delete/edit antes do drop de echo |
 | Anexo inbound lento ou some após texto | Storm de `NoMethodError` em `process_evolution_go_status` (READ_RECEIPT) saturava fila `:default` junto com `MediaDownloadJob`; corrigido em `IncomingMessageEvolutionGo` |
 | Documento só-arquivo some / caption sem arquivo na UI | Race: `MediaDownloadJob` enfileirado **dentro** da transaction → job rodava antes do commit (`Message.find` nil, 12ms no-op). Corrigido: enqueue em `process_messages` (após transaction) + retry se mensagem ausente. Também: usar `Message.base64` inline do webhook (Go já decripta) e `message.updated` **depois** de criar o attachment |
 | Mensagem sem anexo e sem erro visível | `MediaAttachmentService` marca `evolution_go_media_failed` quando base64 vazio; checar `content_attributes` da mensagem |

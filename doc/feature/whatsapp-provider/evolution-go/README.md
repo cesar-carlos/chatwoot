@@ -8,7 +8,7 @@ Landing page do provider Evolution Go (implementado).
 |------|--------|
 | Chave planejada | `evolution_go` |
 | Documentação de contrato e plano | ✅ |
-| Código em `custom/` | ✅ Fase 0–2 + UX/diagnóstico/import/grupos (jul/2026) |
+| Código em `custom/` | ✅ Fases 0–4 + UX/diagnóstico/import/grupos/presence (jul/2026) |
 | `PROVIDERS`, registry e webhook | ✅ |
 | Fixtures reais | ⚠️ sintéticas — E2E pendente |
 
@@ -56,6 +56,8 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - READ_RECEIPT, mark-read, advanced settings / proxy
 - import contatos, delete/edit inbound, sync delete/edit outbound (opt-in)
 - diagnóstico operacional e import histórico via `HISTORY_SYNC`
+- typing presence outbound (`TypingListener` → `/message/presence`)
+- refresh manual de contatos (`evolution_go_refresh_contacts`)
 - grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
 - sem provisionar o servidor Go dentro deste repositório
 
