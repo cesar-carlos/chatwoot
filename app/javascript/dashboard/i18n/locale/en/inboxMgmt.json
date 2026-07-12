@@ -1273,7 +1273,7 @@
         },
         "MARK_INBOUND_DELETED": {
           "LABEL": "Mark client-deleted messages in Chatwoot",
-          "DESCRIPTION": "When a contact deletes a message on WhatsApp, replace the message text in Chatwoot with a deleted notice. Does not delete anything on WhatsApp."
+          "DESCRIPTION": "When a contact deletes a message on WhatsApp, keep the original text in Chatwoot and highlight it as deleted. Does not delete anything on WhatsApp."
         },
         "MARK_INBOUND_EDITED": {
           "LABEL": "Update client-edited messages in Chatwoot",

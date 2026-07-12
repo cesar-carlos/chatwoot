@@ -28,12 +28,12 @@ class Custom::Whatsapp::Evolution::MessageDeleteSyncService
   def soft_delete!(message)
     return if message.content_attributes&.dig('deleted')
 
+    # Keep original content/attachments so agents can still read what was deleted.
     message.update!(
-      content: I18n.t('conversations.messages.deleted'),
-      content_type: :text,
       content_attributes: (message.content_attributes || {}).merge(
         'deleted' => true,
-        'deleted_via_evolution_webhook' => true
+        'deleted_via_evolution_webhook' => true,
+        'deleted_at' => Time.current.utc.iso8601(3)
       )
     )
   end
