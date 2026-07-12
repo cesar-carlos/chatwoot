@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
+  include Custom::Whatsapp::ContactEnrichmentConcurrency
+
   queue_as :low
 
   IN_FLIGHT_LOCK_TTL = 2.minutes.to_i
@@ -8,6 +10,7 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(channel_id, contact_id, attrs = {})
+    @lock_acquired = false
     channel = Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution')
     contact = Contact.find_by(id: contact_id)
     return if channel.blank? || contact.blank?
@@ -16,16 +19,19 @@ class Custom::Whatsapp::Evolution::ContactEnrichmentJob < ApplicationJob
     return unless enrichment_allowed?(contact, attrs)
     return unless acquire_in_flight_lock!(contact)
 
-    Custom::Whatsapp::Evolution::ContactEnrichmentService.new(
-      channel: channel,
-      contact: contact,
-      remote_jid: attrs[:remote_jid],
-      push_name: attrs[:push_name],
-      profile_pic_url: attrs[:profile_pic_url],
-      force: attrs[:force]
-    ).perform
+    @lock_acquired = true
+    with_global_enrichment_slot do
+      Custom::Whatsapp::Evolution::ContactEnrichmentService.new(
+        channel: channel,
+        contact: contact,
+        remote_jid: attrs[:remote_jid],
+        push_name: attrs[:push_name],
+        profile_pic_url: attrs[:profile_pic_url],
+        force: attrs[:force]
+      ).perform
+    end
   ensure
-    release_in_flight_lock!(contact) if contact
+    release_in_flight_lock!(contact) if contact && @lock_acquired
   end
 
   private

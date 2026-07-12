@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
+  include Custom::Whatsapp::ContactEnrichmentConcurrency
+
   queue_as :low
 
   IN_FLIGHT_LOCK_TTL = 2.minutes.to_i
@@ -18,13 +20,15 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
     return unless acquire_in_flight_lock!(contact)
 
     @lock_acquired = true
-    Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.new(
-      channel: channel,
-      contact: contact,
-      remote_jid: attrs[:remote_jid],
-      push_name: attrs[:push_name],
-      force: attrs[:force]
-    ).perform
+    with_global_enrichment_slot do
+      Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.new(
+        channel: channel,
+        contact: contact,
+        remote_jid: attrs[:remote_jid],
+        push_name: attrs[:push_name],
+        force: attrs[:force]
+      ).perform
+    end
   ensure
     release_in_flight_lock!(contact) if contact && @lock_acquired
   end
