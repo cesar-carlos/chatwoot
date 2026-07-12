@@ -219,6 +219,21 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     end
   end
 
+  it 'normalizes unavailable view-once media as unsupported' do
+    view_once_fixture = JSON.parse(
+      Rails.root.join('spec/fixtures/evolution_go/message_view_once_unavailable.json').read
+    )
+
+    result = described_class.new(channel, view_once_fixture).perform
+
+    aggregate_failures do
+      expect(result[:messages].first[:type]).to eq('unsupported')
+      expect(result[:messages].first[:id]).to eq('ACVIEWONCEUNAVAILABLE001')
+      expect(result[:messages].first[:evolution_go_unavailable_type]).to eq('view_once')
+      expect(result[:messages].first[:text]).to be_nil
+    end
+  end
+
   it 'renders reaction messages as placeholder text' do
     reaction_fixture = {
       'event' => 'MESSAGE',

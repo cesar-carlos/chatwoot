@@ -11,6 +11,7 @@
 | 12/jul/2026 | Auditoria doc × código — correção de drift em webhook-events, frontend-wizard-spec, subscribe lists, api-reference |
 | 12/jul/2026 (pm) | `documentWithCaptionMessage` unwrap + troubleshooting n8n/`filename` |
 | 12/jul/2026 (pm2) | Delete/edit: fromMe sync, SEND_MESSAGE ordering, ChatJid LID, outbound guards |
+| 12/jul/2026 (pm3) | View-once `IsUnavailable` + i18n delete/view-once (en, pt, pt_BR) |
 
 ---
 
@@ -204,3 +205,18 @@ Cruzamento código `custom/.../evolution_go/` × docs. **Conclusão:** docs de s
 | `WEBHOOK_EVENTS` | Inclui `SEND_MESSAGE_UPDATE` |
 | `HistorySyncProcessor` | Protocol delete/edit no import |
 | [webhook-events.md](./webhook-events.md), [provider-config-mapping.md](./provider-config-mapping.md), [inbox-business-rules.md](./inbox-business-rules.md), [validation-checklist.md](./validation-checklist.md), [status.md](./status.md) | Docs alinhados |
+
+---
+
+## Revisão 12/jul/2026 (pm3) — view-once unavailable + delete UX i18n
+
+**Escopo:** Mídia view once indisponível no webhook; avisos de delete/view-once em pt/pt_BR.
+
+| Arquivo / código | Correção |
+|------------------|----------|
+| `EvolutionGoPayloadAdapter` | Preserva `IsUnavailable` / `UnavailableType` no canonical |
+| `EvolutionGoNormalizer` | `type: unsupported` + `evolution_go_unavailable_type` |
+| `IncomingMessageEvolutionGo#create_unsupported_message` | Placeholder via I18n (`view_once_unavailable`) + `is_unsupported` / `unavailable_type` |
+| `Unsupported.vue` / `Base.vue` | Bubble view-once + delete notice (camelCase attrs); `// FORK:` |
+| Locales | `en` + `pt` / `pt_BR` (`VIEW_ONCE_MEDIA_UNAVAILABLE`, `DELETED_*_NOTICE`) |
+| [webhook-events.md](./webhook-events.md), [troubleshooting.md](./troubleshooting.md), [inbox-business-rules.md](./inbox-business-rules.md), [validation-checklist.md](./validation-checklist.md), [status.md](./status.md) | Docs alinhados |

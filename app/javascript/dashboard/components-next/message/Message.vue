@@ -164,6 +164,7 @@ const isCaptainMessage = computed(() => {
 const variant = computed(() => {
   if (props.private) return MESSAGE_VARIANTS.PRIVATE;
 
+  // FORK: Evolution Go/Node inbound delete highlight
   if (props.contentAttributes?.deleted) {
     return MESSAGE_VARIANTS.DELETED;
   }

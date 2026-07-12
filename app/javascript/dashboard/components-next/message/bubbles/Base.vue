@@ -2,7 +2,8 @@
 import { computed } from 'vue';
 
 import MessageMeta from '../MessageMeta.vue';
-import CaptainGenerationDetails from '../CaptainGenerationDetails.vue';
+// FORK: Evolution Go/Node inbound delete highlight
+import Icon from 'next/icon/Icon.vue';
 
 import { emitter } from 'shared/helpers/mitt';
 import { useMessageContext } from '../provider.js';
@@ -21,22 +22,24 @@ const {
   orientation,
   inReplyTo,
   shouldGroupWithNext,
-  id,
-  sender,
-  senderType,
+  contentAttributes, // FORK: Evolution Go/Node inbound delete highlight
 } = useMessageContext();
 const { t } = useI18n();
 
-const isCaptainMessage = computed(
-  () =>
-    (sender.value?.type ?? senderType.value) === SENDER_TYPES.CAPTAIN_ASSISTANT
-);
+// FORK: Evolution Go/Node inbound delete highlight
+const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));
 
-const metaColorClass = computed(() =>
-  variant.value === MESSAGE_VARIANTS.PRIVATE
-    ? 'text-n-amber-12/50'
-    : 'text-n-slate-11'
-);
+// FORK: Evolution Go/Node inbound delete highlight
+const deletedNotice = computed(() => {
+  const attrs = contentAttributes.value || {};
+  if (
+    attrs.deletedViaEvolutionGoWebhook ||
+    attrs.deleted_via_evolution_go_webhook ||
+    attrs.deletedViaEvolutionWebhook ||
+    attrs.deleted_via_evolution_webhook
+  ) {
+    return t('CONVERSATION.DELETED_BY_CONTACT_NOTICE');
+  }
 
 const emailMetaClass = computed(() =>
   variant.value === MESSAGE_VARIANTS.EMAIL ? 'px-3 pb-3' : ''
@@ -54,6 +57,7 @@ const varaintBaseMap = {
   [MESSAGE_VARIANTS.EMAIL]: 'w-full',
   [MESSAGE_VARIANTS.UNSUPPORTED]:
     'bg-n-solid-amber/70 border border-dashed border-n-amber-12 text-n-amber-12',
+  // FORK: Evolution Go/Node inbound delete highlight
   [MESSAGE_VARIANTS.DELETED]:
     'bg-n-ruby-3 border border-n-ruby-7 text-n-ruby-12',
 };
@@ -138,22 +142,30 @@ const replyToPreview = computed(() => {
         class="prose prose-bubble line-clamp-2"
       />
     </div>
-    <slot />
-    <template v-if="shouldShowMeta">
-      <CaptainGenerationDetails
-        v-if="isCaptainMessage"
-        :message-id="id"
-        class="mt-2"
-      >
-        <template #meta>
-          <MessageMeta :class="[emailMetaClass, metaColorClass]" />
-        </template>
-      </CaptainGenerationDetails>
-      <MessageMeta
-        v-else
-        :class="[flexOrientationClass, emailMetaClass, metaColorClass]"
-        class="mt-2"
-      />
-    </template>
+    <!-- FORK: Evolution Go/Node inbound delete highlight -->
+    <div
+      v-if="isDeleted"
+      class="flex items-center gap-1.5 mb-2 text-xs font-medium text-n-ruby-11"
+    >
+      <Icon icon="i-lucide-trash-2" class="size-3.5 shrink-0" />
+      <span>{{ deletedNotice }}</span>
+    </div>
+    <div :class="{ 'opacity-80': isDeleted }">
+      <slot />
+    </div>
+    <MessageMeta
+      v-if="shouldShowMeta"
+      :class="[
+        flexOrientationClass,
+        variant === MESSAGE_VARIANTS.EMAIL ? 'px-3 pb-3' : '',
+        // FORK: Evolution Go/Node inbound delete highlight (DELETED ruby meta)
+        variant === MESSAGE_VARIANTS.PRIVATE
+          ? 'text-n-amber-12/50'
+          : variant === MESSAGE_VARIANTS.DELETED
+            ? 'text-n-ruby-11'
+            : 'text-n-slate-11',
+      ]"
+      class="mt-2"
+    />
   </div>
 </template>

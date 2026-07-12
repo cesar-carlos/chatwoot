@@ -122,8 +122,9 @@ Enviar mensagem do celular para o número conectado.
 
 - [ ] Settings toggles persistem após F5 (`channel.provider_config`)
 - [ ] Import contatos — status `running` → polling atualiza UI
-- [ ] Cliente apaga mensagem no WA → reflete no CW (`mark_inbound_deleted`)
+- [ ] Cliente apaga mensagem no WA → reflete no CW (`mark_inbound_deleted`): texto original permanece + destaque deleted + aviso i18n
 - [ ] Cliente edita mensagem no WA → reflete no CW (`mark_inbound_edited`)
+- [ ] Contato envia mídia view once → CW mostra aviso localizado (`VIEW_ONCE_MEDIA_UNAVAILABLE` / `view_once_unavailable`), não `[Unsupported message type]` genérico
 - [ ] Agente apaga/edita no celular → reflete no CW (mesmo com `ignore_from_me_echo: true` se vier em `MESSAGE` / `SEND_MESSAGE` protocol)
 - [ ] Agente apaga com `sync_delete_to_whatsapp` — confirmação + delete no WA (só outgoing)
 - [ ] Edit outbound (`sync_edit_to_whatsapp`) aplica markdown/signature

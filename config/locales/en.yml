@@ -340,6 +340,8 @@ en:
         flow_response: 'Submitted a flow response'
         request_contact_info: 'Would you like to share your phone number with us?'
         unsupported_message: 'This message is unavailable.'
+        # FORK: Evolution Go view-once media unavailable placeholder
+        view_once_unavailable: "View-once media is unavailable. Open it in WhatsApp on the contact's phone if needed."
       voice_call:
         twilio: 'Voice Call'
         whatsapp: 'WhatsApp Call'

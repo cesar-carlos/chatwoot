@@ -4,7 +4,8 @@ import { useMessageContext } from '../provider.js';
 import { useInbox } from 'dashboard/composables/useInbox';
 import BaseBubble from './Base.vue';
 
-const { inboxId } = useMessageContext();
+// FORK: Evolution Go view-once unavailable media notice
+const { inboxId, contentAttributes } = useMessageContext();
 
 const {
   isAFacebookInbox,
@@ -14,6 +15,10 @@ const {
 } = useInbox(inboxId.value);
 
 const unsupportedMessageKey = computed(() => {
+  // FORK: Evolution Go view-once unavailable media notice
+  if (contentAttributes.value?.unavailableType === 'view_once') {
+    return 'CONVERSATION.VIEW_ONCE_MEDIA_UNAVAILABLE';
+  }
   if (isAFacebookInbox.value)
     return 'CONVERSATION.UNSUPPORTED_MESSAGE_FACEBOOK';
   if (isAnInstagramChannel.value)

@@ -84,9 +84,23 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
         messageTimestamp: timestamp_from_info(info)
       }.compact.with_indifferent_access
 
+      apply_unavailable_flags!(canonical, data)
+
       return canonical if data[:key].blank?
 
       canonical.merge(key: merge_group_key(data[:key].with_indifferent_access, info))
+    end
+
+    def apply_unavailable_flags!(canonical, data)
+      dig = Custom::Whatsapp::EvolutionGo::FieldDig
+      unavailable = ActiveModel::Type::Boolean.new.cast(
+        dig.dig_field(data, 'IsUnavailable', 'isUnavailable')
+      )
+      return unless unavailable
+
+      canonical[:is_unavailable] = true
+      unavailable_type = dig.dig_field(data, 'UnavailableType', 'unavailableType').to_s.presence
+      canonical[:unavailable_type] = unavailable_type if unavailable_type
     end
 
     def merge_group_key(key, info)
