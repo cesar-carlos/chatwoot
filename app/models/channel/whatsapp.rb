@@ -14,6 +14,7 @@
 #
 # Indexes
 #
+# FORK: Evolution/Evolution Go unique instance_name partial indexes (long lines)
 # rubocop:disable Layout/LineLength
 #  index_channel_whatsapp_evolution_go_instance_name  (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution_go'::text)
 #  index_channel_whatsapp_evolution_instance_name     (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution'::text)

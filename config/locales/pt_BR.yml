@@ -242,6 +242,8 @@ pt_BR:
         list_button_label: 'Escolha um item'
         call_permission_request_body: 'Gostaríamos de ligar para você em relação à sua conversa.'
         unsupported_message: 'Esta mensagem não está disponível.'
+        # FORK: Evolution Go view-once media unavailable placeholder
+        view_once_unavailable: 'Mídia de visualização única indisponível. Abra no WhatsApp do contato, se necessário.'
       voice_call:
         twilio: 'Chamada de Voz'
         whatsapp: 'Chamada do WhatsApp'

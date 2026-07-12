@@ -15,7 +15,7 @@ export const MESSAGE_VARIANTS = {
   TEMPLATE: 'template',
   EMAIL: 'email',
   UNSUPPORTED: 'unsupported',
-  DELETED: 'deleted',
+  DELETED: 'deleted', // FORK: Evolution Go/Node inbound delete highlight
 };
 
 export const SENDER_TYPES = {

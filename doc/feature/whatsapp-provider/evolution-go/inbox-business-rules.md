@@ -176,7 +176,7 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 |-------|---------|------|---------------|
 | `ignore_from_me_echo` | `true` | 1 | Normalizer (configurável) |
 | `ignore_status` | `true` | 2 | `status@broadcast` |
-| `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → soft delete CW (inclui `fromMe` / celular) |
+| `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → marca `deleted` no CW **mantendo o texto original** + destaque vermelho / aviso i18n (inclui `fromMe` / celular; `deleted_via_evolution_go_webhook`) |
 | `mark_inbound_edited` | `true` | UX | Webhook edit → atualiza CW (inclui `fromMe` / celular; skip noop / loop) |
 | `convert_markdown_inbound` | `true` | UX | Normalizer + edit sync |
 

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import MessageMeta from '../MessageMeta.vue';
+// FORK: Evolution Go/Node inbound delete highlight
 import Icon from 'next/icon/Icon.vue';
 
 import { emitter } from 'shared/helpers/mitt';
@@ -21,16 +22,21 @@ const {
   orientation,
   inReplyTo,
   shouldGroupWithNext,
-  contentAttributes,
+  contentAttributes, // FORK: Evolution Go/Node inbound delete highlight
 } = useMessageContext();
 const { t } = useI18n();
 
+// FORK: Evolution Go/Node inbound delete highlight
 const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));
 
+// FORK: Evolution Go/Node inbound delete highlight
 const deletedNotice = computed(() => {
+  const attrs = contentAttributes.value || {};
   if (
-    contentAttributes.value?.deleted_via_evolution_go_webhook ||
-    contentAttributes.value?.deleted_via_evolution_webhook
+    attrs.deletedViaEvolutionGoWebhook ||
+    attrs.deleted_via_evolution_go_webhook ||
+    attrs.deletedViaEvolutionWebhook ||
+    attrs.deleted_via_evolution_webhook
   ) {
     return t('CONVERSATION.DELETED_BY_CONTACT_NOTICE');
   }
@@ -50,6 +56,7 @@ const varaintBaseMap = {
   [MESSAGE_VARIANTS.EMAIL]: 'w-full',
   [MESSAGE_VARIANTS.UNSUPPORTED]:
     'bg-n-solid-amber/70 border border-dashed border-n-amber-12 text-n-amber-12',
+  // FORK: Evolution Go/Node inbound delete highlight
   [MESSAGE_VARIANTS.DELETED]:
     'bg-n-ruby-3 border border-n-ruby-7 text-n-ruby-12',
 };
@@ -134,6 +141,7 @@ const replyToPreview = computed(() => {
         class="prose prose-bubble line-clamp-2"
       />
     </div>
+    <!-- FORK: Evolution Go/Node inbound delete highlight -->
     <div
       v-if="isDeleted"
       class="flex items-center gap-1.5 mb-2 text-xs font-medium text-n-ruby-11"
@@ -149,6 +157,7 @@ const replyToPreview = computed(() => {
       :class="[
         flexOrientationClass,
         variant === MESSAGE_VARIANTS.EMAIL ? 'px-3 pb-3' : '',
+        // FORK: Evolution Go/Node inbound delete highlight (DELETED ruby meta)
         variant === MESSAGE_VARIANTS.PRIVATE
           ? 'text-n-amber-12/50'
           : variant === MESSAGE_VARIANTS.DELETED

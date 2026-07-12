@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength
 module Custom::Whatsapp::IncomingMessageEvolutionGo
   EVOLUTION_GO_REMOTE_JID_KEY = 'evolution_go_remote_jid'
 
@@ -79,7 +80,44 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
 
     remote_jid = message[:evolution_go_remote_jid].presence || message['evolution_go_remote_jid'].presence
     attrs[EVOLUTION_GO_REMOTE_JID_KEY] = remote_jid if remote_jid.present?
+
+    unavailable_type = evolution_go_unavailable_type(message)
+    attrs['unavailable_type'] = unavailable_type if unavailable_type.present?
     attrs
+  end
+
+  # Persist a localized placeholder and mark the bubble as unsupported so the
+  # dashboard can translate (e.g. view-once media WhatsApp cannot deliver).
+  def create_unsupported_message(message)
+    return super unless evolution_go_channel?
+
+    log_error(message) if error_webhook_event?(message)
+    process_in_reply_to(message)
+    create_message(message, source_id: message[:id])
+    apply_evolution_go_unsupported_content!(message)
+    @message.save!
+  end
+
+  def apply_evolution_go_unsupported_content!(message)
+    I18n.with_locale(inbox.account.locale) do
+      @message.content = I18n.t(evolution_go_unsupported_i18n_key(message))
+    end
+    attrs = @message.content_attributes.merge(is_unsupported: true)
+    unavailable_type = evolution_go_unavailable_type(message)
+    attrs['unavailable_type'] = unavailable_type if unavailable_type.present?
+    @message.content_attributes = attrs
+  end
+
+  def evolution_go_unavailable_type(message)
+    message[:evolution_go_unavailable_type].presence || message['evolution_go_unavailable_type'].presence
+  end
+
+  def evolution_go_unsupported_i18n_key(message)
+    if evolution_go_unavailable_type(message).to_s == 'view_once'
+      'conversations.messages.whatsapp.view_once_unavailable'
+    else
+      'conversations.messages.whatsapp.unsupported_message'
+    end
   end
 
   def download_evolution_go_media(attachment_payload)
@@ -112,5 +150,6 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
     new_index > current_index
   end
 end
+# rubocop:enable Metrics/ModuleLength
 
 Whatsapp::IncomingMessageBaseService.prepend(Custom::Whatsapp::IncomingMessageEvolutionGo)

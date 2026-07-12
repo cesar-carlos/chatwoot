@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 12/jul/2026 (doc sync vs código) · **Integração completa; E2E operador pendente**
+**Última revisão:** 12/jul/2026 (pm3 view-once + delete UX i18n) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -36,6 +36,8 @@
 | Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
 | Phone echo sync (`SEND_MESSAGE` / `fromMe`) | ✅ |
 | Unwrap `documentWithCaptionMessage` (PDF+caption) | ✅ jul/2026 |
+| View-once unavailable (`IsUnavailable` / `view_once`) | ✅ jul/2026 |
+| Inbound delete UX (keep text + highlight + i18n) | ✅ jul/2026 |
 | Latency (webhook `:default`, debounce, async mark-read) | ✅ jul/2026 |
 | `ProviderConfigMerger` atomic runtime writes | ✅ jul/2026 |
 | `UrlSafetyGuard` on server check | ✅ jul/2026 |
