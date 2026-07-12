@@ -206,9 +206,21 @@ Normalizer deve tentar, nesta ordem: `conversation` → `extendedTextMessage.tex
 |---------|------------------|
 | `documentWithCaptionMessage` | `message.documentMessage` (+ caption) — comum em PDF/doc com legenda e no echo de `POST /send/media` |
 | `ephemeralMessage` | `message.*` |
-| `viewOnceMessage` / `viewOnceMessageV2` / `viewOnceMessageV2Extension` | `message.*` |
+| `viewOnceMessage` / `viewOnceMessageV2` / `viewOnceMessageV2Extension` | `message.*` (quando o Go ainda entrega o payload interno) |
 
 Sem unwrap, `documentWithCaptionMessage` vira `[Unsupported message type]` no Chatwoot (echo phone / n8n → Go → webhook).
+
+**Mídia indisponível (view once)** — o Go pode enviar `MESSAGE` **sem** `Message` / `message`, só com flags no envelope:
+
+| Campo | Exemplo | Comportamento Chatwoot |
+|-------|---------|------------------------|
+| `IsUnavailable` / `isUnavailable` | `true` | Adapter marca `is_unavailable` no canonical |
+| `UnavailableType` / `unavailableType` | `view_once` | Normalizer → `type: unsupported` + `evolution_go_unavailable_type` |
+| `Info.Type` | `media` | Sem conteúdo recuperável (limitação WhatsApp / linked device) |
+
+O inbound cria placeholder localizado (`conversations.messages.whatsapp.view_once_unavailable`) e `content_attributes.is_unsupported` + `unavailable_type`. A bubble `Unsupported.vue` usa `CONVERSATION.VIEW_ONCE_MEDIA_UNAVAILABLE` quando `unavailableType === 'view_once'`. Fixture: `spec/fixtures/evolution_go/message_view_once_unavailable.json`.
+
+Isto é distinto dos wrappers `viewOnceMessage*` acima: lá o conteúdo ainda vem aninhado; aqui o WhatsApp **não** disponibiliza a mídia à API.
 
 ---
 

@@ -18,8 +18,12 @@
 #
 # Indexes
 #
-#  index_channel_whatsapp_on_phone_number                    (phone_number) UNIQUE
-#  index_channel_whatsapp_on_phone_number_health_checked_at  (phone_number_health_checked_at)
+# FORK: Evolution/Evolution Go unique instance_name partial indexes (long lines)
+# rubocop:disable Layout/LineLength
+#  index_channel_whatsapp_evolution_go_instance_name  (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution_go'::text)
+#  index_channel_whatsapp_evolution_instance_name     (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution'::text)
+# rubocop:enable Layout/LineLength
+#  index_channel_whatsapp_on_phone_number             (phone_number) UNIQUE
 #
 
 class Channel::Whatsapp < ApplicationRecord

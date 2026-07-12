@@ -1,0 +1,22 @@
+{
+  "event": "Message",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "ACVIEWONCEUNAVAILABLE001",
+      "Chat": "5511999999999@s.whatsapp.net",
+      "Sender": "5511999999999@s.whatsapp.net",
+      "SenderAlt": "5511999999999@s.whatsapp.net",
+      "IsFromMe": false,
+      "IsGroup": false,
+      "Type": "media",
+      "PushName": "View Once Contact",
+      "Timestamp": "2026-07-12T19:43:50-03:00",
+      "MediaType": "",
+      "Edit": ""
+    },
+    "IsUnavailable": true,
+    "UnavailableType": "view_once",
+    "DecryptFailMode": ""
+  }
+}

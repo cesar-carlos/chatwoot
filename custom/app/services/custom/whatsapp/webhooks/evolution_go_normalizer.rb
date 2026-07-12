@@ -53,18 +53,52 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
     return if secret_encrypted_only?(message_body)
 
     wa_id = resolve_wa_id(key)
-    message_type = map_message_type(message_body)
-    message_hash = build_message_hash(data.merge('message' => message_body), wa_id, message_type, key)
+    message_hash = build_inbound_message_hash(data, key, wa_id, message_body)
     return if message_hash.blank?
 
-    add_reply_context!(message_hash, data.merge('message' => message_body))
-    attach_participant_metadata!(message_hash, key)
+    enrich_inbound_message_hash!(message_hash, data, key, message_body)
+    wrap_inbound_contacts(key, data, wa_id, message_hash)
+  end
 
-    contact_name = group_contact_name(key, data)
+  def build_inbound_message_hash(data, key, wa_id, message_body)
+    return build_unavailable_message_hash(data, wa_id, key) if unavailable_payload?(data)
+
+    message_type = map_message_type(message_body)
+    build_message_hash(data.merge('message' => message_body), wa_id, message_type, key)
+  end
+
+  def enrich_inbound_message_hash!(message_hash, data, key, message_body)
+    add_reply_context!(message_hash, data.merge('message' => message_body)) unless unavailable_payload?(data)
+    attach_participant_metadata!(message_hash, key)
+  end
+
+  def wrap_inbound_contacts(key, data, wa_id, message_hash)
     {
-      contacts: [{ profile: { name: contact_name }, wa_id: wa_id }],
+      contacts: [{ profile: { name: group_contact_name(key, data) }, wa_id: wa_id }],
       messages: [message_hash]
     }
+  end
+
+  def unavailable_payload?(data)
+    ActiveModel::Type::Boolean.new.cast(data['is_unavailable'] || data[:is_unavailable])
+  end
+
+  def build_unavailable_message_hash(data, wa_id, key)
+    return nil if wa_id.blank?
+
+    unavailable_type = (data['unavailable_type'] || data[:unavailable_type]).to_s.presence || 'unknown'
+    Rails.logger.info(
+      "[EVOLUTION_GO] unavailable inbound message type=#{unavailable_type} id=#{key['id'] || key[:id]}"
+    )
+
+    {
+      from: wa_id,
+      id: key['id'] || key[:id],
+      timestamp: (data['messageTimestamp'] || data[:messageTimestamp]).to_s,
+      type: 'unsupported',
+      evolution_go_remote_jid: group_remote_jid(key, wa_id),
+      evolution_go_unavailable_type: unavailable_type
+    }.compact
   end
 
   def secret_encrypted_only?(message)

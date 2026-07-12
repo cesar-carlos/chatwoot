@@ -309,6 +309,8 @@ en:
         list_button_label: 'Choose an item'
         call_permission_request_body: 'We would like to call you regarding your conversation.'
         unsupported_message: 'This message is unavailable.'
+        # FORK: Evolution Go view-once media unavailable placeholder
+        view_once_unavailable: "View-once media is unavailable. Open it in WhatsApp on the contact's phone if needed."
       voice_call:
         twilio: 'Voice Call'
         whatsapp: 'WhatsApp Call'
