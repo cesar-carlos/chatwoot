@@ -40,7 +40,9 @@ RSpec.describe Custom::Whatsapp::Evolution::MessageDeleteSyncService do
     ).perform
 
     message.reload
+    expect(message.content).to eq('hello')
     expect(message.content_attributes['deleted']).to be(true)
     expect(message.content_attributes['deleted_via_evolution_webhook']).to be(true)
+    expect(message.content_attributes['deleted_at']).to be_present
   end
 end

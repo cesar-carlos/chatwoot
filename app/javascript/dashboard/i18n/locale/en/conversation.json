@@ -126,6 +126,8 @@
       }
     },
     "NO_CONTENT": "No content to display",
+    "DELETED_MESSAGE_NOTICE": "This message was deleted",
+    "DELETED_BY_CONTACT_NOTICE": "Deleted by the contact on WhatsApp",
     "SHARED_ATTACHMENT": {
       "CONTACT": "{sender} has shared a contact",
       "CONTACT_OUTGOING": "You shared a contact",

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 
 import MessageMeta from '../MessageMeta.vue';
+import Icon from 'next/icon/Icon.vue';
 
 import { emitter } from 'shared/helpers/mitt';
 import { useMessageContext } from '../provider.js';
@@ -15,9 +16,27 @@ const props = defineProps({
   hideMeta: { type: Boolean, default: false },
 });
 
-const { variant, orientation, inReplyTo, shouldGroupWithNext } =
-  useMessageContext();
+const {
+  variant,
+  orientation,
+  inReplyTo,
+  shouldGroupWithNext,
+  contentAttributes,
+} = useMessageContext();
 const { t } = useI18n();
+
+const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));
+
+const deletedNotice = computed(() => {
+  if (
+    contentAttributes.value?.deleted_via_evolution_go_webhook ||
+    contentAttributes.value?.deleted_via_evolution_webhook
+  ) {
+    return t('CONVERSATION.DELETED_BY_CONTACT_NOTICE');
+  }
+
+  return t('CONVERSATION.DELETED_MESSAGE_NOTICE');
+});
 
 const varaintBaseMap = {
   [MESSAGE_VARIANTS.AGENT]: 'bg-n-solid-blue text-n-slate-12',
@@ -31,6 +50,8 @@ const varaintBaseMap = {
   [MESSAGE_VARIANTS.EMAIL]: 'w-full',
   [MESSAGE_VARIANTS.UNSUPPORTED]:
     'bg-n-solid-amber/70 border border-dashed border-n-amber-12 text-n-amber-12',
+  [MESSAGE_VARIANTS.DELETED]:
+    'bg-n-ruby-3 border border-n-ruby-7 text-n-ruby-12',
 };
 
 const orientationMap = {
@@ -113,7 +134,16 @@ const replyToPreview = computed(() => {
         class="prose prose-bubble line-clamp-2"
       />
     </div>
-    <slot />
+    <div
+      v-if="isDeleted"
+      class="flex items-center gap-1.5 mb-2 text-xs font-medium text-n-ruby-11"
+    >
+      <Icon icon="i-lucide-trash-2" class="size-3.5 shrink-0" />
+      <span>{{ deletedNotice }}</span>
+    </div>
+    <div :class="{ 'opacity-80': isDeleted }">
+      <slot />
+    </div>
     <MessageMeta
       v-if="shouldShowMeta"
       :class="[
@@ -121,7 +151,9 @@ const replyToPreview = computed(() => {
         variant === MESSAGE_VARIANTS.EMAIL ? 'px-3 pb-3' : '',
         variant === MESSAGE_VARIANTS.PRIVATE
           ? 'text-n-amber-12/50'
-          : 'text-n-slate-11',
+          : variant === MESSAGE_VARIANTS.DELETED
+            ? 'text-n-ruby-11'
+            : 'text-n-slate-11',
       ]"
       class="mt-2"
     />

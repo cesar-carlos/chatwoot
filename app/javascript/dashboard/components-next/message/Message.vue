@@ -156,6 +156,10 @@ const { replaceInstallationName } = useBranding();
 const variant = computed(() => {
   if (props.private) return MESSAGE_VARIANTS.PRIVATE;
 
+  if (props.contentAttributes?.deleted) {
+    return MESSAGE_VARIANTS.DELETED;
+  }
+
   if (props.isEmailInbox) {
     const emailInboxTypes = [MESSAGE_TYPES.INCOMING, MESSAGE_TYPES.OUTGOING];
     if (emailInboxTypes.includes(props.messageType)) {
