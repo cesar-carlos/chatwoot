@@ -26,6 +26,7 @@ module.exports = {
       env: {
         RAILS_ENV: 'production',
         NODE_ENV: 'production',
+        SIDEKIQ_CONCURRENCY: '8',
       },
       max_memory_restart: '1200M',
       kill_timeout: 30000,
