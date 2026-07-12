@@ -29,7 +29,7 @@ Configurar em `ConnectionService#connect` via body `webhookUrl` — **não** exi
 | Decisão | Valor |
 |---------|-------|
 | **Método primário** | Query `?token=` com secret gerado no create do inbox |
-| **Método secundário** | Header `Authorization: Bearer {webhook_token}` se Evolution Go suportar headers custom no connect |
+| **Método secundário** | Header `Authorization: Bearer {webhook_token}` — implementado em `EvolutionGoController` |
 | **Envelope `apikey`** | **Não disponível** no body Go — diferente da Evolution API |
 
 ```ruby
@@ -38,11 +38,13 @@ def authenticate_webhook!
   channel = find_channel_by_instance_name(params[:instance_name])
   return head :not_found unless channel
 
-  secret = channel.provider_config['webhook_token']
-  token = params[:token].presence || request.headers['Authorization']&.remove(/^Bearer /)
+  secret = channel.provider_config['webhook_token'].to_s.strip
+  query_token = params[:token].to_s.strip
+  bearer = request.headers['Authorization'].to_s.remove(/^Bearer /i).strip
+  provided = query_token.presence || bearer
 
   return head :unauthorized unless secret.present? &&
-    ActiveSupport::SecurityUtils.secure_compare(token.to_s, secret.to_s)
+    provided.present? && ActiveSupport::SecurityUtils.secure_compare(provided, secret)
 
   @channel = channel
 end

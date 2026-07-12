@@ -1,8 +1,8 @@
 # Checklist E2E — integração Evolution Go
 
-Validação **durante** a Fase 1, contra uma **instância Evolution Go já provisionada pelo operador**. Não é pré-requisito para iniciar código — contratos vêm de [postman-validation.md](./postman-validation.md) e [decisions.md](./decisions.md).
+Validação operacional contra uma **instância Evolution Go já provisionada pelo operador**. Código das fases 0–4 já implementado — este checklist confirma contratos reais vs fixtures sintéticas. Referências: [postman-validation.md](./postman-validation.md), [decisions.md](./decisions.md), [webhook-events.md](./webhook-events.md).
 
-**Variáveis:** `BASE_URL`, `GLOBAL_API_KEY`, `INSTANCE_TOKEN`, `FRONTEND_URL` (público para webhook), `TEST_PHONE`
+**Variáveis:** `BASE_URL`, `GLOBAL_API_KEY`, `INSTANCE_TOKEN`, `WEBHOOK_TOKEN`, `FRONTEND_URL` (público para webhook), `TEST_PHONE`
 
 **Postman:** [Evolution GO collection](https://www.postman.com/agenciadgcode/evolution-api/collection/nk736ze/evolution-go) · environment em `spec/fixtures/evolution_go/postman-environment.json`
 
@@ -39,14 +39,14 @@ curl -sS -X POST "${BASE_URL}/instance/create" \
 ### 1.2 Conectar + webhook Chatwoot
 
 ```bash
-WEBHOOK_URL="${FRONTEND_URL}/webhooks/evolution_go/${INSTANCE}?token=${WEBHOOK_SECRET}"
+WEBHOOK_URL="${FRONTEND_URL}/webhooks/evolution_go/${INSTANCE}?token=${WEBHOOK_TOKEN}"
 
 curl -sS -X POST "${BASE_URL}/instance/connect" \
   -H "apikey: ${INSTANCE_TOKEN}" \
   -H "Content-Type: application/json" \
   -d '{
     "webhookUrl": "'"${WEBHOOK_URL}"'",
-    "subscribe": ["MESSAGE", "CONNECTION", "QRCODE"],
+    "subscribe": ["MESSAGE", "SEND_MESSAGE", "CONNECTION", "QRCODE", "READ_RECEIPT", "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"],
     "rabbitmqEnabled": "disabled",
     "websocketEnable": "disabled",
     "natsEnabled": "disabled"
@@ -124,7 +124,9 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Import contatos — status `running` → polling atualiza UI
 - [ ] Cliente apaga mensagem no WA → reflete no CW (`mark_inbound_deleted`)
 - [ ] Cliente edita mensagem no WA → reflete no CW (`mark_inbound_edited`)
-- [ ] Agente apaga com `sync_delete_to_whatsapp` — confirmação + delete no WA
+- [ ] Agente apaga/edita no celular → reflete no CW (mesmo com `ignore_from_me_echo: true` se vier em `MESSAGE` / `SEND_MESSAGE` protocol)
+- [ ] Agente apaga com `sync_delete_to_whatsapp` — confirmação + delete no WA (só outgoing)
+- [ ] Edit outbound (`sync_edit_to_whatsapp`) aplica markdown/signature
 - [ ] Painel diagnóstico exibe webhook URL e `mutation_stats`
 - [ ] `POST evolution_go_test_webhook` retorna `ok: true`
 - [ ] `POST evolution_go_sync_webhook` atualiza `webhook_subscribe` no channel

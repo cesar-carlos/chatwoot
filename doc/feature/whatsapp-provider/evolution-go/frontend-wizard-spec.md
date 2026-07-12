@@ -17,66 +17,59 @@ Planejamento frontend **implementado** (jul/2026). Componentes reais abaixo; est
 
 ---
 
-## Fluxo wizard (3 steps)
+## Fluxo wizard (2 telas + modal QR)
+
+O wizard combina **formulário único** (servidor + instância + proxy) e **tela de conexão** com QR/pairing no modal — não há 3 páginas separadas.
 
 ```mermaid
 flowchart TD
-  S1[Step 1 — Conexão servidor]
-  S2[Step 2 — Criar / vincular instância]
-  S3[Step 3 — QR ou pairing code]
-  DONE[Inbox criado]
+  FORM[form — servidor + instância + proxy]
+  CONNECT[connect — botão abrir QR]
+  MODAL[EvolutionGoQrScanModal — QR ou pairing]
+  DONE[Redirect add agents]
 
-  S1 --> S2
-  S2 -->|POST create + connect| S3
-  S3 -->|status Connected + LoggedIn| DONE
+  FORM -->|POST inboxes create| CONNECT
+  CONNECT -->|open modal| MODAL
+  MODAL -->|Connected + LoggedIn| DONE
 ```
 
-### Step 1 — Servidor
+### Tela `form` — Servidor + instância
 
 | Campo | Tipo | Validação |
 |-------|------|-----------|
 | Inbox name | text | obrigatório |
 | `base_url` | url | HTTPS recomendado; sem trailing slash |
 | `global_api_key` | password | obrigatório para modo criar |
+| `instance_name` | text | regex `^[a-zA-Z0-9_-]+$` |
+| `instance_token` | password | obrigatório se "instância existente" |
+| Proxy (colapsável) | toggle + host/port/user/pass | opcional |
 
-**Ação:** `GET {base_url}/server/ok` — **recomendado** no Step 1; falha rápida se servidor inacessível.
+**Ação antes do create:** `POST .../inboxes/evolution_go_server_check` — valida `base_url` + SSRF guard (`UrlSafetyGuard`).
 
-### Step 2 — Instância
+Modo **instância existente:** `global_api_key` opcional — obrigatório apenas para delete/list admin ([decisions.md §22](./decisions.md)).
 
-| Modo | Campos |
-|------|--------|
-| **Criar nova** | `instance_name` (regex: `^[a-zA-Z0-9_-]+$`) |
-| **Existente** | `instance_name` + `instance_token` (colar do painel Go) |
+**Backend (ao submeter):**
 
-Modo **instância existente:** `global_api_key` opcional no Step 1 — obrigatório apenas para delete/list admin ([decisions.md §22](./decisions.md)).
+1. `POST /api/v1/accounts/:account_id/inboxes` com `channel.provider: 'evolution_go'`
+2. `POST /instance/create` (se nova) → salvar `instance_token`, `instance_id`
+3. Gerar `webhook_token` server-side
+4. `POST /instance/connect` com `webhookUrl` + subscribe canônico (`WebhookSubscribeSync`)
+5. **Sem** fetch síncrono de QR no create — QR só no modal
 
-**Seção colapsável — Proxy:**
-
-| Campo | Condicional |
-|-------|-------------|
-| `proxy_enabled` | toggle |
-| `proxy_host`, `proxy_port`, `proxy_username`, `proxy_password` | se enabled |
-
-**Backend (ao avançar):**
-
-1. `POST /instance/create` (se criar) → salvar `instance_token`, `instance_id`
-2. Gerar `webhook_token` server-side
-3. `POST /instance/connect` com `webhookUrl` + `subscribe`
-
-### Step 3 — Pairing
+### Tela `connect` + modal — Pairing
 
 | Método | UI |
 |--------|-----|
-| QR (default) | `<img>` de `GET /instance/qr` → `data.Qrcode` |
-| Pairing code | Campo phone + `POST /instance/pair` → exibir `data.PairingCode` |
+| QR (default) | `EvolutionGoQrScanModal` — `GET evolution_go_connection?include_qr=true` |
+| Pairing code | Campo phone + `POST evolution_go_pair` |
 
 **Realtime:**
 
-- ActionCable `evolution_go:connection:{inbox_id}`
+- ActionCable `evolution_go:connection:{inbox_id}` via `evolutionGoCableRegistry.js`
 - Eventos: `qrcode`, `connection`
-- Fallback polling: `GET /instance/status` a cada 3s
+- Fallback polling: `GET evolution_go_connection` (status; QR só com `include_qr=true`)
 
-**Sucesso:** `data.Connected && data.LoggedIn` → extrair JID → `phone_number` → redirect inbox settings.
+**Sucesso:** `connection_status === 'open'` + `phone_number` → redirect `settings_inboxes_add_agents`.
 
 ---
 
@@ -129,66 +122,76 @@ sequenceDiagram
 
 ## API dashboard (contrato)
 
-Endpoints internos Chatwoot para o wizard — evitar CORS e vazar keys. Decisão fechada: [decisions.md §21](./decisions.md).
+Endpoints internos Chatwoot — evitar CORS e vazar keys. Decisão: [decisions.md §21](./decisions.md). Cliente JS: `app/javascript/dashboard/api/inboxes.js`.
 
-| Rota fork | Ação |
-|-----------|------|
-| `POST /api/v1/accounts/:id/evolution_go/inboxes` | create + connect + channel |
-| `GET .../evolution_go/inboxes/:id/connection` | qr, status, pairing |
-| `POST .../evolution_go/inboxes/:id/reconnect` | disconnect + connect |
+| Método | Path | Ação |
+|--------|------|------|
+| `POST` | `/api/v1/accounts/:account_id/inboxes` | Create inbox + channel `evolution_go` + provision |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/evolution_go_server_check` | Valida servidor (collection; wizard step 1) |
+| `GET` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_connection` | Status; `?include_qr=true` busca QR |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_reconnect` | Disconnect + connect + webhook |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_pair` | Pairing code |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_logout` | Logout sessão |
+| `GET` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_diagnostics` | Diagnóstico operacional |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_sync_webhook` | Re-sync subscribe |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_test_webhook` | Ping pipeline webhook |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_import` | Força import |
+| `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_refresh_contacts` | Refresh perfis/fotos contatos |
 
-### `POST .../evolution_go/inboxes`
+### `POST /api/v1/accounts/:account_id/inboxes` (create)
 
-**Request:**
+**Request** (via `createEvolutionGoChannel` → `InboxesAPI.create`):
 
 ```json
 {
   "name": "inbox-vendas",
-  "base_url": "https://evo.example.com",
-  "global_api_key": "GLOBAL_KEY",
-  "instance_name": "minha-instancia",
-  "instance_token": null,
-  "proxy": { "host": "", "port": 0, "username": "", "password": "" },
-  "mode": "create"
+  "channel": {
+    "type": "whatsapp",
+    "provider": "evolution_go",
+    "base_url": "https://evo.example.com",
+    "global_api_key": "GLOBAL_KEY",
+    "instance_name": "minha-instancia",
+    "instance_token": null,
+    "provider_config": {
+      "proxy_enabled": false,
+      "proxy_host": "",
+      "proxy_port": "",
+      "proxy_username": "",
+      "proxy_password": ""
+    }
+  }
 }
 ```
 
 | Campo | Obrigatório | Notas |
 |-------|-------------|-------|
-| `mode` | sim | `create` \| `existing` |
-| `instance_token` | se `existing` | Token da instância já criada no Go |
-| `global_api_key` | se `create` | Nunca retornado em GET |
+| `channel.provider` | sim | `evolution_go` |
+| `instance_token` | se instância existente | Token da instância já criada no Go |
+| `global_api_key` | se criar nova | Nunca retornado em GET |
 
-**Response 201:**
+**Response 201:** objeto inbox padrão Chatwoot (`id`, `channel_id`, …). Provision roda async após create; abrir modal QR na tela `connect`.
 
-```json
-{
-  "inbox_id": 42,
-  "channel_id": 99,
-  "instance_name": "minha-instancia",
-  "connection_status": "connecting",
-  "webhook_url": "https://cw.example.com/webhooks/evolution_go/minha-instancia?token=***"
-}
-```
+### `GET .../evolution_go_connection`
 
-### `GET .../evolution_go/inboxes/:id/connection`
+Query: `include_qr=true` (boolean) — busca QR sob demanda no modal.
 
 **Response 200:**
 
 ```json
 {
   "connection_status": "connecting",
-  "qr_code": "data:image/png;base64,...",
-  "pairing_code": null,
-  "phone_number": null
+  "last_qr_base64": "data:image/png;base64,...",
+  "last_qr_code": null,
+  "phone_number": null,
+  "webhook_subscribe": ["MESSAGE", "SEND_MESSAGE", "..."]
 }
 ```
 
-Polling frontend: a cada 3s até `connection_status === "open"` e `phone_number` presente.
+Polling no modal: até `connection_status === "open"` e `phone_number` presente.
 
-### `POST .../evolution_go/inboxes/:id/reconnect`
+### `POST .../evolution_go_reconnect`
 
-**Response 200:** mesmo shape de `connection` — dispara disconnect + connect com `webhookUrl` e `subscribe` persistidos.
+**Response 200:** mesmo shape de `evolution_go_connection` — dispara disconnect + connect com `webhookUrl` e subscribe persistidos.
 
 ---
 
@@ -219,41 +222,42 @@ const isEvolutionGoWhatsAppChannel = computed(
 
 ---
 
-## Settings inbox (Fase 2)
+## Settings inbox (implementado)
 
-Componente: `EvolutionGoSettings.vue` (custom)
+Componentes: `EvolutionGoSettingsPage.vue` (comportamento), `EvolutionGoHealthPage.vue` (conexão + diagnóstico).
 
 | Seção | Campos |
 |-------|--------|
-| Connection | status, logout, delete instance |
-| WhatsApp | ignore_groups, reject_call, read_messages |
-| Proxy | edit / remove |
-| Conversation | `lock_to_single_conversation`, merge_brazil_contacts |
-| Outbound | sign_msg, send_templates_as_text |
+| Connection | status, reconnect, logout, sync webhook, test webhook, diagnostics |
+| WhatsApp | `ignore_groups`, `reject_call`, `read_messages`, `always_online`, `ignore_status` |
+| Proxy | edit (create-only banner para instância existente) |
+| Import | `import_contacts`, `import_messages`, `import_on_connect`, refresh contacts |
+| Inbound/outbound sync | `mark_inbound_deleted/edited`, `sync_delete/edit_to_whatsapp` (opt-in) |
+| Conversation | `lock_to_single_conversation` (inbox), `merge_brazil_contacts` |
 
-Salvar → PATCH channel + `ConnectionService#sync_settings` → advanced-settings Go.
+Salvar → PATCH channel + `ConnectionService#sync_settings!` → `PUT advanced-settings` Go. Mudanças em `ignore_groups` / `ignore_from_me_echo` disparam re-sync webhook.
 
 ---
 
-## i18n (somente en)
+## i18n (somente en — pt_BR community)
 
-Arquivo: `custom/app/javascript/dashboard/i18n/locale/en/evolutionGo.json`
+Arquivos: `app/javascript/dashboard/i18n/locale/en/inboxMgmt.json` e `pt_BR/inboxMgmt.json` — namespace `INBOX_MGMT.ADD.EVOLUTION_GO.*` e `INBOX_MGMT.SETTINGS.EVOLUTION_GO.*`.
 
 Chaves mínimas:
 
-- `WIZARD.TITLE`, `WIZARD.STEP_SERVER`, `WIZARD.STEP_INSTANCE`, `WIZARD.STEP_QR`
-- `SETTINGS.CONNECTION_STATUS`, `SETTINGS.RECONNECT`
-- `ERRORS.LICENSE_REQUIRED`, `ERRORS.INVALID_PROXY`
+- `ADD.EVOLUTION_GO.TITLE`, `BASE_URL`, `INSTANCE_NAME`, `CONNECT.OPEN_QR`
+- `SETTINGS.EVOLUTION_GO.CONNECTION_STATUS`, `RECONNECT`, `REFRESH_CONTACTS`
+- `ADD.EVOLUTION_GO.SERVER_CHECK.ERROR`, `API.ERROR_MESSAGE`
 
 ---
 
-## Critérios de aceite UI (planejamento)
+## Critérios de aceite UI
 
-- [ ] Card visível em `Whatsapp.vue` sem quebrar Cloud/Twilio/360dialog
-- [ ] Wizard 3 steps com defaults [business-rules-adaptation.md](./business-rules-adaptation.md)
-- [ ] QR exibido em < 5s após connect
-- [ ] Keys nunca retornam em GET channel JSON
-- [ ] `isEvolutionGoWhatsAppChannel` oculta features cloud-only
+- [x] Card visível em `Whatsapp.vue` sem quebrar Cloud/Twilio/360dialog
+- [x] Wizard form + connect + modal QR com defaults [business-rules-adaptation.md](./business-rules-adaptation.md)
+- [x] QR sob demanda no modal (`include_qr=true`)
+- [x] Keys nunca retornam em GET channel JSON (masked)
+- [x] `isGatewayWhatsAppProvider` / `isEvolutionGoWhatsAppChannel` ocultam features cloud-only
 
 ---
 

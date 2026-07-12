@@ -37,14 +37,30 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
       }.compact
     end
 
-    def unwrap_nested_message(message) # rubocop:disable Metrics/CyclomaticComplexity
+    # WhatsApp / Evolution Go nest real payloads under wrappers. Documents with
+    # caption arrive as documentWithCaptionMessage → message → documentMessage.
+    NESTED_MESSAGE_WRAPPERS = %i[
+      ephemeralMessage
+      viewOnceMessage
+      viewOnceMessageV2
+      viewOnceMessageV2Extension
+      documentWithCaptionMessage
+    ].freeze
+
+    def unwrap_nested_message(message)
       return {} unless message.is_a?(Hash)
 
-      message = message.with_indifferent_access
-      inner = message[:ephemeralMessage]&.dig(:message) ||
-              message[:viewOnceMessageV2]&.dig(:message) ||
-              message[:viewOnceMessage]&.dig(:message)
-      inner.presence || message
+      current = message.with_indifferent_access
+      loop do
+        wrapper = NESTED_MESSAGE_WRAPPERS.find { |key| current[key].is_a?(Hash) }
+        break unless wrapper
+
+        inner = current[wrapper][:message] || current[wrapper]['message']
+        break unless inner.is_a?(Hash)
+
+        current = inner.with_indifferent_access
+      end
+      current
     end
 
     def timestamp_from_info(info)

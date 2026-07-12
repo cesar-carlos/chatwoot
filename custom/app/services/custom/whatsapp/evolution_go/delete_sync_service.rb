@@ -7,8 +7,12 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
     return unless evolution_go_channel?
     return unless sync_delete_enabled?
     return if message.source_id.blank?
+    return unless message.outgoing?
 
-    response = api_client.delete_message(chat: chat_jid, message_id: message.source_id)
+    chat = chat_jid
+    return if chat.blank?
+
+    response = api_client.delete_message(chat: chat, message_id: message.source_id)
     return if response.success?
 
     Rails.logger.warn(
@@ -33,17 +37,7 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
   end
 
   def chat_jid
-    attrs = message.content_attributes || {}
-    jid = attrs['evolution_go_remote_jid'].presence || attrs[:evolution_go_remote_jid].presence
-    return jid if jid.present?
-
-    contact_jid = message.conversation.contact_inbox.source_id.to_s
-    return contact_jid if contact_jid.include?('@')
-
-    phone = contact_jid.gsub(/\D/, '')
-    return if phone.blank?
-
-    "#{phone}@s.whatsapp.net"
+    Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message)
   end
 
   def api_client

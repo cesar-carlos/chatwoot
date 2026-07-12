@@ -32,6 +32,8 @@ class Custom::Whatsapp::EvolutionGo::Import::HistorySyncProcessor
   end
 
   def import_record(record)
+    return true if apply_protocol_mutation!(record)
+
     source_id = extract_source_id(record)
     return false if duplicate_source_id?(source_id)
 
@@ -41,6 +43,26 @@ class Custom::Whatsapp::EvolutionGo::Import::HistorySyncProcessor
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] history sync import failed: #{e.message}")
     false
+  end
+
+  def apply_protocol_mutation!(record)
+    delete_key = Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.extract_delete_key(record)
+    if delete_key.present?
+      Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService.new(
+        channel: channel,
+        data: { key: delete_key }
+      ).perform
+      return true
+    end
+
+    edit_payload = Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.extract_edit_payload(record)
+    return false if edit_payload.blank?
+
+    Custom::Whatsapp::EvolutionGo::MessageEditSyncService.new(
+      channel: channel,
+      data: edit_payload
+    ).perform
+    true
   end
 
   def duplicate_source_id?(source_id)

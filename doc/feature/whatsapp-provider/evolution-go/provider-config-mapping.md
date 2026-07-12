@@ -87,7 +87,7 @@ Sem `/proxy/set` — configurar no create ou advanced-settings.
 | Campo | Valor |
 |-------|-------|
 | URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}` |
-| `subscribe` | `["MESSAGE", "CONNECTION", "QRCODE"]` (+ `READ_RECEIPT` Fase 2) — persistir para reconnect ([decisions.md §23](./decisions.md)) |
+| `subscribe` | Lista canônica em `ProviderConfig::WEBHOOK_EVENTS` + `GROUP` quando `ignore_groups: false` — ver [webhook-events.md](./webhook-events.md). Persistido em `webhook_subscribe`; re-sync em reconnect e ao mudar `ignore_groups` / `ignore_from_me_echo` ([decisions.md §23](./decisions.md)) |
 
 Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_token`.
 
@@ -106,10 +106,10 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 | `convert_markdown_outbound` | `true` | markdown → WA no outbound |
 | `mark_read_on_reply` | `false` | `POST /message/markread` ao responder |
 | `mark_read_on_open` | `true` | mark read ao abrir conversa |
-| `mark_inbound_deleted` | `true` | Cliente apaga no WA → soft delete no CW |
-| `mark_inbound_edited` | `true` | Cliente edita no WA → atualiza CW |
-| `sync_delete_to_whatsapp` | `false` | Agente apaga no CW → delete no WA (opt-in) |
-| `sync_edit_to_whatsapp` | `false` | Conteúdo alterado no CW → edit no WA (opt-in) |
+| `mark_inbound_deleted` | `true` | Cliente **ou** agente (celular) apaga no WA → soft delete no CW |
+| `mark_inbound_edited` | `true` | Cliente **ou** agente (celular) edita no WA → atualiza CW |
+| `sync_delete_to_whatsapp` | `false` | Agente apaga **outgoing** no CW → delete no WA (opt-in) |
+| `sync_edit_to_whatsapp` | `false` | Conteúdo **outgoing** alterado no CW → edit no WA (opt-in; markdown/signature) |
 | `import_contacts` | `false` | Import manual ou `import_on_connect` |
 | `import_on_connect` | `false` | Disparar import ao conectar |
 | `import_messages` | `false` | Histórico via `HISTORY_SYNC` |

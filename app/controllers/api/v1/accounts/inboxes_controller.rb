@@ -22,10 +22,12 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     evolution_logout
     evolution_restart
     evolution_import
+    evolution_refresh_contacts
     evolution_go_connection
     evolution_go_reconnect
     evolution_go_server_check
     evolution_go_import
+    evolution_go_refresh_contacts
     evolution_go_diagnostics
     evolution_go_test_webhook
     evolution_go_logout
