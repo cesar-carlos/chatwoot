@@ -7,7 +7,9 @@ import { useStoreGetters } from 'dashboard/composables/store';
 import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { useImageZoom } from 'dashboard/composables/useImageZoom';
 import { messageTimestamp } from 'shared/helpers/timeHelper';
-import { downloadFile } from '@chatwoot/utils';
+// FORK: same-origin Active Storage download on alias hosts (dev-chat)
+import { downloadFile } from 'customDashboard/helper/downloadFile';
+
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Avatar from 'next/avatar/Avatar.vue';

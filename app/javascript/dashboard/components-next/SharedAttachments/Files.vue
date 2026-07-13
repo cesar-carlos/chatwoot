@@ -4,7 +4,8 @@ import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { formatBytes } from 'shared/helpers/FileHelper';
 import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
-import { downloadFile } from '@chatwoot/utils';
+// FORK: same-origin Active Storage download on alias hosts (dev-chat)
+import { downloadFile } from 'customDashboard/helper/downloadFile';
 import {
   MEDIA_TYPES,
   NON_FILE_TYPES,

@@ -73,6 +73,43 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
       )
     end
 
+    it 'quotes own outgoing messages using business JID from instance_name when channel phone is placeholder' do
+      channel.update!(phone_number: '+55000abcdef')
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'instance_name' => 'FORTEZA-FATURAMENTO-66996950396-1070BEFB08'
+        )
+      )
+
+      own = create(
+        :message,
+        account: account,
+        inbox: message.inbox,
+        conversation: message.conversation,
+        message_type: :outgoing,
+        source_id: 'OUTGOING1',
+        content_attributes: { evolution_go_remote_jid: '5511999999999@s.whatsapp.net' }
+      )
+      reply_message = create(
+        :message,
+        account: account,
+        inbox: message.inbox,
+        conversation: message.conversation,
+        content_attributes: { in_reply_to_external_id: own.source_id }
+      )
+
+      service.send_message('5511999999999', reply_message)
+
+      expect(api_client).to have_received(:send_text).with(
+        hash_including(
+          quoted: {
+            messageId: 'OUTGOING1',
+            participant: '5566996950396@s.whatsapp.net'
+          }
+        )
+      )
+    end
+
     it 'sends location attachments via send_location' do
       location_message = create(
         :message,

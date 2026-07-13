@@ -8,7 +8,9 @@ import Button from 'next/button/Button.vue';
 import Icon from 'next/icon/Icon.vue';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 import { useMessageContext } from '../provider.js';
-import { downloadFile } from '@chatwoot/utils';
+// FORK: same-origin Active Storage download on alias hosts (dev-chat)
+import { downloadFile } from 'customDashboard/helper/downloadFile';
+
 
 import GalleryView from 'dashboard/components/widgets/conversation/components/GalleryView.vue';
 

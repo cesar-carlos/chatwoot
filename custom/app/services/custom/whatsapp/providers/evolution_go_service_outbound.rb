@@ -26,22 +26,46 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     {
       messageId: reply_id,
       participant: quoted_participant(phone_number, original)
-    }
+    }.compact
   end
 
   def quoted_participant(phone_number, original)
+    # Outgoing quotes need the business JID. Do not use evolution_go_remote_jid here —
+    # on fromMe messages that field stores the chat peer, not the sender.
+    if original.present? && !original.incoming?
+      return business_participant_jid
+    end
+
     jid = original&.content_attributes&.dig('evolution_go_remote_jid').presence
     return jid if jid.present?
-    return business_participant_jid if original.present? && !original.incoming?
 
     delivery_jid(phone_number, original)
   end
 
   def business_participant_jid
-    phone = whatsapp_channel.phone_number.to_s.gsub(/\D/, '')
-    return if phone.blank? || phone.start_with?('55000')
+    phone = channel_business_phone
+    return if phone.blank?
 
     "#{phone}@s.whatsapp.net"
+  end
+
+  # Evolution Go inboxes often keep a placeholder channel phone (+55000…); the real
+  # WhatsApp number is embedded in instance_name (e.g. FORTEZA-…-66996950396-…).
+  def channel_business_phone
+    phone = whatsapp_channel.phone_number.to_s.gsub(/\D/, '')
+    return phone if phone.present? && !phone.start_with?('55000')
+
+    phone_from_instance_name
+  end
+
+  def phone_from_instance_name
+    name = (whatsapp_channel.provider_config || {})['instance_name'].to_s
+    digits = name.scan(/\d{10,13}/).max_by(&:length)
+    return if digits.blank?
+    return digits if digits.start_with?('55') && digits.length >= 12
+    return "55#{digits}" if digits.length.between?(10, 11)
+
+    digits
   end
 
   def delivery_jid(phone_number, context_message = nil)
