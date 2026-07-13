@@ -8,9 +8,14 @@ Wavoip. Para o texto completo (descrição, código antes/depois, racional) de c
 
 | ID | Título | Status |
 |----|--------|--------|
-| UX-RINGBACK-01 | Sem som enquanto outbound “Ligando…” | ✅ ringback no widget (só Wavoip, vol. 0.45) até `peerAccept` |
+| UX-RINGBACK-01 | Sem som enquanto outbound “Ligando…” | ✅ `unlock` mudo no clique; `start` audível após `addCall` / widget |
+| UX-RINGBACK-02 | Autoplay bloqueado após `await connectForInbox` | ✅ `unlock` síncrono nos botões **antes** do warm-up |
+| UX-RINGBACK-03 | Outbound usava o mesmo `ringtone.mp3` do inbound | ✅ tom dedicado `public/audio/dashboard/ringback.mp3` |
+| UX-RINGBACK-04 | Bell “silenciar toque” também mutava outbound | ✅ preferência vale **só inbound**; outbound sempre toca |
+| UX-CHANNELS-01 | Toast com código `SIMULTANEOUS_LIMIT` | ✅ mapeia para `CHANNELS_FULL` (linhas ocupadas) |
+| UX-CALLBACK-01 | “Ligar de volta” na bolha missed | ✅ loading Wavoip, telefone camel/snake, preflight antes do unlock |
 
-Arquivos: `wavoipOutboundRingback.js`, `FloatingCallWidget.vue` (`// FORK:`).
+Arquivos: `ringback.mp3`, `wavoipOutboundRingback.js`, `wavoipSdkResult.js`, botões Wavoip, `VoiceCall.vue` (callback), `FloatingCallWidget.vue` (`// FORK:`), i18n `CHANNELS_FULL`.
 
 ## 13 jul. 2026 — checklist token + docs ops
 

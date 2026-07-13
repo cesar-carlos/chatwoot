@@ -134,6 +134,9 @@ const startWavoipCall = async (inboxId, conversationIdHint) => {
   const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
   if (!session) return;
 
+  // FORK: muted unlock before conversation lookup / connect awaits.
+  unlockWavoipOutboundRingback();
+
   let conversationId = conversationIdHint;
   if (!conversationId) {
     conversationId = await findConversationInInbox(inboxId);
@@ -147,11 +150,13 @@ const startWavoipCall = async (inboxId, conversationIdHint) => {
         channelType: INBOX_TYPES.WAVOIP,
       });
     } catch {
+      stopWavoipOutboundRingback();
       useAlert(t('CONTACT_PANEL.VOICE_CONVERSATION_REQUIRED'));
       return;
     }
   }
   if (!conversationId) {
+    stopWavoipOutboundRingback();
     useAlert(t('CONTACT_PANEL.VOICE_CONVERSATION_REQUIRED'));
     return;
   }
@@ -166,14 +171,22 @@ const startWavoipCall = async (inboxId, conversationIdHint) => {
     // eslint-disable-next-line no-console
     console.debug('[Wavoip] call button warm-up connect failed', warmupError);
   }
-  const response = await session.initiateOutboundCall(conversationId, {
-    inboxId,
-    toPhone: props.phone,
-  });
-  if (response?.status === 'locked') return;
-  if (!response?.call_id) {
-    useAlert(t('CONTACT_PANEL.CALL_FAILED'));
-    navigateToConversation(conversationId);
+  try {
+    const response = await session.initiateOutboundCall(conversationId, {
+      inboxId,
+      toPhone: props.phone,
+    });
+    if (response?.status === 'locked' || !response?.call_id) {
+      stopWavoipOutboundRingback();
+      if (!response?.call_id && response?.status !== 'locked') {
+        useAlert(t('CONTACT_PANEL.CALL_FAILED'));
+        navigateToConversation(conversationId);
+      }
+      return;
+    }
+  } catch (error) {
+    stopWavoipOutboundRingback();
+    useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
     return;
   }
 

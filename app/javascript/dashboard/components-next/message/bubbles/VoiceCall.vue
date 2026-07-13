@@ -24,6 +24,11 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { formatDuration } from 'shared/helpers/timeHelper';
 import { useAlert } from 'dashboard/composables';
+import { wavoipOutboundBlockedReasonKey } from 'customDashboard/lib/wavoip/wavoipOutboundPreflight';
+import {
+  unlockWavoipOutboundRingback,
+  stopWavoipOutboundRingback,
+} from 'customDashboard/lib/wavoip/wavoipOutboundRingback';
 
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import BaseBubble from 'next/message/bubbles/Base.vue';
@@ -43,6 +48,16 @@ const ICON_MAP = {
   [VOICE_CALL_STATUS.REJECTED]: 'i-ph-phone-x-bold',
 };
 
+/** Prefer contact phone; accept camelCase + snake_case from message/call payloads. */
+const resolveCallBackPhone = (senderRecord, callRecord) =>
+  senderRecord?.phone_number ||
+  senderRecord?.phoneNumber ||
+  callRecord?.from_number ||
+  callRecord?.fromNumber ||
+  callRecord?.to_number ||
+  callRecord?.toNumber ||
+  null;
+
 const { t } = useI18n();
 const store = useStore();
 const {
@@ -60,8 +75,14 @@ const { joinCall, endCall, activeCall, hasActiveCall, isJoining } =
 const whatsappCallSession = useWhatsappCallSession();
 const callsStore = useCallsStore();
 const contactsUiFlags = useMapGetter('contacts/getUIFlags');
+const wavoipSession = computed(() =>
+  getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP)
+);
 const isInitiatingCall = computed(
-  () => contactsUiFlags.value?.isInitiatingCall || false
+  () =>
+    !!contactsUiFlags.value?.isInitiatingCall ||
+    !!wavoipSession.value?.isInitiating?.value ||
+    !!whatsappCallSession.isInitiating?.value
 );
 
 const status = computed(() => call.value?.status);
@@ -337,14 +358,23 @@ const handleCallBack = async () => {
       return;
     }
     if (isWavoip.value) {
-      const session = getBrowserVoiceSession(VOICE_CALL_PROVIDERS.WAVOIP);
-      // The contact snapshot on the message can be stale/missing; the call
-      // record itself always carries the number that was actually dialed.
-      const toPhone = sender.value?.phone_number || call.value?.from_number;
+      const session = wavoipSession.value;
+      // Contact snapshot on the message can be stale/missing; call record
+      // carries from/to in camelCase or snake_case depending on the hop.
+      const toPhone = resolveCallBackPhone(sender.value, call.value);
       if (!session || !toPhone) {
         useAlert(t('CONTACT_PANEL.CALL_FAILED'));
         return;
       }
+
+      const blockedReasonKey = wavoipOutboundBlockedReasonKey(inboxId.value);
+      if (blockedReasonKey) {
+        useAlert(t(blockedReasonKey));
+        return;
+      }
+
+      // FORK: muted unlock before warm-up await; audible after addCall.
+      unlockWavoipOutboundRingback();
       // initiateOutboundCall below connects (and translates connection/device
       // errors) on its own — this is just an eager warm-up so the SDK offer
       // listener is attached ASAP. A failure here shouldn't block the actual
@@ -362,8 +392,12 @@ const handleCallBack = async () => {
           toPhone,
         }
       );
-      if (response?.status === VOICE_CALL_OUTBOUND_INIT_STATUS.LOCKED) return;
+      if (response?.status === VOICE_CALL_OUTBOUND_INIT_STATUS.LOCKED) {
+        stopWavoipOutboundRingback();
+        return;
+      }
       if (!response?.call_id) {
+        stopWavoipOutboundRingback();
         useAlert(t('CONTACT_PANEL.CALL_FAILED'));
         return;
       }
@@ -381,6 +415,7 @@ const handleCallBack = async () => {
       callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
     });
   } catch (error) {
+    stopWavoipOutboundRingback();
     useAlert(error?.message || t('CONTACT_PANEL.CALL_FAILED'));
   }
 };

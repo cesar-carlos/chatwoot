@@ -218,7 +218,7 @@
       "DEVICE_RECONNECTING": "Reconnecting to Wavoip…",
       "MIC_DEVICE": "Microphone",
       "SPEAKER_DEVICE": "Speaker",
-      "CHANNELS_FULL": "All call channels on this Wavoip device are in use. Wait for a call to end.",
+      "CHANNELS_FULL": "All lines are busy on this Wavoip device. End an active call or wait for a line to free up, then try again.",
       "ACCEPT_RECORD_FAILED": "Could not record who answered this call. The call may still work, but acceptance may not appear in history.",
       "ACCEPTED_ELSEWHERE_BY": "{agentName} answered this call.",
       "PEER_REJECTED": "The contact declined the call or it could not be completed.",
