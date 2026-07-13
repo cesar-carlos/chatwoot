@@ -4,7 +4,9 @@ Mapeamento da documentação oficial do pacote npm para implementação no Chatw
 
 **Índice completo doc oficial:** [official-docs.md](./official-docs.md)
 
-**Versão verificada em 03 jul. 2026:** `2.6.1`. Atualizações exigem repetir os testes de contrato.
+**Versão verificada em 13 jul. 2026:** `2.6.3` (antes `2.6.1`, 03 jul.). Atualizações exigem repetir os testes de contrato.
+
+**Delta 2.6.1 → 2.6.3 (tipos públicos idênticos):** o bundle passa a emitir `CallActive` `status` `DISCONNECTED` / `ACTIVE` em mais caminhos de transporte; o gate SDK `Device.restricted` no `startCall` deixou de bloquear no cliente — o Chatwoot continua bloqueando via `isWavoipInboxRestricted` / preflight.
 
 **Fontes primárias (SDK):**
 
@@ -49,7 +51,7 @@ Fonte: [Device](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/
 
 | Status SDK | Significado | UI Chatwoot (settings / banner) |
 |------------|-------------|----------------------------------|
-| `disconnected` | WS caiu; reconexão automática (até 3x) | “Reconectando…” |
+| `disconnected` | WS caiu; SDK tenta reconexão (até 3x); se permanece down → Chatwoot force-reconnect no accept | Banner `DEVICE_DISCONNECTED` (não só “Reconectando…”) |
 | `close` | Conectado, sem WhatsApp vinculado | “Vincule o número” |
 | `connecting` | QR disponível | Mostrar QR (`qrCodeChanged`) |
 | `open` | Pronto para chamadas | Verde “Conectado” |
@@ -82,12 +84,23 @@ O Chatwoot trata `num_channels` ausente como “sem limite conhecido” (não bl
 
 ### 2.4 Métodos do dispositivo
 
-| Método | Uso |
-|--------|-----|
-| `restart()` | Admin troubleshooting |
-| `logout()` | Desvincular WhatsApp |
-| `wakeUp()` | Antes de `startCall` se hibernando |
-| `pairingCode(phone)` | Alternativa ao QR — exibir código no settings |
+| Método | Uso no Chatwoot |
+|--------|-----------------|
+| `restart()` | Preferir HTTP admin `GET devices.wavoip.com/{token}/device/restart` via `Wavoip::DeviceStatusService#restart_device!` (botão **Reiniciar**). SDK `restart()` permanece disponível se o browser já tiver WS. |
+| `logout()` | Preferir HTTP `.../whatsapp/logout` via `DeviceStatusService#logout!` (botão **Logout**). |
+| `wakeUp()` | Botão **Acordar** — só quando `Device.status === 'hibernating'` (`wakeUpInboxDevice`). |
+| `pairingCode(phone)` | Modal QR → “Get pairing code” |
+
+### 2.5 Painel Settings — matriz de botões (13 jul. 2026)
+
+| Botão | Quando aparece | Ação |
+|-------|----------------|------|
+| **Reconectar (escanear QR)** | `status !== open` | Abre modal QR **sem** restart (`fresh: false`); liga SDK `qrCodeChanged` + HTTP qr-image |
+| **Acordar dispositivo** | Só `hibernating` | `device.wakeUp()`; se ainda não `open`, abre QR soft |
+| **Reiniciar dispositivo** | Sempre (bloqueado se `activeCalls > 0`) | Confirm → HTTP `device/restart` → abre QR |
+| **Logout** | Só `open` | Confirm → HTTP logout → QR |
+
+Refresh dentro do modal QR usa `getWavoipQr({ refresh: true })` (= restart HTTP) — ação destrutiva explícita do usuário.
 
 **Impacto no inbox-setup:** na criação só pedimos **token**; pareamento QR/código fica em **Settings → Chamadas** (`WavoipDevicePanel.vue`), não no passo 2 do wizard — a menos que o dispositivo já esteja `open` no painel Wavoip antes de criar o inbox.
 
@@ -180,11 +193,13 @@ Fonte: [Active](https://wavoip.gitbook.io/api/wavoip-api/chamadas/active.md)
 |--------|-----|
 | `ended` | Teardown + upload/gravação via webhook |
 | `peerMute` / `peerUnmute` | Indicador UI |
-| `connectionStatus` | Banner `reconnecting` (relay `unofficial`) |
+| `connectionStatus` | Banner: `reconnecting` → `DEVICE_RECONNECTING`; `disconnected` → `DEVICE_DISCONNECTED` |
 | `stats` / `serverStats` | Diagnóstico admin |
 | `error` | Toast erro transporte |
 
 `connection_status`: `connecting` → `connected` → `reconnecting` (até 30s) → `disconnected`.
+
+No Chatwoot, `disconnected` **não** é só cosmético: `connectForInbox` / `acceptIncomingCall` forçam rebuild do client SDK antes de `offer.accept()` — ver [frontend-integration.md §4](./frontend-integration.md#4-lifecycle-por-agente).
 
 ---
 

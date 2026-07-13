@@ -52,4 +52,21 @@ describe('wavoipAcceptRecorder', () => {
     expect(CallsAPI.recordAccept).toHaveBeenCalledTimes(3);
     expect(CallsAPI.recordAccept).toHaveBeenCalledWith(42);
   });
+
+  it('resolves db call id via wavoipOfferId when callSid differs', async () => {
+    CallsAPI.recordAccept.mockResolvedValue(undefined);
+
+    const store = useCallsStore();
+    store.addCall({
+      callSid: 'sdk-offer-1',
+      wavoipOfferId: 'cable-call-1',
+      callId: 99,
+    });
+
+    queueAcceptedByRecording('cable-call-1');
+    await flushAcceptedByRecording('cable-call-1');
+
+    expect(CallsAPI.joinCall).toHaveBeenCalledWith(99);
+    expect(CallsAPI.recordAccept).toHaveBeenCalledWith(99);
+  });
 });

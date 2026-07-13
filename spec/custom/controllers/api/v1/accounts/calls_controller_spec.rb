@@ -80,12 +80,19 @@ RSpec.describe Api::V1::Accounts::CallsController, type: :request do
       expect(call.reload.accepted_by_agent_id).to eq(other_agent.id)
     end
 
-    it 'records join intent before accept' do
+    it 'records accept attribution on join so PATCH is not required' do
+      payloads = []
+      allow(ActionCable.server).to receive(:broadcast) { |_stream, payload| payloads << payload }
+
       post "/api/v1/accounts/#{account.id}/calls/#{call.id}/join",
            headers: agent.create_new_auth_token
 
       expect(response).to have_http_status(:ok)
-      expect(Wavoip::Calls::JoiningAgentCache.read(call.id)).to eq(agent.id)
+      expect(call.reload.accepted_by_agent_id).to eq(agent.id)
+      expect(Wavoip::Calls::JoiningAgentCache.read(call.id)).to be_nil
+      accepted = payloads.find { |p| p[:event] == 'voice_call.accepted' }
+      expect(accepted).to be_present
+      expect(accepted[:data][:accepted_by_agent_id]).to eq(agent.id)
     end
 
     it 'returns conflict on join when another agent already accepted' do

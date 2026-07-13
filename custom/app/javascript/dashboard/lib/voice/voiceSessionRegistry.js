@@ -54,12 +54,17 @@ export function shouldRejectWavoipInboundOnDismiss(call) {
 /**
  * Provider-specific cleanup after join/accept failure.
  * Returns whether the local store entry should be dismissed.
+ *
+ * Wavoip: tear down half-open SDK state but keep the ringing card so the agent
+ * can retry after a WebSocket blip / offer timeout (dismiss would hide the UI
+ * while the caller is still ringing).
  */
 export function cleanupAfterBrowserVoiceJoinFailure(call, callSid) {
   if (isWavoipVoiceCall(call)) {
     teardownWavoipActiveCall();
     removePendingOffer(callSid);
-    return true;
+    if (call?.wavoipOfferId) removePendingOffer(call.wavoipOfferId);
+    return false;
   }
   if (isWhatsappVoiceCall(call) || isBrowserVoiceProvider(call?.provider)) {
     cleanupWhatsappSession();

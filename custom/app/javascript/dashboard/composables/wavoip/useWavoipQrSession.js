@@ -1,7 +1,10 @@
 import { ref, unref } from 'vue';
 import InboxesAPI from 'dashboard/api/inboxes';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
-import { getWavoipClient } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
+import {
+  getWavoipClient,
+  getWavoipClientEntry,
+} from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import { getPrimaryDevice } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import { unwrapWavoipSdkResult } from 'customDashboard/lib/wavoip/wavoipSdkResult';
 import { buildQrDataUrl } from 'customDashboard/lib/wavoip/wavoipQrImage';
@@ -31,6 +34,7 @@ export function useWavoipQrSession({
   let expiryTimer = null;
   let statusPollTimer = null;
   let sdkConnected = false;
+  let sessionAttachedToExistingClient = false;
   let sessionStartedConnected = false;
   let hasEmittedConnected = false;
 
@@ -101,15 +105,22 @@ export function useWavoipQrSession({
     const id = unref(inboxId);
     if (!id) return null;
 
-    if (sdkConnected) {
+    if (sdkConnected || sessionAttachedToExistingClient) {
       return getPrimaryDevice(getWavoipClient(id));
     }
 
+    const hadEntry = Boolean(getWavoipClientEntry(id));
     await connectInbox(id);
     const device = getPrimaryDevice(getWavoipClient(id));
     wireDeviceListeners(device);
     syncFromDevice(device);
-    sdkConnected = true;
+    // Only own teardown when this session created the client — never disconnect
+    // a connection already managed by WavoipConnectionHost.
+    if (hadEntry) {
+      sessionAttachedToExistingClient = true;
+    } else {
+      sdkConnected = true;
+    }
     return device;
   }
 
@@ -276,10 +287,17 @@ export function useWavoipQrSession({
       if (!isConnected()) {
         // Only flag an error when the device is closed (disconnected) and we
         // have no QR to show. A 'connecting' status without QR is a normal
-        // transitional state — the QR will arrive via polling or the expiry
-        // refresh, so show a waiting spinner instead of an error.
+        // transitional state — the QR will arrive via SDK / polling.
         if (!qrDataUrl.value && whatsAppStatus.value !== 'connecting') {
           qrRefreshError.value = true;
+        }
+        // Inbox-setup contract: live QR via SDK `qrCodeChanged`, with HTTP
+        // qr-image as fallback. Always attach the SDK when not open so pairing
+        // still works when devices.wavoip.com HTTP is unreachable (STATUS_STALE).
+        try {
+          await ensureSdkConnected();
+        } catch (_) {
+          /* HTTP QR + status poll remain as fallback */
         }
         startStatusPolling();
         armQrExpiryTimer();
@@ -329,9 +347,11 @@ export function useWavoipQrSession({
     hasEmittedConnected = false;
     sessionStartedConnected = false;
     sdkConnected = false;
+    sessionAttachedToExistingClient = false;
   }
 
   function hasSdkConnection() {
+    // True only when this session opened the client and must disconnect it.
     return sdkConnected;
   }
 

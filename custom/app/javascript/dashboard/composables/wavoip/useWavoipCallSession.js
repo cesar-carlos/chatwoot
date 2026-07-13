@@ -27,6 +27,8 @@ import {
   getActiveProviderCallId,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import { closeIncomingWavoipOfferNotification } from 'customDashboard/composables/wavoip/useWavoipNotifications';
+import { createWavoipAcceptError } from 'customDashboard/lib/wavoip/wavoipAcceptError';
+import { isWavoipWebSocketDisconnected } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 
 const closeOfferNotificationsForCall = (callSid, call) => {
   closeIncomingWavoipOfferNotification(callSid);
@@ -49,7 +51,7 @@ export function useWavoipCallSession() {
 
   const recordAcceptedBy = async callSid => {
     const dbCallId = useCallsStore().calls.find(
-      c => c.callSid === callSid
+      c => c.callSid === callSid || c.wavoipOfferId === callSid
     )?.callId;
     if (!dbCallId) {
       queueAcceptedByRecording(callSid);
@@ -64,11 +66,23 @@ export function useWavoipCallSession() {
   };
 
   const acceptIncomingCall = async ({ callId, inboxId }) => {
-    await connectForInbox(inboxId);
+    const client = await connectForInbox(inboxId);
+    if (!client || isWavoipWebSocketDisconnected(inboxId)) {
+      throw createWavoipAcceptError(
+        'CONVERSATION.WAVOIP_CALL.DEVICE_DISCONNECTED'
+      );
+    }
     attachToInbox(inboxId);
 
-    if (!getPendingOffer(callId)) {
-      await waitForPendingOffer(callId);
+    try {
+      if (!getPendingOffer(callId)) {
+        await waitForPendingOffer(callId);
+      }
+    } catch (error) {
+      throw createWavoipAcceptError(
+        'CONVERSATION.WAVOIP_CALL.ACCEPT_OFFER_TIMEOUT',
+        error
+      );
     }
 
     const callsStore = useCallsStore();
@@ -76,7 +90,16 @@ export function useWavoipCallSession() {
       c => c.callSid === callId || c.wavoipOfferId === callId
     );
 
-    const sdkCall = await acceptOffer(callId);
+    let sdkCall;
+    try {
+      sdkCall = await acceptOffer(callId);
+    } catch (error) {
+      throw createWavoipAcceptError(
+        'CONVERSATION.WAVOIP_CALL.ACCEPT_FAILED',
+        error
+      );
+    }
+
     // Accepting agent: drop the OS notification immediately so it does not
     // linger while the call is already live in this tab.
     closeOfferNotificationsForCall(callId, storeCall);

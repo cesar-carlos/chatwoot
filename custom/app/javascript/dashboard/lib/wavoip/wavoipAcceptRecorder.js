@@ -21,6 +21,15 @@ const resolveFailureHandler = options => {
   return undefined;
 };
 
+const findDbCallId = callSid => {
+  if (!callSid) return null;
+  return (
+    useCallsStore().calls.find(
+      c => c.callSid === callSid || c.wavoipOfferId === callSid
+    )?.callId || null
+  );
+};
+
 export function queueAcceptedByRecording(callSid) {
   if (callSid) pendingAcceptByCallSid.add(callSid);
 }
@@ -78,9 +87,7 @@ export async function recordAcceptWithRetry(dbCallId, callSid, options = {}) {
 export async function flushAcceptedByRecording(callSid, options = {}) {
   if (!pendingAcceptByCallSid.has(callSid)) return;
 
-  const dbCallId = useCallsStore().calls.find(
-    c => c.callSid === callSid
-  )?.callId;
+  const dbCallId = findDbCallId(callSid);
   if (!dbCallId) return;
 
   pendingAcceptByCallSid.delete(callSid);

@@ -1,18 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createPinia, setActivePinia } from 'pinia';
 
 vi.mock('customDashboard/lib/wavoip/wavoipCallDiagnostics', () => ({
-  wireCallDiagnostics: vi.fn(),
+  wireCallDiagnostics: vi.fn(() => vi.fn()),
 }));
 
-import { wireCallDiagnostics } from 'customDashboard/lib/wavoip/wavoipCallDiagnostics';
+vi.mock('vue-i18n', () => ({
+  useI18n: () => ({ t: key => key }),
+}));
+
+import { useCallsStore } from 'dashboard/stores/calls';
 import {
+  clearActiveCall,
   clearRingingOutgoingCall,
+  setActiveCall,
   setRingingOutgoingCall,
 } from '../useWavoipActiveCall';
+import { wireCallDiagnostics } from 'customDashboard/lib/wavoip/wavoipCallDiagnostics';
 
 describe('useWavoipActiveCall', () => {
   beforeEach(() => {
+    setActivePinia(createPinia());
     vi.clearAllMocks();
+    clearActiveCall();
     clearRingingOutgoingCall();
   });
 
@@ -35,5 +45,31 @@ describe('useWavoipActiveCall', () => {
       secondCall,
       expect.objectContaining({ inboxId: 99 })
     );
+  });
+
+  it('tears down the active call when SDK emits status DISCONNECTED (2.6.3+)', () => {
+    const handlers = {};
+    const sdkCall = {
+      connectionStatus: 'connected',
+      on: vi.fn((event, handler) => {
+        handlers[event] = handler;
+      }),
+      off: vi.fn(),
+    };
+
+    const store = useCallsStore();
+    store.addCall({
+      callSid: 'live_1',
+      provider: 'wavoip',
+      inboxId: 7,
+      isActive: true,
+    });
+
+    setActiveCall(sdkCall, { providerCallId: 'live_1', inboxId: 7 });
+    expect(handlers.status).toBeTypeOf('function');
+
+    handlers.status('DISCONNECTED');
+
+    expect(store.calls.some(c => c.callSid === 'live_1')).toBe(false);
   });
 });

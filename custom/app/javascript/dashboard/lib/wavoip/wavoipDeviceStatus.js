@@ -64,6 +64,22 @@ export function clearWavoipDeviceStatus(inboxId) {
   statusByInbox.delete(inboxId);
 }
 
+/** True when the SDK reported WebSocket `disconnected` for this inbox. */
+export function isWavoipWebSocketDisconnected(inboxId) {
+  if (!inboxId) return false;
+  return ensureEntry(inboxId).connectionStatus.value === 'disconnected';
+}
+
+/**
+ * WebSocket is usable for offer/accept. `null` means status not reported yet
+ * (treat as ok right after connect before the first event).
+ */
+export function isWavoipWebSocketReady(inboxId) {
+  if (!inboxId) return false;
+  const status = ensureEntry(inboxId).connectionStatus.value;
+  return status === 'connected' || status == null;
+}
+
 export function useWavoipDeviceStatus(inboxId) {
   const entry = ensureEntry(inboxId);
   return {

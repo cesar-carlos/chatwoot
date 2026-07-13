@@ -65,7 +65,7 @@ export async function createWavoipClient(options) {
 
 | `WebphoneSettings` | Onde no Chatwoot |
 |--------------------|------------------|
-| `callSettings.displayName` | Recurso do webphone; não está no contrato `startCall` da API 2.6.1 |
+| `callSettings.displayName` | Recurso do webphone; não está no contrato `startCall` da API 2.6.x |
 | `platform` | `'chatwoot'` fixo |
 | `theme` / `widget.*` | N/A — UI Chatwoot |
 | Tokens `localStorage` | **Evitar** — token vem do servidor por inbox |
@@ -91,8 +91,12 @@ stateDiagram-v2
 | Agente **offline** | `removeDevices([token])` e remover listeners |
 | Troca de conta / logout | Remover devices/listeners de todas as instâncias |
 | Navega para inbox não-Wavoip | Manter conexão se agente atende múltiplos inboxes Wavoip |
+| `connectionStatus` → `disconnected` | Banner `DEVICE_DISCONNECTED`; no próximo `connectForInbox` / accept → **force reconnect** (drop client + rebuild) |
+| Token rotacionado no bootstrap | `connectInbox` busca token com `bypassCache: true` quando já havia client — reconecta se mudou |
 
 Implementar em `useWavoipConnection.js` — **não** misturar com lógica de offer/outbound.
+
+**Accept com WS morto (13 jul. 2026):** o card de incoming pode existir só via ActionCable (`awaitingSdkOffer`) enquanto o WebSocket do SDK está `disconnected`. `acceptIncomingCall` chama `connectForInbox` (reconnect + wait até `connected`), depois `waitForPendingOffer` / `offer.accept()`. Falhas tipadas (`DEVICE_DISCONNECTED`, `ACCEPT_OFFER_TIMEOUT`, `ACCEPT_FAILED`) — o card **permanece** para retry (`cleanupAfterBrowserVoiceJoinFailure` retorna `false`).
 
 ---
 
@@ -243,11 +247,13 @@ Manter paridade com WhatsApp/Twilio para o widget:
 
 | Método `useCallSession` | Wavoip |
 |-------------------------|--------|
-| `joinCall` | `offer.accept()` ou noop se já ativa |
+| `joinCall` | `connectForInbox` → `offer.accept()`; erros via `error.i18nKey` |
 | `rejectIncomingCall` | `silenceCallRingtone` → `offer.reject()` → dismiss local |
 | `endCall` | `callActive.end()` |
 | `dismissCall` | inbound Wavoip: `silenceCallRingtone` → reject; demais: dismiss store |
 | `formattedCallDuration` | Timer global existente |
+
+**Falha no join/accept (Wavoip):** teardown do half-open SDK + `removePendingOffer`, mas **não** dismiss do store — o agente pode tentar atender de novo enquanto o chamador ainda toca.
 
 Export auxiliar: `isCallRingtoneSilenced(callSid)` — usado pelo `FloatingCallWidget` para
 suprimir áudio sem remover a notificação visual.
@@ -261,7 +267,7 @@ Não duplicar timer — reusar `globalDurationTimer` em `useCallSession.js`.
 Chaves novas — seguir rule `chatwoot-core`: **somente `en`** em arquivos upstream; traduções `pt_BR` etc. só em `custom/` se o fork mantiver:
 
 - `INBOX_MGMT.WAVOIP_CALL.*` — tile e settings (`en/inboxMgmt.json`)
-- `CONVERSATION.WAVOIP_CALL.*` — erros outbound, `CALLER_ENDED`, `ACCEPTED_ELSEWHERE`, etc.
+- `CONVERSATION.WAVOIP_CALL.*` — erros outbound, `CALLER_ENDED`, `ACCEPTED_ELSEWHERE`, `DEVICE_DISCONNECTED`, `ACCEPT_OFFER_TIMEOUT`, `ACCEPT_FAILED`, etc.
 - `CONVERSATION.VOICE_WIDGET.MUTE_RINGTONE` / `UNMUTE_RINGTONE` — preferência de toque no widget
 - `WAVOIP_CONNECTIVITY.*` — issues de rede
 - `WAVOIP_ONBOARDING.*` — checklist semáforo
@@ -379,7 +385,7 @@ app/javascript/dashboard/          # upstream — widget de voz compartilhado
 | `WavoipRecordingChecklist.vue` | Checklist de gravação (Settings) |
 | `WavoipConversationDeviceBanner.vue` | Banner de device não pronto na conversa |
 
-**Implementados:** `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics, **activeCalls v2.6.1**), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`, `wavoipCallDiagnostics.js`, `wavoipOutboundPreflight.js`, `wavoipOutboundGuard.js`.
+**Implementados:** `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics, **activeCalls v2.6.x**), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`, `wavoipCallDiagnostics.js`, `wavoipOutboundPreflight.js`, `wavoipOutboundGuard.js`.
 
 Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).
 

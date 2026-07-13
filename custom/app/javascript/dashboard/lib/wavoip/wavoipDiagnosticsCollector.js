@@ -2,7 +2,7 @@ import { getWavoipClientEntry } from 'customDashboard/lib/wavoip/wavoipClientReg
 import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 
 const MAX_ENTRIES = 50;
-const WAVOIP_SDK_VERSION = '2.6.1';
+const WAVOIP_SDK_VERSION = '2.6.3';
 
 const iceDiagnostics = [];
 const connectivityIssues = [];

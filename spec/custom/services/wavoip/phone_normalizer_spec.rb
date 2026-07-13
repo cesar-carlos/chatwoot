@@ -37,6 +37,22 @@ RSpec.describe Wavoip::PhoneNormalizer do
     expect(described_class.normalize('56912345678')).to eq('+56912345678')
   end
 
+  it 'parses Argentina local mobile using inbox country hint' do
+    expect(
+      described_class.normalize('91145678901', inbox_phone: '+5491140000000')
+    ).to eq('+5491145678901')
+  end
+
+  it 'parses Mexico local mobile using inbox country hint' do
+    expect(
+      described_class.normalize('5512345678', inbox_phone: '+525512345678')
+    ).to eq('+525512345678')
+  end
+
+  it 'parses Colombia mobile without plus when digits include country code' do
+    expect(described_class.normalize('573001234567')).to eq('+573001234567')
+  end
+
   it 'does not infer +55 when inbox is not Brazilian' do
     expect(
       described_class.normalize('66999050312', inbox_phone: '+14155551234')

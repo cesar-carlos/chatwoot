@@ -53,7 +53,11 @@ class Wavoip::Calls::CallStatusApplier
   end
 
   def persist_status!(call, attrs)
-    assign_joining_agent_if_needed!(call) if attrs[:status] == 'in_progress'
+    # Prefer ACTIVE; also cover completed when ACTIVE was skipped but join
+    # already wrote JoiningAgentCache (GAP-02 webhook fallback).
+    if attrs[:status].in?(%w[in_progress completed])
+      assign_joining_agent_if_needed!(call)
+    end
     call.update!(attrs)
     Wavoip::Calls::CallFinalizer.sync_message_and_conversation!(call)
   end
