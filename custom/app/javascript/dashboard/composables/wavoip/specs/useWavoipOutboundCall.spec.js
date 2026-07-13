@@ -38,6 +38,20 @@ vi.mock('customDashboard/lib/wavoip/wavoipOutboundPreflight', () => ({
     wavoipOutboundBlockedReasonKey(...args),
 }));
 
+vi.mock('customDashboard/lib/wavoip/wavoipOutboundRingback', () => ({
+  unlockWavoipOutboundRingback: vi.fn(),
+  startWavoipOutboundRingback: vi.fn(),
+  stopWavoipOutboundRingback: vi.fn(),
+}));
+
+vi.mock('dashboard/composables/useCallRingtonePreference', () => ({
+  useCallRingtonePreference: () => ({
+    isRingtoneMuted: { value: false },
+    initPreference: vi.fn(),
+    toggleRingtoneMute: vi.fn(),
+  }),
+}));
+
 const toggleStatus = vi.fn().mockResolvedValue({
   data: { payload: { current_status: 'open' } },
 });

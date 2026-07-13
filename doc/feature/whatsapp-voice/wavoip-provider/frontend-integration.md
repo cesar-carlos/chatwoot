@@ -167,7 +167,8 @@ Comportamento implementado em `FloatingCallWidget.vue`, `CallCard.vue`, `useCall
 | Comportamento | Implementação |
 |---------------|---------------|
 | Tocar enquanto inbound não atendida | `ringingInbound` watcher em `FloatingCallWidget` |
-| Parar ao aceitar / encerrar todas | Watcher desliga quando `!ringingInbound \|\| hasActiveCall` |
+| **Ringback outbound Wavoip (13 jul. 2026)** | `unlock` no clique + `start` após `addCall` em `useWavoipOutboundCall` (`wavoipOutboundRingback.js`); widget async não depende de autoplay. Volume `0.45` até `peerAccept` / hangup |
+| Parar ao aceitar / encerrar todas | Watcher desliga quando `!(ringingInbound \|\| ringingWavoipOutbound) \|\| hasActiveCall` |
 | **Outro agente aceitou** | Cable `voice_call.accepted` / SDK `acceptedElsewhere` → `markCallDismissed` + dismiss store + `closeIncomingWavoipOfferNotification` (dismiss mesmo se `isCallJoining`; 2ª aba same-user sem toast) |
 | **Este agente aceitou (aba em background)** | `useWavoipCallSession.acceptIncomingCall` fecha a OS Notification local imediatamente |
 | **Este agente rejeitou** | `rejectIncomingCall` fecha OS Notification + SDK reject + dismiss store |

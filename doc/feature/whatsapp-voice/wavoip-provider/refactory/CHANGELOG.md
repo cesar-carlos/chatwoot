@@ -4,6 +4,14 @@ Resumo condensado de todo o trabalho de correção/qualidade já concluído na i
 Wavoip. Para o texto completo (descrição, código antes/depois, racional) de cada item, veja
 [archive/](./archive/) — mantido só como referência histórica.
 
+## 13 jul. 2026 — ringback outbound Wavoip
+
+| ID | Título | Status |
+|----|--------|--------|
+| UX-RINGBACK-01 | Sem som enquanto outbound “Ligando…” | ✅ ringback no widget (só Wavoip, vol. 0.45) até `peerAccept` |
+
+Arquivos: `wavoipOutboundRingback.js`, `FloatingCallWidget.vue` (`// FORK:`).
+
 ## 13 jul. 2026 — checklist token + docs ops
 
 | ID | Título | Status |

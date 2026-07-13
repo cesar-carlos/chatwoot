@@ -16,6 +16,13 @@ import {
   getWavoipMediaForInbox,
 } from 'customDashboard/composables/wavoip/useWavoipMedia';
 import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+// FORK: Wavoip outbound ringback while destination has not answered
+import {
+  INBOUND_RINGTONE_VOLUME,
+  startWavoipOutboundRingback,
+  stopWavoipOutboundRingback,
+  shouldPlayWavoipOutboundRingback,
+} from 'customDashboard/lib/wavoip/wavoipOutboundRingback';
 import TwilioVoiceClient from 'dashboard/api/channel/voice/twilioVoiceClient';
 import { frontendURL, conversationUrl } from 'dashboard/helper/URLHelper';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
@@ -316,20 +323,17 @@ watch(
   { immediate: true }
 );
 
-// Loop the ringtone while an inbound call is unanswered. Stop the moment any
-// call is active (we joined), every inbound call cleared, or the widget tears
-// down. The watcher only fires on the boolean transitioning, so additional
-// ringing calls arriving while one is already ringing don't restart the audio
-// — they silently stack into the UI without producing a fresh ring.
-// Browser autoplay may reject the first play() if the tab has no prior
-// user gesture; that's fine — the visual widget still surfaces the call.
+// Loop the inbound ringtone while unanswered. FORK: Wavoip outbound ringback
+// is owned by wavoipOutboundRingback.js (started from the click path so
+// autoplay is not blocked by async FloatingCallWidget mount).
 const ringtone = new Audio(RINGTONE_URL);
 ringtone.loop = true;
-ringtone.volume = 1;
+ringtone.volume = INBOUND_RINGTONE_VOLUME;
 
 const stopRingtone = () => {
   ringtone.pause();
   ringtone.currentTime = 0;
+  ringtone.volume = INBOUND_RINGTONE_VOLUME;
 };
 
 // Returns true only for calls this agent hasn't silenced locally. When the
@@ -346,19 +350,43 @@ const ringingInbound = computed(
   () => !isRingtoneMuted.value && incomingCalls.value.some(shouldRingForCall)
 );
 
-watch(
-  () => ringingInbound.value && !hasActiveCall.value,
-  shouldRing => {
-    if (shouldRing) {
-      ringtone.play().catch(() => {});
-    } else {
-      stopRingtone();
-    }
-  },
-  { immediate: true }
+// FORK: soft ringback while Wavoip outbound is unanswered (not Meta/Twilio).
+const ringingWavoipOutbound = computed(
+  () =>
+    !isRingtoneMuted.value &&
+    incomingCalls.value.some(call =>
+      shouldPlayWavoipOutboundRingback(call, {
+        isSilenced: isCallRingtoneSilenced,
+      })
+    )
 );
 
-onBeforeUnmount(stopRingtone);
+watch(
+  () => ({
+    inbound: ringingInbound.value && !hasActiveCall.value,
+    outbound: ringingWavoipOutbound.value && !hasActiveCall.value,
+  }),
+  ({ inbound, outbound }) => {
+    if (inbound) {
+      stopWavoipOutboundRingback();
+      ringtone.volume = INBOUND_RINGTONE_VOLUME;
+      ringtone.play().catch(() => {});
+      return;
+    }
+    stopRingtone();
+    if (outbound) {
+      startWavoipOutboundRingback();
+    } else {
+      stopWavoipOutboundRingback();
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+onBeforeUnmount(() => {
+  stopRingtone();
+  stopWavoipOutboundRingback();
+});
 </script>
 
 <template>
