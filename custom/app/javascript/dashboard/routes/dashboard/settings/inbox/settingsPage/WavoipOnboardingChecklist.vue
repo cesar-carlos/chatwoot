@@ -13,8 +13,12 @@ const { t } = useI18n();
 
 const items = computed(() => {
   const voiceEnabled = props.inbox.voice_enabled === true;
+  // API never exposes the raw device_token; admins get wavoip_device_token_configured.
   const hasToken = Boolean(
-    props.inbox.provider_config?.device_token || props.inbox.device_token
+    props.inbox.wavoip_device_token_configured ??
+      props.inbox.wavoipDeviceTokenConfigured ??
+      props.inbox.provider_config?.device_token ??
+      props.inbox.device_token
   );
   const webhookVerified = !(
     props.inbox.wavoip_setup_pending ?? props.inbox.wavoipSetupPending
