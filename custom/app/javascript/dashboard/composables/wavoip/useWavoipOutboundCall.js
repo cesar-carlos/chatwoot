@@ -21,6 +21,12 @@ import {
   unwrapWavoipSdkResult,
 } from 'customDashboard/lib/wavoip/wavoipSdkResult';
 import { wavoipOutboundBlockedReasonKey } from 'customDashboard/lib/wavoip/wavoipOutboundPreflight';
+import {
+  startWavoipOutboundRingback,
+  stopWavoipOutboundRingback,
+  unlockWavoipOutboundRingback,
+} from 'customDashboard/lib/wavoip/wavoipOutboundRingback';
+import { useCallRingtonePreference } from 'dashboard/composables/useCallRingtonePreference';
 
 const isInitiating = ref(false);
 
@@ -74,23 +80,27 @@ const wireOutgoingEvents = (call, inboxId, translate) => {
   handlers.peerAccept = activeCall => {
     unwire();
     clearRingingOutgoingCall();
+    stopWavoipOutboundRingback();
     setActiveCall(activeCall, { providerCallId: call.id, inboxId });
     useCallsStore().setCallActive(call.id);
   };
   handlers.peerReject = reason => {
     unwire();
     clearRingingOutgoingCall();
+    stopWavoipOutboundRingback();
     useCallsStore().dismissCall(call.id);
     useAlert(formatWavoipPeerRejectError(reason, translate));
   };
   handlers.unanswered = () => {
     unwire();
     clearRingingOutgoingCall();
+    stopWavoipOutboundRingback();
     useCallsStore().dismissCall(call.id);
   };
   handlers.ended = () => {
     unwire();
     clearRingingOutgoingCall();
+    stopWavoipOutboundRingback();
     useCallsStore().removeCall(call.id);
   };
 
@@ -103,6 +113,7 @@ export function useWavoipOutboundCall() {
   const { t } = useI18n();
   const store = useStore();
   const { connectForInbox, ensureDeviceReadiness } = useWavoipConnection();
+  const { isRingtoneMuted, initPreference } = useCallRingtonePreference();
 
   const initiateOutboundCall = async (conversationId, { inboxId, toPhone }) => {
     if (isInitiating.value) return { status: 'locked' };
@@ -113,6 +124,11 @@ export function useWavoipOutboundCall() {
     if (blockedReasonKey) {
       throw new Error(t(blockedReasonKey));
     }
+
+    // Capture the click gesture before any await — FloatingCallWidget is an
+    // async chunk and would otherwise be autoplay-blocked when it mounts.
+    initPreference();
+    unlockWavoipOutboundRingback();
 
     isInitiating.value = true;
     beginOutboundInitiation(inboxId, conversationId);
@@ -161,6 +177,9 @@ export function useWavoipOutboundCall() {
         callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
         provider: VOICE_CALL_PROVIDERS.WAVOIP,
       });
+      if (!isRingtoneMuted.value) {
+        startWavoipOutboundRingback();
+      }
       purgeSpuriousInboundCalls({
         conversationId,
         inboxId,
@@ -173,6 +192,9 @@ export function useWavoipOutboundCall() {
         call_id: providerCallId,
         status: 'started',
       };
+    } catch (error) {
+      stopWavoipOutboundRingback();
+      throw error;
     } finally {
       endOutboundInitiation();
       isInitiating.value = false;
