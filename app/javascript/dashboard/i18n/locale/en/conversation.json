@@ -205,6 +205,8 @@
       "DEVICE_NOT_READY": "Wavoip device is not ready for calls. Try again in a moment.",
       "DEVICE_NOT_LINKED": "Link WhatsApp to your Wavoip device at app.wavoip.com before calling.",
       "DEVICE_DISCONNECTED": "Could not connect to Wavoip (WebSocket failed). Check the device token, your network, and that app.wavoip.com shows the device as connected.",
+      "ACCEPT_OFFER_TIMEOUT": "Could not answer: Wavoip signaling did not become ready in time. Check the WebSocket connection and try again.",
+      "ACCEPT_FAILED": "Could not answer this Wavoip call. Check the connection and try again.",
       "DEVICE_CONNECTING": "Wavoip device is still connecting. Complete WhatsApp pairing in app.wavoip.com, then try again.",
       "DEVICE_HIBERNATING": "Wavoip device is asleep. Wake it up in app.wavoip.com, then try again.",
       "DEVICE_WAITING_PAYMENT": "Wavoip account requires payment. Resolve billing at app.wavoip.com.",

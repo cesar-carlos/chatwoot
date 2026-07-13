@@ -29,11 +29,19 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
 
   private
 
+  # Join runs after the SDK accept succeeds. Persist accepted_by_agent_id here
+  # (not only on PATCH) so a failed follow-up accept still attributes the call
+  # and stops multi-agent ring via ClaimGuard (GAP-02).
   def record_join_intent!
+    deferred = []
     @call.with_lock do
       raise_if_claimed_by_other_agent!
       ensure_join_claim!
+      next if @call.accepted_by_agent_id == Current.user.id
+
+      accept_call_for_current_user!(deferred: deferred)
     end
+    run_deferred!(deferred)
   end
 
   def record_agent_acceptance!

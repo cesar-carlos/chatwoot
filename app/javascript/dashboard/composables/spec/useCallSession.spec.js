@@ -25,7 +25,7 @@ vi.mock('customDashboard/lib/voice/voiceSessionRegistry', async () => {
       if (call?.provider === 'wavoip') {
         teardownWavoipActiveCallMock();
         removePendingOfferMock(callSid);
-        return true;
+        return false;
       }
       return false;
     },
@@ -75,7 +75,7 @@ describe('useCallSession Wavoip actions', () => {
     connectForInboxMock.mockResolvedValue(undefined);
   });
 
-  it('cleans up store on Wavoip join failure', async () => {
+  it('keeps the ringing card on Wavoip join failure so the agent can retry', async () => {
     acceptIncomingCallMock.mockRejectedValue(new Error('accept failed'));
     const store = useCallsStore();
     store.addCall({
@@ -91,7 +91,35 @@ describe('useCallSession Wavoip actions', () => {
 
     expect(teardownWavoipActiveCallMock).toHaveBeenCalled();
     expect(removePendingOfferMock).toHaveBeenCalledWith('join_fail_1');
-    expect(store.calls.some(c => c.callSid === 'join_fail_1')).toBe(false);
+    expect(store.calls.some(c => c.callSid === 'join_fail_1')).toBe(true);
+  });
+
+  it('surfaces Wavoip i18nKey alerts on join failure', async () => {
+    const { useAlert } = await import('dashboard/composables');
+    acceptIncomingCallMock.mockRejectedValue(
+      Object.assign(new Error('disconnected'), {
+        i18nKey: 'CONVERSATION.WAVOIP_CALL.DEVICE_DISCONNECTED',
+      })
+    );
+    const store = useCallsStore();
+    store.addCall({
+      callSid: 'join_fail_i18n',
+      inboxId: 5,
+      conversationId: 1,
+      provider: VOICE_CALL_PROVIDERS.WAVOIP,
+      callDirection: VOICE_CALL_DIRECTION.INCOMING,
+    });
+
+    const { joinCall } = useCallActions();
+    await joinCall({
+      conversationId: 1,
+      inboxId: 5,
+      callSid: 'join_fail_i18n',
+    });
+
+    expect(useAlert).toHaveBeenCalledWith(
+      'CONVERSATION.WAVOIP_CALL.DEVICE_DISCONNECTED'
+    );
   });
 
   it('routes Wavoip inbound dismiss through SDK reject with store cleanup', async () => {

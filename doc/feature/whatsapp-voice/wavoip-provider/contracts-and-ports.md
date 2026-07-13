@@ -605,11 +605,14 @@ rodada; o que resta são gates operacionais (W1, G0.4, E2E browser) e melhorias 
 |------|------|
 | W1 — prova live webhook CALL no painel Wavoip | Ops / E2E |
 | G0.4 — multiagente browser (2 abas) | E2E |
-| O1 / D1 / F1 — outbound bidirecional, dismiss, accept fail | E2E browser |
+| O1 / D1 / F1 — outbound bidirecional, dismiss, accept fail | E2E browser (F1: card permanece no fail — 13 jul.) |
 | Reativar webhook Wavoip após 502 | Ops (runbook) |
 | Split composables (`wavoipSdkSession`, etc.) | Refactor futuro |
 | Payloads reais no spike → fixtures | Doc |
 | Adapter MetaCloud / TURN UI admin | Meta backlog — adapter ✅; TURN UI pendente |
+| SDK `@wavoip/wavoip-api` | ✅ `2.6.3` (13 jul. 2026) |
+| GAP-02 attribution backend | ✅ (13 jul. — join persiste + webhook `completed`) |
+| GAP-04 PhoneNormalizer LATAM | ✅ (13 jul. — Phonelib local + specs) |
 
 ### 12.6 Melhorias Meta (não bloqueiam Wavoip)
 

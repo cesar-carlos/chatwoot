@@ -37,8 +37,15 @@ class Wavoip::PhoneNormalizer
     parsed_us = parse_as_us_when_nanp_on_brazilian_inbox(phone, country, digits)
     return parsed_us if parsed_us
 
+    return unless country
+
     parsed = Phonelib.parse(phone, country)
-    parsed.e164 if parsed.valid?
+    return parsed.e164 if parsed.valid?
+
+    # Local national numbers often arrive as digits-only; retry with the
+    # inbox country so LATAM mobiles without a leading country code resolve.
+    parsed_digits = Phonelib.parse(digits, country)
+    parsed_digits.e164 if parsed_digits.valid?
   end
   private_class_method :parse_with_country
 

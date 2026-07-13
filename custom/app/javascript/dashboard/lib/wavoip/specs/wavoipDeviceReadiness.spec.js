@@ -8,6 +8,10 @@ import {
 import {
   getWavoipDeviceStatus,
   isWavoipDeviceAtChannelCapacity,
+  isWavoipWebSocketDisconnected,
+  isWavoipWebSocketReady,
+  setWavoipConnectionStatus,
+  clearWavoipDeviceStatus,
 } from '../wavoipDeviceStatus';
 
 vi.mock('customDashboard/lib/wavoip/wavoipDiagnosticsCollector', () => ({
@@ -72,5 +76,24 @@ describe('wavoipDeviceReadiness', () => {
 
     expect(wakeUp).not.toHaveBeenCalled();
     expect(result.ready).toBe(true);
+  });
+});
+
+describe('wavoipDeviceStatus WebSocket helpers', () => {
+  beforeEach(() => {
+    clearWavoipDeviceStatus(42);
+  });
+
+  it('treats connected and unknown status as ready', () => {
+    expect(isWavoipWebSocketReady(42)).toBe(true);
+    setWavoipConnectionStatus(42, 'connected');
+    expect(isWavoipWebSocketReady(42)).toBe(true);
+    expect(isWavoipWebSocketDisconnected(42)).toBe(false);
+  });
+
+  it('detects disconnected WebSocket status', () => {
+    setWavoipConnectionStatus(42, 'disconnected');
+    expect(isWavoipWebSocketDisconnected(42)).toBe(true);
+    expect(isWavoipWebSocketReady(42)).toBe(false);
   });
 });

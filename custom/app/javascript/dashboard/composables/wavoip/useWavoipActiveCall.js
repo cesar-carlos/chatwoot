@@ -16,6 +16,7 @@ let activeDiagnosticsUnwire = null;
 let ringingDiagnosticsUnwire = null;
 let activeConnectionStatusHandler = null;
 let activeEndedHandler = null;
+let activeStatusHandler = null;
 const isMuted = ref(false);
 const mediaConnectionStatus = ref(null);
 
@@ -27,9 +28,13 @@ const clearActiveCallHandlers = () => {
     if (activeEndedHandler) {
       activeSdkCall.off?.('ended', activeEndedHandler);
     }
+    if (activeStatusHandler) {
+      activeSdkCall.off?.('status', activeStatusHandler);
+    }
   }
   activeConnectionStatusHandler = null;
   activeEndedHandler = null;
+  activeStatusHandler = null;
   activeDiagnosticsUnwire?.();
   activeDiagnosticsUnwire = null;
 };
@@ -108,15 +113,28 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
   activeConnectionStatusHandler = status => {
     mediaConnectionStatus.value = status;
   };
-  activeEndedHandler = () => {
+  const teardownActiveFromSdk = () => {
     if (activeSdkCall !== sdkCall) return;
     const endedCallId = activeProviderCallId;
     clearActiveCall();
     removeWavoipCallFromStore(endedCallId);
   };
+  activeEndedHandler = teardownActiveFromSdk;
+  // SDK 2.6.3+: call may emit status DISCONNECTED without a separate `ended`.
+  activeStatusHandler = status => {
+    if (
+      status === 'DISCONNECTED' ||
+      status === 'ENDED' ||
+      status === 'FAILED' ||
+      status === 'REJECTED'
+    ) {
+      teardownActiveFromSdk();
+    }
+  };
 
   sdkCall?.on?.('connectionStatus', activeConnectionStatusHandler);
   sdkCall?.on?.('ended', activeEndedHandler);
+  sdkCall?.on?.('status', activeStatusHandler);
 };
 
 export const getActiveProviderCallId = () => activeProviderCallId;
