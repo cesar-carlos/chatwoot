@@ -4,6 +4,13 @@ Resumo condensado de todo o trabalho de correção/qualidade já concluído na i
 Wavoip. Para o texto completo (descrição, código antes/depois, racional) de cada item, veja
 [archive/](./archive/) — mantido só como referência histórica.
 
+## 13 jul. 2026 — checklist token + docs ops
+
+| ID | Título | Status |
+|----|--------|--------|
+| BUG-CHECKLIST-01 | Semáforo “Token” ⚠️ mesmo com token OK | ✅ usa `wavoip_device_token_configured` |
+| DOC | Runbook checklist Vue + `STATUS_STALE` por token criptografado sem chaves | ✅ |
+
 ## 13 jul. 2026 — GAP-02 / GAP-04 + accept recorder
 
 | ID | Título | Status |

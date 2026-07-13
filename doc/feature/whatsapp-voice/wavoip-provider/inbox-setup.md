@@ -340,7 +340,9 @@ A tab **Chamadas** (`WavoipCallingPage.vue`) expõe painel de device, inbound to
 | `current_user_inbox_member` | Membro da aba Agentes para o usuário atual |
 | `provider_config` | Slice com chaves de roteamento (merge seguro no PATCH) |
 
-Checklist de onboarding (semáforo): ver [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo) — verificação manual via Settings e painel Wavoip; não há componente dedicado no MVP.
+Checklist de onboarding (semáforo): `WavoipOnboardingChecklist.vue` em Settings → Chamadas.
+O passo “Token configurado” usa `wavoip_device_token_configured` (a API **nunca** serializa
+`device_token` bruto). Detalhes: [operations-runbook.md](./operations-runbook.md#checklist-de-onboarding-semáforo).
 
 Campos editáveis:
 

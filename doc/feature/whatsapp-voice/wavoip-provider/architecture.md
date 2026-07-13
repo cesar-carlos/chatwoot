@@ -73,7 +73,7 @@ Tabela sugerida: `channel_wavoip` (espelha padrão `channel_*`).
 |-------|-----|
 | `phone_number` | Número E.164, único em `channel_wavoip` |
 | `account_id` | Conta |
-| `device_token` | Credencial dedicada; criptografar quando configurado |
+| `device_token` | Credencial dedicada; `encrypts` só se `Chatwoot.encryption_configured?` (`ACTIVE_RECORD_ENCRYPTION_*`). Sem as chaves, ciphertext no DB quebra `devices.wavoip.com/{token}/…` — regravar plaintext ou restaurar chaves |
 | `webhook_key` | Chave opaca rotacionável para resolver o canal |
 | `provider_config` (jsonb) | Preferências não secretas: `inbound_calls_enabled`, `incoming_call_include_administrators`, `incoming_call_offline_fallback`, `id_session`, `device_status`, `webhook_verified_at` |
 
