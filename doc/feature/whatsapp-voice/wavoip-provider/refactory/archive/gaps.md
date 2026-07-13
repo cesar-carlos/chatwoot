@@ -13,15 +13,15 @@ esperados em produção não eram tratados corretamente.
   `isWavoipSdkCallOwned` no frontend + `defer_outbound_ended_broadcast?` no backend.
 - **GAP-01** · `offline_fallback: 'none'` não bloqueava a escalação por timeout — ✅ Corrigido
   (26 jun.): `escalated_users` retorna `User.none` quando `offline_fallback == 'none'`.
-- **GAP-02** · `accepted_by_agent_id` podia não ser persistido sem erro visível — ⚠️ Parcial
-  (04 jul.): retry com backoff implementado; falha após 3 tentativas ainda só loga
-  `console.warn` (sem alerta de UI). Backlog: mover a responsabilidade de attribution para o
-  backend via `JoiningAgentCache` ao invés de depender do `PATCH` do browser.
+- **GAP-02** · `accepted_by_agent_id` podia não ser persistido sem erro visível — ✅ Corrigido
+  (13 jul. 2026): `POST …/join` persiste attribution + broadcast (não depende só do PATCH);
+  `AssignAcceptedAgentService` no webhook em `in_progress` **e** `completed`; alerta UI
+  `ACCEPT_RECORD_FAILED` em todos os flush paths; lookup por `callSid`/`wavoipOfferId`.
 - **GAP-03** · Token rotacionado não reconectava o SDK — ✅ Corrigido: `wavoipSdkSyncKey` inclui
   hash do token; `syncConnections` força reconexão quando diverge.
-- **GAP-04** · `PhoneNormalizer` assumia Brasil para qualquer inbox com prefixo 55 — ⚠️ Parcial
-  (04 jul.): specs BR/US adicionados; `Phonelib` ainda não substitui a heurística `+55` para
-  todos os casos LATAM. Backlog: avaliar `Phonelib.parse(phone, country_hint)` completo.
+- **GAP-04** · `PhoneNormalizer` assumia Brasil para qualquer inbox com prefixo 55 — ✅ Corrigido
+  (13 jul. 2026): prefixos LATAM + Phonelib com country hint (incl. retry em dígitos locais);
+  specs BR/US/AR/MX/CL/CO.
 - **GAP-05** · `ring_timeout_seconds` sem limite máximo — ✅ Corrigido: validação `<= 300` no model.
 - **GAP-06** · Listener `statusChanged` podia vazar se `device.on()` não retornasse unsubscribe —
   ✅ Corrigido: handler guardado + fallback `device.off`.
@@ -37,5 +37,5 @@ esperados em produção não eram tratados corretamente.
   `recipients_base_scope` como escopo único de destinatários elegíveis (membros + admins quando
   configurado), usado em `online_member_users`, `busy_agents` e `broad_fallback_scope`.
 
-Itens ⚠️ parciais (GAP-02, GAP-04) permanecem como backlog de baixo risco — não bloqueiam
-produção, documentados para retomada futura se o volume de chamadas internacionais crescer.
+Itens ⚠️ parciais foram fechados em 13 jul. 2026 (GAP-02, GAP-04). O que resta no backlog
+de produto/ops está em [contracts-and-ports.md §12.5](../../contracts-and-ports.md).

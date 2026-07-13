@@ -908,7 +908,7 @@
         "LOGOUT_CONFIRM": "Desconectar o WhatsApp deste dispositivo? Será necessário parear novamente.",
         "LINKED_PHONE": "Número vinculado",
         "RECONNECT": "Reconectar (escanear QR)",
-        "STATUS_STALE": "Não foi possível verificar com a Wavoip agora — o status abaixo pode estar desatualizado. Use Reconectar para escanear o QR code.",
+        "STATUS_STALE": "Não foi possível verificar com a Wavoip agora — o status abaixo pode estar desatualizado. Use Reconectar para escanear o QR code, ou Reiniciar dispositivo se o pareamento continuar travado.",
         "SERVICE_UNAVAILABLE": "O serviço do dispositivo Wavoip está temporariamente indisponível. Aguarde alguns minutos e tente novamente, ou verifique o dispositivo no painel Wavoip.",
         "ACTION_FAILED": "Não foi possível concluir esta ação no dispositivo. Tente novamente ou use Copiar diagnóstico para suporte.",
         "ACTIVE_CALLS_LABEL": "Chamadas ativas",

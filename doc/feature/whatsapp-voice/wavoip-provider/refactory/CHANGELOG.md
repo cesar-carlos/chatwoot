@@ -4,6 +4,39 @@ Resumo condensado de todo o trabalho de correção/qualidade já concluído na i
 Wavoip. Para o texto completo (descrição, código antes/depois, racional) de cada item, veja
 [archive/](./archive/) — mantido só como referência histórica.
 
+## 13 jul. 2026 — GAP-02 / GAP-04 + accept recorder
+
+| ID | Título | Status |
+|----|--------|--------|
+| GAP-02 | Attribution só no PATCH do browser | ✅ `POST …/join` já persiste `accepted_by_agent_id` + broadcast; webhook fallback também em `completed` |
+| GAP-04 | `PhoneNormalizer` LATAM local | ✅ retry Phonelib com dígitos + country hint; specs AR/MX/CO |
+| BUG-ACCEPT-ID | Flush attribution falhava quando só `wavoipOfferId` batia | ✅ `findDbCallId` resolve `callSid` **ou** `wavoipOfferId` |
+
+## 13 jul. 2026 — SDK 2.6.3 + painel device + accept WS
+
+| ID | Título | Status |
+|----|--------|--------|
+| SDK | Bump `@wavoip/wavoip-api` `2.6.1` → `2.6.3` | ✅ tipos iguais; FE trata `status` `DISCONNECTED` |
+| BUG-WS-01/02 | Accept com WebSocket morto | ✅ reconnect + toast + card retry |
+| BUG-PANEL-01 | Wake/Reconnect/Restart com comportamento errado | ✅ matriz: Wake só hibernating; Reconnect soft QR+SDK; Restart HTTP |
+| DOC | Runbook + sdk-reference matriz de botões; F1; architecture | ✅ |
+
+Ver [operations-runbook.md](../operations-runbook.md#botões-do-painel-de-dispositivo-settings--chamadas) · [sdk-reference.md](../sdk-reference.md).
+
+## 13 jul. 2026 — accept com WebSocket `disconnected`
+
+**Sintoma:** banner `DEVICE_DISCONNECTED` + spinner ao atender; card existia via cable sem offer SDK.
+
+| ID | Título | Severidade | Status |
+|----|--------|------------|--------|
+| BUG-WS-01 | Accept reusava client com WS morto | Alta | ✅ force reconnect em `connectForInbox` |
+| BUG-WS-02 | Toast genérico / card sumia no fail | Média | ✅ `i18nKey` + card permanece para retry |
+| IMP-WS-01 | Token rotacionado mascarado pelo bootstrap cache 15s | Média | ✅ `bypassCache` ao revalidar client conectado |
+
+Arquivos: `useWavoipConnection.js`, `useWavoipCallSession.js`, `useCallSession.js`, `voiceSessionRegistry.js`, i18n `ACCEPT_OFFER_TIMEOUT` / `ACCEPT_FAILED`.
+
+Ver [operations-runbook.md](../operations-runbook.md#atender-falha--banner-websocket--spinner-13-jul-2026) · [frontend-integration.md §4](../frontend-integration.md#4-lifecycle-por-agente).
+
 ## 26 jun. – 03 jul. 2026 — revisão inicial (32/32 concluído)
 
 Revisão de código cobrindo toda a implementação `custom/**/wavoip/**` das fases 1–4.
@@ -19,9 +52,9 @@ Suite de regressão: 267 RSpec (voice scope) + ~165 Vitest.
 | BUG-06 | Botão "Acordar dispositivo" não chamava `device.wakeUp()` | Média | ✅ |
 | GAP-OUTBOUND-01 | Widget outbound sumia com SDK ainda tocando | Alta | ✅ |
 | GAP-01 | `offline_fallback: 'none'` não bloqueava escalação | Alta | ✅ |
-| GAP-02 | `accepted_by_agent_id` sem retry | Alta | ✅ alerta UI em todos os flush paths |
+| GAP-02 | `accepted_by_agent_id` sem retry | Alta | ✅ join persiste attribution; alerta UI; fallback webhook |
 | GAP-03 | Token rotacionado não reconectava SDK | Média | ✅ |
-| GAP-04 | `PhoneNormalizer` assume Brasil | Média | ✅ prefixos LATAM + specs MX/CL |
+| GAP-04 | `PhoneNormalizer` assume Brasil | Média | ✅ Phonelib + LATAM local + specs |
 | GAP-05 | `ring_timeout_seconds` sem limite máximo | Baixa | ✅ |
 | GAP-06 | Listener `statusChanged` podia vazar | Baixa | ✅ |
 | GAP-07 | `assignee` ≡ `assignee_or_inbox_members` | Baixa | ✅ |

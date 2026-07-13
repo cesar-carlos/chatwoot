@@ -172,4 +172,22 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
 
     expect(call.reload.accepted_by_agent_id).to eq(agent.id)
   end
+
+  it 'assigns joining agent from cache when inbound completes without ACTIVE' do
+    agent = create(:user, account: account)
+    call = create_call(direction: :incoming, status: 'in_progress', started_at: 1.minute.ago)
+    Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
+
+    applier_for(
+      build_event(
+        direction: :incoming,
+        external_status: 'ENDED',
+        duration_seconds: 30,
+        from_phone: '+15550001111',
+        to_phone: channel.phone_number
+      )
+    ).apply!(call, broadcast: true)
+
+    expect(call.reload.accepted_by_agent_id).to eq(agent.id)
+  end
 end

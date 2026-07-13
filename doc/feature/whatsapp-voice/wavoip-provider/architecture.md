@@ -289,7 +289,7 @@ export function useWavoipCallSession() {
 | `composables/wavoip/useWavoipOutboundCall.js` | ~100 | `startCall`; eventos `peerAccept`/`peerReject` |
 | `composables/wavoip/useWavoipActiveCall.js` | ~80 | `mute`/`end`; subscribe `ended` |
 | `composables/wavoip/useWavoipCallSession.js` | ~60 | Facade |
-| `composables/wavoip/useWavoipDevicePanel.js` | ~150 | Status básico no MVP; QR, `pairingCode`, restart/logout pós-MVP |
+| `WavoipDevicePanel.vue` + `useWavoipQrSession.js` | painel Settings | Status, QR (`qrCodeChanged` + HTTP), pairing, wakeUp, restart/logout HTTP |
 | `composables/wavoip/useWavoipNotifications.js` | ~100 | OS Notification quando aba sem foco |
 | `lib/wavoip/callStatusUI.js` | ~60 | Map SDK `CallStatus` → widget (não misturar com Rails) |
 | `lib/wavoip/wavoipDiagnosticsCollector.js` | ~120 | `iceDiagnostics`, `connectivityIssue`, `stats` (Fase 5) |

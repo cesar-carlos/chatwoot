@@ -147,6 +147,49 @@ describe('WavoipDevicePanel', () => {
     expect(setIntervalSpy).toHaveBeenCalled();
   });
 
+  it('shows Wake only while hibernating, not for connecting/close', async () => {
+    const connecting = mountPanel({ device_status: 'connecting' });
+    await flushPromises();
+    const wakeWhileConnecting = connecting
+      .findAll('next-button-stub')
+      .find(
+        button =>
+          button.attributes('label') ===
+          'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAKE_UP'
+      );
+    expect(wakeWhileConnecting).toBeFalsy();
+
+    const hibernating = mountPanel({ device_status: 'hibernating' });
+    await flushPromises();
+    const wakeWhileHibernating = hibernating
+      .findAll('next-button-stub')
+      .find(
+        button =>
+          button.attributes('label') ===
+          'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAKE_UP'
+      );
+    expect(wakeWhileHibernating).toBeTruthy();
+  });
+
+  it('opens the QR modal without a hard restart when clicking Reconnect', async () => {
+    const wrapper = mountPanel({ device_status: 'connecting' });
+    await flushPromises();
+
+    const reconnectButton = wrapper
+      .findAll('next-button-stub')
+      .find(
+        button =>
+          button.attributes('label') ===
+          'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RECONNECT'
+      );
+    await reconnectButton.trigger('click');
+    await flushPromises();
+
+    expect(wrapper.vm.isQrModalOpen).toBe(true);
+    expect(wrapper.vm.qrModalFetchFresh).toBe(false);
+    expect(getWavoipQr).not.toHaveBeenCalled();
+  });
+
   it('wakes the device via the SDK when clicking "Wake up" (not just a REST status check)', async () => {
     const wrapper = mountPanel({ device_status: 'hibernating' });
     await flushPromises();

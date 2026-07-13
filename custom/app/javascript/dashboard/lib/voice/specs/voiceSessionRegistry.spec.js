@@ -48,6 +48,7 @@ import {
   VOICE_SESSION_REGISTRY,
 } from '../voiceSessionRegistry';
 import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
+import { removePendingOffer } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 
 describe('voiceSessionRegistry', () => {
@@ -117,15 +118,17 @@ describe('voiceSessionRegistry', () => {
       ).toBe(false);
     });
 
-    it('cleans up Wavoip join failures and dismisses the store entry', () => {
+    it('cleans up Wavoip join failures but keeps the ringing card for retry', () => {
       expect(
         cleanupAfterBrowserVoiceJoinFailure(
-          { provider: VOICE_CALL_PROVIDERS.WAVOIP },
+          { provider: VOICE_CALL_PROVIDERS.WAVOIP, wavoipOfferId: 'offer_1' },
           'sid_1'
         )
-      ).toBe(true);
+      ).toBe(false);
       expect(endSdkActiveCall).toHaveBeenCalled();
       expect(clearSdkActiveCall).toHaveBeenCalled();
+      expect(removePendingOffer).toHaveBeenCalledWith('sid_1');
+      expect(removePendingOffer).toHaveBeenCalledWith('offer_1');
     });
   });
 

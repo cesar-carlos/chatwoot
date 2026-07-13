@@ -60,7 +60,7 @@
 
 | Gate | Result | Evidence |
 |------|--------|----------|
-| **G0.1 SDK** | ✅ Pass | `@wavoip/wavoip-api@2.6.1`; device `open` via `statusChanged`; `contact.phone` = `556697193168`. |
+| **G0.1 SDK** | ✅ Pass | `@wavoip/wavoip-api@2.6.3` (bump 13 jul.; spike original 2.6.1); device `open` via `statusChanged`; `contact.phone` = `556697193168`. |
 | **G0.2 IDs** | ⚠️ Partial | Live SDK ids captured (`4BD9D82E…`, `9E144343…`, prior `521F44B4…`). **No live CALL webhook** during any call window. Simulated curl with SDK id → Call + voice_call created; pipeline works when bytes arrive. |
 | **G0.3 Webhook bruto** | ⚠️ Partial | Public `POST {FRONTEND_URL}/webhooks/wavoip/{key}` → **202** (curl). **Zero** nginx POSTs from Wavoip origins during live calls (21:03–21:05 UTC). |
 | **G0.4 Multiagente** | ❌ Not tested | Two-agent `acceptedElsewhere` not exercised. |
@@ -208,7 +208,7 @@ Fixtures live: [call_create_incoming_live_caller_receiver.json](./fixtures/call_
 | O2 | Outbound webhook | POST OUTCOMING CALLING caller/receiver | `Call` outgoing ringing | **Pass** (automated) |
 | M1 | Multi-agente | 2 agentes online | B recebe toast; widget some via `voice_call.accepted` + SDK `acceptedElsewhere` | _pending (browser)_ |
 | D1 | Dismiss ✕ inbound | Agent dismiss sem aceitar | SDK `reject`; contato para de tocar | _pending (browser)_ |
-| F1 | Accept falha | Timeout / erro no Accept | Widget some; sem ring preso | _pending (browser)_ |
+| F1 | Accept falha | Timeout / erro no Accept | Toast tipado (`DEVICE_DISCONNECTED` / `ACCEPT_OFFER_TIMEOUT` / `ACCEPT_FAILED`); card **permanece** para retry (13 jul. 2026) | _pending (browser)_ |
 | W1 | Webhook | Toggle ON no painel Wavoip + evento **CALL** | Settings **Webhook verified**; histórico Wavoip mostra linha **CALL** (não só DEVICE) | _pending live panel_ |
 
 `bin/wavoip-pilot-verify`: checks in-process W1 + I1 (peer) + I2/O2 (caller/receiver). HTTP curl usa payload caller/receiver (expect 202).

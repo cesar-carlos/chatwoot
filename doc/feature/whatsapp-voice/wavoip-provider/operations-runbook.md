@@ -137,6 +137,46 @@ Ver roteamento completo: [inbox-setup.md §3.6](./inbox-setup.md#36-seção--rot
 
 Ver [frontend-integration.md §6.4](./frontend-integration.md#64-ringtone-e-preferências-do-agente).
 
+### Botões do painel de dispositivo (Settings → Chamadas)
+
+| Botão | Quando usar |
+|-------|-------------|
+| **Reconectar (escanear QR)** | Device `close` / `connecting` / status desatualizado — abre QR **sem** reiniciar o device |
+| **Acordar dispositivo** | Só quando status é **hibernating** — `wakeUp()` no SDK |
+| **Reiniciar dispositivo** | Pareamento travado / QR não aparece — confirma e chama HTTP restart + QR |
+| **Logout** | Desvincular WhatsApp (só com device `open`) |
+
+Se o banner *status desatualizado* (`STATUS_STALE`) aparecer: tente **Reconectar**; se o QR não carregar, use **Reiniciar**.
+
+Ver [sdk-reference.md §2.5](./sdk-reference.md#25-painel-settings--matriz-de-botões-13-jul-2026).
+
+### Atender falha / banner WebSocket + spinner (13 jul. 2026)
+
+**Sintoma:** card “Chamada recebida” aparece; banner vermelho *Não foi possível conectar ao Wavoip (falha no WebSocket)*; ao atender, o botão verde fica em loading e a ligação não sobe.
+
+| Causa | Detalhe |
+|-------|---------|
+| Dual-path inbound | ActionCable (`voice_call.incoming`) cria o card mesmo sem SDK; atender exige `offer.accept()` no WebSocket |
+| Client em cache com WS morto | `connectionStatus === 'disconnected'` mas `connectedInboxIds` ainda tinha o inbox — accept reusava client inútil |
+| Offer nunca chega | Após reconnect, `waitForPendingOffer` estoura (~10s) se a Wavoip não reemitir a offer |
+
+| Comportamento esperado (código atual) | |
+|---------------------------------------|---|
+| Banner | `FloatingCallWidget` → `DEVICE_DISCONNECTED` quando `connectionStatus === 'disconnected'` |
+| No accept | `connectForInbox` força reconnect + espera WS `connected`; depois `offer.accept()` |
+| Toast se falhar | `DEVICE_DISCONNECTED` / `ACCEPT_OFFER_TIMEOUT` / `ACCEPT_FAILED` (não o genérico `CALL_FAILED`) |
+| Card após falha | **Permanece** para o agente tentar de novo |
+
+**Checklist ops:**
+
+1. [app.wavoip.com](https://app.wavoip.com) → device conectado / WhatsApp `open`
+2. Agente **online** no dashboard; F5 se o banner persistir
+3. Rede/VPN/firewall — testar outra rede
+4. Console: `Wavoip offer timeout` / `DEVICE_DISCONNECTED` / `ACCEPT_FAILED`
+5. Settings → Chamadas: token correto; se rotacionou no painel, salvar de novo no inbox
+
+Ver [frontend-integration.md §4](./frontend-integration.md#4-lifecycle-por-agente) · [sdk-reference.md §7](./sdk-reference.md#7-dois-vocabulários-de-status-crítico).
+
 ### Webhook não chega
 
 | Causa | Ação |

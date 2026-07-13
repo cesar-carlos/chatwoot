@@ -263,7 +263,11 @@ const buildCallActions = ({
 
       return { conferenceSid: joinResponse?.conference_sid };
     } catch (error) {
-      useAlert(error?.response?.data?.error || t('CONTACT_PANEL.CALL_FAILED'));
+      useAlert(
+        error?.response?.data?.error ||
+          (error?.i18nKey ? t(error.i18nKey) : null) ||
+          t('CONTACT_PANEL.CALL_FAILED')
+      );
       if (error?.response?.status === 409) {
         TwilioVoiceClient.endClientCall();
         markDismissed(callSid);

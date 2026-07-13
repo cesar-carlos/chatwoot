@@ -222,8 +222,11 @@ const handleWakeUp = async () => {
       panelOpenedSdkConnection = true;
     }
     await refreshConnection({ forceLiveCheck: true });
+    // Wake is only for hibernation. If WhatsApp still isn't open (e.g. session
+    // dropped to close), fall through to the QR pairing flow — without a hard
+    // restart so Restart remains the explicit destructive action.
     if (!isConnected.value) {
-      openQrModal({ fresh: true });
+      openQrModal({ fresh: false });
     }
   } catch (error) {
     showDeviceActionError(error);
@@ -371,10 +374,10 @@ onBeforeUnmount(() => {
           sm
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RECONNECT')"
           :disabled="isBusy"
-          @click="openQrModal({ fresh: true })"
+          @click="openQrModal({ fresh: false })"
         />
         <NextButton
-          v-if="isHibernating || !isConnected"
+          v-if="isHibernating"
           sm
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAKE_UP')"
           :is-loading="isWaking"
