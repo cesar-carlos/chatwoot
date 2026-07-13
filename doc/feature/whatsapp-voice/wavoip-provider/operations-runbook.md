@@ -71,18 +71,17 @@ Sidekiq: `Wavoip::ProcessWebhookJob` enfileirado após POST válido (sem payload
 
 ## Checklist de onboarding (semáforo)
 
-Verificação manual — **não há componente Vue dedicado no MVP**. Use **Settings → Chamadas**
-(`WavoipCallingPage.vue`) para URL/status do webhook e o alerta pós-criação em `Wavoip.vue`
-para copiar a URL durante o setup.
+Componente: `WavoipOnboardingChecklist.vue` em **Settings → Chamadas**
+(`WavoipCallingPage.vue`). O semáforo usa flags da API — **nunca** o valor bruto de
+`device_token` (a listagem não o expõe).
 
 | # | Passo | Como verificar |
 |---|-------|----------------|
-| 1 | Token configurado | `wavoip_device_token_configured` na API ou Settings |
+| 1 | Token configurado | `wavoip_device_token_configured` (admin) — **não** `provider_config.device_token` |
 | 2 | Webhook no painel Wavoip | `wavoip_setup_pending: false` após primeiro evento válido |
-| 3 | Dispositivo `open` | Status no painel [app.wavoip.com](https://app.wavoip.com) → Devices |
-| 4 | Número confere | `contact.phone` do device = `phone_number` do inbox |
-| 5 | Agente online | Availability = online no dashboard |
-| 6 | `channel_voice` habilitado | Super admin / plano |
+| 3 | Dispositivo `open` | Status live no painel device / `provider_config.device_status` |
+| 4 | Chamadas de voz habilitadas | `voice_enabled` |
+| 5 | Chamadas recebidas habilitadas | `inbound_calls_enabled` |
 
 Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 
@@ -147,6 +146,13 @@ Ver [frontend-integration.md §6.4](./frontend-integration.md#64-ringtone-e-pref
 | **Logout** | Desvincular WhatsApp (só com device `open`) |
 
 Se o banner *status desatualizado* (`STATUS_STALE`) aparecer: tente **Reconectar**; se o QR não carregar, use **Reiniciar**.
+
+| Causa adicional | Sintoma nos logs | Ação |
+|-----------------|------------------|------|
+| `device_token` criptografado no DB sem chaves `ACTIVE_RECORD_ENCRYPTION_*` | `[WAVOIP] all_info failed … URI::InvalidURIError bad URI … {"p":…}` | Colar de novo o token **em texto puro** no Settings (encryption desligada grava plaintext) **ou** restaurar as chaves usadas na criptografia e reiniciar PM2 |
+| Token inválido / rotacionado no painel Wavoip | `all_info` 401/404 | Regenerar token em app.wavoip.com → salvar no inbox |
+
+**Checklist ⚠️ “Token do dispositivo” com device Conectado:** falso negativo antigo — o checklist lia `device_token` (nunca exposto). Desde 13 jul. 2026 usa `wavoip_device_token_configured`. Hard refresh após deploy.
 
 Ver [sdk-reference.md §2.5](./sdk-reference.md#25-painel-settings--matriz-de-botões-13-jul-2026).
 
@@ -295,6 +301,10 @@ Ver também [inbox-setup.md §3.5](./inbox-setup.md#35-seção--gravação-no-hi
 1. Gerar novo token em app.wavoip.com/devices
 2. Settings inbox → colar novo token → salvar
 3. Agente recarrega dashboard (reconecta SDK)
+
+**Encryption:** com `ACTIVE_RECORD_ENCRYPTION_*` no `.env`, o model criptografa a coluna.
+Se as chaves forem removidas depois, o valor no DB fica ilegível e o painel mostra
+`STATUS_STALE` — cole o token plaintext de novo ou restaure as chaves.
 
 ### `webhook_key`
 
