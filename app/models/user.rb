@@ -89,6 +89,8 @@ class User < ApplicationRecord
   validates :name, presence: true
   validates :email, presence: true
   # FORK: groq token validation for manual audio transcription
+  # Only when the token changes — otherwise login / agent updates fail if a
+  # stale or non-gsk_ value is already stored (e.g. ciphertext with encryption off).
   validates :groq_token,
             format: {
               with: /\Agsk_[A-Za-z0-9_-]+\z/,
@@ -99,7 +101,8 @@ class User < ApplicationRecord
               minimum: 40,
               allow_blank: true,
               message: I18n.t('errors.user.groq_token.too_short')
-            }
+            },
+            if: :will_save_change_to_groq_token?
 
   serialize :otp_backup_codes, type: Array
 
