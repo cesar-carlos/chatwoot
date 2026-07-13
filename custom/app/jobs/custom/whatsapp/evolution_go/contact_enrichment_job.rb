@@ -36,14 +36,12 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
   private
 
   def enrichment_allowed?(contact, attrs)
-    return true if ActiveModel::Type::Boolean.new.cast(attrs[:force])
-    return true unless contact.avatar.attached?
-
-    !recently_enriched?(contact)
-  end
-
-  def recently_enriched?(contact)
-    !Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.enrichment_stale?(contact)
+    Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.should_enqueue?(
+      contact: contact,
+      remote_jid: attrs[:remote_jid],
+      push_name: attrs[:push_name],
+      force: attrs[:force]
+    )
   end
 
   def acquire_in_flight_lock!(contact)

@@ -3,6 +3,8 @@
 # rubocop:disable Metrics/ClassLength, Metrics/ParameterLists -- Evolution Go HTTP surface mirrors provider API
 class Custom::Whatsapp::EvolutionGo::ApiClient
   REQUEST_TIMEOUT = 30
+  # /user/avatar often hangs on WhatsApp CDN — fail fast so enrichment/refresh do not block workers.
+  AVATAR_REQUEST_TIMEOUT = 12
   OPEN_TIMEOUT = 10
   MAX_RETRIES = 1
   RETRY_BACKOFF = 0.1
@@ -329,7 +331,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   def request(method, path, body, headers:, attempt: 0)
     options = {
       headers: headers,
-      timeout: REQUEST_TIMEOUT,
+      timeout: timeout_for(path),
       open_timeout: OPEN_TIMEOUT,
       follow_redirects: false
     }
@@ -341,12 +343,17 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     ensure_parseable_response!(response, method, path)
     response
   rescue *NETWORK_ERRORS => e
-    return retry_request(method, path, body, headers, attempt) if attempt < MAX_RETRIES
+    # Honor NON_RETRYABLE_PATHS for network timeouts too (avatar CDN hangs).
+    return retry_request(method, path, body, headers, attempt) if attempt < MAX_RETRIES && !NON_RETRYABLE_PATHS.include?(path)
 
     raise Custom::Whatsapp::EvolutionGo::ApiError.new(
       "Evolution Go API request failed: #{method.to_s.upcase} #{path}",
       body: e.message
     )
+  end
+
+  def timeout_for(path)
+    path == '/user/avatar' ? AVATAR_REQUEST_TIMEOUT : REQUEST_TIMEOUT
   end
 
   def retry_request(method, path, body, headers, attempt)

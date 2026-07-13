@@ -188,8 +188,10 @@ Lista completa: wiki `events-system.md` § Tipos de Eventos.
 | Tipo inbound | Campo body | Notas |
 |--------------|------------|-------|
 | Texto simples | `message.conversation` | Exemplo oficial webhook |
-| Texto formatado / link preview | `message.extendedTextMessage.text` | Comum em respostas outbound echo |
+| Texto formatado / link preview / **reply quote** | `message.extendedTextMessage.text` | Reply traz `contextInfo` |
 | Legenda em mídia | `message.*Message.caption` | Fase 2 |
+
+**Reply / quote inbound:** `extendedTextMessage.contextInfo.stanzaID` (Evolution Go / whatsmeow — `ID` maiúsculo). Baileys usa `stanzaId`. O normalizer aceita ambos → `messages[].context.id` → `in_reply_to_external_id`. Sem o casing `stanzaID`, a mensagem chega no CW sem preview de resposta ([evolution-go#29](https://github.com/evolution-foundation/evolution-go/issues/29)).
 
 Normalizer deve tentar, nesta ordem: `conversation` → `extendedTextMessage.text` → caption da mídia.
 

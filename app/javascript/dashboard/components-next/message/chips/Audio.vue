@@ -8,7 +8,9 @@ import {
 } from 'vue';
 import Icon from 'next/icon/Icon.vue';
 import { timeStampAppendedURL } from 'dashboard/helper/URLHelper';
-import { downloadFile } from '@chatwoot/utils';
+// FORK: same-origin Active Storage download on alias hosts (dev-chat)
+import { downloadFile } from 'customDashboard/helper/downloadFile';
+
 import { useEmitter } from 'dashboard/composables/emitter';
 import { emitter } from 'shared/helpers/mitt';
 // FORK: groq audio transcription

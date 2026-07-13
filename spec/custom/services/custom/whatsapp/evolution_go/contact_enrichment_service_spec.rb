@@ -94,4 +94,46 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
 
     described_class.new(channel: channel, contact: contact, force: true).perform
   end
+
+  it 'records avatar attempt cooldown after /user/avatar timeout' do
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
+    )
+    allow(api_client).to receive(:user_avatar).and_raise(
+      Custom::Whatsapp::EvolutionGo::ApiError.new(
+        'Evolution Go API request failed: POST /user/avatar',
+        body: 'Net::ReadTimeout'
+      )
+    )
+
+    described_class.new(channel: channel, contact: contact, remote_jid: '5511999999999@s.whatsapp.net').perform
+
+    contact.reload
+    expect(contact.additional_attributes['evolution_go_avatar_attempted_at']).to be_present
+    expect(contact.avatar).not_to be_attached
+    expect(described_class.should_enqueue?(contact: contact)).to be(false)
+  end
+
+  it 'allows enqueue again after avatar attempt cooldown' do
+    contact.update!(
+      additional_attributes: {
+        'evolution_go_enriched_at' => 1.hour.ago.utc.iso8601(3),
+        'evolution_go_avatar_attempted_at' => 7.hours.ago.utc.iso8601(3)
+      }
+    )
+
+    expect(described_class.should_enqueue?(contact: contact)).to be(true)
+  end
+
+  it 'always enqueues when force is true even after a recent avatar attempt' do
+    contact.update!(
+      additional_attributes: {
+        'evolution_go_enriched_at' => Time.current.utc.iso8601(3),
+        'evolution_go_avatar_attempted_at' => Time.current.utc.iso8601(3)
+      }
+    )
+
+    expect(described_class.should_enqueue?(contact: contact, force: true)).to be(true)
+  end
 end
