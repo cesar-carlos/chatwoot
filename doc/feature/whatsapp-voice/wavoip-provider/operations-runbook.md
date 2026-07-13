@@ -131,8 +131,10 @@ Ver roteamento completo: [inbox-setup.md §3.6](./inbox-setup.md#36-seção--rot
 |---------|----------------|--------------------------------------|
 | Agente rejeitou mas ainda ouve o toque | Deploy antigo sem `silenceCallRingtone` | Ao rejeitar (✕) ou recusar, o som para **imediatamente** neste browser; outros agentes/dispositivos continuam tocando até alguém atender ou o chamador desligar |
 | Toque não para quando chamador desliga | IDs cable (`whatsapp_call_id`) ≠ SDK (`Offer.id`) sem reconciliação | Corrigido: `wavoipOfferId` + `onEnded`/`unanswered`/`ended` removem a entrada e param o ringtone; toast **"O chamador encerrou a ligação"** |
-| Agente quer só aviso visual (sem som) | Preferência não configurada | Clicar no ícone **bell** no card de chamada incoming — preferência salva em `localStorage` por usuário |
-| Bell silenciado mas ainda vê o card | Comportamento correto | Mute do bell afeta **som**, não a notificação visual |
+| Agente quer só aviso visual (sem som) | Preferência não configurada | Clicar no ícone **bell** no card de chamada **incoming** — preferência salva em `localStorage` por usuário (**não** afeta som de saída) |
+| Bell silenciado mas ainda vê o card | Comportamento correto | Mute do bell afeta **som inbound**, não a notificação visual |
+| Outbound “Ligando…” sem som de chamando | Cache antigo **ou** bug pré-UX-RINGBACK-04 (bell mutava saída) | Hard refresh; outbound deve **sempre** tocar `/audio/dashboard/ringback.mp3` mesmo com bell silenciado |
+| Toast `SIMULTANEOUS_LIMIT` / linhas cheias | Capacidade do device Wavoip | Mensagem amigável `CHANNELS_FULL` (“Todas as linhas estão ocupadas…”); aguardar liberar canal |
 
 Ver [frontend-integration.md §6.4](./frontend-integration.md#64-ringtone-e-preferências-do-agente).
 

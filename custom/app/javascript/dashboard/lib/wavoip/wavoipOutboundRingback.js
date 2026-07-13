@@ -2,10 +2,11 @@ import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constant
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 
 /** Soft ringback while Wavoip outbound is still unanswered (vs full inbound ring). */
-export const WAVOIP_OUTBOUND_RINGBACK_VOLUME = 0.45;
+export const WAVOIP_OUTBOUND_RINGBACK_VOLUME = 0.55;
 export const INBOUND_RINGTONE_VOLUME = 1;
 
-const RINGBACK_URL = '/audio/dashboard/ringtone.mp3';
+/** Outbound “chamando…” tone — not the inbound `ringtone.mp3`. */
+export const RINGBACK_URL = '/audio/dashboard/ringback.mp3';
 
 let ringbackAudio = null;
 let ringbackPlaying = false;
@@ -21,24 +22,24 @@ const getRingbackAudio = () => {
 };
 
 /**
- * Call synchronously inside the agent click handler (before any await) so the
- * browser grants media playback. FloatingCallWidget is async-mounted and would
- * otherwise hit autoplay blocking after startCall resolves.
- *
- * Keeps a muted/zero-volume play running; startWavoipOutboundRingback() then
- * unmutes. Avoid pausing here — that races with start after awaits.
+ * Call synchronously on the agent click (before any await) to satisfy
+ * autoplay policy. Stays muted so nothing is heard until
+ * startWavoipOutboundRingback() when the call widget appears.
  */
 export function unlockWavoipOutboundRingback() {
   if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
-
-  const audio = getRingbackAudio();
   if (ringbackPlaying) return;
 
+  const audio = getRingbackAudio();
   audio.muted = true;
   audio.volume = 0;
   audio.play().catch(() => {});
 }
 
+/**
+ * Unmute and play ringback — call after addCall / when the outbound widget
+ * is visible (“Ligando…”), not on the raw click.
+ */
 export function startWavoipOutboundRingback() {
   if (typeof window === 'undefined' || typeof Audio === 'undefined') return;
 

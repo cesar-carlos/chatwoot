@@ -320,8 +320,12 @@ if (channelType === 'Channel::Wavoip') return VOICE_CALL_PROVIDERS.WAVOIP;
 - **Ringtone inbound** (`FloatingCallWidget.vue` + `useCallSession.js`):
   - Loop em `ringtone.mp3` enquanto há chamada inbound não atendida
   - **Silêncio imediato ao rejeitar/dismissar:** `ringtoneSilencedCallSids` em `useCallSession.js` — só afeta o agente local; outros dispositivos continuam tocando
-  - **Preferência persistente:** `useCallRingtonePreference.js` — botão bell no `CallCard` grava `call_ringtone_muted_{userId}` no `localStorage`; quando ativo, só aviso visual (sem som) em chamadas futuras
+  - **Preferência persistente (só inbound):** `useCallRingtonePreference.js` — botão bell no `CallCard` grava `call_ringtone_muted_{userId}` no `localStorage`; quando ativo, próximas **recebidas** ficam só com aviso visual (sem som). **Não** silencia ringback de saída
   - **Caller encerrou:** SDK (`unanswered`/`ended`) e cable (`onEnded`) disparam toast `CALLER_ENDED` e removem a entrada do store
+- **Ringback outbound Wavoip** (`wavoipOutboundRingback.js` + `useWavoipOutboundCall.js`):
+  - Áudio dedicado `/audio/dashboard/ringback.mp3` (≠ inbound)
+  - No clique: `unlock` mudo (gesto / autoplay); após `addCall` / widget “Ligando…”: `start` audível — **sempre**, independente do bell
+  - Para em `peerAccept` / reject / unanswered / hangup / erro
 - Bolha `VoiceCall.vue`: ver [frontend-integration §12](./frontend-integration.md#12-bolha-voicecallvue) — sem join SDP para Wavoip
 
 ---

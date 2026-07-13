@@ -44,6 +44,17 @@ describe('wavoipSdkResult', () => {
     );
   });
 
+  it('maps SIMULTANEOUS_LIMIT to friendly CHANNELS_FULL copy', () => {
+    const t = vi.fn(key => key);
+    expect(
+      formatWavoipStartCallError(
+        { devices: [{ token: 'tok', reason: 'SIMULTANEOUS_LIMIT' }] },
+        t
+      )
+    ).toBe('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL');
+    expect(t).toHaveBeenCalledWith('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL');
+  });
+
   it('maps Meta permission denial in peerReject to OUTBOUND_PERMISSION_DENIED', () => {
     const t = vi.fn(key => key);
     expect(

@@ -132,13 +132,13 @@ describe('outbound ringback audio controls', () => {
     vi.unstubAllGlobals();
   });
 
-  it('unlocks with muted zero-volume play (no pause)', async () => {
+  it('unlocks muted (silent) so audible start can wait for the widget', async () => {
     unlockWavoipOutboundRingback();
     await Promise.resolve();
     expect(ringbackElement.play).toHaveBeenCalled();
-    expect(ringbackElement.pause).not.toHaveBeenCalled();
     expect(ringbackElement.muted).toBe(true);
     expect(ringbackElement.volume).toBe(0);
+    expect(isWavoipOutboundRingbackPlaying()).toBe(false);
   });
 
   it('unmutes on start after unlock and stops cleanly', async () => {

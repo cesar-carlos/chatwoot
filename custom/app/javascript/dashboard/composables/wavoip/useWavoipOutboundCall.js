@@ -26,7 +26,6 @@ import {
   stopWavoipOutboundRingback,
   unlockWavoipOutboundRingback,
 } from 'customDashboard/lib/wavoip/wavoipOutboundRingback';
-import { useCallRingtonePreference } from 'dashboard/composables/useCallRingtonePreference';
 
 const isInitiating = ref(false);
 
@@ -113,7 +112,6 @@ export function useWavoipOutboundCall() {
   const { t } = useI18n();
   const store = useStore();
   const { connectForInbox, ensureDeviceReadiness } = useWavoipConnection();
-  const { isRingtoneMuted, initPreference } = useCallRingtonePreference();
 
   const initiateOutboundCall = async (conversationId, { inboxId, toPhone }) => {
     if (isInitiating.value) return { status: 'locked' };
@@ -125,9 +123,9 @@ export function useWavoipOutboundCall() {
       throw new Error(t(blockedReasonKey));
     }
 
-    // Capture the click gesture before any await — FloatingCallWidget is an
-    // async chunk and would otherwise be autoplay-blocked when it mounts.
-    initPreference();
+    // Mute unlock on this sync turn (autoplay). Audible start only after
+    // addCall — when the floating “Ligando…” widget is about to show.
+    // Outbound ringback ignores inbound ringtone-mute preference.
     unlockWavoipOutboundRingback();
 
     isInitiating.value = true;
@@ -177,9 +175,8 @@ export function useWavoipOutboundCall() {
         callDirection: VOICE_CALL_DIRECTION.OUTBOUND,
         provider: VOICE_CALL_PROVIDERS.WAVOIP,
       });
-      if (!isRingtoneMuted.value) {
-        startWavoipOutboundRingback();
-      }
+      // Always play outbound ringback (inbound “mute ringtone” does not apply).
+      startWavoipOutboundRingback();
       purgeSpuriousInboundCalls({
         conversationId,
         inboxId,

@@ -22,6 +22,10 @@ import { useAccount } from 'dashboard/composables/useAccount';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { useAlert } from 'dashboard/composables';
 import NextButton from 'dashboard/components-next/button/Button.vue';
+import {
+  unlockWavoipOutboundRingback,
+  stopWavoipOutboundRingback,
+} from 'customDashboard/lib/wavoip/wavoipOutboundRingback';
 
 const props = defineProps({
   inbox: {
@@ -163,17 +167,25 @@ const startWavoipCall = async () => {
     return;
   }
 
+  // FORK: unlock audio on click (muted); audible ringback starts after
+  // addCall when the call widget appears — warm-up await would otherwise
+  // leave autoplay blocked.
+  unlockWavoipOutboundRingback();
+
   try {
     await session.connectForInbox?.(props.inbox?.id);
     const response = await session.initiateOutboundCall(props.chat.id, {
       inboxId: props.inbox?.id,
       toPhone,
     });
-    if (response?.status === 'locked') return;
-    if (!response?.call_id) {
-      useAlert(t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));
+    if (response?.status === 'locked' || !response?.call_id) {
+      stopWavoipOutboundRingback();
+      if (!response?.call_id && response?.status !== 'locked') {
+        useAlert(t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));
+      }
     }
   } catch (error) {
+    stopWavoipOutboundRingback();
     useAlert(error?.message || t('CONVERSATION.HEADER.VOICE_CALL_FAILED'));
   }
 };

@@ -167,7 +167,7 @@ Comportamento implementado em `FloatingCallWidget.vue`, `CallCard.vue`, `useCall
 | Comportamento | Implementação |
 |---------------|---------------|
 | Tocar enquanto inbound não atendida | `ringingInbound` watcher em `FloatingCallWidget` |
-| **Ringback outbound Wavoip (13 jul. 2026)** | `unlock` no clique + `start` após `addCall` em `useWavoipOutboundCall` (`wavoipOutboundRingback.js`); widget async não depende de autoplay. Volume `0.45` até `peerAccept` / hangup |
+| **Ringback outbound Wavoip (13 jul. 2026)** | Áudio `/audio/dashboard/ringback.mp3`. No clique: `unlock` mudo (gesto). Após `addCall` / widget “Ligando…”: `start` audível. **Sempre toca** — o botão “silenciar toque” vale só para inbound. Volume `0.55` até `peerAccept` / hangup |
 | Parar ao aceitar / encerrar todas | Watcher desliga quando `!(ringingInbound \|\| ringingWavoipOutbound) \|\| hasActiveCall` |
 | **Outro agente aceitou** | Cable `voice_call.accepted` / SDK `acceptedElsewhere` → `markCallDismissed` + dismiss store + `closeIncomingWavoipOfferNotification` (dismiss mesmo se `isCallJoining`; 2ª aba same-user sem toast) |
 | **Este agente aceitou (aba em background)** | `useWavoipCallSession.acceptIncomingCall` fecha a OS Notification local imediatamente |
@@ -175,8 +175,8 @@ Comportamento implementado em `FloatingCallWidget.vue`, `CallCard.vue`, `useCall
 | **Escalação (`escalated: true`)** | `onIncoming` ignora se call já active/dismissed; senão grava `escalated` no store |
 | **Rejeitar (✕) ou recusar** | `silenceCallRingtone(callSid, call)` em `rejectIncomingCall` / `dismissCall` **antes** do round-trip SDK — som para na hora **só neste agente**; outros dispositivos/agentes continuam tocando |
 | **Chamador desligou** | SDK `offer.on('unanswered'/'ended')` + cable `onEnded` → toast `CONVERSATION.WAVOIP_CALL.CALLER_ENDED` + dismiss no store |
-| **Silenciar toque (bell)** | Botão no `CallCard` (incoming only) → `toggleRingtoneMute` → `localStorage` key `call_ringtone_muted_{userId}` |
-| Preferência persistente | Próximas chamadas: aviso visual sem áudio até o agente reativar o bell |
+| **Silenciar toque (bell)** | Botão no `CallCard` (**incoming only**) → `toggleRingtoneMute` → `localStorage` key `call_ringtone_muted_{userId}` |
+| Preferência persistente | Próximas **recebidas**: aviso visual sem áudio até reativar o bell. **Outbound Wavoip ignora** esta preferência (sempre toca `ringback.mp3`) |
 
 Reconciliação de IDs (`whatsapp_call_id` ≠ `Offer.id`): `callStoreMappers.findWavoipCallForOffer`,
 campo `wavoipOfferId` no store, aliases em `pendingOffers` — necessário para parar ringtone e
@@ -268,7 +268,7 @@ Não duplicar timer — reusar `globalDurationTimer` em `useCallSession.js`.
 Chaves novas — seguir rule `chatwoot-core`: **somente `en`** em arquivos upstream; traduções `pt_BR` etc. só em `custom/` se o fork mantiver:
 
 - `INBOX_MGMT.WAVOIP_CALL.*` — tile e settings (`en/inboxMgmt.json`)
-- `CONVERSATION.WAVOIP_CALL.*` — erros outbound, `CALLER_ENDED`, `ACCEPTED_ELSEWHERE`, `DEVICE_DISCONNECTED`, `ACCEPT_OFFER_TIMEOUT`, `ACCEPT_FAILED`, etc.
+- `CONVERSATION.WAVOIP_CALL.*` — erros outbound, `CALLER_ENDED`, `ACCEPTED_ELSEWHERE`, `CHANNELS_FULL` (linhas ocupadas / `SIMULTANEOUS_LIMIT`), `DEVICE_DISCONNECTED`, `ACCEPT_OFFER_TIMEOUT`, `ACCEPT_FAILED`, etc.
 - `CONVERSATION.VOICE_WIDGET.MUTE_RINGTONE` / `UNMUTE_RINGTONE` — preferência de toque no widget
 - `WAVOIP_CONNECTIVITY.*` — issues de rede
 - `WAVOIP_ONBOARDING.*` — checklist semáforo
@@ -302,8 +302,9 @@ Hoje acoplada a `useWhatsappCallSession` e join via SDP. Comportamento Wavoip:
 | `ringing` inbound | Botão join + SDP | **Sem join** — usar widget flutuante |
 | `in_progress` | Join se não ativo | Chamada já no browser via SDK |
 | `completed` | Gravação upload local | `record_url` no `Call#meta` ou anexo ActiveStorage |
+| `no-answer` / `failed` **inbound** (missed) | Botão **Ligar de volta** → `useWhatsappCallSession.initiateOutboundCall` | Botão **Ligar de volta** → preflight + `unlock` + `initiateOutboundCall` (ringback após `addCall`) |
 | Player na bolha | Sempre que há anexo/URL | Só Wavoip + `completed` + `call_recording_enabled` + URL (`voiceCallRecording.js`) |
-| Replay / ligar de novo | Initiate via API Meta | `startCall` na conversa (`ConversationCallButton`) |
+| Replay / ligar de novo (header) | Initiate via API Meta | `ConversationCallButton` / `startCall` na conversa |
 
 ```javascript
 // VoiceCall.vue — branch
@@ -311,6 +312,7 @@ const isWavoip = computed(
   () => call.value?.provider === VOICE_CALL_PROVIDERS.WAVOIP
 );
 
+// canCallBack: missed inbound + sem chamada ativa/incoming
 // Ocultar botões join/rejoin SDP quando isWavoip
 // AudioChip: shouldShowVoiceCallRecording({ provider, callStatus, recordingUrl, callRecordingEnabled })
 ```

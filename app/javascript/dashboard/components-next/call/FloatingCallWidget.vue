@@ -351,14 +351,13 @@ const ringingInbound = computed(
 );
 
 // FORK: soft ringback while Wavoip outbound is unanswered (not Meta/Twilio).
-const ringingWavoipOutbound = computed(
-  () =>
-    !isRingtoneMuted.value &&
-    incomingCalls.value.some(call =>
-      shouldPlayWavoipOutboundRingback(call, {
-        isSilenced: isCallRingtoneSilenced,
-      })
-    )
+// Do NOT gate on isRingtoneMuted — that bell only silences inbound ringtone.
+const ringingWavoipOutbound = computed(() =>
+  incomingCalls.value.some(call =>
+    shouldPlayWavoipOutboundRingback(call, {
+      isSilenced: isCallRingtoneSilenced,
+    })
+  )
 );
 
 watch(
@@ -366,17 +365,23 @@ watch(
     inbound: ringingInbound.value && !hasActiveCall.value,
     outbound: ringingWavoipOutbound.value && !hasActiveCall.value,
   }),
-  ({ inbound, outbound }) => {
-    if (inbound) {
+  (curr, prev) => {
+    if (curr.inbound) {
       stopWavoipOutboundRingback();
       ringtone.volume = INBOUND_RINGTONE_VOLUME;
       ringtone.play().catch(() => {});
       return;
     }
     stopRingtone();
-    if (outbound) {
+    if (curr.outbound) {
+      // Backup if click-path start was skipped; usually already playing.
       startWavoipOutboundRingback();
-    } else {
+      return;
+    }
+    // Only stop when outbound was ringing and stopped (answer / dismiss).
+    // Do not stop on "never outbound" — that would kill click-path ringback
+    // during connect/startCall before addCall mounts this widget.
+    if (prev?.outbound) {
       stopWavoipOutboundRingback();
     }
   },
