@@ -303,6 +303,39 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     expect(result[:messages].first[:text][:body]).to eq('Replying here')
   end
 
+  it 'attaches reply context from Evolution Go stanzaID casing' do
+    # Go/whatsmeow serializes ContextInfo.StanzaID as stanzaID (not Baileys stanzaId).
+    # See evolution-foundation/evolution-go#29
+    reply_fixture = {
+      'event' => 'Message',
+      'data' => {
+        'Info' => {
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'Sender' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'ID' => 'AC8ECDE7A75CE938FDC6EC5593B7CC8F',
+          'PushName' => 'Cesar Carlos',
+          'Timestamp' => 1_720_000_000
+        },
+        'Message' => {
+          'extendedTextMessage' => {
+            'text' => 'Teste de resposta',
+            'contextInfo' => {
+              'stanzaID' => 'AC4C67823880BAFB15A515E6FD881954',
+              'participant' => '556697193168@s.whatsapp.net',
+              'quotedMessage' => { 'conversation' => 'Ok' }
+            }
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, reply_fixture).perform
+
+    expect(result[:messages].first[:context]).to eq(id: 'AC4C67823880BAFB15A515E6FD881954')
+    expect(result[:messages].first[:text][:body]).to eq('Teste de resposta')
+  end
+
   it 'normalizes buttonsResponseMessage as text with selected label' do
     button_fixture = {
       'event' => 'MESSAGE',

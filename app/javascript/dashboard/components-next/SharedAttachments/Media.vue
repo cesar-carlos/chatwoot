@@ -7,7 +7,9 @@ import {
   formatDuration,
   shortTimestamp,
 } from 'shared/helpers/timeHelper';
-import { downloadFile } from '@chatwoot/utils';
+// FORK: same-origin Active Storage download on alias hosts (dev-chat)
+import { downloadFile } from 'customDashboard/helper/downloadFile';
+
 import {
   ATTACHMENT_TYPES,
   MEDIA_TYPES,

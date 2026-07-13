@@ -158,20 +158,30 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     context_info = extract_context_info(data)
     return if context_info.blank?
 
-    stanza_id = context_info['stanzaId'] || context_info[:stanzaId]
+    # Evolution Go / whatsmeow JSON uses stanzaID; Baileys docs use stanzaId.
+    stanza_id = dig_stanza_id(context_info)
     return if stanza_id.blank?
 
     message_hash[:context] = { id: stanza_id }
   end
 
+  def dig_stanza_id(context_info)
+    info = context_info.with_indifferent_access
+    %w[stanzaId stanzaID StanzaID StanzaId].filter_map { |key| info[key].presence }.first&.to_s
+  end
+
   def extract_context_info(data)
     message = (data['message'] || data[:message] || {}).with_indifferent_access
     CONTEXT_INFO_MESSAGE_KEYS.each do |type|
-      context_info = message.dig(type, 'contextInfo')
+      nested = message[type]
+      next if nested.blank?
+
+      nested = nested.with_indifferent_access
+      context_info = nested['contextInfo'] || nested['ContextInfo']
       return context_info.with_indifferent_access if context_info.present?
     end
 
-    top_level = data['contextInfo'] || data[:contextInfo]
+    top_level = data['contextInfo'] || data[:contextInfo] || data['ContextInfo'] || data[:ContextInfo]
     top_level.present? ? top_level.with_indifferent_access : nil
   end
 
