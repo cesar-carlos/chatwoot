@@ -23,13 +23,36 @@ export function unwrapWavoipSdkResult(result, valueKey = 'call') {
   return { [valueKey]: null, err: result };
 }
 
+const SIMULTANEOUS_LIMIT_PATTERN =
+  /SIMULTANEOUS_LIMIT|simultaneous.?limit|channels?.?full/i;
+
+const deviceFailureReasons = err => {
+  const devices = err?.devices || [];
+  return devices.map(d => d.reason || d.token || '').filter(Boolean);
+};
+
+const isSimultaneousLimitError = err => {
+  const reasons = deviceFailureReasons(err);
+  if (reasons.some(reason => SIMULTANEOUS_LIMIT_PATTERN.test(String(reason)))) {
+    return true;
+  }
+
+  const message = err?.message || err?.code || err?.reason || '';
+  return SIMULTANEOUS_LIMIT_PATTERN.test(String(message));
+};
+
 export function formatWavoipStartCallError(err, t) {
   if (!err) return t('CONVERSATION.WAVOIP_CALL.DEVICE_NOT_READY');
 
-  const devices = err.devices || [];
-  if (devices.length > 0) {
-    const detail = devices.map(d => d.reason || d.token).join('; ');
-    return t('CONVERSATION.WAVOIP_CALL.START_CALL_DEVICE_FAILED', { detail });
+  if (isSimultaneousLimitError(err)) {
+    return t('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL');
+  }
+
+  const reasons = deviceFailureReasons(err);
+  if (reasons.length > 0) {
+    return t('CONVERSATION.WAVOIP_CALL.START_CALL_DEVICE_FAILED', {
+      detail: reasons.join('; '),
+    });
   }
 
   return err.message || t('CONVERSATION.WAVOIP_CALL.DEVICE_NOT_READY');
