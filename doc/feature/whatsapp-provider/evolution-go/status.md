@@ -49,6 +49,7 @@
 | `GET evolution_go_connection`, `POST evolution_go_logout`, `POST evolution_go_server_check` | ✅ |
 | Fase 3 (poll / link outbound) | ⚠️ parcial |
 | Message reactions (inbound chip + outbound menu) | ✅ 16/jul/2026 · improvements (actor/timeout/Node) |
+| Pseudo-forward (Chatwoot-only, same inbox) | ✅ 16/jul/2026 · ADR §34 |
 
 ---
 

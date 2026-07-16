@@ -20,6 +20,9 @@ import {
   inboxSupportsReactions,
   applyOptimisticReaction,
 } from 'customDashboard/composables/useMessageReactions';
+// FORK: WhatsApp-like message forward
+import { inboxSupportsForward, messageCanBeForwarded } from 'customDashboard/composables/useMessageForward';
+import MessageForwardModal from 'customDashboard/components/forward/MessageForwardModal.vue';
 
 const EVOLUTION_GO_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
@@ -29,6 +32,7 @@ export default {
     MenuItem,
     ContextMenu,
     NextButton,
+    MessageForwardModal,
   },
   props: {
     message: {
@@ -119,6 +123,14 @@ export default {
         inboxSupportsReactions(this.inbox) && Boolean(this.messageSourceId)
       );
     },
+    // FORK: WhatsApp-like message forward
+    canForwardMessage() {
+      return (
+        Boolean(this.enabledOptions.forward) &&
+        inboxSupportsForward(this.inbox) &&
+        messageCanBeForwarded(this.message)
+      );
+    },
     deleteConfirmationMessage() {
       if (this.isWhatsAppSyncDeleteEnabled) {
         return this.$t(
@@ -198,6 +210,13 @@ export default {
     },
     closeDeleteModal() {
       this.showDeleteModal = false;
+    },
+    // FORK: WhatsApp-like message forward
+    openForwardModal() {
+      this.handleClose();
+      this.$nextTick(() => {
+        this.$refs.forwardModal?.open();
+      });
     },
     // FORK: Evolution Go/Node reactions (optimistic UI)
     async sendEvolutionGoReaction(reaction) {
@@ -335,6 +354,16 @@ export default {
             </button>
           </div>
         </template>
+        <!-- FORK: WhatsApp-like message forward -->
+        <MenuItem
+          v-if="canForwardMessage"
+          :option="{
+            icon: 'arrow-forward',
+            label: $t('CONVERSATION.CONTEXT_MENU.FORWARD'),
+          }"
+          variant="icon"
+          @click.stop="openForwardModal"
+        />
         <hr />
         <MenuItem
           v-if="enabledOptions['copyLink']"
@@ -366,6 +395,13 @@ export default {
         />
       </div>
     </ContextMenu>
+    <!-- FORK: WhatsApp-like message forward -->
+    <MessageForwardModal
+      v-if="canForwardMessage"
+      ref="forwardModal"
+      :message="message"
+      :inbox-id="inboxId"
+    />
   </div>
 </template>
 

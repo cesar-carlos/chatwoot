@@ -45,6 +45,12 @@ const isRemovingReaction = ref(false);
 // FORK: Evolution Go/Node inbound delete highlight
 const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));
 
+// FORK: WhatsApp-like message forward badge
+const isForwarded = computed(() => {
+  const attrs = contentAttributes.value || {};
+  return Boolean(attrs.forwarded || attrs.Forwarded);
+});
+
 // FORK: Evolution Go/Node WhatsApp reactions
 const reactionInbox = computed(() => {
   if (!inboxId?.value) return null;
@@ -216,6 +222,14 @@ const replyToPreview = computed(() => {
     >
       <Icon icon="i-lucide-trash-2" class="size-3.5 shrink-0" />
       <span>{{ deletedNotice }}</span>
+    </div>
+    <!-- FORK: WhatsApp-like message forward badge -->
+    <div
+      v-if="isForwarded"
+      class="flex items-center gap-1 mb-1.5 text-xs font-medium text-n-slate-11"
+    >
+      <Icon icon="i-lucide-forward" class="size-3.5 shrink-0" />
+      <span>{{ t('CONVERSATION.FORWARD.BADGE') }}</span>
     </div>
     <div :class="{ 'opacity-80': isDeleted }">
       <slot />

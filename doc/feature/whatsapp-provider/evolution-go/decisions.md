@@ -377,6 +377,7 @@ end
 | 13/jul/2026 | §32: avatar backoff + quote participant com phone placeholder |
 | 16/jul/2026 | §33: message reactions chip + context menu |
 | 16/jul/2026 | §33 addendum: `user:self`, timeout 15s, optimistic UI, Node parity, cleanup rake |
+| 16/jul/2026 | §34: pseudo-forward de mensagem no Chatwoot (sem API Go) |
 
 ---
 
@@ -459,3 +460,16 @@ end
 - Unificar ator evita duplicar chip quando o agente reage no dashboard após echo `fromMe` do celular.
 - Optimistic UI: snapshot → update local → POST → merge ou rollback + alert.
 - E2E: validar `/message/react` na versão Go do operador e anotar em `evolution-target-version.txt`.
+
+---
+
+## 34. Pseudo-forward de mensagem no Chatwoot (16/jul/2026)
+
+| Decisão | Valor |
+|---------|-------|
+| **Por quê Chatwoot-only** | Evolution Go não expõe `/message/forward` nem flag `ContextInfo.Forwarded` |
+| **Comportamento** | Reenviar cópia (texto + anexos) via `POST …/messages` no destino → `SendReplyJob` |
+| **UX** | Context menu → modal (preview, recentes mesmo inbox, busca contato, multi-select até 5) |
+| **Escopo** | Inbox `evolution_go` / `evolution`; mesmo inbox da origem |
+| **Badge** | `content_attributes.forwarded` + chip “Forwarded” no dashboard; **sem** rótulo nativo no WhatsApp |
+| **Implementação** | `useMessageForward.js` + `MessageForwardModal.vue` em `custom/`; thin FORK no menu/`Message.vue`/`Base.vue` |
