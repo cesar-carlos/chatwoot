@@ -376,6 +376,8 @@ const payloadForContextMenu = computed(() => {
     content_attributes: props.contentAttributes,
     content: props.content,
     conversation_id: props.conversationId,
+    // FORK: WhatsApp-like message forward needs attachments for re-send
+    attachments: props.attachments,
   };
 });
 
@@ -401,10 +403,12 @@ const contextMenuEnabledOptions = computed(() => {
       !props.private &&
       props.inboxSupportsReplyTo.outgoing &&
       !isFailedOrProcessing,
-    report:
-      isOnChatwootCloud.value &&
-      isCaptainMessage.value &&
-      !isMessageDeleted.value,
+    // FORK: WhatsApp-like message forward
+    forward:
+      (hasText || hasAttachments) &&
+      !isFailedOrProcessing &&
+      !isMessageDeleted.value &&
+      !props.private,
   };
 });
 

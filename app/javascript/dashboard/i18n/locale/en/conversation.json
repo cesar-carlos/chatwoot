@@ -447,6 +447,7 @@
       "REMOVE_REACTION": "Remove reaction",
       "REACTION_SENT": "Reaction sent",
       "REACTION_FAILED": "Could not send reaction",
+      "FORWARD": "Forward",
       "DELETE_CONFIRMATION": {
         "TITLE": "Are you sure you want to delete this message?",
         "MESSAGE": "You cannot undo this action",
@@ -473,6 +474,27 @@
           "other": "Other"
         }
       }
+    },
+    "FORWARD": {
+      "TITLE": "Forward message",
+      "DESCRIPTION": "Choose up to 5 chats in this WhatsApp inbox. Recipients will get a new copy of the message (WhatsApp will not show the native Forwarded label).",
+      "CONFIRM": "Forward",
+      "CANCEL": "Cancel",
+      "PREVIEW_LABEL": "Message",
+      "ATTACHMENT_PREVIEW": "{count} attachment(s)",
+      "SEARCH_PLACEHOLDER": "Search contacts by name or phone",
+      "SEARCH_RESULTS": "Search results",
+      "SEARCHING": "Searching…",
+      "NO_RESULTS": "No contacts found",
+      "RECENT": "Recent chats",
+      "NO_RECENT": "No recent chats in this inbox",
+      "SELECTION_HINT": "{count} of {max} selected",
+      "MAX_DESTINATIONS": "You can forward to at most {count} chats",
+      "SEARCH_ERROR": "Could not search contacts. Try again.",
+      "SUCCESS": "Forwarded to {count} chat(s)",
+      "PARTIAL": "Forwarded to {ok} chat(s); {fail} failed",
+      "FAILED": "Could not forward the message",
+      "BADGE": "Forwarded"
     },
     "SIDEBAR": {
       "CONTACT": "Contact",
