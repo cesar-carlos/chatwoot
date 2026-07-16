@@ -52,6 +52,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` | ✅ | `MessageEditSyncService` |
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
 | Reações | `reactionMessage` → `content_attributes.reactions` | ✅ | `ReactionsStore` + chip/menu; Node parity via `Evolution::*` |
+| Pseudo-forward | — (sem API Go) | ✅ | Chatwoot-only · [message-forward/](../../message-forward/) · ADR §34 |
 | Grupos | `MESSAGE` com `@g.us` | ✅ | Normalizer + `GroupContactService` quando `ignore_groups: false` · ⚠️ E2E |
 | Echo fromMe | `MESSAGE` / `SEND_MESSAGE` fromMe | ✅ | filtrar ou `PhoneOutgoingSyncService` |
 

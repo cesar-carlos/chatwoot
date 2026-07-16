@@ -16,6 +16,7 @@
 | 16/jul/2026 | Auditoria doc × código — subscribe canônico, `conversation_pending` removido de Go, sync status/feature-mapping |
 | 16/jul/2026 (pm) | Message reactions: inbound chip + outbound context menu; ADR §33; docs sync |
 | 16/jul/2026 (eve) | Reactions improvements: ReactionsStore, user:self, timeout 15s, Node parity, cleanup rake |
+| 16/jul/2026 (night) | Pseudo-forward Chatwoot-only; docs `doc/feature/message-forward/`; ADR §34 |
 
 ---
 
@@ -282,3 +283,14 @@ Docs tocados no commit: [troubleshooting.md](./troubleshooting.md), [webhook-eve
 | UX | Chip highlight/remove; optimistic context menu |
 | Ops | `rake evolution_go:cleanup_reaction_placeholders` |
 | Docs | ADR §33 addendum + fixture `message_reaction.json` |
+
+## Revisão 16/jul/2026 (night) — pseudo-forward
+
+**Escopo:** Encaminhar mensagem Chatwoot-only (sem API Go); documentação feature completa.
+
+| Área | Entrega |
+|------|---------|
+| Código | `useMessageForward` + `MessageForwardModal`; FORK menu/Message/Base |
+| ADR | §34 em decisions.md |
+| Docs | Pasta [`doc/feature/message-forward/`](../../message-forward/) (README, current-state, decision-tree, ui-design, plan, backlog) |
+| Cross-links | evolution-go README, feature-mapping, validation-checklist, status |
