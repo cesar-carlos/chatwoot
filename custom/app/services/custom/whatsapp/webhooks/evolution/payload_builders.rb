@@ -25,7 +25,6 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
   ].freeze
 
   UNSUPPORTED_TYPE_PLACEHOLDERS = {
-    'reactionMessage' => '[Reaction message]',
     'listMessage' => '[List message]'
   }.freeze
 
@@ -47,6 +46,8 @@ module Custom::Whatsapp::Webhooks::Evolution::PayloadBuilders
 
   def build_message_hash(data, wa_id, message_type, key)
     return nil if wa_id.blank?
+    # Reactions are handled by MessageReactionSyncService — never create a text placeholder.
+    return nil if data.dig('message', 'reactionMessage').present? || data.dig(:message, :reactionMessage).present?
 
     message_type = 'text' if message_type.blank?
     message_hash = {

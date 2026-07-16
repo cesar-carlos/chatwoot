@@ -401,7 +401,7 @@ end
 | `stickerMessage` | `sticker` | |
 | `locationMessage` | `location` | `location.latitude`, `longitude` |
 | `contactMessage` | `contacts` | vCard parse |
-| `reactionMessage` | — | `nil` (ignorar MVP) |
+| `reactionMessage` | — | `ReactionsStore` na mensagem alvo (paridade Go ADR §33) |
 | `protocolMessage` (revoke) | — | Fase 2+ delete sync |
 
 ### Reply inbound (Fase 2)

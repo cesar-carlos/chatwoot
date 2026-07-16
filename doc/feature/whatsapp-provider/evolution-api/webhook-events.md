@@ -176,7 +176,7 @@ Target para `Whatsapp::IncomingMessageService` (formato 360dialog-like):
 | `contactMessage` / `contactsArrayMessage` | `contacts` |
 | `buttonsResponseMessage` / `templateButtonReplyMessage` | `text` (label/id selecionado) |
 | `listResponseMessage` | `text` (row id / title) |
-| `reactionMessage` | `text` placeholder `[Reaction message]` |
+| `reactionMessage` | chip em `content_attributes.reactions` (sem placeholder); ver Go ADR §33 |
 
 Reply threading: `contextInfo.stanzaId` → `message.context.id` (paridade com Go).
 

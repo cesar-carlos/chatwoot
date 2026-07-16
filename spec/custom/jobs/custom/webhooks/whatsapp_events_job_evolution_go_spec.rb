@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
+  before do
+    allow_any_instance_of(Inbox).to receive(:create_default_working_hours) # rubocop:disable RSpec/AnyInstance
+  end
+
   let(:account) { create(:account) }
   let(:channel) do
     create(
@@ -19,7 +23,10 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
   end
   let(:inbox) { channel.inbox }
 
-  before { channel }
+  before do
+    allow_any_instance_of(Inbox).to receive(:create_default_working_hours) # rubocop:disable RSpec/AnyInstance
+    channel
+  end
 
   it 'dispatches MESSAGE events through the normalizer' do
     payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_inbound.json').read)
@@ -286,6 +293,50 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     Webhooks::WhatsappEventsJob.perform_now(payload)
 
     expect(existing.reload.content_attributes['deleted']).to be(true)
+  end
+
+  it 'applies reactionMessage onto the target message without creating a new message' do
+    conversation = create(:conversation, account: account, inbox: inbox)
+    existing = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      source_id: 'TARGETMSG-REACT',
+      content: 'Hello'
+    )
+
+    payload = {
+      'event' => 'MESSAGE',
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id,
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'REACTION-JOB-1'
+        },
+        'message' => {
+          'reactionMessage' => {
+            'text' => '👍',
+            'key' => {
+              'id' => 'TARGETMSG-REACT',
+              'remoteJid' => '5511999999999@s.whatsapp.net',
+              'fromMe' => true
+            }
+          }
+        }
+      }
+    }
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(payload)
+    end.not_to change(Message, :count)
+
+    reactions = existing.reload.content_attributes['reactions']
+    expect(reactions.size).to eq(1)
+    expect(reactions.first['emoji']).to eq('👍')
   end
 
   it 'delegates unknown evolution_go channels to super without dropping' do

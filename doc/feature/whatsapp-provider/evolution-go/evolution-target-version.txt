@@ -16,6 +16,6 @@ image=pending-e2e
 # - Location inbound/outbound
 # - Logout UI, sync webhook UI, diagnostics instance info/logs
 
-# Notas:
-# - Licença ativa é pré-requisito do operador
-# - Validar ADR §25 (downloadimage vs downloadmedia) na versão usada
+# - Message reactions (inbound chip + outbound menu; ADR §33)
+# - /message/react: validar na versão do operador (timeout CW = 15s; ver evolution-go#28)
+#   react_ok=pending-e2e

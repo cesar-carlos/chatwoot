@@ -72,6 +72,12 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def process_message_event(channel, params)
+    reaction_payload = extract_reaction_payload(params)
+    if reaction_payload.present?
+      process_inbound_reaction(channel, reaction_payload)
+      return
+    end
+
     delete_key = inbound_delete_key(channel, params)
     if delete_key.present?
       process_inbound_delete(channel, delete_key)
@@ -175,6 +181,22 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     )
   end
 
+  def extract_reaction_payload(params)
+    Custom::Whatsapp::EvolutionGo::MessageReactionPayloadExtractor.extract_reaction_payload(params[:data])
+  end
+
+  def process_inbound_reaction(channel, reaction_payload)
+    sender_id = reaction_payload.dig(:key, :remoteJid) ||
+                reaction_payload.dig(:key, :id) ||
+                reaction_payload[:reaction_message_id]
+    Custom::Whatsapp::Evolution::MessageMutex.with_lock(channel, sender_id) do
+      Custom::Whatsapp::EvolutionGo::MessageReactionSyncService.new(
+        channel: channel,
+        data: reaction_payload
+      ).perform
+    end
+  end
+
   def handle_inbound_edit_event(channel, edit_payload)
     if encrypted_edit_envelope?(edit_payload)
       Rails.logger.info(
@@ -236,6 +258,12 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def process_send_message_event(channel, params)
+    reaction_payload = extract_reaction_payload(params)
+    if reaction_payload.present?
+      process_inbound_reaction(channel, reaction_payload)
+      return
+    end
+
     delete_key = inbound_delete_key(channel, params)
     if delete_key.present?
       process_inbound_delete(channel, delete_key)

@@ -25,7 +25,6 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   ].freeze
 
   UNSUPPORTED_TYPE_PLACEHOLDERS = {
-    'reactionMessage' => '[Reaction message]',
     'listMessage' => '[List message]'
   }.freeze
 
@@ -49,6 +48,8 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     return nil if message.blank?
 
     message = message.with_indifferent_access
+    # Reactions are handled by MessageReactionSyncService — never create a text placeholder.
+    return nil if message['reactionMessage'].present?
 
     MEDIA_MESSAGE_KEYS.each do |key|
       return MESSAGE_TYPE_MAP[key] if message[key].present?
@@ -189,6 +190,8 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     return nil if message.blank?
 
     message = message.with_indifferent_access
+    return nil if message['reactionMessage'].present?
+
     type_key = UNSUPPORTED_TYPE_PLACEHOLDERS.keys.find { |key| message[key].present? }
     return UNSUPPORTED_TYPE_PLACEHOLDERS[type_key] if type_key
 

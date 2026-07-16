@@ -121,6 +121,14 @@ class MessageApi extends ApiClient {
       }
     );
   }
+
+  // FORK: Evolution Go/Node WhatsApp reactions
+  evolutionGoReact(conversationId, messageId, reaction) {
+    return axios.post(
+      `${this.url}/${conversationId}/messages/${messageId}/evolution_go_react`,
+      { reaction }
+    );
+  }
 }
 
 export default new MessageApi();

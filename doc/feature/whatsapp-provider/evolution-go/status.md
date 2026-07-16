@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 12/jul/2026 (pm3 view-once + delete UX i18n) · **Integração completa; E2E operador pendente**
+**Última revisão:** 16/jul/2026 (reactions improvements: actor `user:self`, timeout 15s, Node parity) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -30,7 +30,10 @@
 | Diagnostics instance info/logs | ✅ |
 | `user/check` em enrichment (opcional) | ✅ |
 | `set_presence` + typing dashboard wiring | ✅ jul/2026 |
-| Inbound reply context (`contextInfo.stanzaId`) | ✅ jul/2026 |
+| Inbound reply context (`contextInfo.stanzaId` / `stanzaID`) | ✅ jul/2026 |
+| Outbound quote `participant` com phone placeholder `+55000…` | ✅ 13/jul/2026 |
+| Avatar enrichment backoff (`avatar_attempted_at`, timeout 12s) | ✅ 13/jul/2026 |
+| Same-origin Active Storage download (alias hosts) | ✅ 13/jul/2026 |
 | Inbound contact + button/list reply text | ✅ jul/2026 |
 | Contact enrichment on inbound (Go path) | ✅ jul/2026 |
 | Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
@@ -44,7 +47,8 @@
 | QR deferred to modal (no sync fetch on create) | ✅ jul/2026 |
 | Read receipt batch processing | ✅ jul/2026 |
 | `GET evolution_go_connection`, `POST evolution_go_logout`, `POST evolution_go_server_check` | ✅ |
-| Fase 3 (poll / link / reactions outbound) | ⚠️ parcial |
+| Fase 3 (poll / link outbound) | ⚠️ parcial |
+| Message reactions (inbound chip + outbound menu) | ✅ 16/jul/2026 · improvements (actor/timeout/Node) |
 
 ---
 
@@ -58,9 +62,12 @@
 - Contact enrichment on inbound via `IncomingMessageIdentifierHelper` + `ContactEnrichmentJob`
 - `READ_RECEIPT` no job prepend; `MarkReadService` ao abrir conversa
 - Inbound delete/edit: `MessageDeleteSyncService`, `MessageEditSyncService` + eventos `MESSAGE` (revoke), `MESSAGE_DELETE`, `MESSAGES_EDITED`, etc.
+- Inbound/outbound reactions: `MessageReactionSyncService`, `ReactSyncService`, `ApiClient#react` + context menu
 - Outbound delete: `DeleteSyncService` + hook `EvolutionGoDeleteSync` em `Message`
 - Outbound edit (opt-in): `EditSyncService` + hook `EvolutionGoEditSync` em `Message`
-- Import contatos: `ImportService`, `ContactsImporter`, enrichment (`/user/info`, `/user/avatar`)
+- Import contatos: `ImportService`, `ContactsImporter`, enrichment (`/user/info`, `/user/avatar` com backoff 6h)
+- `CorruptMediaRepair` / rake `evolution_go:repair_corrupt_media`
+- `PeerContactInboxResolver`, `ProviderConfigMerger`, `UrlSafetyGuard`
 - Refresh manual de perfis/fotos de **todos** os contatos do inbox: `ContactsRefreshService` + `POST …/evolution_go_refresh_contacts` (settings UI)
 - Import histórico: `MessagesImporter`, `HistorySyncProcessor`, evento `HISTORY_SYNC`
 - Diagnóstico: `DiagnosticsService`, `WebhookTestService`, `MutationStatsRecorder`
@@ -116,4 +123,4 @@ Inboxes existentes **não** são migrados — só novos inboxes recebem estes de
 
 1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (sync webhook, pair, location, logout, grupos, typing presence, reply context)
 2. **Proxy edit** — aguarda validação `advanced-settings` (UI hoje: banner create-only)
-3. **Fase 3 restante** — poll / link / reactions outbound (fora do MVP inbox)
+3. **Fase 3 restante** — poll / link outbound (fora do MVP inbox)

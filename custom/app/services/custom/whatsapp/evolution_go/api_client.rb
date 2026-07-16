@@ -5,12 +5,15 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   REQUEST_TIMEOUT = 30
   # /user/avatar often hangs on WhatsApp CDN — fail fast so enrichment/refresh do not block workers.
   AVATAR_REQUEST_TIMEOUT = 12
+  # /message/react can hang (~75s) on some Go versions — fail fast for dashboard UX.
+  REACT_REQUEST_TIMEOUT = 15
   OPEN_TIMEOUT = 10
   MAX_RETRIES = 1
   RETRY_BACKOFF = 0.1
   RETRYABLE_STATUSES = (500..599)
   # /user/avatar can hang on WhatsApp CDN; retrying doubles the wait for bulk refresh.
-  NON_RETRYABLE_PATHS = %w[/instance/create /user/avatar].freeze
+  # /message/react: evolution-go#28 hang — do not retry.
+  NON_RETRYABLE_PATHS = %w[/instance/create /user/avatar /message/react].freeze
   NETWORK_ERRORS = [
     HTTParty::Error,
     SocketError,
@@ -254,6 +257,17 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     )
   end
 
+  def react(number:, id:, reaction:, from_me: false, participant: nil)
+    body = {
+      number: normalize_number(number),
+      id: id.to_s,
+      reaction: reaction.to_s,
+      fromMe: ActiveModel::Type::Boolean.new.cast(from_me)
+    }
+    body[:participant] = participant.to_s if participant.present?
+    post('/message/react', body, headers: instance_headers)
+  end
+
   def edit_message(chat:, message_id:, message:)
     post(
       '/message/edit',
@@ -353,7 +367,11 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   end
 
   def timeout_for(path)
-    path == '/user/avatar' ? AVATAR_REQUEST_TIMEOUT : REQUEST_TIMEOUT
+    case path
+    when '/user/avatar' then AVATAR_REQUEST_TIMEOUT
+    when '/message/react' then REACT_REQUEST_TIMEOUT
+    else REQUEST_TIMEOUT
+    end
   end
 
   def retry_request(method, path, body, headers, attempt)

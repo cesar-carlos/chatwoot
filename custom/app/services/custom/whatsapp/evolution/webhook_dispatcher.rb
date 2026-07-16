@@ -70,6 +70,13 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
   end
 
   def process_message_item(channel, params, data_item)
+    reaction_payload = Custom::Whatsapp::Evolution::MessageReactionPayloadExtractor
+                       .extract_reaction_payload(data_item)
+    if reaction_payload.present?
+      process_inbound_reaction(channel, reaction_payload)
+      return
+    end
+
     if status_update?(params[:event], data_item)
       process_status_update(channel, params, data_item)
       return
@@ -91,6 +98,18 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
     sender_id = contact_sender_id(flat_params)
     with_message_lock(channel, sender_id) do
       Custom::Whatsapp::Evolution::InboundMessageProcessor.process(channel, flat_params)
+    end
+  end
+
+  def process_inbound_reaction(channel, reaction_payload)
+    sender_id = reaction_payload.dig(:key, :remoteJid) ||
+                reaction_payload.dig(:key, :id) ||
+                reaction_payload[:reaction_message_id]
+    with_message_lock(channel, sender_id) do
+      Custom::Whatsapp::Evolution::MessageReactionSyncService.new(
+        channel: channel,
+        data: reaction_payload
+      ).perform
     end
   end
 

@@ -374,6 +374,9 @@ end
 | 22/jun/2026 | Audit Postman MCP; §24 reconnect vs connect; §25 download mídia; §26 casing ApiClient |
 | 24/jun/2026 | ADR §27 prepend collision; fix EvolutionGoController envelope key; registry format |
 | jul/2026 | §28–§31: echo sync, EventNames, latency, SSRF guard; §7/§18/§25 updated |
+| 13/jul/2026 | §32: avatar backoff + quote participant com phone placeholder |
+| 16/jul/2026 | §33: message reactions chip + context menu |
+| 16/jul/2026 | §33 addendum: `user:self`, timeout 15s, optimistic UI, Node parity, cleanup rake |
 
 ---
 
@@ -417,3 +420,42 @@ end
 | **Blocks** | Link-local / cloud metadata (`169.254.0.0/16`, etc.) |
 | **Allows** | RFC1918, localhost (self-hosted setups) |
 | **ApiClient** | `follow_redirects: false` on all requests |
+
+---
+
+## 32. Avatar enrichment backoff & quote participant (13/jul/2026)
+
+| Decisão | Valor |
+|---------|-------|
+| **Avatar timeout** | `ApiClient::AVATAR_REQUEST_TIMEOUT` = 12s; `/user/avatar` in `NON_RETRYABLE_PATHS` |
+| **Backoff key** | `evolution_go_avatar_attempted_at` em `contact.additional_attributes` |
+| **Cooldown** | `ContactEnrichmentService::AVATAR_RETRY_COOLDOWN` = 6h (falta de avatar não reenfileira a cada inbound) |
+| **Force refresh** | `force: true` / `POST evolution_go_refresh_contacts` ignora cooldown |
+| **Quote own message** | `quoted.participant` = JID do negócio; se `phone_number` é `+55000…`, extrair dígitos de `instance_name` (`channel_business_phone`) |
+| **Quote peer message** | Usar `evolution_go_remote_jid` do peer; não usar remote_jid de mensagens `fromMe` (é o chat peer, não o sender) |
+
+---
+
+## 33. Message reactions — chip + context menu (16/jul/2026)
+
+| Decisão | Valor |
+|---------|-------|
+| **Inbound UX** | Não criar mensagem; atualizar `content_attributes.reactions` na mensagem alvo + chip na bolha (`Base.vue`) |
+| **Outbound UX** | Context menu set curto `👍 ❤️ 😂 😮 😢 🙏` + remove; `POST …/messages/:id/evolution_go_react` |
+| **Store** | `Custom::Whatsapp::ReactionsStore` (`BUSINESS_ACTOR_KEY = user:self`) — shared Go + Node |
+| **Services (Go)** | `MessageReactionPayloadExtractor`, `MessageReactionSyncService`, `ReactSyncService`, `ApiClient#react` |
+| **Services (Node)** | Paridade em `Custom::Whatsapp::Evolution::*` + `ApiClient#send_reaction` → `/message/sendReaction/:instance` |
+| **Ator negócio** | Sempre `from: user`, `actor_key: user:self` (inbound `fromMe` e outbound dashboard); `actor_id` só informativo no outbound |
+| **Remove** | `reaction` vazio ou `"remove"`; texto vazio no webhook |
+| **Missing target** | Go: `mutation_stats.inbound_reaction_skipped`; Node: log `inbound_reaction_skipped` |
+| **Placeholder** | Removido `[Reaction message]`; rake `evolution_go:cleanup_reaction_placeholders` (dry_run default) |
+| **Timeout Go** | `REACT_REQUEST_TIMEOUT = 15s`; `/message/react` em `NON_RETRYABLE_PATHS` ([evolution-go#28](https://github.com/evolution-foundation/evolution-go/issues/28)) |
+| **Lista** | Inbound bump `conversation.last_activity_at` **sem** unread |
+| **Chip UX** | Highlight ring se `user:self`; clique remove reação do negócio; optimistic UI no menu |
+| **Escopo** | `evolution_go` + `evolution` (Node) |
+
+### Addendum pós-MVP (16/jul/2026)
+
+- Unificar ator evita duplicar chip quando o agente reage no dashboard após echo `fromMe` do celular.
+- Optimistic UI: snapshot → update local → POST → merge ou rollback + alert.
+- E2E: validar `/message/react` na versão Go do operador e anotar em `evolution-target-version.txt`.

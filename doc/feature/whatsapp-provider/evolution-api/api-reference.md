@@ -447,7 +447,7 @@ Inbound mídia (webhook `webhookBase64: false`): Chatwoot chama `POST /chat/getB
 | `POST /message/sendList/:instanceName` | [send-list](https://docs.evolutionfoundation.com.br/evolution-api/send-list) | ✅ `input_select` com >3 itens |
 | `POST /message/sendContact/:instanceName` | [send-contact](https://docs.evolutionfoundation.com.br/evolution-api/send-contact) | ✅ cartão de contato outbound |
 | `POST /message/sendLocation/:instanceName` | [send-location](https://docs.evolutionfoundation.com.br/evolution-api/send-location) | ⏸️ Fase 3+ |
-| `POST /message/sendReaction/:instanceName` | [send-reaction](https://docs.evolutionfoundation.com.br/evolution-api/send-reaction) | ⏸️ Fase 3+ |
+| `POST /message/sendReaction/:instanceName` | [send-reaction](https://docs.evolutionfoundation.com.br/evolution-api/send-reaction) | ✅ `ApiClient#send_reaction` + `ReactSyncService` |
 
 ---
 

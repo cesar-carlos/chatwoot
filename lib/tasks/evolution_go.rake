@@ -75,5 +75,38 @@ namespace :evolution_go do
 
     puts "[EVOLUTION_GO] repair_corrupt_media complete #{stats.inspect}"
   end
+
+  desc 'Destroy leftover [Reaction message] placeholders (dry_run=1 default; set dry_run=0 to destroy)'
+  task cleanup_reaction_placeholders: :environment do
+    dry_run = ActiveModel::Type::Boolean.new.cast(ENV.fetch('dry_run', '1'))
+    limit = ENV.fetch('limit', '1000').to_i
+    inbox_id = ENV['inbox_id'].presence
+
+    channel_ids = Channel::Whatsapp.where(provider: %w[evolution_go evolution]).pluck(:id)
+    inboxes = Inbox.where(channel_type: 'Channel::Whatsapp', channel_id: channel_ids)
+    inboxes = inboxes.where(id: inbox_id) if inbox_id
+    inbox_ids = inboxes.pluck(:id)
+
+    messages = Message.where(inbox_id: inbox_ids, content: '[Reaction message]')
+                      .order(id: :desc)
+                      .limit(limit)
+                      .to_a
+    count = messages.size
+    puts "[EVOLUTION_GO] cleanup_reaction_placeholders dry_run=#{dry_run} matched=#{count} limit=#{limit}"
+
+    if dry_run
+      messages.each { |m| puts "[EVOLUTION_GO] would_destroy message=#{m.id} inbox=#{m.inbox_id} conversation=#{m.conversation_id}" }
+      puts "[EVOLUTION_GO] cleanup_reaction_placeholders dry_run complete count=#{count}"
+      next
+    end
+
+    destroyed = 0
+    messages.each do |message|
+      message.destroy!
+      destroyed += 1
+      puts "[EVOLUTION_GO] destroyed message=#{message.id}"
+    end
+    puts "[EVOLUTION_GO] cleanup_reaction_placeholders complete destroyed=#{destroyed}"
+  end
 end
 # rubocop:enable Metrics/BlockLength

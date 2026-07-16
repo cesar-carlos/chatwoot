@@ -68,7 +68,7 @@ Doc: [connect-to-instance](https://docs.evolutionfoundation.com.br/evolution-go/
 ```json
 {
   "webhookUrl": "https://chatwoot.example.com/webhooks/evolution_go/minha-instancia?token=SECRET",
-  "subscribe": ["MESSAGE", "SEND_MESSAGE", "CONNECTION", "QRCODE", "READ_RECEIPT", "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"],
+  "subscribe": ["MESSAGE", "SEND_MESSAGE", "SEND_MESSAGE_UPDATE", "CONNECTION", "QRCODE", "READ_RECEIPT", "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"],
   "phone": "5511999999999",
   "immediate": false
 }
@@ -107,7 +107,7 @@ Header: apikey: {instance_token}
 Doc: [request-pairing-code](https://docs.evolutionfoundation.com.br/evolution-go/request-pairing-code)
 
 ```json
-{ "phone": "5511999999999", "subscribe": ["MESSAGE", "CONNECTION", "QRCODE"] }
+{ "phone": "5511999999999", "subscribe": ["MESSAGE", "SEND_MESSAGE", "SEND_MESSAGE_UPDATE", "CONNECTION", "QRCODE", "READ_RECEIPT", "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"] }
 ```
 
 **Resposta:** `data.PairingCode`
@@ -339,7 +339,7 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 
 | Path | Fase fork | Componente |
 |------|-----------|------------|
-| `POST /message/react` | 3 | — |
+| `POST /message/react` | ✅ | `ApiClient#react` + `ReactSyncService` + context menu |
 | `POST /message/edit` | UX | `EditSyncService` (opt-in `sync_edit_to_whatsapp`) |
 | `POST /message/delete` | UX | `DeleteSyncService` (opt-in `sync_delete_to_whatsapp`) |
 | `POST /message/downloadmedia` | 2 | `MediaDownloadJob` — único endpoint de download no swagger atual |
@@ -388,6 +388,7 @@ Fixture sintética: `spec/fixtures/evolution_go/history_sync.json` — **validar
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_import` | Força import contatos (+ messages se habilitado) |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_refresh_contacts` | Refresh perfis/fotos de todos os contatos do inbox |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/evolution_go_server_check` | Valida `base_url` + SSRF guard (wizard step 1) |
+| `POST` | `/api/v1/accounts/:account_id/conversations/:id/messages/:id/evolution_go_react` | Envia reação (`{ reaction }`) via `ReactSyncService` |
 
 Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token={webhook_token}` — auth alternativa: `Authorization: Bearer {webhook_token}`
 

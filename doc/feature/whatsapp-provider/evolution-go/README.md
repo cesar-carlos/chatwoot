@@ -8,7 +8,7 @@ Landing page do provider Evolution Go (implementado).
 |------|--------|
 | Chave planejada | `evolution_go` |
 | Documentação de contrato e plano | ✅ |
-| Código em `custom/` | ✅ Fases 0–4 + UX/diagnóstico/import/grupos/presence (jul/2026) |
+| Código em `custom/` | ✅ Fases 0–4 + UX/diagnóstico/import/grupos/presence (jul/2026; sync doc 16/jul) |
 | `PROVIDERS`, registry e webhook | ✅ |
 | Fixtures reais | ⚠️ sintéticas — E2E pendente |
 
@@ -61,7 +61,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
 - sem provisionar o servidor Go dentro deste repositório
 
-**Pendente:** E2E com servidor real; poll/link/reactions outbound; proxy edit em instância existente.
+**Pendente:** E2E com servidor real; poll/link outbound; proxy edit em instância existente.
 
 ## Onde este provider encosta no código atual
 

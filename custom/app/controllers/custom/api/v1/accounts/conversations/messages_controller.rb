@@ -55,6 +55,30 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     end
   end
 
+  # FORK: Evolution Go/Node WhatsApp reactions
+  def evolution_go_react
+    provider = message.inbox.channel.provider
+    @message = case provider
+               when 'evolution_go'
+                 Custom::Whatsapp::EvolutionGo::ReactSyncService.new(
+                   message: message,
+                   reaction: params[:reaction].to_s,
+                   user: Current.user
+                 ).perform
+               when 'evolution'
+                 Custom::Whatsapp::Evolution::ReactSyncService.new(
+                   message: message,
+                   reaction: params[:reaction].to_s,
+                   user: Current.user
+                 ).perform
+               else
+                 raise Custom::Whatsapp::EvolutionGo::ApiError, 'Reactions are only supported on Evolution WhatsApp inboxes'
+               end
+  rescue Custom::Whatsapp::EvolutionGo::ApiError, Custom::Whatsapp::Evolution::ApiError => e
+    error_text = e.respond_to?(:user_message) ? e.user_message : e.message
+    render json: { error: error_text.presence || e.message }, status: :unprocessable_entity
+  end
+
   private
 
   def assert_voice_only_public_retry_allowed!

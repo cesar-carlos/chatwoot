@@ -46,7 +46,7 @@ curl -sS -X POST "${BASE_URL}/instance/connect" \
   -H "Content-Type: application/json" \
   -d '{
     "webhookUrl": "'"${WEBHOOK_URL}"'",
-    "subscribe": ["MESSAGE", "SEND_MESSAGE", "CONNECTION", "QRCODE", "READ_RECEIPT", "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"],
+    "subscribe": ["MESSAGE", "SEND_MESSAGE", "SEND_MESSAGE_UPDATE", "CONNECTION", "QRCODE", "READ_RECEIPT", "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"],
     "rabbitmqEnabled": "disabled",
     "websocketEnable": "disabled",
     "natsEnabled": "disabled"
@@ -145,6 +145,15 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Contato 1:1 inbound enriquece avatar/perfil (`ContactEnrichmentJob`)
 - [ ] Echo celular (`SEND_MESSAGE` / `fromMe`) aparece como outgoing no Chatwoot
 - [ ] `evolution_go_server_check` bloqueia URLs internas (SSRF guard)
+- [ ] Reação do cliente no WA → chip na mensagem alvo (sem `[Reaction message]`)
+- [ ] Trocar / remover reação do cliente atualiza o chip
+- [ ] Context menu → emoji → aparece no WhatsApp e chip no CW (optimistic UI; rollback se falhar)
+- [ ] Remover reação no context menu limpa o chip do agente
+- [ ] Clique no chip destacado (`user:self`) remove a reação do negócio
+- [ ] Reagir no dashboard após echo `fromMe` **substitui** (não duplica) o chip
+- [ ] Lista de conversas sobe (`last_activity_at`) sem unread artificial
+- [ ] Inbox `evolution` (Node): mesma UX + `sendReaction`
+- [ ] Após E2E Go: anotar resultado de `/message/react` em `evolution-target-version.txt`
 
 ### 4c. Grupos (`ignore_groups: false`)
 

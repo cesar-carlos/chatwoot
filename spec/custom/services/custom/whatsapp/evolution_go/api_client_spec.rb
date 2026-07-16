@@ -177,4 +177,24 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
       expect(response.success?).to be(true)
     end
   end
+
+  describe '#react' do
+    it 'posts reaction payload to /message/react and uses short timeout' do
+      stub_request(:post, 'https://go.example.com/message/react')
+        .with(
+          body: hash_including(
+            'id' => 'TARGETMSG1',
+            'reaction' => '👍'
+          )
+        )
+        .to_return(status: 200, body: { message: 'success' }.to_json)
+
+      expect(described_class::REACT_REQUEST_TIMEOUT).to eq(15)
+      expect(described_class::NON_RETRYABLE_PATHS).to include('/message/react')
+
+      response = client.react(number: '5511999999999', id: 'TARGETMSG1', reaction: '👍')
+      expect(response.success?).to be(true)
+      expect(WebMock).to have_requested(:post, 'https://go.example.com/message/react').once
+    end
+  end
 end

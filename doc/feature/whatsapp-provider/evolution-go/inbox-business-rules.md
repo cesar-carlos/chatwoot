@@ -145,10 +145,11 @@ Doc create: [create-a-new-instance](https://docs.evolutionfoundation.com.br/evol
 | Campo | Default | Fase | Comportamento |
 |-------|---------|------|---------------|
 | `inbox.lock_to_single_conversation` | **`true`** | nativo | Resolved + inbound → reabre (via `Conversations::Resolver`) |
-| `conversation_pending` | `false` | 2 | Status inicial pending |
 | `merge_brazil_contacts` | `true` | 2 | Normaliza 9º dígito BR |
 
-Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go.
+**Não portado de Evolution Node:** `conversation_pending` — default/UI só no provider `evolution`; helpers de pending cycle checam `provider == 'evolution'`, não `evolution_go`. Settings Go não expõem o toggle.
+
+Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot na Evolution Go.
 
 ---
 
@@ -192,7 +193,7 @@ Implementar em listener inbound — **não** existe DTO Chatwoot na Evolution Go
 |-------|-------|
 | URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}` |
 | Registro | `POST /instance/connect` body `webhookUrl` |
-| Subscribe MVP | `["MESSAGE", "CONNECTION", "QRCODE"]` |
+| Subscribe | Lista canônica `ProviderConfig::WEBHOOK_EVENTS` (+ `GROUP` se `ignore_groups: false`) — ver [webhook-events.md](./webhook-events.md) |
 | ActionCable | `evolution_go:connection:{inbox_id}` |
 | Integração CW nativa | **Não existe** — nada a desabilitar |
 

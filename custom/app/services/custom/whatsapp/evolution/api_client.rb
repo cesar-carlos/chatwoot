@@ -220,6 +220,16 @@ class Custom::Whatsapp::Evolution::ApiClient
     )
   end
 
+  def send_reaction(key:, reaction:)
+    post(
+      "/message/sendReaction/#{@instance_name}",
+      {
+        key: key,
+        reaction: reaction.to_s
+      }
+    )
+  end
+
   def find_contacts(page: 1, offset: 50, where: nil)
     body = { page: page, offset: offset }
     body[:where] = where if where.present?
