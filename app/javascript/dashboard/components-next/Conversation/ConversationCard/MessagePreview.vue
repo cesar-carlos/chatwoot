@@ -1,7 +1,9 @@
 <script setup>
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import { useMessagePreview } from 'shared/composables/useMessagePreview';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
+// FORK: local download state indicator in conversation list preview
+import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
 
 const props = defineProps({
   message: {
@@ -29,6 +31,7 @@ const {
   isMessagePrivate,
   parsedLastMessage,
   lastMessageFileType,
+  lastMessageAttachmentId,
   attachmentIconClass,
   attachmentMessageText,
   showAttachmentPreview,
@@ -37,6 +40,11 @@ const {
 } = useMessagePreview(toRef(props, 'message'), {
   showMessageType: toRef(props, 'showMessageType'),
 });
+
+const { isDownloaded } = useAttachmentDownloadState();
+const attachmentDownloaded = computed(() =>
+  isDownloaded(lastMessageAttachmentId.value)
+);
 </script>
 
 <template>
@@ -111,6 +119,12 @@ const {
         <span class="inline-block align-middle">
           {{ attachmentMessageText }}
         </span>
+        <Icon
+          v-if="attachmentDownloaded"
+          v-tooltip="$t('CHAT_LIST.ATTACHMENTS.DOWNLOADED_HINT')"
+          icon="i-lucide-check"
+          class="inline-block align-middle size-3.5 text-n-teal-11 ltr:ml-1 rtl:mr-1"
+        />
       </span>
 
       <template v-else>

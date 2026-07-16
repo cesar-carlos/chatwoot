@@ -10,7 +10,8 @@ import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 import { useMessageContext } from '../provider.js';
 // FORK: same-origin Active Storage download on alias hosts (dev-chat)
 import { downloadFile } from 'customDashboard/helper/downloadFile';
-
+// FORK: local download state for sequential print workflows
+import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
 
 import GalleryView from 'dashboard/components/widgets/conversation/components/GalleryView.vue';
 
@@ -26,6 +27,20 @@ const { isLoaded, hasError, loadWithRetry } = useLoadWithRetry();
 
 const showGallery = ref(false);
 const isDownloading = ref(false);
+const {
+  isDownloaded,
+  downloadCount,
+  isJustMarked,
+  markDownloaded,
+  downloadActionTooltip,
+} = useAttachmentDownloadState();
+
+const downloaded = computed(() => isDownloaded(attachment.value?.id));
+const count = computed(() => downloadCount(attachment.value?.id));
+const justMarked = computed(() => isJustMarked(attachment.value?.id));
+const downloadTooltip = computed(() =>
+  downloadActionTooltip(t, attachment.value?.id, 'CONVERSATION')
+);
 
 onMounted(() => {
   if (attachment.value?.dataUrl) {
@@ -34,10 +49,11 @@ onMounted(() => {
 });
 
 const downloadAttachment = async () => {
-  const { fileType, dataUrl, extension } = attachment.value;
+  const { id, fileType, dataUrl, extension } = attachment.value;
   try {
     isDownloading.value = true;
     await downloadFile({ url: dataUrl, type: fileType, extension });
+    markDownloaded(id);
   } catch (error) {
     useAlert(t('GALLERY_VIEW.ERROR_DOWNLOADING'));
   } finally {
@@ -74,16 +90,29 @@ const handleImageError = () => {
       />
       <div class="absolute right-2 bottom-2 hidden group-hover:flex gap-2">
         <Button xs solid slate icon="i-lucide-expand" class="opacity-60" />
-        <Button
-          xs
-          solid
-          slate
-          icon="i-lucide-download"
-          class="opacity-60"
-          :is-loading="isDownloading"
-          :disabled="isDownloading"
-          @click.stop="downloadAttachment"
-        />
+        <div class="relative">
+          <Button
+            v-tooltip="downloadTooltip"
+            xs
+            solid
+            slate
+            :icon="downloaded ? 'i-lucide-check' : 'i-lucide-download'"
+            class="opacity-60 transition-transform duration-200"
+            :class="{
+              'text-n-teal-11 opacity-100': downloaded,
+              'scale-110': justMarked,
+            }"
+            :is-loading="isDownloading"
+            :disabled="isDownloading"
+            @click.stop="downloadAttachment"
+          />
+          <span
+            v-if="count > 1"
+            class="absolute -top-1 -end-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-n-teal-9 text-white text-[10px] leading-3.5 text-center font-medium tabular-nums"
+          >
+            {{ count > 99 ? '99+' : count }}
+          </span>
+        </div>
       </div>
     </div>
   </BaseBubble>

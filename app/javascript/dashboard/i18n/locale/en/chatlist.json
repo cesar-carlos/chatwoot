@@ -97,6 +97,7 @@
       "file": {
         "CONTENT": "File Attachment"
       },
+      "DOWNLOADED_HINT": "Downloaded",
       "location": {
         "CONTENT": "Location"
       },

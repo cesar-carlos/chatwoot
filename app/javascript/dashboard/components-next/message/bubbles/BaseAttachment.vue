@@ -12,11 +12,21 @@ const props = defineProps({
   content: { type: String, required: true },
   title: { type: String, default: '' }, // Title can be any name, description, etc
   action: {
+    // FORK: supports disabled / className / badge for attachment download state
     type: Object,
     default: null,
     validator: action => {
       if (!action) return true;
       return action.label && (action.href || action.onClick);
+    },
+  },
+  // FORK: mark as done / clear mark without downloading
+  secondaryAction: {
+    type: Object,
+    default: null,
+    validator: action => {
+      if (!action) return true;
+      return action.label && action.onClick;
     },
   },
 });
@@ -84,7 +94,7 @@ const senderLabel = computed(() => {
           </slot>
         </div>
       </div>
-      <div v-if="action" class="mb-2">
+      <div v-if="action" class="mb-2 grid gap-2">
         <a
           v-if="action.href"
           :href="action.href"
@@ -96,10 +106,30 @@ const senderLabel = computed(() => {
         </a>
         <button
           v-else
-          class="w-full bg-n-solid-3 px-4 py-2 rounded-lg text-sm text-center border border-n-container"
+          type="button"
+          class="relative w-full bg-n-solid-3 px-4 py-2 rounded-lg text-sm text-center border border-n-container disabled:opacity-50 transition-all duration-200"
+          :class="[
+            action.className,
+            action.justMarked ? 'scale-[1.02]' : 'scale-100',
+          ]"
+          :disabled="action.disabled"
           @click="action.onClick"
         >
           {{ action.label }}
+          <span
+            v-if="action.badgeCount > 1"
+            class="absolute top-1 end-1 min-w-4 h-4 px-1 rounded-full bg-n-teal-9 text-white text-[10px] leading-4 text-center font-medium tabular-nums"
+          >
+            {{ action.badgeCount > 99 ? '99+' : action.badgeCount }}
+          </span>
+        </button>
+        <button
+          v-if="secondaryAction"
+          type="button"
+          class="w-full px-4 py-1.5 rounded-lg text-xs text-center text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-2 transition-colors"
+          @click="secondaryAction.onClick"
+        >
+          {{ secondaryAction.label }}
         </button>
       </div>
     </div>
