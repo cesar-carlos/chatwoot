@@ -473,3 +473,4 @@ end
 | **Escopo** | Inbox `evolution_go` / `evolution`; mesmo inbox da origem |
 | **Badge** | `content_attributes.forwarded` + chip “Forwarded” no dashboard; **sem** rótulo nativo no WhatsApp |
 | **Implementação** | `useMessageForward.js` + `MessageForwardModal.vue` em `custom/`; thin FORK no menu/`Message.vue`/`Base.vue` |
+| **Docs feature** | [doc/feature/message-forward/](../../message-forward/) |

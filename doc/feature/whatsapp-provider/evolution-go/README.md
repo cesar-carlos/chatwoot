@@ -42,6 +42,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 | Entender o plano de implementação | [implementation-plan.md](./implementation-plan.md) |
 | Ver diferenças para Evolution API Node | [differences-from-evolution-api.md](./differences-from-evolution-api.md) |
 | Conferir decisões fechadas | [decisions.md](./decisions.md) |
+| Encaminhar mensagem (pseudo-forward) | [../../message-forward/README.md](../../message-forward/README.md) |
 | Mapear contratos REST | [api-reference.md](./api-reference.md) |
 | Mapear eventos / normalizer | [webhook-events.md](./webhook-events.md) |
 | Modelar `provider_config` | [provider-config-mapping.md](./provider-config-mapping.md) |
@@ -59,9 +60,11 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - typing presence outbound (`TypingListener` → `/message/presence`)
 - refresh manual de contatos (`evolution_go_refresh_contacts`)
 - grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
+- message reactions (chip + context menu) — ADR §33
+- **pseudo-forward** de mensagem no Chatwoot (mesmo inbox) — ADR §34 · docs em [../../message-forward/](../../message-forward/)
 - sem provisionar o servidor Go dentro deste repositório
 
-**Pendente:** E2E com servidor real; poll/link outbound; proxy edit em instância existente.
+**Pendente:** E2E com servidor real; poll/link outbound; proxy edit em instância existente; forward nativo WhatsApp (API Go).
 
 ## Onde este provider encosta no código atual
 

@@ -35,6 +35,7 @@ Fonte curta de verdade para o estado da pasta `doc/feature/whatsapp-provider/` e
 | Card / wizard Evolution Go | `custom/app/javascript/dashboard/routes/dashboard/settings/inbox/channels/EvolutionGo.vue` | ✅ |
 | Modal QR | `custom/app/javascript/dashboard/components/evolution/EvolutionQrScanModal.vue`, `evolution_go/EvolutionGoQrScanModal.vue` | ✅ |
 | Settings / health | `custom/app/javascript/dashboard/routes/dashboard/settings/inbox/settingsPage/` | ✅ |
+| Pseudo-forward (mensagem) | `custom/.../useMessageForward.js` + modal; docs [../message-forward/](../message-forward/) | ✅ |
 
 ### Testes e fixtures
 
