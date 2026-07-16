@@ -154,6 +154,9 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Lista de conversas sobe (`last_activity_at`) sem unread artificial
 - [ ] Inbox `evolution` (Node): mesma UX + `sendReaction`
 - [ ] Após E2E Go: anotar resultado de `/message/react` em `evolution-target-version.txt`
+- [ ] Context menu → Forward → modal com recentes + busca; encaminhar texto/mídia para até 5 chats do mesmo inbox
+- [ ] Destino recebe mensagem no WhatsApp; no CW aparece badge “Forwarded”
+- [ ] Agente permanece na conversa atual após encaminhar; toast de sucesso/parcial/falha
 
 ### 4c. Grupos (`ignore_groups: false`)
 
