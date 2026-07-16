@@ -114,14 +114,14 @@ const onContextAction = event => {
 
 <template>
   <div
-    class="h-9 bg-n-alpha-white gap-2 overflow-hidden items-center flex px-2 rounded-lg border border-n-container transition-opacity"
+    class="h-9 bg-n-alpha-white gap-2 items-center flex ps-2 pe-1 rounded-lg border border-n-container transition-opacity"
     :class="{ 'opacity-80': downloaded }"
     :title="contextTooltip"
     @contextmenu="onContextAction"
   >
     <FileIcon class="flex-shrink-0" :file-type="fileDetails.type" />
     <span
-      class="flex-1 min-w-0 text-sm max-w-36"
+      class="flex-1 min-w-0 text-sm max-w-36 leading-none"
       :title="fileDetails.name"
       :class="textColorClass"
     >
@@ -130,12 +130,12 @@ const onContextAction = event => {
     <button
       v-tooltip="downloadTooltip"
       type="button"
-      class="relative flex-shrink-0 size-9 grid place-content-center cursor-pointer transition-all disabled:opacity-50"
+      class="flex-shrink-0 h-7 min-w-7 px-1.5 gap-1 inline-flex items-center justify-center rounded-md cursor-pointer transition-colors disabled:opacity-50"
       :class="[
         downloaded
-          ? 'text-n-teal-11 hover:text-n-teal-12'
-          : 'text-n-slate-11 hover:text-n-slate-12',
-        justMarked ? 'scale-125' : 'scale-100',
+          ? 'text-n-teal-11 hover:bg-n-teal-3/40'
+          : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-2',
+        justMarked ? 'bg-n-teal-3/50' : '',
       ]"
       :aria-label="downloadTooltip"
       :disabled="isDownloading"
@@ -144,12 +144,12 @@ const onContextAction = event => {
     >
       <Icon
         :icon="downloaded ? 'i-lucide-check' : 'i-lucide-download'"
-        class="transition-transform duration-200"
+        class="size-3.5 shrink-0"
         :class="{ 'animate-pulse': isDownloading }"
       />
       <span
         v-if="count > 1"
-        class="absolute -top-0.5 -end-0.5 min-w-3.5 h-3.5 px-0.5 rounded-full bg-n-teal-9 text-white text-[10px] leading-3.5 text-center font-medium tabular-nums"
+        class="shrink-0 min-w-4 h-4 px-1 rounded-full bg-n-teal-9 text-white text-[10px] leading-4 text-center font-medium tabular-nums"
       >
         {{ count > 99 ? '99+' : count }}
       </span>

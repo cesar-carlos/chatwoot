@@ -32,7 +32,6 @@ const { t } = useI18n();
 const {
   isDownloaded,
   downloadCount,
-  isJustMarked,
   markDownloaded,
   downloadActionTooltip,
 } = useAttachmentDownloadState();
@@ -269,37 +268,41 @@ const onDownloadFile = async attachment => {
             {{ displayTime(attachment) }}
           </span>
 
-          <button
-            type="button"
-            class="absolute flex items-center justify-center !p-px transition-all rounded-full opacity-0 bottom-1.5 ltr:right-1.5 rtl:left-1.5 size-6 bg-white/95 shadow-md group-hover:opacity-100 hover:bg-white disabled:opacity-50"
+          <div
+            class="absolute bottom-1.5 ltr:right-1.5 rtl:left-1.5 flex items-center gap-1"
             :class="{
               'opacity-100': isDownloaded(attachment.id),
-              'scale-110': isJustMarked(attachment.id),
+              'opacity-0 group-hover:opacity-100': !isDownloaded(attachment.id),
             }"
-            :disabled="downloadingId === attachment.id"
-            :aria-label="
-              downloadActionTooltip(
-                t,
-                attachment.id,
-                'CONVERSATION_SIDEBAR.SHARED_FILES'
-              )
-            "
-            @click.stop="onDownloadFile(attachment)"
-            @keydown.enter.stop
-            @keydown.space.stop
           >
-            <Icon
-              :icon="
-                isDownloaded(attachment.id)
-                  ? 'i-lucide-check'
-                  : 'i-lucide-download'
+            <button
+              type="button"
+              class="flex items-center justify-center !p-px transition-all rounded-full size-6 bg-white/95 shadow-md hover:bg-white disabled:opacity-50"
+              :disabled="downloadingId === attachment.id"
+              :aria-label="
+                downloadActionTooltip(
+                  t,
+                  attachment.id,
+                  'CONVERSATION_SIDEBAR.SHARED_FILES'
+                )
               "
-              class="size-3 text-n-black"
-              :class="{ 'text-n-teal-11': isDownloaded(attachment.id) }"
-            />
+              @click.stop="onDownloadFile(attachment)"
+              @keydown.enter.stop
+              @keydown.space.stop
+            >
+              <Icon
+                :icon="
+                  isDownloaded(attachment.id)
+                    ? 'i-lucide-check'
+                    : 'i-lucide-download'
+                "
+                class="size-3 text-n-black"
+                :class="{ 'text-n-teal-11': isDownloaded(attachment.id) }"
+              />
+            </button>
             <span
               v-if="downloadCount(attachment.id) > 1"
-              class="absolute -top-1 -end-1 min-w-3 h-3 px-0.5 rounded-full bg-n-teal-9 text-white text-[9px] leading-3 text-center font-medium tabular-nums"
+              class="min-w-4 h-4 px-1 rounded-full bg-n-teal-9 text-white text-[10px] leading-4 text-center font-medium tabular-nums shadow-md"
             >
               {{
                 downloadCount(attachment.id) > 99
@@ -307,7 +310,7 @@ const onDownloadFile = async attachment => {
                   : downloadCount(attachment.id)
               }}
             </span>
-          </button>
+          </div>
 
           <button
             v-if="showJumpToMessage && attachment.message_id"
