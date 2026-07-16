@@ -15,7 +15,7 @@ Campos do inbox Chatwoot (`Channel::Whatsapp#provider_config`) mapeados para API
 | Conexão | `base_url`, `global_api_key`, `instance_token`, `instance_name`, `instance_id`, `connection_status`, `webhook_token` | create/connect/status |
 | WhatsApp settings | `ignore_groups`, `reject_call`, `msg_call`, `always_online`, `read_messages`, `ignore_status` | `advanced-settings` |
 | Proxy | `proxy_enabled`, `proxy_host`, `proxy_port`, `proxy_username`, `proxy_password` | create `proxy` object |
-| Conversas | `conversation_pending`, `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork |
+| Conversas | `merge_brazil_contacts` (+ `inbox.lock_to_single_conversation`) | Chatwoot fork — sem `conversation_pending` (só Node) |
 | Outbound | `sign_msg`, `send_templates_as_text` | Chatwoot fork |
 | Filtros inbound | `ignore_from_me_echo`, `mark_inbound_deleted`, `mark_inbound_edited`, `convert_markdown_inbound` | Normalizer + sync services |
 | Import | `import_contacts`, `import_messages`, `import_on_connect`, `import_*` runtime | Jobs + `POST /user/*`, `HISTORY_SYNC` |
@@ -150,6 +150,11 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
   "send_templates_as_text": true,
   "ignore_from_me_echo": true,
   "convert_markdown_inbound": true,
+  "convert_markdown_outbound": true,
+  "mark_read_on_reply": false,
+  "mark_read_on_open": true,
+  "send_random_delay": false,
+  "notify_send_errors_private": true,
   "mark_inbound_deleted": true,
   "mark_inbound_edited": true,
   "import_on_connect": false,

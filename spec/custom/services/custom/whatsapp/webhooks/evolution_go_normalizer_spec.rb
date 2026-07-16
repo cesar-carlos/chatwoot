@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
+  before do
+    allow_any_instance_of(Inbox).to receive(:create_default_working_hours) # rubocop:disable RSpec/AnyInstance
+  end
+
   let(:account) { create(:account) }
   let(:channel) do
     create(
@@ -234,7 +238,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     end
   end
 
-  it 'renders reaction messages as placeholder text' do
+  it 'does not create a text placeholder for reaction messages' do
     reaction_fixture = {
       'event' => 'MESSAGE',
       'data' => {
@@ -243,13 +247,22 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
           'fromMe' => false,
           'id' => 'REACTION1'
         },
-        'message' => { 'reactionMessage' => { 'text' => '👍' } }
+        'message' => {
+          'reactionMessage' => {
+            'text' => '👍',
+            'key' => {
+              'id' => 'TARGETMSG1',
+              'remoteJid' => '5511999999999@s.whatsapp.net',
+              'fromMe' => true
+            }
+          }
+        }
       }
     }
 
     result = described_class.new(channel, reaction_fixture).perform
 
-    expect(result[:messages].first[:text][:body]).to eq('[Reaction message]')
+    expect(result).to be_blank
   end
 
   it 'normalizes inbound contactMessage payloads' do

@@ -12,6 +12,10 @@
 | 12/jul/2026 (pm) | `documentWithCaptionMessage` unwrap + troubleshooting n8n/`filename` |
 | 12/jul/2026 (pm2) | Delete/edit: fromMe sync, SEND_MESSAGE ordering, ChatJid LID, outbound guards |
 | 12/jul/2026 (pm3) | View-once `IsUnavailable` + i18n delete/view-once (en, pt, pt_BR) |
+| 13/jul/2026 | Fixes operacionais: `stanzaID`, quote participant (`+55000` / `instance_name`), avatar backoff 6h, same-origin downloads |
+| 16/jul/2026 | Auditoria doc × código — subscribe canônico, `conversation_pending` removido de Go, sync status/feature-mapping |
+| 16/jul/2026 (pm) | Message reactions: inbound chip + outbound context menu; ADR §33; docs sync |
+| 16/jul/2026 (eve) | Reactions improvements: ReactionsStore, user:self, timeout 15s, Node parity, cleanup rake |
 
 ---
 
@@ -220,3 +224,61 @@ Cruzamento código `custom/.../evolution_go/` × docs. **Conclusão:** docs de s
 | `Unsupported.vue` / `Base.vue` | Bubble view-once + delete notice (camelCase attrs); `// FORK:` |
 | Locales | `en` + `pt` / `pt_BR` (`VIEW_ONCE_MEDIA_UNAVAILABLE`, `DELETED_*_NOTICE`) |
 | [webhook-events.md](./webhook-events.md), [troubleshooting.md](./troubleshooting.md), [inbox-business-rules.md](./inbox-business-rules.md), [validation-checklist.md](./validation-checklist.md), [status.md](./status.md) | Docs alinhados |
+
+---
+
+## Revisão 13/jul/2026 — replies / avatars / alias hosts
+
+**Escopo:** Commit `fix(fork): Evolution Go replies/avatars and alias-host downloads`.
+
+| Área | Comportamento real |
+|------|-------------------|
+| Reply inbound | `contextInfo.stanzaID` (whatsmeow) + `stanzaId` (Baileys) |
+| Quote outbound | `quoted.participant` para mensagem própria: JID do negócio via `instance_name` quando `phone_number` é placeholder `+55000…` |
+| Avatar | `AVATAR_REQUEST_TIMEOUT=12s`; path `/user/avatar` sem retry; `evolution_go_avatar_attempted_at` + cooldown 6h |
+| Downloads UI | `sameOriginActiveStorageUrl` — rewrite Active Storage para origin atual em hosts alias |
+
+Docs tocados no commit: [troubleshooting.md](./troubleshooting.md), [webhook-events.md](./webhook-events.md).
+
+---
+
+## Revisão 16/jul/2026 — auditoria doc × código
+
+**Veredito:** Integração alinhada com o código. Drift residual era documental (não de implementação).
+
+| Arquivo | Drift corrigido |
+|---------|-----------------|
+| [inbox-business-rules.md](./inbox-business-rules.md) | Subscribe ainda MVP legado; `conversation_pending` documentado mas **não** existe em Go |
+| [provider-config-mapping.md](./provider-config-mapping.md) | Removido `conversation_pending` do grupo Conversas |
+| [business-rules-adaptation.md](./business-rules-adaptation.md) | Eventos MVP → lista canônica |
+| [api-reference.md](./api-reference.md) / [troubleshooting.md](./troubleshooting.md) | Subscribe sem `SEND_MESSAGE_UPDATE` |
+| [feature-mapping.md](./feature-mapping.md) / [status.md](./status.md) | Sync 13/jul (stanzaID, avatar backoff, quote participant) |
+| [decisions.md](./decisions.md) | ADR §32 avatar backoff + quote JID |
+
+**Ainda pendente (não bloqueante):** E2E operador, fixtures JSON reais, `evolution-target-version.txt` preenchido.
+
+---
+
+## Revisão 16/jul/2026 (pm) — message reactions
+
+**Escopo:** Implementação completa reactions `evolution_go` (inbound chip + outbound context menu).
+
+| Área | Entrega |
+|------|---------|
+| Inbound | `MessageReactionPayloadExtractor` + `MessageReactionSyncService`; job hook; sem placeholder |
+| Outbound | `ApiClient#react`, `ReactSyncService`, rota `evolution_go_react`, context menu |
+| UI | Chip em `Base.vue`; i18n EN |
+| Docs | ADR §33, webhook-events, feature-mapping, status, troubleshooting, validation-checklist |
+
+## Revisão 16/jul/2026 (eve) — reactions improvements
+
+**Escopo:** Pós-MVP — `ReactionsStore` + `user:self`, timeout 15s, chip clicável, optimistic UI, rake cleanup, paridade Node.
+
+| Área | Entrega |
+|------|---------|
+| Store | `Custom::Whatsapp::ReactionsStore` shared |
+| Go | Timeout `/message/react` 15s; bump `last_activity_at` |
+| Node | Extractor/Sync/ReactSync + `send_reaction`; placeholder removido |
+| UX | Chip highlight/remove; optimistic context menu |
+| Ops | `rake evolution_go:cleanup_reaction_placeholders` |
+| Docs | ADR §33 addendum + fixture `message_reaction.json` |

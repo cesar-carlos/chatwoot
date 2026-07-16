@@ -60,6 +60,7 @@ def send_media(number:, type:, url:, caption: nil, filename: nil)  # Fase 2 — 
 def get_advanced_settings(instance_id)                 # GET /instance/{id}/advanced-settings
 def update_advanced_settings(instance_id, settings:)    # PUT /instance/{id}/advanced-settings
 def download_media(message_payload)                    # POST /message/downloadmedia only (no downloadimage fallback)
+def react(number:, id:, reaction:, from_me: false, participant: nil)  # POST /message/react
 
 # private
 def admin_headers    # { 'apikey' => global_api_key }
@@ -332,6 +333,22 @@ end
 | `spec/custom/services/custom/whatsapp/evolution_go/api_client_spec.rb` | HTTP client |
 | `spec/custom/controllers/webhooks/evolution_go_controller_spec.rb` | auth `?token=` e Bearer |
 | `spec/custom/jobs/custom/webhooks/whatsapp_events_job_evolution_go_spec.rb` | roteamento eventos |
+| `spec/custom/services/custom/whatsapp/evolution_go/message_reaction_*_spec.rb` | reactions inbound |
+
+---
+
+## Reactions (ADR §33)
+
+```ruby
+# MessageReactionPayloadExtractor.extract_reaction_payload(data)
+# → { key:, text:, remove:, reaction_message_id:, from_me:, participant: }
+
+# MessageReactionSyncService.new(channel:, data:).perform
+# → atualiza content_attributes['reactions'] na mensagem alvo
+
+# ReactSyncService.new(message:, reaction:, user:).perform
+# → POST /message/react + atualiza reactions locais (ator user)
+```
 
 ---
 

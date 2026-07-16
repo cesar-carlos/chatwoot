@@ -1,0 +1,23 @@
+{
+  "event": "MESSAGE",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "REACTION-MSG-1",
+      "Chat": "5511999999999@s.whatsapp.net",
+      "Sender": "5511999999999@s.whatsapp.net",
+      "IsFromMe": false,
+      "Timestamp": 1699999999
+    },
+    "Message": {
+      "reactionMessage": {
+        "text": "👍",
+        "key": {
+          "id": "TARGETMSG1",
+          "remoteJid": "5511999999999@s.whatsapp.net",
+          "fromMe": true
+        }
+      }
+    }
+  }
+}

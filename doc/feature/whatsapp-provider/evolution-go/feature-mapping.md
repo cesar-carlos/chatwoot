@@ -2,7 +2,7 @@
 
 Checklist feature a feature vs código. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
 
-**Última sync código:** 12/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
+**Última sync código:** 16/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
 
 ---
 
@@ -29,6 +29,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Mark read outbound | `POST /message/markread` | ✅ | `mark_read_on_reply`, `mark_read_on_open` |
 | Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + `DeleteSyncService` |
 | Edit message | `POST /message/edit` | ✅ | `sync_edit_to_whatsapp` + `EditSyncService` (opt-in) |
+| React | `POST /message/react` | ✅ | Context menu + `ReactSyncService` |
 
 ---
 
@@ -44,11 +45,13 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Status read | `READ_RECEIPT` | ✅ | → `statuses[]` flat (batch) |
 | Dedup | — | ✅ | `lock_message_source_id!` (upstream) |
 | Contato/conversa | — | ✅ | `IncomingMessageEvolutionGo` + enrichment Go |
-| Reply threading | `contextInfo.stanzaId` | ✅ | `add_reply_context!` → `in_reply_to_external_id` |
+| Reply threading | `contextInfo.stanzaId` / `stanzaID` | ✅ | `add_reply_context!` → `in_reply_to_external_id` |
+| Quote outbound (própria msg) | `quoted.participant` via `instance_name` se phone `+55000…` | ✅ | `EvolutionGoServiceOutbound#channel_business_phone` |
+| Avatar enrichment backoff | `/user/avatar` timeout 12s + `evolution_go_avatar_attempted_at` (6h) | ✅ | `ContactEnrichmentService` |
 | Client delete | `MESSAGE` revoke / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` |
 | Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` | ✅ | `MessageEditSyncService` |
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
-| Reações | reaction no MESSAGE | ❌ | ignorar |
+| Reações | `reactionMessage` → `content_attributes.reactions` | ✅ | `ReactionsStore` + chip/menu; Node parity via `Evolution::*` |
 | Grupos | `MESSAGE` com `@g.us` | ✅ | Normalizer + `GroupContactService` quando `ignore_groups: false` · ⚠️ E2E |
 | Echo fromMe | `MESSAGE` / `SEND_MESSAGE` fromMe | ✅ | filtrar ou `PhoneOutgoingSyncService` |
 
@@ -139,6 +142,6 @@ Ver [../whatsapp-voice/README.md](../../whatsapp-voice/README.md).
 | **0** | Registry, PROVIDERS, prepends | ✅ |
 | **1** | Texto in/out, QR, connect, webhook, wizard | ✅ |
 | **2** | Mídia, READ_RECEIPT, markread, settings, proxy delete | ✅ |
-| **3** | Location, contact, sticker, input_select→buttons/list, presence typing | ✅ (poll / link / reactions outbound pendentes) |
+| **3** | Location, contact, sticker, input_select→buttons/list, presence typing, reactions | ✅ (poll / link pendentes) |
 | **4** | HISTORY_SYNC import | ✅ código · ⚠️ E2E fixture |
 | **UX** | Avisos, diagnóstico, confirmações, grupos, delete/edit sync | ✅ |

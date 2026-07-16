@@ -15,7 +15,14 @@ import {
 import MenuItem from '../../../components/widgets/conversation/contextMenu/menuItem.vue';
 import { useTrack } from 'dashboard/composables';
 import NextButton from 'dashboard/components-next/button/Button.vue';
-import ReportCaptainMessageDialog from './ReportCaptainMessageDialog.vue';
+// FORK: Evolution Go/Node reactions
+import MessageApi from 'dashboard/api/inbox/message';
+import {
+  inboxSupportsReactions,
+  applyOptimisticReaction,
+} from 'customDashboard/composables/useMessageReactions';
+
+const EVOLUTION_GO_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
 export default {
   components: {
@@ -57,12 +64,14 @@ export default {
 
     return {
       getPlainText,
+      evolutionGoReactionEmojis: EVOLUTION_GO_REACTION_EMOJIS,
     };
   },
   data() {
     return {
       isCannedResponseModalOpen: false,
       showDeleteModal: false,
+      isSendingReaction: false,
     };
   },
   computed: {
@@ -89,6 +98,9 @@ export default {
         this.message.content_attributes ?? this.message.contentAttributes
       );
     },
+    messageSourceId() {
+      return this.message.source_id || this.message.sourceId;
+    },
     inbox() {
       if (!this.inboxId) return null;
       return this.getInboxById(this.inboxId) || null;
@@ -102,6 +114,12 @@ export default {
 
       const config = inbox.provider_config || inbox.providerConfig || {};
       return config.sync_delete_to_whatsapp === true;
+    },
+    // FORK: Evolution Go/Node reactions
+    canReactWithEvolutionGo() {
+      return (
+        inboxSupportsReactions(this.inbox) && Boolean(this.messageSourceId)
+      );
     },
     deleteConfirmationMessage() {
       if (this.isWhatsAppSyncDeleteEnabled) {
@@ -187,9 +205,42 @@ export default {
     closeDeleteModal() {
       this.showDeleteModal = false;
     },
-    openReportDialog() {
-      this.handleClose();
-      this.$refs.reportDialog?.open();
+    // FORK: Evolution Go/Node reactions (optimistic UI)
+    async sendEvolutionGoReaction(reaction) {
+      if (this.isSendingReaction || !this.canReactWithEvolutionGo) return;
+
+      const snapshot =
+        this.message.content_attributes ?? this.message.contentAttributes;
+      const currentUserId = this.$store.getters.getCurrentUserID;
+      const optimistic = applyOptimisticReaction(
+        this.message,
+        reaction,
+        currentUserId
+      );
+      this.$store.dispatch('updateMessage', optimistic);
+
+      this.isSendingReaction = true;
+      try {
+        const response = await MessageApi.evolutionGoReact(
+          this.conversationId,
+          this.messageId,
+          reaction
+        );
+        const updated = response.data;
+        if (updated?.id) {
+          this.$store.dispatch('updateMessage', updated);
+        }
+        useAlert(this.$t('CONVERSATION.CONTEXT_MENU.REACTION_SENT'));
+        this.handleClose();
+      } catch (error) {
+        this.$store.dispatch('updateMessage', {
+          ...this.message,
+          content_attributes: snapshot,
+        });
+        useAlert(this.$t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED'));
+      } finally {
+        this.isSendingReaction = false;
+      }
     },
   },
 };
@@ -263,6 +314,33 @@ export default {
           variant="icon"
           @click.stop="handleTranslate"
         />
+        <!-- FORK: Evolution Go reactions -->
+        <template v-if="canReactWithEvolutionGo">
+          <hr />
+          <div class="px-2 py-1 text-xs text-n-slate-11">
+            {{ $t('CONVERSATION.CONTEXT_MENU.REACT') }}
+          </div>
+          <div class="flex flex-wrap gap-1 px-2 pb-2">
+            <button
+              v-for="emoji in evolutionGoReactionEmojis"
+              :key="emoji"
+              type="button"
+              class="rounded-md px-1.5 py-1 text-base hover:bg-n-alpha-2 disabled:opacity-50"
+              :disabled="isSendingReaction"
+              @click.stop="sendEvolutionGoReaction(emoji)"
+            >
+              {{ emoji }}
+            </button>
+            <button
+              type="button"
+              class="rounded-md px-1.5 py-1 text-xs text-n-slate-11 hover:bg-n-alpha-2 disabled:opacity-50"
+              :disabled="isSendingReaction"
+              @click.stop="sendEvolutionGoReaction('remove')"
+            >
+              {{ $t('CONVERSATION.CONTEXT_MENU.REMOVE_REACTION') }}
+            </button>
+          </div>
+        </template>
         <hr />
         <MenuItem
           v-if="enabledOptions['copyLink']"

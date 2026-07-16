@@ -64,7 +64,7 @@ Campos: `host`, `port`, `protocol`, `username`, `password`. `POST /instance/prox
 
 | Decisão | Valor |
 |---------|-------|
-| Eventos MVP | `MESSAGE`, `CONNECTION`, `QRCODE` |
+| Eventos subscribe | Lista canônica `ProviderConfig::WEBHOOK_EVENTS` (+ `GROUP` se `ignore_groups: false`) |
 | Auth | `webhook_token` na query string |
 | Retry Go | 5× / 30s — responder 200 rápido |
 
