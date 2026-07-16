@@ -224,6 +224,30 @@ O inbound cria placeholder localizado (`conversations.messages.whatsapp.view_onc
 
 Isto é distinto dos wrappers `viewOnceMessage*` acima: lá o conteúdo ainda vem aninhado; aqui o WhatsApp **não** disponibiliza a mídia à API.
 
+### Reações — `reactionMessage`
+
+Não cria mensagem no Chatwoot. O job detecta `reactionMessage` **antes** do normalizer e chama `MessageReactionSyncService`.
+
+```json
+{
+  "key": { "remoteJid": "5511...@s.whatsapp.net", "fromMe": false, "id": "REACTION_ID" },
+  "message": {
+    "reactionMessage": {
+      "text": "👍",
+      "key": { "id": "TARGET_MSG_ID", "remoteJid": "5511...@s.whatsapp.net", "fromMe": true }
+    }
+  }
+}
+```
+
+| Campo | Uso |
+|-------|-----|
+| `reactionMessage.text` | Emoji; vazio / `"remove"` = remoção |
+| `reactionMessage.key.id` | `source_id` da mensagem alvo no CW |
+| Envelope `key` | Ator (`fromMe` / participant) |
+
+Atualiza `content_attributes.reactions[]` na mensagem alvo + chip na bolha. Ator negócio = `user:self`. Alvo ausente → `inbound_reaction_skipped` (não inventa mensagem). Placeholder `[Reaction message]` **removido**. Bump `last_activity_at` sem unread.
+
 ---
 
 ## `CONNECTION` — status

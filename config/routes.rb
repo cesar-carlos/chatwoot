@@ -156,6 +156,8 @@ Rails.application.routes.draw do
                 member do
                   post :translate
                   post :retry
+                  # FORK: Evolution Go/Node message reactions
+                  post :evolution_go_react
                 end
               end
               resources :assignments, only: [:create]

@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import MessageMeta from '../MessageMeta.vue';
 // FORK: Evolution Go/Node inbound delete highlight
@@ -8,6 +8,15 @@ import Icon from 'next/icon/Icon.vue';
 import { emitter } from 'shared/helpers/mitt';
 import { useMessageContext } from '../provider.js';
 import { useI18n } from 'vue-i18n';
+import { useAlert } from 'dashboard/composables';
+import { useMapGetter, useStore } from 'dashboard/composables/store';
+// FORK: Evolution Go/Node WhatsApp reactions
+import {
+  buildReactionChips,
+  inboxSupportsReactions,
+  applyOptimisticReaction,
+  sendWhatsappReaction,
+} from 'customDashboard/composables/useMessageReactions';
 
 import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
@@ -23,11 +32,70 @@ const {
   inReplyTo,
   shouldGroupWithNext,
   contentAttributes, // FORK: Evolution Go/Node inbound delete highlight
+  id: messageId,
+  conversationId,
+  inboxId,
+  sourceId,
 } = useMessageContext();
 const { t } = useI18n();
+const store = useStore();
+const getInboxById = useMapGetter('inboxes/getInboxById');
+const isRemovingReaction = ref(false);
 
 // FORK: Evolution Go/Node inbound delete highlight
 const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));
+
+// FORK: Evolution Go/Node WhatsApp reactions
+const reactionInbox = computed(() => {
+  if (!inboxId?.value) return null;
+  return getInboxById.value?.(inboxId.value) || null;
+});
+
+const canReactOnChip = computed(
+  () =>
+    inboxSupportsReactions(reactionInbox.value) && Boolean(sourceId?.value)
+);
+
+const reactionChips = computed(() => {
+  const attrs = contentAttributes.value || {};
+  return buildReactionChips(attrs.reactions || []);
+});
+
+const removeBusinessReaction = async chip => {
+  if (!canReactOnChip.value || !chip?.isMine || isRemovingReaction.value) return;
+
+  const snapshotAttrs = {
+    ...(contentAttributes.value || {}),
+  };
+  const currentMessage = {
+    id: messageId.value,
+    conversation_id: conversationId.value,
+    content_attributes: snapshotAttrs,
+    source_id: sourceId.value,
+  };
+  const optimistic = applyOptimisticReaction(currentMessage, 'remove');
+  store.dispatch('updateMessage', optimistic);
+
+  isRemovingReaction.value = true;
+  try {
+    const response = await sendWhatsappReaction({
+      conversationId: conversationId.value,
+      messageId: messageId.value,
+      reaction: 'remove',
+    });
+    if (response.data?.id) {
+      store.dispatch('updateMessage', response.data);
+    }
+  } catch (error) {
+    store.dispatch('updateMessage', {
+      ...currentMessage,
+      content_attributes: snapshotAttrs,
+    });
+    useAlert(t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED'));
+  } finally {
+    isRemovingReaction.value = false;
+  }
+};
 
 // FORK: Evolution Go/Node inbound delete highlight
 const deletedNotice = computed(() => {
@@ -151,6 +219,38 @@ const replyToPreview = computed(() => {
     </div>
     <div :class="{ 'opacity-80': isDeleted }">
       <slot />
+    </div>
+    <!-- FORK: Evolution Go/Node WhatsApp reactions -->
+    <div
+      v-if="reactionChips.length"
+      class="flex flex-wrap gap-1 mt-1.5"
+      :class="flexOrientationClass"
+    >
+      <button
+        v-for="chip in reactionChips"
+        :key="chip.emoji"
+        type="button"
+        class="inline-flex items-center gap-0.5 rounded-full border bg-n-alpha-2 px-1.5 py-0.5 text-xs leading-none"
+        :class="
+          chip.isMine && canReactOnChip
+            ? 'border-n-brand cursor-pointer ring-1 ring-n-brand/40'
+            : 'border-n-strong cursor-default'
+        "
+        :disabled="Boolean(chip.isMine && canReactOnChip && isRemovingReaction)"
+        :title="
+          chip.isMine && canReactOnChip
+            ? t('CONVERSATION.CONTEXT_MENU.REMOVE_REACTION')
+            : undefined
+        "
+        @click.stop="
+          chip.isMine && canReactOnChip && removeBusinessReaction(chip)
+        "
+      >
+        <span>{{ chip.emoji }}</span>
+        <span v-if="chip.count > 1" class="text-n-slate-11">{{
+          chip.count
+        }}</span>
+      </button>
     </div>
     <MessageMeta
       v-if="shouldShowMeta"

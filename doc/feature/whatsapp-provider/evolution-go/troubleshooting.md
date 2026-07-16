@@ -116,7 +116,7 @@ Campo `phone` obrigatório — E.164 sem `+`.
 {
   "webhookUrl": "https://{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}",
   "subscribe": [
-    "MESSAGE", "SEND_MESSAGE", "CONNECTION", "QRCODE", "READ_RECEIPT",
+    "MESSAGE", "SEND_MESSAGE", "SEND_MESSAGE_UPDATE", "CONNECTION", "QRCODE", "READ_RECEIPT",
     "MESSAGE_DELETE", "MESSAGES_DELETE", "MESSAGES_EDITED", "MESSAGE_EDIT", "HISTORY_SYNC"
   ]
 }
@@ -232,3 +232,8 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 | Refresh de contatos não atualiza foto | `user/check` do Go devolve `data.Users[].IsInWhatsapp` (não `exists`); parser corrigido. `/user/avatar` devolve **base64** (não URL) — `ContactEnrichmentService` anexa base64 direto; URL HTTP ainda usa `AvatarFromUrlJob`. Se logs mostram `Net::ReadTimeout` em `POST /user/avatar`, a falha é no servidor Go/WhatsApp CDN (path sem retry, timeout 12s). Fork grava `evolution_go_avatar_attempted_at` e **não reenfileira** enrichment por falta de avatar por 6h (evita saturar `:low`); `force: true` / botão Refresh ainda tenta de novo. Nome/status ainda atualizam via `/user/info` quando o Go responde |
 | Reply no WhatsApp chega sem quote no CW | Go envia `contextInfo.stanzaID` (ID maiúsculo); parser lia só `stanzaId` (Baileys) → `in_reply_to_external_id` ficava nil. Corrigido jul/2026: aceita `stanzaId`/`stanzaID`. Mensagens antigas não backfillam — reenviar um reply de teste |
 | Reply no CW chega no celular sem quote | Ao citar mensagem **própria** (outgoing), `participant` ia `nil` porque o canal Evolution Go usa phone placeholder `+55000…`. Corrigido: JID do negócio vem do `instance_name` (dígitos embutidos) e `quoted` usa `.compact`. Citar mensagem do **contato** já usava o JID do peer |
+| Aparece `[Reaction message]` na conversa | Comportamento antigo (placeholder). Agora `reactionMessage` atualiza a mensagem alvo com chip. Limpar legado: `dry_run=1 bundle exec rake evolution_go:cleanup_reaction_placeholders` depois `dry_run=0` |
+| Reação do cliente não aparece no CW | Mensagem alvo precisa existir com `source_id` = `reactionMessage.key.id`. Checar `mutation_stats.inbound_reaction_skipped` (Go) ou logs `[EVOLUTION] inbound_reaction_skipped` (Node) |
+| Agente não consegue reagir / API hang | Context menu → Go `POST /message/react` (timeout 15s, sem retry). Node `POST /message/sendReaction/:instance`. Em algumas versões Go ([#28](https://github.com/evolution-foundation/evolution-go/issues/28)) o endpoint pode hang — atualizar Evolution Go / validar no E2E |
+| Chip duplicado (celular + dashboard) | Ator unificado `user:self`; reagir no dashboard substitui a reação `fromMe` do negócio |
+| Clique no chip não remove | Só chips do negócio (`user:self` / `from: user`) são clicáveis; inbox precisa ser `evolution_go` ou `evolution` com `source_id` |
