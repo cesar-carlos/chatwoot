@@ -6,5 +6,7 @@
         "dompurify"
     ],
     "css.lint.unknownAtRules": "ignore",
-    "scss.lint.unknownAtRules": "ignore"
+    "scss.lint.unknownAtRules": "ignore",
+    "css.customData": [".vscode/tailwind.css-data.json"],
+    "scss.customData": [".vscode/tailwind.css-data.json"]
 }

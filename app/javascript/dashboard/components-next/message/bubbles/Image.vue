@@ -30,14 +30,12 @@ const isDownloading = ref(false);
 const {
   isDownloaded,
   downloadCount,
-  isJustMarked,
   markDownloaded,
   downloadActionTooltip,
 } = useAttachmentDownloadState();
 
 const downloaded = computed(() => isDownloaded(attachment.value?.id));
 const count = computed(() => downloadCount(attachment.value?.id));
-const justMarked = computed(() => isJustMarked(attachment.value?.id));
 const downloadTooltip = computed(() =>
   downloadActionTooltip(t, attachment.value?.id, 'CONVERSATION')
 );
@@ -88,31 +86,23 @@ const handleImageError = () => {
       <div
         class="inset-0 p-2 pointer-events-none absolute bg-gradient-to-tl from-n-slate-12/30 dark:from-n-slate-1/50 via-transparent to-transparent hidden group-hover:flex"
       />
-      <div class="absolute right-2 bottom-2 hidden group-hover:flex gap-2">
-        <Button xs solid slate icon="i-lucide-expand" class="opacity-60" />
-        <div class="relative">
-          <Button
-            v-tooltip="downloadTooltip"
-            xs
-            solid
-            slate
-            :icon="downloaded ? 'i-lucide-check' : 'i-lucide-download'"
-            class="opacity-60 transition-transform duration-200"
-            :class="{
-              'text-n-teal-11 opacity-100': downloaded,
-              'scale-110': justMarked,
-            }"
-            :is-loading="isDownloading"
-            :disabled="isDownloading"
-            @click.stop="downloadAttachment"
-          />
-          <span
-            v-if="count > 1"
-            class="absolute -top-1 -end-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-n-teal-9 text-white text-[10px] leading-3.5 text-center font-medium tabular-nums"
-          >
-            {{ count > 99 ? '99+' : count }}
-          </span>
-        </div>
+      <div
+        class="absolute right-2 bottom-2 hidden group-hover:flex gap-1.5 items-center"
+      >
+        <Button xs solid slate icon="i-lucide-expand" class="opacity-80" />
+        <Button
+          v-tooltip="downloadTooltip"
+          xs
+          solid
+          slate
+          :icon="downloaded ? 'i-lucide-check' : 'i-lucide-download'"
+          :label="count > 1 ? String(count > 99 ? '99+' : count) : ''"
+          class="opacity-80"
+          :class="{ '!opacity-100 text-n-teal-11': downloaded }"
+          :is-loading="isDownloading"
+          :disabled="isDownloading"
+          @click.stop="downloadAttachment"
+        />
       </div>
     </div>
   </BaseBubble>
