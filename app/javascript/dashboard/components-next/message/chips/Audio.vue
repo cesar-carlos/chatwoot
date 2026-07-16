@@ -7,9 +7,12 @@ import {
   getCurrentInstance,
 } from 'vue';
 import Icon from 'next/icon/Icon.vue';
+import { useI18n } from 'vue-i18n';
 import { timeStampAppendedURL } from 'dashboard/helper/URLHelper';
 // FORK: same-origin Active Storage download on alias hosts (dev-chat)
 import { downloadFile } from 'customDashboard/helper/downloadFile';
+// FORK: local download state for sequential print workflows
+import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
 
 import { useEmitter } from 'dashboard/composables/emitter';
 import { emitter } from 'shared/helpers/mitt';
@@ -33,6 +36,22 @@ const { attachment } = props;
 defineOptions({
   inheritAttrs: false,
 });
+
+const { t } = useI18n();
+const {
+  isDownloaded,
+  downloadCount,
+  isJustMarked,
+  markDownloaded,
+  downloadActionTooltip,
+} = useAttachmentDownloadState();
+
+const downloaded = computed(() => isDownloaded(attachment?.id));
+const count = computed(() => downloadCount(attachment?.id));
+const justMarked = computed(() => isJustMarked(attachment?.id));
+const downloadTooltip = computed(() =>
+  downloadActionTooltip(t, attachment?.id, 'CONVERSATION')
+);
 
 const timeStampURL = computed(() => {
   return timeStampAppendedURL(attachment.dataUrl);
@@ -171,8 +190,13 @@ const changePlaybackSpeed = () => {
 };
 
 const downloadAudio = async () => {
-  const { fileType, dataUrl, extension } = attachment;
-  downloadFile({ url: dataUrl, type: fileType, extension });
+  const { id, fileType, dataUrl, extension } = attachment;
+  try {
+    await downloadFile({ url: dataUrl, type: fileType, extension });
+    markDownloaded(id);
+  } catch {
+    // Keep silent — audio chip previously had no error toast
+  }
 };
 </script>
 
@@ -231,10 +255,25 @@ const downloadAudio = async () => {
         <Icon v-else class="size-4" icon="i-lucide-volume-2" />
       </button>
       <button
-        class="p-0 border-0 size-8 grid place-content-center"
+        v-tooltip="downloadTooltip"
+        class="relative p-0 border-0 size-8 grid place-content-center transition-transform duration-200"
+        :class="{
+          'text-n-teal-11': downloaded,
+          'scale-110': justMarked,
+        }"
+        :aria-label="downloadTooltip"
         @click="downloadAudio"
       >
-        <Icon class="size-4" icon="i-lucide-download" />
+        <Icon
+          class="size-4"
+          :icon="downloaded ? 'i-lucide-check' : 'i-lucide-download'"
+        />
+        <span
+          v-if="count > 1"
+          class="absolute -top-0.5 -end-0.5 min-w-3 h-3 px-0.5 rounded-full bg-n-teal-9 text-white text-[9px] leading-3 text-center font-medium tabular-nums"
+        >
+          {{ count > 99 ? '99+' : count }}
+        </span>
       </button>
     </div>
 

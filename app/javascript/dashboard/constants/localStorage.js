@@ -11,4 +11,6 @@ export const LOCAL_STORAGE_KEYS = {
   CAPTAIN_OVERVIEW_V2: 'captain_overview_v2',
   CAPTAIN_ASSISTANT_TOOLS_BANNER_DISMISSED:
     'captain_assistant_tools_banner_dismissed',
+  // FORK: local per-agent attachment download counts
+  ATTACHMENT_DOWNLOAD_STATE: 'attachmentDownloadState',
 };

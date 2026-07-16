@@ -1,6 +1,8 @@
 <script setup>
-import { toRef } from 'vue';
+import { computed, toRef } from 'vue';
 import { useMessagePreview } from 'shared/composables/useMessagePreview';
+// FORK: local download state indicator in conversation list preview
+import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
 
 const props = defineProps({
   message: {
@@ -24,6 +26,7 @@ const {
   isMessagePrivate,
   parsedLastMessage,
   lastMessageFileType,
+  lastMessageAttachmentId,
   attachmentIconName,
   attachmentMessageText,
   showAttachmentPreview,
@@ -32,6 +35,11 @@ const {
 } = useMessagePreview(toRef(props, 'message'), {
   showMessageType: toRef(props, 'showMessageType'),
 });
+
+const { isDownloaded } = useAttachmentDownloadState();
+const attachmentDownloaded = computed(() =>
+  isDownloaded(lastMessageAttachmentId.value)
+);
 </script>
 
 <template>
@@ -75,6 +83,13 @@ const {
         :icon="attachmentIconName"
       />
       {{ attachmentMessageText }}
+      <fluent-icon
+        v-if="attachmentDownloaded"
+        v-tooltip="$t('CHAT_LIST.ATTACHMENTS.DOWNLOADED_HINT')"
+        size="14"
+        class="-mt-0.5 align-middle inline-block text-n-teal-11"
+        icon="checkmark"
+      />
     </span>
     <span v-else>
       {{ defaultEmptyMessage || $t('CHAT_LIST.NO_CONTENT') }}

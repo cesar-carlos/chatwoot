@@ -9,6 +9,8 @@ import { useImageZoom } from 'dashboard/composables/useImageZoom';
 import { messageTimestamp } from 'shared/helpers/timeHelper';
 // FORK: same-origin Active Storage download on alias hosts (dev-chat)
 import { downloadFile } from 'customDashboard/helper/downloadFile';
+// FORK: local download state for sequential print workflows
+import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
 
 
 import NextButton from 'dashboard/components-next/button/Button.vue';
@@ -35,6 +37,13 @@ const show = defineModel('show', { type: Boolean, default: false });
 
 const { t } = useI18n();
 const getters = useStoreGetters();
+const {
+  isDownloaded,
+  downloadCount,
+  isJustMarked,
+  markDownloaded,
+  downloadActionTooltip,
+} = useAttachmentDownloadState();
 
 const ALLOWED_FILE_TYPES = {
   IMAGE: 'image',
@@ -132,18 +141,35 @@ const onClickChangeAttachment = (attachment, index) => {
 };
 
 const onClickDownload = async () => {
-  const { file_type: type, data_url: url, extension } = activeAttachment.value;
+  const {
+    id,
+    file_type: type,
+    data_url: url,
+    extension,
+  } = activeAttachment.value;
   if (!Object.values(ALLOWED_FILE_TYPES).includes(type)) return;
 
   try {
     isDownloading.value = true;
     await downloadFile({ url, type, extension });
+    markDownloaded(id);
   } catch (error) {
     useAlert(t('GALLERY_VIEW.ERROR_DOWNLOADING'));
   } finally {
     isDownloading.value = false;
   }
 };
+
+const activeDownloaded = computed(() =>
+  isDownloaded(activeAttachment.value?.id)
+);
+const activeCount = computed(() => downloadCount(activeAttachment.value?.id));
+const activeJustMarked = computed(() =>
+  isJustMarked(activeAttachment.value?.id)
+);
+const activeDownloadTooltip = computed(() =>
+  downloadActionTooltip(t, activeAttachment.value?.id, 'CONVERSATION')
+);
 
 const keyboardEvents = {
   Escape: { action: onClose },
@@ -251,14 +277,31 @@ onMounted(() => {
               ghost
               @click="onRotate('clockwise')"
             />
-            <NextButton
-              icon="i-lucide-download"
-              slate
-              ghost
-              :is-loading="isDownloading"
-              :disabled="isDownloading"
-              @click="onClickDownload"
-            />
+            <div class="relative">
+              <NextButton
+                v-tooltip="activeDownloadTooltip"
+                :icon="
+                  activeDownloaded ? 'i-lucide-check' : 'i-lucide-download'
+                "
+                slate
+                ghost
+                class="transition-transform duration-200"
+                :class="{
+                  'text-n-teal-11': activeDownloaded,
+                  'scale-110': activeJustMarked,
+                }"
+                :is-loading="isDownloading"
+                :disabled="isDownloading"
+                :aria-label="activeDownloadTooltip"
+                @click="onClickDownload"
+              />
+              <span
+                v-if="activeCount > 1"
+                class="absolute -top-1 -end-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-n-teal-9 text-white text-[10px] leading-3.5 text-center font-medium tabular-nums"
+              >
+                {{ activeCount > 99 ? '99+' : activeCount }}
+              </span>
+            </div>
             <NextButton icon="i-lucide-x" slate ghost @click="onClose" />
           </div>
         </header>

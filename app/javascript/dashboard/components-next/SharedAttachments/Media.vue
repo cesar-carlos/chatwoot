@@ -10,6 +10,9 @@ import {
 import { useExactTimestamp } from 'shared/composables/useExactTimestamp';
 // FORK: same-origin Active Storage download on alias hosts (dev-chat)
 import { downloadFile } from 'customDashboard/helper/downloadFile';
+// FORK: local download state for sequential print workflows
+import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
+
 import {
   ATTACHMENT_TYPES,
   MEDIA_TYPES,
@@ -29,6 +32,13 @@ const emit = defineEmits(['select', 'jumpToMessage']);
 const exactTimestamp = useExactTimestamp();
 
 const { t } = useI18n();
+const {
+  isDownloaded,
+  downloadCount,
+  isJustMarked,
+  markDownloaded,
+  downloadActionTooltip,
+} = useAttachmentDownloadState();
 
 const mediaAttachments = computed(() =>
   [...props.attachments]
@@ -145,6 +155,7 @@ const onDownloadFile = async attachment => {
   try {
     downloadingId.value = id;
     await downloadFile({ url, type, extension });
+    markDownloaded(id);
   } catch (error) {
     useAlert(t('CONVERSATION_SIDEBAR.SHARED_FILES.DOWNLOAD_ERROR'));
   } finally {
@@ -268,13 +279,41 @@ const onDownloadFile = async attachment => {
           <button
             type="button"
             class="absolute flex items-center justify-center !p-px transition-all rounded-full opacity-0 bottom-1.5 ltr:right-1.5 rtl:left-1.5 size-6 bg-white/95 shadow-md group-hover:opacity-100 hover:bg-white disabled:opacity-50"
+            :class="{
+              'opacity-100': isDownloaded(attachment.id),
+              'scale-110': isJustMarked(attachment.id),
+            }"
             :disabled="downloadingId === attachment.id"
-            :aria-label="t('CONVERSATION_SIDEBAR.SHARED_FILES.DOWNLOAD')"
+            :aria-label="
+              downloadActionTooltip(
+                t,
+                attachment.id,
+                'CONVERSATION_SIDEBAR.SHARED_FILES'
+              )
+            "
             @click.stop="onDownloadFile(attachment)"
             @keydown.enter.stop
             @keydown.space.stop
           >
-            <Icon icon="i-lucide-download" class="size-3 text-n-black" />
+            <Icon
+              :icon="
+                isDownloaded(attachment.id)
+                  ? 'i-lucide-check'
+                  : 'i-lucide-download'
+              "
+              class="size-3 text-n-black"
+              :class="{ 'text-n-teal-11': isDownloaded(attachment.id) }"
+            />
+            <span
+              v-if="downloadCount(attachment.id) > 1"
+              class="absolute -top-1 -end-1 min-w-3 h-3 px-0.5 rounded-full bg-n-teal-9 text-white text-[9px] leading-3 text-center font-medium tabular-nums"
+            >
+              {{
+                downloadCount(attachment.id) > 99
+                  ? '99+'
+                  : downloadCount(attachment.id)
+              }}
+            </span>
           </button>
 
           <button

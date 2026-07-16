@@ -83,6 +83,11 @@ export const useMessagePreview = (
     }
   });
 
+  const lastMessageAttachmentId = computed(() => {
+    const [{ id } = {}] = message.value?.attachments || [];
+    return id ?? null;
+  });
+
   const showAttachmentPreview = computed(() => {
     if (!message.value?.attachments?.length) return false;
     // FORK: share contact card
@@ -104,6 +109,7 @@ export const useMessagePreview = (
     isMessagePrivate,
     parsedLastMessage,
     lastMessageFileType,
+    lastMessageAttachmentId,
     attachmentIconName,
     attachmentIconClass,
     attachmentMessageText,
