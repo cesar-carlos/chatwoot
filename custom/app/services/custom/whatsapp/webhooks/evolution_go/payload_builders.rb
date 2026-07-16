@@ -125,7 +125,8 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
            message.dig('imageMessage', 'caption') ||
            message.dig('videoMessage', 'caption') ||
            message.dig('documentMessage', 'caption') ||
-           interactive_reply_body(message)
+           interactive_reply_body(message) ||
+           interactive_template_body(message)
     return body if body.present?
 
     unsupported_placeholder(message)
@@ -153,6 +154,73 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     list.dig('singleSelectReply', 'selectedRowId').presence ||
       list['title'].presence ||
       list['description'].presence
+  end
+
+  # Business templates arrive as templateMessage → Format → InteractiveMessageTemplate
+  # (whatsmeow PascalCase) with body.text + NativeFlowMessage CTA/quick-reply buttons.
+  def interactive_template_body(message)
+    interactive = dig_interactive_message(message)
+    return if interactive.blank?
+
+    body_text = dig_interactive_body_text(interactive)
+    button_labels = dig_native_flow_button_labels(interactive)
+    parts = [body_text.presence, *button_labels.map { |label| "[#{label}]" }].compact
+    parts.join("\n\n").presence
+  end
+
+  def dig_interactive_message(message)
+    dig = Custom::Whatsapp::EvolutionGo::FieldDig
+    direct = dig.dig_field(message, 'interactiveMessage')
+    return direct.with_indifferent_access if direct.is_a?(Hash)
+
+    template = dig.dig_field(message, 'templateMessage')
+    return nil unless template.is_a?(Hash)
+
+    template = template.with_indifferent_access
+    format = dig.dig_field(template, 'format')
+    return nil unless format.is_a?(Hash)
+
+    format = format.with_indifferent_access
+    hydrated = dig.dig_field(format, 'interactiveMessageTemplate')
+    return nil unless hydrated.is_a?(Hash)
+
+    interactive = dig.dig_field(hydrated.with_indifferent_access, 'interactiveMessage')
+    interactive.is_a?(Hash) ? interactive.with_indifferent_access : nil
+  end
+
+  def dig_interactive_body_text(interactive)
+    dig = Custom::Whatsapp::EvolutionGo::FieldDig
+    body = dig.dig_field(interactive, 'body')
+    return nil unless body.is_a?(Hash)
+
+    dig.dig_field(body.with_indifferent_access, 'text').presence
+  end
+
+  def dig_native_flow_button_labels(interactive)
+    dig = Custom::Whatsapp::EvolutionGo::FieldDig
+    native_flow = dig.dig_field(interactive, 'nativeFlowMessage')
+    return [] unless native_flow.is_a?(Hash)
+
+    buttons = dig.dig_field(native_flow.with_indifferent_access, 'buttons')
+    Array.wrap(buttons).filter_map { |button| native_flow_button_label(button) }.uniq
+  end
+
+  def native_flow_button_label(button)
+    return if button.blank?
+
+    button = button.with_indifferent_access
+    dig = Custom::Whatsapp::EvolutionGo::FieldDig
+    params_json = dig.dig_field(button, 'buttonParamsJSON').presence ||
+                  dig.dig_field(button, 'buttonParamsJson').presence
+    if params_json.present?
+      parsed = JSON.parse(params_json)
+      label = parsed['display_text'].presence || parsed['displayText'].presence
+      return label if label.present?
+    end
+
+    dig.dig_field(button, 'displayText').presence || dig.dig_field(button, 'name').presence
+  rescue JSON::ParserError
+    dig.dig_field(button, 'name').presence
   end
 
   def add_reply_context!(message_hash, data)
