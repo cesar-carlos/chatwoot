@@ -41,14 +41,12 @@ const { t } = useI18n();
 const {
   isDownloaded,
   downloadCount,
-  isJustMarked,
   markDownloaded,
   downloadActionTooltip,
 } = useAttachmentDownloadState();
 
 const downloaded = computed(() => isDownloaded(attachment?.id));
 const count = computed(() => downloadCount(attachment?.id));
-const justMarked = computed(() => isJustMarked(attachment?.id));
 const downloadTooltip = computed(() =>
   downloadActionTooltip(t, attachment?.id, 'CONVERSATION')
 );
@@ -256,21 +254,20 @@ const downloadAudio = async () => {
       </button>
       <button
         v-tooltip="downloadTooltip"
-        class="relative p-0 border-0 size-8 grid place-content-center transition-transform duration-200"
+        class="h-7 min-w-7 px-1.5 gap-1 inline-flex items-center justify-center rounded-md p-0 border-0 transition-colors"
         :class="{
           'text-n-teal-11': downloaded,
-          'scale-110': justMarked,
         }"
         :aria-label="downloadTooltip"
         @click="downloadAudio"
       >
         <Icon
-          class="size-4"
+          class="size-3.5 shrink-0"
           :icon="downloaded ? 'i-lucide-check' : 'i-lucide-download'"
         />
         <span
           v-if="count > 1"
-          class="absolute -top-0.5 -end-0.5 min-w-3 h-3 px-0.5 rounded-full bg-n-teal-9 text-white text-[9px] leading-3 text-center font-medium tabular-nums"
+          class="shrink-0 min-w-4 h-4 px-1 rounded-full bg-n-teal-9 text-white text-[10px] leading-4 text-center font-medium tabular-nums"
         >
           {{ count > 99 ? '99+' : count }}
         </span>

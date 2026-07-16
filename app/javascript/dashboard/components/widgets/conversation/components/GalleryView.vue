@@ -40,7 +40,6 @@ const getters = useStoreGetters();
 const {
   isDownloaded,
   downloadCount,
-  isJustMarked,
   markDownloaded,
   downloadActionTooltip,
 } = useAttachmentDownloadState();
@@ -164,9 +163,6 @@ const activeDownloaded = computed(() =>
   isDownloaded(activeAttachment.value?.id)
 );
 const activeCount = computed(() => downloadCount(activeAttachment.value?.id));
-const activeJustMarked = computed(() =>
-  isJustMarked(activeAttachment.value?.id)
-);
 const activeDownloadTooltip = computed(() =>
   downloadActionTooltip(t, activeAttachment.value?.id, 'CONVERSATION')
 );
@@ -277,31 +273,22 @@ onMounted(() => {
               ghost
               @click="onRotate('clockwise')"
             />
-            <div class="relative">
-              <NextButton
-                v-tooltip="activeDownloadTooltip"
-                :icon="
-                  activeDownloaded ? 'i-lucide-check' : 'i-lucide-download'
-                "
-                slate
-                ghost
-                class="transition-transform duration-200"
-                :class="{
-                  'text-n-teal-11': activeDownloaded,
-                  'scale-110': activeJustMarked,
-                }"
-                :is-loading="isDownloading"
-                :disabled="isDownloading"
-                :aria-label="activeDownloadTooltip"
-                @click="onClickDownload"
-              />
-              <span
-                v-if="activeCount > 1"
-                class="absolute -top-1 -end-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-n-teal-9 text-white text-[10px] leading-3.5 text-center font-medium tabular-nums"
-              >
-                {{ activeCount > 99 ? '99+' : activeCount }}
-              </span>
-            </div>
+            <NextButton
+              v-tooltip="activeDownloadTooltip"
+              :icon="activeDownloaded ? 'i-lucide-check' : 'i-lucide-download'"
+              :label="
+                activeCount > 1
+                  ? String(activeCount > 99 ? '99+' : activeCount)
+                  : ''
+              "
+              slate
+              ghost
+              :class="{ 'text-n-teal-11': activeDownloaded }"
+              :is-loading="isDownloading"
+              :disabled="isDownloading"
+              :aria-label="activeDownloadTooltip"
+              @click="onClickDownload"
+            />
             <NextButton icon="i-lucide-x" slate ghost @click="onClose" />
           </div>
         </header>

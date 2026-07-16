@@ -18,7 +18,6 @@ const isDownloading = ref(false);
 const {
   isDownloaded,
   downloadCount,
-  isJustMarked,
   markDownloaded,
   markAsHandled,
   clearDownloaded,
@@ -42,14 +41,10 @@ const fileType = computed(() => {
 
 const downloaded = computed(() => isDownloaded(attachment.value?.id));
 const count = computed(() => downloadCount(attachment.value?.id));
-const justMarked = computed(() => isJustMarked(attachment.value?.id));
 
 const actionLabel = computed(() => {
   if (!downloaded.value) return t('CONVERSATION.DOWNLOAD');
-  if (count.value <= 1) {
-    return `${t('CONVERSATION.DOWNLOADED')} · ${t('CONVERSATION.DOWNLOAD_AGAIN')}`;
-  }
-  return `${t('CONVERSATION.DOWNLOADED_COUNT', { count: count.value })} · ${t('CONVERSATION.DOWNLOAD_AGAIN')}`;
+  return t('CONVERSATION.DOWNLOAD_AGAIN');
 });
 
 const secondaryLabel = computed(() =>
@@ -96,11 +91,11 @@ const onSecondaryAction = () => {
       onClick: onDownload,
       label: actionLabel,
       disabled: isDownloading,
+      downloaded,
       className: downloaded
         ? 'text-n-teal-11 border-n-teal-7 bg-n-teal-3/40'
         : '',
       badgeCount: count > 1 ? count : 0,
-      justMarked,
     }"
     :secondary-action="{
       onClick: onSecondaryAction,

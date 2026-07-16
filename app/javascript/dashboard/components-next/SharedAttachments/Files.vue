@@ -37,7 +37,6 @@ const { t } = useI18n();
 const {
   isDownloaded,
   downloadCount,
-  isJustMarked,
   markDownloaded,
   markAsHandled,
   clearDownloaded,
@@ -253,7 +252,13 @@ const onContextAction = (event, attachment) => {
             @keydown.enter.stop
             @keydown.space.stop
           />
-          <div class="relative">
+          <div
+            class="inline-flex items-center gap-1"
+            :class="{
+              'opacity-100': isDownloaded(attachment.id),
+              'opacity-0 group-hover:opacity-100': !isDownloaded(attachment.id),
+            }"
+          >
             <NextButton
               v-tooltip.top="{
                 content: downloadActionTooltip(
@@ -271,10 +276,8 @@ const onContextAction = (event, attachment) => {
                   ? 'i-lucide-check'
                   : 'i-lucide-download'
               "
-              class="opacity-0 group-hover:opacity-100 transition-transform duration-200"
               :class="{
-                'opacity-100 text-n-teal-11': isDownloaded(attachment.id),
-                'scale-125': isJustMarked(attachment.id),
+                'text-n-teal-11': isDownloaded(attachment.id),
               }"
               :is-loading="downloadingId === attachment.id"
               :aria-label="
@@ -291,7 +294,7 @@ const onContextAction = (event, attachment) => {
             />
             <span
               v-if="downloadCount(attachment.id) > 1"
-              class="absolute -top-1 -end-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-n-teal-9 text-white text-[10px] leading-3.5 text-center font-medium tabular-nums pointer-events-none"
+              class="min-w-4 h-4 px-1 rounded-full bg-n-teal-9 text-white text-[10px] leading-4 text-center font-medium tabular-nums"
             >
               {{
                 downloadCount(attachment.id) > 99
