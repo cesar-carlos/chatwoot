@@ -6,6 +6,8 @@ import { formatBytes } from 'shared/helpers/FileHelper';
 import { dynamicTime, shortTimestamp } from 'shared/helpers/timeHelper';
 // FORK: same-origin Active Storage download on alias hosts (dev-chat)
 import { downloadFile } from 'customDashboard/helper/downloadFile';
+// FORK: local download state for sequential print workflows
+import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
 import {
   MEDIA_TYPES,
   NON_FILE_TYPES,
@@ -13,6 +15,12 @@ import {
 
 import FileIcon from 'next/icon/FileIcon.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
+
+const FILTERS = {
+  ALL: 'all',
+  PENDING: 'pending',
+  DOWNLOADED: 'downloaded',
+};
 
 const props = defineProps({
   attachments: { type: Array, default: () => [] },
@@ -23,6 +31,16 @@ const props = defineProps({
 const emit = defineEmits(['select', 'jumpToMessage']);
 
 const { t } = useI18n();
+const {
+  isDownloaded,
+  downloadCount,
+  isJustMarked,
+  markDownloaded,
+  markAsHandled,
+  clearDownloaded,
+  downloadActionTooltip,
+  contextActionTooltip,
+} = useAttachmentDownloadState();
 
 const fileAttachments = computed(() =>
   [...props.attachments]
@@ -37,12 +55,27 @@ const fileAttachments = computed(() =>
 
 const showAll = ref(false);
 const downloadingId = ref(null);
+const activeFilter = ref(FILTERS.ALL);
 
 const isPeekable = computed(() => props.peekLimit > 0);
 
+const downloadedCount = computed(
+  () => fileAttachments.value.filter(a => isDownloaded(a.id)).length
+);
+
+const filteredFiles = computed(() => {
+  if (activeFilter.value === FILTERS.PENDING) {
+    return fileAttachments.value.filter(a => !isDownloaded(a.id));
+  }
+  if (activeFilter.value === FILTERS.DOWNLOADED) {
+    return fileAttachments.value.filter(a => isDownloaded(a.id));
+  }
+  return fileAttachments.value;
+});
+
 const visibleFiles = computed(() => {
-  if (!isPeekable.value || showAll.value) return fileAttachments.value;
-  return fileAttachments.value.slice(0, props.peekLimit);
+  if (!isPeekable.value || showAll.value) return filteredFiles.value;
+  return filteredFiles.value.slice(0, props.peekLimit);
 });
 
 const fileNameFromUrl = url => {
@@ -68,46 +101,90 @@ const displayTime = attachment => {
 
 const onActivate = attachment => emit('select', attachment);
 
+const filterLabel = filter => {
+  if (filter === FILTERS.PENDING) {
+    return t('CONVERSATION_SIDEBAR.SHARED_FILES.FILTER_PENDING');
+  }
+  if (filter === FILTERS.DOWNLOADED) {
+    return t('CONVERSATION_SIDEBAR.SHARED_FILES.FILTER_DOWNLOADED');
+  }
+  return t('CONVERSATION_SIDEBAR.SHARED_FILES.FILTER_ALL');
+};
+
 const onDownloadFile = async attachment => {
   const { id, file_type: type, data_url: url, extension } = attachment;
   try {
     downloadingId.value = id;
     await downloadFile({ url, type, extension });
+    markDownloaded(id);
   } catch (error) {
     useAlert(t('CONVERSATION_SIDEBAR.SHARED_FILES.DOWNLOAD_ERROR'));
   } finally {
     downloadingId.value = null;
   }
 };
+
+const onContextAction = (event, attachment) => {
+  event.preventDefault();
+  if (!attachment?.id) return;
+  if (isDownloaded(attachment.id)) {
+    clearDownloaded(attachment.id);
+  } else {
+    markAsHandled(attachment.id);
+  }
+};
 </script>
 
 <template>
   <section v-if="fileAttachments.length" class="flex flex-col gap-2.5">
-    <header class="flex items-center justify-between px-0.5">
-      <h4
-        class="text-xs font-semibold tracking-wider uppercase text-n-slate-11"
-      >
-        {{ t('CONVERSATION_SIDEBAR.SHARED_FILES.FILES_HEADING') }}
-        <span
-          class="ms-1 font-medium tracking-normal normal-case text-n-slate-10"
+    <header class="flex flex-col gap-2 px-0.5">
+      <div class="flex items-center justify-between">
+        <h4
+          class="text-xs font-semibold tracking-wider uppercase text-n-slate-11"
         >
-          {{ fileAttachments.length }}
-        </span>
-      </h4>
-      <NextButton
-        v-if="isPeekable && fileAttachments.length > peekLimit"
-        ghost
-        slate
-        xs
-        trailing-icon
-        :icon="showAll ? 'i-lucide-chevron-up' : 'i-lucide-chevron-right'"
-        :label="
-          showAll
-            ? t('CONVERSATION_SIDEBAR.SHARED_FILES.SHOW_LESS')
-            : t('CONVERSATION_SIDEBAR.SHARED_FILES.VIEW_ALL')
-        "
-        @click="showAll = !showAll"
-      />
+          {{ t('CONVERSATION_SIDEBAR.SHARED_FILES.FILES_HEADING') }}
+          <span
+            class="ms-1 font-medium tracking-normal normal-case text-n-slate-10"
+          >
+            {{
+              t('CONVERSATION_SIDEBAR.SHARED_FILES.DOWNLOAD_PROGRESS', {
+                downloaded: downloadedCount,
+                total: fileAttachments.length,
+              })
+            }}
+          </span>
+        </h4>
+        <NextButton
+          v-if="isPeekable && filteredFiles.length > peekLimit"
+          ghost
+          slate
+          xs
+          trailing-icon
+          :icon="showAll ? 'i-lucide-chevron-up' : 'i-lucide-chevron-right'"
+          :label="
+            showAll
+              ? t('CONVERSATION_SIDEBAR.SHARED_FILES.SHOW_LESS')
+              : t('CONVERSATION_SIDEBAR.SHARED_FILES.VIEW_ALL')
+          "
+          @click="showAll = !showAll"
+        />
+      </div>
+      <div class="flex items-center gap-1">
+        <button
+          v-for="filter in [FILTERS.ALL, FILTERS.PENDING, FILTERS.DOWNLOADED]"
+          :key="filter"
+          type="button"
+          class="px-2 py-0.5 rounded-md text-xs transition-colors"
+          :class="
+            activeFilter === filter
+              ? 'bg-n-solid-3 text-n-slate-12'
+              : 'text-n-slate-11 hover:text-n-slate-12 hover:bg-n-alpha-2'
+          "
+          @click="activeFilter = filter"
+        >
+          {{ filterLabel(filter) }}
+        </button>
+      </div>
     </header>
     <ul class="flex flex-col gap-0.5">
       <li
@@ -116,9 +193,18 @@ const onDownloadFile = async attachment => {
         role="button"
         tabindex="0"
         class="flex items-center gap-3 px-2 py-2 transition-colors rounded-lg cursor-pointer hover:bg-n-slate-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-n-blue-9"
+        :class="{ 'opacity-80': isDownloaded(attachment.id) }"
+        :title="
+          contextActionTooltip(
+            t,
+            attachment.id,
+            'CONVERSATION_SIDEBAR.SHARED_FILES'
+          )
+        "
         @click="onActivate(attachment)"
         @keydown.enter="onActivate(attachment)"
         @keydown.space.prevent="onActivate(attachment)"
+        @contextmenu="onContextAction($event, attachment)"
       >
         <div
           class="flex items-center justify-center rounded-lg size-9 shrink-0 bg-gradient-to-br from-n-slate-3 to-n-slate-4 ring-1 ring-inset ring-n-slate-4/40"
@@ -156,18 +242,53 @@ const onDownloadFile = async attachment => {
             @keydown.enter.stop
             @keydown.space.stop
           />
-          <NextButton
-            ghost
-            slate
-            sm
-            icon="i-lucide-download"
-            class="opacity-0 group-hover:opacity-100"
-            :is-loading="downloadingId === attachment.id"
-            :aria-label="t('CONVERSATION_SIDEBAR.SHARED_FILES.DOWNLOAD')"
-            @click.stop="onDownloadFile(attachment)"
-            @keydown.enter.stop
-            @keydown.space.stop
-          />
+          <div class="relative">
+            <NextButton
+              v-tooltip.top="{
+                content: downloadActionTooltip(
+                  t,
+                  attachment.id,
+                  'CONVERSATION_SIDEBAR.SHARED_FILES'
+                ),
+                delay: { show: 500, hide: 0 },
+              }"
+              ghost
+              slate
+              sm
+              :icon="
+                isDownloaded(attachment.id)
+                  ? 'i-lucide-check'
+                  : 'i-lucide-download'
+              "
+              class="opacity-0 group-hover:opacity-100 transition-transform duration-200"
+              :class="{
+                'opacity-100 text-n-teal-11': isDownloaded(attachment.id),
+                'scale-125': isJustMarked(attachment.id),
+              }"
+              :is-loading="downloadingId === attachment.id"
+              :aria-label="
+                downloadActionTooltip(
+                  t,
+                  attachment.id,
+                  'CONVERSATION_SIDEBAR.SHARED_FILES'
+                )
+              "
+              @click.stop="onDownloadFile(attachment)"
+              @contextmenu.stop="onContextAction($event, attachment)"
+              @keydown.enter.stop
+              @keydown.space.stop
+            />
+            <span
+              v-if="downloadCount(attachment.id) > 1"
+              class="absolute -top-1 -end-1 min-w-3.5 h-3.5 px-0.5 rounded-full bg-n-teal-9 text-white text-[10px] leading-3.5 text-center font-medium tabular-nums pointer-events-none"
+            >
+              {{
+                downloadCount(attachment.id) > 99
+                  ? '99+'
+                  : downloadCount(attachment.id)
+              }}
+            </span>
+          </div>
         </div>
       </li>
     </ul>
