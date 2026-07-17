@@ -24,8 +24,10 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
       # BSUID -> `recipient`; phone number -> `to` (see recipient_params in the base provider).
       **recipient_params(phone_number),
       type: 'template',
-      template: template_body
-    }
+      template: template_body,
+      # FORK: preserve quoted reply context on template sends
+      context: whatsapp_reply_context(message)
+    }.compact
 
     response = HTTParty.post(
       "#{phone_id_path}/messages",

@@ -86,6 +86,17 @@ describe('#createPendingMessage', () => {
     const pending = createPendingMessage(messageWithFile);
     expect(pending.attachments.length).toBe(1);
   });
+
+  it('normalizes in_reply_to for optimistic quote preview', () => {
+    const pending = createPendingMessage({
+      message: 'reply',
+      contentAttributes: { in_reply_to: 99 },
+    });
+    expect(pending.contentAttributes).toMatchObject({
+      in_reply_to: 99,
+      inReplyTo: 99,
+    });
+  });
 });
 
 describe('convertToAttributeSlug', () => {

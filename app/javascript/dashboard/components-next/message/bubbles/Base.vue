@@ -5,11 +5,12 @@ import MessageMeta from '../MessageMeta.vue';
 // FORK: Evolution Go/Node inbound delete highlight
 import Icon from 'next/icon/Icon.vue';
 
-import { emitter } from 'shared/helpers/mitt';
 import { useMessageContext } from '../provider.js';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
+// FORK: locate quoted parent even when outside the lazy-loaded window
+import { useScrollToConversationMessage } from 'dashboard/composables/fork/useScrollToConversationMessage';
 // FORK: Evolution Go/Node WhatsApp reactions
 import {
   buildReactionChips,
@@ -46,6 +47,9 @@ const { t } = useI18n();
 const store = useStore();
 const getInboxById = useMapGetter('inboxes/getInboxById');
 const isRemovingReaction = ref(false);
+// FORK: load + scroll + pulse when opening the quoted original
+const { scrollToMessage: locateReplyMessage, isLocating } =
+  useScrollToConversationMessage({ conversationId });
 
 // FORK: Evolution Go/Node inbound delete highlight
 const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));
@@ -191,9 +195,8 @@ const messageClass = computed(() => {
 });
 
 const scrollToMessage = () => {
-  emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE, {
-    messageId: inReplyTo.value.id,
-  });
+  if (!inReplyTo?.value?.id || isLocating.value) return;
+  locateReplyMessage(inReplyTo.value);
 };
 
 const shouldShowMeta = computed(
@@ -204,7 +207,12 @@ const shouldShowMeta = computed(
 );
 
 const replyToPreview = computed(() => {
-  if (!inReplyTo) return '';
+  if (!inReplyTo?.value) return '';
+
+  // FORK: loading stub while parent is fetched outside the lazy window
+  if (inReplyTo.value.replyPreviewState === 'loading') {
+    return t('CONVERSATION.REPLY_MESSAGE_LOADING');
+  }
 
   const { content, attachments } = inReplyTo.value;
 
@@ -232,7 +240,9 @@ const replyToPreview = computed(() => {
   >
     <div
       v-if="inReplyTo"
-      class="p-2 -mx-1 mb-2 rounded-lg cursor-pointer bg-n-alpha-black1"
+      class="p-2 -mx-1 mb-2 rounded-lg cursor-pointer bg-n-alpha-black1 transition-opacity"
+      :class="{ 'opacity-60 pointer-events-none': isLocating }"
+      :title="t('CONVERSATION.REPLY_MESSAGE_CLICK_HINT')"
       @click="scrollToMessage"
     >
       <div

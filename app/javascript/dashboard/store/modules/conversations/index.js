@@ -178,25 +178,26 @@ export const mutations = {
       return;
     }
 
-    const protectedSet = new Set(protectedIds);
+    // FORK: normalize ids — string/number mismatch was dropping protected targets
+    const protectedSet = new Set(protectedIds.map(Number));
     const toRemove = [];
 
     registry.forEach(messageId => {
       if (registry.length - toRemove.length <= MAX_SEARCH_INJECTED_MESSAGES)
         return;
-      if (protectedSet.has(messageId)) return;
+      if (protectedSet.has(Number(messageId))) return;
 
       toRemove.push(messageId);
     });
 
     if (!toRemove.length) return;
 
-    const removeSet = new Set(toRemove);
+    const removeSet = new Set(toRemove.map(Number));
     chat.messages = (chat.messages || []).filter(
-      message => !removeSet.has(message.id)
+      message => !removeSet.has(Number(message.id))
     );
     _state.searchInjectedByConversationId[id] = registry.filter(
-      messageId => !removeSet.has(messageId)
+      messageId => !removeSet.has(Number(messageId))
     );
   },
 

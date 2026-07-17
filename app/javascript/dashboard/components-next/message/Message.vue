@@ -407,10 +407,13 @@ const contextMenuEnabledOptions = computed(() => {
     cannedResponse: isOutgoing && hasText && !isMessageDeleted.value,
     copyLink: !isFailedOrProcessing,
     translate: !isFailedOrProcessing && !isMessageDeleted.value && hasText,
+    // FORK: gate reply-to by message direction (incoming vs outgoing support)
     replyTo:
       !props.private &&
-      props.inboxSupportsReplyTo.outgoing &&
-      !isFailedOrProcessing,
+      !isFailedOrProcessing &&
+      ((props.messageType === MESSAGE_TYPES.INCOMING &&
+        props.inboxSupportsReplyTo.incoming) ||
+        (isOutgoing && props.inboxSupportsReplyTo.outgoing)),
     // FORK: WhatsApp-like message forward (text and/or downloadable media)
     forward:
       messageCanBeForwarded({
@@ -630,6 +633,29 @@ provideMessageContext({
 
   .right-bubble {
     @apply ltr:rounded-tr-sm rtl:rounded-tl-sm;
+  }
+}
+
+/* FORK: pulse when jumping to a quoted / searched message */
+.message-bubble-container.message-locate-pulse {
+  border-radius: 0.75rem;
+  animation: message-locate-pulse 1.8s ease-in-out;
+}
+
+@keyframes message-locate-pulse {
+  0%,
+  100% {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 0 transparent;
+  }
+  18%,
+  35% {
+    background-color: rgba(31, 147, 255, 0.14);
+    box-shadow: inset 0 0 0 2px rgba(31, 147, 255, 0.55);
+  }
+  55% {
+    background-color: rgba(31, 147, 255, 0.08);
+    box-shadow: inset 0 0 0 2px rgba(31, 147, 255, 0.28);
   }
 }
 </style>
