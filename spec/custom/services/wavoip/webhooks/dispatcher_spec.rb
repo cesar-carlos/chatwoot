@@ -35,6 +35,14 @@ RSpec.describe Wavoip::Webhooks::Dispatcher do
       expect(channel.reload.provider_config['device_status']).to eq('open')
     end
 
+    it 'updates last_webhook_at after a successful handler' do
+      freeze_time do
+        dispatch_fixture('device_update.json')
+
+        expect(channel.reload.provider_config['last_webhook_at']).to eq(Time.current.iso8601)
+      end
+    end
+
     it 'routes RECORD payloads to record handler' do
       call = create(
         :call,

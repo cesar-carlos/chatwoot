@@ -35,6 +35,7 @@ export default {
   },
   data() {
     return {
+      liveDeviceStatus: null,
       inboundCallsEnabled: this.inbox.inbound_calls_enabled !== false,
       callRecordingEnabled: this.inbox.call_recording_enabled !== false,
       includeAdministrators:
@@ -302,8 +303,14 @@ export default {
     </p>
 
     <template v-if="voiceEnabled">
-      <WavoipOnboardingChecklist :inbox="inbox" />
-      <WavoipDevicePanel :inbox="inbox" />
+      <WavoipOnboardingChecklist
+        :inbox="inbox"
+        :live-device-status="liveDeviceStatus"
+      />
+      <WavoipDevicePanel
+        :inbox="inbox"
+        @update:live-device-status="liveDeviceStatus = $event"
+      />
 
       <div
         class="relative"
@@ -451,36 +458,6 @@ export default {
         </SettingsFieldSection>
       </div>
     </template>
-
-    <SettingsFieldSection
-      :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.LABEL')"
-      :help-text="
-        replaceInstallationName($t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.HELP_TEXT'))
-      "
-    >
-      <woot-code v-if="webhookUrl" :script="webhookUrl" lang="html" />
-      <p v-else class="text-sm text-n-slate-11">
-        {{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.UNAVAILABLE') }}
-      </p>
-      <div v-if="webhookUrl" class="mt-3 flex flex-wrap gap-2">
-        <NextButton
-          faded
-          slate
-          sm
-          :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST')"
-          :is-loading="isTestingWebhook"
-          @click="testWebhook"
-        />
-        <NextButton
-          faded
-          slate
-          sm
-          :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.REGENERATE')"
-          :is-loading="isRegeneratingWebhook"
-          @click="regenerateWebhookKey"
-        />
-      </div>
-    </SettingsFieldSection>
 
     <SettingsFieldSection
       :label="$t('INBOX_MGMT.WAVOIP_CALL.SETUP_STATUS.LABEL')"

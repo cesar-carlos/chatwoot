@@ -859,7 +859,7 @@
         "CHECKLIST_CALL_EVENT": "Select the CALL event.",
         "CHECKLIST_DEVICE_EVENT": "Select the DEVICE event (optional but recommended).",
         "CHECKLIST_RECORD_EVENT": "Select the RECORD event (required for call recordings in conversation history).",
-        "CHECKLIST_URL": "Paste the webhook URL above and save.",
+        "CHECKLIST_URL": "Paste the webhook URL shown above and save.",
         "TEST": "Test webhook",
         "TEST_SUCCESS": "Webhook test received. Status should show as verified.",
         "TEST_PENDING": "Test event sent. Refresh the page if status is still pending."
@@ -910,7 +910,14 @@
         "LOGOUT_CONFIRM": "Log out WhatsApp from this device? You will need to pair again.",
         "LINKED_PHONE": "Linked number",
         "RECONNECT": "Reconnect (scan QR)",
-        "STATUS_STALE": "Could not verify with Wavoip right now — the status below may be outdated. Use Reconnect to scan the QR code, or Restart device if pairing stays stuck.",
+        "STATUS_STALE": "Could not verify with Wavoip right now — the status below may be outdated. Try Verify again, then Reconnect to scan the QR code, or Restart device if pairing stays stuck.",
+        "VERIFY_AGAIN": "Verify again",
+        "PREPARING_HINT": "Preparing device… {seconds}s",
+        "PREPARING_STUCK": "Still preparing after 90s. Restart the device if this does not clear.",
+        "WAITING_PAYMENT_HINT": "Wavoip account is waiting for payment. Calls will not work until billing is resolved.",
+        "EXTERNAL_INTEGRATION_ERROR_HINT": "External WhatsApp integration error. Check the linked gateway in the Wavoip panel.",
+        "ERROR_HINT": "Device reported an error. Restart or re-pair from the Wavoip panel.",
+        "OPEN_WAVOIP_PANEL": "Open Wavoip panel",
         "SERVICE_UNAVAILABLE": "The Wavoip device service is temporarily unavailable. Wait a few minutes and try again, or check the device in the Wavoip panel.",
         "ACTION_FAILED": "Could not complete this device action. Try again or use Copy diagnostics for support.",
         "ACTIVE_CALLS_LABEL": "Active calls",
@@ -945,7 +952,15 @@
       },
       "DIAGNOSTICS": {
         "COPY": "Copy diagnostics",
-        "COPIED": "Diagnostics copied to clipboard."
+        "COPIED": "Diagnostics copied to clipboard.",
+        "SECTION_LABEL": "Diagnostics",
+        "SECTION_HELP": "Recent connectivity issues from this browser session.",
+        "SHOW": "Show diagnostics",
+        "HIDE": "Hide diagnostics",
+        "STATUS_LINE": "Panel status: {status} · Live check: {live}",
+        "LIVE_YES": "verified",
+        "LIVE_NO": "not verified",
+        "NO_ISSUES": "No recent connectivity issues recorded."
       },
       "ROUTING": {
         "LABEL": "Incoming call routing",
@@ -990,6 +1005,7 @@
       "SUMMARY": "{ready} of {total} steps complete",
       "TOKEN": "Device token configured",
       "WEBHOOK": "Webhook verified (first CALL event received)",
+      "WEBHOOK_STALE": "Webhook verified but no events in the last 24 hours",
       "DEVICE_OPEN": "WhatsApp device connected",
       "VOICE_ENABLED": "Voice calling enabled on inbox",
       "INBOUND_ENABLED": "Inbound calls enabled"
@@ -1158,7 +1174,7 @@
         },
         "SYNC_EDIT_TO_WHATSAPP": {
           "LABEL": "Edit on WhatsApp when edited in Chatwoot",
-          "DESCRIPTION": "When message content changes in Chatwoot, push the new text to WhatsApp. Requires API or future UI edit flow."
+          "DESCRIPTION": "Shows Edit in the message menu for outgoing WhatsApp messages and pushes the new text to WhatsApp. Irreversible on WhatsApp; may fail after WhatsApp's edit time window."
         },
         "IRREVERSIBLE_SECTION": "Irreversible WhatsApp actions",
         "SEND_RANDOM_DELAY": {

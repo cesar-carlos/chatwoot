@@ -14,7 +14,7 @@ flowchart TD
   START --> Q1{"API de voz expõe<br/>Meta Graph /calls<br/>ou SDP compatível?"}
   Q1 -->|Sim| META["Este documento<br/>Estender Channel::Whatsapp<br/>ou adapter Meta-like"]
   Q1 -->|Não — REST/webhook<br/>proprietário| Q1B{"SDK browser<br/>+ webhook?"}
-  Q1B -->|Sim — Wavoip| WAV["wavoip-provider/<br/>contracts-and-ports.md"]
+  Q1B -->|Sim — Wavoip| WAV["wavoip-provider/README.md"]
   Q1B -->|Outro gateway| GW["Canal gateway custom/<br/>validar contrato"]
   Q1 -->|Sem API de voz| STOP["Parar — inviável"]
 
@@ -24,14 +24,14 @@ flowchart TD
   style STOP fill:#fdd
 ```
 
-> **Primeiro provider alternativo no fork:** Wavoip — seguir o
-> [plano consolidado Wavoip](./wavoip-provider/implementation-plan.md), não este
+> **Primeiro provider alternativo no fork:** Wavoip — ver
+> [wavoip-provider/README.md](./wavoip-provider/README.md), não este
 > documento (focado em CPaaS Meta-like).
 
 | Tipo de provider | Exemplos | Estratégia | Doc |
 |------------------|----------|------------|-----|
 | **Meta-like / CPaaS proxy** | Reseller WABA com Graph `/calls` | Adapter + reuso `/whatsapp_calls` shape | **Este doc** |
-| **SDK browser + webhook** | Wavoip | Canal `Channel::Wavoip` em `custom/` | [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) |
+| **SDK browser + webhook** | Wavoip | Canal `Channel::Wavoip` em `custom/` | [wavoip-provider/](./wavoip-provider/) |
 | **Gateway não oficial** | Evolution, Baileys, Z-API | Canal/modelo separado em `custom/` + webhook dedicado | Este doc como checklist; adaptar contrato |
 | **PSTN** | Twilio, Vonage | Padrão Twilio — **não** WA in-app | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
 
@@ -50,13 +50,13 @@ flowchart TD
 
 | Área | Estado atual | Impacto para segundo provider |
 |------|--------------|-------------------------------|
-| `useWhatsappCallSession.js` | WebRTC + `/whatsapp_calls` + gravação + race buffers | Extrair core `useWebRtcCallSession(callsAPI)` antes de duplicar |
-| `WhatsappCallsController` | API dedicada para accept/reject/terminate/initiate/upload | Manter shape ou criar controller fino compatível |
-| `WhatsappCloudService` | Métodos Graph `/calls` via EE prepend | Adapter deve normalizar respostas/erros para o mesmo contrato |
-| `WhatsappEventsJob` EE | Intercepta `field=calls` formato Meta | Payload diferente pede rota/job dedicado em `custom/` |
-| `actionCable.js` | Filtra `provider === 'whatsapp'` | Generalizar para lista de providers WebRTC |
-| `Call.provider` | Enum `{ twilio, whatsapp }` | Novo provider exige enum/FORK ou modelo custom |
-| `getVoiceCallProvider()` | `Channel::TwilioSms` → `twilio`; `Channel::Whatsapp` → `whatsapp` | Novo provider precisa branch/registry |
+| `useWhatsappCallSession.js` | Wrapper fino → `useWebRtcCallSession(callsAPI)` ✅ | Novo CPaaS = novo wrapper + API injetável |
+| `WhatsappCallsController` | API dedicada accept/reject/terminate/initiate/upload | Manter shape ou controller fino compatível |
+| `WhatsappCloudService` | Delega Graph `/calls` a `MetaCloud::Adapter` ✅ | Adapter deve normalizar respostas/erros |
+| `WhatsappEventsJob` EE | Intercepta `field=calls` formato Meta | Payload diferente → rota/job em `custom/` |
+| `actionCable.js` | `whatsappVoiceCableRegistry` + `voiceCallCableRegistry` (Wavoip) ✅ | Novo provider = entrada no registry |
+| `Call.provider` | Enum `{ twilio, whatsapp, wavoip }` | Novo provider exige enum `# FORK:` ou modelo custom |
+| `getVoiceCallProvider()` | Twilio / WhatsApp / `Channel::Wavoip` → `wavoip` | Novo provider precisa branch/registry |
 
 Não misturar os eixos: Twilio/PSTN usa `Voice::Provider::Twilio::*` + conferência; WhatsApp in-app usa SDP/WebRTC. Ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
 
@@ -75,21 +75,21 @@ Não misturar os eixos: Twilio/PSTN usa `Voice::Provider::Twilio::*` + conferên
 ## Fase 0 — Refactor pré-requisito para provider SDP/Meta-like
 
 **Escopo:** esta fase é exclusiva de providers SDP/Meta-like. Para Wavoip, ver
-[implementation-plan.md](./wavoip-provider/implementation-plan.md).
+[wavoip-provider/README.md](./wavoip-provider/README.md).
 
 **Executar antes** de CPaaS ou qualquer segundo provider que exponha SDP compatível
 com a stack Meta. Wavoip não compartilha esse core: o SDK encapsula mídia e
-sinalização. Para Wavoip, apenas o registry de sessão/eventos compartilhados é
-necessário depois do spike.
+sinalização. Registry de sessão/eventos para Wavoip já existe (`voiceSessionRegistry`,
+`voiceCallCableRegistry`).
 
 ### 0.1 Frontend (P0 — ~1 semana)
 
 | # | Entrega | Arquivo | Done |
 |---|---------|---------|------|
-| 0.1.1 | Extrair `useWebRtcCallSession(callsAPI)` | `composables/useWebRtcCallSession.js` | WebRTC + recorder + buffers; API injetável |
-| 0.1.2 | `useWhatsappCallSession` vira thin wrapper | mesmo path | Delega para `WhatsappCallsAPI` |
-| 0.1.3 | `WEBRTC_PROVIDERS` constante exportada | `helper/inbox.js` ou `helper/voiceCallProviders.js` | Lista extensível |
-| 0.1.4 | Registry em `useCallSession` | `composables/useCallSession.js` | Parcial — registries cable; `useCallSession` ainda brancha |
+| 0.1.1 | Extrair `useWebRtcCallSession(callsAPI)` | `composables/useWebRtcCallSession.js` | ✅ Done |
+| 0.1.2 | `useWhatsappCallSession` vira thin wrapper | mesmo path | ✅ Done (~33 linhas) |
+| 0.1.3 | `WEBRTC_PROVIDERS` / browser providers | `browserVoiceProviders.js` | ✅ Done |
+| 0.1.4 | Registry em `useCallSession` | `composables/useCallSession.js` | Parcial — registries cable; facade ainda brancha Twilio |
 | 0.1.5 | Generalizar filtro cable | `whatsappVoiceCableRegistry.js` + `voiceCallCableRegistry.js` | ✅ Done (jul. 2026) |
 | 0.1.6 | Specs Vitest (race, 422, beacon) | `composables/spec/useWebRtcCallSession.spec.js` | ✅ Done (jul. 2026) |
 
@@ -111,9 +111,9 @@ necessário depois do spike.
 - [ ] `rg isWhatsappCall` — branching reduzido a registry (parcial — registries cable prontos)
 - [ ] Novo provider WebRTC = novo wrapper + entrada no registry (sem copiar WebRTC core)
 
-**Wavoip:** não depende de 0.1.1–0.1.2 nem de 0.2. Depende somente de um dispatch
-provider-agnostic em `useCallSession`, `actionCable.js` e consumidores de chamada,
-conforme o [plano consolidado](./wavoip-provider/implementation-plan.md).
+**Wavoip:** não depende de 0.1.1–0.1.2 nem de 0.2. Já usa dispatch
+provider-agnostic em registries + `useWavoipCallSession` — ver
+[wavoip-provider/architecture.md](./wavoip-provider/architecture.md).
 
 ---
 
@@ -361,7 +361,7 @@ Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpa
 | **Fase 0** refactor BE (adapter + builders + permission service) | **~1 semana** (opcional antes de Wavoip) |
 | CPaaS API idêntica Meta (proxy) | **2–3 semanas** (após Fase 0) |
 | Payload webhook diferente | **3–5 semanas** (após Fase 0) |
-| Wavoip (canal separado) | Ver [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) |
+| Wavoip (canal separado) | Ver [wavoip-provider/README.md](./wavoip-provider/README.md) |
 
 ---
 

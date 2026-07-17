@@ -213,6 +213,8 @@
       "ACCEPTED_ELSEWHERE_BY": "{agentName} answered this call.",
       "PEER_REJECTED": "The contact declined the call or it could not be completed.",
       "OUTBOUND_PERMISSION_DENIED": "This contact has not granted permission for WhatsApp calls. Send a permission request and try again later.",
+      "OUTBOUND_VOLUME_SOFT": "High outbound call volume today (20+). Pace dialing if this looks unusual.",
+      "OUTBOUND_VOLUME_ELEVATED": "Very high outbound call volume today (50+). Check for loops or misuse.",
       "RECORDING_PROCESSING": "Processing call recording…",
       "INCOMING_CALLS_OVERFLOW": "+{count} more incoming calls"
     },

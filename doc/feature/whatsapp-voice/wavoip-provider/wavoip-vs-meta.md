@@ -30,7 +30,7 @@ Wavoip cai no eixo **gateway com SDK browser + webhook proprietário**, não no 
 | **Tile UI** | `whatsapp_call` | `wavoip` |
 | **Setup na criação** | Embedded signup Meta | Formulário — [inbox-setup.md](./inbox-setup.md) |
 | **ID externo da call** | Meta `call_id` | `whatsapp_call_id` (webhook) |
-| **Gravação** | `MediaRecorder` → upload | Webhook `RECORD` + `record_url` |
+| **Gravação** | `MediaRecorder` → upload | Webhook `RECORD` + fallback `FetchDirectRecordingJob` (`storage.wavoip.com/{id}`) |
 | **Permissão outbound Meta 138006** | Sim | Não documentado no Wavoip |
 | **Multi-agente** | ActionCable → agentes online | SDK `offer` + `acceptedElsewhere` |
 | **Dependência npm** | Nenhuma (WebRTC nativo) | `@wavoip/wavoip-api` |
@@ -40,10 +40,10 @@ Wavoip cai no eixo **gateway com SDK browser + webhook proprietário**, não no 
 
 ## O que NÃO fazer
 
-1. **Não** estender `WhatsappCallsController` com branch Wavoip — contratos incompatíveis (SDP vs SDK). Ver [contracts-and-ports.md](./contracts-and-ports.md).
+1. **Não** estender `WhatsappCallsController` com branch Wavoip — contratos incompatíveis (SDP vs SDK). Ver [architecture.md](./architecture.md).
 2. **Não** prepend `WhatsappEventsJob` com payload Wavoip — formatos diferentes; rota webhook dedicada.
-3. **Não** reutilizar `useWhatsappCallSession` — usar porta `BrowserVoiceSession` + `useWavoipCallSession`.
-4. **Não** importar `@wavoip/wavoip-api` fora de `wavoipSdkPort.js` — quebra testabilidade e DI.
+3. **Não** reutilizar `useWhatsappCallSession` — usar `useWavoipCallSession` via `voiceSessionRegistry`.
+4. **Não** importar `@wavoip/wavoip-api` fora de `wavoipSdkPort.js` — quebra testabilidade.
 5. **Não** usar `@wavoip/wavoip-webphone` no dashboard Vue — React 18 + Shadow DOM competindo com `FloatingCallWidget`.
 6. **Não** unificar tiles `whatsapp_call` e `wavoip` — gates e setup distintos.
 7. **Não** misturar mappers de status webhook (Rails) e SDK (browser) no mesmo arquivo.
