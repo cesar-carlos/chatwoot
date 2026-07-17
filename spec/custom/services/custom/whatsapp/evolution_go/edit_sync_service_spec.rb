@@ -52,7 +52,31 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::EditSyncService do
       response
     end
 
-    described_class.new(message: message).perform
+    expect(described_class.new(message: message).perform).to be(true)
+  end
+
+  it 'uses explicit content override when provided' do
+    expect(api_client).to receive(:edit_message).with(
+      hash_including(message: a_string_including('*new*'))
+    ).and_return(response)
+
+    described_class.new(message: message, content: '**new** text').perform
+  end
+
+  it 'raises when raise_errors is true and API fails' do
+    failed = instance_double(HTTParty::Response, success?: false, code: 400, parsed_response: { 'error' => 'too late' })
+    allow(api_client).to receive(:edit_message).and_return(failed)
+
+    expect do
+      described_class.new(message: message, raise_errors: true).perform
+    end.to raise_error(Custom::Whatsapp::EvolutionGo::ApiError)
+  end
+
+  it 'soft-fails when raise_errors is false and API fails' do
+    failed = instance_double(HTTParty::Response, success?: false, code: 400, parsed_response: {})
+    allow(api_client).to receive(:edit_message).and_return(failed)
+
+    expect(described_class.new(message: message).perform).to be(false)
   end
 
   it 'skips when sync_edit_to_whatsapp is disabled' do
@@ -62,7 +86,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::EditSyncService do
 
     expect(api_client).not_to receive(:edit_message)
 
-    described_class.new(message: message).perform
+    expect(described_class.new(message: message).perform).to be(false)
   end
 
   it 'skips incoming messages' do

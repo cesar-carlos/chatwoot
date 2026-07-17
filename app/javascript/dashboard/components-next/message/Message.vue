@@ -372,6 +372,10 @@ const payloadForContextMenu = computed(() => {
     conversation_id: props.conversationId,
     // FORK: WhatsApp-like message forward needs attachments for re-send
     attachments: props.attachments,
+    // FORK: Evolution Go edit outgoing message
+    message_type: props.messageType,
+    source_id: props.sourceId,
+    private: props.private,
   };
 });
 

@@ -130,14 +130,20 @@ json.bot_name resource.channel.try(:bot_name) if resource.telegram?
 if resource.whatsapp?
   json.message_templates resource.channel.try(:message_templates)
   if Current.account_user&.administrator?
-    # FORK: mask Evolution secrets in dashboard API
+    # FORK: mask Evolution / Evolution Go secrets in dashboard API
     provider_config_json =
-      if resource.channel.try(:evolution_provider?)
+      if resource.channel.try(:gateway_provider?)
         resource.channel.dashboard_provider_config
       else
         resource.channel.try(:provider_config) || {}
       end
     json.provider_config provider_config_json
+  end
+  # FORK: agent-visible UX toggles (no secrets) — Edit/Delete menu needs these
+  if resource.channel.try(:gateway_provider?)
+    wa_config = resource.channel.provider_config || {}
+    json.sync_edit_to_whatsapp ActiveModel::Type::Boolean.new.cast(wa_config['sync_edit_to_whatsapp'])
+    json.sync_delete_to_whatsapp ActiveModel::Type::Boolean.new.cast(wa_config['sync_delete_to_whatsapp'])
   end
   # Only show reauthorization for embedded signup; manual flow uses API keys, not OAuth
   json.reauthorization_required(

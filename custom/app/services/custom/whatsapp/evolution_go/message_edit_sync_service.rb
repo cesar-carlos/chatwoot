@@ -48,15 +48,17 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
 
   def update_original!(message, body)
     formatted_body = apply_inbound_formatting(body)
-    bare_current = message.content.to_s.delete_prefix(EDITED_PREFIX)
+    bare_current = message.content.to_s.delete_prefix(EDITED_PREFIX).strip
     return if bare_current == formatted_body
 
     attrs = (message.content_attributes || {}).stringify_keys
     attrs['edited'] = true
     attrs['edited_at'] = Time.current.utc.iso8601(3)
     attrs['edited_via_evolution_go_webhook'] = true
+    # Store bare text; UI shows the "Edited" badge via content_attributes.edited.
+    # EDITED_PREFIX is still stripped for legacy rows that used the old format.
     message.update!(
-      content: "#{EDITED_PREFIX}#{formatted_body}",
+      content: formatted_body,
       content_attributes: attrs
     )
   end
@@ -77,7 +79,7 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
           remoteJid: remote_jid
         }.compact,
         pushName: original&.sender&.name,
-        message: { conversation: "#{EDITED_PREFIX}#{formatted_body}" },
+        message: { conversation: formatted_body },
         messageTimestamp: Time.current.to_i
       }
     }
@@ -89,7 +91,19 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
       channel,
       normalized.merge(phone_number: channel.phone_number)
     )
+    mark_created_message_edited!("#{key[:id]}-edited")
     true
+  end
+
+  def mark_created_message_edited!(source_id)
+    created = channel.inbox.messages.find_by(source_id: source_id)
+    return if created.blank?
+
+    attrs = (created.content_attributes || {}).stringify_keys
+    attrs['edited'] = true
+    attrs['edited_at'] = Time.current.utc.iso8601(3)
+    attrs['edited_via_evolution_go_webhook'] = true
+    created.update!(content_attributes: attrs)
   end
 
   def apply_inbound_formatting(body)

@@ -7,6 +7,8 @@ import TranslationToggle from 'dashboard/components-next/message/TranslationTogg
 import { MESSAGE_TYPES } from '../../constants';
 import { useMessageContext } from '../../provider.js';
 import { useTranslations } from 'dashboard/composables/useTranslations';
+// FORK: strip legacy "Edited message:" prefix (badge shows edited state)
+import { stripEditedPrefix } from 'customDashboard/composables/useMessageEdit';
 
 const { content, attachments, contentAttributes, messageType } =
   useMessageContext();
@@ -17,15 +19,16 @@ const { hasTranslations, translationContent } =
 const renderOriginal = ref(false);
 
 const renderContent = computed(() => {
+  let text;
   if (renderOriginal.value) {
-    return content.value;
+    text = content.value;
+  } else if (hasTranslations.value) {
+    text = translationContent.value;
+  } else {
+    text = content.value;
   }
 
-  if (hasTranslations.value) {
-    return translationContent.value;
-  }
-
-  return content.value;
+  return stripEditedPrefix(text || '');
 });
 
 const isTemplate = computed(() => {
@@ -33,7 +36,8 @@ const isTemplate = computed(() => {
 });
 
 const isEmpty = computed(() => {
-  return !content.value && !attachments.value?.length;
+  const bare = stripEditedPrefix(content.value || '').trim();
+  return !bare && !attachments.value?.length;
 });
 
 const handleSeeOriginal = () => {

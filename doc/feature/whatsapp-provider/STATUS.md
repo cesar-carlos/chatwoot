@@ -70,6 +70,7 @@ Fonte curta de verdade para o estado da pasta `doc/feature/whatsapp-provider/` e
 | Tema | Estado |
 |------|--------|
 | E2E final do fluxo Evolution em ambiente estável/CI | ⚠️ ainda operacional |
+| Evolution Go inbound message edit (plaintext no webhook) | ⚠️ código fork OK; Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92) — ver [evolution-go/status.md](./evolution-go/status.md) ADR §35 |
 | Estratégia comum de capabilities para gateways além de `evolution` | ⚠️ parcialmente implícita |
 | Providers Z-API / NotificaMe no mesmo padrão | ❌ |
 
