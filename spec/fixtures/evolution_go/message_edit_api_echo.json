@@ -3,14 +3,12 @@
   "instance": "test-go-instance",
   "data": {
     "Info": {
-      "ID": "AC1A92123AFBE559D5F9A4B302CF6C7F",
       "Chat": "5511999999999@s.whatsapp.net",
-      "Sender": "5511999999999@s.whatsapp.net",
-      "IsFromMe": false,
+      "Sender": "556699912187@s.whatsapp.net",
+      "IsFromMe": true,
+      "ID": "3EB0NEWID0000000000001",
       "Edit": "1",
-      "Timestamp": "2026-06-26T02:39:33-03:00",
-      "Type": "text",
-      "PushName": "Cliente"
+      "Type": "text"
     },
     "IsEdit": true,
     "messageType": "edit",
@@ -19,12 +17,14 @@
         "type": 14,
         "typeName": "MESSAGE_EDIT",
         "key": {
-          "ID": "AC9A902ED6D1458D0A9FB5C4023580E7",
-          "fromMe": false,
+          "ID": "3EB0ORIGINALMSGID0001",
+          "fromMe": true,
           "remoteJID": "5511999999999@s.whatsapp.net"
         },
         "editedMessage": {
-          "conversation": "Texto atualizado pelo cliente"
+          "extendedTextMessage": {
+            "text": "Texto corrigido pela API"
+          }
         }
       }
     }

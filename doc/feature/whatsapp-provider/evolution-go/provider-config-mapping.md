@@ -107,7 +107,7 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 | `mark_read_on_reply` | `false` | `POST /message/markread` ao responder |
 | `mark_read_on_open` | `true` | mark read ao abrir conversa |
 | `mark_inbound_deleted` | `true` | Cliente **ou** agente (celular) apaga no WA → marca no CW (mantém texto + destaque deleted) |
-| `mark_inbound_edited` | `true` | Cliente **ou** agente (celular) edita no WA → atualiza CW **quando o webhook tiver plaintext**; envelope só `secretEncryptedMessage` é ignorado (limitação Go) |
+| `mark_inbound_edited` | `true` | Cliente **ou** agente (celular) edita no WA → atualiza CW com plaintext; envelope só `secretEncryptedMessage` é ignorado (residual Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | `sync_delete_to_whatsapp` | `false` | Agente apaga **outgoing** no CW → delete no WA (opt-in) |
 | `sync_edit_to_whatsapp` | `false` | Opt-in: menu **Edit** no CW → `evolution_go_edit` → `POST /message/edit` (markdown/signature) — ADR §35 |
 | `import_contacts` | `false` | Import manual ou `import_on_connect` |

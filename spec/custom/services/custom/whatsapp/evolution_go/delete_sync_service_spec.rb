@@ -53,6 +53,28 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::DeleteSyncService do
     described_class.new(message: message).perform
   end
 
+  it 'reverts local soft-delete when WhatsApp API fails' do
+    failed = instance_double(HTTParty::Response, success?: false, code: 400, parsed_response: { 'error' => 'too late' })
+    allow(api_client).to receive(:delete_message).and_return(failed)
+    message.update_columns(
+      content_attributes: message.content_attributes.merge('deleted' => true, 'deleted_at' => Time.current.iso8601)
+    )
+
+    expect(described_class.new(message: message.reload).perform).to be(false)
+    expect(message.reload.content_attributes['deleted']).not_to be(true)
+  end
+
+  it 'raises when raise_errors is true and API fails' do
+    failed = instance_double(HTTParty::Response, success?: false, code: 400, parsed_response: {})
+    allow(api_client).to receive(:delete_message).and_return(failed)
+    message.update_columns(content_attributes: message.content_attributes.merge('deleted' => true))
+
+    expect do
+      described_class.new(message: message.reload, raise_errors: true).perform
+    end.to raise_error(Custom::Whatsapp::EvolutionGo::ApiError)
+    expect(message.reload.content_attributes['deleted']).not_to be(true)
+  end
+
   it 'resolves LID chat jid from contact additional_attributes' do
     contact.update!(
       additional_attributes: {

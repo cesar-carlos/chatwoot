@@ -177,8 +177,8 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 |-------|---------|------|---------------|
 | `ignore_from_me_echo` | `true` | 1 | Normalizer (configurável) |
 | `ignore_status` | `true` | 2 | `status@broadcast` |
-| `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → marca `deleted` no CW **mantendo o texto original** + destaque vermelho / aviso i18n (inclui `fromMe` / celular; `deleted_via_evolution_go_webhook`) |
-| `mark_inbound_edited` | `true` | UX | Webhook edit → atualiza CW (inclui `fromMe` / celular; skip noop / envelope criptografado). Texto bare + `content_attributes.edited` + badge. **⚠️** Go frequentemente só envia `secretEncryptedMessage` sem texto — nesses casos o CW não muda |
+| `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → marca `deleted` no CW **mantendo o texto original** + destaque vermelho / aviso i18n (inclui `fromMe` / celular; `deleted_via_evolution_go_webhook`). Job sempre consome o envelope; soft-delete gated por esta flag |
+| `mark_inbound_edited` | `true` | UX | Webhook edit plaintext → atualiza CW (inclui `fromMe` / celular; skip noop / encrypted-only / orphan). Texto bare + `content_attributes.edited` + badge. Residual: Go sem `editedMessage` → CW não muda |
 | `convert_markdown_inbound` | `true` | UX | Normalizer + edit sync |
 
 ### `source_id` inbound

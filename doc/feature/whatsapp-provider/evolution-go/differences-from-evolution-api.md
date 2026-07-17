@@ -76,8 +76,8 @@ A documentação oficial afirma que ambos compartilham **"API contract REST (com
 | `CONNECTION_UPDATE` | **`CONNECTION`** | `connection_status` |
 | `QRCODE_UPDATED` | **`QRCODE`** | Exibir QR no wizard |
 | `SEND_MESSAGE` | Implícito em `MESSAGE` com `fromMe: true` (Go também emite `SEND_MESSAGE`) | Filtrar echo / phone sync |
-| `MESSAGES_EDITED` (+ `editedMessage`) | `MESSAGE` com `Info.Edit` / `secretEncryptedMessage` **ou** (às vezes) `MESSAGES_EDITED` / protocol | Node costuma trazer plaintext; Go 0.7+ frequentemente **não** ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) — fork skip encrypted |
-| `MESSAGES_DELETE` / revoke | `MESSAGE` protocol revoke / `MESSAGE_DELETE` | Soft-delete no CW |
+| `MESSAGES_EDITED` (+ `editedMessage`) | `MESSAGE` com `IsEdit` + `protocolMessage`/`editedMessage` **ou** `secretEncryptedMessage` | Node costuma plaintext; Go entrega plaintext protocol **ou** encrypted-only — fork atualiza no 1º caso e skip no 2º ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
+| `MESSAGES_DELETE` / revoke | `MESSAGE` com `IsRevoke` / type 0 / `MESSAGE_DELETE` | Soft-delete no CW (job sempre consome envelope) |
 | — | `PRESENCE`, `CHAT_PRESENCE` | Ignorar MVP |
 | — | `GROUP`, `GROUP_UPDATE` | Ignorar; inbound grupo via `MESSAGE` + `@g.us` quando `ignore_groups: false` |
 | — | `CALL` | Fase voz separada |

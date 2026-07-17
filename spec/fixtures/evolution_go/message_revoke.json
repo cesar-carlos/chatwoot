@@ -1,21 +1,26 @@
 {
-  "event": "MESSAGE",
+  "event": "Message",
   "instance": "test-go-instance",
   "data": {
     "Info": {
-      "ID": "PROTOCOL-REVOKE-MSG",
+      "ID": "ACDD174F636231E68B8D95EA87DE51FB",
       "Chat": "5511999999999@s.whatsapp.net",
       "Sender": "5511999999999@s.whatsapp.net",
       "IsFromMe": false,
-      "Timestamp": 1699999999
+      "Edit": "7",
+      "Timestamp": "2026-06-26T02:40:00-03:00",
+      "Type": "text"
     },
+    "IsRevoke": true,
+    "messageType": "revoke",
     "Message": {
       "protocolMessage": {
-        "type": "REVOKE",
+        "type": 0,
+        "typeName": "REVOKE",
         "key": {
-          "id": "3EB0DELETEDMSG123",
-          "remoteJid": "5511999999999@s.whatsapp.net",
-          "fromMe": false
+          "ID": "3EB0DELETEDMSG123",
+          "fromMe": false,
+          "remoteJID": "5511999999999@s.whatsapp.net"
         }
       }
     }

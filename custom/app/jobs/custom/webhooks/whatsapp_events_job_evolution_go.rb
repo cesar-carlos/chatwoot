@@ -228,9 +228,10 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     end
   end
 
-  def inbound_delete_key(channel, params)
-    return unless mark_inbound_deleted?(channel)
-
+  # Always extract so revoke envelopes are consumed (not normalized as text),
+  # even when mark_inbound_deleted is off. Soft-delete itself stays gated in
+  # MessageDeleteSyncService.
+  def inbound_delete_key(_channel, params)
     Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.extract_delete_key(
       params[:data],
       event: params[:event]
