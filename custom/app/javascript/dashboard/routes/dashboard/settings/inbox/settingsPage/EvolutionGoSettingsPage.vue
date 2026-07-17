@@ -1,5 +1,5 @@
 <script setup>
-import { reactive, watch, ref, computed, toRef } from 'vue';
+import { reactive, watch, ref, computed, toRef, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -11,6 +11,10 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import TextArea from 'next/textarea/TextArea.vue';
 import EvolutionGoHealthPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionGoHealthPage.vue';
 import { useEvolutionGoImportStatus } from 'customDashboard/composables/evolution_go/useEvolutionGoImportStatus';
+import {
+  useContactsRefreshLock,
+  isContactsRefreshAlreadyRunningError,
+} from 'customDashboard/composables/useContactsRefreshLock';
 
 const props = defineProps({
   inbox: {
@@ -30,8 +34,35 @@ const isRefreshingContacts = ref(false);
 const showImportConfirmModal = ref(false);
 const importStatus = ref(null);
 
+const {
+  remainingSeconds: refreshLockRemaining,
+  isLocked: isRefreshLocked,
+  startCountdown: startRefreshCountdown,
+  syncFromStatus: syncRefreshLockStatus,
+} = useContactsRefreshLock();
+
 const inboxRef = toRef(props, 'inbox');
 useEvolutionGoImportStatus(inboxRef);
+
+function refreshEtaMinutes(seconds) {
+  return Math.max(1, Math.ceil((Number(seconds) || 0) / 60));
+}
+
+async function syncRefreshLockFromDiagnostics() {
+  if (!props.inbox?.id) return;
+
+  try {
+    const data = await store.dispatch(
+      'inboxes/fetchEvolutionGoDiagnostics',
+      props.inbox.id
+    );
+    syncRefreshLockStatus(data?.contacts_refresh);
+  } catch {
+    // Diagnostics failure should not block settings; lock state stays local.
+  }
+}
+
+onMounted(syncRefreshLockFromDiagnostics);
 
 function loadState() {
   const config = props.inbox.provider_config || {};
@@ -225,7 +256,7 @@ async function confirmImport() {
 }
 
 async function refreshContactProfiles() {
-  if (isRefreshingContacts.value) return;
+  if (isRefreshingContacts.value || isRefreshLocked.value) return;
 
   isRefreshingContacts.value = true;
   try {
@@ -233,17 +264,24 @@ async function refreshContactProfiles() {
       'inboxes/evolutionGoRefreshContacts',
       props.inbox.id
     );
+    startRefreshCountdown(payload.remaining_seconds || payload.eta_seconds || 0);
     useAlert(
       t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_SUCCESS', {
         count: payload.enqueued || 0,
-        minutes: Math.max(
-          1,
-          Math.ceil((payload.eta_seconds || 0) / 60) ||
-            Math.ceil((payload.enqueued || 0) / 20)
+        minutes: refreshEtaMinutes(
+          payload.eta_seconds || payload.remaining_seconds || 0
         ),
       })
     );
   } catch (error) {
+    if (isContactsRefreshAlreadyRunningError(error)) {
+      const remaining = error?.response?.data?.remaining_seconds;
+      if (remaining > 0) startRefreshCountdown(remaining);
+      useAlert(
+        t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.ALREADY_RUNNING')
+      );
+      return;
+    }
     useAlert(
       error?.response?.data?.error ||
         t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_ERROR')
@@ -574,6 +612,7 @@ async function removeProxy() {
             t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN')
           "
           :is-loading="isRefreshingContacts"
+          :disabled="isRefreshLocked"
           slate
           @click="refreshContactProfiles"
         />
@@ -584,6 +623,14 @@ async function removeProxy() {
           @click="requestImport"
         />
       </div>
+      <p v-if="isRefreshLocked" class="text-sm text-n-amber-11">
+        {{
+          t(
+            'INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.IN_PROGRESS',
+            { minutes: refreshEtaMinutes(refreshLockRemaining) }
+          )
+        }}
+      </p>
       <p class="text-sm text-n-slate-11">
         {{
           t(

@@ -12,6 +12,10 @@ import TextArea from 'next/textarea/TextArea.vue';
 import SelectInput from 'dashboard/components-next/select/Select.vue';
 import EvolutionHealthPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionHealthPage.vue';
 import SingleHistoryAutomationWarning from 'dashboard/routes/dashboard/settings/inbox/components/SingleHistoryAutomationWarning.vue';
+import {
+  useContactsRefreshLock,
+  isContactsRefreshAlreadyRunningError,
+} from 'customDashboard/composables/useContactsRefreshLock';
 
 const props = defineProps({
   inbox: {
@@ -91,6 +95,16 @@ const isImporting = ref(false);
 const isRefreshingContacts = ref(false);
 const isRestartingProxy = ref(false);
 const importStatus = ref(null);
+
+const {
+  remainingSeconds: refreshLockRemaining,
+  isLocked: isRefreshLocked,
+  startCountdown: startRefreshCountdown,
+} = useContactsRefreshLock();
+
+function refreshEtaMinutes(seconds) {
+  return Math.max(1, Math.ceil((Number(seconds) || 0) / 60));
+}
 
 const settingsSyncError = computed(
   () => props.inbox.provider_config?.settings_sync_error || ''
@@ -312,7 +326,7 @@ async function runImport() {
 }
 
 async function refreshContactProfiles() {
-  if (isRefreshingContacts.value) return;
+  if (isRefreshingContacts.value || isRefreshLocked.value) return;
 
   isRefreshingContacts.value = true;
   try {
@@ -320,12 +334,22 @@ async function refreshContactProfiles() {
       'inboxes/evolutionRefreshContacts',
       props.inbox.id
     );
+    startRefreshCountdown(payload.remaining_seconds || 0);
     useAlert(
       t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_SUCCESS', {
         count: payload.enqueued || 0,
+        minutes: refreshEtaMinutes(payload.remaining_seconds || 0),
       })
     );
   } catch (error) {
+    if (isContactsRefreshAlreadyRunningError(error)) {
+      const remaining = error?.response?.data?.remaining_seconds;
+      if (remaining > 0) startRefreshCountdown(remaining);
+      useAlert(
+        t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.ALREADY_RUNNING')
+      );
+      return;
+    }
     useAlert(
       error?.response?.data?.error ||
         t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_ERROR')
@@ -624,6 +648,7 @@ function importStatusLabel(status) {
             t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN')
           "
           :is-loading="isRefreshingContacts"
+          :disabled="isRefreshLocked"
           slate
           @click="refreshContactProfiles"
         />
@@ -634,6 +659,14 @@ function importStatusLabel(status) {
           @click="runImport"
         />
       </div>
+      <p v-if="isRefreshLocked" class="text-sm text-n-amber-11">
+        {{
+          t(
+            'INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.IN_PROGRESS',
+            { minutes: refreshEtaMinutes(refreshLockRemaining) }
+          )
+        }}
+      </p>
       <p class="text-sm text-n-slate-11">
         {{
           t(

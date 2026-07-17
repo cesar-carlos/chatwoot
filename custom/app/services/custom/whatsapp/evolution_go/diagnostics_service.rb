@@ -15,6 +15,7 @@ class Custom::Whatsapp::EvolutionGo::DiagnosticsService
       settings_sync_error: config['settings_sync_error'],
       webhook_subscribe: config['webhook_subscribe'],
       last_webhook_at: config['last_webhook_at'],
+      contacts_refresh: Custom::Whatsapp::EvolutionGo::ContactsRefreshService.lock_status(channel),
       instance_info: instance_info_payload,
       instance_logs: instance_logs_payload
     }
