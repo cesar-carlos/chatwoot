@@ -34,7 +34,12 @@ class Custom::Whatsapp::EvolutionGo::ImportService
   private
 
   def ready_to_import?
-    return false unless @runtime.import_enabled?
+    # Toggles turned off mid-run left status=running forever (UI "Em execução").
+    unless @runtime.import_enabled?
+      @runtime.abort_disabled_import! if @runtime.import_running?
+      return false
+    end
+
     return false if @runtime.import_running? && !force && !@runtime.import_stale?
 
     acquire_import_lock!

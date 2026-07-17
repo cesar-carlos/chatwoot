@@ -236,6 +236,11 @@ async function refreshContactProfiles() {
     useAlert(
       t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_SUCCESS', {
         count: payload.enqueued || 0,
+        minutes: Math.max(
+          1,
+          Math.ceil((payload.eta_seconds || 0) / 60) ||
+            Math.ceil((payload.enqueued || 0) / 20)
+        ),
       })
     );
   } catch (error) {
