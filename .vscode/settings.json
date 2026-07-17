@@ -1,12 +1,19 @@
 {
-    "editor.formatOnSave": true,
-    "explorer.compactFolders": false,
-    "cSpell.words": [
-        "chatwoot",
-        "dompurify"
-    ],
-    "css.lint.unknownAtRules": "ignore",
-    "scss.lint.unknownAtRules": "ignore",
-    "css.customData": [".vscode/tailwind.css-data.json"],
-    "scss.customData": [".vscode/tailwind.css-data.json"]
+  "editor.formatOnSave": true,
+  "explorer.compactFolders": false,
+  "cSpell.words": ["chatwoot", "dompurify"],
+  "css.lint.unknownAtRules": "ignore",
+  "scss.lint.unknownAtRules": "ignore",
+  "less.lint.unknownAtRules": "ignore",
+  "css.customData": [".vscode/tailwind.css-data.json"],
+  "scss.customData": [".vscode/tailwind.css-data.json"],
+  "vetur.validation.template": false,
+  "vetur.validation.script": false,
+  "vetur.validation.style": false,
+  "vetur.ignoreProjectWarning": true,
+  "tailwindCSS.includeLanguages": {
+    "vue": "html",
+    "vue-html": "html",
+    "scss": "scss"
+  }
 }

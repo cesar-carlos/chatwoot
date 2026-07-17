@@ -3,6 +3,7 @@ import MessageApi from 'dashboard/api/inbox/message';
 
 export const BUSINESS_ACTOR_KEY = 'user:self';
 export const REACTION_PROVIDERS = ['evolution_go', 'evolution'];
+export const REACTION_BLOCKED_STATUSES = ['failed', 'progress'];
 
 export function isBusinessReaction(entry) {
   if (!entry) return false;
@@ -33,6 +34,42 @@ export function buildReactionChips(reactions) {
 export function inboxSupportsReactions(inbox) {
   if (!inbox || inbox.channel_type !== 'Channel::Whatsapp') return false;
   return REACTION_PROVIDERS.includes(inbox.provider);
+}
+
+export function messageCanReceiveReaction(message) {
+  if (!message) return false;
+
+  const sourceId = message.source_id || message.sourceId;
+  if (!sourceId) return false;
+
+  if (message.private) return false;
+
+  const attrs =
+    message.content_attributes || message.contentAttributes || {};
+  if (attrs.deleted) return false;
+
+  const status = message.status;
+  if (status && REACTION_BLOCKED_STATUSES.includes(status)) return false;
+
+  return true;
+}
+
+export function extractReactionErrorMessage(
+  error,
+  fallback = 'Could not send reaction'
+) {
+  const data = error?.response?.data;
+  if (typeof data?.error === 'string' && data.error.trim()) return data.error;
+  if (typeof data?.message === 'string' && data.message.trim()) {
+    return data.message;
+  }
+  if (Array.isArray(data?.errors) && data.errors[0]) {
+    return String(data.errors[0]);
+  }
+  if (typeof error?.message === 'string' && error.message.trim()) {
+    return error.message;
+  }
+  return fallback;
 }
 
 export function applyOptimisticReaction(message, reaction, actorId = null) {
