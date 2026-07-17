@@ -932,7 +932,8 @@ export default {
 
       this.$refs.shareContactDialog?.setSharing(true);
       try {
-        await this.sendMessage({
+        // FORK: keep reply-to when sharing a contact card
+        let sharePayload = {
           conversationId: this.currentChat.id,
           message: '',
           private: false,
@@ -940,7 +941,9 @@ export default {
           sharedContactName: contact.name,
           sharedContactPhone: phoneNumber,
           sharedContactMeta: { firstName, lastName },
-        });
+        };
+        sharePayload = this.setReplyToInPayload(sharePayload);
+        await this.sendMessage(sharePayload);
         useTrack(CONVERSATION_EVENTS.SHARED_CONTACT);
         this.$refs.shareContactDialog?.close();
       } catch {
@@ -955,10 +958,15 @@ export default {
       }
       if (!this.showMentions) {
         const copilotAcceptedMessage = this.getCopilotAcceptedMessage();
+        // FORK: capture before clearMessage() resets reply-to for analytics
+        const hasReplyTo = !!this.inReplyTo?.id;
+        const editorMessage = this.message;
         const isOnWhatsApp =
           this.isATwilioWhatsAppChannel ||
           this.isAWhatsAppCloudChannel ||
-          this.is360DialogWhatsAppChannel;
+          this.is360DialogWhatsAppChannel ||
+          // FORK: Evolution / Evolution Go — same text+media split as Cloud
+          this.isGatewayWhatsAppChannel;
         // Instagram and TikTok do not support sending text and attachments in the same message.
         // For Instagram, combining them causes duplicate messages due to separate echo events per component.
         // For TikTok, the API rejects messages that mix text and media.
@@ -967,15 +975,17 @@ export default {
         const isOnTiktok = this.isATiktokChannel;
         if ((isOnWhatsApp || isOnInstagram || isOnTiktok) && !this.isPrivate) {
           this.sendMessageAsMultipleMessages(
-            this.message,
-            copilotAcceptedMessage
+            editorMessage,
+            copilotAcceptedMessage,
+            hasReplyTo
           );
         } else {
-          const messagePayload = this.getMessagePayload(this.message);
+          const messagePayload = this.getMessagePayload(editorMessage);
           this.sendMessage(
             messagePayload,
-            this.message,
-            copilotAcceptedMessage
+            editorMessage,
+            copilotAcceptedMessage,
+            hasReplyTo
           );
         }
 
@@ -988,19 +998,28 @@ export default {
         this.hideEmojiPicker();
       }
     },
-    sendMessageAsMultipleMessages(message, copilotAcceptedMessage = '') {
+    sendMessageAsMultipleMessages(
+      message,
+      copilotAcceptedMessage = '',
+      hasReplyTo = false
+    ) {
       const messages = this.getMultipleMessagesPayload(message);
       messages.forEach(messagePayload => {
         this.sendMessage(
           messagePayload,
           messagePayload.message || '',
-          copilotAcceptedMessage
+          copilotAcceptedMessage,
+          hasReplyTo && !!messagePayload.contentAttributes?.in_reply_to
         );
       });
     },
     sendMessageAnalyticsData(
       isPrivate,
-      { editorMessage = '', copilotAcceptedMessage = '' } = {}
+      {
+        editorMessage = '',
+        copilotAcceptedMessage = '',
+        hasReplyTo = false,
+      } = {}
     ) {
       const normalizeForComparison = message => {
         let normalizedMessage = message || '';
@@ -1041,7 +1060,8 @@ export default {
         : useTrack(CONVERSATION_EVENTS.SENT_MESSAGE, {
             channelType: this.channelType,
             signatureEnabled: this.sendWithSignature,
-            hasReplyTo: !!this.inReplyTo?.id,
+            // FORK: use captured flag — inReplyTo is cleared before send settles
+            hasReplyTo,
           });
     },
     async onSendReply() {
@@ -1071,7 +1091,8 @@ export default {
     async sendMessage(
       messagePayload,
       editorMessage = '',
-      copilotAcceptedMessage = ''
+      copilotAcceptedMessage = '',
+      hasReplyTo = false
     ) {
       try {
         await this.$store.dispatch(
@@ -1084,6 +1105,8 @@ export default {
         this.sendMessageAnalyticsData(messagePayload.private, {
           editorMessage,
           copilotAcceptedMessage,
+          hasReplyTo:
+            hasReplyTo || !!messagePayload.contentAttributes?.in_reply_to,
         });
       } catch (error) {
         const errorMessage =
@@ -1263,7 +1286,7 @@ export default {
           const attachedFile = this.globalConfig.directUploadsEnabled
             ? attachment.blobSignedId
             : attachment.resource.file;
-          let attachmentPayload = {
+          const attachmentPayload = {
             conversationId: this.currentChat.id,
             files: [attachedFile],
             private: false,
@@ -1272,7 +1295,6 @@ export default {
             isVoiceMessage: attachment.isVoiceMessage || false,
           };
 
-          attachmentPayload = this.setReplyToInPayload(attachmentPayload);
           multipleMessagePayload.push(attachmentPayload);
           // For WhatsApp, only the first attachment gets a caption
           if (!this.isAnInstagramChannel) caption = '';
@@ -1289,16 +1311,19 @@ export default {
         (!(this.isAnInstagramChannel || this.isATiktokChannel) &&
           hasNoAttachments)
       ) {
-        let messagePayload = {
+        multipleMessagePayload.push({
           conversationId: this.currentChat.id,
           message,
           private: false,
           sender: this.sender,
-        };
+        });
+      }
 
-        messagePayload = this.setReplyToInPayload(messagePayload);
-
-        multipleMessagePayload.push(messagePayload);
+      // FORK: only the first outbound part carries in_reply_to (WhatsApp quote)
+      if (multipleMessagePayload.length) {
+        multipleMessagePayload[0] = this.setReplyToInPayload(
+          multipleMessagePayload[0]
+        );
       }
 
       return multipleMessagePayload;

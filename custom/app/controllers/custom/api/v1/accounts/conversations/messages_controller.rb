@@ -35,11 +35,19 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     render_could_not_create_error(e.message)
   end
 
+  # FORK: preserve in_reply_to / channel attrs on retry (upstream wipes content_attributes)
   def retry
     assert_voice_only_public_retry_allowed!
-    super
+    return if message.blank?
+
+    Messages::StatusUpdateService.new(message, 'sent').perform
+    attrs = (message.content_attributes || {}).with_indifferent_access.except(:external_error)
+    message.update!(content_attributes: attrs)
+    ::SendReplyJob.perform_later(message.id)
   rescue CustomExceptions::Wavoip::VoiceOnlyInbox => e
     render_error_response(e)
+  rescue StandardError => e
+    render_could_not_create_error(e.message)
   end
 
   # FORK: preserve existing content_attributes (email metadata, etc.) when marking deleted

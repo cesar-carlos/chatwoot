@@ -130,4 +130,52 @@ describe('useScrollToConversationMessage', () => {
     );
     expect(emitter.emit).not.toHaveBeenCalled();
   });
+
+  it('loads messages around the target when the DOM node is missing', async () => {
+    vi.useFakeTimers();
+    getSelectedChat.mockReturnValue({ id: 7, messages: [] });
+    const around = [
+      { id: 41, content: 'before', created_at: 1 },
+      { id: 42, content: 'target', created_at: 2 },
+      { id: 43, content: 'after', created_at: 3 },
+    ];
+    MessageApi.getPreviousMessages = vi.fn().mockResolvedValue({
+      data: { payload: around },
+    });
+
+    let lookups = 0;
+    const messageElement = document.createElement('div');
+    messageElement.id = 'message42';
+    vi.spyOn(document, 'getElementById').mockImplementation(id => {
+      if (id === 'message42') {
+        lookups += 1;
+        // Stub has no content so first pass skips insert; element appears after API merge
+        return lookups >= 2 ? messageElement : null;
+      }
+      return null;
+    });
+
+    const { scrollToMessage } = useScrollToConversationMessage({
+      conversationId: ref(7),
+    });
+
+    const resultPromise = scrollToMessage({ id: 42 });
+    const result = await resultPromise;
+
+    expect(result).toBe(true);
+    expect(MessageApi.getPreviousMessages).toHaveBeenCalled();
+    expect(commit).toHaveBeenCalledWith(types.INSERT_MESSAGES_AROUND, {
+      id: 7,
+      data: around,
+    });
+    expect(emitter.emit).toHaveBeenCalledWith(BUS_EVENTS.SCROLL_TO_MESSAGE, {
+      messageId: 42,
+    });
+
+    vi.advanceTimersByTime(400);
+    expect(messageElement.classList.contains('message-locate-pulse')).toBe(
+      true
+    );
+    vi.useRealTimers();
+  });
 });

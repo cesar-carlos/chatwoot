@@ -11,13 +11,18 @@ import {
   newMessageIds,
 } from 'dashboard/composables/fork/conversationSearchInjectedMessages';
 
-const HIGHLIGHT_CLASS = 'bg-n-alpha-1';
-const HIGHLIGHT_DURATION_MS = 1000;
+const HIGHLIGHT_CLASS = 'message-locate-pulse';
+const HIGHLIGHT_DURATION_MS = 1800;
 const MESSAGE_WINDOW = 100;
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const messageElementId = messageId => `message${messageId}`;
+
+const findMessageElement = messageId =>
+  document.getElementById(messageElementId(messageId));
 
 const insertMessagesAround = (
   store,
@@ -43,36 +48,85 @@ const insertMessagesAround = (
   });
   store.commit(types.PRUNE_SEARCH_INJECTED, {
     id: conversationId,
-    protectedIds: [targetMessageId, ...collectVisibleMessageIds()],
+    // Normalize ids so Set lookup matches message.id from the store
+    protectedIds: [Number(targetMessageId), ...collectVisibleMessageIds()].map(
+      Number
+    ),
   });
 };
+
+const payloadIncludesMessage = (messages, messageId) =>
+  (messages || []).some(message => Number(message.id) === Number(messageId));
 
 const loadMessagesAround = async (conversationId, messageId) => {
   const response = await MessageApi.getPreviousMessages({
     conversationId,
     before: messageId + MESSAGE_WINDOW,
-    after: messageId - MESSAGE_WINDOW,
+    after: Math.max(0, messageId - MESSAGE_WINDOW),
   });
 
-  return response.data?.payload || [];
+  let messages = response.data?.payload || [];
+  if (payloadIncludesMessage(messages, messageId)) {
+    return messages;
+  }
+
+  // Exact id window: MessageFinder#messages_between uses id >= after AND id < before
+  const tight = await MessageApi.getPreviousMessages({
+    conversationId,
+    after: messageId,
+    before: messageId + 1,
+  });
+  messages = tight.data?.payload || [];
+  return messages;
 };
 
 const applyTemporaryHighlight = messageId => {
-  const messageElement = document.getElementById(`message${messageId}`);
+  const messageElement = findMessageElement(messageId);
   if (!messageElement) return;
 
-  if (prefersReducedMotion()) {
-    messageElement.classList.add('ring-2', 'ring-n-brand');
-    window.setTimeout(() => {
-      messageElement.classList.remove('ring-2', 'ring-n-brand');
-    }, HIGHLIGHT_DURATION_MS);
-    return;
+  const previousTimer = messageElement.dataset.locatePulseTimer;
+  if (previousTimer) {
+    window.clearTimeout(Number(previousTimer));
   }
 
-  messageElement.classList.add(HIGHLIGHT_CLASS);
-  window.setTimeout(() => {
-    messageElement.classList.remove(HIGHLIGHT_CLASS);
-  }, HIGHLIGHT_DURATION_MS);
+  messageElement.classList.remove(
+    HIGHLIGHT_CLASS,
+    'ring-2',
+    'ring-n-brand',
+    'bg-n-alpha-1'
+  );
+  // Force reflow so re-clicking the same quote restarts the animation
+  // eslint-disable-next-line no-unused-expressions
+  messageElement.offsetWidth;
+
+  const clearHighlight = () => {
+    messageElement.classList.remove(
+      HIGHLIGHT_CLASS,
+      'ring-2',
+      'ring-n-brand',
+      'bg-n-alpha-1'
+    );
+    delete messageElement.dataset.locatePulseTimer;
+  };
+
+  if (prefersReducedMotion()) {
+    messageElement.classList.add('ring-2', 'ring-n-brand', 'bg-n-alpha-1');
+  } else {
+    messageElement.classList.add(HIGHLIGHT_CLASS);
+  }
+
+  const timerId = window.setTimeout(clearHighlight, HIGHLIGHT_DURATION_MS);
+  messageElement.dataset.locatePulseTimer = String(timerId);
+};
+
+const canRenderBubble = message => {
+  if (!message?.id) return false;
+  return Boolean(
+    message.content ||
+      message.attachments?.length ||
+      message.content_attributes ||
+      message.contentAttributes
+  );
 };
 
 export const useScrollToConversationMessage = ({
@@ -93,9 +147,10 @@ export const useScrollToConversationMessage = ({
     const { id: messageId } = selectedMessage;
 
     try {
-      let messageElement = document.getElementById(`message${messageId}`);
+      let messageElement = findMessageElement(messageId);
 
-      if (!messageElement) {
+      // Skip stub inserts ({ id } only) — Message.vue won't render them
+      if (!messageElement && canRenderBubble(selectedMessage)) {
         insertMessagesAround(
           store,
           conversationId,
@@ -103,7 +158,7 @@ export const useScrollToConversationMessage = ({
           messageId
         );
         await nextTick();
-        messageElement = document.getElementById(`message${messageId}`);
+        messageElement = findMessageElement(messageId);
       }
 
       if (!messageElement) {
@@ -120,7 +175,9 @@ export const useScrollToConversationMessage = ({
               messageId
             );
             await nextTick();
-            messageElement = document.getElementById(`message${messageId}`);
+            // Second tick: MessageList may need an extra frame after store merge
+            await nextTick();
+            messageElement = findMessageElement(messageId);
           }
         } catch {
           // Fall through to not-found alert.
@@ -134,8 +191,9 @@ export const useScrollToConversationMessage = ({
 
       onClose?.();
       emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE, { messageId });
+      // Wait for smooth scrollIntoView to settle before pulsing the target
       await nextTick();
-      applyTemporaryHighlight(messageId);
+      window.setTimeout(() => applyTemporaryHighlight(messageId), 350);
       return true;
     } finally {
       isLocating.value = false;
