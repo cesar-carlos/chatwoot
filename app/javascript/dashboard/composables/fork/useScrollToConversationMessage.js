@@ -29,6 +29,16 @@ const messageElementId = messageId => `message${messageId}`;
 const findMessageElement = messageId =>
   document.getElementById(messageElementId(messageId));
 
+const findBubbleElement = messageId => {
+  const row = findMessageElement(messageId);
+  if (!row) return null;
+
+  return (
+    row.querySelector('.left-bubble, .right-bubble') ||
+    row
+  );
+};
+
 const insertMessagesAround = (
   store,
   conversationId,
@@ -119,17 +129,18 @@ export const useScrollToConversationMessage = ({
   };
 
   const applyTemporaryHighlight = messageId => {
-    const messageElement = findMessageElement(messageId);
-    if (!messageElement) return;
+    // Pulse the bubble shell, not the full message row
+    const bubbleElement = findBubbleElement(messageId);
+    if (!bubbleElement) return;
 
-    const previousTimer = messageElement.dataset.locatePulseTimer;
+    const previousTimer = bubbleElement.dataset.locatePulseTimer;
     if (previousTimer) {
       const prevId = Number(previousTimer);
       window.clearTimeout(prevId);
       pendingTimers.delete(prevId);
     }
 
-    messageElement.classList.remove(
+    bubbleElement.classList.remove(
       HIGHLIGHT_CLASS,
       'ring-2',
       'ring-n-brand',
@@ -137,26 +148,26 @@ export const useScrollToConversationMessage = ({
     );
     // Force reflow so re-clicking the same quote restarts the animation
     // eslint-disable-next-line no-unused-expressions
-    messageElement.offsetWidth;
+    bubbleElement.offsetWidth;
 
     const clearHighlight = () => {
-      messageElement.classList.remove(
+      bubbleElement.classList.remove(
         HIGHLIGHT_CLASS,
         'ring-2',
         'ring-n-brand',
         'bg-n-alpha-1'
       );
-      delete messageElement.dataset.locatePulseTimer;
+      delete bubbleElement.dataset.locatePulseTimer;
     };
 
     if (prefersReducedMotion()) {
-      messageElement.classList.add('ring-2', 'ring-n-brand', 'bg-n-alpha-1');
+      bubbleElement.classList.add('ring-2', 'ring-n-brand');
     } else {
-      messageElement.classList.add(HIGHLIGHT_CLASS);
+      bubbleElement.classList.add(HIGHLIGHT_CLASS);
     }
 
     const timerId = scheduleTimer(clearHighlight, HIGHLIGHT_DURATION_MS);
-    messageElement.dataset.locatePulseTimer = String(timerId);
+    bubbleElement.dataset.locatePulseTimer = String(timerId);
   };
 
   const scrollToMessage = async selectedMessage => {

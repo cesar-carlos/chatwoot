@@ -142,6 +142,9 @@ describe('useScrollToConversationMessage', () => {
     let lookups = 0;
     const messageElement = document.createElement('div');
     messageElement.id = 'message42';
+    const bubble = document.createElement('div');
+    bubble.className = 'left-bubble';
+    messageElement.appendChild(bubble);
     vi.spyOn(document, 'getElementById').mockImplementation(id => {
       if (id === 'message42') {
         lookups += 1;
@@ -172,8 +175,9 @@ describe('useScrollToConversationMessage', () => {
     });
 
     vi.advanceTimersByTime(400);
+    expect(bubble.classList.contains('message-locate-pulse')).toBe(true);
     expect(messageElement.classList.contains('message-locate-pulse')).toBe(
-      true
+      false
     );
     vi.useRealTimers();
   });
