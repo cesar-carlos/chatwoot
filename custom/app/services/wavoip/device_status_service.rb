@@ -19,6 +19,8 @@ class Wavoip::DeviceStatusService
       device_status: config['device_status'],
       phone_number: channel.phone_number,
       live: recently_verified,
+      # True only when all_info ran — callers must not bust account cache on poll hits.
+      refreshed: live_fetch.present?,
       contact_phone: live_fetch&.dig('contact', 'phone')
     }
   end
@@ -143,7 +145,7 @@ class Wavoip::DeviceStatusService
   end
 
   def persist_status!(result)
-    status = result['status'].presence
+    status = Wavoip::DeviceStatusNormalizer.normalize(result['status'].presence)
     return if status.blank?
 
     config = (channel.provider_config || {}).dup

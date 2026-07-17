@@ -72,6 +72,7 @@ let pollTimer = null;
 let preparingTimer = null;
 let preparingStartedAt = null;
 let refreshPromise = null;
+let pendingForceRefresh = false;
 let panelOpenedSdkConnection = false;
 
 const webhookUrl = computed(
@@ -240,7 +241,14 @@ async function syncInboxWhenStatusDiverges(deviceStatus) {
 }
 
 async function refreshConnection({ forceLiveCheck = false } = {}) {
-  if (refreshPromise) return refreshPromise;
+  if (refreshPromise) {
+    if (forceLiveCheck) pendingForceRefresh = true;
+    return refreshPromise.then(() => {
+      if (!pendingForceRefresh) return undefined;
+      pendingForceRefresh = false;
+      return refreshConnection({ forceLiveCheck: true });
+    });
+  }
 
   refreshPromise = (async () => {
     try {
