@@ -51,7 +51,10 @@ const allMessages = computed(() => {
 const currentChat = useMapGetter('getSelectedChat');
 
 // Cache for fetched reply messages to avoid duplicate API calls
+// Keys are always Number(messageId) to avoid string/number Map misses
 const fetchedReplyMessages = reactive(new Map());
+
+const cacheKey = messageId => Number(messageId);
 
 /**
  * Fetches a specific message from the API by trying to get messages around it
@@ -60,32 +63,46 @@ const fetchedReplyMessages = reactive(new Map());
  * @returns {Promise<Object|null>} - The fetched message or null if not found/error
  */
 const fetchReplyMessage = async (messageId, conversationId) => {
-  // Return cached result if already fetched
-  if (fetchedReplyMessages.has(messageId)) {
-    return fetchedReplyMessages.get(messageId);
+  const key = cacheKey(messageId);
+  // Return cached result if already fetched (or in-flight sentinel)
+  if (fetchedReplyMessages.has(key)) {
+    return fetchedReplyMessages.get(key);
   }
 
+  // In-flight lock prevents duplicate requests from parallel renders
+  fetchedReplyMessages.set(key, undefined);
+
   try {
-    const response = await MessageApi.getPreviousMessages({
+    let response = await MessageApi.getPreviousMessages({
       conversationId,
-      before: messageId + 100,
-      after: messageId - 100,
+      before: key + 100,
+      after: Math.max(0, key - 100),
     });
 
-    const messages = response.data?.payload || [];
-    const targetMessage = messages.find(msg => msg.id === messageId);
+    let messages = response.data?.payload || [];
+    let targetMessage = messages.find(msg => Number(msg.id) === key);
+
+    // FORK: exact id window when ±100 misses (global id gaps across conversations)
+    if (!targetMessage) {
+      response = await MessageApi.getPreviousMessages({
+        conversationId,
+        after: key,
+        before: key + 1,
+      });
+      messages = response.data?.payload || [];
+      targetMessage = messages.find(msg => Number(msg.id) === key);
+    }
 
     if (targetMessage) {
       const camelCaseMessage = useCamelCase(targetMessage);
-      fetchedReplyMessages.set(messageId, camelCaseMessage);
+      fetchedReplyMessages.set(key, camelCaseMessage);
       return camelCaseMessage;
     }
 
-    // Cache null result to avoid repeated API calls
-    fetchedReplyMessages.set(messageId, null);
+    fetchedReplyMessages.set(key, null);
     return null;
   } catch (error) {
-    fetchedReplyMessages.set(messageId, null);
+    fetchedReplyMessages.set(key, null);
     return null;
   }
 };
@@ -143,32 +160,45 @@ const getInReplyToMessage = parentMessage => {
 
   const inReplyToMessageId =
     parentMessage.contentAttributes?.inReplyTo ??
+    parentMessage.contentAttributes?.in_reply_to ??
     parentMessage.content_attributes?.in_reply_to;
 
   if (!inReplyToMessageId) return null;
 
+  const key = cacheKey(inReplyToMessageId);
+  const matchesId = msg => Number(msg.id) === key;
+  // FORK: distinguish loading vs missing so the quote preview does not flash "not found"
+  const stub = (state = 'missing') => ({
+    id: key,
+    replyPreviewState: state,
+  });
+
   // Try to find in current messages first
-  let replyMessage = props.messages?.find(msg => msg.id === inReplyToMessageId);
+  let replyMessage = props.messages?.find(matchesId);
 
   // Then try store messages
   if (!replyMessage && currentChat.value?.messages) {
-    replyMessage = currentChat.value.messages.find(
-      msg => msg.id === inReplyToMessageId
-    );
+    replyMessage = currentChat.value.messages.find(matchesId);
   }
 
-  // Then check fetch cache
-  if (!replyMessage && fetchedReplyMessages.has(inReplyToMessageId)) {
-    replyMessage = fetchedReplyMessages.get(inReplyToMessageId);
+  // Then check fetch cache (undefined = in-flight, null = not found)
+  if (!replyMessage && fetchedReplyMessages.has(key)) {
+    const cached = fetchedReplyMessages.get(key);
+    if (cached) return cached;
+    return stub(cached === null ? 'missing' : 'loading');
   }
 
   // If still not found and we have conversation context, fetch it
   if (!replyMessage && currentChat.value?.id) {
-    fetchReplyMessage(inReplyToMessageId, currentChat.value.id);
-    return null; // Let UI handle loading state
+    fetchReplyMessage(key, currentChat.value.id);
+    return stub('loading');
   }
 
-  return replyMessage ? useCamelCase(replyMessage) : null;
+  if (!replyMessage) {
+    return stub('missing');
+  }
+
+  return useCamelCase(replyMessage);
 };
 </script>
 

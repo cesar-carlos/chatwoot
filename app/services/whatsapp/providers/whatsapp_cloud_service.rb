@@ -23,8 +23,10 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
       recipient_type: 'individual', # Only individual messages supported (not group messages)
       to: phone_number,
       type: 'template',
-      template: template_body
-    }
+      template: template_body,
+      # FORK: preserve quoted reply context on template sends
+      context: whatsapp_reply_context(message)
+    }.compact
 
     response = HTTParty.post(
       "#{phone_id_path}/messages",

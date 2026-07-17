@@ -343,7 +343,8 @@ export default {
         if (messageElement) {
           this.isProgrammaticScroll = true;
           messageElement.scrollIntoView({ behavior: 'smooth' });
-          this.fetchPreviousMessages();
+          // FORK: do not fetchPreviousMessages() here — default scrollTop=0 always
+          // triggered a history load that fought smooth scroll / quote locate.
         } else if (!messageId) {
           this.scrollToBottom();
         }

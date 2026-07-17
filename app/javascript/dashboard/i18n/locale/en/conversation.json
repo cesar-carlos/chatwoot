@@ -157,6 +157,8 @@
     "RATING_TITLE": "Rating",
     "FEEDBACK_TITLE": "Feedback",
     "REPLY_MESSAGE_NOT_FOUND": "Message not available",
+    "REPLY_MESSAGE_LOADING": "Loading original message…",
+    "REPLY_MESSAGE_CLICK_HINT": "Jump to the original message",
     "CARD": {
       "SHOW_LABELS": "Show labels",
       "HIDE_LABELS": "Hide labels",

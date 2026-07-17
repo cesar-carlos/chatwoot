@@ -74,6 +74,17 @@ export const createPendingMessage = data => {
     attachments: file ? tempAttachments : null,
   };
 
+  // FORK: normalize reply-to so optimistic bubbles show quote preview
+  const replyToId =
+    data.contentAttributes?.inReplyTo ?? data.contentAttributes?.in_reply_to;
+  if (replyToId) {
+    pendingMessage.contentAttributes = {
+      ...data.contentAttributes,
+      inReplyTo: replyToId,
+      in_reply_to: replyToId,
+    };
+  }
+
   // FORK: share contact card
   if (sharedContactId) {
     pendingMessage.attachments = [
