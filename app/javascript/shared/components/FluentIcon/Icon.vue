@@ -31,6 +31,10 @@ export default {
     pathSource() {
       // To support icons with multiple paths
       const path = this.icons[`${this.icon}-${this.type}`];
+      // FORK: missing glyph — upstream throws on path.constructor when path is undefined
+      if (path == null) {
+        return [];
+      }
       if (path.constructor === Array) {
         return path;
       }

@@ -1104,7 +1104,8 @@
             "RUN": "Refresh all contact profiles",
             "RUN_SUCCESS": "Contact profile refresh started for {count} contacts (about {minutes} min at paced rate).",
             "RUN_ERROR": "Could not start contact profile refresh.",
-            "ALREADY_RUNNING": "A contact profile refresh is already running for this inbox."
+            "ALREADY_RUNNING": "A contact profile refresh is already running for this inbox.",
+            "IN_PROGRESS": "Refresh in progress — try again in about {minutes} min."
           }
         },
         "PROXY_SECTION": "Proxy",
