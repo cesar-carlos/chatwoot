@@ -1,4 +1,4 @@
-import { ref, nextTick, unref } from 'vue';
+import { ref, nextTick, unref, onScopeDispose, getCurrentScope } from 'vue';
 import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
 import { emitter } from 'shared/helpers/mitt';
@@ -11,8 +11,13 @@ import {
   newMessageIds,
 } from 'dashboard/composables/fork/conversationSearchInjectedMessages';
 
+export const LocateConversationMessageKey = Symbol(
+  'LocateConversationMessage'
+);
+
 const HIGHLIGHT_CLASS = 'message-locate-pulse';
 const HIGHLIGHT_DURATION_MS = 1800;
+const HIGHLIGHT_DELAY_MS = 350;
 const MESSAGE_WINDOW = 100;
 
 const prefersReducedMotion = () =>
@@ -59,74 +64,31 @@ const payloadIncludesMessage = (messages, messageId) =>
   (messages || []).some(message => Number(message.id) === Number(messageId));
 
 const loadMessagesAround = async (conversationId, messageId) => {
-  const response = await MessageApi.getPreviousMessages({
-    conversationId,
-    before: messageId + MESSAGE_WINDOW,
-    after: Math.max(0, messageId - MESSAGE_WINDOW),
-  });
-
-  let messages = response.data?.payload || [];
-  if (payloadIncludesMessage(messages, messageId)) {
-    return messages;
-  }
-
-  // Exact id window: MessageFinder#messages_between uses id >= after AND id < before
+  // Tight-first: exact id window (MessageFinder uses id >= after AND id < before)
   const tight = await MessageApi.getPreviousMessages({
     conversationId,
     after: messageId,
     before: messageId + 1,
   });
-  messages = tight.data?.payload || [];
+  let messages = tight.data?.payload || [];
+  if (payloadIncludesMessage(messages, messageId)) {
+    return messages;
+  }
+
+  const wide = await MessageApi.getPreviousMessages({
+    conversationId,
+    before: messageId + MESSAGE_WINDOW,
+    after: Math.max(0, messageId - MESSAGE_WINDOW),
+  });
+  messages = wide.data?.payload || [];
   return messages;
-};
-
-const applyTemporaryHighlight = messageId => {
-  const messageElement = findMessageElement(messageId);
-  if (!messageElement) return;
-
-  const previousTimer = messageElement.dataset.locatePulseTimer;
-  if (previousTimer) {
-    window.clearTimeout(Number(previousTimer));
-  }
-
-  messageElement.classList.remove(
-    HIGHLIGHT_CLASS,
-    'ring-2',
-    'ring-n-brand',
-    'bg-n-alpha-1'
-  );
-  // Force reflow so re-clicking the same quote restarts the animation
-  // eslint-disable-next-line no-unused-expressions
-  messageElement.offsetWidth;
-
-  const clearHighlight = () => {
-    messageElement.classList.remove(
-      HIGHLIGHT_CLASS,
-      'ring-2',
-      'ring-n-brand',
-      'bg-n-alpha-1'
-    );
-    delete messageElement.dataset.locatePulseTimer;
-  };
-
-  if (prefersReducedMotion()) {
-    messageElement.classList.add('ring-2', 'ring-n-brand', 'bg-n-alpha-1');
-  } else {
-    messageElement.classList.add(HIGHLIGHT_CLASS);
-  }
-
-  const timerId = window.setTimeout(clearHighlight, HIGHLIGHT_DURATION_MS);
-  messageElement.dataset.locatePulseTimer = String(timerId);
 };
 
 const canRenderBubble = message => {
   if (!message?.id) return false;
-  return Boolean(
-    message.content ||
-      message.attachments?.length ||
-      message.content_attributes ||
-      message.contentAttributes
-  );
+  const content = message.content;
+  if (typeof content === 'string' && content.trim().length > 0) return true;
+  return Boolean(message.attachments?.length);
 };
 
 export const useScrollToConversationMessage = ({
@@ -136,6 +98,66 @@ export const useScrollToConversationMessage = ({
   const store = useStore();
   const { t } = useI18n();
   const isLocating = ref(false);
+  const pendingTimers = new Set();
+
+  const clearPendingTimers = () => {
+    pendingTimers.forEach(timerId => window.clearTimeout(timerId));
+    pendingTimers.clear();
+  };
+
+  if (getCurrentScope()) {
+    onScopeDispose(clearPendingTimers);
+  }
+
+  const scheduleTimer = (fn, delay) => {
+    const timerId = window.setTimeout(() => {
+      pendingTimers.delete(timerId);
+      fn();
+    }, delay);
+    pendingTimers.add(timerId);
+    return timerId;
+  };
+
+  const applyTemporaryHighlight = messageId => {
+    const messageElement = findMessageElement(messageId);
+    if (!messageElement) return;
+
+    const previousTimer = messageElement.dataset.locatePulseTimer;
+    if (previousTimer) {
+      const prevId = Number(previousTimer);
+      window.clearTimeout(prevId);
+      pendingTimers.delete(prevId);
+    }
+
+    messageElement.classList.remove(
+      HIGHLIGHT_CLASS,
+      'ring-2',
+      'ring-n-brand',
+      'bg-n-alpha-1'
+    );
+    // Force reflow so re-clicking the same quote restarts the animation
+    // eslint-disable-next-line no-unused-expressions
+    messageElement.offsetWidth;
+
+    const clearHighlight = () => {
+      messageElement.classList.remove(
+        HIGHLIGHT_CLASS,
+        'ring-2',
+        'ring-n-brand',
+        'bg-n-alpha-1'
+      );
+      delete messageElement.dataset.locatePulseTimer;
+    };
+
+    if (prefersReducedMotion()) {
+      messageElement.classList.add('ring-2', 'ring-n-brand', 'bg-n-alpha-1');
+    } else {
+      messageElement.classList.add(HIGHLIGHT_CLASS);
+    }
+
+    const timerId = scheduleTimer(clearHighlight, HIGHLIGHT_DURATION_MS);
+    messageElement.dataset.locatePulseTimer = String(timerId);
+  };
 
   const scrollToMessage = async selectedMessage => {
     if (!selectedMessage?.id || isLocating.value) return false;
@@ -193,7 +215,7 @@ export const useScrollToConversationMessage = ({
       emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE, { messageId });
       // Wait for smooth scrollIntoView to settle before pulsing the target
       await nextTick();
-      window.setTimeout(() => applyTemporaryHighlight(messageId), 350);
+      scheduleTimer(() => applyTemporaryHighlight(messageId), HIGHLIGHT_DELAY_MS);
       return true;
     } finally {
       isLocating.value = false;

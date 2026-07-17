@@ -1,10 +1,15 @@
 <script setup>
-import { computed, reactive } from 'vue';
+import { computed, provide, toRef } from 'vue';
 import Message from './Message.vue';
 import { MESSAGE_TYPES } from './constants.js';
 import { useCamelCase } from 'dashboard/composables/useTransformKeys';
 import { useMapGetter } from 'dashboard/composables/store.js';
-import MessageApi from 'dashboard/api/inbox/message.js';
+// FORK: shared quote locate + in-reply-to resolver
+import {
+  LocateConversationMessageKey,
+  useScrollToConversationMessage,
+} from 'dashboard/composables/fork/useScrollToConversationMessage';
+import { useInReplyToMessage } from 'dashboard/composables/fork/useInReplyToMessage';
 
 /**
  * Props definition for the component
@@ -50,62 +55,18 @@ const allMessages = computed(() => {
 
 const currentChat = useMapGetter('getSelectedChat');
 
-// Cache for fetched reply messages to avoid duplicate API calls
-// Keys are always Number(messageId) to avoid string/number Map misses
-const fetchedReplyMessages = reactive(new Map());
+const conversationId = computed(() => currentChat.value?.id);
 
-const cacheKey = messageId => Number(messageId);
+// FORK: one locate instance for the whole conversation thread
+const locateConversationMessage = useScrollToConversationMessage({
+  conversationId,
+});
+provide(LocateConversationMessageKey, locateConversationMessage);
 
-/**
- * Fetches a specific message from the API by trying to get messages around it
- * @param {number} messageId - The ID of the message to fetch
- * @param {number} conversationId - The ID of the conversation
- * @returns {Promise<Object|null>} - The fetched message or null if not found/error
- */
-const fetchReplyMessage = async (messageId, conversationId) => {
-  const key = cacheKey(messageId);
-  // Return cached result if already fetched (or in-flight sentinel)
-  if (fetchedReplyMessages.has(key)) {
-    return fetchedReplyMessages.get(key);
-  }
-
-  // In-flight lock prevents duplicate requests from parallel renders
-  fetchedReplyMessages.set(key, undefined);
-
-  try {
-    let response = await MessageApi.getPreviousMessages({
-      conversationId,
-      before: key + 100,
-      after: Math.max(0, key - 100),
-    });
-
-    let messages = response.data?.payload || [];
-    let targetMessage = messages.find(msg => Number(msg.id) === key);
-
-    // FORK: exact id window when ±100 misses (global id gaps across conversations)
-    if (!targetMessage) {
-      response = await MessageApi.getPreviousMessages({
-        conversationId,
-        after: key,
-        before: key + 1,
-      });
-      messages = response.data?.payload || [];
-      targetMessage = messages.find(msg => Number(msg.id) === key);
-    }
-
-    if (targetMessage) {
-      const camelCaseMessage = useCamelCase(targetMessage);
-      fetchedReplyMessages.set(key, camelCaseMessage);
-      return camelCaseMessage;
-    }
-
-    fetchedReplyMessages.set(key, null);
-    return null;
-  } catch (error) {
-    fetchedReplyMessages.set(key, null);
-    return null;
-  }
-};
+const { getInReplyToMessage } = useInReplyToMessage({
+  messages: toRef(props, 'messages'),
+  currentChat,
+});
 
 /**
  * Determines if a message should be grouped with the next message
@@ -148,57 +109,6 @@ const shouldGroupWithNext = (index, searchList) => {
 const isMessageUnread = message => {
   if (!props.firstUnreadId) return false;
   return message.id >= props.firstUnreadId;
-};
-
-/**
- * Gets the message that was replied to
- * @param {Object} parentMessage - The message containing the reply reference
- * @returns {Object|null} - The message being replied to, or null if not found
- */
-const getInReplyToMessage = parentMessage => {
-  if (!parentMessage) return null;
-
-  const inReplyToMessageId =
-    parentMessage.contentAttributes?.inReplyTo ??
-    parentMessage.contentAttributes?.in_reply_to ??
-    parentMessage.content_attributes?.in_reply_to;
-
-  if (!inReplyToMessageId) return null;
-
-  const key = cacheKey(inReplyToMessageId);
-  const matchesId = msg => Number(msg.id) === key;
-  // FORK: distinguish loading vs missing so the quote preview does not flash "not found"
-  const stub = (state = 'missing') => ({
-    id: key,
-    replyPreviewState: state,
-  });
-
-  // Try to find in current messages first
-  let replyMessage = props.messages?.find(matchesId);
-
-  // Then try store messages
-  if (!replyMessage && currentChat.value?.messages) {
-    replyMessage = currentChat.value.messages.find(matchesId);
-  }
-
-  // Then check fetch cache (undefined = in-flight, null = not found)
-  if (!replyMessage && fetchedReplyMessages.has(key)) {
-    const cached = fetchedReplyMessages.get(key);
-    if (cached) return cached;
-    return stub(cached === null ? 'missing' : 'loading');
-  }
-
-  // If still not found and we have conversation context, fetch it
-  if (!replyMessage && currentChat.value?.id) {
-    fetchReplyMessage(key, currentChat.value.id);
-    return stub('loading');
-  }
-
-  if (!replyMessage) {
-    return stub('missing');
-  }
-
-  return useCamelCase(replyMessage);
 };
 </script>
 

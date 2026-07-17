@@ -912,20 +912,21 @@ export default {
         this.hideEmojiPicker();
       }
     },
-    sendMessageAsMultipleMessages(
+    async sendMessageAsMultipleMessages(
       message,
       copilotAcceptedMessage = '',
       hasReplyTo = false
     ) {
       const messages = this.getMultipleMessagesPayload(message);
-      messages.forEach(messagePayload => {
-        this.sendMessage(
+      // FORK: send sequentially so WhatsApp/IG order stays stable
+      for (const messagePayload of messages) {
+        await this.sendMessage(
           messagePayload,
           messagePayload.message || '',
           copilotAcceptedMessage,
           hasReplyTo && !!messagePayload.contentAttributes?.in_reply_to
         );
-      });
+      }
     },
     sendMessageAnalyticsData(
       isPrivate,
