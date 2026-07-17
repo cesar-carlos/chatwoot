@@ -118,12 +118,12 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageEditSyncService do
     expect(message.reload.content).to eq('original text')
   end
 
-  it 'skips fromMe edits when the original message is missing' do
+  it 'skips edits when the original message is missing (does not invent rows)' do
     expect do
       described_class.new(
         channel: channel,
         data: {
-          key: { id: 'MISSING-OUT', fromMe: true, remoteJid: '5511999999999@s.whatsapp.net' },
+          key: { id: 'MISSING-IN', fromMe: false, remoteJid: '5511999999999@s.whatsapp.net' },
           edited_body: 'orphan edit'
         }
       ).perform

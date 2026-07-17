@@ -23,18 +23,42 @@ module Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor
   end
 
   def extract_revoke_key(data)
-    canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
-    message = (canonical[:message] || canonical['message'] || {}).with_indifferent_access
+    raw = (data || {}).with_indifferent_access
+    message = revoke_message(data, raw)
     protocol = message[:protocolMessage]
     return if protocol.blank?
 
     protocol = protocol.with_indifferent_access
-    return unless revoke_type?(protocol[:type])
+    return unless protocol_revoke_signal?(protocol, raw)
 
     normalize_key(protocol[:key])
   end
 
+  def revoke_message(data, raw)
+    canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
+    message = (canonical[:message] || canonical['message'] || {}).with_indifferent_access
+    return message if message.present?
+
+    (raw[:Message] || raw[:message] || {}).with_indifferent_access
+  end
+
+  # Go may send IsRevoke / messageType:"revoke" with type:0 or typeName:"REVOKE".
+  def protocol_revoke_signal?(protocol, raw)
+    revoke_type?(protocol[:type]) ||
+      revoke_type?(protocol[:typeName]) ||
+      revoke_envelope_flag?(raw)
+  end
+
+  def revoke_envelope_flag?(raw)
+    raw = (raw || {}).with_indifferent_access
+    return true if ActiveModel::Type::Boolean.new.cast(raw[:IsRevoke])
+
+    raw[:messageType].to_s.downcase == 'revoke'
+  end
+
   def revoke_type?(value)
+    return false if value.nil?
+
     REVOKE_TYPES.include?(value) || value.to_s.upcase == 'REVOKE'
   end
 

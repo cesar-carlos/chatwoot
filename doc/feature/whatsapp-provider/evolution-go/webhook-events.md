@@ -138,8 +138,8 @@ CHAT_PRESENCE, CALL, CONNECTION, LABEL, CONTACT, GROUP, NEWSLETTER, QRCODE
 | `PRESENCE` | Presença | — | Ignorar |
 | `CHAT_PRESENCE` | Typing | — | Ignorar inbound (outbound typing via dashboard → `/message/presence`) |
 | `HISTORY_SYNC` | Histórico | 4 | `HistorySyncProcessor` + `content_attributes.history_import` |
-| `MESSAGE_DELETE`, `MESSAGES_DELETE` | Delete cliente | UX | `MessageDeleteSyncService` |
-| `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX ⚠️ | `MessageEditSyncService` (precisa plaintext — ver § Edit abaixo) |
+| `MESSAGE_DELETE`, `MESSAGES_DELETE` | Delete cliente | UX | `MessageDeleteSyncService` (job sempre consome revoke; soft-delete gated por `mark_inbound_deleted`) |
+| `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX | `MessageEditSyncService` — plaintext ✅; encrypted-only skip — ver § Edit abaixo |
 | `CALL` | Chamadas | — | Projeto voz |
 | `GROUP` | Grupos | 5 | Warm `GroupMetadataFetchJob` quando `ignore_groups: false`; inbound grupo via `MESSAGE` com `@g.us` |
 | `CONTACT` | Contatos | — | Ignorar |
@@ -388,21 +388,50 @@ O job prepend trata delete/edit protocol em `MESSAGE` / `SEND_MESSAGE` **antes**
 
 ---
 
-## Edit — formatos de payload e limitação Go
+## Edit — formatos de payload
 
 `MessageEditPayloadExtractor` aceita três formas (ordem efetiva no job):
 
 | Forma | Como chega | Resultado no fork |
 |-------|------------|-------------------|
-| Evento explícito | `MESSAGES_EDITED` / `MESSAGE_EDIT` / `SEND_MESSAGE_UPDATE` com `editedMessage` / `message.conversation` | Atualiza mensagem (`mark_inbound_edited`) |
-| Protocol | `MESSAGE` / `SEND_MESSAGE` com `protocolMessage.type` edit + `editedMessage` | Idem |
-| Envelope criptografado | `Info.Edit != 0` e/ou `secretEncryptedMessage` **sem** plaintext | **Skip** (`encrypted_edit: true`) — log `skipped encrypted edit envelope`; **não** cria `[Unsupported message type]` |
+| Evento explícito | `MESSAGES_EDITED` / `MESSAGE_EDIT` / `SEND_MESSAGE_UPDATE` com `editedMessage` | Atualiza mensagem (`mark_inbound_edited`) |
+| Protocol plaintext | `MESSAGE` / `SEND_MESSAGE` com `IsEdit` / `messageType: "edit"` / `protocolMessage.type` 14 ou `typeName: MESSAGE_EDIT` + `editedMessage` | Idem |
+| Envelope criptografado | `IsEdit` / `Info.Edit: "1"` + `secretEncryptedMessage` **sem** plaintext | **Skip** (`encrypted_edit: true`) — log `skipped encrypted edit envelope`; **não** cria `[Unsupported message type]` |
 
-Em Evolution Go ≥0.7.0 é comum o terceiro caso ([issue #92](https://github.com/evolution-foundation/evolution-go/issues/92), [#62](https://github.com/evolution-foundation/evolution-go/issues/62)): WhatsApp sinaliza edit (`Edit: "1"`), mas o webhook **não** inclui o novo texto. O fork não consegue sincronizar conteúdo até o Go entregar plaintext.
+### Sinais e IDs (contrato Go atual)
+
+| Campo | Uso |
+|-------|-----|
+| `IsEdit` / `messageType: "edit"` | Envelope de edição |
+| `Info.Edit` | Só `"1"` / `true` conta como edit — **não** qualquer non-zero (revoke usa `Edit: "7"`) |
+| ID da mensagem original | `Message.protocolMessage.key.ID` (ou `secretEncryptedMessage.targetMessageKey.ID`) — **não** `Info.ID` do evento |
+| Texto novo | `editedMessage.conversation` **ou** `editedMessage.extendedTextMessage.text` (eco da API costuma usar extended) |
+| Stub incompleto | Sem `key.id` + (body ou encrypted) → extrator retorna `nil` (não engole o pipeline MESSAGE) |
+
+Original ausente no CW → **skip** + `inbound_edit_skipped` (não inventa row `#{id}-edited`).
+
+Envelope criptografado sem texto ainda ocorre em alguns builds Go ([#92](https://github.com/evolution-foundation/evolution-go/issues/92), [#62](https://github.com/evolution-foundation/evolution-go/issues/62)); plaintext protocol (`editedMessage`) é o path feliz e está wired.
 
 UX no CW quando o edit aplica: texto bare + `content_attributes.edited` / `edited_at` / `edited_via_evolution_go_webhook` + badge “Edited”. Prefixo legado `"Edited message:\n\n"` é stripped na bubble se ainda existir em mensagens antigas.
 
-Fixtures: `spec/fixtures/evolution_go/message_edit.json` (protocol plaintext), `message_edit_secret_encrypted.json` (skip).
+Fixtures: `message_edit.json` (cliente plaintext), `message_edit_api_echo.json` (eco API + `extendedTextMessage`), `message_edit_secret_encrypted.json` (skip).
+
+---
+
+## Revoke / delete — formatos de payload
+
+| Forma | Como chega | Resultado no fork |
+|-------|------------|-------------------|
+| Protocol revoke | `MESSAGE` / `SEND_MESSAGE` com `IsRevoke` / `messageType: "revoke"` / `type` 0 ou `typeName: REVOKE` | Soft-delete se `mark_inbound_deleted` |
+| Evento explícito | `MESSAGE_DELETE` / `MESSAGES_DELETE` / `DELETE` | Idem |
+
+ID a apagar: `Message.protocolMessage.key.ID` (não `Info.ID`).
+
+O job **sempre extrai e consome** o envelope revoke (evita normalizar como texto/unsupported). O soft-delete em si fica gated em `MessageDeleteSyncService` / `mark_inbound_deleted`.
+
+Outbound (`sync_delete_to_whatsapp`): `DeleteSyncService` → `POST /message/delete` `{ chat, messageId }`. Se a API falhar após soft-delete local, **reverte** `deleted` / `deleted_at` / `deleted_via_evolution_go_webhook` no CW.
+
+Fixture: `message_revoke.json`.
 
 ---
 
