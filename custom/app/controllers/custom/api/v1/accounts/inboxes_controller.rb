@@ -18,7 +18,8 @@ module Custom::Api::V1::Accounts::InboxesController
 
     force = ActiveModel::Type::Boolean.new.cast(params[:force])
     payload = Wavoip::DeviceStatusService.new(channel: channel).connection_payload(force: force)
-    @inbox.update_account_cache if payload[:live]
+    # Only bust account cache when all_info refreshed DB — not on 5s poll cache hits.
+    @inbox.update_account_cache if payload[:refreshed]
     render json: payload
   end
 
@@ -62,7 +63,8 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless channel.is_a?(Channel::Wavoip)
 
-    Wavoip::ProcessWebhookJob.perform_later(
+    # Run inline so the response reflects verification + last_webhook_at immediately.
+    Wavoip::ProcessWebhookJob.perform_now(
       @inbox.id,
       {
         'type' => 'DEVICE',
@@ -70,6 +72,8 @@ module Custom::Api::V1::Accounts::InboxesController
         'phone' => channel.phone_number
       }
     )
+    channel.reload
+    @inbox.update_account_cache
     render json: {
       ok: true,
       webhook_verified: channel.webhook_verified?

@@ -16,7 +16,10 @@ RSpec.describe Wavoip::WebhookStaleAlertJob, type: :job do
   end
   let(:last_webhook_at) { 2.days.ago.iso8601 }
 
-  before { channel }
+  before do
+    account.enable_features!('channel_voice', 'channel_wavoip')
+    channel
+  end
 
   it 'warns when last_webhook_at is older than 24 hours' do
     expect(Rails.logger).to receive(:warn).with(
@@ -29,12 +32,12 @@ RSpec.describe Wavoip::WebhookStaleAlertJob, type: :job do
   context 'when last_webhook_at is blank' do
     let(:last_webhook_at) { nil }
 
-    it 'warns' do
+    it 'does not warn (setup verified, no traffic yet)' do
       channel.update!(provider_config: channel.provider_config.except('last_webhook_at').merge(
         'webhook_verified_at' => 2.days.ago.iso8601
       ))
 
-      expect(Rails.logger).to receive(:warn).with(/stale webhook channel_id=#{channel.id}/)
+      expect(Rails.logger).not_to receive(:warn).with(/stale webhook/)
 
       described_class.perform_now
     end
@@ -53,6 +56,16 @@ RSpec.describe Wavoip::WebhookStaleAlertJob, type: :job do
   context 'when webhook is not verified' do
     it 'skips the channel' do
       channel.update!(provider_config: { 'last_webhook_at' => 2.days.ago.iso8601 })
+
+      expect(Rails.logger).not_to receive(:warn).with(/stale webhook/)
+
+      described_class.perform_now
+    end
+  end
+
+  context 'when voice is not enabled' do
+    it 'skips the channel' do
+      account.disable_features!('channel_voice')
 
       expect(Rails.logger).not_to receive(:warn).with(/stale webhook/)
 

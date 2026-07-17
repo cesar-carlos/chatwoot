@@ -25,10 +25,11 @@ function webhookStale(inbox) {
   const lastWebhookAt =
     inbox.provider_config?.last_webhook_at ||
     inbox.provider_config?.lastWebhookAt;
-  if (!lastWebhookAt) return true;
+  // Never received traffic yet — not "stale"; ops job / blank is separate.
+  if (!lastWebhookAt) return false;
 
   const parsed = Date.parse(lastWebhookAt);
-  if (Number.isNaN(parsed)) return true;
+  if (Number.isNaN(parsed)) return false;
   return Date.now() - parsed > WEBHOOK_STALE_MS;
 }
 

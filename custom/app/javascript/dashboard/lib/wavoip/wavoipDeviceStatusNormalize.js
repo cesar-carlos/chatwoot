@@ -5,5 +5,6 @@ const STATUS_ALIASES = {
 
 export function normalizeWavoipDeviceStatus(status) {
   if (!status) return status;
-  return STATUS_ALIASES[status] || status;
+  const key = String(status);
+  return STATUS_ALIASES[key] || STATUS_ALIASES[key.toLowerCase()] || status;
 }

@@ -5,6 +5,7 @@ describe('normalizeWavoipDeviceStatus', () => {
   it('maps future Wavoip aliases to canonical statuses', () => {
     expect(normalizeWavoipDeviceStatus('connected')).toBe('open');
     expect(normalizeWavoipDeviceStatus('disconnected')).toBe('close');
+    expect(normalizeWavoipDeviceStatus('Connected')).toBe('open');
   });
 
   it('leaves known statuses unchanged', () => {

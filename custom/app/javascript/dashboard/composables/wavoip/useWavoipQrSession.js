@@ -8,6 +8,7 @@ import {
 import { getPrimaryDevice } from 'customDashboard/lib/wavoip/wavoipDeviceReadiness';
 import { unwrapWavoipSdkResult } from 'customDashboard/lib/wavoip/wavoipSdkResult';
 import { buildQrDataUrl } from 'customDashboard/lib/wavoip/wavoipQrImage';
+import { normalizeWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatusNormalize';
 
 /* eslint-disable no-use-before-define -- QR expiry timer and session share refreshQr */
 
@@ -141,9 +142,10 @@ export function useWavoipQrSession({
   function applyStatus(status) {
     if (!status) return;
 
-    whatsAppStatus.value = status;
+    const normalized = normalizeWavoipDeviceStatus(status);
+    whatsAppStatus.value = normalized;
 
-    if (status === 'open') {
+    if (normalized === 'open') {
       qrDataUrl.value = '';
       pairingCode.value = '';
       clearExpiryTimer();
@@ -155,7 +157,7 @@ export function useWavoipQrSession({
       return;
     }
 
-    if (status !== 'connecting' && status !== 'close') {
+    if (normalized !== 'connecting' && normalized !== 'close') {
       qrDataUrl.value = '';
     }
   }

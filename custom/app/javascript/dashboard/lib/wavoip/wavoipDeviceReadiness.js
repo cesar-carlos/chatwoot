@@ -3,6 +3,7 @@ import {
   setWavoipNumChannels,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { recordConnectivityIssue } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
+import { normalizeWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatusNormalize';
 
 export function getPrimaryDevice(client) {
   const devices = client?.getDevices?.() || [];
@@ -29,19 +30,21 @@ export async function wakeDeviceIfNeeded(device, { inboxId } = {}) {
     return { ready: false, status: null, woke: false };
   }
 
-  if (device.status === 'open') {
-    return { ready: true, status: device.status, woke: false };
+  const normalized = normalizeWavoipDeviceStatus(device.status);
+  if (normalized === 'open') {
+    return { ready: true, status: normalized, woke: false };
   }
 
-  if (device.status !== 'hibernating') {
-    return { ready: false, status: device.status, woke: false };
+  if (normalized !== 'hibernating') {
+    return { ready: false, status: normalized, woke: false };
   }
 
   try {
     await device.wakeUp?.();
+    const after = normalizeWavoipDeviceStatus(device.status);
     return {
-      ready: device.status === 'open',
-      status: device.status,
+      ready: after === 'open',
+      status: after,
       woke: true,
     };
   } catch (error) {
@@ -54,7 +57,7 @@ export async function wakeDeviceIfNeeded(device, { inboxId } = {}) {
     }
     return {
       ready: false,
-      status: device.status,
+      status: normalizeWavoipDeviceStatus(device.status),
       woke: false,
       error,
     };
@@ -74,7 +77,10 @@ const STATUS_I18N_KEYS = {
 };
 
 export function wavoipDeviceErrorKey(status) {
+  const normalized = normalizeWavoipDeviceStatus(status);
   return (
-    STATUS_I18N_KEYS[status] || 'CONVERSATION.WAVOIP_CALL.DEVICE_NOT_READY'
+    STATUS_I18N_KEYS[normalized] ||
+    STATUS_I18N_KEYS[status] ||
+    'CONVERSATION.WAVOIP_CALL.DEVICE_NOT_READY'
   );
 }

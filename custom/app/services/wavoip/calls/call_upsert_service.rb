@@ -20,6 +20,7 @@ class Wavoip::Calls::CallUpsertService
   end
 
   def create!
+    @newly_created = false
     return log_skip_create('voice disabled') unless inbox.channel.voice_enabled?
     return log_skip_create('inbound blocked') if inbound_incoming_blocked?
     return log_skip_create('missing or inbox peer phone') if invalid_contact_phone_for_create?
@@ -40,7 +41,12 @@ class Wavoip::Calls::CallUpsertService
     # time this transaction returns control here. The explicit call below is
     # only needed for the "existing call" and update! paths, where no new
     # message is created and that callback never fires.
+    @newly_created = true
     call
+  end
+
+  def newly_created?
+    @newly_created == true
   end
 
   def update!

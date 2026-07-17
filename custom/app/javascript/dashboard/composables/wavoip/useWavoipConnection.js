@@ -25,6 +25,7 @@ import {
   isWavoipWebSocketDisconnected,
   isWavoipWebSocketReady,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+import { normalizeWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatusNormalize';
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 import { recordConnectivityIssue } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 import { getActiveProviderCallId } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
@@ -43,7 +44,7 @@ const isConnecting = computed(() => connectingCount.value > 0);
 const isWavoipInbox = inbox => inbox?.channel_type === INBOX_TYPES.WAVOIP;
 
 const isWavoipDeviceOpen = inbox =>
-  inbox?.provider_config?.device_status === 'open';
+  normalizeWavoipDeviceStatus(inbox?.provider_config?.device_status) === 'open';
 
 const clearBootstrapCache = inboxId => {
   if (inboxId) {
@@ -86,7 +87,10 @@ const wireDeviceListeners = (inboxId, client) => {
   const device = getPrimaryDevice(client);
   if (!device?.on) return;
 
-  setWavoipWhatsAppStatus(inboxId, device.status);
+  setWavoipWhatsAppStatus(
+    inboxId,
+    normalizeWavoipDeviceStatus(device.status)
+  );
   setWavoipConnectionStatus(inboxId, device.connectionStatus || 'connected');
   setWavoipRestricted(inboxId, !!device.restricted, device.restrictedUntil);
   syncDeviceChannelStats(inboxId, device);
@@ -95,7 +99,7 @@ const wireDeviceListeners = (inboxId, client) => {
 
   unsubscribers.push(
     device.on('statusChanged', status => {
-      setWavoipWhatsAppStatus(inboxId, status);
+      setWavoipWhatsAppStatus(inboxId, normalizeWavoipDeviceStatus(status));
     })
   );
   unsubscribers.push(
@@ -128,7 +132,7 @@ const wireDeviceListeners = (inboxId, client) => {
 
 async function waitForDeviceOpen(device, timeoutMs = 30_000) {
   if (!device) return false;
-  if (device.status === 'open') return true;
+  if (normalizeWavoipDeviceStatus(device.status) === 'open') return true;
 
   return new Promise(resolve => {
     let settled = false;
@@ -150,11 +154,14 @@ async function waitForDeviceOpen(device, timeoutMs = 30_000) {
     }
 
     handler = status => {
-      if (status === 'open') finish(true);
+      if (normalizeWavoipDeviceStatus(status) === 'open') finish(true);
     };
 
     unsubscribeFn = device.on?.('statusChanged', handler);
-    timer = setTimeout(() => finish(device.status === 'open'), timeoutMs);
+    timer = setTimeout(
+      () => finish(normalizeWavoipDeviceStatus(device.status) === 'open'),
+      timeoutMs
+    );
   });
 }
 

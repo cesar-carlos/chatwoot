@@ -25,6 +25,7 @@ RSpec.describe Wavoip::DeviceStatusService do
       expect(payload[:device_status]).to eq('open')
       expect(payload[:phone_number]).to eq(channel.phone_number)
       expect(payload[:live]).to be(true)
+      expect(payload[:refreshed]).to be(false)
     end
 
     it 'returns live false when Wavoip all_info fails and nothing is cached' do
@@ -37,6 +38,7 @@ RSpec.describe Wavoip::DeviceStatusService do
 
       expect(payload[:device_status]).to eq('BUILDING')
       expect(payload[:live]).to be(false)
+      expect(payload[:refreshed]).to be(false)
     end
 
     it 'refreshes device status when forced' do
@@ -51,7 +53,22 @@ RSpec.describe Wavoip::DeviceStatusService do
 
       expect(payload[:device_status]).to eq('open')
       expect(payload[:live]).to be(true)
+      expect(payload[:refreshed]).to be(true)
       expect(payload[:contact_phone]).to eq('55669999050312')
+    end
+
+    it 'normalizes connected alias from all_info before persist' do
+      stub_request(:get, 'https://devices.wavoip.com/test-token/whatsapp/all_info')
+        .to_return(
+          status: 200,
+          body: { result: { status: 'connected' } }.to_json,
+          headers: { 'Content-Type' => 'application/json' }
+        )
+
+      payload = service.connection_payload(force: true)
+
+      expect(payload[:device_status]).to eq('open')
+      expect(channel.reload.provider_config['device_status']).to eq('open')
     end
   end
 end

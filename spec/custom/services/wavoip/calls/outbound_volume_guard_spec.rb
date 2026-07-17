@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Wavoip::Calls::OutboundVolumeGuard do
   let(:account_id) { 42 }
-  let(:redis_key) { "WAVOIP::OUTBOUND_VOLUME::#{account_id}::#{Time.zone.today.iso8601}" }
+  let(:redis_key) { "WAVOIP::OUTBOUND_VOLUME::#{account_id}::#{Time.now.utc.to_date.iso8601}" }
 
   before do
     Redis::Alfred.delete(redis_key)

@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
-# Daily soft alert: verified Wavoip channels with voice configured that have not
-# received a webhook in 24h (or never recorded last_webhook_at).
+# Daily soft alert: voice-enabled Wavoip channels that previously received
+# webhooks but have been quiet for 24h+. Blank last_webhook_at is skipped
+# (setup verified, no traffic yet — checklist handles that separately).
 class Wavoip::WebhookStaleAlertJob < ApplicationJob
   queue_as :default
 
@@ -9,6 +10,7 @@ class Wavoip::WebhookStaleAlertJob < ApplicationJob
 
   def perform
     Channel::Wavoip.find_each do |channel|
+      next unless channel.voice_enabled?
       next unless channel.webhook_verified?
       next if channel.device_token.blank?
       next unless stale_webhook?(channel)
@@ -23,10 +25,10 @@ class Wavoip::WebhookStaleAlertJob < ApplicationJob
 
   def stale_webhook?(channel)
     raw = channel.provider_config&.dig('last_webhook_at')
-    return true if raw.blank?
+    return false if raw.blank?
 
     Time.zone.parse(raw.to_s) < STALE_AFTER.ago
   rescue ArgumentError, TypeError
-    true
+    false
   end
 end

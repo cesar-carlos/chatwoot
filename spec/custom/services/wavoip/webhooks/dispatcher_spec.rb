@@ -11,6 +11,9 @@ RSpec.describe Wavoip::Webhooks::Dispatcher do
 
   before do
     account.enable_features!('channel_voice', 'channel_wavoip')
+    Redis::Alfred.delete(
+      format(Redis::RedisKeys::WAVOIP_WEBHOOK_TOUCH_DEBOUNCE, channel_id: channel.id)
+    )
   end
 
   def dispatch_fixture(name)
@@ -40,6 +43,18 @@ RSpec.describe Wavoip::Webhooks::Dispatcher do
         dispatch_fixture('device_update.json')
 
         expect(channel.reload.provider_config['last_webhook_at']).to eq(Time.current.iso8601)
+      end
+    end
+
+    it 'debounces last_webhook_at writes within the touch window' do
+      freeze_time do
+        dispatch_fixture('device_update.json')
+        first_touch = channel.reload.provider_config['last_webhook_at']
+
+        travel 10.seconds
+        dispatch_fixture('device_update.json')
+
+        expect(channel.reload.provider_config['last_webhook_at']).to eq(first_touch)
       end
     end
 
