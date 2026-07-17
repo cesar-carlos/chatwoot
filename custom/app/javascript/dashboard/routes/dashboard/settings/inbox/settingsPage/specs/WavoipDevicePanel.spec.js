@@ -9,15 +9,35 @@ vi.mock('dashboard/composables', () => ({
   useAlert: (...args) => useAlert(...args),
 }));
 
+vi.mock('shared/composables/useBranding', () => ({
+  useBranding: () => ({
+    replaceInstallationName: text => text,
+  }),
+}));
+
+vi.mock('customDashboard/lib/wavoip/wavoipDiagnosticsCollector', () => ({
+  exportWavoipDiagnostics: () => '{}',
+  getRecentConnectivityIssues: () => [],
+}));
+
+vi.mock('customDashboard/lib/wavoip/wavoipDeviceStatusNormalize', () => ({
+  normalizeWavoipDeviceStatus: status => status,
+}));
+
 const getWavoipDeviceStatus = vi.fn();
 const getWavoipQr = vi.fn();
 const postWavoipLogout = vi.fn();
+const testWavoipWebhook = vi.fn();
+const regenerateWavoipWebhookKey = vi.fn();
 
 vi.mock('dashboard/api/inboxes', () => ({
   default: {
     getWavoipDeviceStatus: (...args) => getWavoipDeviceStatus(...args),
     getWavoipQr: (...args) => getWavoipQr(...args),
     postWavoipLogout: (...args) => postWavoipLogout(...args),
+    testWavoipWebhook: (...args) => testWavoipWebhook(...args),
+    regenerateWavoipWebhookKey: (...args) =>
+      regenerateWavoipWebhookKey(...args),
   },
 }));
 
@@ -38,6 +58,7 @@ const numChannelsRef = { value: null };
 
 vi.mock('customDashboard/lib/wavoip/wavoipDeviceStatus', () => ({
   hasWavoipDeviceActiveCalls: () => activeCallsRef.value > 0,
+  setWavoipWhatsAppStatus: vi.fn(),
   getWavoipDeviceStatus: () => ({
     whatsAppStatus: { value: 'open' },
     connectionStatus: { value: 'connected' },
@@ -68,6 +89,7 @@ describe('WavoipDevicePanel', () => {
   let store;
 
   beforeEach(() => {
+    // Do not force device_status here — panel falls back to provider_config.
     getWavoipDeviceStatus.mockResolvedValue({ data: { live: true } });
     getWavoipQr.mockReset().mockResolvedValue({});
     postWavoipLogout.mockReset().mockResolvedValue({});
@@ -124,6 +146,7 @@ describe('WavoipDevicePanel', () => {
         inbox: {
           id: 3,
           phone_number: '+15551234567',
+          wavoip_webhook_url: 'https://example.com/webhooks/wavoip/key',
           provider_config: providerConfig,
         },
       },
@@ -346,6 +369,49 @@ describe('WavoipDevicePanel', () => {
     await flushPromises();
 
     expect(postWavoipLogout).toHaveBeenCalledWith(3);
+  });
+
+  it('refetches the inbox when polled device status diverges from the checklist source', async () => {
+    getWavoipDeviceStatus.mockResolvedValue({
+      data: { live: false, device_status: 'BUILDING' },
+    });
+    const fetchInboxItem = vi.fn().mockResolvedValue({});
+    store = createStore({
+      actions: {
+        'inboxes/fetchInboxItem': fetchInboxItem,
+      },
+    });
+
+    mountPanel({ device_status: 'open' });
+    await flushPromises();
+
+    expect(fetchInboxItem).toHaveBeenCalledWith(expect.anything(), 3);
+  });
+
+  it('shows Verify again when the live status check fails', async () => {
+    getWavoipDeviceStatus.mockResolvedValue({
+      data: { live: false, device_status: 'BUILDING' },
+    });
+    const wrapper = mountPanel({ device_status: 'BUILDING' });
+    await flushPromises();
+
+    const verifyButton = wrapper
+      .findAll('next-button-stub')
+      .find(
+        button =>
+          button.attributes('label') ===
+          'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.VERIFY_AGAIN'
+      );
+    expect(verifyButton).toBeTruthy();
+
+    getWavoipDeviceStatus.mockClear();
+    await verifyButton.trigger('click');
+    await flushPromises();
+
+    expect(getWavoipDeviceStatus).toHaveBeenCalledWith(
+      3,
+      expect.objectContaining({ force: true })
+    );
   });
 
   it('does not open the logout dialog (and re-opens QR instead) when the device is disconnected', async () => {

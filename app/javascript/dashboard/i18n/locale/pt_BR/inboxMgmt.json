@@ -856,7 +856,7 @@
         "CHECKLIST_CALL_EVENT": "Selecione o evento CALL.",
         "CHECKLIST_DEVICE_EVENT": "Selecione o evento DEVICE (opcional, mas recomendado).",
         "CHECKLIST_RECORD_EVENT": "Selecione o evento RECORD (obrigatório para gravações no histórico da conversa).",
-        "CHECKLIST_URL": "Cole a URL do webhook acima e salve.",
+        "CHECKLIST_URL": "Cole a URL do webhook mostrada acima e salve.",
         "TEST": "Testar webhook",
         "TEST_SUCCESS": "Teste de webhook recebido. O status deve aparecer como verificado.",
         "TEST_PENDING": "Evento de teste enviado. Atualize a página se o status ainda estiver pendente."
@@ -907,7 +907,14 @@
         "LOGOUT_CONFIRM": "Desconectar o WhatsApp deste dispositivo? Será necessário parear novamente.",
         "LINKED_PHONE": "Número vinculado",
         "RECONNECT": "Reconectar (escanear QR)",
-        "STATUS_STALE": "Não foi possível verificar com a Wavoip agora — o status abaixo pode estar desatualizado. Use Reconectar para escanear o QR code, ou Reiniciar dispositivo se o pareamento continuar travado.",
+        "STATUS_STALE": "Não foi possível verificar com a Wavoip agora — o status abaixo pode estar desatualizado. Tente Verificar novamente, depois Reconectar para escanear o QR code, ou Reiniciar dispositivo se o pareamento continuar travado.",
+        "VERIFY_AGAIN": "Verificar novamente",
+        "PREPARING_HINT": "Preparando dispositivo… {seconds}s",
+        "PREPARING_STUCK": "Ainda preparando após 90s. Reinicie o dispositivo se isso não limpar.",
+        "WAITING_PAYMENT_HINT": "A conta Wavoip está aguardando pagamento. As chamadas não funcionarão até a cobrança ser resolvida.",
+        "EXTERNAL_INTEGRATION_ERROR_HINT": "Erro na integração externa do WhatsApp. Verifique o gateway vinculado no painel Wavoip.",
+        "ERROR_HINT": "O dispositivo reportou um erro. Reinicie ou pareie novamente no painel Wavoip.",
+        "OPEN_WAVOIP_PANEL": "Abrir painel Wavoip",
         "SERVICE_UNAVAILABLE": "O serviço do dispositivo Wavoip está temporariamente indisponível. Aguarde alguns minutos e tente novamente, ou verifique o dispositivo no painel Wavoip.",
         "ACTION_FAILED": "Não foi possível concluir esta ação no dispositivo. Tente novamente ou use Copiar diagnóstico para suporte.",
         "ACTIVE_CALLS_LABEL": "Chamadas ativas",
@@ -942,7 +949,15 @@
       },
       "DIAGNOSTICS": {
         "COPY": "Copiar diagnóstico",
-        "COPIED": "Diagnóstico copiado para a área de transferência."
+        "COPIED": "Diagnóstico copiado para a área de transferência.",
+        "SECTION_LABEL": "Diagnóstico",
+        "SECTION_HELP": "Problemas recentes de conectividade nesta sessão do navegador.",
+        "SHOW": "Mostrar diagnóstico",
+        "HIDE": "Ocultar diagnóstico",
+        "STATUS_LINE": "Status do painel: {status} · Verificação live: {live}",
+        "LIVE_YES": "verificado",
+        "LIVE_NO": "não verificado",
+        "NO_ISSUES": "Nenhum problema recente de conectividade registrado."
       },
       "ROUTING": {
         "LABEL": "Roteamento de chamadas recebidas",
@@ -987,6 +1002,7 @@
       "SUMMARY": "{ready} de {total} etapas concluídas",
       "TOKEN": "Token do dispositivo configurado",
       "WEBHOOK": "Webhook verificado (primeiro evento CALL recebido)",
+      "WEBHOOK_STALE": "Webhook verificado, mas sem eventos nas últimas 24 horas",
       "DEVICE_OPEN": "Dispositivo WhatsApp conectado",
       "VOICE_ENABLED": "Chamadas de voz habilitadas na caixa de entrada",
       "INBOUND_ENABLED": "Chamadas recebidas habilitadas"

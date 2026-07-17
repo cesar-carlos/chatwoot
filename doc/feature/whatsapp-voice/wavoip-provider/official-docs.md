@@ -2,7 +2,7 @@
 
 Índice curado da documentação **[Wavoip GitBook](https://wavoip.gitbook.io/api)** para consulta durante o desenvolvimento no Chatwoot. Em caso de dúvida, **consulte aqui antes** de inferir comportamento.
 
-**Doc interna relacionada:** [contracts-and-ports.md](./contracts-and-ports.md) (portas, DI, DTOs) · [sdk-reference.md](./sdk-reference.md) (mapeamento Chatwoot) · [webhook-contract.md](./webhook-contract.md) (HTTP/ActionCable)
+**Doc interna relacionada:** [architecture.md](./architecture.md) (as-built, DTOs) · [sdk-reference.md](./sdk-reference.md) (mapeamento Chatwoot) · [webhook-contract.md](./webhook-contract.md) (HTTP/ActionCable)
 
 ---
 
@@ -115,7 +115,7 @@ Configuração no fork: [inbox-setup.md §3.5](./inbox-setup.md#35-seção--grav
 | `useWavoipOutboundCall` | [Outgoing](https://wavoip.gitbook.io/api/wavoip-api/chamadas/outgoing.md) |
 | `useWavoipActiveCall` | [Active](https://wavoip.gitbook.io/api/wavoip-api/chamadas/active.md) |
 | `StatusMapper` (webhook) | [Webhook CALL.status](https://wavoip.gitbook.io/api/webhook-beta.md) |
-| `callStatusUI.js` (SDK) | [Tipos — CallStatus](https://wavoip.gitbook.io/api/wavoip-api/referencia/types.md) |
+| `wavoipCallDiagnostics.js` (SDK → UI) | [Tipos — CallStatus](https://wavoip.gitbook.io/api/wavoip-api/referencia/types.md) |
 | `RecordHandler` | [Webhook RECORD](https://wavoip.gitbook.io/api/webhook-beta.md) · [Gravação](https://wavoip.gitbook.io/api/gravacao.md) |
 | `DeviceHandler` | [Webhook DEVICE](https://wavoip.gitbook.io/api/webhook-beta.md) · [Dispositivo](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/device.md) |
 | Toast `connectivityIssue` | [Troubleshooting](https://wavoip.gitbook.io/api/wavoip-api/referencia/troubleshooting.md) |

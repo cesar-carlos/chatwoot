@@ -159,13 +159,13 @@ e `Whatsapp::CallPermissionRequestService` existem desde jun. 2026. A única ass
 
 | Padrão | Twilio | WhatsApp Meta |
 |--------|--------|---------------|
-| Adapter | `Voice::Provider::Twilio::Adapter` | Lógica no prepend `WhatsappCloudService` (sem adapter dedicado) |
+| Adapter | `Voice::Provider::Twilio::Adapter` | `Voice::Provider::MetaCloud::Adapter` ✅ |
 | Outbound | `Voice::OutboundCallBuilder` | `Voice::OutboundWhatsappCallBuilder` ✅ |
 | Permissão outbound | N/A | `Whatsapp::CallPermissionRequestService` ✅ |
 
-Isso **não** significa que Twilio poderia fazer WA in-app — são produtos diferentes. O item
-pendente é só `Voice::Provider::MetaCloud::Adapter` (delegar de `WhatsappCloudService`), que
-não bloqueia nenhuma funcionalidade — ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
+Isso **não** significa que Twilio poderia fazer WA in-app — são produtos diferentes.
+`MetaCloud::Adapter` já existe; o item opcional restante é um contrato formal
+`Voice::Provider::WhatsappCalling::Base` — ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
 
 ---
 

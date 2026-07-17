@@ -26,6 +26,10 @@ import {
   stopWavoipOutboundRingback,
   unlockWavoipOutboundRingback,
 } from 'customDashboard/lib/wavoip/wavoipOutboundRingback';
+import {
+  recordWavoipOutboundVolume,
+  wavoipOutboundVolumeToastKey,
+} from 'customDashboard/lib/wavoip/wavoipOutboundVolume';
 
 const isInitiating = ref(false);
 
@@ -183,6 +187,12 @@ export function useWavoipOutboundCall() {
         keepCallSid: providerCallId,
       });
       await reopenConversationIfNeeded(store, conversationId);
+
+      const volumeLevel = recordWavoipOutboundVolume(
+        store.getters.getCurrentAccountId
+      );
+      const volumeToastKey = wavoipOutboundVolumeToastKey(volumeLevel);
+      if (volumeToastKey) useAlert(t(volumeToastKey));
 
       return {
         id: null,

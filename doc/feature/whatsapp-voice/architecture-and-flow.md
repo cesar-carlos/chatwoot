@@ -441,9 +441,9 @@ Comentário no código convida novos providers — sem registry formal.
 
 **Core Meta EE sem `# FORK:`** no código de voz upstream (jul/2026), exceto `Voice::InboundCallBuilder` → `Conversations::Resolver`. Integração Wavoip usa `# FORK:` em hooks OSS (`Dashboard.vue`, `Settings.vue`, `inboxes.js`, `useCallSession.js`, `actionCable.js`, rotas).
 
-**Antes de provider SDP/Meta-like:** executar o roadmap §13. Para Wavoip, executar
-primeiro o [spike e os gates próprios](./wavoip-provider/implementation-plan.md);
-apenas o registry compartilhado entra no caminho crítico.
+**Antes de provider SDP/Meta-like:** executar o roadmap §13. Para Wavoip, ver
+[wavoip-provider/README.md](./wavoip-provider/README.md) (feature shipped; registry
+compartilhado já integrado).
 
 ### Prioridade recomendada
 
@@ -451,17 +451,15 @@ apenas o registry compartilhado entra no caminho crítico.
 2. **Prepend** — `WhatsappCloudService`/`WhatsappEventsJob` via `prepend_mod_with`; `Channel::Whatsapp` via prepend direto
 3. **Edições OSS mínimas com `# FORK:`** — `inbox.js`, `useCallSession.js`, `actionCable.js`, `ChannelList.vue`
 
-Ver também: [second-provider-strategy.md](./second-provider-strategy.md) · [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) · [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) (primeiro provider alternativo)
+Ver também: [second-provider-strategy.md](./second-provider-strategy.md) · [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) · [wavoip-provider/](./wavoip-provider/) (primeiro provider alternativo)
 
 ### Wavoip (fork — não Meta)
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) | Portas, DTOs, DI, backlog §12 |
-| [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) | Fases 0–5 |
-
-Pré-requisito: spike Wavoip antes de alterar o frontend compartilhado; registry de
-sessão/eventos antes da integração final com widget/store.
+| [wavoip-provider/README.md](./wavoip-provider/README.md) | Status, decisões, índice |
+| [wavoip-provider/architecture.md](./wavoip-provider/architecture.md) | As-built: módulos, DTOs, jobs |
+| [wavoip-provider/operations-runbook.md](./wavoip-provider/operations-runbook.md) | Ops e gates piloto |
 
 ### Arquivos de alto valor
 

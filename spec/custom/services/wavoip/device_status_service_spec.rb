@@ -16,7 +16,7 @@ RSpec.describe Wavoip::DeviceStatusService do
       Rails.cache = original_cache
     end
 
-    it 'returns device status from channel config when live check is cached' do
+    it 'returns live true when a recent check is cached (skip HTTP, keep verified)' do
       Rails.cache.write("wavoip:device_status:#{channel.id}", true, expires_in: 15.seconds)
       channel.update!(provider_config: channel.provider_config.merge('device_status' => 'open'))
 
@@ -24,6 +24,18 @@ RSpec.describe Wavoip::DeviceStatusService do
 
       expect(payload[:device_status]).to eq('open')
       expect(payload[:phone_number]).to eq(channel.phone_number)
+      expect(payload[:live]).to be(true)
+    end
+
+    it 'returns live false when Wavoip all_info fails and nothing is cached' do
+      stub_request(:get, 'https://devices.wavoip.com/test-token/whatsapp/all_info')
+        .to_return(status: 503, body: 'unavailable')
+
+      channel.update!(provider_config: channel.provider_config.merge('device_status' => 'BUILDING'))
+
+      payload = service.connection_payload(force: true)
+
+      expect(payload[:device_status]).to eq('BUILDING')
       expect(payload[:live]).to be(false)
     end
 
