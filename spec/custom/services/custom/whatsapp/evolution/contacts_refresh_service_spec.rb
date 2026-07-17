@@ -35,12 +35,31 @@ RSpec.describe Custom::Whatsapp::Evolution::ContactsRefreshService do
       hash_including(force: true)
     )
 
+    release_job = class_double(Custom::Whatsapp::Evolution::ContactsRefreshLockReleaseJob)
+    allow(Custom::Whatsapp::Evolution::ContactsRefreshLockReleaseJob).to receive(:set)
+      .and_return(release_job)
+    allow(release_job).to receive(:perform_later)
+
     result = described_class.new(channel: channel).perform
 
     expect(result[:enqueued]).to eq(1)
+    expect(result[:running]).to be(true)
+    expect(result[:remaining_seconds]).to eq(described_class::LOCK_TTL)
+    expect(Custom::Whatsapp::Evolution::ContactsRefreshLockReleaseJob).to have_received(:set)
+      .with(wait: described_class::LOCK_TTL.seconds)
+  end
+
+  it 'returns empty result without locking when inbox has no contacts' do
+    result = described_class.new(channel: channel).perform
+
+    expect(result).to eq(enqueued: 0, running: false, remaining_seconds: 0)
+    expect(described_class.lock_status(channel)[:running]).to be(false)
   end
 
   it 'raises when a refresh is already running' do
+    contact = create(:contact, account: account, phone_number: '+5511999999999')
+    create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511999999999')
+
     Redis::Alfred.set(
       format(Redis::RedisKeys::EVOLUTION_CONTACTS_REFRESH_LOCK, channel_id: channel.id),
       true,

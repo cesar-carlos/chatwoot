@@ -39,16 +39,42 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactsRefreshService do
       job
     end
 
+    release_job = class_double(Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob)
+    allow(Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob).to receive(:set)
+      .and_return(release_job)
+    allow(release_job).to receive(:perform_later)
+
     result = described_class.new(channel: channel).perform
 
     expect(result[:enqueued]).to eq(2)
     expect(result[:spacing_seconds]).to eq(3)
     expect(result[:eta_seconds]).to eq(6)
+    expect(result[:running]).to be(true)
+    expect(result[:remaining_seconds]).to eq(6 + described_class::LOCK_TTL_BUFFER)
     expect(waits).to contain_exactly(0.seconds, 3.seconds)
     expect(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to have_received(:set).twice
+    expect(Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob).to have_received(:set)
+      .with(wait: (6 + described_class::LOCK_TTL_BUFFER).seconds)
+    expect(release_job).to have_received(:perform_later).with(channel.id)
+  end
+
+  it 'returns empty result without locking when inbox has no contacts' do
+    result = described_class.new(channel: channel).perform
+
+    expect(result).to eq(
+      enqueued: 0,
+      spacing_seconds: 3,
+      eta_seconds: 0,
+      running: false,
+      remaining_seconds: 0
+    )
+    expect(described_class.lock_status(channel)[:running]).to be(false)
   end
 
   it 'raises when a refresh is already running' do
+    contact = create(:contact, account: account, phone_number: '+5511888888888')
+    create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511888888888')
+
     Redis::Alfred.set(
       format(Redis::RedisKeys::EVOLUTION_GO_CONTACTS_REFRESH_LOCK, channel_id: channel.id),
       true,
@@ -59,5 +85,19 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactsRefreshService do
     expect do
       described_class.new(channel: channel).perform
     end.to raise_error(described_class::AlreadyRunningError)
+  end
+
+  it 'exposes lock status with remaining ttl' do
+    Redis::Alfred.set(
+      format(Redis::RedisKeys::EVOLUTION_GO_CONTACTS_REFRESH_LOCK, channel_id: channel.id),
+      true,
+      nx: true,
+      ex: 90
+    )
+
+    status = described_class.lock_status(channel)
+
+    expect(status[:running]).to be(true)
+    expect(status[:remaining_seconds]).to be_between(1, 90)
   end
 end

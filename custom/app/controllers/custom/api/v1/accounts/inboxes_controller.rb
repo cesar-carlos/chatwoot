@@ -149,7 +149,12 @@ module Custom::Api::V1::Accounts::InboxesController
     result = Custom::Whatsapp::Evolution::ContactsRefreshService.new(channel: channel).perform
     render json: result
   rescue Custom::Whatsapp::Evolution::ContactsRefreshService::AlreadyRunningError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    status = Custom::Whatsapp::Evolution::ContactsRefreshService.lock_status(channel)
+    render json: {
+      error: e.message,
+      code: 'already_running',
+      remaining_seconds: status[:remaining_seconds]
+    }, status: :unprocessable_entity
   end
 
   def evolution_go_connection
@@ -209,7 +214,12 @@ module Custom::Api::V1::Accounts::InboxesController
     result = Custom::Whatsapp::EvolutionGo::ContactsRefreshService.new(channel: channel).perform
     render json: result
   rescue Custom::Whatsapp::EvolutionGo::ContactsRefreshService::AlreadyRunningError => e
-    render json: { error: e.message }, status: :unprocessable_entity
+    status = Custom::Whatsapp::EvolutionGo::ContactsRefreshService.lock_status(channel)
+    render json: {
+      error: e.message,
+      code: 'already_running',
+      remaining_seconds: status[:remaining_seconds]
+    }, status: :unprocessable_entity
   end
 
   def evolution_go_diagnostics

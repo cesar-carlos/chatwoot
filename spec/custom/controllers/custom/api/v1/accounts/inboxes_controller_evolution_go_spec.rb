@@ -97,17 +97,45 @@ RSpec.describe 'Evolution Go Inboxes API extensions', type: :request do
       contact = create(:contact, account: account, phone_number: '+5511888888888')
       create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511888888888')
 
-      expect(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to receive(:perform_later).with(
+      enrichment_job = class_double(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob)
+      allow(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to receive(:set)
+        .and_return(enrichment_job)
+      expect(enrichment_job).to receive(:perform_later).with(
         channel.id,
         contact.id,
         hash_including(force: true)
       )
+
+      release_job = class_double(Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob)
+      allow(Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob).to receive(:set)
+        .and_return(release_job)
+      allow(release_job).to receive(:perform_later)
 
       post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/evolution_go_refresh_contacts",
            headers: admin.create_new_auth_token
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body['enqueued']).to eq(1)
+      expect(response.parsed_body['running']).to be(true)
+    end
+
+    it 'returns already_running when lock is held' do
+      contact = create(:contact, account: account, phone_number: '+5511888888888')
+      create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511888888888')
+
+      Redis::Alfred.set(
+        format(Redis::RedisKeys::EVOLUTION_GO_CONTACTS_REFRESH_LOCK, channel_id: channel.id),
+        true,
+        nx: true,
+        ex: 120
+      )
+
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/evolution_go_refresh_contacts",
+           headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response.parsed_body['code']).to eq('already_running')
+      expect(response.parsed_body['remaining_seconds']).to be_between(1, 120)
     end
 
     it 'returns forbidden for non-administrator' do

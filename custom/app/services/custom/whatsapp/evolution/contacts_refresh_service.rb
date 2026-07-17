@@ -4,18 +4,45 @@
 # inbox. Used by the inbox settings "Refresh contact profiles" action.
 class Custom::Whatsapp::Evolution::ContactsRefreshService
   BATCH_SIZE = 100
-  LOCK_TTL = 30.minutes.to_i
+  # Prevents double-click floods while jobs drain; release job clears earlier.
+  LOCK_TTL = 10.minutes.to_i
 
   class AlreadyRunningError < StandardError; end
+
+  def self.lock_key_for(channel_id)
+    format(Redis::RedisKeys::EVOLUTION_CONTACTS_REFRESH_LOCK, channel_id: channel_id)
+  end
+
+  def self.release_lock!(channel_id)
+    ::Redis::Alfred.delete(lock_key_for(channel_id))
+  end
+
+  def self.lock_status(channel)
+    key = lock_key_for(channel.id)
+    running = ::Redis::Alfred.get(key).present?
+    ttl = ::Redis::Alfred.ttl(key).to_i
+    {
+      running: running,
+      remaining_seconds: running && ttl.positive? ? ttl : 0
+    }
+  end
 
   pattr_initialize [:channel!]
 
   def perform
+    contact_ids = inbox_contact_ids
+    return empty_result if contact_ids.empty?
+
     raise AlreadyRunningError, 'Contact profile refresh already running' unless acquire_lock!
 
-    contact_ids = inbox_contact_ids
     enqueue_enrichments!(contact_ids)
-    { enqueued: contact_ids.size }
+    schedule_lock_release!
+
+    {
+      enqueued: contact_ids.size,
+      running: true,
+      remaining_seconds: LOCK_TTL
+    }
   rescue AlreadyRunningError
     raise
   rescue StandardError
@@ -24,6 +51,10 @@ class Custom::Whatsapp::Evolution::ContactsRefreshService
   end
 
   private
+
+  def empty_result
+    { enqueued: 0, running: false, remaining_seconds: 0 }
+  end
 
   def inbox
     channel.inbox
@@ -53,11 +84,17 @@ class Custom::Whatsapp::Evolution::ContactsRefreshService
     ::Redis::Alfred.set(lock_key, true, nx: true, ex: LOCK_TTL)
   end
 
+  def schedule_lock_release!
+    Custom::Whatsapp::Evolution::ContactsRefreshLockReleaseJob
+      .set(wait: LOCK_TTL.seconds)
+      .perform_later(channel.id)
+  end
+
   def release_lock!
-    ::Redis::Alfred.delete(lock_key)
+    self.class.release_lock!(channel.id)
   end
 
   def lock_key
-    format(Redis::RedisKeys::EVOLUTION_CONTACTS_REFRESH_LOCK, channel_id: channel.id)
+    self.class.lock_key_for(channel.id)
   end
 end
