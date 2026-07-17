@@ -639,26 +639,26 @@ provideMessageContext({
   }
 }
 
-/* FORK: pulse when jumping to a quoted / searched message */
-.message-bubble-container.message-locate-pulse {
-  border-radius: 0.75rem;
+/* FORK: pulse the message bubble (not the full row) when locating a quote */
+.left-bubble.message-locate-pulse,
+.right-bubble.message-locate-pulse {
   animation: message-locate-pulse 1.8s ease-in-out;
 }
 
 @keyframes message-locate-pulse {
   0%,
   100% {
-    background-color: transparent;
-    box-shadow: inset 0 0 0 0 transparent;
+    box-shadow: 0 0 0 0 transparent;
+    filter: brightness(1);
   }
   18%,
   35% {
-    background-color: rgba(31, 147, 255, 0.14);
-    box-shadow: inset 0 0 0 2px rgba(31, 147, 255, 0.55);
+    box-shadow: 0 0 0 3px rgba(31, 147, 255, 0.55);
+    filter: brightness(1.06);
   }
   55% {
-    background-color: rgba(31, 147, 255, 0.08);
-    box-shadow: inset 0 0 0 2px rgba(31, 147, 255, 0.28);
+    box-shadow: 0 0 0 2px rgba(31, 147, 255, 0.28);
+    filter: brightness(1.03);
   }
 }
 </style>
