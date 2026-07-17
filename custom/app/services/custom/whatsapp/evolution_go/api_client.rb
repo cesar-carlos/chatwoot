@@ -12,8 +12,9 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   RETRY_BACKOFF = 0.1
   RETRYABLE_STATUSES = (500..599)
   # /user/avatar can hang on WhatsApp CDN; retrying doubles the wait for bulk refresh.
+  # /user/info: WhatsApp usync 429 arrives as HTTP 500 — retry worsens rate-overlimit.
   # /message/react: evolution-go#28 hang — do not retry.
-  NON_RETRYABLE_PATHS = %w[/instance/create /user/avatar /message/react].freeze
+  NON_RETRYABLE_PATHS = %w[/instance/create /user/avatar /user/info /message/react].freeze
   NETWORK_ERRORS = [
     HTTParty::Error,
     SocketError,

@@ -115,6 +115,18 @@ class Custom::Whatsapp::EvolutionGo::Import::Runtime
     Rails.logger.error "[EVOLUTION_GO] import failed for channel #{channel.id}: #{error.message}"
   end
 
+  # When import_contacts/import_messages are both off, a prior run must not stay
+  # "running" in the UI forever (no job will resume without import_enabled?).
+  def abort_disabled_import!
+    persist_runtime!(
+      'import_status' => 'idle',
+      'import_error' => nil,
+      'import_completed_at' => Time.current.iso8601,
+      'import_cursor' => (config['import_cursor'] || {}).merge('phase' => 'done')
+    )
+    clear_contacts_cache!
+  end
+
   def persist_cursor!(attrs)
     merged_cursor = cursor.merge(attrs.stringify_keys)
     persist_runtime!('import_cursor' => merged_cursor)

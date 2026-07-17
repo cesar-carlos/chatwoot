@@ -73,7 +73,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     stub_user_check(exists: false)
     expect(api_client).not_to receive(:user_avatar)
 
-    described_class.new(channel: channel, contact: contact, force: true).perform
+    described_class.new(channel: channel, contact: contact, force: false).perform
 
     expect(contact.reload.avatar).not_to be_attached
   end
@@ -135,5 +135,195 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     )
 
     expect(described_class.should_enqueue?(contact: contact, force: true)).to be(true)
+  end
+
+  it 'queries /user/info with digits only and applies status/LID from filled Users payload' do
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).with(numbers: ['5511999999999']).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'data' => {
+            'Users' => {
+              '5511999999999@s.whatsapp.net' => {
+                'Status' => 'Available',
+                'PictureID' => '1',
+                'PictureURL' => 'https://cdn.example.com/from-info.jpg',
+                'LID' => '123456789012345@lid',
+                'Devices' => ['5511999999999@s.whatsapp.net']
+              }
+            }
+          },
+          'message' => 'success'
+        }
+      )
+    )
+    allow(api_client).to receive(:user_avatar).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'data' => { 'url' => 'https://cdn.example.com/avatar.jpg' } }
+      )
+    )
+    allow(Avatar::AvatarFromUrlJob).to receive(:perform_later)
+
+    described_class.new(channel: channel, contact: contact, force: true).perform
+
+    contact.reload
+    expect(contact.custom_attributes['whatsapp_status']).to eq('Available')
+    expect(contact.identifier).to eq('123456789012345@lid')
+    expect(contact.additional_attributes['evolution_go_remote_jid']).to eq('5511999999999@s.whatsapp.net')
+  end
+
+  it 'retries /user/info with digits when phone@s.whatsapp.net returns empty Users fields' do
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).with(numbers: ['5511999999999@s.whatsapp.net']).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'data' => {
+            'Users' => {
+              '5511999999999@s.whatsapp.net' => {
+                'Status' => '',
+                'PictureID' => '',
+                'PictureURL' => '',
+                'Devices' => []
+              }
+            }
+          },
+          'message' => 'success'
+        }
+      )
+    )
+    allow(api_client).to receive(:user_info).with(numbers: ['5511999999999']).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'data' => {
+            'Users' => {
+              '5511999999999@s.whatsapp.net' => {
+                'Status' => 'Hello',
+                'LID' => '999@lid',
+                'Devices' => ['5511999999999@s.whatsapp.net']
+              }
+            }
+          },
+          'message' => 'success'
+        }
+      )
+    )
+    allow(api_client).to receive(:user_avatar).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => {} })
+    )
+
+    described_class.new(
+      channel: channel,
+      contact: contact,
+      remote_jid: '5511999999999@s.whatsapp.net',
+      force: true
+    ).perform
+
+    expect(contact.reload.custom_attributes['whatsapp_status']).to eq('Hello')
+  end
+
+  it 'falls back to PictureURL from /user/info when /user/avatar is privacy-blocked' do
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'data' => {
+            'Users' => {
+              '5511999999999@s.whatsapp.net' => {
+                'Status' => 'x',
+                'PictureID' => '42',
+                'PictureURL' => '',
+                'Devices' => ['5511999999999@s.whatsapp.net']
+              }
+            }
+          }
+        }
+      )
+    )
+    allow(api_client).to receive(:user_avatar).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: false,
+        code: 500,
+        parsed_response: { 'error' => 'the user has hidden their profile picture from you' }
+      )
+    )
+    expect(Avatar::AvatarFromUrlJob).not_to receive(:perform_later)
+
+    described_class.new(channel: channel, contact: contact, force: true).perform
+  end
+
+  it 'uses PictureURL from /user/info and skips /user/avatar when URL is present' do
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'data' => {
+            'Users' => {
+              '5511999999999@s.whatsapp.net' => {
+                'Status' => 'Hello',
+                'PictureID' => '99',
+                'PictureURL' => 'https://cdn.example.com/info-pic.jpg',
+                'Devices' => ['5511999999999@s.whatsapp.net']
+              }
+            }
+          }
+        }
+      )
+    )
+    expect(api_client).not_to receive(:user_check)
+    expect(api_client).not_to receive(:user_avatar)
+    expect(Avatar::AvatarFromUrlJob).to receive(:perform_later).with(contact, 'https://cdn.example.com/info-pic.jpg')
+
+    described_class.new(channel: channel, contact: contact, force: true).perform
+
+    expect(contact.reload.additional_attributes['evolution_go_picture_id']).to eq('99')
+    expect(contact.custom_attributes['whatsapp_status']).to eq('Hello')
+  end
+
+  it 'does not mark enriched_at when /user/info is rate-limited' do
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: false,
+        code: 500,
+        parsed_response: { 'error' => 'failed to send usync query: info query returned status 429: rate-overlimit' }
+      )
+    )
+    expect(api_client).not_to receive(:user_avatar)
+
+    described_class.new(channel: channel, contact: contact, force: true).perform
+
+    expect(contact.reload.additional_attributes['evolution_go_enriched_at']).to be_blank
+  end
+
+  it 'does not start avatar cooldown on rate-overlimit from /user/avatar' do
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
+    )
+    allow(api_client).to receive(:user_avatar).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: false,
+        code: 500,
+        parsed_response: { 'error' => 'failed to send usync query: info query returned status 429: rate-overlimit' }
+      )
+    )
+
+    described_class.new(channel: channel, contact: contact, force: true).perform
+
+    expect(contact.reload.additional_attributes['evolution_go_avatar_attempted_at']).to be_blank
+    expect(contact.additional_attributes['evolution_go_enriched_at']).to be_blank
   end
 end

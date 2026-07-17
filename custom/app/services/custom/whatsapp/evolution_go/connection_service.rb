@@ -256,7 +256,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     return unless state == 'open'
     return if previous_status == 'open'
     return unless import_on_connect_enabled?
-    return unless import_contacts_enabled?
+    return unless history_import_enabled?
 
     status = provider_config['import_status']
     return if status.in?(%w[running completed])
@@ -268,8 +268,10 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     ActiveModel::Type::Boolean.new.cast(provider_config['import_on_connect'])
   end
 
-  def import_contacts_enabled?
-    ActiveModel::Type::Boolean.new.cast(provider_config['import_contacts'])
+  def history_import_enabled?
+    cfg = provider_config
+    ActiveModel::Type::Boolean.new.cast(cfg['import_contacts']) ||
+      ActiveModel::Type::Boolean.new.cast(cfg['import_messages'])
   end
 end
 # rubocop:enable Metrics/ClassLength

@@ -191,6 +191,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
 
       expect(described_class::REACT_REQUEST_TIMEOUT).to eq(15)
       expect(described_class::NON_RETRYABLE_PATHS).to include('/message/react')
+      expect(described_class::NON_RETRYABLE_PATHS).to include('/user/info')
 
       response = client.react(number: '5511999999999', id: 'TARGETMSG1', reaction: '👍')
       expect(response.success?).to be(true)

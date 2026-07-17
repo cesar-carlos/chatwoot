@@ -25,19 +25,27 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactsRefreshService do
     )
   end
 
-  it 'enqueues forced enrichment for every inbox contact' do
-    contact = create(:contact, account: account, phone_number: '+5511888888888')
-    create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511888888888')
+  it 'enqueues paced forced enrichment for every inbox contact' do
+    contact_a = create(:contact, account: account, phone_number: '+5511888888888')
+    contact_b = create(:contact, account: account, phone_number: '+5511777777777')
+    create(:contact_inbox, inbox: inbox, contact: contact_a, source_id: '5511888888888')
+    create(:contact_inbox, inbox: inbox, contact: contact_b, source_id: '5511777777777')
 
-    expect(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to receive(:perform_later).with(
-      channel.id,
-      contact.id,
-      hash_including(force: true)
-    )
+    waits = []
+    allow(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to receive(:set) do |opts|
+      waits << opts[:wait]
+      job = class_double(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob)
+      allow(job).to receive(:perform_later)
+      job
+    end
 
     result = described_class.new(channel: channel).perform
 
-    expect(result[:enqueued]).to eq(1)
+    expect(result[:enqueued]).to eq(2)
+    expect(result[:spacing_seconds]).to eq(3)
+    expect(result[:eta_seconds]).to eq(6)
+    expect(waits).to contain_exactly(0.seconds, 3.seconds)
+    expect(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to have_received(:set).twice
   end
 
   it 'raises when a refresh is already running' do
