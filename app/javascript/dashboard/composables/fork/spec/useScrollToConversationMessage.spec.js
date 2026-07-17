@@ -131,16 +131,12 @@ describe('useScrollToConversationMessage', () => {
     expect(emitter.emit).not.toHaveBeenCalled();
   });
 
-  it('loads messages around the target when the DOM node is missing', async () => {
+  it('loads messages with tight window first then scrolls', async () => {
     vi.useFakeTimers();
     getSelectedChat.mockReturnValue({ id: 7, messages: [] });
-    const around = [
-      { id: 41, content: 'before', created_at: 1 },
-      { id: 42, content: 'target', created_at: 2 },
-      { id: 43, content: 'after', created_at: 3 },
-    ];
+    const targetOnly = [{ id: 42, content: 'target', created_at: 2 }];
     MessageApi.getPreviousMessages = vi.fn().mockResolvedValue({
-      data: { payload: around },
+      data: { payload: targetOnly },
     });
 
     let lookups = 0;
@@ -149,7 +145,6 @@ describe('useScrollToConversationMessage', () => {
     vi.spyOn(document, 'getElementById').mockImplementation(id => {
       if (id === 'message42') {
         lookups += 1;
-        // Stub has no content so first pass skips insert; element appears after API merge
         return lookups >= 2 ? messageElement : null;
       }
       return null;
@@ -159,14 +154,18 @@ describe('useScrollToConversationMessage', () => {
       conversationId: ref(7),
     });
 
-    const resultPromise = scrollToMessage({ id: 42 });
-    const result = await resultPromise;
+    const result = await scrollToMessage({ id: 42 });
 
     expect(result).toBe(true);
-    expect(MessageApi.getPreviousMessages).toHaveBeenCalled();
+    expect(MessageApi.getPreviousMessages).toHaveBeenCalledTimes(1);
+    expect(MessageApi.getPreviousMessages).toHaveBeenCalledWith({
+      conversationId: 7,
+      after: 42,
+      before: 43,
+    });
     expect(commit).toHaveBeenCalledWith(types.INSERT_MESSAGES_AROUND, {
       id: 7,
-      data: around,
+      data: targetOnly,
     });
     expect(emitter.emit).toHaveBeenCalledWith(BUS_EVENTS.SCROLL_TO_MESSAGE, {
       messageId: 42,
@@ -177,5 +176,50 @@ describe('useScrollToConversationMessage', () => {
       true
     );
     vi.useRealTimers();
+  });
+
+  it('falls back to wide window when tight fetch misses the target', async () => {
+    getSelectedChat.mockReturnValue({ id: 7, messages: [] });
+    const wide = [
+      { id: 41, content: 'before', created_at: 1 },
+      { id: 42, content: 'target', created_at: 2 },
+    ];
+    MessageApi.getPreviousMessages = vi
+      .fn()
+      .mockResolvedValueOnce({ data: { payload: [] } })
+      .mockResolvedValueOnce({ data: { payload: wide } });
+
+    let lookups = 0;
+    const messageElement = document.createElement('div');
+    messageElement.id = 'message42';
+    vi.spyOn(document, 'getElementById').mockImplementation(id => {
+      if (id === 'message42') {
+        lookups += 1;
+        return lookups >= 2 ? messageElement : null;
+      }
+      return null;
+    });
+
+    const { scrollToMessage } = useScrollToConversationMessage({
+      conversationId: ref(7),
+    });
+
+    const result = await scrollToMessage({ id: 42 });
+
+    expect(result).toBe(true);
+    expect(MessageApi.getPreviousMessages).toHaveBeenNthCalledWith(1, {
+      conversationId: 7,
+      after: 42,
+      before: 43,
+    });
+    expect(MessageApi.getPreviousMessages).toHaveBeenNthCalledWith(2, {
+      conversationId: 7,
+      before: 142,
+      after: 0,
+    });
+    expect(commit).toHaveBeenCalledWith(types.INSERT_MESSAGES_AROUND, {
+      id: 7,
+      data: wide,
+    });
   });
 });
