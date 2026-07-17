@@ -14,8 +14,10 @@ import { useMapGetter, useStore } from 'dashboard/composables/store';
 import {
   buildReactionChips,
   inboxSupportsReactions,
+  messageCanReceiveReaction,
   applyOptimisticReaction,
   sendWhatsappReaction,
+  extractReactionErrorMessage,
 } from 'customDashboard/composables/useMessageReactions';
 
 import MessageFormatter from 'shared/helpers/MessageFormatter.js';
@@ -37,6 +39,8 @@ const {
   conversationId,
   inboxId,
   sourceId,
+  status,
+  isPrivate,
 } = useMessageContext();
 const { t } = useI18n();
 const store = useStore();
@@ -66,10 +70,15 @@ const reactionInbox = computed(() => {
   return getInboxById.value?.(inboxId.value) || null;
 });
 
-const canReactOnChip = computed(
-  () =>
-    inboxSupportsReactions(reactionInbox.value) && Boolean(sourceId?.value)
-);
+const canReactOnChip = computed(() => {
+  if (!inboxSupportsReactions(reactionInbox.value)) return false;
+  return messageCanReceiveReaction({
+    source_id: sourceId?.value,
+    private: isPrivate?.value,
+    content_attributes: contentAttributes?.value,
+    status: status?.value,
+  });
+});
 
 const reactionChips = computed(() => {
   const attrs = contentAttributes.value || {};
@@ -101,12 +110,18 @@ const removeBusinessReaction = async chip => {
     if (response.data?.id) {
       store.dispatch('updateMessage', response.data);
     }
+    useAlert(t('CONVERSATION.CONTEXT_MENU.REACTION_REMOVED'));
   } catch (error) {
     store.dispatch('updateMessage', {
       ...currentMessage,
       content_attributes: snapshotAttrs,
     });
-    useAlert(t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED'));
+    const detail = extractReactionErrorMessage(error);
+    useAlert(
+      detail
+        ? t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED_DETAIL', { detail })
+        : t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED')
+    );
   } finally {
     isRemovingReaction.value = false;
   }
