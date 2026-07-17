@@ -38,6 +38,24 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor do
       expect(key[:fromMe]).to be(true)
     end
 
+    it 'extracts revoke when IsRevoke/messageType are set and only typeName matches' do
+      data = {
+        IsRevoke: true,
+        messageType: 'revoke',
+        Message: {
+          protocolMessage: {
+            type: 99,
+            typeName: 'REVOKE',
+            key: { ID: 'REV-TYPENAME', fromMe: false, remoteJID: '5511999999999@s.whatsapp.net' }
+          }
+        }
+      }
+
+      key = described_class.extract_delete_key(data, event: 'MESSAGE')
+
+      expect(key[:id]).to eq('REV-TYPENAME')
+    end
+
     it 'returns nil for regular text messages' do
       payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_inbound.json').read)
 

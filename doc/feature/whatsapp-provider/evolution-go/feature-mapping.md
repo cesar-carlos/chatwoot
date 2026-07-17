@@ -27,8 +27,8 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | `source_id` | `data.Info.ID` | ✅ | `process_response` |
 | Typing | `POST /message/presence` | ✅ | `TypingListener` → `PresenceSyncJob` → `ApiClient#set_presence` (skip private notes) |
 | Mark read outbound | `POST /message/markread` | ✅ | `mark_read_on_reply`, `mark_read_on_open` |
-| Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + `DeleteSyncService` |
-| Edit message | `POST /message/edit` | ⚠️ | `sync_edit_to_whatsapp` + UI context menu + `MessageContentEditService` → `EditSyncService` (inbound plaintext Go ⚠️ — ADR §35) |
+| Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + `DeleteSyncService` (API fail reverte soft-delete local) |
+| Edit message | `POST /message/edit` | ✅ | `sync_edit_to_whatsapp` + UI context menu + `MessageContentEditService` → `EditSyncService` — ADR §35 |
 | React | `POST /message/react` | ✅ | Context menu + `ReactSyncService` |
 
 ---
@@ -47,9 +47,10 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Contato/conversa | — | ✅ | `IncomingMessageEvolutionGo` + enrichment Go |
 | Reply threading | `contextInfo.stanzaId` / `stanzaID` | ✅ | `add_reply_context!` → `in_reply_to_external_id` |
 | Quote outbound (própria msg) | `quoted.participant` via `instance_name` se phone `+55000…` | ✅ | `EvolutionGoServiceOutbound#channel_business_phone` |
-| Avatar enrichment backoff | `/user/avatar` timeout 12s + `evolution_go_avatar_attempted_at` (6h) | ✅ | `ContactEnrichmentService` |
-| Client delete | `MESSAGE` revoke / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` |
-| Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` / protocol / `Info.Edit` | ⚠️ | `MessageEditSyncService` — precisa plaintext; envelope `secretEncryptedMessage` é descartado (Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
+| Avatar enrichment backoff | `/user/avatar` timeout 12s + `evolution_go_avatar_attempted_at` (6h); PictureURL/PictureID via `/user/info` | ✅ | `ContactEnrichmentService` |
+| Contacts refresh (bulk) | paced enqueue 3s + dynamic lock TTL | ✅ | `ContactsRefreshService` |
+| Client delete | `MESSAGE` revoke (`IsRevoke` / type 0) / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` (job sempre consome; soft-delete gated) |
+| Client edit | `MESSAGES_EDITED` / protocol `IsEdit` + `editedMessage` | ✅ | `MessageEditSyncService` — plaintext ✅; `secretEncryptedMessage` sem texto → skip ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
 | Reações | `reactionMessage` → `content_attributes.reactions` | ✅ | `ReactionsStore` + chip/menu; Node parity via `Evolution::*` |
 | Pseudo-forward | — (sem API Go) | ✅ | Chatwoot-only · [message-forward/](../../message-forward/) · ADR §34 |

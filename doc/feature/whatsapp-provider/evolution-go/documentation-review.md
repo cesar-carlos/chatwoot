@@ -18,6 +18,7 @@
 | 16/jul/2026 (eve) | Reactions improvements: ReactionsStore, user:self, timeout 15s, Node parity, cleanup rake |
 | 16/jul/2026 (night) | Pseudo-forward Chatwoot-only; docs `doc/feature/message-forward/`; ADR §34 |
 | 17/jul/2026 | Message edit audit: código × doc × Go [#92]; status/feature-mapping ⚠️ plaintext; ADR §35 |
+| 17/jul/2026 (pm) | Doc sync × código: edit/delete contrato Go, enrichment/refresh paced, ADR §35–§36 |
 
 ---
 
@@ -300,29 +301,17 @@ Docs tocados no commit: [troubleshooting.md](./troubleshooting.md), [webhook-eve
 
 ## Revisão 17/jul/2026 — message edit audit
 
-**Escopo:** Revisão implementação edit (inbound/outbound) × OpenAPI Go × issues upstream; correção de drift documental (status ✅ demais otimista).
+**Escopo:** Revisão implementação edit (inbound/outbound) × OpenAPI Go × issues upstream.
 
-**Código (sem mudança nesta revisão):** `MessageEditPayloadExtractor`, `MessageEditSyncService`, `EditSyncService`, `EvolutionGoEditSync`, job ordering, fixtures `message_edit*.json`, specs unitários.
+**Follow-up 17/jul pm:** alinhamento ao contrato Go plaintext (`IsEdit` / `editedMessage` / `extendedTextMessage`); revoke vs `Info.Edit`; delete revert; doc sync.
 
-| Achado | Impacto doc |
-|--------|-------------|
-| API `POST /message/edit` existe e está wired | Confirmado em api-reference / documentation-links |
-| Inbound edit depende de plaintext; Go 0.7+ frequentemente só `secretEncryptedMessage` | status/feature-mapping → ⚠️; webhook-events § Edit; troubleshooting; differences-from-evolution-api |
-| `sync_edit_to_whatsapp` sem UI de editar no dashboard | ADR §35; provider-config / inbox-business-rules / validation-checklist |
-| Anti-loop só na 1ª transição `edited_via_evolution_go_webhook` | troubleshooting + ADR §35 (risco residual) |
+| Achado | Estado atual |
+|--------|--------------|
+| API `POST /message/edit` `{ chat, messageId, message }` | ✅ wired |
+| UI Edit + anti-loop sempre-on-flag | ✅ |
+| Inbound plaintext protocol | ✅ |
+| Envelope `secretEncryptedMessage` sem texto | ⚠️ skip residual ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 
-| Arquivo atualizado | Mudança |
-|--------------------|---------|
-| [status.md](./status.md) | Inbound edit ⚠️; próximo passo edit produto/Go |
-| [feature-mapping.md](./feature-mapping.md) | Client/outbound edit ⚠️ + links #92 |
-| [webhook-events.md](./webhook-events.md) | Seção Edit — formatos + encrypted skip |
-| [troubleshooting.md](./troubleshooting.md) | Sintomas edit/plaintext/UI/re-sync |
-| [provider-config-mapping.md](./provider-config-mapping.md), [inbox-business-rules.md](./inbox-business-rules.md), [business-rules-adaptation.md](./business-rules-adaptation.md) | Caveats flags |
-| [validation-checklist.md](./validation-checklist.md), [api-reference.md](./api-reference.md), [README.md](./README.md) | Expectativas E2E / MVP |
-| [differences-from-evolution-api.md](./differences-from-evolution-api.md) | Row edit Node vs Go |
-| [decisions.md](./decisions.md) | ADR §35 |
-| [tasks.md](./tasks.md) | Follow-ups UX-9 / Go plaintext |
+**Veredito (atualizado):** fork alinhado ao contrato Go com plaintext; encrypted-only permanece skip. Outbound edit/delete + UI ✅.
 
-**Veredito:** implementação fork correta para o contrato disponível; **confiabilidade inbound edit em produção é ⚠️** até o Evolution Go entregar `editedMessage`.
-
-**Follow-up código (mesma sessão):** anti-loop `EvolutionGoEditSync` reforçado; UI Edit (`MessageContentEditService`, `evolution_go_edit`, `MessageEditModal`, badge); tasks UX-9a/9b ✅.
+Arquivos de referência: [status.md](./status.md), [webhook-events.md](./webhook-events.md) § Edit/Revoke, [decisions.md](./decisions.md) §35–§36, [troubleshooting.md](./troubleshooting.md).

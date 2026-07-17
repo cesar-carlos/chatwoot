@@ -39,13 +39,15 @@
 | UX-5 | `GET evolution_go_diagnostics` + painel em `EvolutionGoHealthPage` |
 | UX-6 | `POST evolution_go_test_webhook` |
 | UX-7 | `mutation_stats` (`inbound_delete_skipped`, `inbound_edit_skipped`) |
-| UX-8 | `sync_edit_to_whatsapp` + `EditSyncService` (MVP, sem UI nativa de editar mensagem) |
+| UX-8 | `sync_edit_to_whatsapp` + `EditSyncService` (MVP; UI veio em UX-9b) | ✅ |
 | UX-9a | Anti-loop reforçado (`edited_via_evolution_go_webhook` sempre skip outbound) | ✅ 17/jul/2026 |
 | UX-9b | UI nativa editar outgoing (`evolution_go_edit` + modal; limpa flag webhook) — ADR §35 | ✅ 17/jul/2026 |
 | UX-9c | Soft-fail→sync WA first; sem prefixo no texto (badge); flags edit/delete p/ agentes; caption editável | ✅ 17/jul/2026 |
+| UX-9d | Alinhamento contrato Go: `Info.Edit` só `"1"`; revoke signals; sem invent-on-miss; delete API fail reverte | ✅ 17/jul/2026 |
 | UX-10 | E2E edit: capturar fixture real plaintext **e** `secretEncryptedMessage`; confirmar skip sem unsupported | ⬜ |
+| EN-1 | Enrichment: PictureURL/PictureID, digits query, `/user/info` non-retryable, refresh paced 3s, import abort | ✅ 17/jul/2026 |
 
-> **Bloqueio externo:** inbound edit confiável no Go — [evolution-go#92](https://github.com/evolution-foundation/evolution-go/issues/92) / [#62](https://github.com/evolution-foundation/evolution-go/issues/62).
+> **Residual externo:** encrypted edit sem plaintext — [evolution-go#92](https://github.com/evolution-foundation/evolution-go/issues/92) / [#62](https://github.com/evolution-foundation/evolution-go/issues/62). Plaintext protocol já suportado no fork.
 
 ## I4 — Import histórico (código concluído)
 

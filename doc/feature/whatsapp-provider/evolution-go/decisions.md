@@ -378,7 +378,7 @@ end
 | 16/jul/2026 | §33: message reactions chip + context menu |
 | 16/jul/2026 | §33 addendum: `user:self`, timeout 15s, optimistic UI, Node parity, cleanup rake |
 | 16/jul/2026 | §34: pseudo-forward de mensagem no Chatwoot (sem API Go) |
-| 17/jul/2026 | §35: message edit — plaintext Go, sem UI CW, anti-loop parcial |
+| 17/jul/2026 | §35: message edit — UI CW + anti-loop + plaintext protocol; addendum delete/enrichment 17/jul pm |
 
 ---
 
@@ -429,7 +429,7 @@ end
 
 | Decisão | Valor |
 |---------|-------|
-| **Avatar timeout** | `ApiClient::AVATAR_REQUEST_TIMEOUT` = 12s; `/user/avatar` in `NON_RETRYABLE_PATHS` |
+| **Avatar timeout** | `ApiClient::AVATAR_REQUEST_TIMEOUT` = 12s; `/user/avatar` **e** `/user/info` em `NON_RETRYABLE_PATHS` |
 | **Backoff key** | `evolution_go_avatar_attempted_at` em `contact.additional_attributes` |
 | **Cooldown** | `ContactEnrichmentService::AVATAR_RETRY_COOLDOWN` = 6h (falta de avatar não reenfileira a cada inbound) |
 | **Force refresh** | `force: true` / `POST evolution_go_refresh_contacts` ignora cooldown |
@@ -482,18 +482,35 @@ end
 
 | Decisão | Valor |
 |---------|-------|
-| **API outbound** | `POST /message/edit` `{ chat, messageId, message }` — documentado e wired em `ApiClient#edit_message` |
+| **API outbound** | `POST /message/edit` `{ chat, messageId, message }` — OpenAPI / `ApiClient#edit_message` (não `number`) |
 | **Outbound CW → WA** | Opt-in `sync_edit_to_whatsapp` (default `false`) via `EditSyncService` + `EvolutionGoEditSync` em `after_update_commit` |
 | **UI agente (17/jul)** | Context menu **Edit** quando `sync_edit_to_whatsapp` + outgoing + `source_id`; modal → `POST …/evolution_go_edit` → `MessageContentEditService` |
-| **Inbound WA → CW** | `mark_inbound_edited` (default `true`) → `MessageEditSyncService`; eventos explícitos + protocol + detecção `secretEncryptedMessage` |
-| **Envelope criptografado** | Se só houver `Info.Edit` / `secretEncryptedMessage` sem plaintext → **skip** (não cria unsupported). Limitação upstream Go [#62](https://github.com/evolution-foundation/evolution-go/issues/62) / [#92](https://github.com/evolution-foundation/evolution-go/issues/92) |
-| **UX conteúdo** | `content_attributes.edited` / `edited_at` + badge “Edited”; **sem** prefixo no texto (legado `"Edited message:\n\n"` ainda é stripped na UI/API) |
+| **Inbound WA → CW** | `mark_inbound_edited` (default `true`) → `MessageEditSyncService`; sinais `IsEdit` / `messageType: "edit"` / type 14 / `typeName: MESSAGE_EDIT` |
+| **ID original** | `protocolMessage.key.ID` (ou `secretEncryptedMessage.targetMessageKey.ID`) — **não** `Info.ID` |
+| **Texto** | `editedMessage.conversation` ou `editedMessage.extendedTextMessage.text` (+ captions mídia) |
+| **`Info.Edit`** | Só `"1"` / `true` = edit; revoke usa `"7"` e **não** dispara path de edit |
+| **Envelope criptografado** | `secretEncryptedMessage` sem plaintext → **skip** (`encrypted_edit`); stub incompleto → `nil`. Residual Go [#62](https://github.com/evolution-foundation/evolution-go/issues/62) / [#92](https://github.com/evolution-foundation/evolution-go/issues/92) |
+| **Orphan** | Qualquer edit sem mensagem no CW → skip + `inbound_edit_skipped` (**não** inventa `#{id}-edited`) |
+| **UX conteúdo** | `content_attributes.edited` / `edited_at` + badge “Edited”; **sem** prefixo no texto (legado ainda stripped) |
 | **Outbound agente** | `MessageContentEditService` → `EditSyncService(raise_errors: true)` **antes** de persistir; falha WA → erro no modal, CW inalterado |
-| **Anti-loop** | Skip outbound **sempre** que `edited_via_evolution_go_webhook` estiver true; skip também se `@evolution_go_edit_synced_inline` (já sincronizado no service) |
-| **fromMe orphan** | Edit `fromMe` sem mensagem no CW → skip + `inbound_edit_skipped` (não inventa incoming) |
+| **Anti-loop** | Skip outbound **sempre** que `edited_via_evolution_go_webhook` estiver true; skip também se `@evolution_go_edit_synced_inline` |
 
 **Addendum 17/jul/2026:** guard reforçado em `EvolutionGoEditSync` + UI edit (`MessageEditModal`, `useMessageEdit`, rota `evolution_go_edit`).
 
 **Addendum (review):** agentes não recebem `provider_config` (segredos). Flags `sync_edit_to_whatsapp` / `sync_delete_to_whatsapp` expostas no JSON do inbox (top-level) para gateway providers — sem isso o menu Edit só aparecia para admin.
 
 **Addendum (melhorias):** soft-fail removido no path do agente (sync WA first); prefixo legado removido do storage; caption de mídia editável quando `content` presente.
+
+**Addendum (17/jul pm — alinhamento contrato Go):** `Info.Edit` restrito; revoke signals (`IsRevoke` / `messageType`); job consome revoke mesmo com `mark_inbound_deleted: false`; `DeleteSyncService` reverte soft-delete se API falhar; fixtures `message_edit.json` / `message_edit_api_echo.json` / `message_revoke.json` atualizadas.
+
+---
+
+## 36. Contact enrichment / refresh (17/jul/2026)
+
+| Decisão | Valor |
+|---------|-------|
+| **Query `/user/info`** | Preferir `@lid` → JID store → **dígitos plain** (evitar `phone@s.whatsapp.net` BR com 9º dígito que devolve Users vazios) |
+| **Avatar** | Preferir `PictureURL` do `/user/info`; skip re-download se `PictureID` igual e avatar attached; `/user/avatar` ainda aceita URL ou base64 |
+| **Rate-limit** | 429 / `rate-overlimit` → short-circuit; **não** marcar `enriched_at` / cooldown avatar longo; `/user/info` e `/user/avatar` em `NON_RETRYABLE_PATHS` |
+| **Refresh bulk** | `ContactsRefreshService`: stagger `ENQUEUE_SPACING = 3s` + lock TTL dinâmico |
+| **Import abort** | Toggles off mid-run → `Import::Runtime#abort_disabled_import!` → `import_status: idle` |

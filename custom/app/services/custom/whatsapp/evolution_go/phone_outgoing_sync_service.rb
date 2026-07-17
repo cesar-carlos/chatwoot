@@ -189,7 +189,9 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
 
     protocol = message[:protocolMessage].to_h.with_indifferent_access
     Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.revoke_type?(protocol[:type]) ||
-      Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.edit_type?(protocol[:type])
+      Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.revoke_type?(protocol[:typeName]) ||
+      Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.edit_type?(protocol[:type]) ||
+      Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.edit_type?(protocol[:typeName])
   end
 
   def secret_encrypted_edit_only?(message)

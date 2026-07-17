@@ -202,6 +202,35 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     expect(existing.content_attributes['deleted']).to be(true)
   end
 
+  it 'consumes revoke without soft-delete when mark_inbound_deleted is disabled' do
+    channel.update!(
+      provider_config: channel.provider_config.merge('mark_inbound_deleted' => false)
+    )
+    conversation = create(:conversation, account: account, inbox: inbox)
+    existing = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :incoming,
+      source_id: '3EB0DELETEDMSG123',
+      content: 'will stay'
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_revoke.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.not_to change(Message, :count)
+
+    existing.reload
+    expect(existing.content_attributes['deleted']).not_to be(true)
+    expect(existing.content).to eq('will stay')
+  end
+
   it 'updates content via MESSAGE protocol edit' do
     conversation = create(:conversation, account: account, inbox: inbox)
     existing = create(
@@ -210,7 +239,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
       inbox: inbox,
       conversation: conversation,
       message_type: :incoming,
-      source_id: '3EB0EDITEDMSG123',
+      source_id: 'AC9A902ED6D1458D0A9FB5C4023580E7',
       content: 'original'
     )
     payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_edit.json').read)
