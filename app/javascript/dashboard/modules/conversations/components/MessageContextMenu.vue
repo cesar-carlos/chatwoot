@@ -382,7 +382,7 @@ export default {
         <MenuItem
           v-if="canForwardMessage"
           :option="{
-            icon: 'arrow-forward',
+            icon: 'share',
             label: $t('CONVERSATION.CONTEXT_MENU.FORWARD'),
           }"
           variant="icon"
