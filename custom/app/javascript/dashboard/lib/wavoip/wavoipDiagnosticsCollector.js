@@ -47,7 +47,19 @@ function buildDeviceSnapshot(inboxId) {
   };
 }
 
-export function exportWavoipDiagnostics({ inboxId, callId } = {}) {
+export function getRecentConnectivityIssues(inboxId) {
+  if (!inboxId) return connectivityIssues.slice(-10);
+  return connectivityIssues
+    .filter(entry => entry.inboxId === inboxId)
+    .slice(-10);
+}
+
+export function exportWavoipDiagnostics({
+  inboxId,
+  callId,
+  panelStatus,
+  statusVerifiedLive,
+} = {}) {
   return JSON.stringify(
     {
       generatedAt: new Date().toISOString(),
@@ -56,8 +68,13 @@ export function exportWavoipDiagnostics({ inboxId, callId } = {}) {
       inboxId,
       wavoipCallId: callId,
       device: buildDeviceSnapshot(inboxId),
+      panel: {
+        whatsAppStatus: panelStatus ?? null,
+        statusVerifiedLive:
+          typeof statusVerifiedLive === 'boolean' ? statusVerifiedLive : null,
+      },
       recentIceDiagnostics: iceDiagnostics.slice(-10),
-      recentIssues: connectivityIssues.slice(-10),
+      recentIssues: getRecentConnectivityIssues(inboxId),
       recentErrors: callErrors.slice(-10),
       recentStats: callStats.slice(-10),
       browser: {

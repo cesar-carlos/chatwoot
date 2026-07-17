@@ -5,6 +5,7 @@ import { useStore } from 'vuex';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import { getWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { isWavoipInboxRestricted } from 'customDashboard/composables/wavoip/useWavoipNotifications';
+import { normalizeWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatusNormalize';
 
 const props = defineProps({
   inboxId: {
@@ -15,6 +16,7 @@ const props = defineProps({
 
 const { t } = useI18n();
 const store = useStore();
+const WAVOIP_PANEL_URL = 'https://app.wavoip.com/devices';
 
 const inbox = computed(() =>
   props.inboxId ? store.getters['inboxes/getInbox']?.(props.inboxId) : null
@@ -24,9 +26,17 @@ const isWavoipInbox = computed(
   () => inbox.value?.channel_type === INBOX_TYPES.WAVOIP
 );
 
-const deviceStatus = computed(() => {
+const connectionStatus = computed(() => {
   if (!props.inboxId) return null;
   return getWavoipDeviceStatus(props.inboxId).connectionStatus.value;
+});
+
+const whatsAppStatus = computed(() => {
+  if (!props.inboxId) return null;
+  return normalizeWavoipDeviceStatus(
+    getWavoipDeviceStatus(props.inboxId).whatsAppStatus.value ||
+      inbox.value?.provider_config?.device_status
+  );
 });
 
 const isRestricted = computed(() =>
@@ -38,14 +48,32 @@ const bannerMessage = computed(() => {
   if (isRestricted.value) {
     return t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED');
   }
-  if (deviceStatus.value === 'disconnected') {
+  if (whatsAppStatus.value === 'WAITING_PAYMENT') {
+    return t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAITING_PAYMENT_HINT');
+  }
+  if (whatsAppStatus.value === 'EXTERNAL_INTEGRATION_ERROR') {
+    return t(
+      'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.EXTERNAL_INTEGRATION_ERROR_HINT'
+    );
+  }
+  if (whatsAppStatus.value === 'error') {
+    return t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ERROR_HINT');
+  }
+  if (connectionStatus.value === 'disconnected') {
     return t('CONVERSATION.WAVOIP_CALL.DEVICE_DISCONNECTED');
   }
-  if (deviceStatus.value === 'reconnecting') {
+  if (connectionStatus.value === 'reconnecting') {
     return t('CONVERSATION.WAVOIP_CALL.DEVICE_RECONNECTING');
   }
   return null;
 });
+
+const showPanelLink = computed(
+  () =>
+    whatsAppStatus.value === 'WAITING_PAYMENT' ||
+    whatsAppStatus.value === 'EXTERNAL_INTEGRATION_ERROR' ||
+    whatsAppStatus.value === 'error'
+);
 </script>
 
 <template>
@@ -56,6 +84,15 @@ const bannerMessage = computed(() => {
       role="status"
     >
       {{ bannerMessage }}
+      <a
+        v-if="showPanelLink"
+        :href="WAVOIP_PANEL_URL"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="ms-2 underline"
+      >
+        {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.OPEN_WAVOIP_PANEL') }}
+      </a>
     </div>
   </div>
 </template>

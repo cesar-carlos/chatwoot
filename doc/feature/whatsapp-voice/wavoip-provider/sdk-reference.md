@@ -96,9 +96,12 @@ O Chatwoot trata `num_channels` ausente como “sem limite conhecido” (não bl
 | Botão | Quando aparece | Ação |
 |-------|----------------|------|
 | **Reconectar (escanear QR)** | `status !== open` | Abre modal QR **sem** restart (`fresh: false`); liga SDK `qrCodeChanged` + HTTP qr-image |
+| **Verificar novamente** | `STATUS_STALE` | `getWavoipDeviceStatus({ force: true })` |
 | **Acordar dispositivo** | Só `hibernating` | `device.wakeUp()`; se ainda não `open`, abre QR soft |
-| **Reiniciar dispositivo** | Sempre (bloqueado se `activeCalls > 0`) | Confirm → HTTP `device/restart` → abre QR |
+| **Reiniciar dispositivo** | Sempre (bloqueado se `activeCalls > 0`); destaque se `BUILDING`/`restarting` > 90s | Confirm → HTTP `device/restart` → abre QR |
 | **Logout** | Só `open` | Confirm → HTTP logout → QR |
+
+Aliases futuros do webhook DEVICE: `connected`→`open`, `disconnected`→`close` (DeviceHandler + FE `normalizeWavoipDeviceStatus`).
 
 Refresh dentro do modal QR usa `getWavoipQr({ refresh: true })` (= restart HTTP) — ação destrutiva explícita do usuário.
 
@@ -235,7 +238,7 @@ Fonte: [Tipos](https://wavoip.gitbook.io/api/wavoip-api/referencia/types.md)
 | `FAILED` | failed |
 | `DISCONNECTED` | failed / reconnect |
 
-Implementar em `lib/wavoip/callStatusUI.js` — **não** misturar com mapper Rails.
+Implementado em `lib/wavoip/wavoipCallDiagnostics.js` — **não** misturar com mapper Rails.
 
 ### 7.3 `CallType`
 
@@ -337,7 +340,7 @@ Handler em `useWavoipActiveCall` / `useWavoipIncomingOffer` → toast + buffer n
 | `useWavoipOutboundCall` | `CallOutgoing`, `startCall` |
 | `useWavoipActiveCall` | `CallActive`, mute/end/events |
 | `useWavoipMedia` | `getMultimediaDevices`, `multimedia` |
-| `useWavoipDevicePanel` | `qrCodeChanged`, `pairingCode`, `restart` |
+| `WavoipDevicePanel` + `useWavoipQrSession` | `qrCodeChanged`, `pairingCode`, wake/reconnect/restart |
 | `wavoipDiagnosticsCollector` | `iceDiagnostics`, `connectivityIssue`, `stats` |
 
 Cada composable **&lt; 200 linhas** — ver [architecture.md](./architecture.md).

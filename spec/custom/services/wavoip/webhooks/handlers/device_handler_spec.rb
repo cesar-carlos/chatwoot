@@ -35,4 +35,28 @@ RSpec.describe Wavoip::Webhooks::Handlers::DeviceHandler do
       expect(channel.webhook_verified?).to be(true)
     end
   end
+
+  it 'aliases connected to open before persist' do
+    connected_event = event.with(external_status: 'connected')
+
+    described_class.new(inbox: inbox, event: connected_event).perform
+
+    expect(channel.reload.provider_config['device_status']).to eq('open')
+  end
+
+  it 'aliases disconnected to close before persist' do
+    disconnected_event = event.with(external_status: 'disconnected')
+
+    described_class.new(inbox: inbox, event: disconnected_event).perform
+
+    expect(channel.reload.provider_config['device_status']).to eq('close')
+  end
+
+  it 'leaves other statuses unchanged' do
+    hibernating_event = event.with(external_status: 'hibernating')
+
+    described_class.new(inbox: inbox, event: hibernating_event).perform
+
+    expect(channel.reload.provider_config['device_status']).to eq('hibernating')
+  end
 end

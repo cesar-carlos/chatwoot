@@ -9,14 +9,17 @@ class Wavoip::DeviceStatusService
   pattr_initialize [:channel!]
 
   def connection_payload(force: false)
-    live = refresh_device_status!(force: force)
+    live_fetch = refresh_device_status!(force: force)
     config = channel.provider_config || {}
+    # Cache hit skips HTTP but still counts as recently verified — otherwise the
+    # settings panel poll (force: false every 5s) falsely shows STATUS_STALE.
+    recently_verified = live_fetch.present? || (!force && cached_status_fresh?)
 
     {
       device_status: config['device_status'],
       phone_number: channel.phone_number,
-      live: live.present?,
-      contact_phone: live&.dig('contact', 'phone')
+      live: recently_verified,
+      contact_phone: live_fetch&.dig('contact', 'phone')
     }
   end
 
@@ -176,6 +179,10 @@ class Wavoip::DeviceStatusService
 
   def cache_key_for_channel
     "wavoip:device_status:#{channel.id}"
+  end
+
+  def cached_status_fresh?
+    Rails.cache.exist?(cache_key_for_channel)
   end
 
   def invalidate_cache!

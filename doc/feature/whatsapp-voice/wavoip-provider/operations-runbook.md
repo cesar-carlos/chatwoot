@@ -2,7 +2,7 @@
 
 Guia para admins e suporte quando a integração não funciona como esperado.
 
-**Relacionado:** [contracts-and-ports.md](./contracts-and-ports.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md) · [official-docs.md](./official-docs.md) · [spike-notes.md](./spike-notes.md)
+**Relacionado:** [architecture.md](./architecture.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [inbox-setup.md](./inbox-setup.md) · [official-docs.md](./official-docs.md) · [README.md](./README.md)
 
 ---
 
@@ -142,12 +142,17 @@ Ver [frontend-integration.md §6.4](./frontend-integration.md#64-ringtone-e-pref
 
 | Botão | Quando usar |
 |-------|-------------|
+| **Verificar novamente** | Banner STATUS_STALE — força `all_info` (`force: true`) sem abrir QR |
 | **Reconectar (escanear QR)** | Device `close` / `connecting` / status desatualizado — abre QR **sem** reiniciar o device |
 | **Acordar dispositivo** | Só quando status é **hibernating** — `wakeUp()` no SDK |
-| **Reiniciar dispositivo** | Pareamento travado / QR não aparece — confirma e chama HTTP restart + QR |
+| **Reiniciar dispositivo** | Pareamento travado / QR não aparece / **BUILDING ou restarting > 90s** — confirma e chama HTTP restart + QR |
 | **Logout** | Desvincular WhatsApp (só com device `open`) |
 
-Se o banner *status desatualizado* (`STATUS_STALE`) aparecer: tente **Reconectar**; se o QR não carregar, use **Reiniciar**.
+Se o banner *status desatualizado* (`STATUS_STALE`) aparecer: clique **Verificar novamente** primeiro; se continuar falhando, **Reconectar**; se o QR não carregar, use **Reiniciar**.
+
+URL do webhook, teste e regeneração ficam **na mesma aba**, acima do checklist do painel Wavoip.
+
+**Web Push (`voice_call_incoming`):** com VAPID configurado e preferência de push do agente ligada, o aviso chega com a aba fechada e abre a conversa. **Atender** ainda exige dashboard aberto com WebSocket/SDK — o push não aceita a chamada.
 
 | Causa adicional | Sintoma nos logs | Ação |
 |-----------------|------------------|------|
@@ -348,7 +353,7 @@ account.enable_features!('channel_wavoip') # se flag fork ativa
 3. Iniciar chamada inbound para o device pareado
 4. Agente A aceita no widget
 5. Agente B deve: widget sumir + alerta *Another agent answered this call*
-6. Registrar em [spike-notes.md](./spike-notes.md) (Pass/Fail)
+6. Registrar Pass/Fail na matriz [Gates de piloto](#gates-de-piloto-jul-2026)
 
 ### E2E manual — `+5566999050312`
 

@@ -56,6 +56,7 @@ vi.mock('vuex', () => ({
   useStore: () => ({
     getters: {
       getConversationById: () => () => ({ id: 42, status: 'resolved' }),
+      getCurrentAccountId: 1,
     },
     dispatch,
   }),

@@ -1,12 +1,8 @@
-# WhatsApp Voice / Calling — Documentação de análise
+# WhatsApp Voice / Calling — Documentação
 
-Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp** no Chatwoot Enterprise (WhatsApp Cloud Calling API + WebRTC browser↔Meta). O objetivo é orientar implementação, extensão com providers alternativos e decisões de arquitetura no fork.
+Análise e referência do suporte a **chamadas de voz WhatsApp** no Chatwoot (Meta Cloud Calling + provider alternativo Wavoip no fork).
 
-**Última reanálise:** 08 jul. 2026 — código em `main` (Enterprise + OSS hooks + `custom/` Wavoip).
-**Revisão pontual:** 03 jul. 2026 — ações de botão do `WavoipDevicePanel` (ver
-[refactory/CHANGELOG.md#bug-06](./wavoip-provider/refactory/CHANGELOG.md)).
-**Incidente webhook Wavoip (04 jul. 2026):** hardening de código concluído (08 jul. 2026); verificação live no painel Wavoip ainda requer acesso ops — checklist em
-[wavoip-provider/operations-runbook.md § Webhook parou de chegar sem aviso](./wavoip-provider/operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026).
+**Última consolidação:** 17 jul. 2026 — docs alinhados ao código shipped em `custom/` + Enterprise.
 
 ---
 
@@ -14,12 +10,11 @@ Esta pasta consolida a análise técnica do suporte a **chamadas de voz WhatsApp
 
 | Perfil | Caminho |
 |--------|---------|
-| **Entender o fluxo atual (Meta oficial)** | [architecture-and-flow.md](./architecture-and-flow.md) |
-| **Implementar Wavoip (primeiro provider alternativo)** | [wavoip-provider/README.md](./wavoip-provider/README.md) → [implementation-plan.md](./wavoip-provider/implementation-plan.md) |
-| **Escolher stack de voz no fork** | Árvore abaixo → [second-provider-strategy.md](./second-provider-strategy.md) |
-| **Avaliar acoplamento / refactor** | [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) · [second-provider-strategy.md](./second-provider-strategy.md) |
+| **Fluxo Meta oficial** | [architecture-and-flow.md](./architecture-and-flow.md) |
+| **Wavoip (implementado)** | [wavoip-provider/README.md](./wavoip-provider/README.md) |
+| **Segundo provider Meta-like** | [second-provider-strategy.md](./second-provider-strategy.md) |
 | **Twilio vs WhatsApp in-app** | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
-| **Providers alternativos (mensagens + contexto)** | [whatsapp-provider/README.md](../whatsapp-provider/README.md) |
+| **Providers de mensagens** | [whatsapp-provider/README.md](../whatsapp-provider/README.md) |
 
 ---
 
@@ -31,9 +26,9 @@ flowchart TD
   Q1 -->|Não — telefone PSTN| T["Stack Twilio<br/>Channel::TwilioSms + voice_enabled<br/>tile UI: voice"]
   Q1 -->|Sim — chamada in-app| Q2{"Provider expõe<br/>Meta Calling API<br/>ou SDP compatível?"}
   Q2 -->|Sim — Cloud / CPaaS proxy Meta| M["Stack atual<br/>Channel::Whatsapp whatsapp_cloud<br/>useWhatsappCallSession + /whatsapp_calls"]
-  Q2 -->|Não — SDK browser + webhook| W["Wavoip<br/>Channel::Wavoip custom/<br/>implementation-plan.md"]
+  Q2 -->|Não — SDK browser + webhook| W["Wavoip<br/>Channel::Wavoip custom/"]
   Q2 -->|Não — gateway sem SDK| G["Canal gateway em custom/<br/>validar contrato de voz antes"]
-  Q2 -->|Incerto| V["Fase 0: validar API de voz<br/>do provider antes de codar"]
+  Q2 -->|Incerto| V["Validar API de voz<br/>do provider antes de codar"]
 
   style M fill:#dfd
   style W fill:#e3f2fd
@@ -43,11 +38,10 @@ flowchart TD
 
 | Caminho | Quando usar | Doc principal |
 |---------|-------------|---------------|
-| **Meta Cloud Calling (atual)** | WABA oficial, embedded signup ou keys manuais, EE + `channel_voice` | [architecture-and-flow.md](./architecture-and-flow.md) |
-| **Wavoip (SDK browser + webhook)** | Número no Wavoip, sem Graph Calling API; token de dispositivo | [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) |
-| **Segundo CPaaS Meta-like** | Outro gateway que proxy Graph `/calls` (SDP offer/answer) | [second-provider-strategy.md](./second-provider-strategy.md) |
-| **Gateway não oficial** | Evolution/Baileys com API de voz própria (não Graph API) | [second-provider-strategy.md](./second-provider-strategy.md) como checklist de contrato |
-| **Twilio Voice** | Voz telefônica PSTN — **não** substitui WhatsApp in-app | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
+| **Meta Cloud Calling** | WABA oficial, EE + `channel_voice` | [architecture-and-flow.md](./architecture-and-flow.md) |
+| **Wavoip** | Número no Wavoip; token de dispositivo | [wavoip-provider/](./wavoip-provider/) |
+| **Segundo CPaaS Meta-like** | Gateway que proxy Graph `/calls` | [second-provider-strategy.md](./second-provider-strategy.md) |
+| **Twilio Voice** | PSTN — **não** substitui WhatsApp in-app | [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) |
 
 ---
 
@@ -55,210 +49,70 @@ flowchart TD
 
 | Documento | Conteúdo |
 |-----------|----------|
-| [architecture-and-flow.md](./architecture-and-flow.md) | Fluxo E2E, gaps §12, **roadmap refactor §13**, boas práticas Meta §14 |
-| [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) | **Wavoip** — fonte única de execução, gates e fases |
-| [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) | Wavoip — contratos, DTOs e DI |
-| [wavoip-provider/](./wavoip-provider/) | Índice Wavoip — estratégia, referências e operação |
-| [wavoip-provider/official-docs.md](./wavoip-provider/official-docs.md) | **Índice documentação oficial Wavoip** (consulta na implementação) |
-| [wavoip-provider/webhook-contract.md](./wavoip-provider/webhook-contract.md) | Auth webhook, idempotência, ActionCable |
-| [wavoip-provider/operations-runbook.md](./wavoip-provider/operations-runbook.md) | Troubleshooting e onboarding admin |
-| [wavoip-provider/fixtures/](./wavoip-provider/fixtures/) | JSON de referência para specs |
-| [wavoip-provider/inbox-setup.md](./wavoip-provider/inbox-setup.md) | Wizard caixa de entrada Wavoip |
-| [second-provider-strategy.md](./second-provider-strategy.md) | **Fase 0 refactor** + plano segundo provider Meta-like (CPaaS) |
-| [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) | O que se perde ao usar stack Twilio em vez de WhatsApp Cloud Calling |
+| [architecture-and-flow.md](./architecture-and-flow.md) | Meta E2E, gaps, roadmap refactor |
+| [wavoip-provider/README.md](./wavoip-provider/README.md) | Wavoip — status, decisões, índice |
+| [wavoip-provider/architecture.md](./wavoip-provider/architecture.md) | Wavoip as-built |
+| [wavoip-provider/operations-runbook.md](./wavoip-provider/operations-runbook.md) | Onboarding e troubleshooting |
+| [wavoip-provider/webhook-contract.md](./wavoip-provider/webhook-contract.md) | Auth webhook, ActionCable |
+| [second-provider-strategy.md](./second-provider-strategy.md) | Plano segundo provider SDP/CPaaS |
+| [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md) | Twilio PSTN vs WhatsApp Cloud Calling |
 
 ---
 
-## Visão geral (estado atual)
+## Visão geral
 
-### O que existe hoje
+O Chatwoot é **orquestrador de sinalização e estado** (`Call`, mensagens `voice_call`, ActionCable). A **mídia** não passa pelo servidor:
 
-O recurso permite que agentes **atendam e façam chamadas de voz pelo WhatsApp** no dashboard. O Chatwoot é **orquestrador de sinalização e estado** (SDP, model `Call`, mensagens `voice_call`, ActionCable); a **mídia** trafega **browser ↔ Meta** via WebRTC — não passa pelo servidor.
+| Stack | Mídia | Canal |
+|-------|-------|-------|
+| **Meta** | Browser ↔ Meta (WebRTC + SDP) | `Channel::Whatsapp` (`whatsapp_cloud` + `calling_enabled`) |
+| **Wavoip** | Browser ↔ Wavoip SDK | `Channel::Wavoip` em `custom/` |
+| **Twilio** | PSTN | `Channel::TwilioSms` (`voice_enabled`) |
 
-| Camada | Implementação |
-|--------|---------------|
-| **Canal WhatsApp nativo** | `Channel::Whatsapp` com `provider: whatsapp_cloud` + `provider_config.calling_enabled` |
-| **Setup UI dedicado** | Tile `whatsapp_call` → `WhatsappCall.vue` → embedded signup + auto `enable_whatsapp_calling` |
-| **Setup em inbox existente** | Tab **Calls** (`WhatsappCallingPage.vue`) em inbox Cloud |
-| **Canal Twilio (PSTN)** | Tile `voice` → cria `Channel::TwilioSms` com `voice_enabled` — **produto diferente** |
-| **Modelo de dados** | `Call` (EE), enum `provider: { twilio, whatsapp, wavoip }` (`# FORK:`), mensagem `content_type: voice_call` |
-| **Frontend WebRTC** | `useWebRtcCallSession.js` + `useWhatsappCallSession.js` (wrapper) + orquestrador `useCallSession.js` |
-| **API REST** | `/api/v1/accounts/:id/whatsapp_calls/*` (EE only) |
-| **Webhooks** | Meta `field=calls` via `Enterprise::Webhooks::WhatsappEventsJob` |
+Modelo compartilhado: `Call` com `provider: { twilio, whatsapp, wavoip }` (`# FORK:` no enum).
 
-> **Nota histórica:** existiu migration `create_channel_voice` / `drop_channel_voice` (2025–2026). A tabela `channel_voice` **foi removida**; voz não usa STI separado — WhatsApp calling vive em `Channel::Whatsapp`; Twilio vive em `Channel::TwilioSms`.
-
-### Requisitos (WhatsApp Cloud Calling)
+### Requisitos Meta Cloud Calling
 
 | Requisito | Detalhe |
 |-----------|---------|
-| **Enterprise Edition** | Model `Call`, serviços, controllers e rotas em `enterprise/`; registrados com `ChatwootApp.enterprise?` |
-| **Feature `channel_voice`** | Gate em `Channel::Whatsapp#voice_enabled?`, UI (`ChannelItem.vue`), billing Cloud (Startups+) |
-| **Provider `whatsapp_cloud`** | 360dialog (`default`) **não** tem Calling API — `voice_calling_supported?` retorna `false` |
-| **Meta WABA + Calling API** | `enable_voice_calling!` → `POST .../settings` `{ calling: { status: 'ENABLED' } }` |
-| **Webhook `calls`** | Inscrito quando `calling_enabled: true` (`Whatsapp::WebhookSetupService#subscribed_fields`) |
-| **Navegador** | Microfone + WebRTC; STUN via `VOICE_CALL_STUN_URLS` (default `stun:stun.l.google.com:19302`) |
+| Enterprise Edition | Model `Call`, rotas `/whatsapp_calls` |
+| Feature `channel_voice` | Gate em model + UI |
+| Provider `whatsapp_cloud` | 360dialog não tem Calling API |
+| Webhook Meta `calls` | Inscrito quando `calling_enabled` |
+| Navegador | Microfone + WebRTC; STUN via `VOICE_CALL_STUN_URLS` |
 
-Self-hosted: habilitar EE + feature — ver rake `chatwoot:self_hosted_enterprise:enable` e [enterprise-enablement](../enterprise-enablement/enterprise-enablement-baseline.md).
-
----
-
-## Provider não oficial (mensagens / voz)
-
-Se o fork **não** usar `whatsapp_cloud`, restrições da Meta na API oficial deixam de aplicar — mas surgem riscos de ToS, instabilidade e **API de voz muitas vezes inexistente**.
-
-| Tópico | Documento |
-|--------|-----------|
-| Índice providers alternativos | [whatsapp-provider/README.md](../whatsapp-provider/README.md) |
-| Lacunas no código (mensagens + voz) | [gaps-and-blockers.md](../whatsapp-provider/gaps-and-blockers.md) §5 |
-| Evolution, Z-API, Baileys | [provider-comparison.md](../whatsapp-provider/provider-comparison.md) |
-| Restrições evitadas vs riscos | [official-vs-unofficial-restrictions.md](../whatsapp-provider/official-vs-unofficial-restrictions.md) |
-| Canal de chamadas gateway | [second-provider-strategy.md](./second-provider-strategy.md) |
-| Árvore de decisão geral | [implementation-decision-tree.md](../whatsapp-provider/implementation-decision-tree.md) |
-
-**Regra prática:** mensagens gateway e voz gateway são **projetos separados** no fork. Voz só deve avançar depois de validar SDP/events ou contrato equivalente no provider.
+Self-hosted: rake `chatwoot:self_hosted_enterprise:enable` — [enterprise-enablement](../enterprise-enablement/enterprise-enablement-baseline.md).
 
 ---
 
-## Avaliação arquitetural (reanálise jun/2026)
+## Status resumido
 
-### Veredicto
+| Área | Estado |
+|------|--------|
+| Meta Cloud Calling + refactors P0/P1 | ✅ (`MetaCloud::Adapter`, `useWebRtcCallSession`, cable registries) |
+| Wavoip (código) | ✅ Inbound/outbound, gravação, device panel/QR, multiagente |
+| Wavoip piloto (ops) | ⚠️ Gates **W1** + browser E2E — [runbook](./wavoip-provider/operations-runbook.md#gates-de-piloto-jul-2026) |
 
-| Aspecto | Nota | Comentário |
-|---------|------|------------|
-| Separação de camadas (backend) | **Boa** | Controllers finos; serviços por ação (`IncomingCallService`, `CallService`, builders) |
-| Padrão fork (`custom/`, `prepend_mod_with`) | **Boa** | EE isolado; doc Wavoip segue `fork-workflow.mdc` |
-| God class / anti-patterns graves | **Baixo risco (BE)** | Backend sem god class; FE core WebRTC em `useWebRtcCallSession` (~480 linhas); `useWhatsappCallSession` é wrapper fino (~33 linhas) |
-| Extensibilidade multi-provider | **Fraca** | Acoplamento WhatsApp/Meta por design; ver roadmap §13 |
-| Alinhamento Meta Calling API | **Bom** | `pre_accept`+`accept`, `connect`≠pickup, races tratadas |
-| Cobertura de testes | **Boa** (voice scope) | 267 RSpec + ~165 Vitest; `useWebRtcCallSession.spec.js` cobre race/beacon/422 |
+Detalhe Wavoip: [wavoip-provider/README.md](./wavoip-provider/README.md).
 
-### O que está bem (segue as rules do projeto)
+### Backlog global (Meta + multi-provider)
 
-- **Transport → Application → Infrastructure:** controllers delegam; HTTP Meta só no prepend de `WhatsappCloudService`; regras em serviços com `#perform`.
-- **Enterprise + OSS:** model `Call`, rotas e webhooks em `enterprise/`; extensão via `prepend_mod_with` (não fork direto no upstream).
-- **Frontend:** lógica em composables (`useWhatsappCallSession`, `useCallSession`); estado em Pinia `calls.js`; UI em `components-next/call/`.
-- **Produção-real:** mutex Redis por `call_id`, `call.with_lock`, buffers `pendingOutboundAnswers`, `armOutboundRecorder` só no `ACCEPTED`.
+| # | Item | Status |
+|---|------|--------|
+| G1 | Registry sessão/eventos por provider | Parcial — cable registries ✅; Twilio ainda brancha no facade |
+| G2–G6 | Adapter Meta, builders, handlers FE, Vitest WebRTC | ✅ Done |
+| G7–G11 | Canal Wavoip + UX | ✅ Done |
 
-### Débito técnico principal (não bloqueia Meta oficial)
-
-| # | Débito | Severidade | Doc |
-|---|--------|------------|-----|
-| 1 | Assimetria Twilio vs WhatsApp no backend | **Baixa** | Twilio e WhatsApp têm adapters (`Twilio::Adapter`, `MetaCloud::Adapter`); falta só `Voice::Provider::WhatsappCalling::Base` formal |
-| 2 | `useWebRtcCallSession.js` concentra WebRTC | Média | Extraído de `useWhatsappCallSession` (wrapper fino); recorder + API + beacon ainda num módulo |
-| 3 | `useCallSession.js` com branching `isWhatsappCall` | Baixa | Helpers no `voiceSessionRegistry` (`isWavoipVoiceCall`, `cleanupAfterBrowserVoiceJoinFailure`, …); join/end/reject usam sessão via registry (09 jul. 2026) |
-| 4 | Model `Call` mistura concerns Twilio + WhatsApp | Baixa | Pragmático no EE; novo enum exige edição `# FORK:` porque `Call` não expõe hook |
-| ~~5~~ | ~~Permissão outbound no controller~~ | ✅ Resolvido | `Whatsapp::CallPermissionRequestService` (jun. 2026) |
-
-Detalhes e plano de correção: [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
+Roadmap detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).
 
 ---
 
-## Top lacunas (implementadores)
+## Recomendação (fork)
 
-| # | Lacuna | Impacto | Mitigação |
-|---|--------|---------|-----------|
-| 1 | Sem `Voice::Provider::WhatsappCalling::Base` formal | Cada CPaaS Meta-like exige contrato explícito | `MetaCloud::Adapter` ✅; falta `WhatsappCalling::Base` — [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-para-provider-sdpmeta-like) |
-| ~~2~~ | ~~`useWhatsappCallSession` acoplado a `/whatsapp_calls`~~ | ✅ Resolvido (jun. 2026) | `useWebRtcCallSession(callsAPI)` extraído; wrapper fino em `useWhatsappCallSession.js` |
-| ~~3~~ | ~~`actionCable.js` filtra WhatsApp inline~~ | ✅ Resolvido (jul. 2026) | `whatsappVoiceCableRegistry.js` + `voiceCallCableRegistry.js`; `actionCable.js` delega por provider |
-| ~~4~~ | ~~`voice_call.permission_granted` sem handler FE~~ | ✅ Resolvido (jun. 2026) | Toast em `actionCable.js` + i18n `VOICE_WIDGET.PERMISSION_GRANTED` |
-| ~~5~~ | ~~`voice_call.accepted` sem handler FE~~ | ✅ Resolvido (jun. 2026) | `onVoiceCallAccepted` descarta incoming em outros tabs quando outro agente aceita |
-| 6 | `voice_calling_supported?` só `whatsapp_cloud` | Gateways bloqueados no model OSS | `prepend_mod_with` em `custom/` |
-| 7 | TURN não configurado por default | NAT corporativo pode falhar mídia | `VOICE_CALL_STUN_URLS` via `GlobalConfigService` (STUN+TURN); ver §14 |
-| 8 | `disable_voice_calling!` não desliga Meta | Flag local + webhook; WABA `calling.status` intacto | Documentar para admins; opcional `DISABLED` na Meta |
-| ~~9~~ | ~~Outbound WhatsApp sem builder dedicado~~ | ✅ Resolvido (jun. 2026) | `Voice::OutboundWhatsappCallBuilder` |
-| ~~10~~ | ~~Sem testes FE para race buffers / beacon~~ | ✅ Resolvido (jul. 2026) | `useWebRtcCallSession.spec.js` + specs Wavoip em `custom/.../specs/` |
+1. **Meta oficial** no caminho upstream — edições `# FORK:` mínimas.
+2. **Wavoip** em `custom/` — canal separado; **não** inflar `WhatsappEventsJob`.
+3. **Segundo CPaaS Meta-like** — [second-provider-strategy.md](./second-provider-strategy.md).
+4. **Não usar Twilio** para WhatsApp in-app — [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
+5. **Merge-safety:** `custom/` overlay, `prepend_mod_with`, `# FORK:` grepável.
 
-Detalhes: [architecture-and-flow.md §12–14](./architecture-and-flow.md) · [second-provider-strategy.md](./second-provider-strategy.md)
-
----
-
-## Roadmap de melhorias (ordem recomendada)
-
-| Prioridade | Melhoria | Onde | Esforço | Status |
-|------------|----------|------|---------|--------|
-| **P0** | Registry de sessões/eventos por provider em `useCallSession` + `actionCable.js` | `# FORK:` mínimo | 2–3 dias | Quase done — cable registries + helpers no `voiceSessionRegistry`; Twilio ainda brancha no facade |
-| ~~**P1**~~ | ~~Extrair `useWebRtcCallSession(callsAPI)`~~ | FE | ~1 semana | ✅ Done |
-| ~~**P1**~~ | ~~`Voice::Provider::MetaCloud::Adapter`~~ | `enterprise/` | 3–5 dias | ✅ Done (jul. 2026) |
-| ~~**P1**~~ | ~~`Voice::OutboundWhatsappCallBuilder`~~ | `enterprise/` | 2–3 dias | ✅ Done |
-| ~~**P1**~~ | ~~`Whatsapp::CallPermissionRequestService`~~ | `enterprise/` | 1–2 dias | ✅ Done |
-| ~~**P2**~~ | ~~Handler FE `voice_call.permission_granted` + `accepted`~~ | `actionCable.js` | 1 dia | ✅ Done |
-| ~~**P2**~~ | ~~Specs Vitest: `pendingOutboundAnswers`, `beaconTerminate`, permission 422~~ | `spec/` FE | 2–3 dias | ✅ Done (jul. 2026) |
-| **P2** | Suporte TURN em `VOICE_CALL_STUN_URLS` (doc + validação admin) | config + settings UI | 1–2 dias | Parcial — `GlobalConfigService` no model; UI admin pendente |
-| **P3** | Renomear rotas `/voice_calls` (opcional) | refactor amplo | só se valer o diff | Pendente |
-
-Plano detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas) · [second-provider-strategy.md §Fase 0](./second-provider-strategy.md#fase-0--refactor-pré-requisito-para-provider-sdpmeta-like) · [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md).
-
----
-
-## Recomendação resumida (fork)
-
-1. **Manter Meta oficial** no caminho upstream (`whatsapp_cloud`) — edições inevitáveis em `enterprise/` devem ser mínimas e marcadas `# FORK:`.
-2. **Wavoip (implementado):** spike concluído com `go com restrições`; registry de sessão/eventos em `custom/`. Audit fixes jun.–jul. 2026 (source_id, teardown scoped, inbound guard, webhook rotation, caller/receiver, P0 hardening). **Pendente piloto (ops):** W1 — prova live no painel Wavoip (CALL, não só DEVICE) após reativação manual do webhook (incidente 04 jul. 2026 — ver runbook) + G0.4 browser E2E multiagente.
-3. **Segundo provider Meta-like (CPaaS proxy):** estender stack com adapters — [second-provider-strategy.md](./second-provider-strategy.md).
-4. **Wavoip:** seguir [wavoip-provider/](./wavoip-provider/) — canal `Channel::Wavoip` em `custom/`; **não** inflar `WhatsappEventsJob`.
-5. **Gateway não oficial (Evolution, etc.):** canal separado em `custom/`; validar contrato SDP/events antes de UI.
-6. **Não usar Twilio Voice** para substituir WhatsApp in-app — [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
-7. **Merge-safety:** preferir `custom/` overlay, `prepend_mod_with`, `# FORK:` grepável — **core Meta EE sem FORK** (exceto `InboundCallBuilder` → `Conversations::Resolver`); integração Wavoip usa `# FORK:` em hooks OSS (`Dashboard.vue`, `Settings.vue`, `inboxes.js`, `useCallSession.js`, `actionCable.js`, rotas).
-
----
-
-## Wavoip — primeiro provider alternativo
-
-Implementação **separada** da stack Meta. Ordem:
-
-1. [wavoip-provider/implementation-plan.md](./wavoip-provider/implementation-plan.md) — fases 1–4 concluídas; status e checklist
-2. [wavoip-provider/spike-notes.md](./wavoip-provider/spike-notes.md) — resultados E2E e gates G0.1–G0.7
-3. [wavoip-provider/operations-runbook.md](./wavoip-provider/operations-runbook.md) — onboarding, webhook URL e troubleshooting
-4. [wavoip-provider/contracts-and-ports.md](./wavoip-provider/contracts-and-ports.md) — contratos implementados
-
-O plano consolidado prevalece quando documentos auxiliares ainda mencionarem fases antigas.
-
----
-
-## Melhorias pendentes globais (backlog documentado)
-
-Itens levantados na reanálise — checklist de implementação futura vs. concluído.
-
-| # | Item | Escopo | Status |
-|---|------|--------|--------|
-| G1 | Registry de sessão/eventos por provider | Meta + Wavoip | Parcial — `voiceCallCableRegistry.js` (Wavoip) + `whatsappVoiceCableRegistry.js` (Meta); `useCallSession` ainda brancha |
-| G1b | Extrair `useWebRtcCallSession` | Meta + provider SDP/CPaaS | ✅ **Done** (jun. 2026) |
-| G2 | `Voice::Provider::MetaCloud::Adapter` | Só Meta | ✅ **Done** (jul. 2026) |
-| G3 | `Voice::OutboundWhatsappCallBuilder` | Só Meta | ✅ **Done** (jun. 2026) |
-| G4 | `Whatsapp::CallPermissionRequestService` | Só Meta | ✅ **Done** (jun. 2026) |
-| G5 | Handlers `voice_call.permission_granted` + `accepted` | Só Meta | ✅ **Done** (jun. 2026) |
-| G6 | Specs Vitest WebRTC race/beacon | Meta | ✅ **Done** (jul. 2026) |
-| G7 | Canal `Channel::Wavoip` + webhook + composables | Fork `custom/` | ✅ **Done** |
-| G8 | `PATCH` `accepted_by_agent_id` pós-accept Wavoip | Fork `custom/` | ✅ **Done** — `with_lock` (jun. 2026) |
-| G9 | Wavoip `apply_status!` return + `voice_enabled?` guard + `ENDED`→`no_answer` | Fork `custom/` | ✅ **Done** (jun. 2026) |
-| G10 | UX: loading states, i18n fallbacks, recording upload toast | Meta FE | ✅ **Done** (jun. 2026) |
-| G11 | UX ringtone Wavoip: reject silencia local, mute persistente, CALLER_ENDED | Wavoip FE | ✅ **Done** (27 jun. 2026) |
-
-**Status código (08 jul. 2026):** stack Meta + refactors P0/P1 concluídos (`MetaCloud::Adapter`, registries cable, stale sweepers Meta+Wavoip, Vitest WebRTC); **Wavoip fases 1–4 code-complete** em `custom/` — refactory R1–R3 concluído (ver [wavoip-provider/refactory/CHANGELOG.md](./wavoip-provider/refactory/CHANGELOG.md)); piloto **bloqueado por verificação ops** (W1 — reativar/confirmar webhook no painel Wavoip).
-
-### Wavoip — doc status (04 jul. 2026)
-
-| Métrica | Estimativa |
-|---------|------------|
-| **MVP código** | ~95% |
-| **Piloto produção** | **Bloqueado por ops** — código hardened (08 jul. 2026); confirmação live pendente (ver [operations-runbook.md](./wavoip-provider/operations-runbook.md#webhook-parou-de-chegar-sem-aviso-incidente-04-jul-2026)) |
-| **Bloqueador piloto** | W1 (prova live webhook CALL no painel Wavoip) + G0.4 (browser E2E multiagente) |
-| **`WavoipCallingPage` bug** | ✅ Corrigido jun. 2026 — `wavoip_webhook_url` / `wavoip_setup_pending` (+ camelCase) |
-
-### Wavoip — implementation status (Jun 2026)
-
-| Área | Estado | Localização principal |
-|------|--------|------------------------|
-| **Backend** | ✅ Code complete | `custom/app/models/channel/wavoip.rb`, `custom/app/controllers/webhooks/wavoip_controller.rb`, `custom/app/jobs/wavoip/process_webhook_job.rb`, `custom/app/services/wavoip/**` |
-| **Call enum** | ✅ `wavoip: 2` | `enterprise/app/models/call.rb` (`# FORK:`) |
-| **Calls PATCH** | ✅ `accepted_by_agent_id` | `custom/app/controllers/api/v1/accounts/calls_controller.rb` |
-| **Inbox API** | ✅ Admin-only fields | `wavoip_webhook_url`, `wavoip_setup_pending` em `_inbox.json.jbuilder` |
-| **Frontend** | ✅ ~31 arquivos | `custom/app/javascript/` — registry, composables, `Wavoip.vue`, `WavoipCallingPage.vue` |
-| **Testes** | ✅ 267 RSpec + ~165 Vitest examples | Escopo voice: `spec/custom/**/wavoip`, `spec/enterprise/services/{voice,whatsapp}`; Vitest em `useWebRtcCallSession.spec.js`, `custom/.../specs/` |
-| **E2E live** | ⚠️ Parcial | Pipeline OK (caller/receiver, fixtures simulados/live); inbound bloqueado hoje pelo incidente de webhook (ver runbook); **W1** — prova webhook CALL no painel Wavoip ainda pendente |
-| **Produção piloto** | ✅ Inbox ativo | Account 2, inbox 42, device `556697193168` (`open`) — URL exemplo: `/webhooks/wavoip/{webhook_key}` (não inbox id) |
-
-**Veredicto spike:** `go com restrições` — [spike-notes.md](./wavoip-provider/spike-notes.md).
-
-**Legado:** coluna `users.wavoip_token` **não** é usada pelo canal Wavoip — credencial fica em `channel_wavoip.device_token`.
+**Legado:** `users.wavoip_token` não é usado pelo canal Wavoip — credencial em `channel_wavoip.device_token`.

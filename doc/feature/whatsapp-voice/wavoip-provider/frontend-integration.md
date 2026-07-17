@@ -2,11 +2,11 @@
 
 Como usar `@wavoip/wavoip-api` no Chatwoot **sem** `@wavoip/wavoip-webphone`, mapeando recursos do webphone para componentes existentes.
 
-**Contratos e inversão de dependência:** [contracts-and-ports.md](./contracts-and-ports.md) — `BrowserVoiceSession`, `wavoipSdkPort`, `voiceSessionRegistry`.
+**Registry e portas FE:** [architecture.md §5](./architecture.md#5-frontend) — `voiceSessionRegistry`, `wavoipSdkPort`, `useWavoipCallSession`.
 
 **Índice doc oficial Wavoip:** [official-docs.md](./official-docs.md)
 
-**Refs internas:** [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [operations-runbook.md](./operations-runbook.md)
+**Refs internas:** [architecture.md](./architecture.md) · [sdk-reference.md](./sdk-reference.md) · [webhook-contract.md](./webhook-contract.md) · [operations-runbook.md](./operations-runbook.md)
 
 **Refs oficiais webphone (comportamento — não instalar):**
 
@@ -30,7 +30,7 @@ Usar apenas [`@wavoip/wavoip-api`](https://wavoip.gitbook.io/api/wavoip-api/prim
 
 ## 2. Registry de providers (reduzir FORK)
 
-Centralizar em `custom/` para evitar `# FORK:` em cada componente Vue. Implementação completa: [contracts-and-ports.md §5.2–5.3](./contracts-and-ports.md#52-porta-voicecallcablehandlers).
+Centralizar em `custom/` para evitar `# FORK:` em cada componente Vue. Ver [architecture.md §5](./architecture.md#5-frontend).
 
 ```javascript
 // custom/.../lib/voice/browserVoiceProviders.js
@@ -358,7 +358,9 @@ custom/app/javascript/dashboard/
     useWavoipQrSession.js
   components/wavoip/
     WavoipConnectionHost.vue
+    WavoipQrDisplay.vue
     WavoipQrScanModal.vue
+    WavoipConversationDeviceBanner.vue
   routes/dashboard/settings/inbox/
     channels/Wavoip.vue
     settingsPage/
@@ -366,7 +368,6 @@ custom/app/javascript/dashboard/
       WavoipDevicePanel.vue
       WavoipOnboardingChecklist.vue
       WavoipRecordingChecklist.vue
-      WavoipConversationDeviceBanner.vue
 
 app/javascript/dashboard/          # upstream — widget de voz compartilhado
   lib/voice/whatsappVoiceCableRegistry.js
@@ -386,10 +387,10 @@ app/javascript/dashboard/          # upstream — widget de voz compartilhado
 | `WavoipCallingPage.vue` | Settings → Chamadas: device panel, inbound toggle, **roteamento inbound**, webhook, status |
 | `WavoipOnboardingChecklist.vue` | Checklist semáforo de onboarding (Settings) |
 | `WavoipRecordingChecklist.vue` | Checklist de gravação (Settings) |
-| `WavoipConversationDeviceBanner.vue` | Banner de device não pronto na conversa |
+| `WavoipConversationDeviceBanner.vue` | Banner de device não pronto na conversa (`components/wavoip/`) |
 
 **Implementados:** `WavoipDevicePanel.vue` (device status, **QR escaneável**, pairing, wakeUp, restart/logout, diagnostics, **activeCalls v2.6.x**), `WavoipQrDisplay.vue`, `useWavoipQrSession.js`, `wavoipCallDiagnostics.js`, `wavoipOutboundPreflight.js`, `wavoipOutboundGuard.js`.
 
-Alias Vite `customDashboard` (ver [implementation-plan.md](./implementation-plan.md) Fase 1).
+Alias Vite `customDashboard` em `vite.shared.ts`.
 
-Edições pontuais `# FORK:` em componentes upstream listados em [implementation-plan.md](./implementation-plan.md).
+Edições pontuais `# FORK:` em componentes upstream — inventário em [architecture.md §10](./architecture.md#edições-fork-típicas).

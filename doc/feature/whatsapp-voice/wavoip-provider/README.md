@@ -1,36 +1,28 @@
 # Wavoip — provider alternativo de voz
 
-Estratégia para integrar Wavoip ao fork sem alterar o fluxo Meta Cloud Calling.
+Integração shipped no fork: canal `Channel::Wavoip` em `custom/`, sem alterar o fluxo Meta Cloud Calling.
 
-**Reavaliado em:** 04 jul. 2026 — status e métricas completas em
-[implementation-plan.md](./implementation-plan.md) (fonte única de execução).
+**Status (jul. 2026):** código completo (inbound, outbound, histórico, gravação, device panel/QR, multiagente). Piloto de produção aguarda validação ops/browser — ver [operations-runbook.md](./operations-runbook.md#gates-de-piloto-jul-2026).
 
 ## Comece aqui
 
-1. [implementation-plan.md](./implementation-plan.md) — **fonte única de execução**: fases, status, changelog
-2. [spike-notes.md](./spike-notes.md) — gates G0.1–G0.7 e veredicto E2E
-3. [operations-runbook.md](./operations-runbook.md) — onboarding, feature flag e troubleshooting em produção
-4. [official-docs.md](./official-docs.md) — documentação oficial atual
-5. [contracts-and-ports.md](./contracts-and-ports.md) — contratos de backend/frontend
-
-Os demais documentos são referências especializadas:
-
 | Documento | Uso |
 |-----------|-----|
-| [architecture.md](./architecture.md) | diagramas de fluxo (webhook → handlers, ActionCable) |
-| [frontend-integration.md](./frontend-integration.md) | SDK, lifecycle e integração Vue |
+| [architecture.md](./architecture.md) | As-built: módulos, jobs, FE, regra browser vs Rails |
+| [operations-runbook.md](./operations-runbook.md) | Onboarding, feature flag, troubleshooting, gates piloto |
+| [webhook-contract.md](./webhook-contract.md) | HTTP, idempotência, ActionCable |
+| [inbox-setup.md](./inbox-setup.md) | Wizard e Settings → Chamadas |
+| [frontend-integration.md](./frontend-integration.md) | Lifecycle Vue / SDK |
 | [sdk-reference.md](./sdk-reference.md) | API `@wavoip/wavoip-api` |
-| [webhook-contract.md](./webhook-contract.md) | entrada HTTP, idempotência e ActionCable |
-| [inbox-setup.md](./inbox-setup.md) | criação e ativação do inbox |
-| [wavoip-vs-meta.md](./wavoip-vs-meta.md) | limites entre Wavoip e Meta |
-| [refactory/CHANGELOG.md](./refactory/CHANGELOG.md) | histórico condensado de bugs/gaps/qualidade já corrigidos |
-| [fixtures/](./fixtures/) | payloads de referência para specs |
+| [official-docs.md](./official-docs.md) | Índice GitBook Wavoip |
+| [wavoip-vs-meta.md](./wavoip-vs-meta.md) | Limites entre Wavoip e Meta |
+| [fixtures/](./fixtures/) | Payloads de referência para specs |
 
-## Resumo da decisão
+Contexto geral: [../README.md](../README.md) · [../architecture-and-flow.md](../architecture-and-flow.md).
 
-Wavoip não é um adapter da Graph Calling API. A mídia e a sinalização ficam no
-browser por `@wavoip/wavoip-api`; o Rails recebe webhooks para persistir contato,
-conversa, `Call`, mensagem e eventos auxiliares.
+## Como funciona
+
+Wavoip não é adapter da Graph Calling API. Mídia e sinalização ficam no browser via `@wavoip/wavoip-api`; o Rails recebe webhooks para persistir contato, conversa, `Call`, mensagem e eventos auxiliares.
 
 ```mermaid
 flowchart LR
@@ -41,34 +33,47 @@ flowchart LR
   Cable --> Agent
 ```
 
-Decisões principais:
+## Decisões estáveis
 
-- canal separado `Channel::Wavoip`;
-- registry frontend pequeno para compartilhar widget/store sem compartilhar SDP;
-- spike antes de refactor;
-- enum `Call.provider` alterado com uma linha `# FORK:` explícita;
-- webhook por chave opaca, sem telefone no path ou secret em query;
-- MVP termina em inbound/outbound com histórico e aceite auditável;
-- push com aba fechada, pareamento completo e diagnóstico ficam pós-MVP (gravação já entregue — ver changelog).
+| Tema | Decisão |
+|------|---------|
+| Canal | `Channel::Wavoip` + tabela `channel_wavoip` (separado de `Channel::Whatsapp`) |
+| UI compartilhada | Registry de sessão/cable; não reutilizar SDP Meta |
+| `Call.provider` | `wavoip: 2` com `# FORK:` em `enterprise/app/models/call.rb` |
+| Webhook | URL com chave opaca rotacionável; sem telefone no path |
+| Credencial SDK | `device_token` criptografado quando `ACTIVE_RECORD_ENCRYPTION_*` está configurado |
+| Pacote | `@wavoip/wavoip-api@2.6.3` |
 
-## Gates que bloquearam implementação (spike — resolvido com restrições)
+## Status da implementação
 
-Resultados completos em [spike-notes.md](./spike-notes.md).
+| Área | Estado | Localização |
+|------|--------|-------------|
+| Backend | ✅ | `custom/app/models/channel/wavoip.rb`, `webhooks/wavoip_controller.rb`, `services/wavoip/**`, `jobs/wavoip/**` |
+| Call enum | ✅ `wavoip: 2` | `enterprise/app/models/call.rb` |
+| Accept audit | ✅ | `POST …/calls/:id/join` + `PATCH …/calls/:id` |
+| Frontend | ✅ | `custom/app/javascript/dashboard/{composables,lib,components}/wavoip/` |
+| Device panel / QR | ✅ | `WavoipDevicePanel.vue`, `useWavoipQrSession` |
+| Gravação | ✅ | webhook `RECORD` + fallback `FetchDirectRecordingJob` |
+| Testes | ✅ | `spec/custom/**/wavoip`, Vitest em `custom/.../specs/`, Playwright `tests/playwright/.../wavoip/` |
 
-| Gate | Resultado |
-|------|-----------|
-| G0.1 SDK | ✅ Pass |
-| G0.2 IDs | ⚠️ Partial — pipeline OK; correlação live via painel Wavoip (W1) pendente |
-| G0.3 Webhook bruto | ⚠️ Partial — endpoint `202`; POST CALL do painel em chamada live ainda não provado |
-| G0.4 Multiagente | ❌ Browser E2E pendente |
-| G0.5 Lifecycle | ✅ Pass |
-| G0.6 Segurança | ✅ Pass |
-| G0.7 Histórico | ✅ Pass (simulado) |
+### Gates piloto restantes
 
-**Veredicto:** `go com restrições` — código em produção; piloto bloqueado em **W1**
-(prova live painel) + **G0.4** (browser E2E multiagente) + o incidente de webhook descrito
-em [implementation-plan.md](./implementation-plan.md#doc-status-04-jul-2026).
+| Gate | Descrição | Status |
+|------|-----------|--------|
+| **W1** | Prova live: webhook CALL do painel Wavoip em chamada real | Pendente (ops) |
+| **G0.4 / M1** | Multiagente em 2 browsers (`acceptedElsewhere`) | Código ✅; E2E browser pendente |
+| **O1 / D1 / F1** | Outbound bidirecional, dismiss inbound, accept fail | Pendente (browser) |
+| **I1 / I2 / O2** | Pipeline caller/receiver | ✅ Pass (`bin/wavoip-pilot-verify`) |
 
-Contexto geral: [../README.md](../README.md) ·
-[../architecture-and-flow.md](../architecture-and-flow.md) ·
-[../second-provider-strategy.md](../second-provider-strategy.md).
+Procedimentos: [operations-runbook.md](./operations-runbook.md).
+
+### Backlog pós-piloto (não bloqueia)
+
+- ~~Web Push com aba fechada~~ — ✅ via `voice_call_incoming` + VAPID (atender ainda exige dashboard)
+- ~~Métricas/alertas avançados~~ — ✅ `last_webhook_at` + `WebhookStaleAlertJob` (24h)
+- ~~Seleção de mic/speaker~~ — ✅ no `FloatingCallWidget` para calls Wavoip ativas
+- Guardrails soft de volume outbound (toast 20/50) — ✅
+
+## Legado
+
+Coluna `users.wavoip_token` **não** é usada pelo canal Wavoip — credencial fica em `channel_wavoip.device_token`.

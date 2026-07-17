@@ -1,19 +1,39 @@
 <script setup>
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { normalizeWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatusNormalize';
 
 const props = defineProps({
   inbox: {
     type: Object,
     required: true,
   },
+  liveDeviceStatus: {
+    type: String,
+    default: null,
+  },
 });
 
 const { t } = useI18n();
 
+const WEBHOOK_STALE_MS = 24 * 60 * 60 * 1000;
+
+function webhookStale(inbox) {
+  const verified = !(inbox.wavoip_setup_pending ?? inbox.wavoipSetupPending);
+  if (!verified) return false;
+
+  const lastWebhookAt =
+    inbox.provider_config?.last_webhook_at ||
+    inbox.provider_config?.lastWebhookAt;
+  if (!lastWebhookAt) return true;
+
+  const parsed = Date.parse(lastWebhookAt);
+  if (Number.isNaN(parsed)) return true;
+  return Date.now() - parsed > WEBHOOK_STALE_MS;
+}
+
 const items = computed(() => {
   const voiceEnabled = props.inbox.voice_enabled === true;
-  // API never exposes the raw device_token; admins get wavoip_device_token_configured.
   const hasToken = Boolean(
     props.inbox.wavoip_device_token_configured ??
       props.inbox.wavoipDeviceTokenConfigured ??
@@ -23,10 +43,14 @@ const items = computed(() => {
   const webhookVerified = !(
     props.inbox.wavoip_setup_pending ?? props.inbox.wavoipSetupPending
   );
-  const deviceOpen =
-    (props.inbox.provider_config?.device_status ||
-      props.inbox.device_status) === 'open';
+  const resolvedDeviceStatus = normalizeWavoipDeviceStatus(
+    props.liveDeviceStatus ||
+      props.inbox.provider_config?.device_status ||
+      props.inbox.device_status
+  );
+  const deviceOpen = resolvedDeviceStatus === 'open';
   const inboundEnabled = props.inbox.inbound_calls_enabled !== false;
+  const staleWebhook = webhookStale(props.inbox);
 
   return [
     {
@@ -36,8 +60,10 @@ const items = computed(() => {
     },
     {
       key: 'webhook',
-      label: t('INBOX_MGMT.WAVOIP_ONBOARDING.WEBHOOK'),
-      ok: webhookVerified,
+      label: staleWebhook
+        ? t('INBOX_MGMT.WAVOIP_ONBOARDING.WEBHOOK_STALE')
+        : t('INBOX_MGMT.WAVOIP_ONBOARDING.WEBHOOK'),
+      ok: webhookVerified && !staleWebhook,
     },
     {
       key: 'device',

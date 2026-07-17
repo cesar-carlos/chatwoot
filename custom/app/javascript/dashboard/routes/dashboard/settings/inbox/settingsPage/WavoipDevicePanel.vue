@@ -1,16 +1,23 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useStore } from 'vuex';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
+import { useBranding } from 'shared/composables/useBranding';
 import InboxesAPI from 'dashboard/api/inboxes';
-import { exportWavoipDiagnostics } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
+import {
+  exportWavoipDiagnostics,
+  getRecentConnectivityIssues,
+} from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 import { formatWavoipDeviceActionError } from 'customDashboard/lib/wavoip/wavoipDeviceActionError';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
 import { getWavoipClientEntry } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
 import {
   hasWavoipDeviceActiveCalls,
+  setWavoipWhatsAppStatus,
   useWavoipDeviceStatus,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+import { normalizeWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDeviceStatusNormalize';
 import WavoipQrScanModal from 'customDashboard/components/wavoip/WavoipQrScanModal.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
@@ -25,9 +32,20 @@ const props = defineProps({
   },
 });
 
+const emit = defineEmits(['update:liveDeviceStatus']);
+
 const POLL_MS = 5000;
+const WAVOIP_PANEL_URL = 'https://app.wavoip.com/devices';
+const BAD_DEVICE_STATUSES = new Set([
+  'WAITING_PAYMENT',
+  'EXTERNAL_INTEGRATION_ERROR',
+  'error',
+]);
+const PREPARING_STATUSES = new Set(['BUILDING', 'restarting', 'no_status']);
 
 const { t } = useI18n();
+const store = useStore();
+const { replaceInstallationName } = useBranding();
 const { wakeUpInboxDevice, disconnectInbox, connectInbox } =
   useWavoipConnection();
 
@@ -35,29 +53,57 @@ const inboxId = computed(() => props.inbox.id);
 const deviceLive = computed(() => useWavoipDeviceStatus(inboxId.value));
 
 const isLoading = ref(true);
+const isVerifying = ref(false);
 const isWaking = ref(false);
 const isRestarting = ref(false);
 const isLoggingOut = ref(false);
 const isCopyingDiagnostics = ref(false);
+const isTestingWebhook = ref(false);
+const isRegeneratingWebhook = ref(false);
 const isQrModalOpen = ref(false);
 const qrModalFetchFresh = ref(false);
 const statusVerifiedLive = ref(false);
 const polledDeviceStatus = ref(null);
+const preparingElapsedSeconds = ref(0);
+const diagnosticsOpen = ref(false);
 const restartDialogRef = ref(null);
 const logoutDialogRef = ref(null);
 let pollTimer = null;
+let preparingTimer = null;
+let preparingStartedAt = null;
 let refreshPromise = null;
 let panelOpenedSdkConnection = false;
 
+const webhookUrl = computed(
+  () =>
+    props.inbox.wavoip_webhook_url ||
+    props.inbox.wavoipWebhookUrl ||
+    ''
+);
+
 const whatsAppStatus = computed(() => {
   const live = deviceLive.value.whatsAppStatus.value;
-  if (live) return live;
-  if (polledDeviceStatus.value) return polledDeviceStatus.value;
-  return props.inbox.provider_config?.device_status || 'connecting';
+  const raw =
+    live ||
+    polledDeviceStatus.value ||
+    props.inbox.provider_config?.device_status ||
+    'connecting';
+  return normalizeWavoipDeviceStatus(raw);
 });
 
 const isConnected = computed(() => whatsAppStatus.value === 'open');
 const isHibernating = computed(() => whatsAppStatus.value === 'hibernating');
+const isPreparing = computed(() =>
+  PREPARING_STATUSES.has(whatsAppStatus.value)
+);
+const isPreparingStuck = computed(
+  () => isPreparing.value && preparingElapsedSeconds.value >= 90
+);
+const badStatusKey = computed(() => {
+  const status = whatsAppStatus.value;
+  if (!BAD_DEVICE_STATUSES.has(status)) return null;
+  return status;
+});
 
 const linkedPhone = computed(() =>
   isConnected.value ? props.inbox.phone_number || '' : ''
@@ -66,6 +112,13 @@ const linkedPhone = computed(() =>
 const statusLabel = computed(() => {
   const key = (whatsAppStatus.value || 'unknown').toUpperCase();
   return t(`INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.${key}`, key);
+});
+
+const preparingHint = computed(() => {
+  if (!isPreparing.value) return '';
+  return t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.PREPARING_HINT', {
+    seconds: preparingElapsedSeconds.value,
+  });
 });
 
 const activeCallsCount = computed(
@@ -101,12 +154,53 @@ const hasActiveDeviceCalls = computed(() =>
 );
 
 const isBusy = computed(
-  () => isWaking.value || isRestarting.value || isLoggingOut.value
+  () =>
+    isWaking.value ||
+    isRestarting.value ||
+    isLoggingOut.value ||
+    isVerifying.value
 );
 
 const isDestructiveBlocked = computed(
   () => isBusy.value || hasActiveDeviceCalls.value
 );
+
+const recentIssues = computed(() =>
+  getRecentConnectivityIssues(inboxId.value).slice(-5)
+);
+
+watch(
+  whatsAppStatus,
+  status => {
+    emit('update:liveDeviceStatus', status);
+    if (PREPARING_STATUSES.has(status)) {
+      startPreparingTimer();
+    } else {
+      stopPreparingTimer();
+    }
+  },
+  { immediate: true }
+);
+
+function startPreparingTimer() {
+  if (preparingTimer) return;
+  preparingStartedAt = Date.now();
+  preparingElapsedSeconds.value = 0;
+  preparingTimer = setInterval(() => {
+    preparingElapsedSeconds.value = Math.floor(
+      (Date.now() - preparingStartedAt) / 1000
+    );
+  }, 1000);
+}
+
+function stopPreparingTimer() {
+  if (preparingTimer) {
+    clearInterval(preparingTimer);
+    preparingTimer = null;
+  }
+  preparingStartedAt = null;
+  preparingElapsedSeconds.value = 0;
+}
 
 function stopPolling() {
   if (pollTimer) {
@@ -130,6 +224,21 @@ async function ensurePanelSdkConnection() {
   }
 }
 
+async function syncInboxWhenStatusDiverges(deviceStatus) {
+  if (!inboxId.value || !deviceStatus) return;
+
+  const inboxStatus = normalizeWavoipDeviceStatus(
+    props.inbox.provider_config?.device_status || props.inbox.device_status
+  );
+  if (inboxStatus === deviceStatus) return;
+
+  try {
+    await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
+  } catch {
+    /* checklist may stay briefly stale until the next navigation */
+  }
+}
+
 async function refreshConnection({ forceLiveCheck = false } = {}) {
   if (refreshPromise) return refreshPromise;
 
@@ -140,12 +249,18 @@ async function refreshConnection({ forceLiveCheck = false } = {}) {
       });
       statusVerifiedLive.value = data?.live === true;
       if (data?.device_status) {
-        polledDeviceStatus.value = data.device_status;
+        const normalized = normalizeWavoipDeviceStatus(data.device_status);
+        polledDeviceStatus.value = normalized;
+        if (!deviceLive.value.whatsAppStatus.value) {
+          setWavoipWhatsAppStatus(inboxId.value, normalized);
+        }
+        await syncInboxWhenStatusDiverges(normalized);
       }
     } catch {
       statusVerifiedLive.value = false;
     } finally {
       isLoading.value = false;
+      isVerifying.value = false;
     }
   })().finally(() => {
     refreshPromise = null;
@@ -153,6 +268,11 @@ async function refreshConnection({ forceLiveCheck = false } = {}) {
 
   return refreshPromise;
 }
+
+const handleVerifyAgain = async () => {
+  isVerifying.value = true;
+  await refreshConnection({ forceLiveCheck: true });
+};
 
 function startPolling() {
   if (isQrModalOpen.value) return;
@@ -178,7 +298,7 @@ function onQrSessionActive(active) {
 }
 
 async function onQrConnected() {
-  await refreshConnection();
+  await refreshConnection({ forceLiveCheck: true });
   isQrModalOpen.value = false;
 }
 
@@ -222,9 +342,6 @@ const handleWakeUp = async () => {
       panelOpenedSdkConnection = true;
     }
     await refreshConnection({ forceLiveCheck: true });
-    // Wake is only for hibernation. If WhatsApp still isn't open (e.g. session
-    // dropped to close), fall through to the QR pairing flow — without a hard
-    // restart so Restart remains the explicit destructive action.
     if (!isConnected.value) {
       openQrModal({ fresh: false });
     }
@@ -281,13 +398,55 @@ const confirmLogout = async () => {
 const copyDiagnostics = async () => {
   isCopyingDiagnostics.value = true;
   try {
-    const payload = exportWavoipDiagnostics({ inboxId: inboxId.value });
+    const payload = exportWavoipDiagnostics({
+      inboxId: inboxId.value,
+      panelStatus: whatsAppStatus.value,
+      statusVerifiedLive: statusVerifiedLive.value,
+    });
     await navigator.clipboard.writeText(payload);
     useAlert(t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.COPIED'));
   } catch (error) {
     showDeviceActionError(error);
   } finally {
     isCopyingDiagnostics.value = false;
+  }
+};
+
+const testWebhook = async () => {
+  if (isTestingWebhook.value || !inboxId.value) return;
+  isTestingWebhook.value = true;
+  try {
+    const { data } = await InboxesAPI.testWavoipWebhook(inboxId.value);
+    await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
+    if (data?.webhook_verified) {
+      useAlert(t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST_SUCCESS'));
+    } else {
+      useAlert(t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST_PENDING'));
+    }
+  } catch (error) {
+    showDeviceActionError(error);
+  } finally {
+    isTestingWebhook.value = false;
+  }
+};
+
+const regenerateWebhookKey = async () => {
+  if (isRegeneratingWebhook.value || !inboxId.value) return;
+  // eslint-disable-next-line no-alert
+  const confirmed = window.confirm(
+    t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.REGENERATE_CONFIRM')
+  );
+  if (!confirmed) return;
+
+  isRegeneratingWebhook.value = true;
+  try {
+    await InboxesAPI.regenerateWavoipWebhookKey(inboxId.value);
+    await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
+    useAlert(t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.REGENERATE_SUCCESS'));
+  } catch (error) {
+    showDeviceActionError(error);
+  } finally {
+    isRegeneratingWebhook.value = false;
   }
 };
 
@@ -302,6 +461,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopPolling();
+  stopPreparingTimer();
   if (panelOpenedSdkConnection) {
     disconnectInbox(inboxId.value).catch(() => {});
     panelOpenedSdkConnection = false;
@@ -341,8 +501,17 @@ onBeforeUnmount(() => {
           </span>
           <span class="font-medium">{{ activeCallsLabel }}</span>
         </div>
+        <p v-if="isPreparing" class="text-n-slate-11">
+          {{ preparingHint }}
+        </p>
         <div
-          v-if="isHibernating || hasActiveDeviceCalls || showStaleStatusHint"
+          v-if="
+            isHibernating ||
+            hasActiveDeviceCalls ||
+            showStaleStatusHint ||
+            isPreparingStuck ||
+            badStatusKey
+          "
           class="flex flex-wrap gap-1.5"
         >
           <span
@@ -366,12 +535,63 @@ onBeforeUnmount(() => {
             <Icon icon="i-ph-warning-bold" class="size-3 shrink-0" />
             {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.STATUS_STALE') }}
           </span>
+          <span
+            v-if="isPreparingStuck"
+            class="inline-flex items-center gap-1 rounded-full bg-n-amber-3 px-2 py-0.5 text-xs font-medium text-n-amber-11"
+          >
+            <Icon icon="i-ph-warning-bold" class="size-3 shrink-0" />
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.PREPARING_STUCK') }}
+          </span>
+          <span
+            v-if="badStatusKey === 'WAITING_PAYMENT'"
+            class="inline-flex items-center gap-1 rounded-full bg-n-ruby-3 px-2 py-0.5 text-xs font-medium text-n-ruby-11"
+          >
+            <Icon icon="i-ph-warning-bold" class="size-3 shrink-0" />
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAITING_PAYMENT_HINT') }}
+          </span>
+          <span
+            v-else-if="badStatusKey === 'EXTERNAL_INTEGRATION_ERROR'"
+            class="inline-flex items-center gap-1 rounded-full bg-n-ruby-3 px-2 py-0.5 text-xs font-medium text-n-ruby-11"
+          >
+            <Icon icon="i-ph-warning-bold" class="size-3 shrink-0" />
+            {{
+              $t(
+                'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.EXTERNAL_INTEGRATION_ERROR_HINT'
+              )
+            }}
+          </span>
+          <span
+            v-else-if="badStatusKey === 'error'"
+            class="inline-flex items-center gap-1 rounded-full bg-n-ruby-3 px-2 py-0.5 text-xs font-medium text-n-ruby-11"
+          >
+            <Icon icon="i-ph-warning-bold" class="size-3 shrink-0" />
+            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.ERROR_HINT') }}
+          </span>
         </div>
+        <a
+          v-if="badStatusKey"
+          :href="WAVOIP_PANEL_URL"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="text-sm text-n-brand underline"
+        >
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.OPEN_WAVOIP_PANEL') }}
+        </a>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <NextButton
+          v-if="showStaleStatusHint"
+          sm
+          :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.VERIFY_AGAIN')"
+          :is-loading="isVerifying"
+          :disabled="isBusy"
+          @click="handleVerifyAgain"
+        />
+        <NextButton
           v-if="!isConnected"
           sm
+          :faded="showStaleStatusHint || isPreparingStuck"
+          :slate="showStaleStatusHint || isPreparingStuck"
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RECONNECT')"
           :disabled="isBusy"
           @click="openQrModal({ fresh: false })"
@@ -386,8 +606,8 @@ onBeforeUnmount(() => {
         />
         <NextButton
           sm
-          faded
-          slate
+          :faded="!isPreparingStuck"
+          :slate="!isPreparingStuck"
           :label="$t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTART')"
           :is-loading="isRestarting"
           :disabled="isDestructiveBlocked"
@@ -444,6 +664,46 @@ onBeforeUnmount(() => {
     />
 
     <SettingsFieldSection
+      :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.LABEL')"
+      :help-text="
+        replaceInstallationName($t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.HELP_TEXT'))
+      "
+    >
+      <woot-code v-if="webhookUrl" :script="webhookUrl" lang="html" />
+      <p v-else class="text-sm text-n-slate-11">
+        {{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.UNAVAILABLE') }}
+      </p>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <NextButton
+          v-if="webhookUrl"
+          faded
+          slate
+          sm
+          :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.TEST')"
+          :is-loading="isTestingWebhook"
+          @click="testWebhook"
+        />
+        <NextButton
+          v-if="webhookUrl"
+          faded
+          slate
+          sm
+          :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.REGENERATE')"
+          :is-loading="isRegeneratingWebhook"
+          @click="regenerateWebhookKey"
+        />
+        <a
+          :href="WAVOIP_PANEL_URL"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex items-center text-sm text-n-brand underline"
+        >
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.OPEN_WAVOIP_PANEL') }}
+        </a>
+      </div>
+    </SettingsFieldSection>
+
+    <SettingsFieldSection
       :label="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_TITLE')"
       :help-text="$t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_HELP')"
     >
@@ -458,6 +718,54 @@ onBeforeUnmount(() => {
         </li>
         <li>{{ $t('INBOX_MGMT.WAVOIP_CALL.WEBHOOK.CHECKLIST_URL') }}</li>
       </ul>
+    </SettingsFieldSection>
+
+    <SettingsFieldSection
+      :label="$t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.SECTION_LABEL')"
+      :help-text="$t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.SECTION_HELP')"
+    >
+      <button
+        type="button"
+        class="text-sm text-n-brand underline"
+        @click="diagnosticsOpen = !diagnosticsOpen"
+      >
+        {{
+          diagnosticsOpen
+            ? $t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.HIDE')
+            : $t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.SHOW')
+        }}
+      </button>
+      <div v-if="diagnosticsOpen" class="mt-3 flex flex-col gap-2 text-sm">
+        <p class="text-n-slate-11">
+          {{
+            $t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.STATUS_LINE', {
+              status: statusLabel,
+              live: statusVerifiedLive
+                ? $t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.LIVE_YES')
+                : $t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.LIVE_NO'),
+            })
+          }}
+        </p>
+        <ul
+          v-if="recentIssues.length"
+          class="list-disc ps-5 text-n-slate-11 space-y-1"
+        >
+          <li v-for="(issue, index) in recentIssues" :key="index">
+            {{ issue.issue || issue }}
+          </li>
+        </ul>
+        <p v-else class="text-n-slate-11">
+          {{ $t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.NO_ISSUES') }}
+        </p>
+        <NextButton
+          sm
+          faded
+          slate
+          :label="$t('INBOX_MGMT.WAVOIP_CALL.DIAGNOSTICS.COPY')"
+          :is-loading="isCopyingDiagnostics"
+          @click="copyDiagnostics"
+        />
+      </div>
     </SettingsFieldSection>
   </div>
 </template>

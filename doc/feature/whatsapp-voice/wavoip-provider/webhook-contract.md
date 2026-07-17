@@ -2,7 +2,7 @@
 
 Especificação fixa para autenticação, idempotência, resolução de inbox e eventos realtime. Evita ambiguidade na implementação.
 
-**Portas backend e DTO:** [contracts-and-ports.md §4](./contracts-and-ports.md#4-contratos-backend-ruby) · **Fontes da verdade:** [§3](./contracts-and-ports.md#3-fontes-da-verdade-evitar-duplicidade-conflitante)
+**DTO e handlers:** [architecture.md §3](./architecture.md#3-backend--webhook) (`Voice::Dto::WebhookCallEvent`).
 
 **Doc oficial webhook:** https://wavoip.gitbook.io/api/webhook-beta.md · **Índice:** [official-docs.md](./official-docs.md)
 

@@ -6,7 +6,7 @@ que o backend gerar a URL.
 
 **UI de referência:** slot vazio na grade de canais (ao lado de “Chamada WhatsApp” Meta).
 
-**Relacionado:** [contracts-and-ports.md](./contracts-and-ports.md) · [implementation-plan.md](./implementation-plan.md) · [architecture.md](./architecture.md) · [frontend-integration.md](./frontend-integration.md) · [sdk-reference.md](./sdk-reference.md) · [official-docs.md](./official-docs.md)
+**Relacionado:** [architecture.md](./architecture.md) · [frontend-integration.md](./frontend-integration.md) · [sdk-reference.md](./sdk-reference.md) · [operations-runbook.md](./operations-runbook.md) · [official-docs.md](./official-docs.md) · [README.md](./README.md)
 
 ---
 
@@ -57,8 +57,9 @@ wavoip: Wavoip, // import from custom/
 ## 3. Campos do formulário (passo 2)
 
 O setup tem duas etapas: criar o inbox e depois ativar o webhook. A URL contém uma
-chave gerada pelo backend e só existe após a criação. Pareamento completo por QR/código
-fica pós-MVP; inicialmente o admin pode operar o dispositivo no painel Wavoip.
+chave gerada pelo backend e só existe após a criação. Pareamento QR/código fica em
+**Settings → Chamadas** (`WavoipDevicePanel` + `WavoipQrDisplay`); o admin também pode
+operar o dispositivo no painel Wavoip.
 
 ### 3.1 Seção — Identidade da caixa
 
