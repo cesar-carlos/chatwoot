@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 
 import MessageMeta from '../MessageMeta.vue';
 // FORK: Evolution Go/Node inbound delete highlight
@@ -9,8 +9,11 @@ import { useMessageContext } from '../provider.js';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
-// FORK: locate quoted parent even when outside the lazy-loaded window
-import { useScrollToConversationMessage } from 'dashboard/composables/fork/useScrollToConversationMessage';
+// FORK: locate quoted parent (shared from MessageList, local fallback for stories)
+import {
+  LocateConversationMessageKey,
+  useScrollToConversationMessage,
+} from 'dashboard/composables/fork/useScrollToConversationMessage';
 // FORK: Evolution Go/Node WhatsApp reactions
 import {
   buildReactionChips,
@@ -47,9 +50,13 @@ const { t } = useI18n();
 const store = useStore();
 const getInboxById = useMapGetter('inboxes/getInboxById');
 const isRemovingReaction = ref(false);
-// FORK: load + scroll + pulse when opening the quoted original
-const { scrollToMessage: locateReplyMessage, isLocating } =
-  useScrollToConversationMessage({ conversationId });
+
+// FORK: shared locate from MessageList; factory fallback for isolated Message stories
+const { scrollToMessage: locateReplyMessage, isLocating } = inject(
+  LocateConversationMessageKey,
+  () => useScrollToConversationMessage({ conversationId }),
+  true
+);
 
 // FORK: Evolution Go/Node inbound delete highlight
 const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));

@@ -408,12 +408,15 @@ const contextMenuEnabledOptions = computed(() => {
     copyLink: !isFailedOrProcessing,
     translate: !isFailedOrProcessing && !isMessageDeleted.value && hasText,
     // FORK: gate reply-to by message direction (incoming vs outgoing support)
+    // TEMPLATE is agent outbound — use outgoing reply support
     replyTo:
       !props.private &&
       !isFailedOrProcessing &&
       ((props.messageType === MESSAGE_TYPES.INCOMING &&
         props.inboxSupportsReplyTo.incoming) ||
-        (isOutgoing && props.inboxSupportsReplyTo.outgoing)),
+        ((isOutgoing ||
+          props.messageType === MESSAGE_TYPES.TEMPLATE) &&
+          props.inboxSupportsReplyTo.outgoing)),
     // FORK: WhatsApp-like message forward (text and/or downloadable media)
     forward:
       messageCanBeForwarded({
