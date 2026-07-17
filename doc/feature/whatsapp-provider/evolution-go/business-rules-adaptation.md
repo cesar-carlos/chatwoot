@@ -29,11 +29,11 @@ Defaults e comportamentos do inbox `provider: 'evolution_go'` no fork Chatwoot. 
 | `ignore_from_me_echo` | `true` | Evitar duplicação outbound |
 | `proxy_enabled` | `false` | Opcional no wizard |
 | `mark_inbound_deleted` | `true` | Refletir delete do cliente **e** do celular/agente no Chatwoot |
-| `mark_inbound_edited` | `true` | Refletir edit do cliente **e** do celular/agente no Chatwoot |
+| `mark_inbound_edited` | `true` | Refletir edit do cliente **e** do celular/agente no Chatwoot **quando houver plaintext** (Go pode omitir texto — [#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | `import_on_connect` | `false` | Import manual/opt-in (evita carga ao conectar) |
 | `convert_markdown_inbound` | `true` | Paridade Evolution API |
 | `sync_delete_to_whatsapp` | `false` | Irreversível — opt-in explícito |
-| `sync_edit_to_whatsapp` | `false` | Opt-in; sem UI nativa de editar mensagem no CW |
+| `sync_edit_to_whatsapp` | `false` | Opt-in; UI Edit no context menu (`evolution_go_edit`) |
 
 > **Inboxes existentes** mantêm valores já salvos; defaults acima aplicam-se apenas a **novos** inboxes.
 

@@ -2,7 +2,7 @@
 
 Checklist feature a feature vs código. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
 
-**Última sync código:** 16/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
+**Última sync código:** 17/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
 
 ---
 
@@ -28,7 +28,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Typing | `POST /message/presence` | ✅ | `TypingListener` → `PresenceSyncJob` → `ApiClient#set_presence` (skip private notes) |
 | Mark read outbound | `POST /message/markread` | ✅ | `mark_read_on_reply`, `mark_read_on_open` |
 | Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + `DeleteSyncService` |
-| Edit message | `POST /message/edit` | ✅ | `sync_edit_to_whatsapp` + `EditSyncService` (opt-in) |
+| Edit message | `POST /message/edit` | ⚠️ | `sync_edit_to_whatsapp` + UI context menu + `MessageContentEditService` → `EditSyncService` (inbound plaintext Go ⚠️ — ADR §35) |
 | React | `POST /message/react` | ✅ | Context menu + `ReactSyncService` |
 
 ---
@@ -49,7 +49,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Quote outbound (própria msg) | `quoted.participant` via `instance_name` se phone `+55000…` | ✅ | `EvolutionGoServiceOutbound#channel_business_phone` |
 | Avatar enrichment backoff | `/user/avatar` timeout 12s + `evolution_go_avatar_attempted_at` (6h) | ✅ | `ContactEnrichmentService` |
 | Client delete | `MESSAGE` revoke / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` |
-| Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` | ✅ | `MessageEditSyncService` |
+| Client edit | `MESSAGES_EDITED` / `MESSAGE_EDIT` / protocol / `Info.Edit` | ⚠️ | `MessageEditSyncService` — precisa plaintext; envelope `secretEncryptedMessage` é descartado (Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
 | Reações | `reactionMessage` → `content_attributes.reactions` | ✅ | `ReactionsStore` + chip/menu; Node parity via `Evolution::*` |
 | Pseudo-forward | — (sem API Go) | ✅ | Chatwoot-only · [message-forward/](../../message-forward/) · ADR §34 |

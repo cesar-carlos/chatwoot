@@ -168,6 +168,8 @@ Rails.application.routes.draw do
                   post :retry
                   # FORK: Evolution Go/Node message reactions
                   post :evolution_go_react
+                  # FORK: Evolution Go edit outgoing message
+                  post :evolution_go_edit
                 end
               end
               resources :assignments, only: [:create]

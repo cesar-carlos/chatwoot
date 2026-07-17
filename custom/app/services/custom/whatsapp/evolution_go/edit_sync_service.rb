@@ -1,24 +1,37 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::EvolutionGo::EditSyncService
-  pattr_initialize [:message!]
+  pattr_initialize [:message!, :content, { raise_errors: false }]
 
   def perform
-    return unless can_sync?
+    return false unless can_sync?
 
     dispatch_edit!
+    true
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION_GO] edit sync failed for message #{message.id}: #{e.message}"
+    raise if raise_errors
+
+    false
   end
 
   private
 
   def can_sync?
-    evolution_go_channel? &&
-      sync_edit_enabled? &&
-      message.source_id.present? &&
-      message.outgoing? &&
-      chat_jid.present?
+    unless evolution_go_channel? && sync_edit_enabled? && message.source_id.present? && message.outgoing?
+      raise_or_skip!('Message cannot be synced to WhatsApp')
+      return false
+    end
+    unless chat_jid.present?
+      raise_or_skip!('Chat JID is required')
+      return false
+    end
+
+    true
+  end
+
+  def raise_or_skip!(error_message)
+    raise Custom::Whatsapp::EvolutionGo::ApiError, error_message if raise_errors
   end
 
   def dispatch_edit!
@@ -29,8 +42,9 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
     )
     return if response.success?
 
-    Rails.logger.warn(
-      "[EVOLUTION_GO] edit sync HTTP #{response.code} for message #{message.id}"
+    Custom::Whatsapp::EvolutionGo::ApiClient.raise_unless_success!(
+      response,
+      'Failed to edit message on WhatsApp'
     )
   end
 
@@ -51,7 +65,7 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
   end
 
   def whatsapp_edit_body
-    body = message.content.to_s
+    body = content.nil? ? message.content.to_s : content.to_s
     prefix = Custom::Whatsapp::EvolutionGo::MessageEditSyncService::EDITED_PREFIX
     body = body.delete_prefix(prefix) if body.start_with?(prefix)
     apply_outbound_text(body)
