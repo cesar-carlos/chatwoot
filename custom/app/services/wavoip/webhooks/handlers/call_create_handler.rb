@@ -4,8 +4,9 @@ class Wavoip::Webhooks::Handlers::CallCreateHandler < Wavoip::Webhooks::Handlers
   def perform
     return if event.external_call_id.blank?
 
-    call = Wavoip::Calls::CallUpsertService.new(inbox: inbox, event: event).create!
-    record_outbound_volume! if call.present? && event.direction == :outgoing
+    service = Wavoip::Calls::CallUpsertService.new(inbox: inbox, event: event)
+    call = service.create!
+    record_outbound_volume! if call.present? && service.newly_created? && event.direction == :outgoing
     call
   end
 

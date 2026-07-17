@@ -36,6 +36,14 @@ RSpec.describe Wavoip::Webhooks::Handlers::DeviceHandler do
     end
   end
 
+  it 'aliases Connected (mixed case) to open before persist' do
+    connected_event = event.with(external_status: 'Connected')
+
+    described_class.new(inbox: inbox, event: connected_event).perform
+
+    expect(channel.reload.provider_config['device_status']).to eq('open')
+  end
+
   it 'aliases connected to open before persist' do
     connected_event = event.with(external_status: 'connected')
 

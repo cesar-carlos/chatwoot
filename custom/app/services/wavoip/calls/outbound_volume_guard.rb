@@ -27,7 +27,8 @@ class Wavoip::Calls::OutboundVolumeGuard
   attr_reader :account_id
 
   def redis_key
-    "WAVOIP::OUTBOUND_VOLUME::#{account_id}::#{Time.zone.today.iso8601}"
+    # UTC day key — matches FE localStorage (toISOString date slice).
+    "WAVOIP::OUTBOUND_VOLUME::#{account_id}::#{Time.now.utc.to_date.iso8601}"
   end
 
   def level_for(count)
