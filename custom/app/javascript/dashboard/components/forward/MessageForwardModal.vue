@@ -13,6 +13,9 @@ import {
   MAX_FORWARD_DESTINATIONS,
   recentConversationsForInbox,
   forwardMessageToDestinations,
+  filterContactsReachableOnInbox,
+  isSameDestination,
+  getForwardableAttachments,
 } from 'customDashboard/composables/useMessageForward';
 
 const props = defineProps({
@@ -33,29 +36,29 @@ const dialogRef = ref(null);
 const searchQuery = ref('');
 const searchResults = ref([]);
 const selected = ref([]);
+const caption = ref('');
 const isSearching = ref(false);
 const isForwarding = ref(false);
 const searchContacts = createContactSearcher();
 const allConversations = useMapGetter('getAllConversations');
 const currentUser = useMapGetter('getCurrentUser');
 
+const hasForwardableAttachments = computed(
+  () => getForwardableAttachments(props.message).length > 0
+);
+
 const previewText = computed(() => {
   const content = props.message?.content || '';
   if (content) {
     return content.length > 120 ? `${content.slice(0, 120)}…` : content;
   }
-  const attachments = props.message?.attachments || [];
-  if (attachments.length) {
+  if (hasForwardableAttachments.value) {
     return t('CONVERSATION.FORWARD.ATTACHMENT_PREVIEW', {
-      count: attachments.length,
+      count: getForwardableAttachments(props.message).length,
     });
   }
   return '';
 });
-
-const hasAttachments = computed(
-  () => (props.message?.attachments || []).length > 0
-);
 
 const recentOptions = computed(() =>
   recentConversationsForInbox(
@@ -65,20 +68,26 @@ const recentOptions = computed(() =>
   )
 );
 
-const selectedKeys = computed(() => selected.value.map(item => item.key));
-
 const canConfirm = computed(
   () => selected.value.length > 0 && !isForwarding.value
 );
 
-const isSelected = key => selectedKeys.value.includes(key);
+const isSelected = destination =>
+  selected.value.some(item => isSameDestination(item, destination));
 
 const toggleDestination = destination => {
-  const index = selected.value.findIndex(item => item.key === destination.key);
-  if (index >= 0) {
-    selected.value = selected.value.filter(
-      item => item.key !== destination.key
-    );
+  const existing = selected.value.find(item =>
+    isSameDestination(item, destination)
+  );
+  if (existing) {
+    // Same row key → deselect; different representation of same chat → warn
+    if (existing.key === destination.key) {
+      selected.value = selected.value.filter(
+        item => !isSameDestination(item, destination)
+      );
+      return;
+    }
+    useAlert(t('CONVERSATION.FORWARD.DUPLICATE_DESTINATION'));
     return;
   }
   if (selected.value.length >= MAX_FORWARD_DESTINATIONS) {
@@ -111,9 +120,15 @@ const onSearch = debounce(async query => {
   try {
     const results = await searchContacts(query);
     if (results === null) return;
-    searchResults.value = (results || [])
-      .filter(contact => contact.phoneNumber || contact.phone_number)
-      .map(mapContactOption);
+
+    const withPhone = (results || []).filter(
+      contact => contact.phoneNumber || contact.phone_number
+    );
+    const reachable = await filterContactsReachableOnInbox(
+      withPhone,
+      props.inboxId
+    );
+    searchResults.value = reachable.map(mapContactOption);
   } catch {
     useAlert(t('CONVERSATION.FORWARD.SEARCH_ERROR'));
   } finally {
@@ -129,6 +144,7 @@ const resetState = () => {
   searchQuery.value = '';
   searchResults.value = [];
   selected.value = [];
+  caption.value = props.message?.content || '';
   isForwarding.value = false;
 };
 
@@ -153,6 +169,7 @@ const handleConfirm = async () => {
       destinations: selected.value,
       inboxId: props.inboxId,
       assigneeId: currentUser.value?.id,
+      contentOverride: caption.value,
     });
 
     if (results.failed === 0) {
@@ -165,20 +182,41 @@ const handleConfirm = async () => {
     }
 
     if (results.succeeded > 0) {
+      const detail = results.errors
+        .map(entry => entry.message)
+        .filter(Boolean)
+        .slice(0, 2)
+        .join('; ');
       useAlert(
-        t('CONVERSATION.FORWARD.PARTIAL', {
-          ok: results.succeeded,
-          fail: results.failed,
-        })
+        detail
+          ? t('CONVERSATION.FORWARD.PARTIAL_DETAIL', {
+              ok: results.succeeded,
+              fail: results.failed,
+              detail,
+            })
+          : t('CONVERSATION.FORWARD.PARTIAL', {
+              ok: results.succeeded,
+              fail: results.failed,
+            })
       );
+      selected.value = results.failedDestinations || [];
       emit('done', results);
-      close();
       return;
     }
 
-    useAlert(t('CONVERSATION.FORWARD.FAILED'));
-  } catch {
-    useAlert(t('CONVERSATION.FORWARD.FAILED'));
+    const detail = results.errors?.[0]?.message;
+    useAlert(
+      detail
+        ? t('CONVERSATION.FORWARD.FAILED_DETAIL', { detail })
+        : t('CONVERSATION.FORWARD.FAILED')
+    );
+  } catch (error) {
+    const detail = error?.message;
+    useAlert(
+      detail
+        ? t('CONVERSATION.FORWARD.FAILED_DETAIL', { detail })
+        : t('CONVERSATION.FORWARD.FAILED')
+    );
   } finally {
     isForwarding.value = false;
   }
@@ -208,7 +246,7 @@ defineExpose({ open, close });
       >
         <div class="mb-1 flex items-center gap-1.5 text-xs text-n-slate-11">
           <Icon
-            v-if="hasAttachments"
+            v-if="hasForwardableAttachments"
             icon="i-lucide-paperclip"
             class="size-3.5"
           />
@@ -217,6 +255,19 @@ defineExpose({ open, close });
         <p class="line-clamp-3 whitespace-pre-wrap break-words">
           {{ previewText }}
         </p>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-medium text-n-slate-11" for="forward-caption">
+          {{ $t('CONVERSATION.FORWARD.CAPTION_LABEL') }}
+        </label>
+        <textarea
+          id="forward-caption"
+          v-model="caption"
+          rows="2"
+          class="w-full resize-y rounded-lg border border-n-strong bg-n-background px-3 py-2 text-sm outline-none focus:border-n-brand"
+          :placeholder="$t('CONVERSATION.FORWARD.CAPTION_PLACEHOLDER')"
+        />
       </div>
 
       <div v-if="selected.length" class="flex flex-wrap gap-1.5">
@@ -260,7 +311,7 @@ defineExpose({ open, close });
           :key="item.key"
           type="button"
           class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-n-alpha-2"
-          :class="{ 'ring-1 ring-n-brand': isSelected(item.key) }"
+          :class="{ 'ring-1 ring-n-brand': isSelected(item) }"
           @click="toggleDestination(item)"
         >
           <Avatar
@@ -276,7 +327,7 @@ defineExpose({ open, close });
             </div>
           </div>
           <Icon
-            v-if="isSelected(item.key)"
+            v-if="isSelected(item)"
             icon="i-lucide-check"
             class="size-4 text-n-brand"
           />
@@ -298,7 +349,7 @@ defineExpose({ open, close });
           :key="item.key"
           type="button"
           class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left hover:bg-n-alpha-2"
-          :class="{ 'ring-1 ring-n-brand': isSelected(item.key) }"
+          :class="{ 'ring-1 ring-n-brand': isSelected(item) }"
           @click="toggleDestination(item)"
         >
           <Avatar
@@ -314,7 +365,7 @@ defineExpose({ open, close });
             </div>
           </div>
           <Icon
-            v-if="isSelected(item.key)"
+            v-if="isSelected(item)"
             icon="i-lucide-check"
             class="size-4 text-n-brand"
           />

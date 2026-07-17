@@ -47,6 +47,8 @@ import WhatsappReferral from './bubbles/Text/WhatsappReferral.vue';
 import MessageError from './MessageError.vue';
 import ContextMenu from 'dashboard/modules/conversations/components/MessageContextMenu.vue';
 import { useBranding } from 'shared/composables/useBranding';
+// FORK: WhatsApp-like message forward
+import { messageCanBeForwarded } from 'customDashboard/composables/useMessageForward';
 
 /**
  * @typedef {Object} Attachment
@@ -419,9 +421,12 @@ const contextMenuEnabledOptions = computed(() => {
       !props.private &&
       props.inboxSupportsReplyTo.outgoing &&
       !isFailedOrProcessing,
-    // FORK: WhatsApp-like message forward
+    // FORK: WhatsApp-like message forward (text and/or downloadable media)
     forward:
-      (hasText || hasAttachments) &&
+      messageCanBeForwarded({
+        content: props.content,
+        attachments: props.attachments,
+      }) &&
       !isFailedOrProcessing &&
       !isMessageDeleted.value &&
       !props.private,

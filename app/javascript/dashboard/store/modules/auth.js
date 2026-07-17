@@ -53,8 +53,10 @@ export const getters = {
   },
 
   getCurrentAccountId(_, __, rootState) {
-    if (rootState.route.params && rootState.route.params.accountId) {
-      return Number(rootState.route.params.accountId);
+    // FORK: route may be unset before vuex-router-sync (e.g. early store.watch)
+    const accountId = rootState.route?.params?.accountId;
+    if (accountId) {
+      return Number(accountId);
     }
     return null;
   },
