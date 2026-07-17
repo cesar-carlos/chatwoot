@@ -18,7 +18,9 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import MessageApi from 'dashboard/api/inbox/message';
 import {
   inboxSupportsReactions,
+  messageCanReceiveReaction,
   applyOptimisticReaction,
+  extractReactionErrorMessage,
 } from 'customDashboard/composables/useMessageReactions';
 // FORK: WhatsApp-like message forward
 import { inboxSupportsForward, messageCanBeForwarded } from 'customDashboard/composables/useMessageForward';
@@ -131,7 +133,8 @@ export default {
     // FORK: Evolution Go/Node reactions
     canReactWithEvolutionGo() {
       return (
-        inboxSupportsReactions(this.inbox) && Boolean(this.messageSourceId)
+        inboxSupportsReactions(this.inbox) &&
+        messageCanReceiveReaction(this.message)
       );
     },
     // FORK: WhatsApp-like message forward
@@ -249,6 +252,8 @@ export default {
       const snapshot =
         this.message.content_attributes ?? this.message.contentAttributes;
       const currentUserId = this.$store.getters.getCurrentUserID;
+      const isRemove =
+        !reaction || String(reaction).toLowerCase() === 'remove';
       const optimistic = applyOptimisticReaction(
         this.message,
         reaction,
@@ -267,14 +272,27 @@ export default {
         if (updated?.id) {
           this.$store.dispatch('updateMessage', updated);
         }
-        useAlert(this.$t('CONVERSATION.CONTEXT_MENU.REACTION_SENT'));
+        useAlert(
+          this.$t(
+            isRemove
+              ? 'CONVERSATION.CONTEXT_MENU.REACTION_REMOVED'
+              : 'CONVERSATION.CONTEXT_MENU.REACTION_SENT'
+          )
+        );
         this.handleClose();
       } catch (error) {
         this.$store.dispatch('updateMessage', {
           ...this.message,
           content_attributes: snapshot,
         });
-        useAlert(this.$t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED'));
+        const detail = extractReactionErrorMessage(error);
+        useAlert(
+          detail
+            ? this.$t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED_DETAIL', {
+                detail,
+              })
+            : this.$t('CONVERSATION.CONTEXT_MENU.REACTION_FAILED')
+        );
       } finally {
         this.isSendingReaction = false;
       }

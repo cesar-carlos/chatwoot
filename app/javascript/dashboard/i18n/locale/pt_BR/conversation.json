@@ -415,7 +415,9 @@
       "REACT": "Reagir",
       "REMOVE_REACTION": "Remover reação",
       "REACTION_SENT": "Reação enviada",
+      "REACTION_REMOVED": "Reação removida",
       "REACTION_FAILED": "Não foi possível enviar a reação",
+      "REACTION_FAILED_DETAIL": "Não foi possível enviar a reação: {detail}",
       "FORWARD": "Encaminhar",
       "EDIT": "Editar",
       "DELETE_CONFIRMATION": {

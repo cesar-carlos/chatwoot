@@ -436,7 +436,9 @@
       "REACT": "React",
       "REMOVE_REACTION": "Remove reaction",
       "REACTION_SENT": "Reaction sent",
+      "REACTION_REMOVED": "Reaction removed",
       "REACTION_FAILED": "Could not send reaction",
+      "REACTION_FAILED_DETAIL": "Could not send reaction: {detail}",
       "FORWARD": "Forward",
       "EDIT": "Edit",
       "DELETE_CONFIRMATION": {

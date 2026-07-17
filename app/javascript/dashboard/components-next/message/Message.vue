@@ -378,6 +378,8 @@ const payloadForContextMenu = computed(() => {
     message_type: props.messageType,
     source_id: props.sourceId,
     private: props.private,
+    // FORK: Evolution Go/Node reactions gate
+    status: props.status,
   };
 });
 

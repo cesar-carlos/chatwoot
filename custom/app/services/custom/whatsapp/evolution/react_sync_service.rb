@@ -24,8 +24,15 @@ class Custom::Whatsapp::Evolution::ReactSyncService
   def validate!
     raise Custom::Whatsapp::Evolution::ApiError, 'Not an Evolution channel' unless evolution_channel?
     raise Custom::Whatsapp::Evolution::ApiError, 'Message source_id is required' if message.source_id.blank?
+    raise Custom::Whatsapp::Evolution::ApiError, 'Cannot react to a private note' if message.private?
+    raise Custom::Whatsapp::Evolution::ApiError, 'Cannot react to a deleted message' if message_deleted?
     raise Custom::Whatsapp::Evolution::ApiError, 'Chat JID is required' if remote_jid.blank?
     raise Custom::Whatsapp::Evolution::ApiError, 'Unsupported reaction' unless allowed_reaction?
+  end
+
+  def message_deleted?
+    ActiveModel::Type::Boolean.new.cast(message.content_attributes&.[]('deleted')) ||
+      ActiveModel::Type::Boolean.new.cast(message.content_attributes&.[](:deleted))
   end
 
   def evolution_channel?
