@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 16/jul/2026 (reactions improvements: actor `user:self`, timeout 15s, Node parity) · **Integração completa; E2E operador pendente**
+**Última revisão:** 17/jul/2026 (message edit audit: código ✅ · plaintext Go ⚠️ · sem UI editar no CW) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -14,12 +14,13 @@
 | Fase 1 MVP texto + QR + health | ✅ |
 | Fase 2 mídia, READ_RECEIPT, settings | ✅ |
 | Import contatos + enrichment | ✅ |
-| Inbound delete/edit (webhook → Chatwoot) | ✅ |
-| Phone/agent delete/edit sync (`fromMe`) | ✅ jul/2026 |
+| Inbound delete (webhook → Chatwoot) | ✅ |
+| Inbound edit (webhook → Chatwoot) | ⚠️ código ✅ · depende plaintext Go ([#62](https://github.com/evolution-foundation/evolution-go/issues/62)/[#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
+| Phone/agent delete/edit sync (`fromMe`) | ✅ jul/2026 · edit só se payload tiver texto |
 | Outbound delete sync (`sync_delete_to_whatsapp`) | ✅ |
 | UX settings (avisos, polling import, confirmações) | ✅ |
 | Diagnóstico (`evolution_go_diagnostics`, test webhook) | ✅ |
-| `convert_markdown_inbound`, `sync_edit_to_whatsapp` (MVP) | ✅ |
+| `convert_markdown_inbound`, `sync_edit_to_whatsapp` + UI edit outgoing | ✅ 17/jul/2026 |
 | Import histórico (`HISTORY_SYNC` + `POST /chat/history-sync`) | ✅ código · ⚠️ fixture sintética |
 | Grupos WhatsApp (`ignore_groups: false`) | ✅ código · ⚠️ fixture sintética |
 | Webhook subscribe sync (`WebhookSubscribeSync`) | ✅ |
@@ -62,10 +63,11 @@
 - Presence: `TypingListener` → `PresenceSyncJob` → `POST /message/presence`
 - Contact enrichment on inbound via `IncomingMessageIdentifierHelper` + `ContactEnrichmentJob`
 - `READ_RECEIPT` no job prepend; `MarkReadService` ao abrir conversa
-- Inbound delete/edit: `MessageDeleteSyncService`, `MessageEditSyncService` + eventos `MESSAGE` (revoke), `MESSAGE_DELETE`, `MESSAGES_EDITED`, etc.
+- Inbound delete/edit: `MessageDeleteSyncService`, `MessageEditSyncService` + `MessageEditPayloadExtractor` (protocol / explicit / `secretEncryptedMessage`)
+- Encrypted edit envelope: job skip (`encrypted_edit`) — evita `[Unsupported message type]`; conteúdo só atualiza com plaintext
 - Inbound/outbound reactions: `MessageReactionSyncService`, `ReactSyncService`, `ApiClient#react` + context menu
 - Outbound delete: `DeleteSyncService` + hook `EvolutionGoDeleteSync` em `Message`
-- Outbound edit (opt-in): `EditSyncService` + hook `EvolutionGoEditSync` em `Message`
+- Outbound edit (opt-in): `MessageContentEditService` sync WA first (`raise_errors`) + `POST …/evolution_go_edit` + `MessageEditModal` / badge (sem prefixo no texto)
 - Import contatos: `ImportService`, `ContactsImporter`, enrichment (`/user/info`, `/user/avatar` com backoff 6h)
 - `CorruptMediaRepair` / rake `evolution_go:repair_corrupt_media`
 - `PeerContactInboxResolver`, `ProviderConfigMerger`, `UrlSafetyGuard`
@@ -122,6 +124,7 @@ Inboxes existentes **não** são migrados — só novos inboxes recebem estes de
 
 ## Próximo passo
 
-1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (sync webhook, pair, location, logout, grupos, typing presence, reply context)
+1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (sync webhook, pair, location, logout, grupos, typing presence, reply context, **edit plaintext vs `secretEncryptedMessage`**)
 2. **Proxy edit** — aguarda validação `advanced-settings` (UI hoje: banner create-only)
 3. **Fase 3 restante** — poll / link outbound (fora do MVP inbox)
+4. **Edit** — UI + anti-loop ✅ 17/jul; E2E fixture real + aguardar fix Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92) para inbound edit confiável

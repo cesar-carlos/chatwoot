@@ -79,7 +79,7 @@
 | Status | `POST` | `/message/status` | [get-message-status](https://docs.evolutionfoundation.com.br/evolution-go/get-message-status) | 2 |
 | React | `POST` | `/message/react` | [react-a-message](https://docs.evolutionfoundation.com.br/evolution-go/react-a-message) | 3 |
 | Presence (typing) | `POST` | `/message/presence` | [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/set-chat-presence) | 3 |
-| Edit | `POST` | `/message/edit` | [edit-a-message](https://docs.evolutionfoundation.com.br/evolution-go/edit-a-message) | 3 |
+| Edit | `POST` | `/message/edit` | [edit-a-message](https://docs.evolutionfoundation.com.br/evolution-go/edit-a-message) | 3 ⚠️ inbound: Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92) |
 | Delete for everyone | `POST` | `/message/delete` | [delete-a-message-for-everyone](https://docs.evolutionfoundation.com.br/evolution-go/delete-a-message-for-everyone) | 3 |
 | Download media | `POST` | `/message/downloadmedia` | Fase 2 — único endpoint usado pelo fork |
 

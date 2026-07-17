@@ -4,6 +4,7 @@ module Custom::Message::EvolutionGoEditSync
   private
 
   def sync_evolution_go_edit_to_whatsapp
+    return if instance_variable_get(:@evolution_go_edit_synced_inline)
     return unless evolution_go_content_changed_for_sync?
 
     Custom::Whatsapp::EvolutionGo::EditSyncService.new(message: self).perform
@@ -36,12 +37,12 @@ module Custom::Message::EvolutionGoEditSync
     ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['sync_edit_to_whatsapp'])
   end
 
-  # Avoid CW → WA → webhook → CW content rewrite → WA loop.
+  # Avoid CW ↔ WA edit loops. Any content change that still carries the webhook
+  # marker must not re-dispatch POST /message/edit (including 2nd+ phone edits).
+  # Agent UI clears edited_via_evolution_go_webhook via MessageContentEditService.
   def evolution_go_edit_originated_from_webhook?
     attrs = (content_attributes || {}).with_indifferent_access
-    return false unless ActiveModel::Type::Boolean.new.cast(attrs[:edited_via_evolution_go_webhook])
-
-    before = (content_attributes_before_last_save || {}).with_indifferent_access
-    !ActiveModel::Type::Boolean.new.cast(before[:edited_via_evolution_go_webhook])
+    ActiveModel::Type::Boolean.new.cast(attrs[:edited_via_evolution_go_webhook])
   end
 end
+

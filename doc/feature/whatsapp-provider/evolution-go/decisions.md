@@ -378,6 +378,7 @@ end
 | 16/jul/2026 | §33: message reactions chip + context menu |
 | 16/jul/2026 | §33 addendum: `user:self`, timeout 15s, optimistic UI, Node parity, cleanup rake |
 | 16/jul/2026 | §34: pseudo-forward de mensagem no Chatwoot (sem API Go) |
+| 17/jul/2026 | §35: message edit — plaintext Go, sem UI CW, anti-loop parcial |
 
 ---
 
@@ -474,3 +475,25 @@ end
 | **Badge** | `content_attributes.forwarded` + chip “Forwarded” no dashboard; **sem** rótulo nativo no WhatsApp |
 | **Implementação** | `useMessageForward.js` + `MessageForwardModal.vue` em `custom/`; thin FORK no menu/`Message.vue`/`Base.vue` |
 | **Docs feature** | [doc/feature/message-forward/](../../message-forward/) |
+
+---
+
+## 35. Message edit — inbound/outbound (17/jul/2026)
+
+| Decisão | Valor |
+|---------|-------|
+| **API outbound** | `POST /message/edit` `{ chat, messageId, message }` — documentado e wired em `ApiClient#edit_message` |
+| **Outbound CW → WA** | Opt-in `sync_edit_to_whatsapp` (default `false`) via `EditSyncService` + `EvolutionGoEditSync` em `after_update_commit` |
+| **UI agente (17/jul)** | Context menu **Edit** quando `sync_edit_to_whatsapp` + outgoing + `source_id`; modal → `POST …/evolution_go_edit` → `MessageContentEditService` |
+| **Inbound WA → CW** | `mark_inbound_edited` (default `true`) → `MessageEditSyncService`; eventos explícitos + protocol + detecção `secretEncryptedMessage` |
+| **Envelope criptografado** | Se só houver `Info.Edit` / `secretEncryptedMessage` sem plaintext → **skip** (não cria unsupported). Limitação upstream Go [#62](https://github.com/evolution-foundation/evolution-go/issues/62) / [#92](https://github.com/evolution-foundation/evolution-go/issues/92) |
+| **UX conteúdo** | `content_attributes.edited` / `edited_at` + badge “Edited”; **sem** prefixo no texto (legado `"Edited message:\n\n"` ainda é stripped na UI/API) |
+| **Outbound agente** | `MessageContentEditService` → `EditSyncService(raise_errors: true)` **antes** de persistir; falha WA → erro no modal, CW inalterado |
+| **Anti-loop** | Skip outbound **sempre** que `edited_via_evolution_go_webhook` estiver true; skip também se `@evolution_go_edit_synced_inline` (já sincronizado no service) |
+| **fromMe orphan** | Edit `fromMe` sem mensagem no CW → skip + `inbound_edit_skipped` (não inventa incoming) |
+
+**Addendum 17/jul/2026:** guard reforçado em `EvolutionGoEditSync` + UI edit (`MessageEditModal`, `useMessageEdit`, rota `evolution_go_edit`).
+
+**Addendum (review):** agentes não recebem `provider_config` (segredos). Flags `sync_edit_to_whatsapp` / `sync_delete_to_whatsapp` expostas no JSON do inbox (top-level) para gateway providers — sem isso o menu Edit só aparecia para admin.
+
+**Addendum (melhorias):** soft-fail removido no path do agente (sync WA first); prefixo legado removido do storage; caption de mídia editável quando `content` presente.

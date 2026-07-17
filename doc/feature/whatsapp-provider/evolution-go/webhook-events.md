@@ -139,7 +139,7 @@ CHAT_PRESENCE, CALL, CONNECTION, LABEL, CONTACT, GROUP, NEWSLETTER, QRCODE
 | `CHAT_PRESENCE` | Typing | — | Ignorar inbound (outbound typing via dashboard → `/message/presence`) |
 | `HISTORY_SYNC` | Histórico | 4 | `HistorySyncProcessor` + `content_attributes.history_import` |
 | `MESSAGE_DELETE`, `MESSAGES_DELETE` | Delete cliente | UX | `MessageDeleteSyncService` |
-| `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX | `MessageEditSyncService` |
+| `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX ⚠️ | `MessageEditSyncService` (precisa plaintext — ver § Edit abaixo) |
 | `CALL` | Chamadas | — | Projeto voz |
 | `GROUP` | Grupos | 5 | Warm `GroupMetadataFetchJob` quando `ignore_groups: false`; inbound grupo via `MESSAGE` com `@g.us` |
 | `CONTACT` | Contatos | — | Ignorar |
@@ -385,6 +385,24 @@ end
 ```
 
 O job prepend trata delete/edit protocol em `MESSAGE` / `SEND_MESSAGE` **antes** do filtro `ignore_from_me_echo` e do normalizer. Soft-delete/edit aplica-se também a mensagens `fromMe` (agente/celular). Echo de texto/mídia só roda quando `ignore_from_me_echo: false`.
+
+---
+
+## Edit — formatos de payload e limitação Go
+
+`MessageEditPayloadExtractor` aceita três formas (ordem efetiva no job):
+
+| Forma | Como chega | Resultado no fork |
+|-------|------------|-------------------|
+| Evento explícito | `MESSAGES_EDITED` / `MESSAGE_EDIT` / `SEND_MESSAGE_UPDATE` com `editedMessage` / `message.conversation` | Atualiza mensagem (`mark_inbound_edited`) |
+| Protocol | `MESSAGE` / `SEND_MESSAGE` com `protocolMessage.type` edit + `editedMessage` | Idem |
+| Envelope criptografado | `Info.Edit != 0` e/ou `secretEncryptedMessage` **sem** plaintext | **Skip** (`encrypted_edit: true`) — log `skipped encrypted edit envelope`; **não** cria `[Unsupported message type]` |
+
+Em Evolution Go ≥0.7.0 é comum o terceiro caso ([issue #92](https://github.com/evolution-foundation/evolution-go/issues/92), [#62](https://github.com/evolution-foundation/evolution-go/issues/62)): WhatsApp sinaliza edit (`Edit: "1"`), mas o webhook **não** inclui o novo texto. O fork não consegue sincronizar conteúdo até o Go entregar plaintext.
+
+UX no CW quando o edit aplica: texto bare + `content_attributes.edited` / `edited_at` / `edited_via_evolution_go_webhook` + badge “Edited”. Prefixo legado `"Edited message:\n\n"` é stripped na bubble se ainda existir em mensagens antigas.
+
+Fixtures: `spec/fixtures/evolution_go/message_edit.json` (protocol plaintext), `message_edit_secret_encrypted.json` (skip).
 
 ---
 

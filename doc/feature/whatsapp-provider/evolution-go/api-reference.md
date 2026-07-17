@@ -340,7 +340,7 @@ Doc: [set-chat-presence](https://docs.evolutionfoundation.com.br/evolution-go/se
 | Path | Fase fork | Componente |
 |------|-----------|------------|
 | `POST /message/react` | ✅ | `ApiClient#react` + `ReactSyncService` + context menu |
-| `POST /message/edit` | UX | `EditSyncService` (opt-in `sync_edit_to_whatsapp`) |
+| `POST /message/edit` | UX ⚠️ | UI Edit → `evolution_go_edit` → `EditSyncService` (opt-in `sync_edit_to_whatsapp`; body `{ chat, messageId, message }`) — ADR §35 |
 | `POST /message/delete` | UX | `DeleteSyncService` (opt-in `sync_delete_to_whatsapp`) |
 | `POST /message/downloadmedia` | 2 | `MediaDownloadJob` — único endpoint de download no swagger atual |
 

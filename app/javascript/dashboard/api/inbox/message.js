@@ -129,6 +129,14 @@ class MessageApi extends ApiClient {
       { reaction }
     );
   }
+
+  // FORK: Evolution Go edit outgoing message
+  evolutionGoEdit(conversationId, messageId, content) {
+    return axios.post(
+      `${this.url}/${conversationId}/messages/${messageId}/evolution_go_edit`,
+      { content }
+    );
+  }
 }
 
 export default new MessageApi();

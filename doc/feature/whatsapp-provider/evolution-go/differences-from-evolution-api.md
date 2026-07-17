@@ -75,7 +75,9 @@ A documentação oficial afirma que ambos compartilham **"API contract REST (com
 | `MESSAGES_UPDATE` | **`READ_RECEIPT`** (parcial) | Status delivered/read |
 | `CONNECTION_UPDATE` | **`CONNECTION`** | `connection_status` |
 | `QRCODE_UPDATED` | **`QRCODE`** | Exibir QR no wizard |
-| `SEND_MESSAGE` | Implícito em `MESSAGE` com `fromMe: true` | Filtrar echo |
+| `SEND_MESSAGE` | Implícito em `MESSAGE` com `fromMe: true` (Go também emite `SEND_MESSAGE`) | Filtrar echo / phone sync |
+| `MESSAGES_EDITED` (+ `editedMessage`) | `MESSAGE` com `Info.Edit` / `secretEncryptedMessage` **ou** (às vezes) `MESSAGES_EDITED` / protocol | Node costuma trazer plaintext; Go 0.7+ frequentemente **não** ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) — fork skip encrypted |
+| `MESSAGES_DELETE` / revoke | `MESSAGE` protocol revoke / `MESSAGE_DELETE` | Soft-delete no CW |
 | — | `PRESENCE`, `CHAT_PRESENCE` | Ignorar MVP |
 | — | `GROUP`, `GROUP_UPDATE` | Ignorar; inbound grupo via `MESSAGE` + `@g.us` quando `ignore_groups: false` |
 | — | `CALL` | Fase voz separada |

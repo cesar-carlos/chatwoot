@@ -123,11 +123,11 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Settings toggles persistem após F5 (`channel.provider_config`)
 - [ ] Import contatos — status `running` → polling atualiza UI
 - [ ] Cliente apaga mensagem no WA → reflete no CW (`mark_inbound_deleted`): texto original permanece + destaque deleted + aviso i18n
-- [ ] Cliente edita mensagem no WA → reflete no CW (`mark_inbound_edited`)
+- [ ] Cliente edita mensagem no WA → reflete no CW **quando o webhook tiver plaintext** (`mark_inbound_edited`); se só `secretEncryptedMessage`, CW não muda e **não** cria unsupported (log `skipped encrypted edit envelope`) — salvar fixture real dos dois casos
 - [ ] Contato envia mídia view once → CW mostra aviso localizado (`VIEW_ONCE_MEDIA_UNAVAILABLE` / `view_once_unavailable`), não `[Unsupported message type]` genérico
-- [ ] Agente apaga/edita no celular → reflete no CW (mesmo com `ignore_from_me_echo: true` se vier em `MESSAGE` / `SEND_MESSAGE` protocol)
+- [ ] Agente apaga/edita no celular → reflete no CW (mesmo com `ignore_from_me_echo: true` se vier em `MESSAGE` / `SEND_MESSAGE` protocol); edit só se payload tiver texto
 - [ ] Agente apaga com `sync_delete_to_whatsapp` — confirmação + delete no WA (só outgoing)
-- [ ] Edit outbound (`sync_edit_to_whatsapp`) aplica markdown/signature
+- [ ] Edit outbound (`sync_edit_to_whatsapp`): **agente e admin** veem Edit → modal → WA sync first → CW; falha API não altera CW; badge “Edited” sem prefixo no texto; caption de mídia editável
 - [ ] Painel diagnóstico exibe webhook URL e `mutation_stats`
 - [ ] `POST evolution_go_test_webhook` retorna `ok: true`
 - [ ] `POST evolution_go_sync_webhook` atualiza `webhook_subscribe` no channel

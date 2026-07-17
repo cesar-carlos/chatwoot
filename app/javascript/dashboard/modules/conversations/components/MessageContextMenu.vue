@@ -24,6 +24,12 @@ import {
 // FORK: WhatsApp-like message forward
 import { inboxSupportsForward, messageCanBeForwarded } from 'customDashboard/composables/useMessageForward';
 import MessageForwardModal from 'customDashboard/components/forward/MessageForwardModal.vue';
+// FORK: Evolution Go edit outgoing message
+import {
+  inboxSupportsMessageEdit,
+  messageCanBeEdited,
+} from 'customDashboard/composables/useMessageEdit';
+import MessageEditModal from 'customDashboard/components/edit/MessageEditModal.vue';
 
 const EVOLUTION_GO_REACTION_EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
 
@@ -115,8 +121,12 @@ export default {
       const provider = inbox.provider;
       if (provider !== 'evolution_go' && provider !== 'evolution') return false;
 
+      // Admins get full provider_config; agents get top-level sync_delete_to_whatsapp.
       const config = inbox.provider_config || inbox.providerConfig || {};
-      return config.sync_delete_to_whatsapp === true;
+      return (
+        config.sync_delete_to_whatsapp === true ||
+        inbox.sync_delete_to_whatsapp === true
+      );
     },
     // FORK: Evolution Go/Node reactions
     canReactWithEvolutionGo() {
@@ -130,6 +140,12 @@ export default {
         Boolean(this.enabledOptions.forward) &&
         inboxSupportsForward(this.inbox) &&
         messageCanBeForwarded(this.message)
+      );
+    },
+    // FORK: Evolution Go edit outgoing message
+    canEditMessage() {
+      return (
+        inboxSupportsMessageEdit(this.inbox) && messageCanBeEdited(this.message)
       );
     },
     deleteConfirmationMessage() {
@@ -221,6 +237,13 @@ export default {
       this.handleClose();
       this.$nextTick(() => {
         this.$refs.forwardModal?.open();
+      });
+    },
+    // FORK: Evolution Go edit outgoing message
+    openEditModal() {
+      this.handleClose();
+      this.$nextTick(() => {
+        this.$refs.editModal?.open();
       });
     },
     // FORK: Evolution Go/Node reactions (optimistic UI)
@@ -369,6 +392,16 @@ export default {
           variant="icon"
           @click.stop="openForwardModal"
         />
+        <!-- FORK: Evolution Go edit outgoing message -->
+        <MenuItem
+          v-if="canEditMessage"
+          :option="{
+            icon: 'edit',
+            label: $t('CONVERSATION.CONTEXT_MENU.EDIT'),
+          }"
+          variant="icon"
+          @click.stop="openEditModal"
+        />
         <hr />
         <MenuItem
           v-if="enabledOptions['copyLink']"
@@ -416,6 +449,12 @@ export default {
       ref="forwardModal"
       :message="message"
       :inbox-id="inboxId"
+    />
+    <!-- FORK: Evolution Go edit outgoing message -->
+    <MessageEditModal
+      v-if="canEditMessage"
+      ref="editModal"
+      :message="message"
     />
   </div>
 </template>

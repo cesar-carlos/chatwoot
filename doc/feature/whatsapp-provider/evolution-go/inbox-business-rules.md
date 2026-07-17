@@ -164,7 +164,7 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 | `mark_read_on_reply` | `false` | 2 | → `POST /message/markread`; fallback: última não lida se sem reply target |
 | `send_random_delay` | via `delay` no send | 2 | Campo `delay` em SendText |
 | `sync_delete_to_whatsapp` | `false` | UX | Agente delete **outgoing** CW → `POST /message/delete` (opt-in, irreversível); JID via `ChatJid` (message / contact LID / source_id) |
-| `sync_edit_to_whatsapp` | `false` | UX | Hook em `Message#content` change (outgoing) → `POST /message/edit` com markdown/signature (opt-in) |
+| `sync_edit_to_whatsapp` | `false` | UX | Opt-in: context menu Edit → `MessageContentEditService` → `POST /message/edit` (markdown/signature) — ADR §35 |
 | `notify_send_errors_private` | `true` | 2 | Nota privada em falha de envio |
 
 **Quote reply:** `{ quoted: { messageId, participant } }` — schema Go, não Baileys.
@@ -178,7 +178,7 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 | `ignore_from_me_echo` | `true` | 1 | Normalizer (configurável) |
 | `ignore_status` | `true` | 2 | `status@broadcast` |
 | `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → marca `deleted` no CW **mantendo o texto original** + destaque vermelho / aviso i18n (inclui `fromMe` / celular; `deleted_via_evolution_go_webhook`) |
-| `mark_inbound_edited` | `true` | UX | Webhook edit → atualiza CW (inclui `fromMe` / celular; skip noop / loop) |
+| `mark_inbound_edited` | `true` | UX | Webhook edit → atualiza CW (inclui `fromMe` / celular; skip noop / envelope criptografado). Texto bare + `content_attributes.edited` + badge. **⚠️** Go frequentemente só envia `secretEncryptedMessage` sem texto — nesses casos o CW não muda |
 | `convert_markdown_inbound` | `true` | UX | Normalizer + edit sync |
 
 ### `source_id` inbound

@@ -44,7 +44,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageEditSyncService do
     ).perform
 
     message.reload
-    expect(message.content).to include('updated text')
+    expect(message.content).to eq('updated text')
     expect(message.content_attributes['edited']).to be(true)
     expect(message.content_attributes['edited_via_evolution_go_webhook']).to be(true)
   end
@@ -69,11 +69,25 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageEditSyncService do
     ).perform
 
     outgoing.reload
-    expect(outgoing.content).to include('edited on phone')
+    expect(outgoing.content).to eq('edited on phone')
     expect(outgoing.content_attributes['edited']).to be(true)
   end
 
   it 'skips noop when body already matches (loop prevention)' do
+    message.update!(content: 'same body', content_attributes: { edited: true })
+
+    expect do
+      described_class.new(
+        channel: channel,
+        data: {
+          key: { id: 'MSG-EDIT-1', fromMe: false },
+          edited_body: 'same body'
+        }
+      ).perform
+    end.not_to(change { message.reload.updated_at })
+  end
+
+  it 'treats legacy prefixed content as matching bare edited body' do
     message.update!(content: "#{described_class::EDITED_PREFIX}same body")
 
     expect do

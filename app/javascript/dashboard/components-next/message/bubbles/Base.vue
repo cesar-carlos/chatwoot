@@ -32,6 +32,7 @@ const {
   inReplyTo,
   shouldGroupWithNext,
   contentAttributes, // FORK: Evolution Go/Node inbound delete highlight
+  content, // FORK: legacy edited prefix detection
   id: messageId,
   conversationId,
   inboxId,
@@ -49,6 +50,14 @@ const isDeleted = computed(() => Boolean(contentAttributes.value?.deleted));
 const isForwarded = computed(() => {
   const attrs = contentAttributes.value || {};
   return Boolean(attrs.forwarded || attrs.Forwarded);
+});
+
+// FORK: Evolution Go edited message badge (attrs or legacy content prefix)
+const EDITED_PREFIX = 'Edited message:\n\n';
+const isEdited = computed(() => {
+  const attrs = contentAttributes.value || {};
+  if (attrs.edited || attrs.Edited) return true;
+  return String(content?.value || '').startsWith(EDITED_PREFIX);
 });
 
 // FORK: Evolution Go/Node WhatsApp reactions
@@ -231,6 +240,14 @@ const replyToPreview = computed(() => {
     >
       <Icon icon="i-lucide-forward" class="size-3.5 shrink-0" />
       <span>{{ t('CONVERSATION.FORWARD.BADGE') }}</span>
+    </div>
+    <!-- FORK: Evolution Go edited message badge -->
+    <div
+      v-if="isEdited && !isDeleted"
+      class="flex items-center gap-1 mb-1.5 text-xs font-medium text-n-slate-11"
+    >
+      <Icon icon="i-lucide-pencil" class="size-3.5 shrink-0" />
+      <span>{{ t('CONVERSATION.EDIT.BADGE') }}</span>
     </div>
     <div :class="{ 'opacity-80': isDeleted }">
       <slot />

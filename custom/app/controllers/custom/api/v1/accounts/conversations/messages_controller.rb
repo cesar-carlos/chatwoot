@@ -79,6 +79,17 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     render json: { error: error_text.presence || e.message }, status: :unprocessable_entity
   end
 
+  # FORK: Evolution Go edit outgoing message (sync_edit_to_whatsapp)
+  def evolution_go_edit
+    @message = Custom::Whatsapp::EvolutionGo::MessageContentEditService.new(
+      message: message,
+      content: params[:content]
+    ).perform
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    error_text = e.respond_to?(:user_message) ? e.user_message : e.message
+    render json: { error: error_text.presence || e.message }, status: :unprocessable_entity
+  end
+
   private
 
   def assert_voice_only_public_retry_allowed!

@@ -55,7 +55,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - connect + QR + webhook via REST
 - texto, mídia, location, contact, sticker, input_select→buttons/list
 - READ_RECEIPT, mark-read, advanced settings / proxy
-- import contatos, delete/edit inbound, sync delete/edit outbound (opt-in)
+- import contatos, delete/edit inbound (edit ⚠️ depende plaintext Go), sync delete/edit outbound (opt-in; UI Edit no context menu)
 - diagnóstico operacional e import histórico via `HISTORY_SYNC`
 - typing presence outbound (`TypingListener` → `/message/presence`)
 - refresh manual de contatos (`evolution_go_refresh_contacts`)
@@ -64,7 +64,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - **pseudo-forward** de mensagem no Chatwoot (mesmo inbox) — ADR §34 · docs em [../../message-forward/](../../message-forward/)
 - sem provisionar o servidor Go dentro deste repositório
 
-**Pendente:** E2E com servidor real; poll/link outbound; proxy edit em instância existente; forward nativo WhatsApp (API Go).
+**Pendente:** E2E com servidor real; poll/link outbound; proxy edit em instância existente; forward nativo WhatsApp (API Go); inbound edit confiável aguarda plaintext no Go ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)).
 
 ## Onde este provider encosta no código atual
 
