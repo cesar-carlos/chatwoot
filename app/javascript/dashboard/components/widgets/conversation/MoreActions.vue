@@ -12,6 +12,9 @@ import ButtonV4 from 'dashboard/components-next/button/Button.vue';
 import DropdownMenu from 'dashboard/components-next/dropdown-menu/DropdownMenu.vue';
 import { useConversationMessageSearchPanel } from 'dashboard/composables/fork/useConversationMessageSearchPanel';
 import { isEditableTarget } from 'dashboard/composables/fork/isEditableTarget';
+// FORK: Evolution Go sync contact from MoreActions
+import { useInbox } from 'dashboard/composables/useInbox';
+import ContactAPI from 'dashboard/api/contacts';
 
 import {
   CMD_MUTE_CONVERSATION,
@@ -25,6 +28,8 @@ import {
 const store = useStore();
 const { t } = useI18n();
 const { open: openSearchPanel } = useConversationMessageSearchPanel();
+// FORK: gate sync menu item to Evolution Go inboxes
+const { isEvolutionGoWhatsAppChannel } = useInbox();
 
 const [showEmailActionsModal, toggleEmailModal] = useToggle(false);
 const [showActionsDropdown, toggleDropdown] = useToggle(false);
@@ -59,6 +64,16 @@ const actionMenuItems = computed(() => {
     title: t('CONVERSATION.MESSAGE_SEARCH.MENU_SHORTCUT'),
   });
 
+  // FORK: Evolution Go — force contact info + avatar sync
+  if (isEvolutionGoWhatsAppChannel.value) {
+    items.push({
+      icon: 'i-lucide-refresh-cw',
+      label: t('CONVERSATION.EVOLUTION_GO_SYNC_CONTACT.MENU_LABEL'),
+      action: 'sync_contact',
+      value: 'sync_contact',
+    });
+  }
+
   items.push({
     icon: 'i-lucide-share',
     label: t('CONTACT_PANEL.SEND_TRANSCRIPT'),
@@ -73,6 +88,29 @@ const openMessageSearch = () => {
   openSearchPanel();
 };
 
+const syncEvolutionGoContact = async () => {
+  const contactId = currentChat.value?.meta?.sender?.id;
+  const inboxId = currentChat.value?.inbox_id;
+  if (!contactId) {
+    useAlert(t('CONVERSATION.EVOLUTION_GO_SYNC_CONTACT.ERROR'));
+    return;
+  }
+
+  try {
+    await ContactAPI.evolutionGoSync(contactId, { inboxId });
+    useAlert(t('CONVERSATION.EVOLUTION_GO_SYNC_CONTACT.SUCCESS'));
+    // Light poll so name/avatar refresh after Sidekiq finishes
+    setTimeout(() => {
+      store.dispatch('contacts/show', { id: contactId });
+    }, 4000);
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      t('CONVERSATION.EVOLUTION_GO_SYNC_CONTACT.ERROR');
+    useAlert(message);
+  }
+};
+
 const handleActionClick = ({ action }) => {
   toggleDropdown(false);
 
@@ -85,6 +123,9 @@ const handleActionClick = ({ action }) => {
   } else if (action === 'search_in_conversation') {
     // FORK: in-conversation message search
     openMessageSearch();
+  } else if (action === 'sync_contact') {
+    // FORK: Evolution Go contact sync
+    syncEvolutionGoContact();
   } else if (action === 'send_transcript') {
     toggleEmailModal();
   }
