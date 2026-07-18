@@ -48,7 +48,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Contato/conversa | — | ✅ | `IncomingMessageEvolutionGo` + enrichment Go |
 | Reply threading | `contextInfo.stanzaId` / `stanzaID` | ✅ | `add_reply_context!` → `in_reply_to_external_id` |
 | Quote outbound (própria msg) | `quoted.participant` via `instance_name` se phone `+55000…` | ✅ | `EvolutionGoServiceOutbound#channel_business_phone` |
-| Avatar enrichment backoff | `/user/avatar` timeout 12s + `evolution_go_avatar_attempted_at` (6h); PictureURL/PictureID via `/user/info` | ✅ | `ContactEnrichmentService` |
+| Avatar enrichment backoff | `/user/avatar` timeout 12s; cooldown 6h só sem-foto/privacidade; query LID-first + fallback PN | ✅ | `ContactEnrichmentService` · [avatar-failures-report.md](./avatar-failures-report.md) |
 | Contacts refresh (bulk) | paced enqueue 3s + dynamic lock TTL | ✅ | `ContactsRefreshService` |
 | Sync contact (per-conversation menu) | `POST …/contacts/:id/evolution_go_sync` → `ContactEnrichmentJob` `force: true` | ✅ | MoreActions · só Evolution Go |
 | Client delete | `MESSAGE` revoke (`IsRevoke` / type 0) / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` (job sempre consome; soft-delete gated) |

@@ -33,7 +33,7 @@
 | `set_presence` + typing dashboard wiring | ✅ jul/2026 |
 | Inbound reply context (`contextInfo.stanzaId` / `stanzaID`) | ✅ jul/2026 |
 | Outbound quote `participant` com phone placeholder `+55000…` | ✅ 13/jul/2026 |
-| Avatar enrichment backoff (`avatar_attempted_at`, timeout 12s) | ✅ 13/jul/2026 |
+| Avatar enrichment backoff (`avatar_attempted_at`, timeout 12s) | ✅ 13/jul/2026 · **18/jul LID-first + timeout ≠ cooldown** |
 | Contacts refresh paced (3s stagger + lock TTL) | ✅ 17/jul/2026 |
 | Sync contact from conversation MoreActions | ✅ 18/jul/2026 · `POST …/evolution_go_sync` · force info+avatar |
 | Same-origin Active Storage download (alias hosts) | ✅ 13/jul/2026 |

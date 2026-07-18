@@ -22,6 +22,7 @@
 | 18/jul/2026 | Meta AI `richResponseMessage` / `@bot` + unwrap `botInvokeMessage`; troubleshooting + checklist |
 | 18/jul/2026 (pm) | Reactions: ChatJid prefere `@lid`; menu Reações expansível; optimistic `findStoreMessage`; E2E react OK |
 | 18/jul/2026 | Sync contact MoreActions: `POST …/evolution_go_sync` + menu só Evolution Go |
+| 18/jul/2026 | Avatar enrichment: LID-first + timeout sem cooldown 6h; [avatar-failures-report.md](./avatar-failures-report.md) |
 
 ---
 
