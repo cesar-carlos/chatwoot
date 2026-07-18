@@ -13,9 +13,8 @@ import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
 import { snoozedReopenTime } from 'dashboard/helper/snoozeHelpers';
 import { useInbox } from 'dashboard/composables/useInbox';
-import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
-import { copyTextToClipboard } from 'shared/helpers/clipboard';
+// FORK: conversation id (#N) removed from header — already in the URL
 
 const props = defineProps({
   chat: {
@@ -101,15 +100,6 @@ const hasMultipleInboxes = computed(
 const hasSlaPolicyId = computed(
   () => props.chat?.applied_sla?.id && !currentContact.value?.blocked
 );
-
-const copyConversationId = async () => {
-  try {
-    await copyTextToClipboard(String(props.chat.id));
-    useAlert(t('CONVERSATION.HEADER.COPY_ID_SUCCESS'));
-  } catch (error) {
-    // error
-  }
-};
 </script>
 
 <template>
@@ -151,16 +141,9 @@ const copyConversationId = async () => {
         <div
           class="flex items-center max-w-full gap-1 overflow-hidden text-xs conversation--header--actions text-n-slate-11 text-ellipsis whitespace-nowrap"
         >
-          <button
-            type="button"
-            class="truncate shrink-0 text-label-small text-n-slate-11 hover:text-n-slate-12 !p-0 cucursor-pointer"
-            @click="copyConversationId"
-          >
-            {{ `#${chat.id}` }}
-          </button>
-          <span v-if="hasMultipleInboxes">•</span>
+          <!-- FORK: hide #conversationId (redundant with browser URL) -->
           <InboxName v-if="hasMultipleInboxes" :inbox="inbox" class="!mx-0" />
-          <span v-if="mailSubject">•</span>
+          <span v-if="mailSubject && hasMultipleInboxes">•</span>
           <span
             v-if="mailSubject"
             v-tooltip="mailSubject"
@@ -168,7 +151,7 @@ const copyConversationId = async () => {
           >
             {{ mailSubject }}
           </span>
-          <span v-if="isSnoozed">•</span>
+          <span v-if="isSnoozed && (hasMultipleInboxes || mailSubject)">•</span>
           <span
             v-if="isSnoozed"
             class="min-w-0 truncate font-medium text-n-amber-10 shrink-0"
