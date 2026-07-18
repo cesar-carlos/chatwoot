@@ -98,15 +98,19 @@ const reactionChips = computed(() => {
 });
 
 const removeBusinessReaction = async chip => {
-  if (!canReactOnChip.value || !chip?.isMine || isRemovingReaction.value) return;
+  if (!canReactOnChip.value || !chip?.isMine || isRemovingReaction.value)
+    return;
 
-  const stored =
-    findStoreMessage(store, conversationId.value, messageId.value) || {
-      id: messageId.value,
-      conversation_id: conversationId.value,
-      content_attributes: contentAttributes.value || {},
-      source_id: sourceId.value,
-    };
+  const stored = findStoreMessage(
+    store,
+    conversationId.value,
+    messageId.value
+  ) || {
+    id: messageId.value,
+    conversation_id: conversationId.value,
+    content_attributes: contentAttributes.value || {},
+    source_id: sourceId.value,
+  };
   const snapshotAttrs = {
     ...(stored.content_attributes || stored.contentAttributes || {}),
   };
@@ -223,9 +227,9 @@ const replyToPreview = computed(() => {
     return t('CONVERSATION.REPLY_MESSAGE_LOADING');
   }
 
-  const { content, attachments } = inReplyTo.value;
+  const { content: replyContent, attachments } = inReplyTo.value;
 
-  if (content) return new MessageFormatter(content).formattedMessage;
+  if (replyContent) return new MessageFormatter(replyContent).formattedMessage;
   if (attachments?.length) {
     const firstAttachment = attachments[0];
     const fileType = firstAttachment.fileType ?? firstAttachment.file_type;

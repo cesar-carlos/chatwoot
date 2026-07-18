@@ -32,12 +32,8 @@ const emit = defineEmits(['select', 'jumpToMessage']);
 const exactTimestamp = useExactTimestamp();
 
 const { t } = useI18n();
-const {
-  isDownloaded,
-  downloadCount,
-  markDownloaded,
-  downloadActionTooltip,
-} = useAttachmentDownloadState();
+const { isDownloaded, downloadCount, markDownloaded, downloadActionTooltip } =
+  useAttachmentDownloadState();
 
 const mediaAttachments = computed(() =>
   [...props.attachments]
