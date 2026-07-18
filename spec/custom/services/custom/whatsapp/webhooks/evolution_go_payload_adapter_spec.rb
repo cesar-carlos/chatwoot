@@ -77,6 +77,30 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter do
       expect(result[:message][:documentWithCaptionMessage]).to be_nil
     end
 
+    it 'unwraps botInvokeMessage wrappers from Meta AI / bots' do
+      data = {
+        'Info' => {
+          'ID' => 'BOT-INVOKE-1',
+          'Chat' => '867051314767696@bot',
+          'IsFromMe' => false
+        },
+        'Message' => {
+          'botInvokeMessage' => {
+            'message' => {
+              'richResponseMessage' => {
+                'submessages' => [{ 'messageText' => 'Hi from bot' }]
+              }
+            }
+          }
+        }
+      }
+
+      result = described_class.canonicalize_data(data)
+
+      expect(result[:message][:richResponseMessage][:submessages].first[:messageText]).to eq('Hi from bot')
+      expect(result[:message][:botInvokeMessage]).to be_nil
+    end
+
     it 'maps fromMe payloads to the recipient peer JID' do
       data = {
         'Info' => {

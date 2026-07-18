@@ -178,6 +178,7 @@ Lista completa: wiki `events-system.md` § Tipos de Eventos.
 | Caso | `remoteJid` | Phone para Chatwoot |
 |------|-------------|---------------------|
 | Contato normal | `5511...@s.whatsapp.net` | Dígitos antes de `@` |
+| Bot (Meta AI, etc.) | `8670…@bot` | Dígitos antes de `@` (`phone_from_jid`); pushName costuma ser o nome do bot |
 | LID | `xxx@lid` + `remoteJidAlt` | Usar `remoteJidAlt` se presente |
 | Grupo | `120363...@g.us` | Filtrar se `ignore_groups: true`; senão `source_id` = JID grupo + `participant` no key |
 | Status | `status@broadcast` | Ignorar |
@@ -190,10 +191,23 @@ Lista completa: wiki `events-system.md` § Tipos de Eventos.
 | Texto simples | `message.conversation` | Exemplo oficial webhook |
 | Texto formatado / link preview / **reply quote** | `message.extendedTextMessage.text` | Reply traz `contextInfo` |
 | Legenda em mídia | `message.*Message.caption` | Fase 2 |
+| Meta AI / bots rich | `message.richResponseMessage.submessages[].messageText` | `AIRichResponseMessage` (whatsmeow); `Info.Type` pode ser `text` mesmo assim |
 
 **Reply / quote inbound:** `extendedTextMessage.contextInfo.stanzaID` (Evolution Go / whatsmeow — `ID` maiúsculo). Baileys usa `stanzaId`. O normalizer aceita ambos → `messages[].context.id` → `in_reply_to_external_id`. Sem o casing `stanzaID`, a mensagem chega no CW sem preview de resposta ([evolution-go#29](https://github.com/evolution-foundation/evolution-go/issues/29)).
 
-Normalizer deve tentar, nesta ordem: `conversation` → `extendedTextMessage.text` → caption da mídia.
+Normalizer tenta, nesta ordem: `conversation` → `extendedTextMessage.text` → caption da mídia → interactive reply/template → **`richResponseMessage` submessages** → placeholder (`[AI message]` / `[Unsupported message type]`).
+
+### Meta AI / `richResponseMessage`
+
+Bots oficiais (ex.: Meta AI, chat `@bot`) enviam `AIRichResponseMessage` serializado como `richResponseMessage`, **não** `conversation`. Payload típico ~alguns KB; o Go loga `Type: text` via `Info.Type` (classificação grossa), o que **não** implica body em `conversation`.
+
+| Campo | Uso no fork |
+|-------|-------------|
+| `richResponseMessage.submessages[].messageText` | Concatenados com `\n\n` → texto inbound |
+| `richResponseMessage` sem texto (ex.: só imagem/grid) | Placeholder `[AI message]` |
+| `botInvokeMessage` | Wrapper `FutureProofMessage` — unwrap em `EvolutionGoPayloadAdapter` |
+
+Fixture: `spec/fixtures/evolution_go/message_inbound_rich_response.json`.
 
 ### Mídia (Fase 2)
 
@@ -209,8 +223,9 @@ Normalizer deve tentar, nesta ordem: `conversation` → `extendedTextMessage.tex
 | `documentWithCaptionMessage` | `message.documentMessage` (+ caption) — comum em PDF/doc com legenda e no echo de `POST /send/media` |
 | `ephemeralMessage` | `message.*` |
 | `viewOnceMessage` / `viewOnceMessageV2` / `viewOnceMessageV2Extension` | `message.*` (quando o Go ainda entrega o payload interno) |
+| `botInvokeMessage` | `message.*` (Meta AI / bots — frequentemente envolve `richResponseMessage`) |
 
-Sem unwrap, `documentWithCaptionMessage` vira `[Unsupported message type]` no Chatwoot (echo phone / n8n → Go → webhook).
+Sem unwrap, `documentWithCaptionMessage` vira `[Unsupported message type]` no Chatwoot (echo phone / n8n → Go → webhook). Sem parser de `richResponseMessage`, Meta AI também virava esse placeholder (corrigido jul/2026).
 
 **Mídia indisponível (view once)** — o Go pode enviar `MESSAGE` **sem** `Message` / `message`, só com flags no envelope:
 
