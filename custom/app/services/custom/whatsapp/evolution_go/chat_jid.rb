@@ -3,10 +3,23 @@
 module Custom::Whatsapp::EvolutionGo::ChatJid
   module_function
 
+  # Protocol ops (react / delete / edit) need the chat addressing WhatsApp
+  # actually uses. LID-mode peers must use @lid — a stale @s.whatsapp.net PN
+  # can return HTTP 200 from Evolution Go while the reaction never attaches.
   def for_message(message)
-    jid_from_message_attrs(message) ||
+    lid_from(message) ||
+      jid_from_message_attrs(message) ||
       jid_from_contact(message) ||
       jid_from_contact_inbox(message)
+  end
+
+  def lid_from(message)
+    candidates = [
+      jid_from_message_attrs(message),
+      jid_from_contact(message),
+      message.conversation&.contact&.identifier
+    ]
+    candidates.find { |jid| jid.to_s.end_with?('@lid') }
   end
 
   def jid_from_message_attrs(message)

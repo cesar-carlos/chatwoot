@@ -379,6 +379,8 @@ end
 | 16/jul/2026 | §33 addendum: `user:self`, timeout 15s, optimistic UI, Node parity, cleanup rake |
 | 16/jul/2026 | §34: pseudo-forward de mensagem no Chatwoot (sem API Go) |
 | 17/jul/2026 | §35: message edit — UI CW + anti-loop + plaintext protocol; addendum delete/enrichment 17/jul pm |
+| 18/jul/2026 | §33 addendum: ChatJid prefere `@lid`; menu Reações expansível; optimistic `findStoreMessage` |
+| 18/jul/2026 | Meta AI `richResponseMessage` + unwrap `botInvokeMessage` |
 
 ---
 
@@ -443,10 +445,11 @@ end
 | Decisão | Valor |
 |---------|-------|
 | **Inbound UX** | Não criar mensagem; atualizar `content_attributes.reactions` na mensagem alvo + chip na bolha (`Base.vue`) |
-| **Outbound UX** | Context menu set curto `👍 ❤️ 😂 😮 😢 🙏` + remove; `POST …/messages/:id/evolution_go_react` |
+| **Outbound UX** | Context menu item “Reactions” / “Reações” → painel com set curto `👍 ❤️ 😂 😮 😢 🙏` + remove; `POST …/messages/:id/evolution_go_react` |
 | **Store** | `Custom::Whatsapp::ReactionsStore` (`BUSINESS_ACTOR_KEY = user:self`) — shared Go + Node |
 | **Services (Go)** | `MessageReactionPayloadExtractor`, `MessageReactionSyncService`, `ReactSyncService`, `ApiClient#react` |
 | **Services (Node)** | Paridade em `Custom::Whatsapp::Evolution::*` + `ApiClient#send_reaction` → `/message/sendReaction/:instance` |
+| **Chat JID** | `ChatJid.for_message` prioriza `@lid` (attrs / contact / `identifier`) antes de PN `@s.whatsapp.net` — peers LID-mode |
 | **Ator negócio** | Sempre `from: user`, `actor_key: user:self` (inbound `fromMe` e outbound dashboard); `actor_id` só informativo no outbound |
 | **Remove** | `reaction` vazio ou `"remove"`; texto vazio no webhook |
 | **Missing target** | Go: `mutation_stats.inbound_reaction_skipped`; Node: log `inbound_reaction_skipped` |
@@ -461,6 +464,13 @@ end
 - Unificar ator evita duplicar chip quando o agente reage no dashboard após echo `fromMe` do celular.
 - Optimistic UI: snapshot → update local → POST → merge ou rollback + alert.
 - E2E: validar `/message/react` na versão Go do operador e anotar em `evolution-target-version.txt`.
+
+### Addendum 18/jul/2026 — LID + menu UX
+
+- `ChatJid` prioriza `@lid` antes de PN stale em `evolution_go_remote_jid` (react/delete/edit). PN errado podia retornar HTTP 200 no Go sem grudar a reação no WA.
+- Optimistic update usa a mensagem completa da store (`findStoreMessage`) — payload do context menu sem `sender` fazia a bolha pular L→R.
+- Menu: item padrão “Reactions”/`Reações` (ícone emoji) expande painel com o set curto; emojis como `div` (não `<button>`) para não disparar `@blur` do `ContextMenu`.
+- E2E local Contas-Receber / Pedidos: `/message/react` OK com LID (~0,2–1s).
 
 ---
 
