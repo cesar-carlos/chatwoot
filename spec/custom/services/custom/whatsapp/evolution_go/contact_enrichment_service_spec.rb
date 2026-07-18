@@ -100,14 +100,12 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     allow(api_client).to receive(:user_info).and_return(
       instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
     )
-    allow_any_instance_of(described_class).to receive(:wait_before_avatar_retry)
+    allow(Kernel).to receive(:sleep)
 
     call_count = 0
     allow(api_client).to receive(:user_avatar) do
       call_count += 1
-      if call_count < 3
-        raise Custom::Whatsapp::EvolutionGo::ApiError, 'POST /user/avatar: Net::ReadTimeout'
-      end
+      raise Custom::Whatsapp::EvolutionGo::ApiError, 'POST /user/avatar: Net::ReadTimeout' if call_count < 3
 
       instance_double(
         HTTParty::Response,
@@ -184,7 +182,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     allow(api_client).to receive(:user_info).and_return(
       instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
     )
-    allow_any_instance_of(described_class).to receive(:wait_before_avatar_retry)
+    allow(Kernel).to receive(:sleep)
     allow(api_client).to receive(:user_avatar).with(number: '279224615219224@lid', preview: true).and_raise(
       Custom::Whatsapp::EvolutionGo::ApiError.new(
         'Evolution Go API request failed: POST /user/avatar: Net::ReadTimeout'

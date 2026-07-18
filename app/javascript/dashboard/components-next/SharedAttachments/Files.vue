@@ -16,12 +16,6 @@ import {
 import FileIcon from 'next/icon/FileIcon.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 
-const FILTERS = {
-  ALL: 'all',
-  PENDING: 'pending',
-  DOWNLOADED: 'downloaded',
-};
-
 const props = defineProps({
   attachments: { type: Array, default: () => [] },
   peekLimit: { type: Number, default: 0 },
@@ -29,6 +23,12 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['select', 'jumpToMessage']);
+
+const FILTERS = {
+  ALL: 'all',
+  PENDING: 'pending',
+  DOWNLOADED: 'downloaded',
+};
 
 const { t } = useI18n();
 const {

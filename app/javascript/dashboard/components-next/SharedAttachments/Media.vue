@@ -29,12 +29,8 @@ const props = defineProps({
 const emit = defineEmits(['select', 'jumpToMessage']);
 
 const { t } = useI18n();
-const {
-  isDownloaded,
-  downloadCount,
-  markDownloaded,
-  downloadActionTooltip,
-} = useAttachmentDownloadState();
+const { isDownloaded, downloadCount, markDownloaded, downloadActionTooltip } =
+  useAttachmentDownloadState();
 
 const mediaAttachments = computed(() =>
   [...props.attachments]

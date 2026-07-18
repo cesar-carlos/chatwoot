@@ -946,14 +946,18 @@ export default {
     ) {
       const messages = this.getMultipleMessagesPayload(message);
       // FORK: send sequentially so WhatsApp/IG order stays stable
-      for (const messagePayload of messages) {
-        await this.sendMessage(
-          messagePayload,
-          messagePayload.message || '',
-          copilotAcceptedMessage,
-          hasReplyTo && !!messagePayload.contentAttributes?.in_reply_to
-        );
-      }
+      await messages.reduce(
+        (promise, messagePayload) =>
+          promise.then(() =>
+            this.sendMessage(
+              messagePayload,
+              messagePayload.message || '',
+              copilotAcceptedMessage,
+              hasReplyTo && !!messagePayload.contentAttributes?.in_reply_to
+            )
+          ),
+        Promise.resolve()
+      );
     },
     sendMessageAnalyticsData(
       isPrivate,

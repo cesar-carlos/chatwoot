@@ -25,7 +25,10 @@ import {
   extractReactionErrorMessage,
 } from 'customDashboard/composables/useMessageReactions';
 // FORK: WhatsApp-like message forward
-import { inboxSupportsForward, messageCanBeForwarded } from 'customDashboard/composables/useMessageForward';
+import {
+  inboxSupportsForward,
+  messageCanBeForwarded,
+} from 'customDashboard/composables/useMessageForward';
 import MessageForwardModal from 'customDashboard/components/forward/MessageForwardModal.vue';
 // FORK: Evolution Go edit outgoing message
 import {
@@ -86,11 +89,6 @@ export default {
       isSendingReaction: false,
       showReactionPanel: false,
     };
-  },
-  watch: {
-    isOpen(open) {
-      if (!open) this.showReactionPanel = false;
-    },
   },
   computed: {
     ...mapGetters({
@@ -166,6 +164,11 @@ export default {
       }
 
       return this.$t('CONVERSATION.CONTEXT_MENU.DELETE_CONFIRMATION.MESSAGE');
+    },
+  },
+  watch: {
+    isOpen(open) {
+      if (!open) this.showReactionPanel = false;
     },
   },
   methods: {
@@ -264,11 +267,9 @@ export default {
       const stored =
         findStoreMessage(this.$store, this.conversationId, this.messageId) ||
         this.message;
-      const snapshot =
-        stored.content_attributes ?? stored.contentAttributes;
+      const snapshot = stored.content_attributes ?? stored.contentAttributes;
       const currentUserId = this.$store.getters.getCurrentUserID;
-      const isRemove =
-        !reaction || String(reaction).toLowerCase() === 'remove';
+      const isRemove = !reaction || String(reaction).toLowerCase() === 'remove';
       // Prefer store message so sender stays intact (avoids left→right jump).
       const optimistic = applyOptimisticReaction(
         stored,

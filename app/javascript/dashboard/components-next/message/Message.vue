@@ -414,8 +414,7 @@ const contextMenuEnabledOptions = computed(() => {
       !isFailedOrProcessing &&
       ((props.messageType === MESSAGE_TYPES.INCOMING &&
         props.inboxSupportsReplyTo.incoming) ||
-        ((isOutgoing ||
-          props.messageType === MESSAGE_TYPES.TEMPLATE) &&
+        ((isOutgoing || props.messageType === MESSAGE_TYPES.TEMPLATE) &&
           props.inboxSupportsReplyTo.outgoing)),
     // FORK: WhatsApp-like message forward (text and/or downloadable media)
     forward:

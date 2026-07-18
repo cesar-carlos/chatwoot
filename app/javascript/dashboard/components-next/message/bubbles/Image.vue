@@ -27,12 +27,8 @@ const { isLoaded, hasError, loadWithRetry } = useLoadWithRetry();
 
 const showGallery = ref(false);
 const isDownloading = ref(false);
-const {
-  isDownloaded,
-  downloadCount,
-  markDownloaded,
-  downloadActionTooltip,
-} = useAttachmentDownloadState();
+const { isDownloaded, downloadCount, markDownloaded, downloadActionTooltip } =
+  useAttachmentDownloadState();
 
 const downloaded = computed(() => isDownloaded(attachment.value?.id));
 const count = computed(() => downloadCount(attachment.value?.id));

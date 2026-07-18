@@ -11,9 +11,7 @@ import {
   newMessageIds,
 } from 'dashboard/composables/fork/conversationSearchInjectedMessages';
 
-export const LocateConversationMessageKey = Symbol(
-  'LocateConversationMessage'
-);
+export const LocateConversationMessageKey = Symbol('LocateConversationMessage');
 
 const HIGHLIGHT_CLASS = 'message-locate-pulse';
 const HIGHLIGHT_DURATION_MS = 1800;
@@ -33,10 +31,7 @@ const findBubbleElement = messageId => {
   const row = findMessageElement(messageId);
   if (!row) return null;
 
-  return (
-    row.querySelector('.left-bubble, .right-bubble') ||
-    row
-  );
+  return row.querySelector('.left-bubble, .right-bubble') || row;
 };
 
 const insertMessagesAround = (
@@ -226,7 +221,10 @@ export const useScrollToConversationMessage = ({
       emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE, { messageId });
       // Wait for smooth scrollIntoView to settle before pulsing the target
       await nextTick();
-      scheduleTimer(() => applyTemporaryHighlight(messageId), HIGHLIGHT_DELAY_MS);
+      scheduleTimer(
+        () => applyTemporaryHighlight(messageId),
+        HIGHLIGHT_DELAY_MS
+      );
       return true;
     } finally {
       isLocating.value = false;

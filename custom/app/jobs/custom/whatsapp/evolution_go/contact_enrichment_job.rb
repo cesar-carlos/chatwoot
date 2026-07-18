@@ -6,6 +6,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
   queue_as :low
 
   IN_FLIGHT_LOCK_TTL = 2.minutes.to_i
+  FORCE_LOCK_RETRY_WAIT = 5.seconds
 
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
@@ -17,17 +18,17 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
 
     attrs = attrs.with_indifferent_access
     return unless enrichment_allowed?(contact, attrs)
-
-    unless acquire_in_flight_lock!(contact)
-      # Force Sync: previous attempt still running (Go avatar timeouts are slow) —
-      # requeue instead of silently dropping the click.
-      if ActiveModel::Type::Boolean.new.cast(attrs[:force])
-        retry_job(wait: 5.seconds)
-      end
-      return
-    end
+    return unless acquire_lock_or_requeue!(contact, attrs)
 
     @lock_acquired = true
+    run_enrichment!(channel, contact, attrs)
+  ensure
+    release_in_flight_lock!(contact) if contact && @lock_acquired
+  end
+
+  private
+
+  def run_enrichment!(channel, contact, attrs)
     with_global_enrichment_slot do
       Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.new(
         channel: channel,
@@ -37,11 +38,16 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
         force: attrs[:force]
       ).perform
     end
-  ensure
-    release_in_flight_lock!(contact) if contact && @lock_acquired
   end
 
-  private
+  def acquire_lock_or_requeue!(contact, attrs)
+    return true if acquire_in_flight_lock!(contact)
+
+    # Force Sync: previous attempt still running (Go avatar timeouts are slow) —
+    # requeue instead of silently dropping the click.
+    retry_job(wait: FORCE_LOCK_RETRY_WAIT) if ActiveModel::Type::Boolean.new.cast(attrs[:force])
+    false
+  end
 
   def enrichment_allowed?(contact, attrs)
     Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.should_enqueue?(

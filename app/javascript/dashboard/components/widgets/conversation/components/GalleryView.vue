@@ -12,7 +12,6 @@ import { downloadFile } from 'customDashboard/helper/downloadFile';
 // FORK: local download state for sequential print workflows
 import { useAttachmentDownloadState } from 'customDashboard/composables/useAttachmentDownloadState';
 
-
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import Avatar from 'next/avatar/Avatar.vue';
 import TeleportWithDirection from 'dashboard/components-next/TeleportWithDirection.vue';
@@ -37,12 +36,8 @@ const show = defineModel('show', { type: Boolean, default: false });
 
 const { t } = useI18n();
 const getters = useStoreGetters();
-const {
-  isDownloaded,
-  downloadCount,
-  markDownloaded,
-  downloadActionTooltip,
-} = useAttachmentDownloadState();
+const { isDownloaded, downloadCount, markDownloaded, downloadActionTooltip } =
+  useAttachmentDownloadState();
 
 const ALLOWED_FILE_TYPES = {
   IMAGE: 'image',

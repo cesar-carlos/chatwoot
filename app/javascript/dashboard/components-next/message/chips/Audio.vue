@@ -38,12 +38,8 @@ defineOptions({
 });
 
 const { t } = useI18n();
-const {
-  isDownloaded,
-  downloadCount,
-  markDownloaded,
-  downloadActionTooltip,
-} = useAttachmentDownloadState();
+const { isDownloaded, downloadCount, markDownloaded, downloadActionTooltip } =
+  useAttachmentDownloadState();
 
 const downloaded = computed(() => isDownloaded(attachment?.id));
 const count = computed(() => downloadCount(attachment?.id));

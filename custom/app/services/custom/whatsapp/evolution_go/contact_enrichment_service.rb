@@ -131,7 +131,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
       candidates << contact_phone_digits
     end
 
-    candidates.map { |value| value.to_s.presence }.compact.uniq
+    candidates.filter_map { |value| value.to_s.presence }.uniq
   end
 
   def first_lid_candidate
@@ -150,9 +150,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     return if @remote_jid.blank?
 
     updates = {}
-    if @remote_jid.end_with?('@lid') && contact.identifier != @remote_jid && lid_available?(@remote_jid)
-      updates[:identifier] = @remote_jid
-    end
+    updates[:identifier] = @remote_jid if @remote_jid.end_with?('@lid') && contact.identifier != @remote_jid && lid_available?(@remote_jid)
 
     additional = contact.additional_attributes.stringify_keys
     return if additional[EVOLUTION_GO_REMOTE_JID_KEY] == @remote_jid && updates.blank?
@@ -188,46 +186,58 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   end
 
   def fetch_and_apply_profile!
+    enrich_profile_and_avatar!
+  rescue StandardError => e
+    handle_profile_enrichment_error!(e)
+  end
+
+  def enrich_profile_and_avatar!
     query = user_info_query
     number = lookup_number
     return false if query.blank? && number.blank?
-
-    # /user/check is another usync query — skip on forced refresh to cut API pressure.
-    unless force
-      unless whatsapp_user_exists?(number)
-        mark_avatar_attempted! unless contact.avatar.attached?
-        return false
-      end
-    end
+    return false if skip_missing_whatsapp_user?(number)
 
     profile = fetch_user_profile(query)
     return :rate_limited if profile == :rate_limited
 
     applied = apply_profile(profile, query) if profile.present?
-    picture_url = profile_picture_url(profile)
-    picture_id = profile_picture_id(profile)
+    apply_avatar_after_profile!(profile, applied)
+  end
 
+  def apply_avatar_after_profile!(profile, applied)
     avatar_outcome = fetch_and_apply_avatar!(
-      picture_url: picture_url,
-      picture_id: picture_id
+      picture_url: profile_picture_url(profile),
+      picture_id: profile_picture_id(profile)
     )
     return :rate_limited if avatar_outcome == :rate_limited
 
     avatar_outcome || applied
+  end
 
-  rescue StandardError => e
-    Rails.logger.warn("[EVOLUTION_GO] contact enrichment failed for contact #{contact.id}: #{e.message}")
+  # /user/check is another usync query — skip on forced refresh to cut API pressure.
+  def skip_missing_whatsapp_user?(number)
+    return false if force
+    return false if whatsapp_user_exists?(number)
+
+    mark_avatar_attempted! unless contact.avatar.attached?
+    true
+  end
+
+  def handle_profile_enrichment_error!(error)
+    Rails.logger.warn("[EVOLUTION_GO] contact enrichment failed for contact #{contact.id}: #{error.message}")
     contact.reload if contact.persisted?
-    return :rate_limited if rate_limited_error?(e)
+    return :rate_limited if rate_limited_error?(error)
 
-    unless contact.avatar.attached?
-      if network_timeout_error?(e)
-        mark_avatar_timeout!
-      else
-        mark_avatar_attempted!
-      end
-    end
+    mark_avatar_failure_from_error!(error) unless contact.avatar.attached?
     false
+  end
+
+  def mark_avatar_failure_from_error!(error)
+    if network_timeout_error?(error)
+      mark_avatar_timeout!
+    else
+      mark_avatar_attempted!
+    end
   end
 
   def fetch_user_profile(query)
@@ -291,7 +301,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     profile.with_indifferent_access[:PictureID].to_s.strip.presence
   end
 
-  def apply_profile(profile, jid) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def apply_profile(profile, jid) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     return false if profile.blank?
 
     updates = {}
@@ -310,9 +320,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     end
 
     lid = profile['LID'].to_s.presence
-    if lid.present? && lid.end_with?('@lid') && contact.identifier != lid && lid_available?(lid)
-      updates[:identifier] = lid
-    end
+    updates[:identifier] = lid if lid.present? && lid.end_with?('@lid') && contact.identifier != lid && lid_available?(lid)
 
     picture_id = profile_picture_id(profile)
     additional[EVOLUTION_GO_PICTURE_ID_KEY] = picture_id if picture_id.present?
@@ -335,19 +343,37 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   end
 
   def fetch_and_apply_avatar!(picture_url: nil, picture_id: nil)
-    if contact.avatar.attached?
-      return false unless force
-      # Same PictureID → photo unchanged; skip CDN/usync on forced refresh.
-      return true if picture_id.present? && stored_picture_id == picture_id
-    end
+    attached_avatar_short_circuit = attached_avatar_fetch_outcome(picture_id)
+    return attached_avatar_short_circuit unless attached_avatar_short_circuit.nil?
 
-    # Prefer PictureURL from /user/info — avoids a second WhatsApp usync (/user/avatar).
-    if picture_url.present?
-      attached = attach_avatar_from_url!(picture_url)
-      store_picture_id!(picture_id) if attached && picture_id.present?
-      return true if attached
-    end
+    return true if attach_from_picture_url!(picture_url, picture_id)
 
+    fetch_avatar_from_candidates!(picture_id)
+  end
+
+  # nil = continue fetch; true/false = done
+  def attached_avatar_fetch_outcome(picture_id)
+    return nil unless contact.avatar.attached?
+    return false unless force
+    # Same PictureID → photo unchanged; skip CDN/usync on forced refresh.
+    return true if unchanged_attached_avatar?(picture_id)
+
+    nil
+  end
+
+  def attach_from_picture_url!(picture_url, picture_id)
+    return false if picture_url.blank?
+
+    attached = attach_avatar_from_url!(picture_url)
+    store_picture_id!(picture_id) if attached && picture_id.present?
+    attached
+  end
+
+  def unchanged_attached_avatar?(picture_id)
+    picture_id.present? && stored_picture_id == picture_id
+  end
+
+  def fetch_avatar_from_candidates!(picture_id)
     candidates = avatar_query_candidates
     return false if candidates.blank?
 
@@ -382,43 +408,49 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   def request_and_attach_avatar!(number, picture_id: nil)
     return false if number.blank?
 
-    attempts = force ? FORCE_AVATAR_ATTEMPTS : 1
     last_outcome = false
-
-    attempts.times do |index|
+    avatar_attempt_limit.times do |index|
       last_outcome = request_avatar_once!(number, picture_id: picture_id)
-      return true if last_outcome == true
-      return :rate_limited if last_outcome == :rate_limited
+      return last_outcome if last_outcome == true || last_outcome == :rate_limited
       break if last_outcome == false
 
       # Timeout only — brief pause then retry (manual Sync / Refresh).
-      wait_before_avatar_retry if force && index < attempts - 1
+      wait_before_avatar_retry if force && index < avatar_attempt_limit - 1
     end
 
     last_outcome
   end
 
+  def avatar_attempt_limit
+    force ? FORCE_AVATAR_ATTEMPTS : 1
+  end
+
   def wait_before_avatar_retry
-    sleep(FORCE_AVATAR_RETRY_WAIT)
+    Kernel.sleep(FORCE_AVATAR_RETRY_WAIT)
   end
 
   def request_avatar_once!(number, picture_id: nil)
     response = api_client.user_avatar(number: number, preview: true)
-    if response.success?
-      attached = attach_avatar_from_response!(response.parsed_response)
-      store_picture_id!(picture_id) if attached && picture_id.present?
-      return attached
-    end
-
+    return handle_avatar_success_response!(response, picture_id) if response.success?
     return :rate_limited if rate_limited_response?(response)
 
     # HTTP miss without marking — finalize_avatar_miss! decides after fallbacks.
     log_avatar_http_failure!(response)
     false
   rescue Custom::Whatsapp::EvolutionGo::ApiError, *Custom::Whatsapp::EvolutionGo::ApiClient::NETWORK_ERRORS => e
-    Rails.logger.warn("[EVOLUTION_GO] user/avatar error for contact #{contact.id}: #{e.message}")
-    return :rate_limited if rate_limited_error?(e)
-    return :timeout if network_timeout_error?(e)
+    handle_avatar_request_error!(e)
+  end
+
+  def handle_avatar_success_response!(response, picture_id)
+    attached = attach_avatar_from_response!(response.parsed_response)
+    store_picture_id!(picture_id) if attached && picture_id.present?
+    attached
+  end
+
+  def handle_avatar_request_error!(error)
+    Rails.logger.warn("[EVOLUTION_GO] user/avatar error for contact #{contact.id}: #{error.message}")
+    return :rate_limited if rate_limited_error?(error)
+    return :timeout if network_timeout_error?(error)
 
     false
   end
