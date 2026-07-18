@@ -13,9 +13,8 @@ import wootConstants from 'dashboard/constants/globals';
 import { conversationListPageURL } from 'dashboard/helper/URLHelper';
 import { snoozedReopenTime } from 'dashboard/helper/snoozeHelpers';
 import { useInbox } from 'dashboard/composables/useInbox';
-import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
-import { copyTextToClipboard } from 'shared/helpers/clipboard';
+// FORK: conversation id (#N) removed from header — already in the URL
 
 const props = defineProps({
   chat: {
@@ -148,16 +147,9 @@ const copyConversationId = async () => {
         <div
           class="flex items-center gap-1 overflow-hidden text-xs conversation--header--actions text-n-slate-11 text-ellipsis whitespace-nowrap"
         >
-          <button
-            type="button"
-            class="truncate text-label-small text-n-slate-11 hover:text-n-slate-12 !p-0 cucursor-pointer"
-            @click="copyConversationId"
-          >
-            {{ `#${chat.id}` }}
-          </button>
-          <span v-if="hasMultipleInboxes">•</span>
+          <!-- FORK: hide #conversationId (redundant with browser URL) -->
           <InboxName v-if="hasMultipleInboxes" :inbox="inbox" class="!mx-0" />
-          <span v-if="isSnoozed">•</span>
+          <span v-if="isSnoozed && hasMultipleInboxes">•</span>
           <span v-if="isSnoozed" class="font-medium text-n-amber-10">
             {{ snoozedDisplayText }}
           </span>
