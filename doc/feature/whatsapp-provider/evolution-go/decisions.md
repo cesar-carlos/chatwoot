@@ -381,6 +381,7 @@ end
 | 17/jul/2026 | §35: message edit — UI CW + anti-loop + plaintext protocol; addendum delete/enrichment 17/jul pm |
 | 18/jul/2026 | §33 addendum: ChatJid prefere `@lid`; menu Reações expansível; optimistic `findStoreMessage` |
 | 18/jul/2026 | Meta AI `richResponseMessage` + unwrap `botInvokeMessage` |
+| 18/jul/2026 | §36 addendum: avatar `/user/avatar` LID-first; timeout sem cooldown 6h |
 
 ---
 
@@ -524,3 +525,12 @@ end
 | **Rate-limit** | 429 / `rate-overlimit` → short-circuit; **não** marcar `enriched_at` / cooldown avatar longo; `/user/info` e `/user/avatar` em `NON_RETRYABLE_PATHS` |
 | **Refresh bulk** | `ContactsRefreshService`: stagger `ENQUEUE_SPACING = 3s` + lock TTL dinâmico |
 | **Import abort** | Toggles off mid-run → `Import::Runtime#abort_disabled_import!` → `import_status: idle` |
+
+**Addendum 18/jul/2026 — avatar LID + timeout:**
+
+| Decisão | Valor |
+|---------|-------|
+| **Query `/user/avatar`** | Mesma prioridade do info: `@lid` → PN `@s.whatsapp.net` → dígitos do JID; **um** fallback se a 1ª falhar |
+| **Timeout de rede** | `Net::ReadTimeout` / `OpenTimeout` → **não** gravar `evolution_go_avatar_attempted_at` (retry no próximo inbound / Sync) |
+| **Cooldown 6h** | Apenas ausência de foto / privacidade (HTTP sem URL/base64), não falha transitória da Go |
+| **Relatório prod** | [avatar-failures-report.md](./avatar-failures-report.md) (account 12) |

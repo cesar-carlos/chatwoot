@@ -48,6 +48,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 | Modelar `provider_config` | [provider-config-mapping.md](./provider-config-mapping.md) |
 | Projetar o frontend | [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
 | Validar com servidor real | [validation-checklist.md](./validation-checklist.md) |
+| Diagnosticar contatos sem avatar | [avatar-failures-report.md](./avatar-failures-report.md) |
 
 ## Escopo (implementado)
 

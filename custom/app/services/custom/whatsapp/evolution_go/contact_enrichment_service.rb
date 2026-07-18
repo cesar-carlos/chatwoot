@@ -3,7 +3,8 @@
 # rubocop:disable Metrics/ClassLength -- enrichment mirrors Evolution Go contact profile fetch
 class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   ENRICHMENT_COOLDOWN = 24.hours
-  # When /user/avatar times out, avoid re-enqueueing on every inbound message.
+  # Missing/privacy (no photo URL) — avoid re-enqueueing on every inbound.
+  # Network timeouts do NOT set this cooldown (transient Evolution Go failures).
   AVATAR_RETRY_COOLDOWN = 6.hours
   WHATSAPP_STATUS_KEY = 'whatsapp_status'
   EVOLUTION_GO_PUSH_NAME_KEY = 'evolution_go_push_name'
@@ -96,6 +97,23 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     jid.to_s.split('@').first.presence
   end
 
+  # Same priority as user_info_query for /user/avatar (LID first — phone BR often times out).
+  def avatar_query_candidates
+    candidates = []
+    lid = first_lid_candidate
+    candidates << lid if lid.present?
+
+    wa_jid = [@remote_jid, stored_remote_jid].find { |value| value.to_s.end_with?('@s.whatsapp.net') }
+    if wa_jid.present?
+      candidates << wa_jid
+      candidates << wa_jid.to_s.split('@').first
+    elsif contact_phone_digits.present?
+      candidates << contact_phone_digits
+    end
+
+    candidates.map { |value| value.to_s.presence }.compact.uniq
+  end
+
   def first_lid_candidate
     [@remote_jid, stored_remote_jid, contact.identifier.to_s].find { |value| value.to_s.end_with?('@lid') }
   end
@@ -170,7 +188,6 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     picture_id = profile_picture_id(profile)
 
     avatar_outcome = fetch_and_apply_avatar!(
-      number,
       picture_url: picture_url,
       picture_id: picture_id
     )
@@ -291,7 +308,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     Array(profile.with_indifferent_access[:Devices]).map(&:to_s).find { |device| device.include?('@') }
   end
 
-  def fetch_and_apply_avatar!(number, picture_url: nil, picture_id: nil)
+  def fetch_and_apply_avatar!(picture_url: nil, picture_id: nil)
     if contact.avatar.attached?
       return false unless force
       # Same PictureID → photo unchanged; skip CDN/usync on forced refresh.
@@ -305,6 +322,28 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
       return true if attached
     end
 
+    candidates = avatar_query_candidates
+    return false if candidates.blank?
+
+    primary = candidates.first
+    outcome = request_and_attach_avatar!(primary, picture_id: picture_id)
+    return true if outcome == true
+    return :rate_limited if outcome == :rate_limited
+
+    # One PN/digits fallback when LID (or first query) times out / returns empty.
+    fallback = candidates[1]
+    if fallback.present? && (outcome == :timeout || outcome == false)
+      fallback_outcome = request_and_attach_avatar!(fallback, picture_id: picture_id)
+      return true if fallback_outcome == true
+      return :rate_limited if fallback_outcome == :rate_limited
+
+      outcome = fallback_outcome if fallback_outcome == :timeout
+    end
+
+    false
+  end
+
+  def request_and_attach_avatar!(number, picture_id: nil)
     return false if number.blank?
 
     response = api_client.user_avatar(number: number, preview: true)
@@ -321,9 +360,17 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   rescue Custom::Whatsapp::EvolutionGo::ApiError, *Custom::Whatsapp::EvolutionGo::ApiClient::NETWORK_ERRORS => e
     Rails.logger.warn("[EVOLUTION_GO] user/avatar error for contact #{contact.id}: #{e.message}")
     return :rate_limited if rate_limited_error?(e)
+    return :timeout if network_timeout_error?(e)
 
     mark_avatar_attempted!
     false
+  end
+
+  def network_timeout_error?(error)
+    return true if error.is_a?(Net::ReadTimeout) || error.is_a?(Net::OpenTimeout)
+    return true if error.cause.is_a?(Net::ReadTimeout) || error.cause.is_a?(Net::OpenTimeout)
+
+    error.message.to_s.match?(/ReadTimeout|OpenTimeout|execution expired/i)
   end
 
   def stored_picture_id
