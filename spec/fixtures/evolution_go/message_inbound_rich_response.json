@@ -1,0 +1,31 @@
+{
+  "event": "MESSAGE",
+  "instanceName": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "EE43848517653A8D73D093D720C42F7F",
+      "Chat": "867051314767696@bot",
+      "Sender": "867051314767696@bot",
+      "IsFromMe": false,
+      "PushName": "Meta AI",
+      "Timestamp": 1721260160,
+      "Type": "text"
+    },
+    "Message": {
+      "richResponseMessage": {
+        "messageType": 1,
+        "submessages": [
+          {
+            "messageType": 2,
+            "messageText": "Olá! Sou a Meta AI."
+          },
+          {
+            "messageType": 2,
+            "messageText": "Como posso ajudar?"
+          }
+        ]
+      },
+      "messageContextInfo": {}
+    }
+  }
+}

@@ -208,6 +208,75 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     end
   end
 
+  it 'normalizes Meta AI richResponseMessage as text from submessages' do
+    rich_fixture = JSON.parse(
+      Rails.root.join('spec/fixtures/evolution_go/message_inbound_rich_response.json').read
+    )
+
+    result = described_class.new(channel, rich_fixture).perform
+
+    aggregate_failures do
+      expect(result[:contacts].first[:wa_id]).to eq('867051314767696')
+      expect(result[:messages].first[:type]).to eq('text')
+      expect(result[:messages].first[:text][:body]).to eq("Olá! Sou a Meta AI.\n\nComo posso ajudar?")
+      expect(result[:messages].first[:text][:body]).not_to include('Unsupported message type')
+    end
+  end
+
+  it 'normalizes richResponseMessage wrapped in botInvokeMessage' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'BOT-INVOKE-RICH-1',
+          'Chat' => '867051314767696@bot',
+          'IsFromMe' => false,
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'botInvokeMessage' => {
+            'message' => {
+              'richResponseMessage' => {
+                'submessages' => [
+                  { 'messageText' => 'Resposta do bot' }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    expect(result[:messages].first[:text][:body]).to eq('Resposta do bot')
+  end
+
+  it 'uses AI placeholder when richResponseMessage has no text' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'RICH-EMPTY-1',
+          'Chat' => '867051314767696@bot',
+          'IsFromMe' => false,
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'richResponseMessage' => {
+            'submessages' => [
+              { 'messageType' => 1, 'gridImageMetadata' => { 'imageUrls' => [] } }
+            ]
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    expect(result[:messages].first[:text][:body]).to eq('[AI message]')
+  end
+
   it 'normalizes inbound location MESSAGE events' do
     location_fixture = JSON.parse(
       Rails.root.join('spec/fixtures/evolution_go/message_inbound_location.json').read
