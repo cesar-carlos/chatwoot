@@ -54,6 +54,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - inbox `provider: 'evolution_go'` em `Channel::Whatsapp`
 - connect + QR + webhook via REST
 - texto, mídia, location, contact, sticker, input_select→buttons/list
+- Meta AI / bots: `richResponseMessage` → texto (`submessages[].messageText`); unwrap `botInvokeMessage`
 - READ_RECEIPT, mark-read, advanced settings / proxy
 - import contatos, delete/edit inbound (plaintext protocol ✅; encrypted-only skip), sync delete/edit outbound (opt-in; UI Edit no context menu)
 - diagnóstico operacional e import histórico via `HISTORY_SYNC`

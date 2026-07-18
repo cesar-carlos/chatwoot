@@ -45,6 +45,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
       viewOnceMessageV2
       viewOnceMessageV2Extension
       documentWithCaptionMessage
+      botInvokeMessage
     ].freeze
 
     def unwrap_nested_message(message)

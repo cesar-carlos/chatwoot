@@ -25,7 +25,9 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   ].freeze
 
   UNSUPPORTED_TYPE_PLACEHOLDERS = {
-    'listMessage' => '[List message]'
+    'listMessage' => '[List message]',
+    # Meta AI / bot rich replies without extractable text (image-only, etc.)
+    'richResponseMessage' => '[AI message]'
   }.freeze
 
   CONTEXT_INFO_MESSAGE_KEYS = %w[
@@ -40,6 +42,7 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     buttonsResponseMessage
     templateButtonReplyMessage
     listResponseMessage
+    richResponseMessage
   ].freeze
 
   private
@@ -126,10 +129,27 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
            message.dig('videoMessage', 'caption') ||
            message.dig('documentMessage', 'caption') ||
            interactive_reply_body(message) ||
-           interactive_template_body(message)
+           interactive_template_body(message) ||
+           rich_response_body(message)
     return body if body.present?
 
     unsupported_placeholder(message)
+  end
+
+  # Meta AI / WhatsApp bots send AIRichResponseMessage (JSON: richResponseMessage)
+  # with text in submessages[].messageText — not conversation / extendedTextMessage.
+  def rich_response_body(message)
+    dig = Custom::Whatsapp::EvolutionGo::FieldDig
+    rich = dig.dig_field(message, 'richResponseMessage')
+    return unless rich.is_a?(Hash)
+
+    rich = rich.with_indifferent_access
+    texts = Array.wrap(dig.dig_field(rich, 'submessages')).filter_map do |sub|
+      next unless sub.is_a?(Hash)
+
+      dig.dig_field(sub.with_indifferent_access, 'messageText').to_s.presence
+    end
+    texts.join("\n\n").presence
   end
 
   def interactive_reply_body(message)

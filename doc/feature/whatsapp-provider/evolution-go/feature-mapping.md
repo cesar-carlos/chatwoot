@@ -38,6 +38,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Feature | Evento Go | Fase | Componente |
 |---------|-----------|------|------------|
 | Texto | `MESSAGE` | ✅ | `EvolutionGoNormalizer` |
+| Meta AI / bot rich | `richResponseMessage` (+ unwrap `botInvokeMessage`) | ✅ | `PayloadBuilders#rich_response_body` → texto; sem texto → `[AI message]` |
 | Mídia | `MESSAGE` (imageMessage, etc.) | ✅ | Normalizer + `ApiClient#download_media` |
 | Location | `MESSAGE` locationMessage | ✅ | Normalizer |
 | Contact card | `MESSAGE` contactMessage | ✅ | Normalizer → `contacts` payload |
