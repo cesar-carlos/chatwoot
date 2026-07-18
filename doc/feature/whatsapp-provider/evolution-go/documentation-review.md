@@ -22,7 +22,11 @@
 | 18/jul/2026 | Meta AI `richResponseMessage` / `@bot` + unwrap `botInvokeMessage`; troubleshooting + checklist |
 | 18/jul/2026 (pm) | Reactions: ChatJid prefere `@lid`; menu Reações expansível; optimistic `findStoreMessage`; E2E react OK |
 | 18/jul/2026 | Sync contact MoreActions: `POST …/evolution_go_sync` + menu só Evolution Go |
-| 18/jul/2026 | Avatar enrichment: LID-first + timeout sem cooldown 6h; [avatar-failures-report.md](./avatar-failures-report.md) |
+| 18/jul/2026 | Avatar enrichment: LID-first + timeout cooldown 30m (`avatar_timeout_at`); [avatar-failures-report.md](./avatar-failures-report.md) |
+| 18/jul/2026 | Sync contact: pt_BR i18n + poll 3× no MoreActions |
+| 18/jul/2026 | Fix: `finalize_avatar_miss!` (cooldown só após fallback); poll timers clear on unmount |
+| 18/jul/2026 | Sync force: 3× retry timeout/avatar, todos JIDs, `AvatarFromUrlJob.perform_now`, requeue se lock busy |
+| 18/jul/2026 | Relatório avatar revalidado p/ handoff Evolution Go (P1–P4 + métricas + PTM controle) |
 
 ---
 
@@ -242,7 +246,7 @@ Cruzamento código `custom/.../evolution_go/` × docs. **Conclusão:** docs de s
 |------|-------------------|
 | Reply inbound | `contextInfo.stanzaID` (whatsmeow) + `stanzaId` (Baileys) |
 | Quote outbound | `quoted.participant` para mensagem própria: JID do negócio via `instance_name` quando `phone_number` é placeholder `+55000…` |
-| Avatar | `AVATAR_REQUEST_TIMEOUT=12s`; path `/user/avatar` sem retry; `evolution_go_avatar_attempted_at` + cooldown 6h |
+| Avatar | `AVATAR_REQUEST_TIMEOUT=12s`; path `/user/avatar` sem retry; `avatar_attempted_at` 6h (sem foto); `avatar_timeout_at` 30m (timeout) |
 | Downloads UI | `sameOriginActiveStorageUrl` — rewrite Active Storage para origin atual em hosts alias |
 
 Docs tocados no commit: [troubleshooting.md](./troubleshooting.md), [webhook-events.md](./webhook-events.md).

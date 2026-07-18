@@ -17,7 +17,15 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
 
     attrs = attrs.with_indifferent_access
     return unless enrichment_allowed?(contact, attrs)
-    return unless acquire_in_flight_lock!(contact)
+
+    unless acquire_in_flight_lock!(contact)
+      # Force Sync: previous attempt still running (Go avatar timeouts are slow) —
+      # requeue instead of silently dropping the click.
+      if ActiveModel::Type::Boolean.new.cast(attrs[:force])
+        retry_job(wait: 5.seconds)
+      end
+      return
+    end
 
     @lock_acquired = true
     with_global_enrichment_slot do

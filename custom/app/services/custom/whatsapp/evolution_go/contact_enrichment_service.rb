@@ -4,13 +4,20 @@
 class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   ENRICHMENT_COOLDOWN = 24.hours
   # Missing/privacy (no photo URL) — avoid re-enqueueing on every inbound.
-  # Network timeouts do NOT set this cooldown (transient Evolution Go failures).
   AVATAR_RETRY_COOLDOWN = 6.hours
+  # Transient Evolution Go /user/avatar timeouts — short backoff (not 6h).
+  AVATAR_TIMEOUT_RETRY_COOLDOWN = 30.minutes
+  # Manual Sync / Refresh — Evolution Go often times out; retry within one job.
+  FORCE_AVATAR_ATTEMPTS = 3
+  FORCE_AVATAR_RETRY_WAIT = 1.5
+  # Non-force inbound: primary + one fallback. Force: try every candidate.
+  INBOUND_AVATAR_CANDIDATE_LIMIT = 2
   WHATSAPP_STATUS_KEY = 'whatsapp_status'
   EVOLUTION_GO_PUSH_NAME_KEY = 'evolution_go_push_name'
   EVOLUTION_GO_REMOTE_JID_KEY = 'evolution_go_remote_jid'
   EVOLUTION_GO_ENRICHED_AT_KEY = 'evolution_go_enriched_at'
   EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY = 'evolution_go_avatar_attempted_at'
+  EVOLUTION_GO_AVATAR_TIMEOUT_AT_KEY = 'evolution_go_avatar_timeout_at'
   EVOLUTION_GO_PICTURE_ID_KEY = 'evolution_go_picture_id'
 
   def self.should_enqueue?(contact:, remote_jid: nil, push_name: nil, force: false)
@@ -20,7 +27,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     return true if remote_jid.to_s.present? && additional[EVOLUTION_GO_REMOTE_JID_KEY] != remote_jid.to_s
     return true if push_name_changed?(contact, push_name)
     # Missing avatar used to always enqueue; that saturated Sidekiq when Go hung on /user/avatar.
-    return true if !contact.avatar.attached? && avatar_attempt_stale?(contact)
+    return true if !contact.avatar.attached? && can_retry_missing_avatar?(contact)
 
     enrichment_stale?(contact)
   end
@@ -34,11 +41,24 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     true
   end
 
+  def self.can_retry_missing_avatar?(contact)
+    avatar_attempt_stale?(contact) && avatar_timeout_stale?(contact)
+  end
+
   def self.avatar_attempt_stale?(contact)
     attempted_at = contact.additional_attributes.to_h[EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY]
     return true if attempted_at.blank?
 
     Time.zone.parse(attempted_at) <= AVATAR_RETRY_COOLDOWN.ago
+  rescue ArgumentError
+    true
+  end
+
+  def self.avatar_timeout_stale?(contact)
+    timeout_at = contact.additional_attributes.to_h[EVOLUTION_GO_AVATAR_TIMEOUT_AT_KEY]
+    return true if timeout_at.blank?
+
+    Time.zone.parse(timeout_at) <= AVATAR_TIMEOUT_RETRY_COOLDOWN.ago
   rescue ArgumentError
     true
   end
@@ -200,7 +220,13 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     contact.reload if contact.persisted?
     return :rate_limited if rate_limited_error?(e)
 
-    mark_avatar_attempted! unless contact.avatar.attached?
+    unless contact.avatar.attached?
+      if network_timeout_error?(e)
+        mark_avatar_timeout!
+      else
+        mark_avatar_attempted!
+      end
+    end
     false
   end
 
@@ -325,27 +351,58 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     candidates = avatar_query_candidates
     return false if candidates.blank?
 
-    primary = candidates.first
-    outcome = request_and_attach_avatar!(primary, picture_id: picture_id)
-    return true if outcome == true
-    return :rate_limited if outcome == :rate_limited
+    last_outcome = false
+    candidates.first(avatar_candidate_limit(candidates.size)).each do |candidate|
+      outcome = request_and_attach_avatar!(candidate, picture_id: picture_id)
+      return true if outcome == true
+      return :rate_limited if outcome == :rate_limited
 
-    # One PN/digits fallback when LID (or first query) times out / returns empty.
-    fallback = candidates[1]
-    if fallback.present? && (outcome == :timeout || outcome == false)
-      fallback_outcome = request_and_attach_avatar!(fallback, picture_id: picture_id)
-      return true if fallback_outcome == true
-      return :rate_limited if fallback_outcome == :rate_limited
-
-      outcome = fallback_outcome if fallback_outcome == :timeout
+      last_outcome = outcome
     end
 
+    finalize_avatar_miss!(last_outcome)
     false
+  end
+
+  def avatar_candidate_limit(total)
+    force ? total : INBOUND_AVATAR_CANDIDATE_LIMIT
+  end
+
+  # Defer cooldowns until all avatar query candidates are exhausted — otherwise an empty
+  # LID response would stamp 6h before the PN fallback runs.
+  def finalize_avatar_miss!(last_outcome)
+    case last_outcome
+    when :timeout
+      mark_avatar_timeout!
+    when false
+      mark_avatar_attempted!
+    end
   end
 
   def request_and_attach_avatar!(number, picture_id: nil)
     return false if number.blank?
 
+    attempts = force ? FORCE_AVATAR_ATTEMPTS : 1
+    last_outcome = false
+
+    attempts.times do |index|
+      last_outcome = request_avatar_once!(number, picture_id: picture_id)
+      return true if last_outcome == true
+      return :rate_limited if last_outcome == :rate_limited
+      break if last_outcome == false
+
+      # Timeout only — brief pause then retry (manual Sync / Refresh).
+      wait_before_avatar_retry if force && index < attempts - 1
+    end
+
+    last_outcome
+  end
+
+  def wait_before_avatar_retry
+    sleep(FORCE_AVATAR_RETRY_WAIT)
+  end
+
+  def request_avatar_once!(number, picture_id: nil)
     response = api_client.user_avatar(number: number, preview: true)
     if response.success?
       attached = attach_avatar_from_response!(response.parsed_response)
@@ -355,14 +412,14 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
 
     return :rate_limited if rate_limited_response?(response)
 
-    handle_avatar_http_failure!(response)
+    # HTTP miss without marking — finalize_avatar_miss! decides after fallbacks.
+    log_avatar_http_failure!(response)
     false
   rescue Custom::Whatsapp::EvolutionGo::ApiError, *Custom::Whatsapp::EvolutionGo::ApiClient::NETWORK_ERRORS => e
     Rails.logger.warn("[EVOLUTION_GO] user/avatar error for contact #{contact.id}: #{e.message}")
     return :rate_limited if rate_limited_error?(e)
     return :timeout if network_timeout_error?(e)
 
-    mark_avatar_attempted!
     false
   end
 
@@ -385,17 +442,11 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     contact.update!(additional_attributes: additional)
   end
 
-  def handle_avatar_http_failure!(response)
+  def log_avatar_http_failure!(response)
     detail = Custom::Whatsapp::EvolutionGo::ApiError.extract_message(response.parsed_response)
     Rails.logger.warn(
       "[EVOLUTION_GO] user/avatar failed for contact #{contact.id}: HTTP #{response.code} #{detail}"
     )
-
-    # Privacy / missing photo will not change soon — keep 6h cooldown.
-    # Rate-limit is transient — skip cooldown so refresh can retry sooner.
-    return if rate_limited_response?(response)
-
-    mark_avatar_attempted!
   end
 
   def attach_avatar_from_url!(url)
@@ -404,7 +455,17 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
 
     prepare_avatar_resync! if force
     clear_avatar_attempt!
-    ::Avatar::AvatarFromUrlJob.perform_later(contact, url)
+    enqueue_or_run_avatar_from_url!(url)
+  end
+
+  def enqueue_or_run_avatar_from_url!(url)
+    # Force Sync: download inline so UI polls see the avatar without a second Sidekiq hop.
+    # (Same success contract as perform_later — job owns CDN attach failures.)
+    if force
+      ::Avatar::AvatarFromUrlJob.perform_now(contact, url)
+    else
+      ::Avatar::AvatarFromUrlJob.perform_later(contact, url)
+    end
     true
   end
 
@@ -426,38 +487,47 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     if url.present?
       prepare_avatar_resync! if force
       clear_avatar_attempt!
-      ::Avatar::AvatarFromUrlJob.perform_later(contact, url)
-      return true
+      return enqueue_or_run_avatar_from_url!(url)
     end
 
     base64 = avatar_base64_from_response(parsed)
     if base64.present?
       attached = attach_avatar_from_base64!(base64)
-      if attached
-        clear_avatar_attempt!
-      else
-        mark_avatar_attempted!
-      end
+      clear_avatar_attempt! if attached
       return attached
     end
 
     Rails.logger.info("[EVOLUTION_GO] user/avatar returned no URL/base64 for contact #{contact.id}")
-    mark_avatar_attempted!
     false
   end
 
   def mark_avatar_attempted!
+    additional = contact.additional_attributes.stringify_keys
+    additional.delete(EVOLUTION_GO_AVATAR_TIMEOUT_AT_KEY)
+    additional[EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY] = Time.current.utc.iso8601(3)
+    contact.update!(additional_attributes: additional)
+  end
+
+  def mark_avatar_timeout!
     additional = contact.additional_attributes.stringify_keys.merge(
-      EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY => Time.current.utc.iso8601(3)
+      EVOLUTION_GO_AVATAR_TIMEOUT_AT_KEY => Time.current.utc.iso8601(3)
     )
     contact.update!(additional_attributes: additional)
   end
 
   def clear_avatar_attempt!
     additional = contact.additional_attributes.stringify_keys
-    return unless additional.key?(EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY)
+    changed = false
+    if additional.key?(EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY)
+      additional.delete(EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY)
+      changed = true
+    end
+    if additional.key?(EVOLUTION_GO_AVATAR_TIMEOUT_AT_KEY)
+      additional.delete(EVOLUTION_GO_AVATAR_TIMEOUT_AT_KEY)
+      changed = true
+    end
+    return unless changed
 
-    additional.delete(EVOLUTION_GO_AVATAR_ATTEMPTED_AT_KEY)
     contact.update!(additional_attributes: additional)
   end
 
