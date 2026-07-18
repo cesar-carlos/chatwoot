@@ -61,6 +61,11 @@
     "CLEAR_DOWNLOAD_MARK_SHORT": "Clear mark",
     "UNKNOWN_FILE_TYPE": "Unknown File",
     "SAVE_CONTACT": "Save Contact",
+    "EVOLUTION_GO_SYNC_CONTACT": {
+      "MENU_LABEL": "Sync contact info",
+      "SUCCESS": "Contact sync started. Name and avatar will update shortly.",
+      "ERROR": "Could not sync contact info. Please try again."
+    },
     "MESSAGE_SEARCH": {
       "MENU_LABEL": "Search this conversation",
       "MENU_SHORTCUT": "Search this conversation (⌘F / Ctrl+F)",

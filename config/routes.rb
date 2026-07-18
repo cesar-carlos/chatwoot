@@ -234,6 +234,8 @@ Rails.application.routes.draw do
               get :contactable_inboxes
               post :destroy_custom_attributes
               delete :avatar
+              # FORK: force Evolution Go contact+avatar sync
+              post :evolution_go_sync
             end
             scope module: :contacts do
               resources :conversations, only: [:index]

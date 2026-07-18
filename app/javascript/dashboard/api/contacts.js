@@ -104,6 +104,13 @@ class ContactAPI extends ApiClient {
     return axios.delete(`${this.url}/${contactId}/avatar`);
   }
 
+  // FORK: force Evolution Go contact info + avatar sync
+  evolutionGoSync(contactId, { inboxId } = {}) {
+    return axios.post(`${this.url}/${contactId}/evolution_go_sync`, {
+      inbox_id: inboxId,
+    });
+  }
+
   exportContacts(queryPayload) {
     return axios.post(`${this.url}/export`, queryPayload);
   }

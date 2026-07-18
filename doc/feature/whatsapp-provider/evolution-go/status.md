@@ -35,6 +35,7 @@
 | Outbound quote `participant` com phone placeholder `+55000…` | ✅ 13/jul/2026 |
 | Avatar enrichment backoff (`avatar_attempted_at`, timeout 12s) | ✅ 13/jul/2026 |
 | Contacts refresh paced (3s stagger + lock TTL) | ✅ 17/jul/2026 |
+| Sync contact from conversation MoreActions | ✅ 18/jul/2026 · `POST …/evolution_go_sync` · force info+avatar |
 | Same-origin Active Storage download (alias hosts) | ✅ 13/jul/2026 |
 | Inbound contact + button/list reply text | ✅ jul/2026 |
 | Contact enrichment on inbound (Go path) | ✅ jul/2026 |
@@ -74,6 +75,7 @@
 - `CorruptMediaRepair` / rake `evolution_go:repair_corrupt_media`
 - `PeerContactInboxResolver`, `ProviderConfigMerger`, `UrlSafetyGuard`
 - Refresh manual de perfis: `ContactsRefreshService` (stagger 3s + lock TTL) + `POST …/evolution_go_refresh_contacts`
+- Sync per-contact (menu ⋮): `POST …/contacts/:id/evolution_go_sync` → `ContactEnrichmentJob` `force: true` (só Evolution Go)
 - Import histórico: `MessagesImporter`, `HistorySyncProcessor`, evento `HISTORY_SYNC`
 - Diagnóstico: `DiagnosticsService`, `WebhookTestService`, `MutationStatsRecorder`
 - Grupos: `EvolutionGoNormalizer` (group JID + participant), `GroupContactService` / `GroupParticipantService`, `ApiClient#group_info`, `GroupMetadataService` (provider-aware), `PhoneOutgoingSyncService` (outbound grupo)

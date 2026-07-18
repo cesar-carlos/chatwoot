@@ -49,6 +49,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Quote outbound (própria msg) | `quoted.participant` via `instance_name` se phone `+55000…` | ✅ | `EvolutionGoServiceOutbound#channel_business_phone` |
 | Avatar enrichment backoff | `/user/avatar` timeout 12s + `evolution_go_avatar_attempted_at` (6h); PictureURL/PictureID via `/user/info` | ✅ | `ContactEnrichmentService` |
 | Contacts refresh (bulk) | paced enqueue 3s + dynamic lock TTL | ✅ | `ContactsRefreshService` |
+| Sync contact (per-conversation menu) | `POST …/contacts/:id/evolution_go_sync` → `ContactEnrichmentJob` `force: true` | ✅ | MoreActions · só Evolution Go |
 | Client delete | `MESSAGE` revoke (`IsRevoke` / type 0) / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` (job sempre consome; soft-delete gated) |
 | Client edit | `MESSAGES_EDITED` / protocol `IsEdit` + `editedMessage` | ✅ | `MessageEditSyncService` — plaintext ✅; `secretEncryptedMessage` sem texto → skip ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
