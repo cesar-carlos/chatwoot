@@ -52,6 +52,11 @@
     "DOWNLOAD": "Baixar",
     "UNKNOWN_FILE_TYPE": "Arquivo desconhecido",
     "SAVE_CONTACT": "Salvar contato",
+    "EVOLUTION_GO_SYNC_CONTACT": {
+      "MENU_LABEL": "Sincronizar dados do contato",
+      "SUCCESS": "Sincronização iniciada. Nome e avatar serão atualizados em breve.",
+      "ERROR": "Não foi possível sincronizar o contato. Tente novamente."
+    },
     "MESSAGE_SEARCH": {
       "MENU_LABEL": "Pesquisar nesta conversa",
       "MENU_SHORTCUT": "Pesquisar nesta conversa (⌘F / Ctrl+F)",

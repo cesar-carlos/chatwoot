@@ -1,127 +1,165 @@
 # Relatório — falhas de avatar (Evolution Go)
 
-**Data:** 18/jul/2026  
+**Data:** 18/jul/2026 (revalidado 18/jul ~14:25 UTC)  
 **Ambiente:** produção (`dev-chat` / account **12** — Frigorifico Santa Rita)  
-**Inboxes:** 109, 112, 113, 114, 115 (`provider=evolution_go`)
+**Inboxes:** 109, 112, 113, 114, 115 (`provider=evolution_go`)  
+**Destinatário:** time Evolution Go / API (correção no provider) + contexto Chatwoot
 
-Este relatório separa o que é **limitação/instabilidade da Evolution Go** do que era **gap no enrichment Chatwoot**, e registra a mitigação aplicada no fork.
-
----
-
-## 1. Sintoma
-
-Na lista de conversas, muitos contatos mostram apenas iniciais (sem foto), misturados com contatos que têm avatar OK.
-
-API Chatwoot (exemplo conversa `136` / contact `6475`):
-
-```json
-{
-  "id": 6475,
-  "name": "Amadeu Rampazzo Junior",
-  "thumbnail": "",
-  "additional_attributes": {
-    "evolution_go_picture_id": "910972669",
-    "evolution_go_remote_jid": "556699956041@s.whatsapp.net",
-    "evolution_go_enriched_at": "2026-07-18T13:24:53.668Z",
-    "evolution_go_avatar_attempted_at": "2026-07-18T13:24:53.639Z"
-  }
-}
-```
-
-Conclusão imediata: **não é bug de UI** — o Active Storage não tem avatar anexado (`thumbnail` vazio).
+Este relatório separa o que é **bug/instabilidade da Evolution Go** (ação no provider) do que é **comportamento esperado do WhatsApp** e do que o **Chatwoot já mitigou**.
 
 ---
 
-## 2. Métricas (account 12, inboxes Go)
+## 0. Pedido à Evolution Go (ação)
 
-| Métrica | Valor |
-|---------|-------|
-| Contatos ligados a inboxes Go | 2321 |
-| Com avatar anexado | 1257 (~54%) |
-| Sem avatar | 1064 (~46%) |
-| Sem avatar + já enriquecidos | ~1054 |
-| Sem avatar + com `evolution_go_picture_id` | 124 |
-| Sem avatar + sem `picture_id` | 940 |
-| Nunca enriquecidos | ~10 |
-| Ocorrências log `user/avatar` / `ReadTimeout` (worker) | ~3800+ |
+| # | Problema | Evidência | Esperado |
+|---|----------|-----------|----------|
+| **P1** | `POST /user/avatar` hang → `Net::ReadTimeout` no client (12s) | ~3196 logs `user/avatar error` + ~3344 `ReadTimeout` no worker | Responder em &lt; ~5–8s ou erro HTTP claro; não segurar a conexão |
+| **P2** | `POST /user/info` / usync → `rate-overlimit` (HTTP 500) sob carga moderada | ~3354 ocorrências `rate-overlimit` no mesmo log | Backoff/429 honesto; não derrubar usync em massa no refresh de perfis |
+| **P3** | `/user/info` HTTP 200 **sem** `PictureURL`/`PictureID` enquanto `/user/avatar` com **LID** devolve URL | Anderson `6206` (LID): info vazio; avatar LID → `pps.whatsapp.net` | Info e avatar consistentes para o mesmo JID/LID |
+| **P4** | Consulta por telefone BR “sujo” (9º dígito) / dígitos → timeout ou `Users` vazios; JID canônico / `@lid` funciona melhor | Amadeu phone `…9956041` vs JID `…956041@s.whatsapp.net` | Documentar query canônica (preferir `@lid` / PN JID); não hang em dígitos inválidos |
+
+**Não é bug da Go (não corrigir como falha):**
+
+| Caso | Resposta da API | Exemplo |
+|------|-----------------|--------|
+| Contato sem foto | HTTP 500 `that user or group does not have a profile picture` | PTM 2º Ofício (`6456`) — placeholder **P2** correto |
+| Foto oculta | HTTP 500 `the user has hidden their profile picture from you` | ~186 logs; ex. Kátia Mendes `6521` |
+
+---
+
+## 1. Sintoma (Chatwoot)
+
+Na lista de conversas, muitos contatos mostram só iniciais, misturados com contatos que têm foto OK.  
+**Não é bug de UI** — `thumbnail` vazio = Active Storage sem avatar.
+
+### Exemplos revalidados (18/jul)
+
+| Contato | ID | Avatar? | Notas |
+|---------|----|---------|--------|
+| PTM 2º Ofício de Sinop | 6456 | Não | Go: **sem foto de perfil** (esperado) |
+| Matheus Sabino | 6463 | Não | Tem `@lid`; sem `picture_id`; último attempt 17/jul |
+| Amadeu Rampazzo Junior | 6475 | **Sim** (recuperado) | Antes timeout; tem `picture_id=910972669` |
+| Ademir Muller | 5454 | Sim | Caminho feliz (LID + picture_id) |
+
+---
+
+## 2. Métricas (account 12, inboxes Go) — recontagem
+
+| Métrica | Valor (revalidado) | Valor (manhã) |
+|---------|--------------------|---------------|
+| Contatos ligados a inboxes Go | **2322** | 2321 |
+| Com avatar anexado | **1354 (~58%)** | 1257 (~54%) |
+| Sem avatar | **968 (~42%)** | 1064 (~46%) |
+| Sem avatar + já enriquecidos | **959** | ~1054 |
+| Sem avatar + com `evolution_go_picture_id` | **76** | 124 |
+| Sem avatar + sem `picture_id` | **892** | 940 |
+| Nunca enriquecidos | **9** | ~10 |
+| Contatos com `@lid` | **1566** | — |
+
+**Logs worker** (`chatwoot-worker-out.log`, acumulado):
+
+| Padrão | Contagem |
+|--------|----------|
+| `rate-overlimit` | ~3354 |
+| `ReadTimeout` | ~3344 |
+| `user/avatar error` | ~3196 |
+| `user/avatar failed` | ~831 |
+| `hidden their profile picture` | ~186 |
+| `does not have a profile picture` | ~29 |
 
 Interpretação:
 
 - A maioria sem foto **já passou** pelo enrichment.
-- 124 casos têm `picture_id` (WhatsApp conhece a foto) mas o Chatwoot não anexou — forte sinal de falha no fetch `/user/avatar`, não de “contato sem foto”.
-- 940 sem `picture_id` misturam: privacidade, timeout antes de gravar ID, ou foto realmente ausente.
+- **76** casos com `picture_id` e sem avatar = WhatsApp conhece a foto, mas o fetch falhou (timeout / rate-limit / query) — **prioridade para a Go**.
+- **892** sem `picture_id` misturam: sem foto, privacidade, ou falha antes de gravar ID.
 
 ---
 
 ## 3. Evidências Evolution Go
 
-### 3.1 `/user/avatar` instável (timeout)
-
-Logs Sidekiq (mesmo dia):
+### 3.1 `/user/avatar` instável (timeout) — **P1**
 
 ```text
-[EVOLUTION_GO] user/avatar error for contact 6475:
-  Evolution Go API request failed: POST /user/avatar: Net::ReadTimeout
+[EVOLUTION_GO] user/avatar error for contact 6803:
+  Evolution Go API request failed: POST /user/avatar: Net::ReadTimeout with #<TCPSocket:(closed)>
 ```
 
-Timeout configurado no client: **12s** (`ApiClient::AVATAR_REQUEST_TIMEOUT`). Path é **non-retryable**.
+- Client Chatwoot: timeout **12s** (`AVATAR_REQUEST_TIMEOUT`); path **non-retryable** (retry dobraria a espera).
+- Contatos afetados (amostra): 6900, 7324, 7336, 7107, 6803, 6475 (antes da recuperação), etc.
 
-Afeta Amadeu (`6475`), Anderson (`6206`), Luciano (`6915`), Pretaah (`6900`), etc.
+### 3.2 Usync `rate-overlimit` — **P2**
 
-### 3.2 `/user/info` frequentemente sem `PictureURL`
+```text
+[EVOLUTION_GO] user/info failed for contact 7266: HTTP 500
+  failed to send usync query: info query returned status 429: rate-overlimit
+```
+
+Sob refresh em massa / muitos enrichments, a Go devolve HTTP 500 com mensagem de rate-limit. O Chatwoot evita carimbar cooldown longo nesses casos, mas o perfil/avatar não atualiza.
+
+### 3.3 `/user/info` sem `PictureURL` com foto existente — **P3**
 
 Probe Anderson (`6206`, `identifier=…@lid`):
 
 | Chamada | Resultado |
 |---------|-----------|
 | `POST /user/info` com LID | HTTP 200, `Users` vazio / sem `PictureURL` |
-| `POST /user/avatar` com **LID** | HTTP 200 + URL `https://pps.whatsapp.net/...` + `id` = picture_id |
+| `POST /user/avatar` com **LID** | HTTP 200 + URL `https://pps.whatsapp.net/...` + `id` |
 
-Ou seja: a foto **existe no WhatsApp**; o path `/user/info` nem sempre a devolve; `/user/avatar` com LID funciona quando a Go responde a tempo.
+A foto **existe**; `/user/info` nem sempre a devolve; `/user/avatar` com LID funciona quando a Go responde a tempo.
 
-### 3.3 Divergência telefone BR vs JID
+### 3.4 Telefone BR vs JID / LID — **P4**
 
 Amadeu:
 
-- `phone_number`: `+5566999956041` (com 9º dígito extra típico BR)
+- `phone_number`: `+5566999956041` (9º dígito extra)
 - `evolution_go_remote_jid`: `556699956041@s.whatsapp.net`
 
-Consultas com o phone “sujo” tendem a timeout / `Users` vazios. O enrichment já evita inventar `phone@s.whatsapp.net` no `/user/info`; o gap era no **avatar** (ver §4).
+Dígitos “sujos” → timeout / payload vazio. Preferir **`@lid`** ou PN JID canônico.
+
+### 3.5 Controle — sem foto (não é bug)
+
+**PTM** (`6456`), probe 18/jul ~14:20 UTC:
+
+| Chamada | Resultado |
+|---------|-----------|
+| `POST /user/info` JID | HTTP 200, `Users` presente mas `PictureID`/`PictureURL`/LID vazios |
+| `POST /user/avatar` JID | HTTP 500 `that user or group does not have a profile picture` |
+| `POST /user/avatar` dígitos | `Net::ReadTimeout` (~12s+) |
+
+Conclusão: Sync/Chatwoot **não consegue** inventar avatar; placeholder **P2** está correto. O timeout no fallback por dígitos ainda é ruído (**P1/P4**).
 
 ---
 
-## 4. Gap Chatwoot (corrigido 18/jul/2026)
+## 4. Mitigações Chatwoot (já aplicadas — não bloqueiam correção na Go)
 
-Antes:
+1. Query avatar **LID → PN JID → dígitos do JID** (não prioriza phone BR).
+2. Timeout de rede → `evolution_go_avatar_timeout_at` (**30 min**), não cooldown 6h.
+3. Cooldown 6h só para sem-foto / privacidade (HTTP sem URL).
+4. `finalize_avatar_miss!` só após esgotar candidatos.
+5. Sync forçado: até 3 retries em timeout, todos candidatos, download CDN inline, requeue se lock busy.
 
-- `/user/info` usava LID → JID → dígitos (`user_info_query`).
-- `/user/avatar` usava `lookup_number` → **telefone primeiro**.
-- Em `Net::ReadTimeout`, marcava `evolution_go_avatar_attempted_at` → **cooldown 6h**, bloqueando retries no inbound.
+Mitigação **não elimina** P1–P4; só reduz impacto no Sidekiq e melhora taxa de sucesso quando a Go responde.
 
-Depois (`ContactEnrichmentService`):
-
-1. **`avatar_query_candidates`**: LID → `@s.whatsapp.net` → dígitos do JID (não prioriza phone BR).
-2. **Um fallback** se a 1ª query falhar (timeout / vazio).
-3. **Timeout de rede não marca cooldown 6h** (transitório, como rate-limit). Cooldown 6h permanece para “sem foto” / privacidade (HTTP sem URL).
-
-Operador pode forçar reprocessamento: menu ⋮ → **Sync contact info** (`force: true`) ou Refresh na settings da inbox.
+Operador: menu ⋮ → **Sync contact info** (`force: true`) ou Refresh na settings da inbox.
 
 ---
 
 ## 5. Caso contraste (OK)
 
-Ademir Muller (`5454`): avatar anexado, `thumbnail` Active Storage, `evolution_go_picture_id` + `last_avatar_sync_at` presentes — caminho feliz quando Go devolve URL a tempo e o query acerta.
+Ademir Muller (`5454`): avatar anexado, `evolution_go_picture_id` + `last_avatar_sync_at`, identifier `@lid` — caminho feliz.
 
 ---
 
-## 6. Como reproduzir
+## 6. Como reproduzir (para o time da API)
 
-1. Contato sem avatar na account 12:  
-   `GET /api/v1/accounts/12/contacts/:id` → `thumbnail` vazio; checar `evolution_go_*`.
-2. Via `ApiClient` / curl Evolution Go (`apikey` = instance token):
-   - `POST /user/info` com `identifier` `@lid` e com PN JID.
-   - `POST /user/avatar` com LID vs dígitos do phone.
-3. Worker: `rg "user/avatar error for contact" ~/.pm2/logs/chatwoot-worker-out.log`.
+1. Instância Evolution Go das inboxes 109–115 (account 12).
+2. `POST /user/avatar` com `apikey` = instance token:
+   - Contato com foto conhecida + `@lid` (ex. Anderson) — validar latência e URL.
+   - Contato PTM `5565993597528@s.whatsapp.net` — deve retornar erro “no profile picture” sem hang.
+   - Mesmo número só com dígitos — hoje costuma **timeout** (bug).
+3. `POST /user/info` com LID vs PN JID vs dígitos BR com 9º extra — comparar `PictureURL`/`PictureID`.
+4. Sob carga (dezenas de `/user/info` + `/user/avatar`): observar `rate-overlimit`.
+5. Logs Chatwoot: `rg "user/avatar error|rate-overlimit" ~/.pm2/logs/chatwoot-worker-out.log`.
 
 ---
 
@@ -129,16 +167,16 @@ Ademir Muller (`5454`): avatar anexado, `thumbnail` Active Storage, `evolution_g
 
 | Responsável | Problema |
 |-------------|----------|
-| **Evolution Go / WhatsApp usync** | Timeouts em `/user/avatar`; `/user/info` sem `PictureURL` mesmo com foto existente |
-| **Chatwoot (mitigado)** | Avatar query por telefone; cooldown 6h após timeout |
-
-Mitigação Chatwoot **não elimina** timeouts da Go; reduz falhas por query errada e permite retry mais cedo após timeout.
+| **Evolution Go (corrigir)** | P1 timeout `/user/avatar`; P2 `rate-overlimit`; P3 info sem PictureURL; P4 hang/vazio em query por dígitos BR |
+| **WhatsApp / privacidade (esperado)** | Sem foto; foto oculta |
+| **Chatwoot (mitigado)** | Query por telefone; cooldown 6h após timeout → LID-first + timeout 30m + Sync resiliente |
 
 ---
 
 ## 8. Referências
 
 - Código: `custom/app/services/custom/whatsapp/evolution_go/contact_enrichment_service.rb`
+- Client timeout: `custom/app/services/custom/whatsapp/evolution_go/api_client.rb` (`AVATAR_REQUEST_TIMEOUT=12`)
 - Specs: `spec/custom/services/custom/whatsapp/evolution_go/contact_enrichment_service_spec.rb`
 - ADR: [decisions.md](./decisions.md) §36 addendum 18/jul
 - Troubleshooting: [troubleshooting.md](./troubleshooting.md)

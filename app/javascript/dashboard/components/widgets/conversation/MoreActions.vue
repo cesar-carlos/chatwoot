@@ -36,6 +36,14 @@ const [showActionsDropdown, toggleDropdown] = useToggle(false);
 
 const currentChat = computed(() => store.getters.getSelectedChat);
 
+// FORK: track Sync contact poll timers so they clear on unmount
+let syncPollTimers = [];
+
+const clearSyncPollTimers = () => {
+  syncPollTimers.forEach(timerId => clearTimeout(timerId));
+  syncPollTimers = [];
+};
+
 const actionMenuItems = computed(() => {
   const items = [];
 
@@ -99,10 +107,15 @@ const syncEvolutionGoContact = async () => {
   try {
     await ContactAPI.evolutionGoSync(contactId, { inboxId });
     useAlert(t('CONVERSATION.EVOLUTION_GO_SYNC_CONTACT.SUCCESS'));
-    // Light poll so name/avatar refresh after Sidekiq finishes
-    setTimeout(() => {
+    // Poll several times — force sync may retry Go /user/avatar (slow timeouts).
+    clearSyncPollTimers();
+    const pollContact = (attempt = 0) => {
       store.dispatch('contacts/show', { id: contactId });
-    }, 4000);
+      if (attempt < 5) {
+        syncPollTimers.push(setTimeout(() => pollContact(attempt + 1), 5000));
+      }
+    };
+    syncPollTimers.push(setTimeout(() => pollContact(0), 3000));
   } catch (error) {
     const message =
       error?.response?.data?.error ||
@@ -161,6 +174,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  clearSyncPollTimers();
   emitter.off(CMD_MUTE_CONVERSATION, mute);
   emitter.off(CMD_UNMUTE_CONVERSATION, unmute);
   emitter.off(CMD_SEND_TRANSCRIPT, toggleEmailModal);

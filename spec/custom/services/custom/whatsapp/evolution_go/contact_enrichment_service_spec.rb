@@ -78,7 +78,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     expect(contact.reload.avatar).not_to be_attached
   end
 
-  it 'enqueues AvatarFromUrlJob when avatar response contains an HTTP URL' do
+  it 'downloads avatar inline on force when avatar response contains an HTTP URL' do
     stub_user_check(exists: true)
     allow(api_client).to receive(:user_info).and_return(
       instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
@@ -90,12 +90,42 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
         parsed_response: { 'data' => { 'url' => 'https://cdn.example.com/avatar.jpg' } }
       )
     )
-    expect(Avatar::AvatarFromUrlJob).to receive(:perform_later).with(contact, 'https://cdn.example.com/avatar.jpg')
+    expect(Avatar::AvatarFromUrlJob).to receive(:perform_now).with(contact, 'https://cdn.example.com/avatar.jpg')
 
     described_class.new(channel: channel, contact: contact, force: true).perform
   end
 
-  it 'does not start avatar cooldown after /user/avatar network timeout' do
+  it 'retries /user/avatar on timeout when force is true' do
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
+    )
+    allow_any_instance_of(described_class).to receive(:wait_before_avatar_retry)
+
+    call_count = 0
+    allow(api_client).to receive(:user_avatar) do
+      call_count += 1
+      if call_count < 3
+        raise Custom::Whatsapp::EvolutionGo::ApiError, 'POST /user/avatar: Net::ReadTimeout'
+      end
+
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: { 'data' => { 'url' => 'https://cdn.example.com/retry-avatar.jpg' } }
+      )
+    end
+    expect(Avatar::AvatarFromUrlJob).to receive(:perform_now).with(contact, 'https://cdn.example.com/retry-avatar.jpg')
+
+    described_class.new(
+      channel: channel,
+      contact: contact,
+      remote_jid: '5511999999999@s.whatsapp.net',
+      force: true
+    ).perform
+  end
+
+  it 'applies short timeout cooldown after /user/avatar network timeout' do
     stub_user_check(exists: true)
     allow(api_client).to receive(:user_info).and_return(
       instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
@@ -110,8 +140,20 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
 
     contact.reload
     expect(contact.additional_attributes['evolution_go_avatar_attempted_at']).to be_blank
+    expect(contact.additional_attributes['evolution_go_avatar_timeout_at']).to be_present
     expect(contact.avatar).not_to be_attached
-    # Still enqueueable for missing avatar (no 6h cooldown from timeout)
+    # Short backoff — not enqueueable immediately (unlike previous no-cooldown behavior)
+    expect(described_class.should_enqueue?(contact: contact)).to be(false)
+  end
+
+  it 'allows enqueue again after avatar timeout cooldown' do
+    contact.update!(
+      additional_attributes: {
+        'evolution_go_enriched_at' => 1.hour.ago.utc.iso8601(3),
+        'evolution_go_avatar_timeout_at' => 31.minutes.ago.utc.iso8601(3)
+      }
+    )
+
     expect(described_class.should_enqueue?(contact: contact)).to be(true)
   end
 
@@ -131,7 +173,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
         parsed_response: { 'data' => { 'url' => 'https://cdn.example.com/lid-avatar.jpg' } }
       )
     )
-    expect(Avatar::AvatarFromUrlJob).to receive(:perform_later).with(contact, 'https://cdn.example.com/lid-avatar.jpg')
+    expect(Avatar::AvatarFromUrlJob).to receive(:perform_now).with(contact, 'https://cdn.example.com/lid-avatar.jpg')
 
     described_class.new(channel: channel, contact: contact, force: true).perform
   end
@@ -142,6 +184,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     allow(api_client).to receive(:user_info).and_return(
       instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
     )
+    allow_any_instance_of(described_class).to receive(:wait_before_avatar_retry)
     allow(api_client).to receive(:user_avatar).with(number: '279224615219224@lid', preview: true).and_raise(
       Custom::Whatsapp::EvolutionGo::ApiError.new(
         'Evolution Go API request failed: POST /user/avatar: Net::ReadTimeout'
@@ -156,7 +199,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
           parsed_response: { 'data' => { 'url' => 'https://cdn.example.com/pn-avatar.jpg' } }
         )
       )
-    expect(Avatar::AvatarFromUrlJob).to receive(:perform_later).with(contact, 'https://cdn.example.com/pn-avatar.jpg')
+    expect(Avatar::AvatarFromUrlJob).to receive(:perform_now).with(contact, 'https://cdn.example.com/pn-avatar.jpg')
 
     described_class.new(
       channel: channel,
@@ -164,6 +207,32 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
       remote_jid: '5511999999999@s.whatsapp.net',
       force: true
     ).perform
+  end
+
+  it 'does not stamp 6h cooldown when LID returns empty and PN times out' do
+    contact.update!(identifier: '279224615219224@lid')
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
+    )
+    allow(api_client).to receive(:user_avatar).with(number: '279224615219224@lid', preview: true).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => {} })
+    )
+    allow(api_client).to receive(:user_avatar).with(number: '5511999999999@s.whatsapp.net', preview: true).and_raise(
+      Custom::Whatsapp::EvolutionGo::ApiError.new(
+        'Evolution Go API request failed: POST /user/avatar: Net::ReadTimeout'
+      )
+    )
+
+    described_class.new(
+      channel: channel,
+      contact: contact,
+      remote_jid: '5511999999999@s.whatsapp.net'
+    ).perform
+
+    contact.reload
+    expect(contact.additional_attributes['evolution_go_avatar_attempted_at']).to be_blank
+    expect(contact.additional_attributes['evolution_go_avatar_timeout_at']).to be_present
   end
 
   it 'allows enqueue again after avatar attempt cooldown' do
@@ -217,7 +286,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
         parsed_response: { 'data' => { 'url' => 'https://cdn.example.com/avatar.jpg' } }
       )
     )
-    allow(Avatar::AvatarFromUrlJob).to receive(:perform_later)
+    allow(Avatar::AvatarFromUrlJob).to receive(:perform_now)
 
     described_class.new(channel: channel, contact: contact, force: true).perform
 
@@ -334,7 +403,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     )
     expect(api_client).not_to receive(:user_check)
     expect(api_client).not_to receive(:user_avatar)
-    expect(Avatar::AvatarFromUrlJob).to receive(:perform_later).with(contact, 'https://cdn.example.com/info-pic.jpg')
+    expect(Avatar::AvatarFromUrlJob).to receive(:perform_now).with(contact, 'https://cdn.example.com/info-pic.jpg')
 
     described_class.new(channel: channel, contact: contact, force: true).perform
 

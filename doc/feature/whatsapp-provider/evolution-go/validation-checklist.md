@@ -145,8 +145,8 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Typing no dashboard → `POST /message/presence` (`composing` / `paused`); nota privada não envia
 - [ ] Mark-read ao abrir conversa de grupo (`@g.us`) envia `/message/markread`
 - [ ] Contato 1:1 inbound enriquece avatar/perfil (`ContactEnrichmentJob`)
-- [ ] Contato com `@lid` sem avatar: Sync / inbound usa `/user/avatar` com LID (não só phone); timeout não grava cooldown 6h
-- [ ] Menu ⋮ → **Sync contact info** (só inbox Evolution Go) → toast “started”; nome/avatar atualizam em alguns segundos (`force: true`)
+- [ ] Contato com `@lid` sem avatar: Sync / inbound usa `/user/avatar` com LID (não só phone); timeout grava `avatar_timeout_at` (30 min), não cooldown 6h; LID vazio + PN timeout → só 30 min (não 6h prematuro)
+- [ ] Menu ⋮ → **Sync contact info** / **Sincronizar dados do contato** (só inbox Evolution Go) → toast “started”; nome/avatar atualizam em alguns segundos (`force: true`)
 - [ ] Echo celular (`SEND_MESSAGE` / `fromMe`) aparece como outgoing no Chatwoot
 - [ ] `evolution_go_server_check` bloqueia URLs internas (SSRF guard)
 - [ ] Reação do cliente no WA → chip na mensagem alvo (sem `[Reaction message]`)
