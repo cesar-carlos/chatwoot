@@ -19,6 +19,8 @@
 | 16/jul/2026 (night) | Pseudo-forward Chatwoot-only; docs `doc/feature/message-forward/`; ADR §34 |
 | 17/jul/2026 | Message edit audit: código × doc × Go [#92]; status/feature-mapping ⚠️ plaintext; ADR §35 |
 | 17/jul/2026 (pm) | Doc sync × código: edit/delete contrato Go, enrichment/refresh paced, ADR §35–§36 |
+| 18/jul/2026 | Meta AI `richResponseMessage` / `@bot` + unwrap `botInvokeMessage`; troubleshooting + checklist |
+| 18/jul/2026 (pm) | Reactions: ChatJid prefere `@lid`; menu Reações expansível; optimistic `findStoreMessage`; E2E react OK |
 
 ---
 

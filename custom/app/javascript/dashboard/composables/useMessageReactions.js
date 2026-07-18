@@ -72,6 +72,11 @@ export function extractReactionErrorMessage(
   return fallback;
 }
 
+/**
+ * Merge reaction onto an existing store message. Always pass the full store
+ * record (with sender) — a sparse context-menu payload lacks sender and
+ * Message.vue briefly treats the bubble as agent/right.
+ */
 export function applyOptimisticReaction(message, reaction, actorId = null) {
   const attrs = {
     ...(message.content_attributes || message.contentAttributes || {}),
@@ -100,6 +105,15 @@ export function applyOptimisticReaction(message, reaction, actorId = null) {
       reactions,
     },
   };
+}
+
+/** Resolve the full message from the selected chat so optimistic updates keep sender. */
+export function findStoreMessage(store, conversationId, messageId) {
+  const chat =
+    store.getters?.getSelectedChat ||
+    store.getters?.getConversationById?.(conversationId);
+  if (!chat?.messages?.length) return null;
+  return chat.messages.find(m => m.id === messageId) || null;
 }
 
 export async function sendWhatsappReaction({

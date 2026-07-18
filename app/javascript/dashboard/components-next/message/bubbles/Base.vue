@@ -20,6 +20,7 @@ import {
   inboxSupportsReactions,
   messageCanReceiveReaction,
   applyOptimisticReaction,
+  findStoreMessage,
   sendWhatsappReaction,
   extractReactionErrorMessage,
 } from 'customDashboard/composables/useMessageReactions';
@@ -98,16 +99,17 @@ const reactionChips = computed(() => {
 const removeBusinessReaction = async chip => {
   if (!canReactOnChip.value || !chip?.isMine || isRemovingReaction.value) return;
 
+  const stored =
+    findStoreMessage(store, conversationId.value, messageId.value) || {
+      id: messageId.value,
+      conversation_id: conversationId.value,
+      content_attributes: contentAttributes.value || {},
+      source_id: sourceId.value,
+    };
   const snapshotAttrs = {
-    ...(contentAttributes.value || {}),
+    ...(stored.content_attributes || stored.contentAttributes || {}),
   };
-  const currentMessage = {
-    id: messageId.value,
-    conversation_id: conversationId.value,
-    content_attributes: snapshotAttrs,
-    source_id: sourceId.value,
-  };
-  const optimistic = applyOptimisticReaction(currentMessage, 'remove');
+  const optimistic = applyOptimisticReaction(stored, 'remove');
   store.dispatch('updateMessage', optimistic);
 
   isRemovingReaction.value = true;
@@ -123,7 +125,7 @@ const removeBusinessReaction = async chip => {
     useAlert(t('CONVERSATION.CONTEXT_MENU.REACTION_REMOVED'));
   } catch (error) {
     store.dispatch('updateMessage', {
-      ...currentMessage,
+      ...stored,
       content_attributes: snapshotAttrs,
     });
     const detail = extractReactionErrorMessage(error);
@@ -282,37 +284,39 @@ const replyToPreview = computed(() => {
     <div :class="{ 'opacity-80': isDeleted }">
       <slot />
     </div>
-    <!-- FORK: Evolution Go/Node WhatsApp reactions -->
+    <!-- FORK: Evolution Go/Node WhatsApp reactions (inside bubble) -->
     <div
       v-if="reactionChips.length"
-      class="flex flex-wrap gap-1 mt-1.5"
+      class="flex flex-wrap gap-1 mt-2"
       :class="flexOrientationClass"
     >
-      <button
+      <div
         v-for="chip in reactionChips"
         :key="chip.emoji"
-        type="button"
+        role="button"
         class="inline-flex items-center gap-0.5 rounded-full border bg-n-alpha-2 px-1.5 py-0.5 text-xs leading-none"
         :class="
           chip.isMine && canReactOnChip
             ? 'border-n-brand cursor-pointer ring-1 ring-n-brand/40'
             : 'border-n-strong cursor-default'
         "
-        :disabled="Boolean(chip.isMine && canReactOnChip && isRemovingReaction)"
         :title="
           chip.isMine && canReactOnChip
             ? t('CONVERSATION.CONTEXT_MENU.REMOVE_REACTION')
             : undefined
         "
         @click.stop="
-          chip.isMine && canReactOnChip && removeBusinessReaction(chip)
+          chip.isMine &&
+            canReactOnChip &&
+            !isRemovingReaction &&
+            removeBusinessReaction(chip)
         "
       >
         <span>{{ chip.emoji }}</span>
         <span v-if="chip.count > 1" class="text-n-slate-11">{{
           chip.count
         }}</span>
-      </button>
+      </div>
     </div>
     <MessageMeta
       v-if="shouldShowMeta"

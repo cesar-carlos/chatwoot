@@ -436,6 +436,7 @@
       "COPY_PERMALINK": "Copy link to the message",
       "LINK_COPIED": "Message URL copied to the clipboard",
       "REACT": "React",
+      "REACTIONS": "Reactions",
       "REMOVE_REACTION": "Remove reaction",
       "REACTION_SENT": "Reaction sent",
       "REACTION_REMOVED": "Reaction removed",

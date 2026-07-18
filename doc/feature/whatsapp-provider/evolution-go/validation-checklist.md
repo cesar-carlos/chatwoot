@@ -125,6 +125,7 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Cliente apaga mensagem no WA → reflete no CW (`mark_inbound_deleted`): texto original permanece + destaque deleted + aviso i18n
 - [ ] Cliente edita mensagem no WA → reflete no CW com plaintext (`IsEdit` + `editedMessage`; ID = `protocolMessage.key.ID`); se só `secretEncryptedMessage`, CW não muda e **não** cria unsupported (log `skipped encrypted edit envelope`) — salvar fixture real dos dois casos
 - [ ] Contato envia mídia view once → CW mostra aviso localizado (`VIEW_ONCE_MEDIA_UNAVAILABLE` / `view_once_unavailable`), não `[Unsupported message type]` genérico
+- [ ] Meta AI (ou bot `@bot`) responde no WA → CW mostra texto de `richResponseMessage.submessages[].messageText`, não `[Unsupported message type]`; rich só-imagem → `[AI message]`
 - [ ] Agente apaga/edita no celular → reflete no CW (mesmo com `ignore_from_me_echo: true` se vier em `MESSAGE` / `SEND_MESSAGE` protocol); edit só se payload tiver texto
 - [ ] Agente apaga com `sync_delete_to_whatsapp` — confirmação + delete no WA (só outgoing); falha API **reverte** soft-delete local
 - [ ] Edit outbound (`sync_edit_to_whatsapp`): **agente e admin** veem Edit → modal → WA sync first → CW; falha API não altera CW; badge “Edited” sem prefixo no texto; caption de mídia editável
@@ -148,7 +149,8 @@ Enviar mensagem do celular para o número conectado.
 - [ ] `evolution_go_server_check` bloqueia URLs internas (SSRF guard)
 - [ ] Reação do cliente no WA → chip na mensagem alvo (sem `[Reaction message]`)
 - [ ] Trocar / remover reação do cliente atualiza o chip
-- [ ] Context menu → emoji → aparece no WhatsApp e chip no CW (optimistic UI; rollback se falhar)
+- [ ] Context menu → **Reações** → expandir painel → emoji → aparece no WhatsApp e chip no CW (optimistic UI; rollback se falhar)
+- [ ] Contato com `identifier` `@lid`: reação outbound gruda no WA (não só chip local)
 - [ ] Remover reação no context menu limpa o chip do agente
 - [ ] Clique no chip destacado (`user:self`) remove a reação do negócio
 - [ ] Reagir no dashboard após echo `fromMe` **substitui** (não duplica) o chip

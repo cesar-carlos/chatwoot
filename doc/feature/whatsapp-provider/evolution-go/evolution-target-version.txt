@@ -8,7 +8,7 @@ image=pending-e2e
 # commit=
 
 # Data da validação E2E:
-# e2e_date=
+e2e_date=2026-07-18
 
 # Implementado no fork (jul/2026):
 # - WebhookSubscribeSync (canonical events + GROUP condicional)
@@ -17,5 +17,5 @@ image=pending-e2e
 # - Logout UI, sync webhook UI, diagnostics instance info/logs
 
 # - Message reactions (inbound chip + outbound menu; ADR §33)
-# - /message/react: validar na versão do operador (timeout CW = 15s; ver evolution-go#28)
-#   react_ok=pending-e2e
+# - /message/react: timeout CW = 15s; ver evolution-go#28
+#   react_ok=ok (2026-07-18 local Contas-Receber + Pedidos; LID ChatJid ~0.2–1s HTTP 200)

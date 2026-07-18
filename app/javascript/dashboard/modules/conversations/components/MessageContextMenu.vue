@@ -20,6 +20,7 @@ import {
   inboxSupportsReactions,
   messageCanReceiveReaction,
   applyOptimisticReaction,
+  findStoreMessage,
   extractReactionErrorMessage,
 } from 'customDashboard/composables/useMessageReactions';
 // FORK: WhatsApp-like message forward
@@ -83,7 +84,13 @@ export default {
       isCannedResponseModalOpen: false,
       showDeleteModal: false,
       isSendingReaction: false,
+      showReactionPanel: false,
     };
+  },
+  watch: {
+    isOpen(open) {
+      if (!open) this.showReactionPanel = false;
+    },
   },
   computed: {
     ...mapGetters({
@@ -194,7 +201,12 @@ export default {
       this.$emit('open', e);
     },
     handleClose(e) {
+      this.showReactionPanel = false;
       this.$emit('close', e);
+    },
+    toggleReactionPanel() {
+      if (this.isSendingReaction) return;
+      this.showReactionPanel = !this.showReactionPanel;
     },
     handleTranslate() {
       const { locale: accountLocale } = this.getAccount(this.currentAccountId);
@@ -249,13 +261,17 @@ export default {
     async sendEvolutionGoReaction(reaction) {
       if (this.isSendingReaction || !this.canReactWithEvolutionGo) return;
 
+      const stored =
+        findStoreMessage(this.$store, this.conversationId, this.messageId) ||
+        this.message;
       const snapshot =
-        this.message.content_attributes ?? this.message.contentAttributes;
+        stored.content_attributes ?? stored.contentAttributes;
       const currentUserId = this.$store.getters.getCurrentUserID;
       const isRemove =
         !reaction || String(reaction).toLowerCase() === 'remove';
+      // Prefer store message so sender stays intact (avoids left→right jump).
       const optimistic = applyOptimisticReaction(
-        this.message,
+        stored,
         reaction,
         currentUserId
       );
@@ -282,7 +298,7 @@ export default {
         this.handleClose();
       } catch (error) {
         this.$store.dispatch('updateMessage', {
-          ...this.message,
+          ...stored,
           content_attributes: snapshot,
         });
         const detail = extractReactionErrorMessage(error);
@@ -369,33 +385,42 @@ export default {
           variant="icon"
           @click.stop="handleTranslate"
         />
-        <!-- FORK: Evolution Go reactions -->
-        <template v-if="canReactWithEvolutionGo">
-          <hr />
-          <div class="px-2 py-1 text-xs text-n-slate-11">
-            {{ $t('CONVERSATION.CONTEXT_MENU.REACT') }}
-          </div>
-          <div class="flex flex-wrap gap-1 px-2 pb-2">
-            <button
+        <!-- FORK: Reactions as a standard menu row; expands WhatsApp-safe emoji set -->
+        <MenuItem
+          v-if="canReactWithEvolutionGo"
+          :option="{
+            icon: 'emoji',
+            label: $t('CONVERSATION.CONTEXT_MENU.REACTIONS'),
+          }"
+          variant="icon"
+          @click.stop="toggleReactionPanel"
+        />
+        <div
+          v-if="canReactWithEvolutionGo && showReactionPanel"
+          class="reaction-panel mx-1 mb-1 rounded-md border border-n-strong bg-n-alpha-2 p-1.5"
+          @mousedown.stop
+        >
+          <div class="flex flex-wrap gap-0.5">
+            <div
               v-for="emoji in evolutionGoReactionEmojis"
               :key="emoji"
-              type="button"
-              class="rounded-md px-1.5 py-1 text-base hover:bg-n-alpha-2 disabled:opacity-50"
-              :disabled="isSendingReaction"
+              role="button"
+              class="rounded-md px-1.5 py-1 text-base leading-none hover:bg-n-alpha-3"
+              :class="{ 'opacity-50 pointer-events-none': isSendingReaction }"
               @click.stop="sendEvolutionGoReaction(emoji)"
             >
               {{ emoji }}
-            </button>
-            <button
-              type="button"
-              class="rounded-md px-1.5 py-1 text-xs text-n-slate-11 hover:bg-n-alpha-2 disabled:opacity-50"
-              :disabled="isSendingReaction"
-              @click.stop="sendEvolutionGoReaction('remove')"
-            >
-              {{ $t('CONVERSATION.CONTEXT_MENU.REMOVE_REACTION') }}
-            </button>
+            </div>
           </div>
-        </template>
+          <div
+            role="button"
+            class="mt-1 rounded-md px-1.5 py-1 text-xs text-n-slate-11 hover:bg-n-alpha-3"
+            :class="{ 'opacity-50 pointer-events-none': isSendingReaction }"
+            @click.stop="sendEvolutionGoReaction('remove')"
+          >
+            {{ $t('CONVERSATION.CONTEXT_MENU.REMOVE_REACTION') }}
+          </div>
+        </div>
         <!-- FORK: WhatsApp-like message forward -->
         <MenuItem
           v-if="canForwardMessage"

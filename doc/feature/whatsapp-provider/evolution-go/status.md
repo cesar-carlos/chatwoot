@@ -41,6 +41,7 @@
 | Gates UI (`isGatewayWhatsAppChannel`) | ✅ |
 | Phone echo sync (`SEND_MESSAGE` / `fromMe`) | ✅ |
 | Unwrap `documentWithCaptionMessage` (PDF+caption) | ✅ jul/2026 |
+| Meta AI / `richResponseMessage` (+ unwrap `botInvokeMessage`) | ✅ 18/jul/2026 |
 | View-once unavailable (`IsUnavailable` / `view_once`) | ✅ jul/2026 |
 | Inbound delete UX (keep text + highlight + i18n) | ✅ jul/2026 |
 | Latency (webhook `:default`, debounce, async mark-read) | ✅ jul/2026 |
@@ -50,7 +51,7 @@
 | Read receipt batch processing | ✅ jul/2026 |
 | `GET evolution_go_connection`, `POST evolution_go_logout`, `POST evolution_go_server_check` | ✅ |
 | Fase 3 (poll / link outbound) | ⚠️ parcial |
-| Message reactions (inbound chip + outbound menu) | ✅ 16/jul/2026 · improvements (actor/timeout/Node) |
+| Message reactions (inbound chip + outbound menu) | ✅ 16/jul/2026 · improvements (actor/timeout/Node) · 18/jul LID + menu UX |
 | Pseudo-forward (Chatwoot-only, same inbox) | ✅ 16/jul/2026 · ADR §34 |
 
 ---
@@ -60,7 +61,7 @@
 ### Backend
 - `EvolutionGo::*` services (ApiClient, ConnectionService, SettingsSync, Media*, Import*)
 - `EvolutionGoService` + outbound (text, media, quote, mark read on reply/open)
-- `EvolutionGoNormalizer` (text + media + contact + reply context + button/list replies + markdown inbound)
+- `EvolutionGoNormalizer` (text + media + contact + reply context + button/list replies + richResponse/Meta AI + markdown inbound)
 - Presence: `TypingListener` → `PresenceSyncJob` → `POST /message/presence`
 - Contact enrichment on inbound via `IncomingMessageIdentifierHelper` + `ContactEnrichmentJob`
 - `READ_RECEIPT` no job prepend; `MarkReadService` ao abrir conversa

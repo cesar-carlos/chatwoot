@@ -63,6 +63,10 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
   def build_inbound_message_hash(data, key, wa_id, message_body)
     return build_unavailable_message_hash(data, wa_id, key) if unavailable_payload?(data)
 
+    message_body = (message_body || {}).with_indifferent_access
+    # Reactions are handled by MessageReactionSyncService — never create a text bubble.
+    return nil if message_body['reactionMessage'].present?
+
     message_type = map_message_type(message_body)
     build_message_hash(data.merge('message' => message_body), wa_id, message_type, key)
   end
