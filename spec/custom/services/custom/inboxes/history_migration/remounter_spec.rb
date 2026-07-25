@@ -51,4 +51,19 @@ RSpec.describe Custom::Inboxes::HistoryMigration::Remounter do
 
     expect(conversation.reload.assignee_id).to be_nil
   end
+
+  it 'remounts call inbox_id when Call is available' do
+    skip 'Call model not loaded' unless defined?(Call)
+
+    call = create(:call, conversation: conversation, account: account, inbox: source_inbox, contact: contact)
+
+    described_class.new(
+      conversation: conversation,
+      target_inbox: target_inbox,
+      target_contact_inbox: target_contact_inbox,
+      source_inbox: source_inbox
+    ).perform
+
+    expect(call.reload.inbox_id).to eq(target_inbox.id)
+  end
 end

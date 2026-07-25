@@ -322,7 +322,9 @@ module Custom::Api::V1::Accounts::InboxesController
     migration = InboxHistoryMigration.where(source_inbox_id: @inbox.id).order(created_at: :desc).first
     return render json: {} if migration.blank?
 
-    render json: migration_payload(migration)
+    # Unblock UI when the worker died without completing (stale pending/running).
+    migration.expire_if_stale!
+    render json: migration_payload(migration.reload)
   end
 
   def update

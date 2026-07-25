@@ -35,9 +35,21 @@ function isWhatsAppLike(inbox) {
   );
 }
 
+function isApiInbox(inbox) {
+  return inbox?.channel_type === INBOX_TYPES.API;
+}
+
+function sameMigrationFamily(source, candidate) {
+  if (isWhatsAppLike(source)) return isWhatsAppLike(candidate);
+  if (isApiInbox(source)) return isApiInbox(candidate);
+  return false;
+}
+
 const targetOptions = computed(() =>
   (inboxes.value || [])
-    .filter(item => item.id !== props.inbox.id && isWhatsAppLike(item))
+    .filter(
+      item => item.id !== props.inbox.id && sameMigrationFamily(props.inbox, item)
+    )
     .map(item => ({
       value: item.id,
       label: item.phone_number
@@ -180,6 +192,9 @@ async function confirmMove() {
           {{ migration.status }}
         </span>
       </div>
+      <p class="text-xs text-n-slate-10">
+        {{ $t('INBOX_MGMT.MOVE_HISTORY.STATUS.HINT') }}
+      </p>
 
       <div
         v-if="isActive || isCompleted || isFailed"
