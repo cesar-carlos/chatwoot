@@ -31,6 +31,8 @@ import WavoipCallingPage from 'customDashboard/routes/dashboard/settings/inbox/s
 import EvolutionSettingsPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionSettingsPage.vue';
 // FORK: Evolution Go WhatsApp health tab
 import EvolutionGoSettingsPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/EvolutionGoSettingsPage.vue';
+// FORK: move WhatsApp conversation history between inboxes
+import MoveInboxHistoryPage from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/MoveInboxHistoryPage.vue';
 import CustomerSatisfactionPage from './settingsPage/CustomerSatisfactionPage.vue';
 import CollaboratorsPage from './settingsPage/CollaboratorsPage.vue';
 import BotConfiguration from './components/BotConfiguration.vue';
@@ -69,6 +71,7 @@ export default {
     WavoipCallingPage,
     EvolutionSettingsPage,
     EvolutionGoSettingsPage,
+    MoveInboxHistoryPage,
     CustomerSatisfactionPage,
     FacebookReauthorize,
     GreetingsEditor,
@@ -368,6 +371,17 @@ export default {
           {
             key: 'evolution-go-health',
             name: this.$t('INBOX_MGMT.TABS.EVOLUTION_GO'),
+          },
+        ];
+      }
+
+      // FORK: move WhatsApp conversation history between inboxes
+      if (this.isAWhatsAppChannel) {
+        visibleToAllChannelTabs = [
+          ...visibleToAllChannelTabs,
+          {
+            key: 'move-history',
+            name: this.$t('INBOX_MGMT.TABS.MOVE_HISTORY'),
           },
         ];
       }
@@ -1521,6 +1535,9 @@ export default {
           class="mx-6 max-w-4xl"
         >
           <EvolutionGoSettingsPage :inbox="inbox" />
+        </div>
+        <div v-if="selectedTabKey === 'move-history'" class="mx-6 max-w-4xl">
+          <MoveInboxHistoryPage :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'csat'">
           <CustomerSatisfactionPage :inbox="inbox" />
