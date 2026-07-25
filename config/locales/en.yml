@@ -100,6 +100,11 @@ en:
       not_found: Assignment policy not found
     attachments:
       invalid: Invalid attachment
+    inbox_history_migration:
+      different_accounts: Source and destination inboxes must belong to the same account
+      same_inbox: Source and destination inboxes must be different
+      incompatible_channels: History migration is only supported between WhatsApp inboxes
+      already_running: A history migration is already running for one of these inboxes
     upload:
       missing_input: 'No file or URL provided'
       invalid_url: 'Invalid URL provided'

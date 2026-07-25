@@ -332,6 +332,9 @@ Rails.application.routes.draw do
             post :evolution_go_sync_webhook, on: :member
             post :evolution_go_pair, on: :member
             post :evolution_go_server_check, on: :collection
+            # FORK: move WhatsApp conversation history between inboxes
+            post :move_history, on: :member
+            get :move_history_status, on: :member
             if ChatwootApp.enterprise?
               resource :conference, only: %i[create destroy], controller: 'conference' do
                 get :token, on: :member

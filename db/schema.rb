@@ -1137,6 +1137,25 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
     t.index ["inbox_id"], name: "index_inbox_capacity_limits_on_inbox_id"
   end
 
+  create_table "inbox_history_migrations", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "source_inbox_id", null: false
+    t.bigint "target_inbox_id", null: false
+    t.bigint "requested_by_id"
+    t.string "status", default: "pending", null: false
+    t.jsonb "stats", default: {}, null: false
+    t.text "error_message"
+    t.datetime "started_at"
+    t.datetime "heartbeat_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "created_at"], name: "index_inbox_history_migrations_on_account_id_and_created_at"
+    t.index ["account_id"], name: "index_inbox_history_migrations_on_account_id"
+    t.index ["source_inbox_id"], name: "index_inbox_history_migrations_on_source_inbox_id"
+    t.index ["target_inbox_id"], name: "index_inbox_history_migrations_on_target_inbox_id"
+  end
+
   create_table "inbox_members", id: :serial, force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "inbox_id", null: false
@@ -1632,6 +1651,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
   add_foreign_key "conversation_workflow_rule_executions", "conversation_workflow_rules"
   add_foreign_key "conversation_workflow_rule_executions", "conversations"
   add_foreign_key "conversation_workflow_rules", "accounts"
+  add_foreign_key "inbox_history_migrations", "accounts"
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).

@@ -818,7 +818,37 @@
       "VOICE": "Voice",
       "CALLS": "Calls",
       "EVOLUTION": "WhatsApp",
-      "EVOLUTION_GO": "Evolution Go"
+      "EVOLUTION_GO": "Evolution Go",
+      "MOVE_HISTORY": "Move history"
+    },
+    "MOVE_HISTORY": {
+      "TITLE": "Move conversation history",
+      "DESCRIPTION": "Move all conversations and messages from this WhatsApp inbox to another WhatsApp inbox in this account. Contacts that already exist in the destination inbox will be merged.",
+      "TARGET_LABEL": "Destination inbox",
+      "TARGET_PLACEHOLDER": "Select a WhatsApp inbox",
+      "WARNING": "This action cannot be undone. Agents who are not members of the destination inbox will lose assignment on moved conversations. Keep both inboxes available until the migration finishes.",
+      "START_BUTTON": "Move history",
+      "CONFIRM": {
+        "TITLE": "Confirm history migration",
+        "MESSAGE": "Move all conversations from %{source} to %{target}? Type the source inbox name to confirm.",
+        "YES": "Move history",
+        "NO": "Cancel",
+        "PLACEHOLDER": "Type %{inboxName} to confirm"
+      },
+      "STATUS": {
+        "TITLE": "Migration status",
+        "MOVED": "Moved",
+        "MERGED": "Merged",
+        "SKIPPED": "Skipped",
+        "FAILED": "Failed"
+      },
+      "API": {
+        "STARTED": "History migration started",
+        "ERROR_MESSAGE": "Could not start history migration. Please try again."
+      },
+      "ERRORS": {
+        "TARGET_REQUIRED": "Select a destination inbox"
+      }
     },
     "VOICE_CONFIGURATION": {
       "ENABLE_VOICE": {

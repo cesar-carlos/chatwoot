@@ -160,4 +160,13 @@ export const channelActions = {
     const response = await InboxesAPI.postEvolutionGoTestWebhook(inboxId);
     return response.data;
   },
+  // FORK: move WhatsApp conversation history between inboxes
+  moveInboxHistory: async (_ctx, { inboxId, targetInboxId }) => {
+    const response = await InboxesAPI.postMoveHistory(inboxId, targetInboxId);
+    return response.data;
+  },
+  fetchMoveHistoryStatus: async (_ctx, inboxId) => {
+    const response = await InboxesAPI.getMoveHistoryStatus(inboxId);
+    return response.data;
+  },
 };

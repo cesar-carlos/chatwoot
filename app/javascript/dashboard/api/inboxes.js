@@ -178,6 +178,17 @@ class Inboxes extends CacheEnabledApiClient {
   postEvolutionGoServerCheck(payload) {
     return axios.post(`${this.url}/evolution_go_server_check`, payload);
   }
+
+  // FORK: move WhatsApp conversation history between inboxes
+  postMoveHistory(inboxId, targetInboxId) {
+    return axios.post(`${this.url}/${inboxId}/move_history`, {
+      target_inbox_id: targetInboxId,
+    });
+  }
+
+  getMoveHistoryStatus(inboxId) {
+    return axios.get(`${this.url}/${inboxId}/move_history_status`);
+  }
 }
 
 export default new Inboxes();

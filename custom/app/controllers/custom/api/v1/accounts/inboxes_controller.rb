@@ -292,6 +292,39 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: { ok: false, error: e.user_message }, status: :unprocessable_entity
   end
 
+  # FORK: move all conversation history from this WhatsApp inbox to another
+  def move_history
+    authorize @inbox, :update?
+    target_inbox = Current.account.inboxes.find_by(id: params[:target_inbox_id])
+    if target_inbox.blank?
+      return render json: { error: 'target inbox not found', code: 'target_not_found' },
+                    status: :unprocessable_entity
+    end
+
+    authorize target_inbox, :update?
+
+    Custom::Inboxes::HistoryMigration::CompatibilityGuard.new(source: @inbox, target: target_inbox).validate!
+    migration = InboxHistoryMigration.create!(
+      account: Current.account,
+      source_inbox: @inbox,
+      target_inbox: target_inbox,
+      requested_by: Current.user,
+      status: 'pending'
+    )
+    Custom::Inboxes::HistoryMigrationJob.perform_later(migration.id)
+    render json: migration_payload(migration)
+  rescue Custom::Inboxes::HistoryMigration::CompatibilityGuard::Error => e
+    render json: { error: e.message, code: e.code }, status: :unprocessable_entity
+  end
+
+  def move_history_status
+    authorize @inbox, :update?
+    migration = InboxHistoryMigration.where(source_inbox_id: @inbox.id).order(created_at: :desc).first
+    return render json: {} if migration.blank?
+
+    render json: migration_payload(migration)
+  end
+
   def update
     super
     refresh_evolution_channel_after_update!
@@ -326,6 +359,21 @@ module Custom::Api::V1::Accounts::InboxesController
       import_error: config['import_error'],
       import_started_at: config['import_started_at'],
       import_completed_at: config['import_completed_at']
+    }
+  end
+
+  def migration_payload(migration)
+    {
+      id: migration.id,
+      status: migration.status,
+      stats: migration.stats || {},
+      error_message: migration.error_message,
+      source_inbox_id: migration.source_inbox_id,
+      target_inbox_id: migration.target_inbox_id,
+      started_at: migration.started_at,
+      heartbeat_at: migration.heartbeat_at,
+      completed_at: migration.completed_at,
+      created_at: migration.created_at
     }
   end
 

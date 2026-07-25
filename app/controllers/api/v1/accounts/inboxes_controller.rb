@@ -32,6 +32,9 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     evolution_go_logout
     evolution_go_sync_webhook
     evolution_go_pair
+    # FORK: WhatsApp inbox history migration
+    move_history
+    move_history_status
   ]
   # rubocop:enable Rails/LexicallyScopedActionFilter
 
