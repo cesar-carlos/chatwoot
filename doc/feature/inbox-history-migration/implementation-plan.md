@@ -32,18 +32,23 @@ Permitir que um **administrador** mova todo o histórico de conversas/mensagens 
 
 ```ruby
 (whatsapp_like?(source) && whatsapp_like?(target)) ||
-  (source.api? && target.api?)
+  (source.api? && target.api?) ||
+  (whatsapp_like?(source) && target.api?) ||
+  (source.api? && whatsapp_like?(target))
 ```
 
 `whatsapp_like?` = `inbox.whatsapp? || inbox.twilio_whatsapp?`
 
-Mesma `account_id`, `source.id != target.id`, nenhuma migration `running` em A ou B.
+Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progress` em A ou B.
 
-API→API preserva `contact_inbox.source_id` no builder (sessão opaca).
-
+- API→API preserva `contact_inbox.source_id` no builder (sessão opaca).
+- WA↔API: **nunca** copia `source_id` entre famílias; destino WA deriva phone (sem phone → peer `failed`); destino API gera UUID e reusa CI existente do contato (idempotente).
+- WA↔WA: preserva/`converte` `source_id` (Twilio↔Cloud); funciona sem `phone_number` se o id for válido.
+- Criação de CI **sem** steal do `ContactInboxBuilder`.
+- Outbound no destino cross-channel não é requisito.
 ### 2. Remount (sem conversa no destino)
 
-1. `ContactInboxBuilder` no destino (phone → `source_id`; grupos Evolution → JID literal se ambos forem Evolution family)
+1. ContactInbox no destino (reusa CI do contato se existir; senão source_id portátil / phone / UUID)
 2. Transaction:
    - `conversation.update!(inbox_id:, contact_inbox_id:)`
    - limpar assignee se não for member de B
@@ -52,9 +57,9 @@ API→API preserva `contact_inbox.source_id` no builder (sessão opaca).
 
 ### 3. Merge (já existe conversa no destino)
 
-1. `Conversations::Resolver#find` no `contact_inbox` de B
+1. Conversa mais recente do `contact_inbox` de B (**inclui resolved**)
 2. Reparent: messages, mentions, participants (sem colidir UNIQUE), notifications, CSAT, reporting, SLA
-3. Labels + `custom_attributes` (destino vence em chave duplicada via `merge`)
+3. Labels + `custom_attributes` + `additional_attributes` (destino vence em chave duplicada via `merge`)
 4. Abortar destroy se origem ainda tiver messages
 5. `source_conversation.destroy!`
 
@@ -74,8 +79,8 @@ Status: `pending` → `running` → `completed` | `failed`.
 - `POST …/inboxes/:id/move_history` `{ target_inbox_id }`
 - `GET …/inboxes/:id/move_history_status` (expira stale pending/running)
 - Tab `move-history` em `Settings.vue` quando `isAWhatsAppChannel || isAPIInbox`
-- Destinos filtrados pela mesma família (WA↔WA, API↔API)
-- Lock: `pending` + `running` frescos bloqueiam novo start
+- Destinos: mesma família **ou** WA↔API; empty state; mostra destino + progresso + falhas parciais
+- Lock: `Inbox.lock` no POST + `pending`/`running` frescos bloqueiam novo start
 
 ### 6. Calls / colisões
 
@@ -108,11 +113,12 @@ end
 
 - [x] Admin move histórico WhatsApp A → B
 - [x] Agente recebe 401/unauthorized
-- [x] Destino não WhatsApp → `incompatible_channels`
+- [x] Destino incompatível (ex.: Email) → `incompatible_channels`
+- [x] API ↔ WhatsApp permitido (histórico; identity nativa no destino)
 - [x] Conversa sem peer em B → remount (`moved`)
 - [x] Peer já em B → merge (`merged`)
 - [x] UI mostra status/stats via poll
-- [x] Specs verdes (18 examples)
+- [x] Specs verdes
 
 ### Comando de teste
 

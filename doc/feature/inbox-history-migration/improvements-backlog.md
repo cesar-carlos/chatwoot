@@ -7,7 +7,11 @@ Pós-MVP. Não bloqueia o uso atual.
 ## Já no MVP
 
 - Move completo WhatsApp A → B (Cloud / Evolution / Evolution Go / Twilio WA)
-- Move completo API/Webhook A → B (preserva `source_id`; same-type only)
+- Move completo API/Webhook A → B (preserva `source_id`; same-type)
+- Move cross-channel WhatsApp ↔ API/Webhook (histórico/leitura; identity nativa no destino)
+- Idempotência no destino API (reusa CI do contato); WA same-family preserva `source_id` sem phone
+- Anti-steal sem `ContactInboxBuilder`; merge inclui resolved + `additional_attributes`
+- Lock de inbox no POST; UI com destino/progresso/falhas parciais/empty state
 - Remount + merge de peers existentes (workflow executions / AppliedSla / CSAT / Calls)
 - Job + tabela de status/stats + polling UI (`pending` + `running`)
 - Lock em `pending` **e** `running`; stale pending/running (>2h) auto-failed
@@ -42,9 +46,10 @@ Pós-MVP. Não bloqueia o uso atual.
 | IHM-P2-1 | Telegram → Telegram | Remapper de `source_id` + `additional_attributes.chat_id` |
 | IHM-P2-2 | Email → Email | `source_id` = email |
 | IHM-P2-3 | API / Webhook → API | ✅ Remount preservando `source_id` (não archive) |
+| IHM-P2-6 | Archive cross-channel WA ↔ API | ✅ Remount com identity nativa no destino; outbound não garantido |
 | IHM-P2-4 | Seleção parcial (por data / status) | Expandir além de “caixa inteira” |
 | IHM-P2-5 | Sub-jobs por lote | Inboxes com dezenas de milhares de peers |
-| IHM-P2-6 | Archive cross-channel | Cópia read-only WA → outro canal |
+| IHM-P2-7 | Archive para Telegram / Email / etc. | Ainda backlog (outros canais) |
 
 ---
 

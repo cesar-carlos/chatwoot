@@ -58,21 +58,28 @@ RSpec.describe Custom::Inboxes::HistoryMigration::CompatibilityGuard do
       end.not_to raise_error
     end
 
-    it 'rejects API to WhatsApp' do
+    it 'passes for API to WhatsApp' do
       api_source = create(:channel_api, account: account).inbox
 
       expect do
         described_class.new(source: api_source, target: target).validate!
-      end.to raise_error(described_class::Error) { |error|
-        expect(error.code).to eq('incompatible_channels')
-      }
+      end.not_to raise_error
     end
 
-    it 'rejects WhatsApp to API' do
+    it 'passes for WhatsApp to API' do
       api_target = create(:channel_api, account: account).inbox
 
       expect do
         described_class.new(source: source, target: api_target).validate!
+      end.not_to raise_error
+    end
+
+    it 'rejects API to Email' do
+      api_source = create(:channel_api, account: account).inbox
+      email_inbox = create(:channel_email, account: account).inbox
+
+      expect do
+        described_class.new(source: api_source, target: email_inbox).validate!
       end.to raise_error(described_class::Error) { |error|
         expect(error.code).to eq('incompatible_channels')
       }
@@ -179,9 +186,15 @@ RSpec.describe Custom::Inboxes::HistoryMigration::CompatibilityGuard do
       expect(described_class.compatible?(api_source, api_target)).to be(true)
     end
 
-    it 'is false for mixed API and WhatsApp' do
+    it 'is true for mixed API and WhatsApp' do
       api_inbox = create(:channel_api, account: account).inbox
-      expect(described_class.compatible?(source, api_inbox)).to be(false)
+      expect(described_class.compatible?(source, api_inbox)).to be(true)
+      expect(described_class.compatible?(api_inbox, source)).to be(true)
+    end
+
+    it 'is false for WhatsApp and Email' do
+      email_inbox = create(:channel_email, account: account).inbox
+      expect(described_class.compatible?(source, email_inbox)).to be(false)
     end
   end
 end

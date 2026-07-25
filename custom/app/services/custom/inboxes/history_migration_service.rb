@@ -64,28 +64,23 @@ class Custom::Inboxes::HistoryMigrationService
   end
 
   def resolve_target_contact_inbox(contact_inbox)
-    # Fail closed on source_id collision — do not let ContactInboxBuilder "steal"
-    # another contact's identity on WhatsApp/Twilio/Email allowed_channels.
-    return nil if source_id_conflict_on_target?(contact_inbox)
+    # Idempotent: reuse an existing session for this contact on the target inbox
+    # (covers WA→API UUID re-runs and peers already opened on the destination).
+    existing_for_contact = ContactInbox.find_by(
+      inbox_id: target_inbox.id,
+      contact_id: contact_inbox.contact_id
+    )
+    return existing_for_contact if existing_for_contact
 
-    ContactInboxBuilder.new(
-      contact: contact_inbox.contact,
-      inbox: target_inbox,
-      source_id: source_id_for_builder(contact_inbox)
-    ).perform
-  rescue ActionController::ParameterMissing
-    fallback_contact_inbox(contact_inbox)
+    source_id = resolved_source_id(contact_inbox)
+    return create_api_contact_inbox!(contact_inbox) if source_id.blank? && target_inbox.api?
+    return fallback_contact_inbox(contact_inbox) if source_id.blank?
+
+    create_contact_inbox_safely!(contact_inbox.contact, source_id)
   end
 
-  def source_id_conflict_on_target?(contact_inbox)
-    candidate = candidate_source_id(contact_inbox)
-    return false if candidate.blank?
-
-    existing = ContactInbox.find_by(inbox_id: target_inbox.id, source_id: candidate)
-    existing.present? && existing.contact_id != contact_inbox.contact_id
-  end
-
-  def candidate_source_id(contact_inbox)
+  # Prefer an explicit portable id; otherwise derive a target-native id.
+  def resolved_source_id(contact_inbox)
     explicit = source_id_for_builder(contact_inbox)
     return explicit if explicit.present?
 
@@ -107,13 +102,63 @@ class Custom::Inboxes::HistoryMigrationService
   end
 
   def source_id_for_builder(contact_inbox)
-    # Prefer builder auto-generation from phone when possible.
     # Evolution group JIDs are only portable between Evolution / Evolution Go.
     return contact_inbox.source_id if portable_evolution_group?(contact_inbox)
-    # API/Webhook sessions are opaque UUIDs — preserve them so remount keeps identity.
+    # API/Webhook sessions are opaque UUIDs — preserve only for API→API.
     return contact_inbox.source_id if source_inbox.api? && target_inbox.api?
 
+    # Same-family WhatsApp-like: preserve or convert format (Twilio ↔ Cloud).
+    return portable_whatsapp_source_id(contact_inbox) if whatsapp_like_pair?
+
+    # Cross-family (API↔WhatsApp): never copy UUID/JID across channel types.
+    # Caller derives phone for WA or generates UUID for API.
     nil
+  end
+
+  def whatsapp_like_pair?
+    guard = Custom::Inboxes::HistoryMigration::CompatibilityGuard
+    guard.whatsapp_like?(source_inbox) && guard.whatsapp_like?(target_inbox)
+  end
+
+  def portable_whatsapp_source_id(contact_inbox)
+    sid = contact_inbox.source_id.to_s
+    return nil if sid.blank?
+
+    # Groups only move within Evolution family (already handled above); otherwise fail closed.
+    if evolution_group_source?(contact_inbox)
+      return nil unless portable_evolution_group?(contact_inbox)
+
+      return sid
+    end
+
+    if source_inbox.whatsapp? && target_inbox.whatsapp?
+      return sid if sid.match?(RegexHelper::WHATSAPP_CHANNEL_REGEX)
+
+      return nil
+    end
+
+    if source_inbox.twilio_whatsapp? && target_inbox.twilio_whatsapp?
+      return sid if sid.match?(RegexHelper::TWILIO_CHANNEL_WHATSAPP_REGEX)
+
+      return nil
+    end
+
+    convert_whatsapp_source_id(sid)
+  end
+
+  def convert_whatsapp_source_id(sid)
+    if target_inbox.whatsapp?
+      digits = sid.sub(/\Awhatsapp:\+?/, '')
+      return digits if digits.match?(RegexHelper::WHATSAPP_CHANNEL_REGEX)
+
+      nil
+    elsif target_inbox.twilio_whatsapp?
+      return sid if sid.match?(RegexHelper::TWILIO_CHANNEL_WHATSAPP_REGEX)
+      return "whatsapp:+#{sid}" if sid.match?(/\A\d{1,15}\z/)
+      return "whatsapp:#{sid}" if sid.match?(RegexHelper::WHATSAPP_BSUID_REGEX)
+
+      nil
+    end
   end
 
   def portable_evolution_group?(contact_inbox)
@@ -131,13 +176,40 @@ class Custom::Inboxes::HistoryMigrationService
 
   def fallback_contact_inbox(contact_inbox)
     return nil unless portable_evolution_group?(contact_inbox)
-    return nil if source_id_conflict_on_target?(contact_inbox)
 
-    ContactInbox.find_or_create_by!(
+    create_contact_inbox_safely!(contact_inbox.contact, contact_inbox.source_id)
+  end
+
+  def create_api_contact_inbox!(contact_inbox)
+    existing = ContactInbox.find_by(inbox_id: target_inbox.id, contact_id: contact_inbox.contact_id)
+    return existing if existing
+
+    ContactInbox.create!(
       inbox: target_inbox,
       contact: contact_inbox.contact,
-      source_id: contact_inbox.source_id
+      source_id: SecureRandom.uuid
     )
+  rescue ActiveRecord::RecordNotUnique
+    ContactInbox.find_by(inbox_id: target_inbox.id, contact_id: contact_inbox.contact_id)
+  end
+
+  # Create without ContactInboxBuilder — avoids its "steal" rewrite on collision.
+  def create_contact_inbox_safely!(contact, source_id)
+    existing = ContactInbox.find_by(inbox_id: target_inbox.id, source_id: source_id)
+    if existing
+      return existing if existing.contact_id == contact.id
+
+      return nil
+    end
+
+    ContactInbox.create!(inbox: target_inbox, contact: contact, source_id: source_id)
+  rescue ActiveRecord::RecordNotUnique
+    existing = ContactInbox.find_by(inbox_id: target_inbox.id, source_id: source_id)
+    return existing if existing&.contact_id == contact.id
+
+    nil
+  rescue ActiveRecord::RecordInvalid
+    nil
   end
 
   def migrate_conversation!(conversation, target_contact_inbox)
@@ -147,10 +219,9 @@ class Custom::Inboxes::HistoryMigrationService
       return
     end
 
-    existing = Conversations::Resolver.new(
-      inbox: target_inbox,
-      contact_inbox: target_contact_inbox
-    ).find
+    # History migration always considers resolved threads on the destination
+    # (unlike Conversations::Resolver when lock_to_single_conversation is off).
+    existing = target_contact_inbox.conversations.order(created_at: :desc).first
 
     if existing.present? && existing.id != conversation.id
       Custom::Inboxes::HistoryMigration::ConversationMerger.new(
