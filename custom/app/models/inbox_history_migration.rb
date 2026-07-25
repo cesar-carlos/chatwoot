@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-# FORK: persists status/stats for WhatsApp inbox history migrations (A → B)
+# FORK: persists status/stats for inbox history migrations (A → B)
 class InboxHistoryMigration < ApplicationRecord
   STATUSES = %w[pending running completed failed].freeze
-  STALE_RUNNING_AFTER = 2.hours
+  STALE_AFTER = 2.hours
   DEFAULT_STATS = {
     'moved' => 0,
     'merged' => 0,
@@ -21,10 +21,24 @@ class InboxHistoryMigration < ApplicationRecord
 
   before_validation :ensure_default_stats
 
+  # Fresh pending or running rows that should block a new migration start.
+  scope :blocking_progress, lambda {
+    where(
+      "(status = 'pending' AND created_at >= :since) OR " \
+      "(status = 'running' AND COALESCE(heartbeat_at, started_at, created_at) >= :since)",
+      since: STALE_AFTER.ago
+    )
+  }
+
+  scope :for_inbox_ids, lambda { |ids|
+    where('source_inbox_id IN (:ids) OR target_inbox_id IN (:ids)', ids: ids)
+  }
+
+  # Kept for callers/docs that still reference the old name.
   scope :actively_running, lambda {
     where(status: 'running').where(
       'COALESCE(heartbeat_at, started_at, created_at) >= ?',
-      STALE_RUNNING_AFTER.ago
+      STALE_AFTER.ago
     )
   }
 
@@ -64,7 +78,27 @@ class InboxHistoryMigration < ApplicationRecord
     return false unless status == 'running'
 
     heartbeat = heartbeat_at || started_at || created_at
-    heartbeat < STALE_RUNNING_AFTER.ago
+    heartbeat < STALE_AFTER.ago
+  end
+
+  def stale_pending?
+    status == 'pending' && created_at < STALE_AFTER.ago
+  end
+
+  def stale?
+    stale_running? || stale_pending?
+  end
+
+  def expire_if_stale!
+    return false unless stale?
+
+    message = if stale_running?
+                'Stale migration: heartbeat timed out'
+              else
+                'Stale migration: pending timed out'
+              end
+    mark_failed!(message)
+    true
   end
 
   def increment_stat!(key, by: 1)

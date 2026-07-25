@@ -28,13 +28,18 @@ Permitir que um **administrador** mova todo o histórico de conversas/mensagens 
 
 ## Detalhe técnico
 
-### 1. Compatibilidade (`whatsapp_like?`)
+### 1. Compatibilidade (`compatible?`)
 
 ```ruby
-inbox.whatsapp? || inbox.twilio_whatsapp?
+(whatsapp_like?(source) && whatsapp_like?(target)) ||
+  (source.api? && target.api?)
 ```
 
+`whatsapp_like?` = `inbox.whatsapp? || inbox.twilio_whatsapp?`
+
 Mesma `account_id`, `source.id != target.id`, nenhuma migration `running` em A ou B.
+
+API→API preserva `contact_inbox.source_id` no builder (sessão opaca).
 
 ### 2. Remount (sem conversa no destino)
 
@@ -67,8 +72,15 @@ Status: `pending` → `running` → `completed` | `failed`.
 ### 5. API / UI
 
 - `POST …/inboxes/:id/move_history` `{ target_inbox_id }`
-- `GET …/inboxes/:id/move_history_status`
-- Tab `move-history` em `Settings.vue` quando `isAWhatsAppChannel`
+- `GET …/inboxes/:id/move_history_status` (expira stale pending/running)
+- Tab `move-history` em `Settings.vue` quando `isAWhatsAppChannel || isAPIInbox`
+- Destinos filtrados pela mesma família (WA↔WA, API↔API)
+- Lock: `pending` + `running` frescos bloqueiam novo start
+
+### 6. Calls / colisões
+
+- Remounter atualiza `calls.inbox_id`; Merger reparenta `conversation_id` + `inbox_id`
+- Colisão de `source_id` no destino com outro contato → `failed` (sem steal)
 
 ---
 

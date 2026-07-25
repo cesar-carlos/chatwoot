@@ -92,4 +92,25 @@ RSpec.describe Custom::Inboxes::HistoryMigration::ConversationMerger do
 
     expect(ConversationWorkflowRuleExecution.where(conversation_id: source_conversation.id)).to be_empty
   end
+
+  it 'reparents calls onto the target conversation' do
+    skip 'Call model not loaded' unless defined?(Call)
+
+    call = create(
+      :call,
+      conversation: source_conversation,
+      account: account,
+      inbox: source_inbox,
+      contact: contact
+    )
+
+    described_class.new(
+      source_conversation: source_conversation,
+      target_conversation: target_conversation,
+      target_inbox: target_inbox
+    ).perform
+
+    expect(call.reload.conversation_id).to eq(target_conversation.id)
+    expect(call.inbox_id).to eq(target_inbox.id)
+  end
 end

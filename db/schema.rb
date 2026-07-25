@@ -1652,6 +1652,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_07_29_051500) do
   add_foreign_key "conversation_workflow_rule_executions", "conversations"
   add_foreign_key "conversation_workflow_rules", "accounts"
   add_foreign_key "inbox_history_migrations", "accounts"
+  add_foreign_key "inbox_history_migrations", "inboxes", column: "source_inbox_id", on_delete: :cascade
+  add_foreign_key "inbox_history_migrations", "inboxes", column: "target_inbox_id", on_delete: :cascade
+  add_foreign_key "inbox_history_migrations", "users", column: "requested_by_id", on_delete: :nullify
   add_foreign_key "inboxes", "portals"
   add_foreign_key "user_sessions", "users"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).

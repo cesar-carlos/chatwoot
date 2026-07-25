@@ -1,19 +1,20 @@
 # Inbox History Migration — Documentação
 
-Mover **todo o histórico** (conversas + mensagens) de uma caixa de entrada WhatsApp **A** para outra caixa WhatsApp **B** na mesma account, com remount da sessão de canal e merge quando o contato já existir em B.
+Mover **todo o histórico** (conversas + mensagens) de uma caixa de entrada **A** para outra caixa **B** na mesma account (WhatsApp-like ou API/Webhook), com remount da sessão de canal e merge quando o contato já existir em B.
 
-**Estado:** implementado (MVP) · 25/jul/2026
+**Estado:** implementado · 25/jul/2026
 
 | Área | Status |
 |------|--------|
 | Move A → B (mesmo account, WhatsApp-like) | ✅ |
+| Move A → B (mesmo account, API/Webhook → API) | ✅ |
 | Providers: Cloud, Evolution, Evolution Go, Twilio WhatsApp | ✅ |
 | Merge quando destino já tem conversa do peer | ✅ |
 | Remount `ContactInbox` + `messages.inbox_id` | ✅ |
 | Job assíncrono + status/stats | ✅ |
 | UI settings (aba Move history) | ✅ |
 | Admin-only (`InboxPolicy#update?`) | ✅ |
-| Cross-channel (Telegram, API, Email, …) | ❌ Fora do MVP |
+| Cross-channel (Telegram, Email, API↔WhatsApp, …) | ❌ Fora do escopo |
 | i18n | ✅ EN only (regra do fork) |
 
 ---
@@ -34,12 +35,13 @@ Mover **todo o histórico** (conversas + mensagens) de uma caixa de entrada What
 
 | Tópico | Decisão |
 |--------|---------|
-| Escopo v1 | Só canais WhatsApp-like (`Channel::Whatsapp` ou Twilio `medium == whatsapp`) |
+| Escopo | Pares same-type: WhatsApp-like↔WhatsApp-like **ou** `Channel::Api`↔`Channel::Api` |
 | Conflito de peer | **Merge** mensagens/metadados na conversa existente em B; destruir conversa vazia em A |
-| Identidade | Remount via `ContactInboxBuilder` (+ fallback JID de grupo Evolution↔Evolution Go) |
+| Identidade WA | Remount via `ContactInboxBuilder` (+ fallback JID de grupo Evolution↔Evolution Go) |
+| Identidade API | **Preservar `source_id`** (UUID de sessão); colisão com outro contato → peer `failed` |
 | Persistência de status | Tabela `inbox_history_migrations` (não `provider_config`) |
 | Execução | `Custom::Inboxes::HistoryMigrationJob` (`queue_as :low`) |
-| UX | Aba **Move history** nas settings da inbox origem |
+| UX | Aba **Move history** nas settings da inbox origem (WA ou API) |
 | Auth | Administrator (`authorize … :update?` em origem **e** destino) |
 | Fork | Quase tudo em `custom/`; `# FORK:` / `// FORK:` mínimos em routes, controller except, Settings.vue, API client |
 | i18n | **Somente EN** |

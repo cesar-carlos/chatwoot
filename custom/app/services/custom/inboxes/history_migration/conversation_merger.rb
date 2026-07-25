@@ -6,6 +6,7 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
   def perform
     ActiveRecord::Base.transaction do
       reparent_messages!
+      reparent_calls!
       reparent_mentions!
       reparent_participants!
       reparent_notifications!
@@ -31,6 +32,17 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
              inbox_id: target_inbox.id,
              updated_at: Time.current
            )
+  end
+
+  def reparent_calls!
+    return unless defined?(Call)
+
+    Call.where(conversation_id: source_conversation.id)
+        .update_all( # rubocop:disable Rails/SkipsModelValidations
+          conversation_id: target_conversation.id,
+          inbox_id: target_inbox.id,
+          updated_at: Time.current
+        )
   end
 
   def reparent_mentions!

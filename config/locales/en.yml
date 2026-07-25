@@ -103,7 +103,7 @@ en:
     inbox_history_migration:
       different_accounts: Source and destination inboxes must belong to the same account
       same_inbox: Source and destination inboxes must be different
-      incompatible_channels: History migration is only supported between WhatsApp inboxes
+      incompatible_channels: History migration is only supported between matching channel types (WhatsApp to WhatsApp, or API/Webhook to API/Webhook)
       already_running: A history migration is already running for one of these inboxes
     upload:
       missing_input: 'No file or URL provided'

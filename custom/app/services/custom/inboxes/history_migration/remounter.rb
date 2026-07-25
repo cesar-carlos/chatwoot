@@ -7,6 +7,7 @@ class Custom::Inboxes::HistoryMigration::Remounter
     ActiveRecord::Base.transaction do
       remount_conversation!
       remount_messages!
+      remount_calls!
       remount_reporting_events!
       remount_sla_events!
     end
@@ -35,6 +36,13 @@ class Custom::Inboxes::HistoryMigration::Remounter
   def remount_messages!
     Message.where(conversation_id: conversation.id)
            .update_all(inbox_id: target_inbox.id, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+  end
+
+  def remount_calls!
+    return unless defined?(Call)
+
+    Call.where(conversation_id: conversation.id)
+        .update_all(inbox_id: target_inbox.id, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
   end
 
   def remount_reporting_events!

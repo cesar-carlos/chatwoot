@@ -823,10 +823,10 @@
     },
     "MOVE_HISTORY": {
       "TITLE": "Move conversation history",
-      "DESCRIPTION": "Move all conversations and messages from this WhatsApp inbox to another WhatsApp inbox in this account. Contacts that already exist in the destination inbox will be merged.",
+      "DESCRIPTION": "Move all conversations and messages from this inbox to another inbox of the same type (WhatsApp to WhatsApp, or API/Webhook to API/Webhook) in this account. Contacts that already exist in the destination inbox will be merged.",
       "TARGET_LABEL": "Destination inbox",
-      "TARGET_PLACEHOLDER": "Select a WhatsApp inbox",
-      "WARNING": "This action cannot be undone. Agents who are not members of the destination inbox will lose assignment on moved conversations. Keep both inboxes available until the migration finishes.",
+      "TARGET_PLACEHOLDER": "Select a destination inbox",
+      "WARNING": "This action cannot be undone. Agents who are not members of the destination inbox will lose assignment on moved conversations. Keep both inboxes available until the migration finishes. Channel credentials and webhook URLs are not moved.",
       "START_BUTTON": "Move history",
       "CONFIRM": {
         "TITLE": "Confirm history migration",
@@ -840,7 +840,8 @@
         "MOVED": "Moved",
         "MERGED": "Merged",
         "SKIPPED": "Skipped",
-        "FAILED": "Failed"
+        "FAILED": "Failed",
+        "HINT": "Counts are per conversation."
       },
       "API": {
         "STARTED": "History migration started",

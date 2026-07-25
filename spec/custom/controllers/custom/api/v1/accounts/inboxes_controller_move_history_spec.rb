@@ -71,5 +71,24 @@ RSpec.describe 'Inbox history migration API', type: :request do
       expect(response.parsed_body['id']).to eq(migration.id)
       expect(response.parsed_body['stats']['moved']).to eq(3)
     end
+
+    it 'expires a stale running migration so the UI can unblock' do
+      migration = InboxHistoryMigration.create!(
+        account: account,
+        source_inbox: source_inbox,
+        target_inbox: target_inbox,
+        status: 'running',
+        started_at: 3.hours.ago,
+        heartbeat_at: 3.hours.ago
+      )
+
+      get "/api/v1/accounts/#{account.id}/inboxes/#{source_inbox.id}/move_history_status",
+          headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['status']).to eq('failed')
+      expect(migration.reload.status).to eq('failed')
+      expect(migration.error_message).to include('heartbeat timed out')
+    end
   end
 end

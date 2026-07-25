@@ -355,8 +355,8 @@ export default {
         ];
       }
 
-      // FORK: move WhatsApp conversation history between inboxes
-      if (this.isAWhatsAppChannel) {
+      // FORK: move WhatsApp / API conversation history between same-type inboxes
+      if (this.isAWhatsAppChannel || this.isAPIInbox) {
         visibleToAllChannelTabs = [
           ...visibleToAllChannelTabs,
           {

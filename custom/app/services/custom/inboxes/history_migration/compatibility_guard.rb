@@ -15,8 +15,8 @@ class Custom::Inboxes::HistoryMigration::CompatibilityGuard
   def validate!
     validate_same_account!
     validate_different_inboxes!
-    validate_whatsapp_like!
-    validate_not_already_running!
+    validate_compatible_channels!
+    validate_not_already_in_progress!
   end
 
   def self.whatsapp_like?(inbox)
@@ -25,10 +25,24 @@ class Custom::Inboxes::HistoryMigration::CompatibilityGuard
     inbox.whatsapp? || inbox.twilio_whatsapp?
   end
 
+  def self.compatible?(source_inbox, target_inbox)
+    return false if source_inbox.blank? || target_inbox.blank?
+
+    (whatsapp_like?(source_inbox) && whatsapp_like?(target_inbox)) ||
+      (source_inbox.api? && target_inbox.api?)
+  end
+
   def self.evolution_family?(inbox)
     return false unless inbox&.whatsapp?
 
     inbox.channel.provider.to_s.in?(%w[evolution evolution_go])
+  end
+
+  def self.expire_stale_for_inbox_ids!(ids)
+    InboxHistoryMigration
+      .where(status: %w[pending running])
+      .for_inbox_ids(ids)
+      .find_each(&:expire_if_stale!)
   end
 
   private
@@ -51,8 +65,8 @@ class Custom::Inboxes::HistoryMigration::CompatibilityGuard
     )
   end
 
-  def validate_whatsapp_like!
-    return if self.class.whatsapp_like?(source) && self.class.whatsapp_like?(target)
+  def validate_compatible_channels!
+    return if self.class.compatible?(source, target)
 
     raise Error.new(
       I18n.t('errors.inbox_history_migration.incompatible_channels'),
@@ -60,35 +74,18 @@ class Custom::Inboxes::HistoryMigration::CompatibilityGuard
     )
   end
 
-  def validate_not_already_running!
-    mark_stale_migrations_failed!
+  def validate_not_already_in_progress!
+    self.class.expire_stale_for_inbox_ids!([source.id, target.id])
 
-    running = InboxHistoryMigration
-              .actively_running
-              .where(
-                'source_inbox_id IN (:ids) OR target_inbox_id IN (:ids)',
-                ids: [source.id, target.id]
-              )
-              .exists?
-    return unless running
+    in_progress = InboxHistoryMigration
+                  .blocking_progress
+                  .for_inbox_ids([source.id, target.id])
+                  .exists?
+    return unless in_progress
 
     raise Error.new(
       I18n.t('errors.inbox_history_migration.already_running'),
       code: 'already_running'
     )
-  end
-
-  def mark_stale_migrations_failed!
-    InboxHistoryMigration
-      .where(status: 'running')
-      .where(
-        'source_inbox_id IN (:ids) OR target_inbox_id IN (:ids)',
-        ids: [source.id, target.id]
-      )
-      .find_each do |migration|
-        next unless migration.stale_running?
-
-        migration.mark_failed!('Stale migration: heartbeat timed out')
-      end
   end
 end
