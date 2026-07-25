@@ -292,25 +292,33 @@ module Custom::Api::V1::Accounts::InboxesController
     render json: { ok: false, error: e.user_message }, status: :unprocessable_entity
   end
 
-  # FORK: move all conversation history from this WhatsApp inbox to another
+  # FORK: move all conversation history from this WhatsApp/API inbox to another
   def move_history
     authorize @inbox, :update?
     target_inbox = Current.account.inboxes.find_by(id: params[:target_inbox_id])
     if target_inbox.blank?
-      return render json: { error: 'target inbox not found', code: 'target_not_found' },
-                    status: :unprocessable_entity
+      return render json: {
+        error: I18n.t('errors.inbox_history_migration.target_not_found'),
+        code: 'target_not_found'
+      }, status: :unprocessable_entity
     end
 
     authorize target_inbox, :update?
 
-    Custom::Inboxes::HistoryMigration::CompatibilityGuard.new(source: @inbox, target: target_inbox).validate!
-    migration = InboxHistoryMigration.create!(
-      account: Current.account,
-      source_inbox: @inbox,
-      target_inbox: target_inbox,
-      requested_by: Current.user,
-      status: 'pending'
-    )
+    migration = InboxHistoryMigration.transaction do
+      # Serialize concurrent starts that share either inbox (closes TOCTOU on the guard).
+      Inbox.lock.find(@inbox.id)
+      Inbox.lock.find(target_inbox.id)
+
+      Custom::Inboxes::HistoryMigration::CompatibilityGuard.new(source: @inbox, target: target_inbox).validate!
+      InboxHistoryMigration.create!(
+        account: Current.account,
+        source_inbox: @inbox,
+        target_inbox: target_inbox,
+        requested_by: Current.user,
+        status: 'pending'
+      )
+    end
     Custom::Inboxes::HistoryMigrationJob.perform_later(migration.id)
     render json: migration_payload(migration)
   rescue Custom::Inboxes::HistoryMigration::CompatibilityGuard::Error => e

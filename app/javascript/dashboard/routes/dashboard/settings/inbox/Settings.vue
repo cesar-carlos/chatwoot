@@ -355,7 +355,7 @@ export default {
         ];
       }
 
-      // FORK: move WhatsApp / API conversation history between same-type inboxes
+      // FORK: move WhatsApp / API conversation history (same-type or WA ↔ API)
       if (this.isAWhatsAppChannel || this.isAPIInbox) {
         visibleToAllChannelTabs = [
           ...visibleToAllChannelTabs,
@@ -1531,7 +1531,7 @@ export default {
           <EvolutionGoSettingsPage :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'move-history'" class="mx-6 max-w-4xl">
-          <MoveInboxHistoryPage :inbox="inbox" />
+          <MoveInboxHistoryPage :key="inbox.id" :inbox="inbox" />
         </div>
         <div v-if="selectedTabKey === 'csat'">
           <CustomerSatisfactionPage :inbox="inbox" />

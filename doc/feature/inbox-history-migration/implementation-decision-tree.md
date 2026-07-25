@@ -90,10 +90,10 @@ flowchart TD
 
 | Prós | Contras |
 |------|---------|
-| Seguro para WA → Telegram etc. | Não continua o thread no provedor |
-| | Outro produto (histórico read-only) |
+| Seguro para WA ↔ API (histórico legível) | Não garante outbound no destino |
+| Reusa Remounter/Merger | Identity nativa nova no destino (UUID ou phone) |
 
-**Veredito:** ⏸️ Backlog (fase 2+).
+**Veredito:** ✅ Entregue para **WhatsApp ↔ API/Webhook** (arquivo de leitura). Outros canais (Telegram, Email, …) permanecem backlog.
 
 ---
 
@@ -101,12 +101,13 @@ flowchart TD
 
 | # | Pergunta | Decisão |
 |---|----------|---------|
-| 1 | Escopo de canal v1 | WhatsApp-only (Cloud / Evolution / Evolution Go / Twilio WA) |
+| 1 | Escopo de canal | WA↔WA, API↔API, e WA↔API (histórico) |
 | 2 | Conflito de peer em B | **Merge** (não skip) |
 | 3 | Onde guardar status | `inbox_history_migrations` (par de inboxes ≠ um channel) |
 | 4 | Feature flag | Não no v1 — gate = admin + compatibilidade |
 | 5 | Assignee sem membership em B | Limpar `assignee_id` |
-| 6 | Grupos `@g.us` | Só Evolution family → Evolution family |
+| 6 | Grupos `@g.us` | Só Evolution family → Evolution family; grupo → API = UUID novo |
+| 7 | Cross-channel outbound | **Não** é requisito de aceite |
 
 ---
 

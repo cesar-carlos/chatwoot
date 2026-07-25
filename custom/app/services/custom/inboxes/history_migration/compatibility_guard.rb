@@ -29,7 +29,9 @@ class Custom::Inboxes::HistoryMigration::CompatibilityGuard
     return false if source_inbox.blank? || target_inbox.blank?
 
     (whatsapp_like?(source_inbox) && whatsapp_like?(target_inbox)) ||
-      (source_inbox.api? && target_inbox.api?)
+      (source_inbox.api? && target_inbox.api?) ||
+      (whatsapp_like?(source_inbox) && target_inbox.api?) ||
+      (source_inbox.api? && whatsapp_like?(target_inbox))
   end
 
   def self.evolution_family?(inbox)

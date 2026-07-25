@@ -150,6 +150,8 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
     target_conversation.label_list.add(source_conversation.label_list, parse: true)
     target_conversation.custom_attributes = (source_conversation.custom_attributes || {})
                                             .merge(target_conversation.custom_attributes || {})
+    target_conversation.additional_attributes = (source_conversation.additional_attributes || {})
+                                                .merge(target_conversation.additional_attributes || {})
 
     if target_conversation.assignee_id.blank? && source_conversation.assignee_id.present? &&
        target_inbox.members.exists?(source_conversation.assignee_id)

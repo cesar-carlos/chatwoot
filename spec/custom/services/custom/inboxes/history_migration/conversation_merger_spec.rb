@@ -63,6 +63,26 @@ RSpec.describe Custom::Inboxes::HistoryMigration::ConversationMerger do
     expect(target_conversation.custom_attributes['from_target']).to be(true)
   end
 
+  it 'merges additional_attributes preferring target values on conflict' do
+    source_conversation.update!(
+      additional_attributes: { 'from_source' => true, 'shared' => 'source' }
+    )
+    target_conversation.update!(
+      additional_attributes: { 'from_target' => true, 'shared' => 'target' }
+    )
+
+    described_class.new(
+      source_conversation: source_conversation,
+      target_conversation: target_conversation,
+      target_inbox: target_inbox
+    ).perform
+
+    attrs = target_conversation.reload.additional_attributes
+    expect(attrs['from_source']).to be(true)
+    expect(attrs['from_target']).to be(true)
+    expect(attrs['shared']).to eq('target')
+  end
+
   it 'clears workflow rule executions so destroy does not hit FK' do
     skip 'ConversationWorkflowRuleExecution not loaded' unless defined?(ConversationWorkflowRuleExecution)
 

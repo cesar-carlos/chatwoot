@@ -823,10 +823,11 @@
     },
     "MOVE_HISTORY": {
       "TITLE": "Move conversation history",
-      "DESCRIPTION": "Move all conversations and messages from this inbox to another inbox of the same type (WhatsApp to WhatsApp, or API/Webhook to API/Webhook) in this account. Contacts that already exist in the destination inbox will be merged.",
+      "DESCRIPTION": "Move all conversations and messages from this inbox to another WhatsApp or API/Webhook inbox in this account. Same-type moves remount the channel session; cross-channel moves (WhatsApp ↔ API/Webhook) preserve history for reading and context — outbound on the destination is not guaranteed. Contacts that already exist in the destination inbox will be merged.",
       "TARGET_LABEL": "Destination inbox",
       "TARGET_PLACEHOLDER": "Select a destination inbox",
-      "WARNING": "This action cannot be undone. Agents who are not members of the destination inbox will lose assignment on moved conversations. Keep both inboxes available until the migration finishes. Channel credentials and webhook URLs are not moved.",
+      "EMPTY_TARGETS": "No compatible destination inbox found. Add another WhatsApp or API/Webhook inbox in this account first.",
+      "WARNING": "This action cannot be undone. Agents who are not members of the destination inbox will lose assignment on moved conversations. Keep both inboxes available until the migration finishes. Channel credentials and webhook URLs are not moved. Cross-channel migrations create a new session identity on the destination; replies may not work.",
       "START_BUTTON": "Move history",
       "CONFIRM": {
         "TITLE": "Confirm history migration",
@@ -837,11 +838,19 @@
       },
       "STATUS": {
         "TITLE": "Migration status",
+        "DESTINATION": "Destination",
+        "PENDING": "Pending",
+        "RUNNING": "Running",
+        "COMPLETED": "Completed",
+        "FAILED": "Failed",
+        "PARTIAL": "Completed with failures",
+        "PARTIAL_HINT": "%{count} conversation(s) could not be moved. Check contacts without a phone number when targeting WhatsApp.",
+        "TOTAL": "Progress",
         "MOVED": "Moved",
         "MERGED": "Merged",
         "SKIPPED": "Skipped",
-        "FAILED": "Failed",
-        "HINT": "Counts are per conversation."
+        "HINT": "Counts are per conversation.",
+        "POLL_ERROR": "Could not refresh migration status. Retrying…"
       },
       "API": {
         "STARTED": "History migration started",
