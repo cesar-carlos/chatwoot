@@ -33,6 +33,10 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     message_data = normalized&.dig(:messages, 0)
     content = outgoing_content(canonical, message_data)
     if content.blank? && !outgoing_media_message?(message_data)
+      Rails.logger.warn(
+        "[EVOLUTION_GO] phone-outgoing blank content: source=#{key['id'] || key[:id]} " \
+        "jid=#{key['remoteJid'] || key[:remoteJid]}"
+      )
       release_dedup_lock!
       return
     end
@@ -64,7 +68,11 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     source_id = key['id'].to_s
     return true if source_id.blank?
     return true if duplicate_message?(source_id)
-    return true if group_jid?(key['remoteJid'].to_s) && ignore_groups?
+
+    if group_jid?(key['remoteJid'].to_s) && ignore_groups?
+      Rails.logger.info("[EVOLUTION_GO] phone-outgoing skipped: group ignored source=#{source_id}")
+      return true
+    end
 
     return false if acquire_dedup_lock!(source_id)
 

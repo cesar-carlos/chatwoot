@@ -1,0 +1,18 @@
+{
+  "event": "SendMessage",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "3EB0PHONEGRP00001",
+      "Chat": "120363012345678901@g.us",
+      "Sender": "5511999999999:38@s.whatsapp.net",
+      "SenderAlt": "5511999999999@s.whatsapp.net",
+      "IsFromMe": true,
+      "PushName": "Agent",
+      "Timestamp": 1699999999
+    },
+    "Message": {
+      "conversation": "Mensagem enviada pelo celular para o grupo"
+    }
+  }
+}

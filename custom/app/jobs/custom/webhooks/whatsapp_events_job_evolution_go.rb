@@ -99,6 +99,12 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
         return
       end
 
+      remote_jid = (key['remoteJid'] || key[:remoteJid]).to_s
+      if group_jid?(remote_jid) && ignore_groups?(channel)
+        log_blank_normalization(channel, params, reason: 'fromMe group ignored')
+        return
+      end
+
       process_from_me_message(channel, params)
       return
     end
@@ -282,6 +288,14 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       return
     end
 
+    canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(params[:data])
+    send_key = canonical['key'] || canonical[:key] || {}
+    remote_jid = (send_key['remoteJid'] || send_key[:remoteJid]).to_s
+    if group_jid?(remote_jid) && ignore_groups?(channel)
+      log_blank_normalization(channel, params, reason: 'SEND_MESSAGE group ignored')
+      return
+    end
+
     process_from_me_message(channel, params)
   end
 
@@ -307,6 +321,15 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   def ignore_from_me_echo?(channel)
     config = channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
     ActiveModel::Type::Boolean.new.cast(config['ignore_from_me_echo'])
+  end
+
+  def ignore_groups?(channel)
+    config = channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
+    ActiveModel::Type::Boolean.new.cast(config['ignore_groups'])
+  end
+
+  def group_jid?(remote_jid)
+    Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid)
   end
 
   def outgoing_sender_id(channel, data)
