@@ -146,6 +146,50 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter do
       expect(result[:key][:remoteJidAlt]).to eq('556696971841@s.whatsapp.net')
     end
 
+    it 'omits remoteJidAlt for group chats and prefers SenderAlt as participant' do
+      data = {
+        'Info' => {
+          'ID' => 'GROUP-LID-1',
+          'Chat' => '120363012345678901@g.us',
+          'Sender' => '123456789012345@lid',
+          'SenderAlt' => '5511777777777@s.whatsapp.net',
+          'IsFromMe' => false,
+          'AddressingMode' => 'lid',
+          'PushName' => 'Member'
+        },
+        'Message' => {
+          'conversation' => 'Group hello'
+        }
+      }
+
+      result = described_class.canonicalize_data(data)
+
+      aggregate_failures do
+        expect(result[:key][:remoteJid]).to eq('120363012345678901@g.us')
+        expect(result[:key][:remoteJidAlt]).to be_nil
+        expect(result[:key][:participant]).to eq('5511777777777@s.whatsapp.net')
+        expect(result[:key][:addressingMode]).to eq('lid')
+      end
+    end
+
+    it 'prefers SenderAlt over device Sender for group participants' do
+      data = {
+        'Info' => {
+          'ID' => 'GROUP-DEVICE-1',
+          'Chat' => '120363012345678901@g.us',
+          'Sender' => '5511777777777:38@s.whatsapp.net',
+          'SenderAlt' => '5511777777777@s.whatsapp.net',
+          'IsFromMe' => false
+        },
+        'Message' => { 'conversation' => 'Hi' }
+      }
+
+      result = described_class.canonicalize_data(data)
+
+      expect(result[:key][:participant]).to eq('5511777777777@s.whatsapp.net')
+      expect(result[:key][:remoteJidAlt]).to be_nil
+    end
+
     it 'returns empty hash for nil data' do
       expect(described_class.canonicalize_data(nil)).to eq({})
     end

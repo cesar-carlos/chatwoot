@@ -2,7 +2,7 @@
 
 Checklist feature a feature vs código. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
 
-**Última sync código:** 17/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
+**Última sync código:** 27/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
 
 ---
 
@@ -27,7 +27,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | `source_id` | `data.Info.ID` | ✅ | `process_response` |
 | Typing | `POST /message/presence` | ✅ | `TypingListener` → `PresenceSyncJob` → `ApiClient#set_presence` (skip private notes) |
 | Mark read outbound | `POST /message/markread` | ✅ | `mark_read_on_reply`, `mark_read_on_open` |
-| Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + `DeleteSyncService` (API fail reverte soft-delete local) |
+| Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + sync WA first no `destroy`; API fail → 422 sem soft-delete |
 | Edit message | `POST /message/edit` | ✅ | `sync_edit_to_whatsapp` + UI context menu + `MessageContentEditService` → `EditSyncService` — ADR §35 |
 | React | `POST /message/react` | ✅ | Context menu + `ReactSyncService` |
 
@@ -56,7 +56,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
 | Reações | `reactionMessage` → `content_attributes.reactions` | ✅ | `ReactionsStore` + chip/menu; Node parity via `Evolution::*` |
 | Pseudo-forward | — (sem API Go) | ✅ | Chatwoot-only · [message-forward/](../../message-forward/) · ADR §34 |
-| Grupos | `MESSAGE` com `@g.us` | ✅ | Normalizer + `GroupContactService` quando `ignore_groups: false` · ⚠️ E2E |
+| Grupos | `MESSAGE` com `@g.us` | ✅ | Normalizer + `GroupContactService` quando `ignore_groups: false`; LID group fix 27/jul; avatar via `/user/avatar` + `@g.us` no `GroupMetadataService` · ⚠️ E2E |
 | Echo fromMe | `MESSAGE` / `SEND_MESSAGE` fromMe | ✅ | filtrar ou `PhoneOutgoingSyncService` |
 
 ---
@@ -90,9 +90,9 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Fonte | `ContactInbox#source_id` |
 |-------|--------------------------|
 | Inbound 1:1 `data.key.remoteJid` | dígitos antes de `@` |
-| Inbound grupo `@g.us` | JID completo do grupo (`GroupContactService`) |
+| Inbound grupo `@g.us` | JID completo do grupo (`GroupContactService`) — **nunca** via `remoteJidAlt` |
 | Participante em grupo | `evolution_go_participant_jid` em `content_attributes` |
-| LID + alt | usar `remoteJidAlt` se presente |
+| LID + alt (1:1) | usar `remoteJidAlt` se presente |
 | Outbound ID | `data.Info.ID` (string) |
 
 ---

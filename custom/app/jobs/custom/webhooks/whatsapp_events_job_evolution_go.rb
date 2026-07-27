@@ -312,7 +312,11 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   def outgoing_sender_id(channel, data)
     canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
     key = canonical['key'] || canonical[:key] || {}
-    jid = key['remoteJid'] || key[:remoteJid]
+    jid = (key['remoteJid'] || key[:remoteJid]).to_s
+    if Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid)
+      return Custom::Whatsapp::Evolution::GroupContactService.source_id_for(jid)
+    end
+
     Custom::Whatsapp::EvolutionGo::JidResolver.new(channel.provider_config).phone_from_jid(jid)
   end
 

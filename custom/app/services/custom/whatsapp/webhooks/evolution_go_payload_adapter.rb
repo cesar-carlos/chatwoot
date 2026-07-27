@@ -24,11 +24,14 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
       sender = dig.dig_field(info, 'Sender', 'sender').to_s
       peer_alt = peer_alt_jid(info, from_me: from_me)
       remote_jid = peer_remote_jid(chat: chat, sender: sender, from_me: from_me)
-      participant = participant_jid_from_info(info) if group_jid?(remote_jid)
+      group_chat = group_jid?(remote_jid)
+      participant = participant_jid_from_info(info) if group_chat
 
       {
         remoteJid: remote_jid,
-        remoteJidAlt: peer_alt.presence,
+        # Participant PN belongs in `participant` for groups — never as remoteJidAlt
+        # (LID addressing would otherwise rewrite @g.us to the member phone).
+        remoteJidAlt: group_chat ? nil : peer_alt.presence,
         participant: participant,
         fromMe: from_me,
         id: dig.dig_field(info, 'ID', 'Id', 'id'),
@@ -110,6 +113,8 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
 
       merged = key.dup
       merged[:remoteJid] = chat unless group_jid?(merged[:remoteJid])
+      merged.delete(:remoteJidAlt)
+      merged.delete('remoteJidAlt')
       participant = participant_jid_from_info(info)
       merged[:participant] = participant if participant.present? && merged[:participant].blank?
       merged
@@ -139,9 +144,20 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
       chat = info[:Chat].to_s
       return unless group_jid?(chat)
 
-      [info[:Sender], info[:SenderAlt]].map(&:to_s).find do |jid|
-        jid.present? && !group_jid?(jid)
-      end
+      # Prefer clean PN (SenderAlt) over device JID (Sender user:device@…).
+      candidates = [info[:SenderAlt], info[:Sender], info[:RecipientAlt]].map(&:to_s)
+      pn = candidates.find { |jid| phone_jid?(jid) }
+      return pn if pn.present?
+
+      candidates.find { |jid| jid.present? && !group_jid?(jid) }
+    end
+
+    def phone_jid?(jid)
+      jid = jid.to_s
+      return false if jid.blank? || group_jid?(jid) || jid.end_with?('@lid')
+
+      user = jid.split('@').first.to_s.split(':', 2).first
+      user.match?(/\A\d+\z/) && jid.include?('@')
     end
 
     def group_jid?(jid)

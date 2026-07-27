@@ -6,6 +6,7 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
   def perform
     return false unless can_sync?
 
+    @content_before_delete = message.attribute_before_last_save(:content)
     dispatch_delete!
     true
   rescue StandardError => e
@@ -44,15 +45,29 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
     )
   end
 
-  # Keep CW and WA consistent: if API fails after local soft-delete, undo local flag.
+  def content_to_restore_after_failed_delete
+    attrs = (message.content_attributes || {}).stringify_keys
+    stored = attrs['content_before_delete']
+    return stored if stored.present?
+
+    placeholder = I18n.t('conversations.messages.deleted')
+    return unless message.content.to_s == placeholder
+
+    @content_before_delete
+  end
+
   def revert_local_delete!
     attrs = (message.content_attributes || {}).stringify_keys
     return unless ActiveModel::Type::Boolean.new.cast(attrs['deleted'])
 
+    restore_content = content_to_restore_after_failed_delete
     attrs.delete('deleted')
     attrs.delete('deleted_at')
+    attrs.delete('content_before_delete')
     attrs.delete(Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService::DELETED_VIA_KEY)
-    message.update_columns(content_attributes: attrs, updated_at: Time.current)
+    columns = { content_attributes: attrs, updated_at: Time.current }
+    columns[:content] = restore_content unless restore_content.nil?
+    message.update_columns(columns)
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION_GO] failed to revert local delete for message #{message.id}: #{e.message}"
   end

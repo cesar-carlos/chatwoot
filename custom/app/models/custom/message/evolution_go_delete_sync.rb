@@ -11,6 +11,8 @@ module Custom::Message::EvolutionGoDeleteSync
   end
 
   def evolution_go_message_marked_deleted?
+    return false if instance_variable_get(:@evolution_go_delete_synced_inline)
+
     channel = evolution_go_whatsapp_channel
     return false unless channel
     return false unless evolution_go_sync_delete_enabled?(channel)

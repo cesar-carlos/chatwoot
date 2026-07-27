@@ -163,7 +163,7 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 | `convert_markdown_outbound` | `true` | 2 | CW → WA formatting |
 | `mark_read_on_reply` | `false` | 2 | → `POST /message/markread`; fallback: última não lida se sem reply target |
 | `send_random_delay` | via `delay` no send | 2 | Campo `delay` em SendText |
-| `sync_delete_to_whatsapp` | `false` | UX | Agente delete **outgoing** CW → `POST /message/delete` (opt-in, irreversível); JID via `ChatJid` (message / contact LID / source_id) |
+| `sync_delete_to_whatsapp` | `false` | UX | Agente delete **outgoing** CW → sync WA **first** (`POST /message/delete`) → soft-delete local (opt-in, irreversível no WA); falha API → 422 sem alterar CW; JID via `ChatJid` |
 | `sync_edit_to_whatsapp` | `false` | UX | Opt-in: context menu Edit → `MessageContentEditService` → `POST /message/edit` (markdown/signature) — ADR §35 |
 | `notify_send_errors_private` | `true` | 2 | Nota privada em falha de envio |
 

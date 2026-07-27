@@ -8,7 +8,7 @@ Landing page do provider Evolution Go (implementado).
 |------|--------|
 | Chave planejada | `evolution_go` |
 | Documentação de contrato e plano | ✅ |
-| Código em `custom/` | ✅ Fases 0–4 + UX/diagnóstico/import/grupos/presence (jul/2026; sync doc 16/jul) |
+| Código em `custom/` | ✅ Fases 0–4 + UX/diagnóstico/import/grupos/presence (jul/2026; sync doc 27/jul) |
 | `PROVIDERS`, registry e webhook | ✅ |
 | Fixtures reais | ⚠️ sintéticas — E2E pendente |
 

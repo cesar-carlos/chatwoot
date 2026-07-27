@@ -94,9 +94,13 @@ Campo `phone` obrigatório — E.164 sem `+`.
 
 | Causa | Ação |
 |-------|------|
-| `ignore_groups: true` (default) | Comportamento antigo: grupos filtrados ou tratados como 1:1 se payload resolver participante |
-| `ignore_groups: false` mas conversas antigas | Conversas criadas antes da correção não se fundem — só **novas** mensagens usam JID do grupo |
-| Payload EG com `key.remoteJid` = participante | `EvolutionGoPayloadAdapter` deve preferir `Info.Chat` `@g.us` — validar com fixture real no E2E |
+| `ignore_groups: true` (default) | Ativar **Ignore groups = false** nas settings + salvar (sync `ignoreGroups` na Go) + **Sync webhook events** |
+| `ignore_groups: false` mas Go ainda com `ignoreGroups: true` | Re-salvar settings / health **Sync webhook**; confirmar advanced-settings na Go |
+| `AddressingMode: lid` + `SenderAlt` (bug pré-27/jul) | `JidResolver` **nunca** reescreve `@g.us` via `remoteJidAlt`; adapter omite `remoteJidAlt` em grupos. Mensagens **novas** caem no grupo; históricas em 1:1 não migram sozinhas |
+| Payload EG com `key.remoteJid` = participante | `EvolutionGoPayloadAdapter` prefere `Info.Chat` `@g.us` — fixture `message_inbound_group_lid.json` |
+| `ignore_groups: false` mas conversas antigas | Só **novas** mensagens usam JID do grupo |
+
+**Checklist rápido:** settings `ignore_groups: false` → sync webhook inclui `MESSAGE` (+ `GROUP`) → log sem `[EVOLUTION_GO] skipped … group` → `ContactInbox#source_id` termina em `@g.us`.
 
 ---
 
@@ -233,7 +237,7 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 | Edit no CW falha / não chega no WA | `POST …/evolution_go_edit` → sync WA **primeiro** (`EditSyncService raise_errors: true`) → só então persiste no CW. Erro da API aparece no modal. Checar log `[EVOLUTION_GO] edit sync` / janela ~15 min / `ChatJid`. Body: `{ chat, messageId, message }` (não `number`) |
 | Edit no CW “sucesso” mas WA não muda | Path do agente não é mais soft-fail. Se ainda ocorrer, verificar echo webhook sobrescrevendo depois ou outra sessão editando o mesmo `source_id` |
 | Edit no celular + `sync_edit_to_whatsapp` gera chamadas extras a `/message/edit` | Corrigido 17/jul/2026: anti-loop ignora **qualquer** update com `edited_via_evolution_go_webhook: true` (não só a 1ª transição). Se ainda houver POST extras, checar se algum path limpa o flag indevidamente |
-| Delete no CW marca deleted mas WA não apaga | Com `sync_delete_to_whatsapp`: `DeleteSyncService` chama API; se falhar, **reverte** soft-delete local. Checar log `[EVOLUTION_GO] delete sync` e `ChatJid` |
+| Delete no CW marca deleted mas WA não apaga | Com `sync_delete_to_whatsapp`: destroy faz **sync WA first** (`DeleteSyncService raise_errors: true`); falha da API → **HTTP 422** e CW **não** altera a mensagem. Caminho after_commit legado: se soft-delete já ocorreu e API falha, reverte flag + restaura `content` (`content_before_delete`). Checar log `[EVOLUTION_GO] delete sync` e `ChatJid` |
 | Anexo inbound lento ou some após texto | Storm de `NoMethodError` em `process_evolution_go_status` (READ_RECEIPT) saturava fila `:default` junto com `MediaDownloadJob`; corrigido em `IncomingMessageEvolutionGo` |
 | Documento só-arquivo some / caption sem arquivo na UI | Race: `MediaDownloadJob` enfileirado **dentro** da transaction → job rodava antes do commit (`Message.find` nil, 12ms no-op). Corrigido: enqueue em `process_messages` (após transaction) + retry se mensagem ausente. Também: usar `Message.base64` inline do webhook (Go já decripta) e `message.updated` **depois** de criar o attachment |
 | Mensagem sem anexo e sem erro visível | `MediaAttachmentService` marca `evolution_go_media_failed` quando base64 vazio; checar `content_attributes` da mensagem |

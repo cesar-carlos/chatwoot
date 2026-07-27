@@ -50,17 +50,14 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     render_could_not_create_error(e.message)
   end
 
-  # FORK: preserve existing content_attributes (email metadata, etc.) when marking deleted
+  # FORK: preserve existing content_attributes (email metadata, etc.) when marking deleted.
+  # Evolution Go + sync_delete_to_whatsapp: delete on WA first (parity with edit); API failure leaves CW intact.
   def destroy
-    ActiveRecord::Base.transaction do
-      merged_attrs = (message.content_attributes || {}).stringify_keys.merge('deleted' => true)
-      message.update!(
-        content: I18n.t('conversations.messages.deleted'),
-        content_type: :text,
-        content_attributes: merged_attrs
-      )
-      message.attachments.destroy_all
-    end
+    sync_evolution_go_delete_before_soft_delete!
+    soft_delete_message!
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    error_text = e.respond_to?(:user_message) ? e.user_message : e.message
+    render json: { error: error_text.presence || e.message }, status: :unprocessable_entity
   end
 
   # FORK: Evolution Go/Node WhatsApp reactions
@@ -99,6 +96,35 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   end
 
   private
+
+  def soft_delete_message!
+    ActiveRecord::Base.transaction do
+      previous_content = message.content
+      merged_attrs = (message.content_attributes || {}).stringify_keys.merge('deleted' => true)
+      # Stash for DeleteSyncService revert if after_commit path still runs (non-inline).
+      if previous_content.present? && previous_content != I18n.t('conversations.messages.deleted')
+        merged_attrs['content_before_delete'] = previous_content
+      end
+      message.update!(
+        content: I18n.t('conversations.messages.deleted'),
+        content_type: :text,
+        content_attributes: merged_attrs
+      )
+      message.attachments.destroy_all
+    end
+  end
+
+  def sync_evolution_go_delete_before_soft_delete!
+    channel = message.inbox&.channel
+    return unless channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'
+    return unless ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['sync_delete_to_whatsapp'])
+    return unless message.outgoing?
+    return if message.source_id.blank?
+    return if message.private?
+
+    Custom::Whatsapp::EvolutionGo::DeleteSyncService.new(message: message, raise_errors: true).perform
+    message.instance_variable_set(:@evolution_go_delete_synced_inline, true)
+  end
 
   def assert_voice_only_public_retry_allowed!
     return if message.blank?

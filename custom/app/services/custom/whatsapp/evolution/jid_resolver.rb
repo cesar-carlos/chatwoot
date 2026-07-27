@@ -16,6 +16,8 @@ class Custom::Whatsapp::Evolution::JidResolver
   def resolve_contact_jid(record, remote_jid = nil)
     record = record.with_indifferent_access
     remote_jid = remote_jid.presence || record[:remoteJid].to_s
+    return remote_jid if group_jid?(remote_jid)
+
     alt = record[:remoteJidAlt].to_s
     return alt if alt.present? && lid_addressing?(remote_jid, record[:addressingMode])
 
@@ -30,6 +32,9 @@ class Custom::Whatsapp::Evolution::JidResolver
   def resolve_message_jid(key)
     key = key.with_indifferent_access
     remote_jid = key[:remoteJid].to_s
+    # Group chat JID must never be rewritten via LID alt (participant PN).
+    return remote_jid if group_jid?(remote_jid)
+
     alt = key[:remoteJidAlt].to_s
     return alt if alt.present? && lid_addressing?(remote_jid, key[:addressingMode])
 
@@ -39,9 +44,13 @@ class Custom::Whatsapp::Evolution::JidResolver
   def phone_from_jid(jid)
     jid_str = jid.to_s
     return if jid_str.end_with?('@lid')
+    return if group_jid?(jid_str)
 
     phone = jid_str.split('@').first.presence
     return if phone.blank?
+
+    # Device JIDs look like "5511999999999:38@s.whatsapp.net".
+    phone = phone.split(':', 2).first
     return unless phone.match?(/\A\d+\z/)
 
     normalize_phone(phone)

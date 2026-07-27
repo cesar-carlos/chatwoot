@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 17/jul/2026 (edit/delete alinhados ao contrato Go plaintext · enrichment/refresh paced · UI Edit ✅) · **Integração completa; E2E operador pendente**
+**Última revisão:** 27/jul/2026 (group LID routing fix · delete sync-first / QR) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -17,12 +17,12 @@
 | Inbound delete (webhook → Chatwoot) | ✅ · revoke sempre consumido; soft-delete gated |
 | Inbound edit (webhook → Chatwoot) | ✅ plaintext protocol · ⚠️ encrypted-only skip ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | Phone/agent delete/edit sync (`fromMe`) | ✅ · edit só se payload tiver texto; sem invent-on-miss |
-| Outbound delete sync (`sync_delete_to_whatsapp`) | ✅ · API fail reverte soft-delete local |
+| Outbound delete sync (`sync_delete_to_whatsapp`) | ✅ · sync WA first; API fail → 422 sem soft-delete local |
 | UX settings (avisos, polling import, confirmações) | ✅ |
 | Diagnóstico (`evolution_go_diagnostics`, test webhook) | ✅ |
 | `convert_markdown_inbound`, `sync_edit_to_whatsapp` + UI edit outgoing | ✅ 17/jul/2026 |
 | Import histórico (`HISTORY_SYNC` + `POST /chat/history-sync`) | ✅ código · ⚠️ fixture sintética |
-| Grupos WhatsApp (`ignore_groups: false`) | ✅ código · ⚠️ fixture sintética |
+| Grupos WhatsApp (`ignore_groups: false`) | ✅ · LID `@g.us` não reescrito · avatar grupo via `/user/avatar` · ⚠️ E2E |
 | Webhook subscribe sync (`WebhookSubscribeSync`) | ✅ |
 | Logout UI (health page) | ✅ |
 | Pair API (`POST /instance/pair`) | ✅ |
@@ -69,7 +69,7 @@
 - Inbound delete/edit: `MessageDeleteSyncService`, `MessageEditSyncService` + extractors (`IsEdit`/`IsRevoke`, `typeName`, protocol key ID)
 - Encrypted edit envelope: job skip (`encrypted_edit`) — evita `[Unsupported message type]`; plaintext protocol atualiza CW
 - Inbound/outbound reactions: `MessageReactionSyncService`, `ReactSyncService`, `ApiClient#react` + context menu
-- Outbound delete: `DeleteSyncService` (API fail → reverte soft-delete local) + hook `EvolutionGoDeleteSync`
+- Outbound delete: `DeleteSyncService` sync WA first no `destroy` (API fail → 422, CW intacto); anti-loop `@evolution_go_delete_synced_inline`; revert legado restaura `content` + flag
 - Outbound edit (opt-in): `MessageContentEditService` sync WA first (`raise_errors`) + `POST …/evolution_go_edit` + `MessageEditModal` / badge (sem prefixo no texto)
 - Import contatos: `ImportService`, `ContactsImporter`, enrichment (`/user/info` + PictureURL/PictureID; `/user/avatar` backoff 6h; ambos non-retryable)
 - Import stuck `running` com toggles off → `abort_disabled_import!` → `idle`
@@ -79,7 +79,7 @@
 - Sync per-contact (menu ⋮): `POST …/contacts/:id/evolution_go_sync` → `ContactEnrichmentJob` `force: true` (só Evolution Go)
 - Import histórico: `MessagesImporter`, `HistorySyncProcessor`, evento `HISTORY_SYNC`
 - Diagnóstico: `DiagnosticsService`, `WebhookTestService`, `MutationStatsRecorder`
-- Grupos: `EvolutionGoNormalizer` (group JID + participant), `GroupContactService` / `GroupParticipantService`, `ApiClient#group_info`, `GroupMetadataService` (provider-aware), `PhoneOutgoingSyncService` (outbound grupo)
+- Grupos: `EvolutionGoNormalizer` (group JID + participant), `GroupContactService` / `GroupParticipantService`, `ApiClient#group_info`, `GroupMetadataService` (nome + avatar Go via `/user/avatar` `@g.us`), `PhoneOutgoingSyncService` (outbound grupo)
 - `sync_settings!` / `sync_proxy!` (advanced-settings + delete proxy)
 
 ### Frontend
@@ -90,16 +90,12 @@
 - `MessageContextMenu` — confirmação delete com aviso WhatsApp quando `sync_delete_to_whatsapp`
 - ActionCable + polling QR
 
-### API inbox (custom controller)
-- `GET evolution_go_connection`
-- `POST evolution_go_reconnect`
-- `POST evolution_go_logout`
-- `POST evolution_go_server_check` (collection)
-- `GET evolution_go_diagnostics`
-- `POST evolution_go_test_webhook`
-- `POST evolution_go_sync_webhook`
-- `POST evolution_go_pair`
-- `POST evolution_go_import`
+### API Chatwoot (custom controllers)
+- Inbox: `GET evolution_go_connection`, `POST evolution_go_reconnect`, `POST evolution_go_logout`, `POST evolution_go_server_check` (collection)
+- Inbox: `GET evolution_go_diagnostics`, `POST evolution_go_test_webhook`, `POST evolution_go_sync_webhook`, `POST evolution_go_pair`, `POST evolution_go_import`
+- Inbox: `POST evolution_go_refresh_contacts`
+- Messages: `POST …/messages/:id/evolution_go_react`, `POST …/messages/:id/evolution_go_edit`
+- Contacts: `POST …/contacts/:id/evolution_go_sync` (force enrichment)
 
 ### Specs
 - Normalizer, READ_RECEIPT, ApiClient, job (MESSAGE + READ_RECEIPT + delete/edit)
@@ -117,13 +113,24 @@
 | `mark_inbound_deleted` | `true` |
 | `mark_inbound_edited` | `true` |
 | `import_on_connect` | `false` |
-| `convert_markdown_inbound` | `true` |
-| `sync_delete_to_whatsapp` | `false` (opt-in) |
-| `sync_edit_to_whatsapp` | `false` (opt-in) |
+| `import_contacts` | `false` |
 | `import_messages` | `false` |
 | `days_limit_import_messages` | `100` (message **count** for history-sync, legacy key name) |
+| `convert_markdown_inbound` | `true` |
+| `convert_markdown_outbound` | `true` |
+| `sync_delete_to_whatsapp` | `false` (opt-in) |
+| `sync_edit_to_whatsapp` | `false` (opt-in) |
+| `mark_read_on_reply` | `false` |
+| `mark_read_on_open` | `true` |
+| `sign_msg` | `false` |
+| `sign_delimiter` | `"\n"` |
+| `send_random_delay` | `false` |
+| `notify_send_errors_private` | `true` |
+| `ignore_from_me_echo` | `true` |
+| `merge_brazil_contacts` | `true` |
+| `send_templates_as_text` | `true` |
 
-Inboxes existentes **não** são migrados — só novos inboxes recebem estes defaults.
+Lista completa: [provider-config-mapping.md](./provider-config-mapping.md). Inboxes existentes **não** são migrados — só novos inboxes recebem estes defaults.
 
 ---
 

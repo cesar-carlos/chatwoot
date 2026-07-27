@@ -169,8 +169,9 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Enviar mensagem em grupo WhatsApp → **uma** conversa com nome do grupo
 - [ ] `ContactInbox#source_id` = JID `@g.us` (não telefone do participante)
 - [ ] Mensagens de participantes diferentes no mesmo grupo → mesma conversa
+- [ ] Payload com `AddressingMode: lid` + `Sender` `@lid` + `SenderAlt` PN → ainda cai no `@g.us` (não no 1:1 do membro)
 - [ ] Resposta do agente no Chatwoot → chega no grupo
-- [ ] Salvar fixture real: `message_inbound_group.json`
+- [ ] Comparar fixture: `message_inbound_group.json` / `message_inbound_group_lid.json`
 
 ---
 

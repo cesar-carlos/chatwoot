@@ -1,0 +1,19 @@
+{
+  "event": "Message",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "3EB0GROUPLID00001",
+      "Chat": "120363012345678901@g.us",
+      "Sender": "123456789012345@lid",
+      "SenderAlt": "5511777777777@s.whatsapp.net",
+      "IsFromMe": false,
+      "AddressingMode": "lid",
+      "PushName": "Group Member LID",
+      "Timestamp": 1699999999
+    },
+    "Message": {
+      "conversation": "Hello from LID group member!"
+    }
+  }
+}

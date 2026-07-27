@@ -228,8 +228,11 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   watch(isQrModalOpen, open => {
     if (open) {
       stopPolling();
-    } else if (!isConnected.value) {
-      startPolling();
+    } else {
+      isReconnecting.value = false;
+      if (!isConnected.value) {
+        startPolling();
+      }
     }
   });
 
