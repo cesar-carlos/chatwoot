@@ -11,7 +11,11 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
     key = canonical['key'] || canonical[:key] || {}
     return if skip_sync?(key)
-    return if protocol_only_message?(canonical)
+
+    if protocol_only_message?(canonical)
+      release_dedup_lock!
+      return
+    end
 
     process_sync!(canonical, key)
   rescue StandardError

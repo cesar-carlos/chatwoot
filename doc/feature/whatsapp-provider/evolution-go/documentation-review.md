@@ -27,6 +27,71 @@
 | 18/jul/2026 | Fix: `finalize_avatar_miss!` (cooldown só após fallback); poll timers clear on unmount |
 | 18/jul/2026 | Sync force: 3× retry timeout/avatar, todos JIDs, `AvatarFromUrlJob.perform_now`, requeue se lock busy |
 | 18/jul/2026 | Relatório avatar revalidado p/ handoff Evolution Go (P1–P4 + métricas + PTM controle) |
+| 27/jul/2026 | Auditoria doc × código — endpoints Chatwoot incompletos, defaults resumidos, datas de sync |
+| 27/jul/2026 (pm) | Bugfixes: delete sync-first, dedup lock protocol_only, QR session cancel/pairing clear, isReconnecting reset, enrichment force requeue cap |
+| 27/jul/2026 (eve) | Group LID routing: `@g.us` never rewritten via `remoteJidAlt`; adapter omits group alt; device JID phone strip; Go participant enrichment |
+| 27/jul/2026 (night) | Group avatar: `GroupMetadataService#warm_cache!` → `POST /user/avatar` com JID `@g.us` (não via `/group/info`) |
+
+---
+
+## Revisão 27/jul/2026 (night) — group avatar
+
+**Escopo:** Foto do contato-grupo WhatsApp.
+
+| Item | Detalhe |
+|------|---------|
+| API | `/group/info` sem PictureURL; `/group/photo` é set-only; get via `/user/avatar` + `@g.us` |
+| Código | `GroupMetadataService#sync_group_avatar!` (só `evolution_go`); skip se avatar já anexado; miss/timeout não falha o warm do nome |
+| Attach | URL → `Avatar::AvatarFromUrlJob`; base64 → `Custom::Avatar::AvatarFromBase64Job` |
+
+---
+
+## Revisão 27/jul/2026 (eve) — group LID routing
+
+**Escopo:** Mensagens de grupo “perdidas” / desviadas para 1:1 com `AddressingMode: lid`.
+
+| Correção | Detalhe |
+|----------|---------|
+| `JidResolver` | Nunca preferir `remoteJidAlt` quando `remoteJid` é `@g.us`; `phone_from_jid` strip `:device` |
+| `EvolutionGoPayloadAdapter` | Omitir `remoteJidAlt` em grupos; participant prefere `SenderAlt` |
+| Job mutex | `outgoing_sender_id` usa JID completo do grupo |
+| `GroupParticipantService` | Enrichment `EvolutionGo::*` quando provider é `evolution_go` |
+| Specs / fixture | `message_inbound_group_lid.json` + normalizer/adapter/resolver |
+
+Swagger Go confirma `AddressingMode` = `pn` \| `lid` no `MessageInfo`; LID não redefine o chat `@g.us`.
+
+---
+
+## Revisão 27/jul/2026 (pm) — bugfixes Evolution Go
+
+**Escopo:** Correções dos 6 bugs da auditoria de implementação.
+
+| Bug | Correção |
+|-----|----------|
+| Delete outbound inconsistente | `destroy` sync WA first (`raise_errors`); `@evolution_go_delete_synced_inline`; revert restaura `content` via `content_before_delete` |
+| `isReconnecting` travado | Reset ao fechar modal QR sem conectar |
+| Dedup lock protocol_only | `release_dedup_lock!` no early return |
+| Pairing code stale | Limpa `pairingCode` ao aplicar novo QR |
+| Poll órfão mid-flight | `sessionActive` + `sessionGeneration` em `useEvolutionGoQrSession` |
+| Force enrichment requeue | Cap `force_retry_attempt` ≤ 3 |
+
+---
+
+## Revisão 27/jul/2026 — inventário endpoints / defaults
+
+**Escopo:** Cruzamento `routes.rb` + `ProviderConfigDefaults` + controllers × docs de status/API/wizard.
+
+**Veredito:** Integração alinhada com o código. Drift era só inventário documental (não comportamento).
+
+| Arquivo | Drift corrigido |
+|---------|-----------------|
+| [status.md](./status.md) | API list incompleta (`refresh_contacts`, `react`, `edit`, `evolution_go_sync`); defaults resumidos vs `ProviderConfigDefaults` |
+| [api-reference.md](./api-reference.md) | Faltavam `evolution_go_edit` e `contacts/:id/evolution_go_sync` |
+| [frontend-wizard-spec.md](./frontend-wizard-spec.md) | Tabela dashboard sem react/edit/sync contact |
+| [provider-config-mapping.md](./provider-config-mapping.md) | `sign_delimiter`, `send_random_delay`, `notify_send_errors_private` no Grupo 5 + JSON seed |
+| [feature-mapping.md](./feature-mapping.md) / [README.md](./README.md) | Datas de sync → 27/jul |
+
+**Sem mudança de comportamento.** Pendências operacionais inalteradas: E2E, fixtures reais, poll/link, proxy edit, Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92).
 
 ---
 
@@ -97,18 +162,18 @@ Evolution Go tem **o mesmo envelope** (`event` + `instance`). Sem cuidado:
 | Arquivo | Papel | Estado após revisão |
 |---------|-------|---------------------|
 | [README.md](./README.md) | Landing | ✅ |
-| [status.md](./status.md) | Estado | ✅ atualizado |
+| [status.md](./status.md) | Estado | ✅ atualizado 27/jul/2026 |
 | [decisions.md](./decisions.md) | ADRs | ✅ §27 adicionado; webhook_token corrigido |
 | [spec-design.md](./spec-design.md) | Contratos Ruby | ✅ ApiError, ConnectionChannel, controller, registry, job prepend |
 | [tasks.md](./tasks.md) | Backlog | ✅ I0.6/I0.7, I1.1/I1.5/I1.6/I1.7 adicionados |
 | [coordination-with-evolution-api.md](./coordination-with-evolution-api.md) | Coexistência | ✅ seção collision adicionada |
-| [api-reference.md](./api-reference.md) | Contratos REST | ✅ refresh_contacts, subscribe canônico (jul/2026) |
+| [api-reference.md](./api-reference.md) | Contratos REST | ✅ refresh_contacts, edit, sync contact, subscribe canônico (27/jul/2026) |
 | [webhook-events.md](./webhook-events.md) | Payloads | ✅ filtros configuráveis + job prepend (jul/2026) |
-| [provider-config-mapping.md](./provider-config-mapping.md) | JSONB | ✅ webhook_token corrigido |
+| [provider-config-mapping.md](./provider-config-mapping.md) | JSONB | ✅ defaults + `sign_delimiter` (27/jul/2026) |
 | [error-handling.md](./error-handling.md) | Erros HTTP | ✅ sem alteração (bem documentado) |
 | [implementation-plan.md](./implementation-plan.md) | Fases | ✅ webhook_token corrigido |
 | [feature-mapping.md](./feature-mapping.md) | Paridade | ✅ webhook_token corrigido |
-| [frontend-wizard-spec.md](./frontend-wizard-spec.md) | UI | ✅ webhook_token corrigido |
+| [frontend-wizard-spec.md](./frontend-wizard-spec.md) | UI | ✅ endpoints react/edit/sync contact (27/jul/2026) |
 | [inbox-business-rules.md](./inbox-business-rules.md) | Regras | ✅ webhook_token corrigido |
 | [validation-checklist.md](./validation-checklist.md) | E2E | ⚠️ não executado — próximo passo operacional |
 | [troubleshooting.md](./troubleshooting.md) | Runbook | ✅ webhook_token corrigido |

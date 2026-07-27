@@ -389,6 +389,8 @@ Fixture sintética: `spec/fixtures/evolution_go/history_sync.json` — **validar
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_refresh_contacts` | Refresh perfis/fotos de todos os contatos do inbox |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/evolution_go_server_check` | Valida `base_url` + SSRF guard (wizard step 1) |
 | `POST` | `/api/v1/accounts/:account_id/conversations/:id/messages/:id/evolution_go_react` | Envia reação (`{ reaction }`) via `ReactSyncService` |
+| `POST` | `/api/v1/accounts/:account_id/conversations/:id/messages/:id/evolution_go_edit` | Edita outgoing (`{ content }`) via `MessageContentEditService` — opt-in `sync_edit_to_whatsapp` |
+| `POST` | `/api/v1/accounts/:account_id/contacts/:id/evolution_go_sync` | Force enrichment info+avatar (`ContactEnrichmentJob` `force: true`) — só Evolution Go |
 
 Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token={webhook_token}` — auth alternativa: `Authorization: Bearer {webhook_token}`
 
@@ -399,6 +401,8 @@ Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token={webhook_toke
 | Método | Path | Uso fork |
 |--------|------|----------|
 | `POST` | `/group/info` | `ApiClient#group_info` — nome do grupo (`subject`/`Name`) quando `ignore_groups: false` |
+
+> Avatar de grupo **não** vem em `/group/info`. Sync de foto: `POST /user/avatar` com `number` = JID `@g.us` (`GroupMetadataService#warm_cache!`). `/group/photo` é só **set**.
 
 Demais rotas de grupo: ver [documentation-links.md § Group](./documentation-links.md#group). Outbound para grupo usa JID `@g.us` no `number` do send.
 
@@ -412,7 +416,7 @@ Usados pelo import e enriquecimento de contatos:
 |--------|------|----------|
 | `GET` | `/user/contacts` | `ContactsImporter` |
 | `POST` | `/user/check` | `ContactEnrichmentService` — body `{ "number": ["5511..."] }` (array) |
-| `POST` | `/user/avatar` | Avatar no enrichment (`preview` opcional) |
+| `POST` | `/user/avatar` | Avatar no enrichment 1:1 (`preview` opcional); também avatar de **grupo** (`number` = `@g.us`) via `GroupMetadataService` |
 | `POST` | `/user/info` | Perfil no enrichment — body `CheckUserStruct` |
 
 > `POST /user/profilePicture` no Swagger é **set** da foto do perfil da instância, não get de avatar de contato.

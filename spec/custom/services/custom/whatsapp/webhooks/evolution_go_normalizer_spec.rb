@@ -96,7 +96,29 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
       expect(result.dig(:messages, 0, :id)).to eq('3EB0GROUP00000001')
       expect(result.dig(:messages, 0, :text, :body)).to eq('Hello from the group!')
       expect(result.dig(:messages, 0, :evolution_go_remote_jid)).to eq('120363012345678901@g.us')
-      expect(result.dig(:messages, 0, :evolution_go_participant_jid)).to eq('5511777777777:38@s.whatsapp.net')
+      expect(result.dig(:messages, 0, :evolution_go_participant_jid)).to eq('5511777777777@s.whatsapp.net')
+    end
+  end
+
+  it 'keeps group wa_id when AddressingMode is lid (does not route to participant PN)' do
+    allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new).and_return(
+      instance_double(Custom::Whatsapp::Evolution::GroupMetadataService, display_name: 'Support Team (GROUP)')
+    )
+    channel.update!(
+      provider_config: channel.provider_config.merge('ignore_groups' => false)
+    )
+    group_lid_fixture = JSON.parse(
+      Rails.root.join('spec/fixtures/evolution_go/message_inbound_group_lid.json').read
+    )
+
+    result = described_class.new(channel, group_lid_fixture).perform
+
+    aggregate_failures do
+      expect(result.dig(:contacts, 0, :wa_id)).to eq('120363012345678901@g.us')
+      expect(result.dig(:messages, 0, :id)).to eq('3EB0GROUPLID00001')
+      expect(result.dig(:messages, 0, :text, :body)).to eq('Hello from LID group member!')
+      expect(result.dig(:messages, 0, :evolution_go_remote_jid)).to eq('120363012345678901@g.us')
+      expect(result.dig(:messages, 0, :evolution_go_participant_jid)).to eq('5511777777777@s.whatsapp.net')
     end
   end
 

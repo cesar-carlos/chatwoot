@@ -40,6 +40,21 @@ class Custom::Whatsapp::Evolution::GroupParticipantService
   end
 
   def enqueue_enrichment_for(contact)
+    if evolution_go_channel?
+      return unless Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.should_enqueue?(
+        contact: contact,
+        remote_jid: participant_jid,
+        push_name: push_name
+      )
+
+      Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob.perform_later(
+        channel.id,
+        contact.id,
+        { remote_jid: participant_jid, push_name: push_name }.compact
+      )
+      return
+    end
+
     return unless Custom::Whatsapp::Evolution::ContactEnrichmentService.should_enqueue?(
       contact: contact,
       remote_jid: participant_jid,
@@ -51,6 +66,10 @@ class Custom::Whatsapp::Evolution::GroupParticipantService
       contact.id,
       { remote_jid: participant_jid, push_name: push_name }.compact
     )
+  end
+
+  def evolution_go_channel?
+    channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'
   end
 
   def jid_resolver

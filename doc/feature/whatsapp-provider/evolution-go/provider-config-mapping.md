@@ -100,12 +100,15 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 | Reabrir conversa resolvida | `inbox.lock_to_single_conversation: true` | Via `Conversations::Resolver` |
 | `merge_brazil_contacts` | `true` | Normalizar 9º dígito BR |
 | `sign_msg` | `false` | Assinatura agente no texto |
+| `sign_delimiter` | `"\n"` | Separador entre assinatura e corpo |
 | `send_templates_as_text` | `true` | Template → send_text |
-| `ignore_from_me_echo` | `true` | Filtrar `fromMe` no normalizer |
+| `ignore_from_me_echo` | `true` | Filtrar `fromMe` no normalizer/job (re-sync webhook ao mudar; lista subscribe não muda) |
 | `convert_markdown_inbound` | `true` | WA → markdown no normalizer |
 | `convert_markdown_outbound` | `true` | markdown → WA no outbound |
 | `mark_read_on_reply` | `false` | `POST /message/markread` ao responder |
 | `mark_read_on_open` | `true` | mark read ao abrir conversa |
+| `send_random_delay` | `false` | Delay aleatório no send (campo `delay`) |
+| `notify_send_errors_private` | `true` | Nota privada no CW quando envio falha |
 | `mark_inbound_deleted` | `true` | Cliente **ou** agente (celular) apaga no WA → marca no CW (mantém texto + destaque deleted) |
 | `mark_inbound_edited` | `true` | Cliente **ou** agente (celular) edita no WA → atualiza CW com plaintext; envelope só `secretEncryptedMessage` é ignorado (residual Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | `sync_delete_to_whatsapp` | `false` | Agente apaga **outgoing** no CW → delete no WA (opt-in) |
@@ -147,6 +150,7 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
   "proxy_enabled": false,
   "merge_brazil_contacts": true,
   "sign_msg": false,
+  "sign_delimiter": "\n",
   "send_templates_as_text": true,
   "ignore_from_me_echo": true,
   "convert_markdown_inbound": true,

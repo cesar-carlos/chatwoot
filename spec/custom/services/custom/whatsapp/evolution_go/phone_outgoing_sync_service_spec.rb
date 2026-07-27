@@ -29,4 +29,14 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService do
       described_class.new(channel: channel, data: payload['data']).perform
     end.not_to change(Message, :count)
   end
+
+  it 'releases the dedup lock when the payload is protocol-only' do
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_revoke_pascal_case.json').read)
+    lock = instance_double(Whatsapp::MessageDedupLock, acquire!: true, release!: true)
+    allow(Whatsapp::MessageDedupLock).to receive(:new).and_return(lock)
+
+    described_class.new(channel: channel, data: payload['data']).perform
+
+    expect(lock).to have_received(:release!)
+  end
 end

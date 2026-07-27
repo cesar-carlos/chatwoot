@@ -58,4 +58,56 @@ describe('useEvolutionGoQrSession', () => {
     );
     stopSession();
   });
+
+  it('clears pairing code when a new QR payload arrives', () => {
+    const store = createStore();
+    const { pairingCode, applyPayload, stopSession } = useEvolutionGoQrSession({
+      inboxId: 1,
+      store,
+    });
+
+    applyPayload({
+      connection_status: 'connecting',
+      pairing_code: 'ABCD-1234',
+    });
+    expect(pairingCode.value).toBe('ABCD-1234');
+
+    applyPayload({
+      connection_status: 'connecting',
+      qrcode_base64: 'data:image/png;base64,abc',
+    });
+    expect(pairingCode.value).toBe('');
+    stopSession();
+  });
+
+  it('does not start polling after stopSession during startSession', async () => {
+    let resolveRefresh;
+    const store = {
+      dispatch: vi.fn(
+        () =>
+          new Promise(resolve => {
+            resolveRefresh = resolve;
+          })
+      ),
+    };
+
+    const { startSession, stopSession } = useEvolutionGoQrSession({
+      inboxId: 1,
+      store,
+    });
+
+    const pending = startSession();
+    stopSession();
+    resolveRefresh({
+      connection_status: 'connecting',
+      qrcode_base64: 'data:image/png;base64,abc',
+    });
+    await pending;
+
+    store.dispatch.mockClear();
+    vi.advanceTimersByTime(10_000);
+    await Promise.resolve();
+
+    expect(store.dispatch).not.toHaveBeenCalled();
+  });
 });

@@ -53,26 +53,56 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::DeleteSyncService do
     described_class.new(message: message).perform
   end
 
-  it 'reverts local soft-delete when WhatsApp API fails' do
+  it 'reverts local soft-delete flag and placeholder content when WhatsApp API fails' do
     failed = instance_double(HTTParty::Response, success?: false, code: 400, parsed_response: { 'error' => 'too late' })
     allow(api_client).to receive(:delete_message).and_return(failed)
-    message.update_columns(
-      content_attributes: message.content_attributes.merge('deleted' => true, 'deleted_at' => Time.current.iso8601)
+    message.update!(
+      content: I18n.t('conversations.messages.deleted'),
+      content_attributes: message.content_attributes.merge(
+        'deleted' => true,
+        'deleted_at' => Time.current.iso8601,
+        'content_before_delete' => 'hello'
+      )
     )
 
     expect(described_class.new(message: message.reload).perform).to be(false)
-    expect(message.reload.content_attributes['deleted']).not_to be(true)
+    message.reload
+    expect(message.content_attributes['deleted']).not_to be(true)
+    expect(message.content_attributes).not_to have_key('content_before_delete')
+    expect(message.content).to eq('hello')
   end
 
-  it 'raises when raise_errors is true and API fails' do
+  it 'raises when raise_errors is true and API fails after soft-delete, restoring content' do
     failed = instance_double(HTTParty::Response, success?: false, code: 400, parsed_response: {})
     allow(api_client).to receive(:delete_message).and_return(failed)
-    message.update_columns(content_attributes: message.content_attributes.merge('deleted' => true))
+    message.update!(
+      content: I18n.t('conversations.messages.deleted'),
+      content_attributes: message.content_attributes.merge(
+        'deleted' => true,
+        'content_before_delete' => 'hello'
+      )
+    )
 
     expect do
       described_class.new(message: message.reload, raise_errors: true).perform
     end.to raise_error(Custom::Whatsapp::EvolutionGo::ApiError)
-    expect(message.reload.content_attributes['deleted']).not_to be(true)
+    message.reload
+    expect(message.content_attributes['deleted']).not_to be(true)
+    expect(message.content).to eq('hello')
+  end
+
+  it 'does not alter an undeleted message when raise_errors sync fails before soft-delete' do
+    failed = instance_double(HTTParty::Response, success?: false, code: 400, parsed_response: {})
+    allow(api_client).to receive(:delete_message).and_return(failed)
+    original_attrs = message.content_attributes.deep_dup
+
+    expect do
+      described_class.new(message: message, raise_errors: true).perform
+    end.to raise_error(Custom::Whatsapp::EvolutionGo::ApiError)
+
+    message.reload
+    expect(message.content).to eq('hello')
+    expect(message.content_attributes).to eq(original_attrs)
   end
 
   it 'resolves LID chat jid from contact additional_attributes' do

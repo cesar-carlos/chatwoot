@@ -7,6 +7,7 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
 
   IN_FLIGHT_LOCK_TTL = 2.minutes.to_i
   FORCE_LOCK_RETRY_WAIT = 5.seconds
+  FORCE_LOCK_RETRY_MAX = 3
 
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
@@ -44,8 +45,17 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob < ApplicationJob
     return true if acquire_in_flight_lock!(contact)
 
     # Force Sync: previous attempt still running (Go avatar timeouts are slow) —
-    # requeue instead of silently dropping the click.
-    retry_job(wait: FORCE_LOCK_RETRY_WAIT) if ActiveModel::Type::Boolean.new.cast(attrs[:force])
+    # requeue instead of silently dropping the click (capped).
+    if ActiveModel::Type::Boolean.new.cast(attrs[:force])
+      retry_attempt = attrs[:force_retry_attempt].to_i
+      if retry_attempt < FORCE_LOCK_RETRY_MAX
+        self.class.set(wait: FORCE_LOCK_RETRY_WAIT).perform_later(
+          arguments.first,
+          contact.id,
+          attrs.merge(force_retry_attempt: retry_attempt + 1).to_h
+        )
+      end
+    end
     false
   end
 

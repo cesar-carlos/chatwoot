@@ -19,16 +19,22 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
   let sessionStartedConnected = false;
   let hasEmittedConnected = false;
   let refreshInFlight = null;
+  let sessionActive = false;
+  let sessionGeneration = 0;
 
   function isConnected() {
     return connectionStatus.value === 'open';
   }
 
+  function currentSessionActive(generation) {
+    return sessionActive && generation === sessionGeneration;
+  }
+
   function stopPolling() {
     if (pollTimer) {
       clearInterval(pollTimer);
-      pollTimer = null;
     }
+    pollTimer = null;
   }
 
   function clearExpiryTimer() {
@@ -39,6 +45,8 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
   }
 
   function stopSession() {
+    sessionActive = false;
+    sessionGeneration += 1;
     stopPolling();
     clearExpiryTimer();
     refreshInFlight = null;
@@ -52,6 +60,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     }
     if (normalized.qrcodeBase64) {
       qrcodeBase64.value = normalized.qrcodeBase64;
+      pairingCode.value = '';
       qrRefreshError.value = false;
       // eslint-disable-next-line no-use-before-define -- re-arm expiry when fresh QR arrives
       armQrExpiryTimer();
@@ -123,7 +132,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
       }
     } finally {
       isRefreshing.value = false;
-      if (!isConnected()) {
+      if (sessionActive && !isConnected()) {
         // eslint-disable-next-line no-use-before-define -- paired QR expiry scheduling
         armQrExpiryTimer();
       }
@@ -162,7 +171,11 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
 
   function armQrExpiryTimer() {
     clearExpiryTimer();
+    if (!sessionActive) return;
+
+    const generation = sessionGeneration;
     expiryTimer = setTimeout(() => {
+      if (!currentSessionActive(generation)) return;
       if (!isConnected()) {
         requestNewQr();
       }
@@ -171,12 +184,21 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
 
   function startPolling() {
     stopPolling();
+    if (!sessionActive) return;
+
+    const generation = sessionGeneration;
     pollTimer = setInterval(() => {
+      if (!currentSessionActive(generation)) {
+        stopPolling();
+        return;
+      }
       refreshConnection({ includeQr: true });
     }, POLL_MS);
   }
 
   async function startSession({ fetchFreshQr = false } = {}) {
+    sessionActive = true;
+    const generation = sessionGeneration;
     sessionStartedConnected = isConnected();
     hasEmittedConnected = false;
     qrRefreshError.value = false;
@@ -185,8 +207,10 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
       await requestNewQr();
     } else {
       await refreshConnection();
+      if (!currentSessionActive(generation)) return;
       armQrExpiryTimer();
     }
+    if (!currentSessionActive(generation)) return;
     startPolling();
   }
 

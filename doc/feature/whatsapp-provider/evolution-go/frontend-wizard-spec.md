@@ -137,6 +137,9 @@ Endpoints internos Chatwoot — evitar CORS e vazar keys. Decisão: [decisions.m
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_test_webhook` | Ping pipeline webhook |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_import` | Força import |
 | `POST` | `/api/v1/accounts/:account_id/inboxes/:id/evolution_go_refresh_contacts` | Refresh perfis/fotos contatos |
+| `POST` | `/api/v1/accounts/:account_id/conversations/:id/messages/:id/evolution_go_react` | Reação outbound (`{ reaction }`) — context menu |
+| `POST` | `/api/v1/accounts/:account_id/conversations/:id/messages/:id/evolution_go_edit` | Edit outgoing (`{ content }`) — opt-in `sync_edit_to_whatsapp` |
+| `POST` | `/api/v1/accounts/:account_id/contacts/:id/evolution_go_sync` | Sync perfil/avatar do contato (MoreActions · só Evolution Go) |
 
 ### `POST /api/v1/accounts/:account_id/inboxes` (create)
 
