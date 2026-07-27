@@ -24,6 +24,13 @@ class Custom::Inboxes::HistoryMigration::ContactInboxResolver
     explicit = source_id_for_target(contact_inbox)
     return explicit if explicit.present?
 
+    # API → WA Evolution: contact.identifier may hold the original @g.us JID
+    # when the contact came from an Evolution webhook via an API inbox.
+    # The UUID stored as contact_inbox.source_id cannot be used in a WA inbox;
+    # the identifier is the only recovery path for these group peers.
+    identifier_jid = evolution_group_jid_from_identifier(contact_inbox.contact)
+    return identifier_jid if identifier_jid.present?
+
     derived_source_id(contact_inbox.contact)
   end
 
@@ -31,7 +38,7 @@ class Custom::Inboxes::HistoryMigration::ContactInboxResolver
     return nil if contact.phone_number.blank?
 
     if target_inbox.whatsapp?
-      contact.phone_number.delete('+').to_s
+      contact.phone_number.gsub(/\D/, '')
     elsif target_inbox.twilio_whatsapp?
       "whatsapp:#{contact.phone_number}"
     elsif target_inbox.twilio? || target_inbox.sms?
@@ -113,6 +120,23 @@ class Custom::Inboxes::HistoryMigration::ContactInboxResolver
     contact_inbox.source_id.to_s.end_with?('@g.us')
   end
 
+  # Recovers the @g.us group JID from contact.identifier when migrating to an
+  # Evolution-family inbox. API inboxes store UUID source_ids but preserve the
+  # original group JID in contact.identifier (set during webhook processing).
+  def evolution_group_jid_from_identifier(contact)
+    guard = Custom::Inboxes::HistoryMigration::CompatibilityGuard
+    return nil unless guard.evolution_family?(target_inbox)
+    return nil unless group_jid_string?(contact.identifier)
+
+    contact.identifier
+  end
+
+  def group_jid_string?(identifier)
+    Custom::Whatsapp::Evolution::GroupContactService.group_jid?(identifier)
+  rescue NameError
+    identifier.to_s.end_with?('@g.us')
+  end
+
   def fallback_contact_inbox(contact_inbox)
     return nil unless portable_evolution_group?(contact_inbox)
 
@@ -120,9 +144,6 @@ class Custom::Inboxes::HistoryMigration::ContactInboxResolver
   end
 
   def create_api_contact_inbox!(contact_inbox)
-    existing = ContactInbox.find_by(inbox_id: target_inbox.id, contact_id: contact_inbox.contact_id)
-    return existing if existing
-
     ContactInbox.create!(
       inbox: target_inbox,
       contact: contact_inbox.contact,

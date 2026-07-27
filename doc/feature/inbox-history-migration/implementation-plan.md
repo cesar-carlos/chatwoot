@@ -24,6 +24,7 @@ Permitir que um **administrador** mova todo o histórico de conversas/mensagens 
 | 8 | Specs `spec/custom/…` | ✅ |
 | 9 | Docs `doc/feature/inbox-history-migration/` | ✅ |
 | 10 | Hardening: preview, toast, orphan CI `delete`, 503, activity note | ✅ |
+| 11 | Bug fixes: toast partial, ordem merge newest-first, normalização phone, query N+1 | ✅ |
 
 ---
 
@@ -44,6 +45,7 @@ Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progre
 
 - API→API preserva `contact_inbox.source_id` (sessão opaca).
 - WA↔API: **nunca** copia `source_id` entre famílias; destino WA deriva phone (sem phone → peer `failed`); destino API gera UUID e reusa CI existente do contato (idempotente).
+- API→WA Evolution: grupos com JID `@g.us` em `contact.identifier` são recuperados e usados como `source_id` no destino — **sem** phone, mas com JID válido.
 - WA↔WA: preserva/`converte` `source_id` (Twilio↔Cloud); funciona sem `phone_number` se o id for válido.
 - Criação de CI **sem** steal do `ContactInboxBuilder` (`ContactInbox.create!` + lookup).
 - Outbound no destino cross-channel não é requisito.
@@ -58,9 +60,10 @@ Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progre
    - `Message` / `Call` / `ReportingEvent` / `SlaEvent` → `inbox_id = B`
 3. `Conversations::UnreadCounts::Refresher`
 
-### 3. Merge (já existe conversa no destino)
+### 3. Merge (já existe conversa no destino ou source tem múltiplas convs)
 
-1. Conversa mais recente do `contact_inbox` de B (**inclui resolved**)
+1. Conversa mais recente do `contact_inbox` de B (**inclui resolved**) é o container
+   - Quando **não** há peer em B e o source tem N convs para o mesmo contato: processadas em `order(id: :desc)` — a mais nova é remontada primeiro e torna-se o container; as mais antigas são merged dentro dela (preserva `created_at` mais recente e métricas de SLA)
 2. Reparent: messages, mentions, participants (sem colidir UNIQUE), notifications, CSAT, reporting, SLA, calls
 3. Labels + `custom_attributes` + `additional_attributes` (destino vence em chave duplicada via `merge`)
 4. Abortar destroy se origem ainda tiver messages
@@ -71,7 +74,10 @@ Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progre
 
 ```ruby
 source_inbox.contact_inboxes.find_each do |ci|
-  ci.with_lock { ... Remounter ou ConversationMerger ... }
+  ci.with_lock do
+    # order(id: :desc): conv mais recente remontada → torna-se container
+    ci.conversations.order(id: :desc).find_each { ... Remounter ou ConversationMerger ... }
+  end
   # fora do lock: failed stats OU delete do CI órfão na origem
   touch_heartbeat! a cada 25 peers
 end
@@ -88,7 +94,7 @@ end
 - Tab `move-history` em `Settings.vue` quando `isAWhatsAppChannel || isAPIInbox`
 - Destinos: mesma família **ou** WA↔API; exclusão da própria inbox via `Number(id)`; empty state; aviso Evolution→Cloud
 - Preview: `conversations_count` / `contact_inboxes_count`
-- Toast + link para a inbox destino ao `completed`
+- Toast ao `completed`: "Completed" (sem falhas) ou "Completed with N failure(s)" (quando `stats.failed > 0`) + link para a inbox destino
 - Lock: `Inbox.lock` em ordem de id no POST + `pending`/`running` frescos bloqueiam novo start
 - Tabela ausente → HTTP **503** `unavailable`
 
@@ -165,4 +171,4 @@ bundle exec rspec \
 
 ---
 
-*Última atualização: 27/jul/2026*
+*Última atualização: 27/jul/2026 (fase 11: bug fixes pós-deploy)*

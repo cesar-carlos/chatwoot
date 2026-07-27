@@ -301,7 +301,7 @@ module Custom::Api::V1::Accounts::InboxesController
     authorize target_inbox, :update?
     migration = create_history_migration!(target_inbox)
     Custom::Inboxes::HistoryMigrationJob.perform_later(migration.id)
-    render json: migration_payload(migration)
+    render json: migration_payload(migration).merge(preview: history_migration_preview)
   rescue Custom::Inboxes::HistoryMigration::CompatibilityGuard::Error => e
     render json: { error: e.message, code: e.code }, status: :unprocessable_content
   rescue ActiveRecord::StatementInvalid => e
@@ -368,8 +368,7 @@ module Custom::Api::V1::Accounts::InboxesController
       started_at: migration.started_at,
       heartbeat_at: migration.heartbeat_at,
       completed_at: migration.completed_at,
-      created_at: migration.created_at,
-      preview: history_migration_preview
+      created_at: migration.created_at
     }
   end
 

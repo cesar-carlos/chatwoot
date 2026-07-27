@@ -32,6 +32,10 @@ Pós-MVP. Não bloqueia o uso atual.
 - UI exclui a própria inbox com comparação numérica de id
 - HTTP 503 `unavailable` quando a tabela/migrations não estão aplicadas
 - Falha fatal do service sem re-raise (evita retry Sidekiq)
+- Toast diferencia `completed` (sem falhas) de `completed with N failure(s)` (IHM-BF-1)
+- Processamento de convs por contato em `order(id: :desc)`: conversa mais recente vira container (IHM-BF-2)
+- `derived_source_id` para WA usa `gsub(/\D/, '')` — normaliza qualquer char não-dígito (IHM-BF-3)
+- API → WA Evolution: grupos com `@g.us` JID em `contact.identifier` agora são migrados (antes falhavam com UUID source_id) (IHM-BF-4)
 
 ---
 
@@ -82,4 +86,4 @@ Pós-MVP. Não bloqueia o uso atual.
 
 ---
 
-*Última atualização: 27/jul/2026*
+*Última atualização: 27/jul/2026 (IHM-BF-1..3: bug fixes pós-deploy)*

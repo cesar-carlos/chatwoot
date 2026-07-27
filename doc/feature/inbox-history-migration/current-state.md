@@ -14,16 +14,17 @@ Inventário do que existe no codebase após o suporte a **WhatsApp-like A → B*
 | Confirmação | Digitar o nome da inbox origem (`woot-confirm-delete-modal`) + count |
 | Escopo | **Todas** as conversas / `contact_inboxes` da origem |
 | Remount | `conversation.inbox_id` + `contact_inbox_id`; `messages.inbox_id`; reporting/SLA; limpa bot assignee se não estiver no destino |
-| Merge | Sempre a conversa mais recente do peer no destino (**inclui resolved**) + activity note |
+| Merge | Conversa mais recente do peer **no destino** (inclui resolved) é o container; quando o source tem múltiplas convs por contato sem peer no destino, processadas em ordem decrescente de id — a **mais nova** vira container, as mais antigas são merged + activity note |
 | Merge FKs | Limpa `conversation_workflow_rule_executions`; reparent/resolve `AppliedSla` + CSAT |
 | Merge metadata | Labels + `custom_attributes` + `additional_attributes` (destino vence em conflito) |
 | Cleanup | Remove `ContactInbox` órfão na origem com `delete` (não `destroy!`) após move bem-sucedido |
 | Grupos Evolution | `source_id` `@g.us` só entre Evolution ↔ Evolution Go; grupo → API gera UUID novo; aviso UI Evolution→Cloud |
+| Grupos via API inbox | Contatos de grupo oriundos de API inbox têm o JID `@g.us` em `contact.identifier`; resolver usa esse JID ao migrar para destino Evolution family (API → WA Evolution) |
 | API identity | Preserva `source_id` opaco só em API→API; colisão com outro contato → `failed` |
-| Cross-channel identity | Nunca copia UUID/JID entre famílias; WA destino deriva phone (sem phone → `failed`); API destino gera UUID e **reusa** CI do contato |
+| Cross-channel identity | Nunca copia UUID/JID entre famílias; WA destino deriva phone (sem phone → `failed`); API destino gera UUID e **reusa** CI do contato; grupos com JID em `contact.identifier` → recuperado para destino Evolution |
 | WA same-family | Preserva/`converte` `source_id` (funciona sem phone se o id for válido) |
 | Anti-steal | Cria CI sem `ContactInboxBuilder` steal path |
-| Progresso | Polling enquanto `pending` **ou** `running` (5s); toast + link ao destino no `completed` |
+| Progresso | Polling enquanto `pending` **ou** `running` (5s); toast ao `completed` — "Completed" se sem falhas, "Completed with N failure(s)" se `stats.failed > 0`; link para inbox destino incluso |
 | Stats | `moved`, `merged`, `skipped`, `failed`, `total` — **por conversa** (sem inflar `failed` em CI vazio) |
 | Auth | Administrator nas duas inboxes |
 | Lock | `Inbox.lock` (ordem por id) no POST + `blocking_progress`; stale (>2h) → failed |
@@ -162,4 +163,4 @@ Se `GET/POST …/move_history*` retornar 500/503:
 
 ---
 
-*Última atualização: 27/jul/2026*
+*Última atualização: 27/jul/2026 (revisão pós-deploy: ordem de merge, toast partial, normalização phone)*

@@ -48,7 +48,9 @@ class Custom::Inboxes::HistoryMigrationService
     contact_inbox.with_lock do
       target_contact_inbox = contact_inbox_resolver.resolve(contact_inbox)
       if target_contact_inbox
-        contact_inbox.conversations.find_each do |conversation|
+        # Process newest-first so the most recent conversation becomes the
+        # surviving container in the target; older ones are merged into it.
+        contact_inbox.conversations.order(id: :desc).find_each do |conversation|
           migrate_conversation!(conversation, target_contact_inbox)
         end
       end
