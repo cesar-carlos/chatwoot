@@ -179,6 +179,121 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     end.not_to change(Message, :count)
   end
 
+  it 'syncs phone-sent SendMessage to group when ignore_from_me_echo and ignore_groups are disabled' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => false, 'ignore_groups' => false)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+
+    group_jid = '120363012345678901@g.us'
+    contact = create(
+      :contact,
+      account: account,
+      phone_number: nil,
+      identifier: group_jid,
+      name: 'Support Team (GROUP)',
+      additional_attributes: {
+        Custom::Whatsapp::Evolution::GroupKeys::IS_WHATSAPP_GROUP_KEY => true,
+        Custom::Whatsapp::Evolution::GroupKeys::EVOLUTION_GROUP_JID_KEY => group_jid
+      }
+    )
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: group_jid)
+    create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_group.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.to change(Message, :count).by(1)
+
+    message = Message.find_by!(source_id: '3EB0PHONEGRP00001')
+    aggregate_failures do
+      expect(message.outgoing?).to be(true)
+      expect(message.content).to eq('Mensagem enviada pelo celular para o grupo')
+      expect(message.content_attributes['phone_sent']).to be(true)
+      expect(message.conversation.contact_inbox).to eq(contact_inbox)
+    end
+  end
+
+  it 'syncs MESSAGE fromMe to group when ignore_from_me_echo and ignore_groups are disabled' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => false, 'ignore_groups' => false)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+
+    group_jid = '120363012345678901@g.us'
+    contact = create(
+      :contact,
+      account: account,
+      phone_number: nil,
+      identifier: group_jid,
+      name: 'Support Team (GROUP)',
+      additional_attributes: {
+        Custom::Whatsapp::Evolution::GroupKeys::IS_WHATSAPP_GROUP_KEY => true,
+        Custom::Whatsapp::Evolution::GroupKeys::EVOLUTION_GROUP_JID_KEY => group_jid
+      }
+    )
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: group_jid)
+    create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_group.json').read)
+    payload['event'] = 'Message'
+    payload['data']['Info']['ID'] = '3EB0PHONEGRPMSG01'
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.to change(Message, :count).by(1)
+
+    message = Message.find_by!(source_id: '3EB0PHONEGRPMSG01')
+    aggregate_failures do
+      expect(message.outgoing?).to be(true)
+      expect(message.content).to eq('Mensagem enviada pelo celular para o grupo')
+      expect(message.content_attributes['phone_sent']).to be(true)
+      expect(message.conversation.contact_inbox).to eq(contact_inbox)
+    end
+  end
+
+  it 'skips SendMessage to group when ignore_groups is enabled' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => false, 'ignore_groups' => true)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_group.json').read)
+    payload['data']['Info']['ID'] = '3EB0PHONEGRPIGNO1'
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.not_to change(Message, :count)
+  end
+
+  it 'skips MESSAGE fromMe to group when ignore_from_me_echo is enabled' do
+    config = channel.provider_config.merge('ignore_from_me_echo' => true, 'ignore_groups' => false)
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_group.json').read)
+    payload['event'] = 'Message'
+    payload['data']['Info']['ID'] = '3EB0PHONEGRPECHO1'
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.not_to change(Message, :count)
+  end
+
   it 'soft deletes via MESSAGE protocol revoke' do
     conversation = create(:conversation, account: account, inbox: inbox)
     existing = create(
