@@ -219,6 +219,12 @@ function maybeToastCompleted(data) {
   if (completedToastShownFor.value === data.id) return;
   completedToastShownFor.value = data.id;
 
+  const failed = Number(data.stats?.failed || 0);
+  const message =
+    failed > 0
+      ? t('INBOX_MGMT.MOVE_HISTORY.API.COMPLETED_PARTIAL', { count: failed })
+      : t('INBOX_MGMT.MOVE_HISTORY.API.COMPLETED');
+
   const action = destinationInboxPath.value
     ? {
         type: 'link',
@@ -228,7 +234,7 @@ function maybeToastCompleted(data) {
       }
     : { duration: 5000 };
 
-  useAlert(t('INBOX_MGMT.MOVE_HISTORY.API.COMPLETED'), action);
+  useAlert(message, action);
 }
 
 async function refreshStatus() {

@@ -851,7 +851,7 @@
         "COMPLETED": "Completed",
         "FAILED": "Failed",
         "PARTIAL": "Completed with failures",
-        "PARTIAL_HINT": "%{count} conversation(s) could not be moved. Check contacts without a phone number when targeting WhatsApp.",
+        "PARTIAL_HINT": "%{count} conversation(s) could not be moved. Check contacts without a phone number (and group contacts targeting WhatsApp Cloud, which does not support groups).",
         "TOTAL": "Progress",
         "MOVED": "Moved",
         "MERGED": "Merged",
@@ -862,6 +862,7 @@
       "API": {
         "STARTED": "History migration started",
         "COMPLETED": "History migration completed",
+        "COMPLETED_PARTIAL": "History migration completed with %{count} failure(s)",
         "OPEN_DESTINATION": "Open destination inbox",
         "ERROR_MESSAGE": "Could not start history migration. Please try again.",
         "UNAVAILABLE": "History migration is temporarily unavailable. Ask an administrator to run pending database migrations and restart the app."

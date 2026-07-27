@@ -43,14 +43,14 @@ Mover **todo o histórico** (conversas + mensagens) de uma caixa de entrada **A*
 | Conflito de peer | **Merge** mensagens/metadados na conversa existente em B; destruir conversa vazia em A |
 | Identidade WA | `ContactInbox.create!` / reuse por `contact_id` (+ fallback JID de grupo Evolution↔Evolution Go) |
 | Identidade API | **Preservar `source_id`** só em API→API; colisão com outro contato → peer `failed` |
-| Identidade cross-family | **Nunca** copiar UUID/JID entre famílias; destino WA deriva telefone (sem phone → `failed`); destino API gera UUID novo |
+| Identidade cross-family | **Nunca** copiar UUID/JID entre famílias; destino WA deriva telefone (sem phone → `failed`, exceto grupos com `@g.us` em `contact.identifier`); destino API gera UUID novo |
 | Idempotência API destino | Reusa `ContactInbox` existente do mesmo `contact_id` no destino (sem UUID órfão) |
 | WA same-family sem phone | Preserva `source_id` válido; Twilio↔Cloud converte formato |
 | Anti-steal | `ContactInbox.create!` próprio — **não** usa steal do `ContactInboxBuilder` |
 | Merge destino resolved | Sempre considera conversas resolved no destino (não só `Resolver`) |
 | Persistência de status | Tabela `inbox_history_migrations` (não `provider_config`) |
 | Execução | `Custom::Inboxes::HistoryMigrationJob` (`queue_as :low`); falha fatal marca `failed` **sem** re-raise Sidekiq |
-| UX | Aba **Move history**; preview count; toast+link ao concluir; aviso Evolution→Cloud grupos |
+| UX | Aba **Move history**; preview count; toast+link ao concluir (diferencia partial de full completion); aviso Evolution→Cloud grupos |
 | Auth | Administrator (`authorize … :update?` em origem **e** destino) |
 | Fork | Quase tudo em `custom/`; `# FORK:` / `// FORK:` mínimos em routes, controller except, Settings.vue, API client, channelActions |
 | i18n | **Somente EN** |
@@ -90,4 +90,4 @@ Cross-link: single-history fork ([conversation-single-history-per-channel](../co
 
 ---
 
-*Última atualização: 27/jul/2026*
+*Última atualização: 27/jul/2026 (bug fixes pós-deploy)*
