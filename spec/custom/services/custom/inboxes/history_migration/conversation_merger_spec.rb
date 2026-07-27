@@ -37,11 +37,13 @@ RSpec.describe Custom::Inboxes::HistoryMigration::ConversationMerger do
   end
 
   it 'merges messages into the target conversation and destroys the source' do
-    described_class.new(
-      source_conversation: source_conversation,
-      target_conversation: target_conversation,
-      target_inbox: target_inbox
-    ).perform
+    expect do
+      described_class.new(
+        source_conversation: source_conversation,
+        target_conversation: target_conversation,
+        target_inbox: target_inbox
+      ).perform
+    end.to have_enqueued_job(Conversations::ActivityMessageJob)
 
     expect { source_conversation.reload }.to raise_error(ActiveRecord::RecordNotFound)
     expect(target_conversation.reload.messages.pluck(:content)).to include('from A', 'from B')

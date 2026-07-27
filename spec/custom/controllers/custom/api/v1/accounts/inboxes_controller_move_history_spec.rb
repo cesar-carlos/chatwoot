@@ -49,7 +49,7 @@ RSpec.describe 'Inbox history migration API', type: :request do
            params: { target_inbox_id: email_inbox.id },
            headers: admin.create_new_auth_token
 
-      expect(response).to have_http_status(:unprocessable_entity)
+      expect(response).to have_http_status(:unprocessable_content)
       expect(response.parsed_body['code']).to eq('incompatible_channels')
     end
   end
@@ -70,6 +70,18 @@ RSpec.describe 'Inbox history migration API', type: :request do
       expect(response).to have_http_status(:success)
       expect(response.parsed_body['id']).to eq(migration.id)
       expect(response.parsed_body['stats']['moved']).to eq(3)
+      expect(response.parsed_body['preview']['conversations_count']).to eq(0)
+    end
+
+    it 'returns preview counts when no migration exists' do
+      create(:conversation, account: account, inbox: source_inbox)
+
+      get "/api/v1/accounts/#{account.id}/inboxes/#{source_inbox.id}/move_history_status",
+          headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body['id']).to be_nil
+      expect(response.parsed_body['preview']['conversations_count']).to eq(1)
     end
 
     it 'expires a stale running migration so the UI can unblock' do
@@ -89,6 +101,17 @@ RSpec.describe 'Inbox history migration API', type: :request do
       expect(response.parsed_body['status']).to eq('failed')
       expect(migration.reload.status).to eq('failed')
       expect(migration.error_message).to include('heartbeat timed out')
+    end
+  end
+
+  describe 'POST same inbox rejection' do
+    it 'rejects migrating an inbox onto itself' do
+      post "/api/v1/accounts/#{account.id}/inboxes/#{source_inbox.id}/move_history",
+           params: { target_inbox_id: source_inbox.id },
+           headers: admin.create_new_auth_token
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.parsed_body['code']).to eq('same_inbox')
     end
   end
 end

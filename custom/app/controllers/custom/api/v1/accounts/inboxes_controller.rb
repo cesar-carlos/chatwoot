@@ -295,44 +295,29 @@ module Custom::Api::V1::Accounts::InboxesController
   # FORK: move all conversation history from this WhatsApp/API inbox to another
   def move_history
     authorize @inbox, :update?
-    target_inbox = Current.account.inboxes.find_by(id: params[:target_inbox_id])
-    if target_inbox.blank?
-      return render json: {
-        error: I18n.t('errors.inbox_history_migration.target_not_found'),
-        code: 'target_not_found'
-      }, status: :unprocessable_entity
-    end
+    target_inbox = find_move_history_target_inbox
+    return if performed?
 
     authorize target_inbox, :update?
-
-    migration = InboxHistoryMigration.transaction do
-      # Serialize concurrent starts that share either inbox (closes TOCTOU on the guard).
-      Inbox.lock.find(@inbox.id)
-      Inbox.lock.find(target_inbox.id)
-
-      Custom::Inboxes::HistoryMigration::CompatibilityGuard.new(source: @inbox, target: target_inbox).validate!
-      InboxHistoryMigration.create!(
-        account: Current.account,
-        source_inbox: @inbox,
-        target_inbox: target_inbox,
-        requested_by: Current.user,
-        status: 'pending'
-      )
-    end
+    migration = create_history_migration!(target_inbox)
     Custom::Inboxes::HistoryMigrationJob.perform_later(migration.id)
     render json: migration_payload(migration)
   rescue Custom::Inboxes::HistoryMigration::CompatibilityGuard::Error => e
-    render json: { error: e.message, code: e.code }, status: :unprocessable_entity
+    render json: { error: e.message, code: e.code }, status: :unprocessable_content
+  rescue ActiveRecord::StatementInvalid => e
+    render_history_migration_unavailable(e, action: 'move_history')
   end
 
   def move_history_status
     authorize @inbox, :update?
     migration = InboxHistoryMigration.where(source_inbox_id: @inbox.id).order(created_at: :desc).first
-    return render json: {} if migration.blank?
+    migration&.expire_if_stale!
 
-    # Unblock UI when the worker died without completing (stale pending/running).
-    migration.expire_if_stale!
-    render json: migration_payload(migration.reload)
+    payload = migration.present? ? migration_payload(migration.reload) : {}
+    payload[:preview] = history_migration_preview
+    render json: payload
+  rescue ActiveRecord::StatementInvalid => e
+    render_history_migration_unavailable(e, action: 'move_history_status', include_preview: true)
   end
 
   def update
@@ -383,8 +368,53 @@ module Custom::Api::V1::Accounts::InboxesController
       started_at: migration.started_at,
       heartbeat_at: migration.heartbeat_at,
       completed_at: migration.completed_at,
-      created_at: migration.created_at
+      created_at: migration.created_at,
+      preview: history_migration_preview
     }
+  end
+
+  def history_migration_preview
+    {
+      conversations_count: @inbox.conversations.count,
+      contact_inboxes_count: @inbox.contact_inboxes.count
+    }
+  end
+
+  def find_move_history_target_inbox
+    target_inbox = Current.account.inboxes.find_by(id: params[:target_inbox_id])
+    return target_inbox if target_inbox.present?
+
+    render json: {
+      error: I18n.t('errors.inbox_history_migration.target_not_found'),
+      code: 'target_not_found'
+    }, status: :unprocessable_content
+    nil
+  end
+
+  def create_history_migration!(target_inbox)
+    InboxHistoryMigration.transaction do
+      # Serialize concurrent starts; lock in id order to avoid A↔B deadlocks.
+      [@inbox.id, target_inbox.id].uniq.sort.each { |inbox_id| Inbox.lock.find(inbox_id) }
+
+      Custom::Inboxes::HistoryMigration::CompatibilityGuard.new(source: @inbox, target: target_inbox).validate!
+      InboxHistoryMigration.create!(
+        account: Current.account,
+        source_inbox: @inbox,
+        target_inbox: target_inbox,
+        requested_by: Current.user,
+        status: 'pending'
+      )
+    end
+  end
+
+  def render_history_migration_unavailable(error, action:, include_preview: false)
+    Rails.logger.error("[InboxHistoryMigration] #{action} failed: #{error.class} #{error.message}")
+    body = {
+      error: I18n.t('errors.inbox_history_migration.unavailable'),
+      code: 'unavailable'
+    }
+    body[:preview] = history_migration_preview if include_preview
+    render json: body, status: :service_unavailable
   end
 
   def create

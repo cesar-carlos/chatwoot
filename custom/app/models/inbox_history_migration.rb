@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# FORK: persists status/stats for inbox history migrations (A → B)
+# Persists status/stats for inbox history migrations (A → B).
 class InboxHistoryMigration < ApplicationRecord
   STATUSES = %w[pending running completed failed].freeze
   STALE_AFTER = 2.hours

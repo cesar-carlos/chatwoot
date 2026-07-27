@@ -52,6 +52,20 @@ RSpec.describe Custom::Inboxes::HistoryMigration::Remounter do
     expect(conversation.reload.assignee_id).to be_nil
   end
 
+  it 'clears assignee_agent_bot when the bot is not attached to the target inbox' do
+    bot = create(:agent_bot, account: account)
+    conversation.update!(assignee_agent_bot: bot)
+
+    described_class.new(
+      conversation: conversation,
+      target_inbox: target_inbox,
+      target_contact_inbox: target_contact_inbox,
+      source_inbox: source_inbox
+    ).perform
+
+    expect(conversation.reload.assignee_agent_bot_id).to be_nil
+  end
+
   it 'remounts call inbox_id when Call is available' do
     skip 'Call model not loaded' unless defined?(Call)
 

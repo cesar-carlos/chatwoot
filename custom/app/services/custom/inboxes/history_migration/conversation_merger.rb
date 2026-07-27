@@ -4,6 +4,8 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
   pattr_initialize [:source_conversation!, :target_conversation!, :target_inbox!]
 
   def perform
+    @source_inbox_name = source_conversation.inbox.name
+
     ActiveRecord::Base.transaction do
       reparent_messages!
       reparent_calls!
@@ -19,6 +21,7 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
       destroy_empty_source!
     end
 
+    create_merge_activity!
     refresh_unread_counts!
     target_conversation.reload
   end
@@ -90,31 +93,35 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
     return unless defined?(AppliedSla)
 
     AppliedSla.where(conversation_id: source_conversation.id).find_each do |source_applied_sla|
-      target_applied_sla = AppliedSla.find_by(
-        account_id: source_applied_sla.account_id,
-        sla_policy_id: source_applied_sla.sla_policy_id,
-        conversation_id: target_conversation.id
-      )
-
-      if target_applied_sla
-        SlaEvent.where(applied_sla_id: source_applied_sla.id)
-                .update_all( # rubocop:disable Rails/SkipsModelValidations
-                  applied_sla_id: target_applied_sla.id,
-                  conversation_id: target_conversation.id,
-                  inbox_id: target_inbox.id,
-                  updated_at: Time.current
-                )
-        source_applied_sla.destroy!
-      else
-        source_applied_sla.update!(conversation_id: target_conversation.id)
-        SlaEvent.where(applied_sla_id: source_applied_sla.id)
-                .update_all( # rubocop:disable Rails/SkipsModelValidations
-                  conversation_id: target_conversation.id,
-                  inbox_id: target_inbox.id,
-                  updated_at: Time.current
-                )
-      end
+      merge_or_move_applied_sla!(source_applied_sla)
     end
+  end
+
+  def merge_or_move_applied_sla!(source_applied_sla)
+    target_applied_sla = AppliedSla.find_by(
+      account_id: source_applied_sla.account_id,
+      sla_policy_id: source_applied_sla.sla_policy_id,
+      conversation_id: target_conversation.id
+    )
+
+    if target_applied_sla
+      remount_sla_events_for!(source_applied_sla.id, new_applied_sla_id: target_applied_sla.id)
+      source_applied_sla.destroy!
+    else
+      source_applied_sla.update!(conversation_id: target_conversation.id)
+      remount_sla_events_for!(source_applied_sla.id)
+    end
+  end
+
+  def remount_sla_events_for!(source_applied_sla_id, new_applied_sla_id: nil)
+    attrs = {
+      conversation_id: target_conversation.id,
+      inbox_id: target_inbox.id,
+      updated_at: Time.current
+    }
+    attrs[:applied_sla_id] = new_applied_sla_id if new_applied_sla_id
+    SlaEvent.where(applied_sla_id: source_applied_sla_id)
+            .update_all(attrs) # rubocop:disable Rails/SkipsModelValidations
   end
 
   def reparent_reporting_events!
@@ -147,24 +154,47 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
   end
 
   def merge_conversation_metadata!
+    merge_labels_and_attributes!
+    adopt_source_assignee_if_needed!
+    target_conversation.save!
+  end
+
+  def merge_labels_and_attributes!
     target_conversation.label_list.add(source_conversation.label_list, parse: true)
     target_conversation.custom_attributes = (source_conversation.custom_attributes || {})
                                             .merge(target_conversation.custom_attributes || {})
     target_conversation.additional_attributes = (source_conversation.additional_attributes || {})
                                                 .merge(target_conversation.additional_attributes || {})
+  end
 
-    if target_conversation.assignee_id.blank? && source_conversation.assignee_id.present? &&
-       target_inbox.members.exists?(source_conversation.assignee_id)
-      target_conversation.assignee_id = source_conversation.assignee_id
-    end
+  def adopt_source_assignee_if_needed!
+    return if target_conversation.assignee_id.present?
+    return if source_conversation.assignee_id.blank?
+    return unless target_inbox.members.exists?(id: source_conversation.assignee_id)
 
-    target_conversation.save!
+    target_conversation.assignee_id = source_conversation.assignee_id
   end
 
   def destroy_empty_source!
     raise StandardError, 'source conversation still has messages' if source_conversation.messages.exists?
 
     source_conversation.destroy!
+  end
+
+  def create_merge_activity!
+    content = I18n.t(
+      'conversations.activity.inbox_history_migration.merged',
+      source_inbox_name: @source_inbox_name
+    )
+    ::Conversations::ActivityMessageJob.perform_later(
+      target_conversation,
+      {
+        account_id: target_conversation.account_id,
+        inbox_id: target_inbox.id,
+        message_type: :activity,
+        content: content
+      }
+    )
   end
 
   def refresh_unread_counts!

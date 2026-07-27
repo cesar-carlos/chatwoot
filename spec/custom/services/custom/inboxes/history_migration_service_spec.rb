@@ -36,6 +36,7 @@ RSpec.describe Custom::Inboxes::HistoryMigrationService do
     expect(migration.stats['moved']).to eq(1)
     expect(conversation.reload.inbox_id).to eq(target_inbox.id)
     expect(message.reload.inbox_id).to eq(target_inbox.id)
+    expect(ContactInbox.find_by(id: source_contact_inbox.id)).to be_nil
   end
 
   it 'merges when the destination already has a conversation for the contact' do
@@ -262,8 +263,9 @@ RSpec.describe Custom::Inboxes::HistoryMigrationService do
       first_ci_id = conversation.reload.contact_inbox_id
       first_source_id = conversation.contact_inbox.source_id
 
-      # Simulate needing another remount of the same peer (e.g. partial ops recovery).
-      conversation.update!(inbox_id: source_inbox.id, contact_inbox_id: source_contact_inbox.id)
+      # Source CI was cleaned up after a successful move — recreate a source session.
+      source_ci = create(:contact_inbox, inbox: source_inbox, contact: contact, source_id: '5511777666555')
+      conversation.update!(inbox_id: source_inbox.id, contact_inbox_id: source_ci.id)
       message.update!(inbox_id: source_inbox.id)
 
       rerun = InboxHistoryMigration.create!(
@@ -346,5 +348,13 @@ RSpec.describe Custom::Inboxes::HistoryMigrationService do
 
     expect(migration.reload.stats['failed']).to eq(1)
     expect(ContactInbox.find_by(inbox: target_inbox, source_id: '5511777666555').contact_id).to eq(other_contact.id)
+  end
+
+  it 'marks the migration failed without raising when orchestration blows up' do
+    allow(migration).to receive(:mark_running!).and_raise(StandardError, 'boom')
+
+    expect { described_class.new(migration: migration).perform }.not_to raise_error
+    expect(migration.reload.status).to eq('failed')
+    expect(migration.error_message).to include('boom')
   end
 end
