@@ -38,16 +38,16 @@ flowchart TD
 
 ### A — Remount + job admin em `custom/` (RECOMENDADA / MVP)
 
-**Ideia:** Criar/obter `ContactInbox` em B, atualizar `conversation` + `messages` (+ reporting/SLA). Se já existir conversa do peer em B, **merge**. Status em tabela própria; UI nas settings da origem (padrão Evolution import).
+**Ideia:** Criar/obter `ContactInbox` em B (`create!` anti-steal), atualizar `conversation` + `messages` (+ reporting/SLA). Se já existir conversa do peer em B, **merge**. Status em tabela própria; UI nas settings da origem (padrão Evolution import).
 
 | Prós | Contras |
 |------|---------|
-| Mantém outbound/`source_id` corretos | Só WhatsApp no v1 |
-| Alinha com `Resolver` + single-history | Merge é mais complexo que skip |
-| Overlay `custom/` + FORK mínimo | Job longo em inboxes grandes |
+| Mantém outbound/`source_id` corretos (same-family) | Job longo em inboxes grandes |
+| Alinha com single-history + merge resolved | Merge é mais complexo que skip |
+| Overlay `custom/` + FORK mínimo | Cross-channel não garante outbound |
 | Espelha import Evolution (admin + poll) | — |
 
-**Veredito:** ✅ MVP entregue.
+**Veredito:** ✅ MVP entregue (WA↔WA, API↔API, WA↔API).
 
 ---
 
@@ -105,9 +105,11 @@ flowchart TD
 | 2 | Conflito de peer em B | **Merge** (não skip) |
 | 3 | Onde guardar status | `inbox_history_migrations` (par de inboxes ≠ um channel) |
 | 4 | Feature flag | Não no v1 — gate = admin + compatibilidade |
-| 5 | Assignee sem membership em B | Limpar `assignee_id` |
+| 5 | Assignee sem membership em B | Limpar `assignee_id` (+ `assignee_agent_bot` se bot não estiver em B) |
 | 6 | Grupos `@g.us` | Só Evolution family → Evolution family; grupo → API = UUID novo |
 | 7 | Cross-channel outbound | **Não** é requisito de aceite |
+| 8 | Cleanup CI origem | `delete` se sem conversas (evita `destroy_async`) |
+| 9 | Falha fatal no job | `mark_failed!` sem re-raise Sidekiq |
 
 ---
 
@@ -121,4 +123,4 @@ flowchart TD
 
 ---
 
-*Última atualização: 25/jul/2026*
+*Última atualização: 27/jul/2026*

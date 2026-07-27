@@ -2,7 +2,7 @@
 
 Mover **todo o histórico** (conversas + mensagens) de uma caixa de entrada **A** para outra caixa **B** na mesma account (WhatsApp-like, API/Webhook, ou cross-channel entre esses dois), com remount da sessão de canal e merge quando o contato já existir em B.
 
-**Estado:** implementado · 25/jul/2026
+**Estado:** implementado · 27/jul/2026
 
 | Área | Status |
 |------|--------|
@@ -12,11 +12,13 @@ Mover **todo o histórico** (conversas + mensagens) de uma caixa de entrada **A*
 | Providers: Cloud, Evolution, Evolution Go, Twilio WhatsApp | ✅ |
 | Merge quando destino já tem conversa do peer | ✅ |
 | Remount `ContactInbox` + `messages.inbox_id` | ✅ |
-| Job assíncrono + status/stats | ✅ |
+| Cleanup de `ContactInbox` órfão na origem | ✅ |
+| Job assíncrono + status/stats + preview | ✅ |
 | UI settings (aba Move history) | ✅ |
 | Admin-only (`InboxPolicy#update?`) | ✅ |
 | Outros canais (Telegram, Email, Widget, …) | ❌ Fora do escopo |
 | Outbound garantido após cross-channel | ❌ Não é requisito (arquivo de leitura) |
+| Sub-jobs por lote | ❌ Backlog P2 |
 | i18n | ✅ EN only (regra do fork) |
 
 ---
@@ -39,18 +41,18 @@ Mover **todo o histórico** (conversas + mensagens) de uma caixa de entrada **A*
 |--------|---------|
 | Escopo | WA↔WA, API↔API, **e** WA↔API (histórico/leitura) |
 | Conflito de peer | **Merge** mensagens/metadados na conversa existente em B; destruir conversa vazia em A |
-| Identidade WA | Remount via `ContactInboxBuilder` (+ fallback JID de grupo Evolution↔Evolution Go) |
+| Identidade WA | `ContactInbox.create!` / reuse por `contact_id` (+ fallback JID de grupo Evolution↔Evolution Go) |
 | Identidade API | **Preservar `source_id`** só em API→API; colisão com outro contato → peer `failed` |
 | Identidade cross-family | **Nunca** copiar UUID/JID entre famílias; destino WA deriva telefone (sem phone → `failed`); destino API gera UUID novo |
 | Idempotência API destino | Reusa `ContactInbox` existente do mesmo `contact_id` no destino (sem UUID órfão) |
 | WA same-family sem phone | Preserva `source_id` válido; Twilio↔Cloud converte formato |
-| Anti-steal | `ContactInbox.create!` próprio — não usa steal do `ContactInboxBuilder` |
+| Anti-steal | `ContactInbox.create!` próprio — **não** usa steal do `ContactInboxBuilder` |
 | Merge destino resolved | Sempre considera conversas resolved no destino (não só `Resolver`) |
 | Persistência de status | Tabela `inbox_history_migrations` (não `provider_config`) |
-| Execução | `Custom::Inboxes::HistoryMigrationJob` (`queue_as :low`) |
-| UX | Aba **Move history** nas settings da inbox origem (WA ou API); destinos WA+API |
+| Execução | `Custom::Inboxes::HistoryMigrationJob` (`queue_as :low`); falha fatal marca `failed` **sem** re-raise Sidekiq |
+| UX | Aba **Move history**; preview count; toast+link ao concluir; aviso Evolution→Cloud grupos |
 | Auth | Administrator (`authorize … :update?` em origem **e** destino) |
-| Fork | Quase tudo em `custom/`; `# FORK:` / `// FORK:` mínimos em routes, controller except, Settings.vue, API client |
+| Fork | Quase tudo em `custom/`; `# FORK:` / `// FORK:` mínimos em routes, controller except, Settings.vue, API client, channelActions |
 | i18n | **Somente EN** |
 
 ---
@@ -64,12 +66,13 @@ flowchart TD
   Guard --> Row[(inbox_history_migrations)]
   Row --> Job[HistoryMigrationJob]
   Job --> Svc[HistoryMigrationService]
-  Svc --> CI[ContactInboxBuilder no destino]
-  CI --> Resolve{Resolver.find no destino?}
+  Svc --> CI["ContactInbox create/reuse no destino"]
+  CI --> Resolve{Conversa no destino?}
   Resolve -->|Não| Remount[Remounter]
   Resolve -->|Sim| Merge[ConversationMerger]
-  Remount --> Stats[stats moved]
-  Merge --> Stats2[stats merged]
+  Remount --> Cleanup[Delete CI órfão em A]
+  Merge --> Cleanup
+  Cleanup --> Stats[stats moved/merged/failed]
 ```
 
 ---
@@ -87,4 +90,4 @@ Cross-link: single-history fork ([conversation-single-history-per-channel](../co
 
 ---
 
-*Última atualização: 25/jul/2026*
+*Última atualização: 27/jul/2026*

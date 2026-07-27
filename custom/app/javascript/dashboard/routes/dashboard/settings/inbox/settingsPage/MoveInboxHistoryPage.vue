@@ -4,11 +4,11 @@ import { useI18n } from 'vue-i18n';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
+import { conversationListPageURL } from 'dashboard/helper/URLHelper';
+import { useAccount } from 'dashboard/composables/useAccount';
 import SettingsFieldSection from 'dashboard/components-next/Settings/SettingsFieldSection.vue';
 import SelectInput from 'dashboard/components-next/select/Select.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
-
-const POLL_MS = 5000;
 
 const props = defineProps({
   inbox: {
@@ -17,17 +17,35 @@ const props = defineProps({
   },
 });
 
+const POLL_MS = 5000;
+const EVOLUTION_FAMILY = new Set(['evolution', 'evolution_go']);
+
 const { t } = useI18n();
 const store = useStore();
+const { accountId } = useAccount();
 const inboxes = useMapGetter('inboxes/getInboxes');
 
 const selectedTargetId = ref(null);
 const showConfirmModal = ref(false);
 const isSubmitting = ref(false);
 const migration = ref(null);
+const preview = ref({ conversations_count: 0, contact_inboxes_count: 0 });
 const pollError = ref(false);
+const completedToastShownFor = ref(null);
+const unavailableAlertShown = ref(false);
 let pollTimer = null;
 let statusRequestId = 0;
+
+function inboxId(value) {
+  return Number(value);
+}
+
+function stopPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
 
 function isWhatsAppLike(inbox) {
   if (!inbox) return false;
@@ -39,6 +57,20 @@ function isWhatsAppLike(inbox) {
 
 function isApiInbox(inbox) {
   return inbox?.channel_type === INBOX_TYPES.API;
+}
+
+function isEvolutionFamily(inbox) {
+  return (
+    inbox?.channel_type === INBOX_TYPES.WHATSAPP &&
+    EVOLUTION_FAMILY.has(String(inbox.provider || ''))
+  );
+}
+
+function isWhatsAppCloud(inbox) {
+  return (
+    inbox?.channel_type === INBOX_TYPES.WHATSAPP &&
+    String(inbox.provider || '') === 'whatsapp_cloud'
+  );
 }
 
 function sameMigrationFamily(source, candidate) {
@@ -57,17 +89,22 @@ function resetLocalState() {
   showConfirmModal.value = false;
   isSubmitting.value = false;
   migration.value = null;
+  preview.value = { conversations_count: 0, contact_inboxes_count: 0 };
   pollError.value = false;
+  completedToastShownFor.value = null;
+  unavailableAlertShown.value = false;
   stopPolling();
 }
 
 const targetOptions = computed(() =>
   (inboxes.value || [])
     .filter(
-      item => item.id !== props.inbox.id && sameMigrationFamily(props.inbox, item)
+      item =>
+        inboxId(item.id) !== inboxId(props.inbox.id) &&
+        sameMigrationFamily(props.inbox, item)
     )
     .map(item => ({
-      value: item.id,
+      value: inboxId(item.id),
       label: item.phone_number
         ? `${item.name} (${item.phone_number})`
         : item.name,
@@ -75,6 +112,19 @@ const targetOptions = computed(() =>
 );
 
 const hasTargetOptions = computed(() => targetOptions.value.length > 0);
+
+const selectedTargetInbox = computed(() =>
+  (inboxes.value || []).find(
+    item => inboxId(item.id) === inboxId(selectedTargetId.value)
+  )
+);
+
+const showEvolutionCloudGroupWarning = computed(() => {
+  if (!selectedTargetInbox.value) return false;
+  return (
+    isEvolutionFamily(props.inbox) && isWhatsAppCloud(selectedTargetInbox.value)
+  );
+});
 
 const isRunning = computed(() => migration.value?.status === 'running');
 const isPending = computed(() => migration.value?.status === 'pending');
@@ -95,6 +145,13 @@ const hasPartialFailures = computed(
   () => isCompleted.value && failedCount.value > 0
 );
 
+const previewConversations = computed(() =>
+  Number(preview.value?.conversations_count || 0)
+);
+const previewContactInboxes = computed(() =>
+  Number(preview.value?.contact_inboxes_count || 0)
+);
+
 const statusLabel = computed(() => {
   const status = migration.value?.status;
   if (!status) return '';
@@ -109,9 +166,13 @@ const statusLabel = computed(() => {
 const destinationLabel = computed(() => {
   const targetId = migration.value?.target_inbox_id || selectedTargetId.value;
   if (!targetId) return '';
-  const option = targetOptions.value.find(item => item.value === targetId);
+  const option = targetOptions.value.find(
+    item => inboxId(item.value) === inboxId(targetId)
+  );
   if (option) return option.label;
-  const inbox = (inboxes.value || []).find(item => item.id === targetId);
+  const inbox = (inboxes.value || []).find(
+    item => inboxId(item.id) === inboxId(targetId)
+  );
   if (!inbox) return '';
   return inbox.phone_number
     ? `${inbox.name} (${inbox.phone_number})`
@@ -120,40 +181,89 @@ const destinationLabel = computed(() => {
 
 const selectedTargetLabel = computed(() => {
   const option = targetOptions.value.find(
-    item => item.value === selectedTargetId.value
+    item => inboxId(item.value) === inboxId(selectedTargetId.value)
   );
   return option?.label || '';
 });
 
-function stopPolling() {
-  if (pollTimer) {
-    clearInterval(pollTimer);
-    pollTimer = null;
-  }
-}
+const destinationInboxPath = computed(() => {
+  const targetId = migration.value?.target_inbox_id;
+  if (!targetId || !accountId.value) return '';
+  return conversationListPageURL({
+    accountId: accountId.value,
+    inboxId: targetId,
+  });
+});
 
 function hydrateTargetFromMigration(data) {
   if (data?.target_inbox_id && !selectedTargetId.value) {
-    selectedTargetId.value = data.target_inbox_id;
+    const targetId = inboxId(data.target_inbox_id);
+    const stillValid = targetOptions.value.some(
+      item => inboxId(item.value) === targetId
+    );
+    if (stillValid) selectedTargetId.value = targetId;
   }
+}
+
+function applyPreview(data) {
+  if (data?.preview) {
+    preview.value = {
+      conversations_count: Number(data.preview.conversations_count || 0),
+      contact_inboxes_count: Number(data.preview.contact_inboxes_count || 0),
+    };
+  }
+}
+
+function maybeToastCompleted(data) {
+  if (!data?.id || data.status !== 'completed') return;
+  if (completedToastShownFor.value === data.id) return;
+  completedToastShownFor.value = data.id;
+
+  const action = destinationInboxPath.value
+    ? {
+        type: 'link',
+        to: destinationInboxPath.value,
+        message: t('INBOX_MGMT.MOVE_HISTORY.API.OPEN_DESTINATION'),
+        duration: 8000,
+      }
+    : { duration: 5000 };
+
+  useAlert(t('INBOX_MGMT.MOVE_HISTORY.API.COMPLETED'), action);
 }
 
 async function refreshStatus() {
   if (!props.inbox?.id) return;
-  const requestId = ++statusRequestId;
-  const inboxId = props.inbox.id;
+  statusRequestId += 1;
+  const requestId = statusRequestId;
+  const currentInboxId = props.inbox.id;
   try {
     const data = await store.dispatch(
       'inboxes/fetchMoveHistoryStatus',
-      inboxId
+      currentInboxId
     );
-    if (requestId !== statusRequestId || props.inbox.id !== inboxId) return;
+    if (requestId !== statusRequestId || props.inbox.id !== currentInboxId) {
+      return;
+    }
     migration.value = data?.id ? data : null;
+    applyPreview(data);
     hydrateTargetFromMigration(migration.value);
+    maybeToastCompleted(migration.value);
     pollError.value = false;
-  } catch {
-    if (requestId !== statusRequestId || props.inbox.id !== inboxId) return;
+  } catch (error) {
+    if (requestId !== statusRequestId || props.inbox.id !== currentInboxId) {
+      return;
+    }
     pollError.value = true;
+    const unavailable =
+      error?.response?.data?.code === 'unavailable' ||
+      error?.response?.status === 503;
+    if (unavailable && !unavailableAlertShown.value) {
+      unavailableAlertShown.value = true;
+      useAlert(
+        error?.response?.data?.error ||
+          t('INBOX_MGMT.MOVE_HISTORY.API.UNAVAILABLE')
+      );
+    }
   }
 }
 
@@ -193,6 +303,10 @@ function openConfirm() {
     useAlert(t('INBOX_MGMT.MOVE_HISTORY.ERRORS.TARGET_REQUIRED'));
     return;
   }
+  if (inboxId(selectedTargetId.value) === inboxId(props.inbox.id)) {
+    useAlert(t('INBOX_MGMT.MOVE_HISTORY.ERRORS.SAME_INBOX'));
+    return;
+  }
   showConfirmModal.value = true;
 }
 
@@ -205,9 +319,10 @@ async function confirmMove() {
   try {
     const data = await store.dispatch('inboxes/moveInboxHistory', {
       inboxId: props.inbox.id,
-      targetInboxId: selectedTargetId.value,
+      targetInboxId: inboxId(selectedTargetId.value),
     });
     migration.value = data;
+    applyPreview(data);
     hydrateTargetFromMigration(data);
     showConfirmModal.value = false;
     useAlert(t('INBOX_MGMT.MOVE_HISTORY.API.STARTED'));
@@ -234,6 +349,27 @@ async function confirmMove() {
       </p>
     </div>
 
+    <div
+      class="rounded-xl border border-n-weak bg-n-surface-1 p-4 grid grid-cols-2 gap-3 text-sm"
+    >
+      <div>
+        <div class="text-n-slate-10">
+          {{ $t('INBOX_MGMT.MOVE_HISTORY.PREVIEW.CONVERSATIONS') }}
+        </div>
+        <div class="text-n-slate-12 font-medium">
+          {{ previewConversations }}
+        </div>
+      </div>
+      <div>
+        <div class="text-n-slate-10">
+          {{ $t('INBOX_MGMT.MOVE_HISTORY.PREVIEW.CONTACT_INBOXES') }}
+        </div>
+        <div class="text-n-slate-12 font-medium">
+          {{ previewContactInboxes }}
+        </div>
+      </div>
+    </div>
+
     <SettingsFieldSection :label="$t('INBOX_MGMT.MOVE_HISTORY.TARGET_LABEL')">
       <SelectInput
         v-model="selectedTargetId"
@@ -241,15 +377,20 @@ async function confirmMove() {
         :options="targetOptions"
         :disabled="isActive || !hasTargetOptions"
       />
-      <p
-        v-if="!hasTargetOptions"
-        class="mt-2 text-sm text-n-slate-10"
-      >
+      <p v-if="!hasTargetOptions" class="mt-2 text-sm text-n-slate-10">
         {{ $t('INBOX_MGMT.MOVE_HISTORY.EMPTY_TARGETS') }}
+      </p>
+      <p
+        v-if="showEvolutionCloudGroupWarning"
+        class="mt-2 text-sm text-n-amber-11"
+      >
+        {{ $t('INBOX_MGMT.MOVE_HISTORY.WARNINGS.EVOLUTION_TO_CLOUD_GROUPS') }}
       </p>
     </SettingsFieldSection>
 
-    <div class="rounded-xl border border-n-weak bg-n-alpha-1 p-4 text-sm text-n-slate-11">
+    <div
+      class="rounded-xl border border-n-weak bg-n-alpha-1 p-4 text-sm text-n-slate-11"
+    >
       <p>{{ $t('INBOX_MGMT.MOVE_HISTORY.WARNING') }}</p>
     </div>
 
@@ -273,7 +414,9 @@ async function confirmMove() {
         <span
           class="text-sm"
           :class="
-            isFailed || hasPartialFailures ? 'text-n-ruby-11' : 'text-n-slate-11'
+            isFailed || hasPartialFailures
+              ? 'text-n-ruby-11'
+              : 'text-n-slate-11'
           "
         >
           {{ statusLabel }}
@@ -342,7 +485,10 @@ async function confirmMove() {
         }}
       </p>
 
-      <p v-if="isFailed && migration.error_message" class="text-sm text-n-ruby-11">
+      <p
+        v-if="isFailed && migration.error_message"
+        class="text-sm text-n-ruby-11"
+      >
         {{ migration.error_message }}
       </p>
 
@@ -359,6 +505,7 @@ async function confirmMove() {
         $t('INBOX_MGMT.MOVE_HISTORY.CONFIRM.MESSAGE', {
           source: inbox.name,
           target: selectedTargetLabel,
+          count: previewConversations,
         })
       "
       :confirm-text="$t('INBOX_MGMT.MOVE_HISTORY.CONFIRM.YES')"

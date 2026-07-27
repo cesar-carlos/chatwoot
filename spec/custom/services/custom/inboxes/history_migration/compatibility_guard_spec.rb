@@ -30,7 +30,7 @@ RSpec.describe Custom::Inboxes::HistoryMigration::CompatibilityGuard do
 
     it 'rejects inboxes from different accounts' do
       other = create(:channel_whatsapp, account: create(:account), sync_templates: false,
-                                       validate_provider_config: false).inbox
+                                        validate_provider_config: false).inbox
 
       expect do
         described_class.new(source: source, target: other).validate!

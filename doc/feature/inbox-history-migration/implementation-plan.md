@@ -1,12 +1,12 @@
 # Inbox History Migration — Plano de implementação (as-built)
 
-Documento **as-built** do MVP entregue em 25/jul/2026. Fonte normativa para manutenção; decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
+Documento **as-built** do MVP (25/jul/2026) com hardening de 27/jul/2026. Fonte normativa para manutenção; decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
 
 ---
 
 ## Objetivo
 
-Permitir que um **administrador** mova todo o histórico de conversas/mensagens de uma inbox WhatsApp A para outra inbox WhatsApp B na mesma account, preservando identidade de canal e mesclando peers que já existam em B.
+Permitir que um **administrador** mova todo o histórico de conversas/mensagens de uma inbox WhatsApp/API A para outra inbox WhatsApp/API B na mesma account, preservando identidade de canal quando possível e mesclando peers que já existam em B.
 
 ---
 
@@ -23,6 +23,7 @@ Permitir que um **administrador** mova todo o histórico de conversas/mensagens 
 | 7 | UI settings + polling + i18n EN | ✅ |
 | 8 | Specs `spec/custom/…` | ✅ |
 | 9 | Docs `doc/feature/inbox-history-migration/` | ✅ |
+| 10 | Hardening: preview, toast, orphan CI `delete`, 503, activity note | ✅ |
 
 ---
 
@@ -41,46 +42,55 @@ Permitir que um **administrador** mova todo o histórico de conversas/mensagens 
 
 Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progress` em A ou B.
 
-- API→API preserva `contact_inbox.source_id` no builder (sessão opaca).
+- API→API preserva `contact_inbox.source_id` (sessão opaca).
 - WA↔API: **nunca** copia `source_id` entre famílias; destino WA deriva phone (sem phone → peer `failed`); destino API gera UUID e reusa CI existente do contato (idempotente).
 - WA↔WA: preserva/`converte` `source_id` (Twilio↔Cloud); funciona sem `phone_number` se o id for válido.
-- Criação de CI **sem** steal do `ContactInboxBuilder`.
+- Criação de CI **sem** steal do `ContactInboxBuilder` (`ContactInbox.create!` + lookup).
 - Outbound no destino cross-channel não é requisito.
+
 ### 2. Remount (sem conversa no destino)
 
 1. ContactInbox no destino (reusa CI do contato se existir; senão source_id portátil / phone / UUID)
 2. Transaction:
    - `conversation.update!(inbox_id:, contact_inbox_id:)`
-   - limpar assignee se não for member de B
-   - `Message` / `ReportingEvent` / `SlaEvent` → `inbox_id = B`
+   - limpar `assignee_id` se não for member de B
+   - limpar `assignee_agent_bot_id` se o bot não estiver no destino
+   - `Message` / `Call` / `ReportingEvent` / `SlaEvent` → `inbox_id = B`
 3. `Conversations::UnreadCounts::Refresher`
 
 ### 3. Merge (já existe conversa no destino)
 
 1. Conversa mais recente do `contact_inbox` de B (**inclui resolved**)
-2. Reparent: messages, mentions, participants (sem colidir UNIQUE), notifications, CSAT, reporting, SLA
+2. Reparent: messages, mentions, participants (sem colidir UNIQUE), notifications, CSAT, reporting, SLA, calls
 3. Labels + `custom_attributes` + `additional_attributes` (destino vence em chave duplicada via `merge`)
 4. Abortar destroy se origem ainda tiver messages
 5. `source_conversation.destroy!`
+6. Activity note via `Conversations::ActivityMessageJob`
 
 ### 4. Orquestração
 
 ```ruby
 source_inbox.contact_inboxes.find_each do |ci|
   ci.with_lock { ... Remounter ou ConversationMerger ... }
+  # fora do lock: failed stats OU delete do CI órfão na origem
   touch_heartbeat! a cada 25 peers
 end
 ```
 
-Status: `pending` → `running` → `completed` | `failed`.
+- Cleanup do CI origem usa **`delete`** (não `destroy!`) para não disparar `dependent: :destroy_async` em conversas.
+- Falha fatal do service: `mark_failed!` **sem** re-raise (evita retry Sidekiq inútil).
+- Status: `pending` → `running` → `completed` | `failed`.
 
 ### 5. API / UI
 
 - `POST …/inboxes/:id/move_history` `{ target_inbox_id }`
-- `GET …/inboxes/:id/move_history_status` (expira stale pending/running)
+- `GET …/inboxes/:id/move_history_status` (expira stale; inclui `preview`)
 - Tab `move-history` em `Settings.vue` quando `isAWhatsAppChannel || isAPIInbox`
-- Destinos: mesma família **ou** WA↔API; empty state; mostra destino + progresso + falhas parciais
-- Lock: `Inbox.lock` no POST + `pending`/`running` frescos bloqueiam novo start
+- Destinos: mesma família **ou** WA↔API; exclusão da própria inbox via `Number(id)`; empty state; aviso Evolution→Cloud
+- Preview: `conversations_count` / `contact_inboxes_count`
+- Toast + link para a inbox destino ao `completed`
+- Lock: `Inbox.lock` em ordem de id no POST + `pending`/`running` frescos bloqueiam novo start
+- Tabela ausente → HTTP **503** `unavailable`
 
 ### 6. Calls / colisões
 
@@ -105,6 +115,7 @@ create_table :inbox_history_migrations do |t|
   t.datetime :completed_at
   t.timestamps
 end
+# + FKs cascade/nullify em 20260725154500
 ```
 
 ---
@@ -133,10 +144,11 @@ bundle exec rspec \
 
 ### Go-live
 
-1. `bundle exec rails db:migrate` (migration `20260725120824_fork_create_inbox_history_migrations`)
+1. `bundle exec rails db:migrate` (migrations `20260725120824` + `20260725154500` FKs)
 2. Restart web + Sidekiq worker
 3. `assets:precompile` se necessário (aba Vue nova)
 4. Smoke: Settings inbox WhatsApp → Move history → escolher destino → confirmar
+5. Se a API responder `503 unavailable`, a tabela ainda não existe nesse ambiente — rode o migrate e reinicie
 
 ---
 
@@ -145,11 +157,12 @@ bundle exec rspec \
 | Regra | Aplicação |
 |-------|-----------|
 | `custom/` | Model, services, job, Vue page |
-| `# FORK:` / `// FORK:` mínimo | routes, except list, Settings import/tab, API client |
+| `# FORK:` / `// FORK:` mínimo | routes, except list, Settings import/tab, API client, channelActions |
 | Um service = uma ação | Guard / Remounter / Merger / Orchestrator |
 | i18n EN only | `en.yml` + `inboxMgmt.json` |
 | Specs em `spec/custom/` | Mirror do overlay |
+| Happy-path MVP | Sem sub-jobs; falha por peer continua |
 
 ---
 
-*Última atualização: 25/jul/2026*
+*Última atualização: 27/jul/2026*

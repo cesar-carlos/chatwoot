@@ -107,6 +107,7 @@ en:
       incompatible_channels: History migration is only supported between WhatsApp and API/Webhook inboxes (same-type or WhatsApp ↔ API/Webhook)
       already_running: A history migration is already running for one of these inboxes
       target_not_found: Destination inbox was not found
+      unavailable: History migration is temporarily unavailable. Ask an administrator to run pending database migrations and restart the app.
     upload:
       missing_input: 'No file or URL provided'
       invalid_url: 'Invalid URL provided'
@@ -349,6 +350,9 @@ en:
         system_name: Workflow rule
         status_change: 'Conversation was updated by workflow rule "%{rule_name}"'
         executed: 'Workflow rule "%{rule_name}" was applied'
+      # FORK: inbox history migration activity messages
+      inbox_history_migration:
+        merged: 'Conversation history was merged from inbox "%{source_inbox_name}"'
       priority:
         added: '%{user_name} set the priority to %{new_priority}'
         updated: '%{user_name} changed the priority from %{old_priority} to %{new_priority}'

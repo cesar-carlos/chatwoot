@@ -24,13 +24,21 @@ class Custom::Inboxes::HistoryMigration::Remounter
       contact_inbox_id: target_contact_inbox.id
     )
     clear_assignee_if_not_member!
+    clear_assignee_agent_bot_if_not_on_target!
   end
 
   def clear_assignee_if_not_member!
     return if conversation.assignee_id.blank?
-    return if target_inbox.members.exists?(conversation.assignee_id)
+    return if target_inbox.members.exists?(id: conversation.assignee_id)
 
     conversation.update!(assignee_id: nil)
+  end
+
+  def clear_assignee_agent_bot_if_not_on_target!
+    return if conversation.assignee_agent_bot_id.blank?
+    return if target_inbox.agent_bot&.id == conversation.assignee_agent_bot_id
+
+    conversation.update!(assignee_agent_bot_id: nil)
   end
 
   def remount_messages!

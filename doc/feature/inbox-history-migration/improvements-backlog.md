@@ -11,7 +11,7 @@ Pós-MVP. Não bloqueia o uso atual.
 - Move cross-channel WhatsApp ↔ API/Webhook (histórico/leitura; identity nativa no destino)
 - Idempotência no destino API (reusa CI do contato); WA same-family preserva `source_id` sem phone
 - Anti-steal sem `ContactInboxBuilder`; merge inclui resolved + `additional_attributes`
-- Lock de inbox no POST; UI com destino/progresso/falhas parciais/empty state
+- Lock de inbox no POST (ordem por id); UI com destino/progresso/falhas parciais/empty state
 - Remount + merge de peers existentes (workflow executions / AppliedSla / CSAT / Calls)
 - Job + tabela de status/stats + polling UI (`pending` + `running`)
 - Lock em `pending` **e** `running`; stale pending/running (>2h) auto-failed
@@ -22,6 +22,16 @@ Pós-MVP. Não bloqueia o uso atual.
 - Admin-only
 - Specs `spec/custom/…`
 - Docs nesta pasta
+- Preview count antes de confirmar (IHM-P1-1)
+- Toast + link para inbox destino ao `completed` (IHM-P1-2)
+- Aviso Evolution→Cloud com grupos (IHM-P1-4)
+- Activity note na conversa mergeada (IHM-P1-5)
+- Cleanup de ContactInbox órfão na origem (`delete`, não `destroy!`)
+- Stats `failed` sem inflar CI vazio
+- Clear `assignee_agent_bot` no remount quando bot não está no destino
+- UI exclui a própria inbox com comparação numérica de id
+- HTTP 503 `unavailable` quando a tabela/migrations não estão aplicadas
+- Falha fatal do service sem re-raise (evita retry Sidekiq)
 
 ---
 
@@ -29,11 +39,11 @@ Pós-MVP. Não bloqueia o uso atual.
 
 | ID | Item | Notas |
 |----|------|-------|
-| IHM-P1-1 | Preview count antes de confirmar | Exibir `conversations.count` / peers na UI |
-| IHM-P1-2 | Toast + link para inbox destino ao `completed` | Navegação pós-migração |
+| IHM-P1-1 | Preview count antes de confirmar | ✅ |
+| IHM-P1-2 | Toast + link para inbox destino ao `completed` | ✅ |
 | IHM-P1-3 | Detectar migration `running` stale | ✅ Heartbeat > 2h → `failed` (guard + status GET) |
-| IHM-P1-4 | Filtrar destino por provider mais seguro | Ex.: avisar Evolution→Cloud com grupos |
-| IHM-P1-5 | Activity note na conversa mergeada | “History merged from inbox X” |
+| IHM-P1-4 | Filtrar destino por provider mais seguro | ✅ Aviso Evolution→Cloud com grupos |
+| IHM-P1-5 | Activity note na conversa mergeada | ✅ |
 | IHM-P1-6 | Lock pending + running | ✅ `blocking_progress` no guard + job |
 | IHM-P1-7 | Remount/reparent Calls | ✅ Remounter + ConversationMerger |
 
@@ -49,6 +59,7 @@ Pós-MVP. Não bloqueia o uso atual.
 | IHM-P2-6 | Archive cross-channel WA ↔ API | ✅ Remount com identity nativa no destino; outbound não garantido |
 | IHM-P2-4 | Seleção parcial (por data / status) | Expandir além de “caixa inteira” |
 | IHM-P2-5 | Sub-jobs por lote | Inboxes com dezenas de milhares de peers |
+| IHM-P2-8 | Heartbeat por conversa (não só por CI) | Peer único com muitas mensagens pode passar de 2h sem heartbeat |
 | IHM-P2-7 | Archive para Telegram / Email / etc. | Ainda backlog (outros canais) |
 
 ---
@@ -71,4 +82,4 @@ Pós-MVP. Não bloqueia o uso atual.
 
 ---
 
-*Última atualização: 25/jul/2026*
+*Última atualização: 27/jul/2026*

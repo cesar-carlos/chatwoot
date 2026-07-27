@@ -28,7 +28,6 @@ class Custom::Inboxes::HistoryMigrationJob < ApplicationJob
       .blocking_progress
       .for_inbox_ids([migration.source_inbox_id, migration.target_inbox_id])
       .where.not(id: migration.id)
-      .where('id < ?', migration.id) # older row wins
-      .exists?
+      .exists?(['id < ?', migration.id])
   end
 end
