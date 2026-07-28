@@ -33,6 +33,7 @@ describe('useCanAssignToMe', () => {
     accountId = 1,
     teams = [{ id: 7 }],
     inboxes = [{ id: 10 }],
+    inboxesFetching = false,
   } = {}) => {
     useMapGetter.mockImplementation(getter => {
       const values = {
@@ -40,6 +41,7 @@ describe('useCanAssignToMe', () => {
         getCurrentAccountId: accountId,
         'teams/getMyTeams': teams,
         'inboxes/getInboxes': inboxes,
+        'inboxes/getUIFlags': { isFetching: inboxesFetching },
       };
 
       return { value: values[getter] };

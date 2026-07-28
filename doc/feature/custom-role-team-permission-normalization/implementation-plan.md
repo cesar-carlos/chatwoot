@@ -378,13 +378,13 @@ Deliverables:
 ### Frontend Loading and Stale State
 
 - [x] Definir UX esperada para estado sem `userInboxIds` carregado (fail-closed sem confusão de uso)
-- [ ] Evitar flash de conversas indevidas durante hidratação inicial de store
+- [x] Evitar flash de conversas indevidas durante hidratação inicial de store (skip inbox gate enquanto `inboxes/getUIFlags.isFetching`)
 - [ ] Validar atualização correta após troca de conta/usuário sem estado residual
 
 ### Counts, Filters, and Deep Links
 
 - [x] Validar coerência dos contadores (`mine`, `unassigned`, `all`) com a nova regra — `UnreadCounts::Counter` overlay em `custom/`
-- [x] Documentar limitação conhecida: badges de **label** em `:team_unassigned_and_mine` contam apenas conversas atribuídas ao agente (não há chave Redis label+team+unassigned; usar `label_inbox_unassigned` over-contaria outros times)
+- [x] Label badges no modo team via Redis `SINTER(label_inbox_unassigned, team_inbox_unassigned)` + assignee keys (sem chave composta nova)
 - [ ] Validar filtros (`q`, `team_id`, `inbox_id`, `assignee_type`) sem bypass de autorização
 - [ ] Validar acesso direto por URL de conversa (deep link) com policy aplicada corretamente
 
@@ -402,8 +402,10 @@ Deliverables:
 - [x] Backend unread counts (`Conversations::UnreadCounts::Counter`) respeitam `conversation_team_unassigned_manage`
 - [x] Frontend aplica filtro equivalente (`team + inbox`) sem inconsistência
 - [x] Frontend adota fail-closed quando faltar contexto de inbox
+- [x] Frontend permite lista backend-scoped enquanto inboxes ainda estão fetching
 - [ ] Usuário com apenas a nova permissão acessa dashboard sem loop
 - [x] Testes automatizados mínimos (backend + frontend + rota) cobrindo cenários críticos
+- [x] Specs de overlay em `spec/custom/` (policy, permission filter, unread counter)
 - [ ] Consistência backend x frontend validada por cenário e conjunto de IDs
 - [ ] Matriz de regressão de permissões existentes aprovada
 - [x] EN/PT-BR completos para a nova permissão (sem mudanças em outros idiomas)
@@ -414,13 +416,20 @@ Deliverables:
 - [ ] Checklist manual de negócio executado e aprovado
 - [x] Sem erros novos de lint/check nos arquivos alterados
 - [ ] Sem regressão de permissões existentes em homologação
-- [ ] Plano atualizado com status final da entrega (PR4 manual pendente)
+- [x] Plano atualizado com correções pós-review (policy Custom `show?`, label sinter, hydration FE, `spec/custom`)
 
 ## Known Limitations (Documented)
 
-1. **Label unread badges** — Para `conversation_team_unassigned_manage`, contadores por label incluem apenas conversas atribuídas ao agente. Não há chave composta label+team+unassigned no cache Redis; incluir `label_inbox_unassigned` violaria a regra de negócio (contaria não atribuídas de outros times).
-2. **Participating vs assignee no frontend** — `applyRoleFilter` para `conversation_participating_manage` verifica assignee, não participant (comportamento pré-existente; backend policy aceita participant).
-3. **Fail-closed durante hidratação** — Custom roles com `userInboxIds` vazio veem lista vazia até inboxes carregarem (intencional; validar UX em PR4).
+1. **Participating vs assignee no frontend** — `applyRoleFilter` para `conversation_participating_manage` verifica assignee, não participant (comportamento pré-existente; lista de conversas não traz participants no payload; backend policy aceita participant).
+2. **Boot antes do fetch de inboxes iniciar** — Se `isFetching` ainda é `false` e a store de inboxes está vazia antes do dispatch do fetch, o gate continua fail-closed. Após o fetch iniciar (`isFetching: true`), a lista confia no backend até os IDs hidratarem.
+
+## Manual QA Checklist (pós-deploy / homologação)
+
+1. Role só com `conversation_team_unassigned_manage` → dashboard sem lista vazia falsa no boot (enquanto inboxes carregam)
+2. Vê unassigned do próprio time + mine; não vê outros times / sem time / inbox sem acesso
+3. Badges de label coerentes com unassigned do time (SINTER)
+4. Hierarquia: com `conversation_unassigned_manage` junto, prevalece unassigned amplo
+5. Deep link para conversa fora do escopo → 403 / unauthorized
 
 ## Code Quality Improvements (Applied)
 

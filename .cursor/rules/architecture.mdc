@@ -1,5 +1,5 @@
 ---
-description: Layer boundaries, SOLID, composition, and anti-patterns for Rails + Vue
+description: Layer boundaries, access-control surfaces, composition, and anti-patterns for Rails + Vue
 alwaysApply: true
 ---
 
@@ -23,6 +23,20 @@ Pragmatic Rails layering — not a pure DDD split:
 **Transport** — controllers: strong params → authorize → service → JSON; Vue: presentation only, logic in composables or store actions.
 
 **Boundaries** — depend on provider base classes (e.g. `Whatsapp::Providers::BaseService`); new use cases → `app/services/`.
+
+## Access control surfaces
+
+A change to “who can see what” must keep these aligned (or document intentional asymmetry in the PR / feature plan):
+
+- Policy (`show?` / authorize)
+- List filter / finder (API index scope)
+- Counts / badges (unread, sidebar tallies)
+- Frontend gate (store getters, composables, route permissions)
+
+```ruby
+# ❌ update only the policy
+# ✅ policy + list filter + counts + FE gate
+```
 
 ## Anti-patterns
 

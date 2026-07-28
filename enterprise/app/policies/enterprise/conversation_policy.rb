@@ -6,7 +6,6 @@ module Enterprise::ConversationPolicy
     permissions = custom_role_permissions
     return true if manage_all_conversations?(permissions)
     return true if permits_unassigned_manage?(permissions)
-    return true if permits_team_unassigned_manage?(permissions) # FORK: custom role team permission normalization
 
     permits_participating?(permissions)
   end
@@ -21,10 +20,6 @@ module Enterprise::ConversationPolicy
     return false unless permissions.include?('conversation_unassigned_manage')
 
     unassigned_conversation? || assigned_to_user?
-  end
-
-  def permits_team_unassigned_manage?(_permissions)
-    false
   end
 
   def permits_participating?(permissions)

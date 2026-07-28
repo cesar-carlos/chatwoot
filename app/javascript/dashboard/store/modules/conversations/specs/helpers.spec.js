@@ -452,16 +452,32 @@ describe('Conversation Helpers', () => {
         ).toBe(true);
       });
 
-      it('returns false when userInboxIds are not available (fail-closed)', () => {
+      it('returns false when userInboxIds are not available after fetch (fail-closed)', () => {
         expect(
           applyRoleFilter(
             conversationWithoutAssignee,
             role,
             permissions,
             currentUserId,
-            []
+            [],
+            [],
+            false
           )
         ).toBe(false);
+      });
+
+      it('allows conversations while inboxes are still fetching (empty inbox ids)', () => {
+        expect(
+          applyRoleFilter(
+            conversationWithoutAssignee,
+            role,
+            permissions,
+            currentUserId,
+            [],
+            [],
+            true
+          )
+        ).toBe(true);
       });
     });
   });
@@ -478,6 +494,7 @@ describe('Conversation Helpers', () => {
         getCurrentAccountId: 3,
         'teams/getMyTeams': [{ id: 5 }],
         'inboxes/getInboxes': [{ id: 10 }, { id: 11 }],
+        'inboxes/getUIFlags': { isFetching: false },
       };
 
       expect(getRoleFilterContext(rootGetters)).toEqual({
@@ -487,7 +504,20 @@ describe('Conversation Helpers', () => {
         userRole: 'agent',
         userTeams: [{ id: 5 }],
         userInboxIds: [10, 11],
+        inboxesFetching: false,
       });
+    });
+
+    it('marks inboxesFetching when inbox ui flag is set', () => {
+      const rootGetters = {
+        getCurrentUser: { id: 1, accounts: [{ id: 1, permissions: [] }] },
+        getCurrentAccountId: 1,
+        'teams/getMyTeams': [],
+        'inboxes/getInboxes': [],
+        'inboxes/getUIFlags': { isFetching: true },
+      };
+
+      expect(getRoleFilterContext(rootGetters).inboxesFetching).toBe(true);
     });
   });
 });

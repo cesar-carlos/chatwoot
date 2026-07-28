@@ -11,18 +11,18 @@ Rules live in `.cursor/rules/`. `alwaysApply: true` → every session; `globs` �
 
 | Rule | Scope |
 |------|-------|
-| `chatwoot-core.mdc` | MVP approach, naming, errors, commits, i18n, branding |
+| `chatwoot-core.mdc` | MVP approach, naming, errors, commits, i18n (EN + fork pt_BR), branding |
 | `chatwoot-dev-commands.mdc` | Setup, run, seed, lint, test, worktrees |
-| `architecture.mdc` | Layers, anti-patterns, composition, examples |
-| `fork-workflow.mdc` | Branches, `custom/`, FORK markers, merge workflow |
+| `architecture.mdc` | Layers, access-control surfaces, anti-patterns, composition |
+| `fork-workflow.mdc` | Branches, `custom/`, Enterprise-via-Custom, `spec/custom`, FORK markers |
 
 ## File-scoped (3)
 
 | Rule | Globs |
 |------|-------|
 | `ruby-conventions.mdc` | `**/*.rb` |
-| `vue-frontend.mdc` | `**/*.{vue,js,ts}` |
-| `enterprise-edition.mdc` | `{app,enterprise,lib,config}/**/*.{rb,yml}` |
+| `vue-frontend.mdc` | `**/*.{vue,js,ts}` (incl. async membership gates) |
+| `enterprise-edition.mdc` | `{app,enterprise,lib,config}/**/*.{rb,yml}` (fork extensions → `custom/`) |
 
 ## On demand (1)
 

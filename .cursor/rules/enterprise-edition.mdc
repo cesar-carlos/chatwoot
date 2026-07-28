@@ -1,5 +1,5 @@
 ---
-description: Enterprise Edition overlay when editing OSS or enterprise code
+description: Enterprise Edition overlay; fork extensions stay in custom/
 globs: "{app,enterprise,lib,config}/**/*.{rb,yml}"
 alwaysApply: false
 ---
@@ -14,6 +14,7 @@ Before editing: `rg -n "FooService|ControllerName|ModelName" app enterprise`
 
 - Enterprise-only behavior → module via `prepend_mod_with`, not direct OSS edits
 - Enterprise-exclusive features → code under `enterprise/`
+- This fork’s extensions of Enterprise behavior → `custom/` (see `fork-workflow.mdc`); do not dilute `enterprise/` with stubs only for the fork
 - New endpoints/services/models → check Enterprise override or extension point
 - No plan-specific behavior hardcoded in OSS — use config or feature flags
 - Mirror renames/moves in `enterprise/`; specs in `spec/enterprise/`
