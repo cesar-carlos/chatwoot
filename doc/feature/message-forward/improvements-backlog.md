@@ -34,7 +34,7 @@ Pós-MVP. Não bloqueia o uso atual.
 | F-P2-1 | Multi-select de mensagens na timeline | Barra “Forward” estilo WhatsApp Web |
 | F-P2-2 | Encaminhar para outros canais do mesmo account | Regras por channel_type |
 | F-P2-3 | Prefetch / cache de blobs | Evitar re-download se encaminhar de novo |
-| F-P2-4 | Endpoint server-side clone | `POST …/messages/:id/forward` + clone ActiveStorage se fetch browser falhar (CORS) |
+| F-P2-4 | Endpoint server-side clone | **Parcial (28/jul/2026):** clone via `attachment_ids` no `messages#create` + `AttachmentCloneService`. Residual: anexos sem id / URL externa cross-origin (Instagram, S3 direto). Alias-host AS também coberto por `toSameOriginActiveStorageUrl` no fallback fetch |
 
 ---
 
@@ -56,4 +56,4 @@ Pós-MVP. Não bloqueia o uso atual.
 
 ---
 
-*Última atualização: 16/jul/2026*
+*Última atualização: 28/jul/2026*

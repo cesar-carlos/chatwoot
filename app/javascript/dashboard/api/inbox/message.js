@@ -14,6 +14,8 @@ export const buildCreatePayload = ({
   templateParams,
   isVoiceMessage = false,
   sharedContactId,
+  // FORK: pseudo-forward server-side attachment clone
+  attachmentIds,
 }) => {
   let payload;
   if (files && files.length !== 0) {
@@ -38,6 +40,12 @@ export const buildCreatePayload = ({
     if (isVoiceMessage) {
       payload.append('is_voice_message', true);
     }
+    // FORK: pseudo-forward
+    if (attachmentIds?.length) {
+      attachmentIds.forEach(id => {
+        payload.append('attachment_ids[]', id);
+      });
+    }
   } else {
     payload = {
       content: message,
@@ -52,6 +60,10 @@ export const buildCreatePayload = ({
     if (sharedContactId) {
       // FORK: share contact card
       payload.shared_contact_id = sharedContactId;
+    }
+    // FORK: pseudo-forward server-side attachment clone
+    if (attachmentIds?.length) {
+      payload.attachment_ids = attachmentIds;
     }
   }
   return payload;
@@ -75,6 +87,8 @@ class MessageApi extends ApiClient {
     templateParams,
     isVoiceMessage = false,
     sharedContactId,
+    // FORK: pseudo-forward
+    attachment_ids: attachmentIds,
   }) {
     return axios({
       method: 'post',
@@ -91,6 +105,7 @@ class MessageApi extends ApiClient {
         templateParams,
         isVoiceMessage,
         sharedContactId,
+        attachmentIds,
       }),
     });
   }

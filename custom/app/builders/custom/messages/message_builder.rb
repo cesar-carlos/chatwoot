@@ -1,7 +1,8 @@
 module Custom::Messages::MessageBuilder
-  # FORK: share contact card — keep #perform in sync with upstream Messages::MessageBuilder on merge
+  # FORK: share contact card + attachment_ids clone for forward — keep #perform in sync with upstream on merge
   def perform
     assert_wavoip_public_reply_allowed!
+    merge_cloned_attachment_blobs!
 
     @message = @conversation.messages.build(message_params)
     attach_shared_contact_from_crm
@@ -37,6 +38,23 @@ module Custom::Messages::MessageBuilder
       attachments: @attachments,
       user: @user
     ).attach_to(@message)
+  end
+
+  # FORK: pseudo-forward — clone source attachments by id (avoids browser CORS fetch)
+  def merge_cloned_attachment_blobs!
+    ids = attachment_ids_from_params
+    return if ids.blank?
+
+    blobs = Custom::Messages::AttachmentCloneService.new(
+      account: @account,
+      attachment_ids: ids
+    ).perform
+    @attachments = Array.wrap(@attachments) + blobs
+  end
+
+  def attachment_ids_from_params
+    raw = @params[:attachment_ids] || @params['attachment_ids']
+    Array.wrap(raw).compact_blank
   end
 end
 

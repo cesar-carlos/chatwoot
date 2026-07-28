@@ -12,11 +12,11 @@ Inventário do que existe no codebase após o MVP de **pseudo-forward** (16/jul/
 | Gate de canal | Inbox WhatsApp com `provider` ∈ `evolution_go`, `evolution` |
 | Gate de mensagem | Tem `content` e/ou `attachments`; não privada; não failed/progress/deleted |
 | Destinos | Até **5** chats do **mesmo inbox** |
-| Recentes | Até **10** conversas do store (`getAllConversations`) filtradas pelo inbox |
-| Busca | `createContactSearcher()` — contatos com telefone |
-| Texto | Cópia do `content` da origem |
-| Mídia | Download via `data_url` / `download_url` → `File` → `attachments[]` no create |
-| Persistência destino | `MessageApi.create` → `MessageBuilder` → `SendReplyJob` → provider outbound |
+| Recentes | Até **10** conversas do store, ordenadas por `last_activity_at` (não pelo sort da lista) |
+| Busca | Contatos com telefone **ou** grupos WhatsApp (`is_whatsapp_group` / `@g.us`); reachability no inbox |
+| Texto | Cópia do `content` da origem (caption editável no modal) |
+| Mídia | Preferência: `attachment_ids[]` → clone ActiveStorage no servidor; fallback: fetch browser + `toSameOriginActiveStorageUrl` |
+| Persistência destino | `MessageApi.create` → `MessageBuilder` (+ clone) → `SendReplyJob` → provider outbound |
 | Conversão nova | Se contato sem conversa no inbox: `conversations#create` (sem message) + depois create message |
 | Badge dashboard | Chip “Forwarded” quando `content_attributes.forwarded` |
 | Feedback | Toasts sucesso / parcial / falha (EN) |
@@ -34,7 +34,7 @@ Inventário do que existe no codebase após o MVP de **pseudo-forward** (16/jul/
 | Multi-select de mensagens na timeline | Fora do MVP |
 | Cross-inbox / outros canais | Fora do MVP |
 | i18n pt/pt_BR | Regra do fork: só EN |
-| Clone server-side de blobs | MVP faz fetch no browser |
+| Clone server-side de blobs | Feito para anexos com `id` via `attachment_ids` + `AttachmentCloneService`; residual: anexos só com URL externa (sem id / sem AS) |
 
 ---
 
@@ -61,8 +61,10 @@ Metadado gravado na mensagem **enviada** (destino):
 
 | Arquivo | Papel |
 |---------|-------|
-| `custom/app/javascript/dashboard/composables/useMessageForward.js` | Gate, fetch anexos, resolve conversa, loop de create |
+| `custom/app/javascript/dashboard/composables/useMessageForward.js` | Gate, recentes, busca/grupos, clone via `attachment_ids` ou fetch, loop de create |
 | `custom/app/javascript/dashboard/components/forward/MessageForwardModal.vue` | Dialog de destino |
+| `custom/app/services/custom/messages/attachment_clone_service.rb` | Clone ActiveStorage blobs por `attachment_ids` |
+| `custom/app/builders/custom/messages/message_builder.rb` | Merge de blobs clonados antes de `process_attachments` |
 
 ### Thin FORK (upstream)
 
@@ -72,6 +74,7 @@ Metadado gravado na mensagem **enviada** (destino):
 | `app/javascript/dashboard/components-next/message/Message.vue` | `enabledOptions.forward` + `attachments` no payload do menu |
 | `app/javascript/dashboard/components-next/message/bubbles/Base.vue` | Badge Forwarded |
 | `app/javascript/dashboard/i18n/locale/en/conversation.json` | `CONTEXT_MENU.FORWARD` + `CONVERSATION.FORWARD.*` |
+| `app/javascript/dashboard/api/inbox/message.js` | `attachment_ids` no create / FormData |
 
 ### APIs reutilizadas (sem rota nova)
 
@@ -92,6 +95,7 @@ Metadado gravado na mensagem **enviada** (destino):
 | `FORWARD_PROVIDERS` | `evolution_go`, `evolution` | `useMessageForward.js` |
 | `MAX_FORWARD_DESTINATIONS` | `5` | idem |
 | `MAX_RECENT_CONVERSATIONS` | `10` | idem |
+| `MAX_CONTACTABLE_CHECKS` | `20` | idem |
 
 ---
 
@@ -103,4 +107,4 @@ Metadado gravado na mensagem **enviada** (destino):
 
 ---
 
-*Última atualização: 16/jul/2026*
+*Última atualização: 28/jul/2026*
