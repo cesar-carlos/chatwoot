@@ -3,11 +3,13 @@ import ContactAPI from 'dashboard/api/contacts';
 import ConversationApi from 'dashboard/api/conversations';
 import MessageApi from 'dashboard/api/inbox/message';
 import { createPendingMessage } from 'dashboard/helper/commons';
+import { toSameOriginActiveStorageUrl } from 'customDashboard/helper/sameOriginActiveStorageUrl';
 import getUuid from 'widget/helpers/uuid';
 
 export const FORWARD_PROVIDERS = ['evolution_go', 'evolution'];
 export const MAX_FORWARD_DESTINATIONS = 5;
 export const MAX_RECENT_CONVERSATIONS = 10;
+export const MAX_CONTACTABLE_CHECKS = 20;
 export const FORWARDABLE_FILE_TYPES = ['image', 'audio', 'video', 'file'];
 
 export function inboxSupportsForward(inbox) {
@@ -94,7 +96,7 @@ export async function fetchAttachmentFiles(attachments = []) {
       continue;
     }
 
-    const url = attachmentUrl(attachment);
+    const url = toSameOriginActiveStorageUrl(attachmentUrl(attachment));
     if (!url) {
       throw new Error('Attachment URL is missing');
     }
@@ -172,6 +174,11 @@ export function recentConversationsForInbox(
       }
       return true;
     })
+    .sort((a, b) => {
+      const ta = Number(a.last_activity_at ?? a.lastActivityAt ?? 0);
+      const tb = Number(b.last_activity_at ?? b.lastActivityAt ?? 0);
+      return tb - ta;
+    })
     .slice(0, MAX_RECENT_CONVERSATIONS)
     .map(conversation => {
       const meta = conversation.meta || {};
@@ -188,6 +195,41 @@ export function recentConversationsForInbox(
     });
 }
 
+export function isWhatsAppGroupContact(contact) {
+  if (!contact) return false;
+  const attrs =
+    contact.additionalAttributes || contact.additional_attributes || {};
+  if (attrs.isWhatsappGroup || attrs.is_whatsapp_group) return true;
+  const identifier = (contact.identifier || '').toString();
+  return identifier.endsWith('@g.us');
+}
+
+export function isForwardSearchEligibleContact(contact) {
+  return Boolean(
+    contact?.phoneNumber ||
+      contact?.phone_number ||
+      isWhatsAppGroupContact(contact)
+  );
+}
+
+export function conversationIdForContactInInbox(
+  conversations,
+  contactId,
+  inboxId
+) {
+  if (!Array.isArray(conversations) || !contactId || !inboxId) return null;
+
+  const match = conversations.find(conversation => {
+    const convInboxId = conversation.inbox_id ?? conversation.inboxId;
+    const senderId = conversation.meta?.sender?.id;
+    return (
+      Number(convInboxId) === Number(inboxId) &&
+      Number(senderId) === Number(contactId)
+    );
+  });
+  return match?.id || null;
+}
+
 function contactableInboxList(data) {
   const payload = data?.payload || data || [];
   return Array.isArray(payload) ? payload : [];
@@ -200,11 +242,27 @@ export function contactIsReachableOnInbox(contactablePayload, inboxId) {
   });
 }
 
-export async function filterContactsReachableOnInbox(contacts, inboxId) {
+export async function filterContactsReachableOnInbox(
+  contacts,
+  inboxId,
+  { conversations = [] } = {}
+) {
   if (!inboxId || !Array.isArray(contacts) || !contacts.length) return [];
 
+  const known = [];
+  const needCheck = [];
+
+  contacts.forEach(contact => {
+    if (conversationIdForContactInInbox(conversations, contact.id, inboxId)) {
+      known.push(contact);
+    } else {
+      needCheck.push(contact);
+    }
+  });
+
+  const toCheck = needCheck.slice(0, MAX_CONTACTABLE_CHECKS);
   const checks = await Promise.all(
-    contacts.map(async contact => {
+    toCheck.map(async contact => {
       try {
         const { data } = await ContactAPI.getContactableInboxes(contact.id);
         if (!contactIsReachableOnInbox(data, inboxId)) return null;
@@ -215,7 +273,7 @@ export async function filterContactsReachableOnInbox(contacts, inboxId) {
     })
   );
 
-  return checks.filter(Boolean);
+  return [...known, ...checks.filter(Boolean)];
 }
 
 async function findConversationForContact(contactId, inboxId) {
@@ -293,9 +351,18 @@ export async function forwardMessageToDestinations({
       ? contentOverride
       : sourceMessage.content || '';
   const attachments = getForwardableAttachments(sourceMessage);
-  const files = await fetchAttachmentFiles(attachments);
+  const attachmentIds = attachments
+    .map(attachment => attachment.id)
+    .filter(id => id != null && id !== '');
+  const useServerClone =
+    attachments.length > 0 && attachmentIds.length === attachments.length;
 
-  if (!content.trim() && files.length === 0) {
+  let files = [];
+  if (attachments.length > 0 && !useServerClone) {
+    files = await fetchAttachmentFiles(attachments);
+  }
+
+  if (!content.trim() && files.length === 0 && !useServerClone) {
     throw new Error('Nothing to forward');
   }
 
@@ -322,8 +389,11 @@ export async function forwardMessageToDestinations({
         private: false,
         contentAttributes,
         echo_id: echoId,
-        files,
+        files: useServerClone ? [] : files,
       };
+      if (useServerClone) {
+        payload.attachment_ids = attachmentIds;
+      }
 
       if (typeof sendMessage === 'function') {
         await sendMessage(payload);

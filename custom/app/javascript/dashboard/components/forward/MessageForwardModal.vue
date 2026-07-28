@@ -16,6 +16,8 @@ import {
   filterContactsReachableOnInbox,
   isSameDestination,
   getForwardableAttachments,
+  isForwardSearchEligibleContact,
+  conversationIdForContactInInbox,
 } from 'customDashboard/composables/useMessageForward';
 
 const props = defineProps({
@@ -105,28 +107,34 @@ const removeDestination = key => {
   selected.value = selected.value.filter(item => item.key !== key);
 };
 
-const mapContactOption = contact => ({
-  key: `contact:${contact.id}`,
-  contactId: contact.id,
-  conversationId: null,
-  label: contact.name,
-  phoneNumber: contact.phoneNumber || contact.phone_number || '',
-  thumbnail: contact.thumbnail || '',
-  kind: 'contact',
-});
+const mapContactOption = contact => {
+  const conversationId = conversationIdForContactInInbox(
+    allConversations.value || [],
+    contact.id,
+    props.inboxId
+  );
+  return {
+    key: conversationId ? `conversation:${conversationId}` : `contact:${contact.id}`,
+    contactId: contact.id,
+    conversationId,
+    label: contact.name,
+    phoneNumber: contact.phoneNumber || contact.phone_number || '',
+    thumbnail: contact.thumbnail || '',
+    kind: conversationId ? 'conversation' : 'contact',
+  };
+};
 
 const onSearch = debounce(async query => {
   isSearching.value = true;
   try {
-    const results = await searchContacts(query);
+    const results = await searchContacts(query, { reachableOnly: false });
     if (results === null) return;
 
-    const withPhone = (results || []).filter(
-      contact => contact.phoneNumber || contact.phone_number
-    );
+    const eligible = (results || []).filter(isForwardSearchEligibleContact);
     const reachable = await filterContactsReachableOnInbox(
-      withPhone,
-      props.inboxId
+      eligible,
+      props.inboxId,
+      { conversations: allConversations.value || [] }
     );
     searchResults.value = reachable.map(mapContactOption);
   } catch {
