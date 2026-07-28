@@ -25,8 +25,14 @@ const getters = {
     __,
     rootGetters
   ) => {
-    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
-      getRoleFilterContext(rootGetters);
+    const {
+      currentUserId,
+      permissions,
+      userRole,
+      userTeams,
+      userInboxIds,
+      inboxesFetching,
+    } = getRoleFilterContext(rootGetters);
 
     return allConversations
       .filter(conversation => {
@@ -40,7 +46,8 @@ const getters = {
           permissions,
           currentUserId,
           userTeams,
-          userInboxIds
+          userInboxIds,
+          inboxesFetching
         );
 
         return matchesFilterResult && allowedForRole;
@@ -80,6 +87,7 @@ const getters = {
       userRole,
       userTeams,
       userInboxIds,
+      inboxesFetching,
     } = getRoleFilterContext(rootGetters);
 
     return _state.allConversations.filter(conversation => {
@@ -92,7 +100,8 @@ const getters = {
         permissions,
         currentUserID,
         userTeams,
-        userInboxIds
+        userInboxIds,
+        inboxesFetching
       );
 
       return isAssignedToMe && shouldFilter && allowedForRole;
@@ -110,8 +119,14 @@ const getters = {
     return hasAppliedFilters ? filterQueryGenerator(_state.appliedFilters) : [];
   },
   getUnAssignedChats: (_state, _, __, rootGetters) => activeFilters => {
-    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
-      getRoleFilterContext(rootGetters);
+    const {
+      currentUserId,
+      permissions,
+      userRole,
+      userTeams,
+      userInboxIds,
+      inboxesFetching,
+    } = getRoleFilterContext(rootGetters);
 
     return _state.allConversations.filter(conversation => {
       const isUnAssigned = !conversation.meta.assignee;
@@ -122,15 +137,22 @@ const getters = {
         permissions,
         currentUserId,
         userTeams,
-        userInboxIds
+        userInboxIds,
+        inboxesFetching
       );
 
       return isUnAssigned && shouldFilter && allowedForRole;
     });
   },
   getParticipatingChats: (_state, _, __, rootGetters) => activeFilters => {
-    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
-      getRoleFilterContext(rootGetters);
+    const {
+      currentUserId,
+      permissions,
+      userRole,
+      userTeams,
+      userInboxIds,
+      inboxesFetching,
+    } = getRoleFilterContext(rootGetters);
     const getWatchers = rootGetters['conversationWatchers/getByConversationId'];
     return _state.allConversations.filter(conversation => {
       const watchers = getWatchers(conversation.id);
@@ -146,15 +168,22 @@ const getters = {
         permissions,
         currentUserId,
         userTeams,
-        userInboxIds
+        userInboxIds,
+        inboxesFetching
       );
 
       return shouldFilter && allowedForRole;
     });
   },
   getAllStatusChats: (_state, _, __, rootGetters) => activeFilters => {
-    const { currentUserId, permissions, userRole, userTeams, userInboxIds } =
-      getRoleFilterContext(rootGetters);
+    const {
+      currentUserId,
+      permissions,
+      userRole,
+      userTeams,
+      userInboxIds,
+      inboxesFetching,
+    } = getRoleFilterContext(rootGetters);
 
     return _state.allConversations.filter(conversation => {
       const shouldFilter = applyPageFilters(conversation, activeFilters);
@@ -164,7 +193,8 @@ const getters = {
         permissions,
         currentUserId,
         userTeams,
-        userInboxIds
+        userInboxIds,
+        inboxesFetching
       );
 
       return shouldFilter && allowedForRole;

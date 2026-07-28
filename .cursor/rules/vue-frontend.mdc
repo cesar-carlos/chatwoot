@@ -1,5 +1,5 @@
 ---
-description: Vue 3, JavaScript/TypeScript, and Tailwind UI conventions
+description: Vue 3, JS/TS, Tailwind, and async permission/membership context
 globs: "**/*.{vue,js,ts}"
 alwaysApply: false
 ---
@@ -13,6 +13,14 @@ alwaysApply: false
 - PropTypes for props; ESLint (Airbnb + Vue 3 recommended)
 - No bare strings in templates — use i18n (`useI18n`); locale paths in `chatwoot-core.mdc`
 - Business logic in composables or store actions — thin components for presentation
+
+## Async permission / membership context
+
+Gates that depend on store memberships (inboxes, teams, etc.):
+
+- `loading` ≠ `loaded empty` — do not treat an empty list as “no access” while fetch is in flight
+- While `isFetching` (or equivalent) is true, do not fail-closed on empty memberships — trust backend-scoped data or show loading
+- Fail-closed only after fetch completed with no memberships
 
 ## Styling — Tailwind only
 

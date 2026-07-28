@@ -77,16 +77,16 @@ RSpec.describe Conversations::UnreadCounts::Counter do
     other_team = create(:team, account: account, allow_auto_assign: false)
     account_user.update!(custom_role: create(:custom_role, account: account, permissions: ['conversation_team_unassigned_manage']))
     create_unread_conversation(account: account, inbox: inbox, labels: [label.title], assignee: agent, team: team)
-    create_unread_conversation(account: account, inbox: inbox, team: team)
-    create_unread_conversation(account: account, inbox: inbox, team: other_team)
-    create_unread_conversation(account: account, inbox: inbox, team: nil)
+    create_unread_conversation(account: account, inbox: inbox, labels: [label.title], team: team)
+    create_unread_conversation(account: account, inbox: inbox, labels: [label.title], team: other_team)
+    create_unread_conversation(account: account, inbox: inbox, labels: [label.title], team: nil)
     create_unread_conversation(account: account, inbox: inbox, labels: [label.title], assignee: other_agent, team: team)
 
     result = described_class.new(account: account, user: agent).perform
 
     expect(result[:all_count]).to eq(2)
     expect(result[:inboxes]).to eq(inbox.id.to_s => 2)
-    expect(result[:labels]).to eq(label.id.to_s => 1)
+    expect(result[:labels]).to eq(label.id.to_s => 2)
     expect(result[:teams]).to eq(team.id.to_s => 2)
     expect(store.assignment_ready?(account.id)).to be(true)
   end

@@ -1,5 +1,5 @@
 ---
-description: Fork branches, custom overlay, FORK markers, and upstream merge workflow
+description: Fork branches, custom overlay, Enterprise extension via Custom, specs, FORK markers, merge workflow
 alwaysApply: true
 ---
 
@@ -62,6 +62,17 @@ spec/custom/   # mirror layout; run with bundle exec rspec spec/custom/…
 OSS classes already call `SomeModel.prepend_mod_with('SomeModel')` — add `Custom::SomeModel` under `custom/app/models/custom/` with no upstream edit. Code in `custom/` usually needs no `# FORK:` markers.
 
 When upstream has no hook, add the smallest FORK entry point (one route, one scheduler line). Never copy entire upstream files.
+
+## Extending Enterprise features (fork)
+
+- Fork business logic that extends Enterprise behavior → full override in `Custom::X` via `prepend_mod_with` (Custom is last in `ChatwootApp.extensions`, so it wins).
+- Do **not** add stubs or `# FORK:` hooks inside `enterprise/` only to “open a door” for the fork.
+- Last resort: Enterprise model constants/validations that cannot be prepended cleanly (e.g. frozen `PERMISSIONS` arrays) — one marked `# FORK:` line.
+
+## Specs for overlays
+
+- New file under `custom/app/...` → mirror spec under `spec/custom/...` in the **same PR**.
+- Specs in `spec/enterprise/` may exercise the full stack; they do **not** replace Custom overlay coverage.
 
 ## FORK markers & upstream edits
 

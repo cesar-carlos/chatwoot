@@ -87,6 +87,7 @@ export const getRoleFilterContext = rootGetters => {
     userInboxIds: (rootGetters?.['inboxes/getInboxes'] || []).map(
       inbox => inbox.id
     ),
+    inboxesFetching: Boolean(rootGetters?.['inboxes/getUIFlags']?.isFetching),
   };
 };
 
@@ -105,7 +106,8 @@ export const applyRoleFilter = (
   permissions,
   currentUserId,
   userTeams = [],
-  userInboxIds = []
+  userInboxIds = [],
+  inboxesFetching = false
 ) => {
   // the role === "agent" check is typically not correct on it's own
   // the backend handles this by checking the custom_role_id at the user model
@@ -116,8 +118,9 @@ export const applyRoleFilter = (
   }
 
   // FORK: custom role team permission normalization
+  // Empty inbox ids while fetching: trust backend-scoped list. After fetch: fail-closed.
   if (!Array.isArray(userInboxIds) || userInboxIds.length === 0) {
-    return false;
+    return Boolean(inboxesFetching);
   }
 
   const conversationInboxId = Number(

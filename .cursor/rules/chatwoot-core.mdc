@@ -1,5 +1,5 @@
 ---
-description: Core principles, coding hygiene, commits, i18n, and project conventions
+description: Core principles, coding hygiene, commits, i18n (EN + fork pt_BR), and project conventions
 alwaysApply: true
 ---
 
@@ -38,9 +38,11 @@ alwaysApply: true
 
 ## Translations
 
-- Only update English — other languages are community-maintained
-- Backend → `config/locales/en.yml`
-- Dashboard → `app/javascript/dashboard/i18n/locale/en/*.json`
+- Required: English (`en`) — other community locales are not maintained here
+- Fork: `pt_BR` is allowed for fork product strings (dashboard/widget JSON and matching backend copy when needed)
+- Do not update other locales
+- Backend → `config/locales/en.yml` (and `pt_BR` only when the fork string is user-facing there)
+- Dashboard → `app/javascript/dashboard/i18n/locale/en/*.json` (+ `pt_BR` for fork strings)
 - Widget / survey → `app/javascript/{widget,survey}/i18n/locale/en.json`
 
 ## Frontend & branding
