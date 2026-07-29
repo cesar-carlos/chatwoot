@@ -139,6 +139,9 @@
     "READ": "Lido com sucesso",
     "DELIVERED": "Entregue com sucesso",
     "NO_MESSAGES": "Nova Mensagem",
+    "CARD": {
+      "TEAM_TOOLTIP": "Time: {name}"
+    },
     "NO_CONTENT": "Nenhum conteúdo disponível",
     "HIDE_QUOTED_TEXT": "Ocultar Texto Citado",
     "SHOW_QUOTED_TEXT": "Mostrar Texto Citado",

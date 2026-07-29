@@ -183,7 +183,8 @@ Tasks:
 - [x] Confirmar hierarquia oficial de precedência das permissões
 - [x] Confirmar comportamento para conversa sem `team_id` (**decidido: negar**)
 - [x] Confirmar regra mandatória de acesso à inbox (`assigned_inboxes`) em conjunto com a nova permissão (**decidido: gate obrigatório**)
-- [ ] Confirmar se UI do card exibirá nome do time nesta entrega ou fase posterior
+- [x] Confirmar se UI do card exibirá nome do time nesta entrega ou fase posterior
+  (**decidido: exibir no card — Phase 5 implementada**)
 - [x] Registrar decisão final de contrato neste documento
 
 Deliverables:
@@ -272,14 +273,14 @@ Goal: reduzir ambiguidade visual sobre por que a conversa está visível.
 
 Tasks:
 
-- [ ] Decidir com produto se exibição do nome do time entra nesta release
-- [ ] Se aprovado, implementar exibição de time no card de conversa
-- [ ] Ajustar alinhamento/truncamento para evitar overlap com tempo/botões
-- [ ] Validar comportamento em temas light/dark
+- [x] Decidir com produto se exibição do nome do time entra nesta release
+- [x] Se aprovado, implementar exibição de time no card de conversa
+- [x] Ajustar alinhamento/truncamento para evitar overlap com tempo/botões
+- [x] Validar comportamento em temas light/dark
 
 Deliverables:
 
-- (Opcional) Indicação visual de time no card, sem regressão de layout
+- Indicação visual de time no card clássico (meta row: ícone people-team + nome) e no card expandido (ícone + tooltip), via `ConversationCardTeamMeta` fork
 
 ### Phase 6 - Validation, Hardening and Rollout
 

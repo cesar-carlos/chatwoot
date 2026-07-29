@@ -18,6 +18,8 @@ import { useUnreadCount } from 'dashboard/composables/fork/useUnreadCount';
 import ConversationCardForkAvatarBadge from 'dashboard/components/fork/ConversationCardForkAvatarBadge.vue';
 import UnreadCountBadge from 'dashboard/components/fork/UnreadCountBadge.vue';
 import ConversationCardFastAssignButton from 'dashboard/components/fork/ConversationCardFastAssignButton.vue';
+// FORK: custom role team permission normalization - team on conversation card
+import ConversationCardTeamMeta from 'dashboard/components/fork/ConversationCardTeamMeta.vue';
 
 const props = defineProps({
   chat: { type: Object, required: true },
@@ -62,6 +64,8 @@ const assignmeFork =
 
 const {
   assignee: metaAssignee,
+  team: metaTeam,
+  hasTeam,
   showAssignmentButton,
   showAssigneeInMeta,
   messagePreviewPaddingClass,
@@ -97,6 +101,7 @@ const showMetaSection = computed(() => {
     props.showInboxName ||
     (props.showAssignee && props.assignee.name) ||
     showAssigneeInMeta(props.showAssignee) ||
+    hasTeam.value || // FORK: custom role team permission normalization
     props.chat.priority
   );
 });
@@ -330,6 +335,8 @@ watch(
           <span class="mx-0.5">
             {{ $t(`CHAT_LIST.NO_MESSAGES`) }}
           </span>
+          <!-- FORK: custom role team permission normalization -->
+          <ConversationCardTeamMeta :team="metaTeam" variant="label" />
           <CardPriorityIcon
             :priority="chat.priority"
             class="flex-shrink-0 !size-3.5"

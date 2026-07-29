@@ -11,6 +11,10 @@ export const useConversationCardFork = ({
 }) => {
   const assignee = computed(() => unref(chatMetadata).assignee || {});
 
+  // FORK: custom role team permission normalization - team meta for conversation card
+  const team = computed(() => unref(chatMetadata).team || null);
+  const hasTeam = computed(() => Boolean(team.value?.name));
+
   // FORK: assignme - Robust check for unassigned state - treat null, undefined, empty object, or missing id as unassigned
   const isAssigned = computed(() => {
     if (!assignee.value) return false;
@@ -59,6 +63,8 @@ export const useConversationCardFork = ({
 
   return {
     assignee,
+    team,
+    hasTeam,
     showAssignmentButton,
     showAssigneeInMeta,
     messagePreviewPaddingClass,

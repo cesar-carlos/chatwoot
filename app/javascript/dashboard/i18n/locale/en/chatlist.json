@@ -140,6 +140,9 @@
     "READ": "Read successfully",
     "DELIVERED": "Delivered successfully",
     "NO_MESSAGES": "No Messages",
+    "CARD": {
+      "TEAM_TOOLTIP": "Team: {name}"
+    },
     "NO_CONTENT": "No content available",
     "HIDE_QUOTED_TEXT": "Hide Quoted Text",
     "SHOW_QUOTED_TEXT": "Show Quoted Text",

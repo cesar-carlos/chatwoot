@@ -182,7 +182,11 @@
       "CONVERSATION_RESOLVED": "Conversation Resolved",
       "CONVERSATION_OPENED": "Conversation Opened",
       "CONVERSATION_INACTIVITY_THRESHOLD": "Conversation Inactivity Threshold",
-      "CONVERSATION_AGENT_NO_REPLY": "Agent No Reply Threshold"
+      "CONVERSATION_AGENT_NO_REPLY": "Agent No Reply Threshold",
+      "CONVERSATION_FIRST_RESPONSE_OVERDUE": "Never Attended Threshold",
+      "CONVERSATION_UNASSIGNED_TOO_LONG": "Unassigned Too Long Threshold",
+      "CONVERSATION_PENDING_STALE": "Pending Without Activity Threshold",
+      "CONVERSATION_CUSTOMER_NO_REPLY": "Customer No Reply Threshold"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Assign to Agent",

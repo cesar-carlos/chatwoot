@@ -137,7 +137,11 @@
       "CONVERSATION_RESOLVED": "Conversa Resolvida",
       "CONVERSATION_OPENED": "Conversa Aberta",
       "CONVERSATION_INACTIVITY_THRESHOLD": "Limite de inatividade da conversa",
-      "CONVERSATION_AGENT_NO_REPLY": "Limite de agente sem resposta"
+      "CONVERSATION_AGENT_NO_REPLY": "Limite de agente sem resposta",
+      "CONVERSATION_FIRST_RESPONSE_OVERDUE": "Limite de nunca atendida",
+      "CONVERSATION_UNASSIGNED_TOO_LONG": "Limite de conversa sem responsável",
+      "CONVERSATION_PENDING_STALE": "Limite de pendente sem atividade",
+      "CONVERSATION_CUSTOMER_NO_REPLY": "Limite de cliente sem resposta"
     },
     "ACTIONS": {
       "ASSIGN_AGENT": "Atribuir ao Agente",
