@@ -15,6 +15,8 @@ import Icon from 'dashboard/components-next/icon/Icon.vue';
 // FORK: assignme and unread badge fork features
 import ConversationCardFastAssignButton from 'dashboard/components/fork/ConversationCardFastAssignButton.vue';
 import ConversationCardForkAvatarBadge from 'dashboard/components/fork/ConversationCardForkAvatarBadge.vue';
+// FORK: custom role team permission normalization - team on conversation card
+import ConversationCardTeamMeta from 'dashboard/components/fork/ConversationCardTeamMeta.vue';
 import { useUnreadCount } from 'dashboard/composables/fork/useUnreadCount';
 
 const props = defineProps({
@@ -43,6 +45,8 @@ const emit = defineEmits([
 
 const lastMessageInChat = computed(() => getLastMessage(props.chat));
 const showLabelsSection = computed(() => props.chat.labels?.length > 0);
+// FORK: custom role team permission normalization
+const team = computed(() => props.chat?.meta?.team || null);
 
 const voiceCallData = computed(() => {
   const last = lastMessageInChat.value;
@@ -122,6 +126,9 @@ const selectedModel = computed({
           class="size-4 text-n-slate-7"
         />
       </div>
+
+      <!-- FORK: custom role team permission normalization -->
+      <ConversationCardTeamMeta :team="team" variant="icon" />
 
       <div class="w-4 flex items-center justify-center flex-shrink-0">
         <CardStatusIcon :status="chat.status" show-empty />

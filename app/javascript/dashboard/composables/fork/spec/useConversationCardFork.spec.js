@@ -4,13 +4,14 @@ import { useConversationCardFork } from '../useConversationCardFork';
 describe('useConversationCardFork', () => {
   const buildFork = ({
     assignee = null,
+    team = null,
     canAssignToMe = true,
     currentUser = { id: 1, name: 'Agent', email: 'a@b.com' },
     isAssignPending = false,
   } = {}) => {
     const emit = vi.fn();
     const chat = ref({ id: 99, unread_count: 0 });
-    const chatMetadata = ref({ assignee });
+    const chatMetadata = ref({ assignee, team });
 
     const fork = useConversationCardFork({
       chat,
@@ -51,12 +52,12 @@ describe('useConversationCardFork', () => {
 
   it('applies consistent bottom padding on conversation cards', () => {
     const { cardBottomPaddingClass } = buildFork();
-    expect(cardBottomPaddingClass).toBe('pb-3');
+    expect(cardBottomPaddingClass).toBe('pb-2.5');
   });
 
   it('keeps bottom padding when the button is hidden', () => {
     const { cardBottomPaddingClass } = buildFork({ assignee: { id: 7 } });
-    expect(cardBottomPaddingClass).toBe('pb-3');
+    expect(cardBottomPaddingClass).toBe('pb-2.5');
   });
 
   it('emits assignAgent with the current user payload', () => {
@@ -85,5 +86,21 @@ describe('useConversationCardFork', () => {
     fastAssign(event);
 
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  it('exposes team meta when conversation has a team', () => {
+    const { team, hasTeam } = buildFork({
+      team: { id: 3, name: 'vendas' },
+    });
+
+    expect(hasTeam.value).toBe(true);
+    expect(team.value).toEqual({ id: 3, name: 'vendas' });
+  });
+
+  it('reports no team when meta.team is missing', () => {
+    const { hasTeam, team } = buildFork();
+
+    expect(hasTeam.value).toBe(false);
+    expect(team.value).toBeNull();
   });
 });
