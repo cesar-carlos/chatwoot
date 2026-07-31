@@ -7,8 +7,12 @@ module Custom::Whatsapp::EvolutionGo::ChatJid
   # addressing WhatsApp actually uses. LID-mode peers must use @lid — a stale
   # @s.whatsapp.net PN (e.g. BR WITH-9 source_id) can fail delivery or silently
   # drop reactions.
+  #
+  # Group chats: prefer @g.us before any @lid so a polluted contact.identifier
+  # cannot rewrite the group conversation to a member LID.
   def for_message(message)
-    lid_from(message) ||
+    group_jid_from_message(message) ||
+      lid_from(message) ||
       jid_from_message_attrs(message) ||
       jid_from_latest_incoming(message) ||
       jid_from_contact(message) ||
@@ -18,10 +22,36 @@ module Custom::Whatsapp::EvolutionGo::ChatJid
   def for_conversation(conversation)
     return if conversation.blank?
 
-    lid_from_conversation(conversation) ||
+    group_jid_from_conversation(conversation) ||
+      lid_from_conversation(conversation) ||
       jid_from_latest_incoming_conversation(conversation) ||
       jid_from_contact_record(conversation.contact) ||
       jid_from_contact_inbox_record(conversation.contact_inbox)
+  end
+
+  def group_jid_from_message(message)
+    candidates = [
+      message.conversation&.contact_inbox&.source_id,
+      message.conversation&.contact&.identifier,
+      jid_from_message_attrs(message),
+      jid_from_contact(message),
+      jid_from_latest_incoming(message)
+    ]
+    candidates.find { |jid| group_jid?(jid) }
+  end
+
+  def group_jid_from_conversation(conversation)
+    candidates = [
+      conversation.contact_inbox&.source_id,
+      conversation.contact&.identifier,
+      jid_from_contact_record(conversation.contact),
+      jid_from_latest_incoming_conversation(conversation)
+    ]
+    candidates.find { |jid| group_jid?(jid) }
+  end
+
+  def group_jid?(jid)
+    Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid.to_s)
   end
 
   def lid_from(message)

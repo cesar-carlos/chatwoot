@@ -97,6 +97,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
       expect(result.dig(:messages, 0, :text, :body)).to eq('Hello from the group!')
       expect(result.dig(:messages, 0, :evolution_go_remote_jid)).to eq('120363012345678901@g.us')
       expect(result.dig(:messages, 0, :evolution_go_participant_jid)).to eq('5511777777777@s.whatsapp.net')
+      expect(result.dig(:messages, 0, :evolution_go_participant_push_name)).to eq('Group Member')
     end
   end
 
@@ -119,6 +120,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
       expect(result.dig(:messages, 0, :text, :body)).to eq('Hello from LID group member!')
       expect(result.dig(:messages, 0, :evolution_go_remote_jid)).to eq('120363012345678901@g.us')
       expect(result.dig(:messages, 0, :evolution_go_participant_jid)).to eq('5511777777777@s.whatsapp.net')
+      expect(result.dig(:messages, 0, :evolution_go_participant_push_name)).to eq('Group Member LID')
     end
   end
 
@@ -148,6 +150,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
       expect(result.dig(:messages, 0, :text, :body)).to eq('Legacy group hello')
       expect(result.dig(:messages, 0, :evolution_go_remote_jid)).to eq('120363012345678901@g.us')
       expect(result.dig(:messages, 0, :evolution_go_participant_jid)).to eq('5511777777777@s.whatsapp.net')
+      expect(result.dig(:messages, 0, :evolution_go_participant_push_name)).to eq('Group Member')
     end
   end
 
@@ -182,6 +185,7 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
       expect(result.dig(:contacts, 0, :wa_id)).to eq('120363012345678901@g.us')
       expect(result.dig(:messages, 0, :evolution_go_remote_jid)).to eq('120363012345678901@g.us')
       expect(result.dig(:messages, 0, :evolution_go_participant_jid)).to eq('5511777777777@s.whatsapp.net')
+      expect(result.dig(:messages, 0, :evolution_go_participant_push_name)).to eq('Group Member')
     end
   end
 

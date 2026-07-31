@@ -32,11 +32,26 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
   end
 
   def set_contact_from_message
+    if whatsapp_group_inbound?
+      set_contact_from_group_message
+      return
+    end
+
     super
-    return if @contact.blank? || whatsapp_group_inbound?
+    return if @contact.blank?
 
     enqueue_evolution_contact_enrichment if evolution_channel?
     enqueue_evolution_go_contact_enrichment if evolution_go_channel?
+  end
+
+  def set_contact_from_group_message
+    contact_params = @processed_params[:contacts]&.first || {}
+    attrs = contact_attributes_from_contact_params(contact_params, remote_jid_from_message)
+    @contact_inbox = find_or_create_contact_inbox(
+      source_ids: [remote_jid_from_message].compact,
+      contact_attributes: attrs
+    )
+    @contact = @contact_inbox&.contact
   end
 
   private
@@ -108,7 +123,9 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
     message = messages_data&.first
     return if message.blank?
 
-    message[:evolution_participant_push_name].presence ||
+    message[:evolution_go_participant_push_name].presence ||
+      message['evolution_go_participant_push_name'].presence ||
+      message[:evolution_participant_push_name].presence ||
       message['evolution_participant_push_name'].presence
   end
 

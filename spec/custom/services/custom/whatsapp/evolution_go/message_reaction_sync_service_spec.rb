@@ -108,6 +108,77 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageReactionSyncService do
     expect(reactions.first['actor_key']).to eq('user:self')
   end
 
+  it 'sends group react with participant jid for inbound targets' do
+    group_jid = '120363012345678901@g.us'
+    contact = conversation.contact
+    contact.update!(phone_number: nil, identifier: group_jid)
+    conversation.contact_inbox.update!(source_id: group_jid)
+    inbound = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :incoming,
+      source_id: 'GROUPTARGET1',
+      content: 'from member',
+      content_attributes: {
+        'evolution_go_remote_jid' => group_jid,
+        'evolution_go_participant_jid' => '5511777777777@s.whatsapp.net'
+      }
+    )
+    user = create(:user, account: account)
+    api = instance_double(Custom::Whatsapp::EvolutionGo::ApiClient)
+    allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:for_channel).and_return(api)
+    allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:raise_unless_success!)
+    expect(api).to receive(:react).with(
+      hash_including(
+        number: group_jid,
+        id: 'GROUPTARGET1',
+        participant: '5511777777777@s.whatsapp.net'
+      )
+    ).and_return(instance_double(HTTParty::Response, success?: true, code: 200, parsed_response: {}))
+
+    Custom::Whatsapp::EvolutionGo::ReactSyncService.new(
+      message: inbound,
+      reaction: '👍',
+      user: user
+    ).perform
+  end
+
+  it 'sends group react with business jid when target is outgoing' do
+    group_jid = '120363012345678901@g.us'
+    channel.update!(
+      phone_number: '+55000abcdef',
+      provider_config: channel.provider_config.merge(
+        'instance_name' => 'FORTEZA-FATURAMENTO-66996950396-1070BEFB08'
+      )
+    )
+    contact = conversation.contact
+    contact.update!(phone_number: nil, identifier: group_jid)
+    conversation.contact_inbox.update!(source_id: group_jid)
+    target.update!(
+      content_attributes: { 'evolution_go_remote_jid' => group_jid }
+    )
+    user = create(:user, account: account)
+    api = instance_double(Custom::Whatsapp::EvolutionGo::ApiClient)
+    allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:for_channel).and_return(api)
+    allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:raise_unless_success!)
+    expect(api).to receive(:react).with(
+      hash_including(
+        number: group_jid,
+        id: 'TARGETMSG1',
+        participant: '5566996950396@s.whatsapp.net',
+        from_me: true
+      )
+    ).and_return(instance_double(HTTParty::Response, success?: true, code: 200, parsed_response: {}))
+
+    Custom::Whatsapp::EvolutionGo::ReactSyncService.new(
+      message: target.reload,
+      reaction: '👍',
+      user: user
+    ).perform
+  end
+
   it 'bumps conversation last_activity_at' do
     conversation.update!(last_activity_at: 1.hour.ago)
     expect do
