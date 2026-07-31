@@ -104,5 +104,36 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ChatJid do
 
       expect(described_class.for_conversation(conversation)).to eq('5511999999999@s.whatsapp.net')
     end
+
+    it 'prefers @g.us contact_inbox over a polluted @lid identifier' do
+      group_jid = '120363012345678901@g.us'
+      contact.update!(identifier: '123456789012345@lid', phone_number: nil)
+      contact_inbox.update!(source_id: group_jid)
+      message.update!(
+        content_attributes: {
+          'evolution_go_remote_jid' => group_jid,
+          'evolution_go_participant_jid' => '5511777777777@s.whatsapp.net'
+        }
+      )
+
+      expect(described_class.for_conversation(conversation)).to eq(group_jid)
+    end
+  end
+
+  it 'prefers @g.us for group send even when contact has @lid identifier' do
+    group_jid = '120363012345678901@g.us'
+    contact.update!(identifier: '123456789012345@lid', phone_number: nil)
+    contact_inbox.update!(source_id: group_jid)
+    outgoing = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      content: 'hello group',
+      content_attributes: {}
+    )
+
+    expect(described_class.for_message(outgoing)).to eq(group_jid)
   end
 end

@@ -185,5 +185,42 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
         )
       )
     end
+
+    it 'quotes group inbound messages using participant jid not @g.us' do
+      group_jid = '120363012345678901@g.us'
+      contact.update!(phone_number: nil, identifier: group_jid)
+      contact_inbox.update!(source_id: group_jid)
+      replied = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :incoming,
+        source_id: 'GROUPIN1',
+        content_attributes: {
+          evolution_go_remote_jid: group_jid,
+          evolution_go_participant_jid: '5511777777777@s.whatsapp.net'
+        }
+      )
+      reply_message = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        content_attributes: { in_reply_to_external_id: replied.source_id }
+      )
+
+      service.send_message(group_jid, reply_message)
+
+      expect(api_client).to have_received(:send_text).with(
+        hash_including(
+          number: group_jid,
+          quoted: {
+            messageId: 'GROUPIN1',
+            participant: '5511777777777@s.whatsapp.net'
+          }
+        )
+      )
+    end
   end
 end

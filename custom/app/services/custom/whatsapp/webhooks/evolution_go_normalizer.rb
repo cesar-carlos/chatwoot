@@ -73,7 +73,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
 
   def enrich_inbound_message_hash!(message_hash, data, key, message_body)
     add_reply_context!(message_hash, data.merge('message' => message_body)) unless unavailable_payload?(data)
-    attach_participant_metadata!(message_hash, key)
+    attach_participant_metadata!(message_hash, key, data)
   end
 
   def wrap_inbound_contacts(key, data, wa_id, message_hash)
@@ -132,11 +132,13 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
                                                      .display_name(remote_jid, fallback: data['pushName'])
   end
 
-  def attach_participant_metadata!(message_hash, key)
+  def attach_participant_metadata!(message_hash, key, data)
     participant = participant_jid_from_key(key)
     return if participant.blank?
 
     message_hash[:evolution_go_participant_jid] = participant
+    push_name = data['pushName'].to_s.strip.presence || data[:pushName].to_s.strip.presence
+    message_hash[:evolution_go_participant_push_name] = push_name if push_name.present?
   end
 
   def participant_jid_from_key(key)

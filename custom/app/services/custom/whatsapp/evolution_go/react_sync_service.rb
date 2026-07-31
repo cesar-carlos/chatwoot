@@ -65,7 +65,39 @@ class Custom::Whatsapp::EvolutionGo::ReactSyncService
   def group_participant
     return unless chat_jid.to_s.include?('@g.us')
 
-    message.content_attributes&.dig('evolution_go_participant_jid').presence
+    participant = message.content_attributes&.dig('evolution_go_participant_jid').presence
+    return participant if participant.present?
+
+    # Reacting to our own group message: WhatsApp expects the business JID.
+    return business_participant_jid if message.outgoing?
+
+    nil
+  end
+
+  def business_participant_jid
+    phone = channel_business_phone
+    return if phone.blank?
+
+    "#{phone}@s.whatsapp.net"
+  end
+
+  # Evolution Go inboxes often keep a placeholder channel phone (+55000…); the real
+  # WhatsApp number is embedded in instance_name (e.g. FORTEZA-…-66996950396-…).
+  def channel_business_phone
+    phone = channel.phone_number.to_s.gsub(/\D/, '')
+    return phone if phone.present? && !phone.start_with?('55000')
+
+    phone_from_instance_name
+  end
+
+  def phone_from_instance_name
+    name = (channel.provider_config || {})['instance_name'].to_s
+    digits = name.scan(/\d{10,13}/).max_by(&:length)
+    return if digits.blank?
+    return digits if digits.start_with?('55') && digits.length >= 12
+    return "55#{digits}" if digits.length.between?(10, 11)
+
+    digits
   end
 
   def apply_local_reaction!

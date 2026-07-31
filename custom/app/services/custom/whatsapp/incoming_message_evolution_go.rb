@@ -3,6 +3,8 @@
 # rubocop:disable Metrics/ModuleLength
 module Custom::Whatsapp::IncomingMessageEvolutionGo
   EVOLUTION_GO_REMOTE_JID_KEY = 'evolution_go_remote_jid'
+  EVOLUTION_GO_PARTICIPANT_JID_KEY = 'evolution_go_participant_jid'
+  EVOLUTION_GO_PARTICIPANT_PUSH_NAME_KEY = 'evolution_go_participant_push_name'
 
   def process_statuses
     return super unless evolution_go_channel?
@@ -80,6 +82,13 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
 
     remote_jid = message[:evolution_go_remote_jid].presence || message['evolution_go_remote_jid'].presence
     attrs[EVOLUTION_GO_REMOTE_JID_KEY] = remote_jid if remote_jid.present?
+
+    participant_jid = message[:evolution_go_participant_jid].presence || message['evolution_go_participant_jid'].presence
+    attrs[EVOLUTION_GO_PARTICIPANT_JID_KEY] = participant_jid if participant_jid.present?
+
+    participant_push_name = message[:evolution_go_participant_push_name].presence ||
+                            message['evolution_go_participant_push_name'].presence
+    attrs[EVOLUTION_GO_PARTICIPANT_PUSH_NAME_KEY] = participant_push_name if participant_push_name.present?
 
     unavailable_type = evolution_go_unavailable_type(message)
     attrs['unavailable_type'] = unavailable_type if unavailable_type.present?

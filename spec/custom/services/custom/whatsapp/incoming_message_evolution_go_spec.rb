@@ -52,6 +52,7 @@ RSpec.describe Custom::Whatsapp::IncomingMessageEvolutionGo do
   it 'enqueues media download after the inbound transaction commits' do
     create(:contact_inbox, inbox: inbox, source_id: '5511999999999')
     normalized = {
+      contacts: [{ profile: { name: 'Alice' }, wa_id: '5511999999999' }],
       messages: [
         {
           from: '5511999999999',
@@ -84,5 +85,43 @@ RSpec.describe Custom::Whatsapp::IncomingMessageEvolutionGo do
     created = inbox.messages.find_by(source_id: 'DOC-ONLY-1')
     expect(created).to be_present
     expect(created.content).to be_blank
+  end
+
+  it 'persists group participant jid and push name on content_attributes' do
+    channel.update!(
+      provider_config: channel.provider_config.merge('ignore_groups' => false)
+    )
+    allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new).and_return(
+      instance_double(Custom::Whatsapp::Evolution::GroupMetadataService, display_name: 'Support Team')
+    )
+    allow(Custom::Whatsapp::Evolution::GroupParticipantService).to receive(:new).and_return(
+      instance_double(Custom::Whatsapp::Evolution::GroupParticipantService, sync!: true)
+    )
+
+    normalized = {
+      contacts: [{ profile: { name: 'Support Team' }, wa_id: '120363012345678901@g.us' }],
+      messages: [
+        {
+          from: '120363012345678901@g.us',
+          id: 'GROUP-IN-1',
+          timestamp: Time.now.to_i.to_s,
+          type: 'text',
+          text: { body: 'Hello group' },
+          evolution_go_remote_jid: '120363012345678901@g.us',
+          evolution_go_participant_jid: '5511777777777@s.whatsapp.net',
+          evolution_go_participant_push_name: 'Group Member'
+        }
+      ]
+    }
+
+    Whatsapp::IncomingMessageService.new(inbox: inbox, params: normalized).perform
+
+    created = inbox.messages.find_by(source_id: 'GROUP-IN-1')
+    aggregate_failures do
+      expect(created).to be_present
+      expect(created.content_attributes['evolution_go_remote_jid']).to eq('120363012345678901@g.us')
+      expect(created.content_attributes['evolution_go_participant_jid']).to eq('5511777777777@s.whatsapp.net')
+      expect(created.content_attributes['evolution_go_participant_push_name']).to eq('Group Member')
+    end
   end
 end

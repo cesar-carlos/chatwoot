@@ -36,8 +36,12 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
       return business_participant_jid
     end
 
+    # Group quotes need the member JID; evolution_go_remote_jid is the @g.us chat.
+    participant = original&.content_attributes&.dig('evolution_go_participant_jid').presence
+    return participant if participant.present?
+
     jid = original&.content_attributes&.dig('evolution_go_remote_jid').presence
-    return jid if jid.present?
+    return jid if jid.present? && !jid.to_s.end_with?('@g.us')
 
     delivery_jid(phone_number, original)
   end
