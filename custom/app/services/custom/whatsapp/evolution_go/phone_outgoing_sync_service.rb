@@ -188,28 +188,6 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   end
 
   def protocol_only_message?(canonical)
-    message = (canonical['message'] || canonical[:message] || {}).with_indifferent_access
-    return false if message.blank?
-    return true if secret_encrypted_edit_only?(message)
-
-    protocol_mutation_only?(message)
-  end
-
-  def protocol_mutation_only?(message)
-    substantive_keys = message.keys.map(&:to_s) - %w[messageContextInfo]
-    return false unless substantive_keys == %w[protocolMessage]
-
-    protocol = message[:protocolMessage].to_h.with_indifferent_access
-    Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.revoke_type?(protocol[:type]) ||
-      Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.revoke_type?(protocol[:typeName]) ||
-      Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.edit_type?(protocol[:type]) ||
-      Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.edit_type?(protocol[:typeName])
-  end
-
-  def secret_encrypted_edit_only?(message)
-    return false if message[:secretEncryptedMessage].blank?
-
-    substantive = message.keys.map(&:to_s) - %w[messageContextInfo secretEncryptedMessage]
-    substantive.empty?
+    Custom::Whatsapp::EvolutionGo::ProtocolNoise.protocol_only?(canonical)
   end
 end

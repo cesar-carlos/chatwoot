@@ -30,14 +30,16 @@ class Custom::Whatsapp::EvolutionGo::PresenceSyncService
   end
 
   def presence_peer
-    phone = conversation.contact&.phone_number.to_s.gsub(/\D/, '')
-    return phone if phone.present?
+    Custom::Whatsapp::EvolutionGo::ChatJid.for_conversation(conversation).presence ||
+      fallback_peer_from_source_id
+  end
 
+  def fallback_peer_from_source_id
     source_id = conversation.contact_inbox&.source_id.to_s
     return source_id if source_id.include?('@')
 
     digits = source_id.gsub(/\D/, '')
-    digits.presence
+    digits.presence || conversation.contact&.phone_number.to_s.gsub(/\D/, '').presence
   end
 
   def api_client

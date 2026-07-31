@@ -463,4 +463,55 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     expect(result[:messages].first[:type]).to eq('text')
     expect(result[:messages].first[:text][:body]).to eq('Yes, please')
   end
+
+  it 'skips protocolMessage-only payloads without inventing English text' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'PROTO-NOISE-1',
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'protocolMessage' => {
+            'type' => 3,
+            'typeName' => 'EPHEMERAL_SETTING'
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    expect(result).to be_nil
+  end
+
+  it 'maps unknown *Message envelopes to unsupported type (not English placeholder)' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'POLL-1',
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'pollCreationMessage' => {
+            'name' => 'Lunch?'
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    aggregate_failures do
+      expect(result[:messages].first[:type]).to eq('unsupported')
+      expect(result[:messages].first[:text]).to be_nil
+      expect(result[:messages].first[:id]).to eq('POLL-1')
+    end
+  end
 end

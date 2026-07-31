@@ -5,16 +5,17 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
 
   def send_message(phone_number, message)
     @message = message
+    destination = outbound_destination(phone_number, message)
     if contact_attachment?(message)
-      send_contact_card_message(phone_number, message)
+      send_contact_card_message(destination, message)
     elsif location_attachment?(message)
-      send_location_message(phone_number, message)
+      send_location_message(destination, message)
     elsif message.attachments.present?
-      send_attachment_message(phone_number, message)
+      send_attachment_message(destination, message)
     elsif input_select_items(message).present?
-      send_input_select_message(phone_number, message)
+      send_input_select_message(destination, message)
     else
-      send_text_message(phone_number, message)
+      send_text_message(destination, message)
     end
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     fail_message_with_network_error!(message, e)
