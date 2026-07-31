@@ -396,6 +396,34 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     expect(inbox.messages.where(content: '[Unsupported message type]')).to be_empty
   end
 
+  it 'skips leftover protocolMessage-only MESSAGE events without creating a bubble' do
+    job_payload = {
+      'event' => 'MESSAGE',
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id,
+      'data' => {
+        'Info' => {
+          'ID' => 'PROTO-NOISE-JOB-1',
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'protocolMessage' => {
+            'type' => 3,
+            'typeName' => 'EPHEMERAL_SETTING'
+          }
+        }
+      }
+    }
+
+    expect do
+      Webhooks::WhatsappEventsJob.perform_now(job_payload)
+    end.not_to change(Message, :count)
+
+    expect(inbox.messages.where(content: '[Unsupported message type]')).to be_empty
+  end
+
   it 'processes SEND_MESSAGE revoke even when ignore_from_me_echo is enabled' do
     config = channel.provider_config.merge('ignore_from_me_echo' => true)
     channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations

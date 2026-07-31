@@ -32,6 +32,20 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
 
   describe '#send_message' do
     let(:api_client) { instance_double(Custom::Whatsapp::EvolutionGo::ApiClient) }
+    let(:inbox) { channel.inbox }
+    let(:contact) do
+      create(
+        :contact,
+        account: account,
+        phone_number: '+5551926346969',
+        additional_attributes: {
+          Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY =>
+            '555126346969@s.whatsapp.net'
+        }
+      )
+    end
+    let(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5551926346969') }
+    let(:conversation) { create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox) }
 
     before do
       allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:for_channel).and_return(api_client)
@@ -43,31 +57,66 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
       )
     end
 
+    it 'sends to contact stored WITHOUT-9 remote_jid instead of WITH-9 source_id' do
+      outgoing = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        content: 'hello'
+      )
+
+      service.send_message('5551926346969', outgoing)
+
+      expect(api_client).to have_received(:send_text).with(
+        hash_including(number: '555126346969@s.whatsapp.net')
+      )
+    end
+
+    it 'sets formatJid when destination is @lid' do
+      contact.update!(identifier: '123456789012345@lid')
+      outgoing = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        content: 'hello'
+      )
+
+      service.send_message('5551926346969', outgoing)
+
+      expect(api_client).to have_received(:send_text).with(
+        hash_including(number: '123456789012345@lid', format_jid: true)
+      )
+    end
+
     it 'includes quoted context when replying' do
       replied = create(
         :message,
         account: account,
-        inbox: message.inbox,
-        conversation: message.conversation,
+        inbox: inbox,
+        conversation: conversation,
         message_type: :incoming,
         source_id: 'INCOMING1',
-        content_attributes: { evolution_go_remote_jid: '5511999999999@s.whatsapp.net' }
+        content_attributes: { evolution_go_remote_jid: '555126346969@s.whatsapp.net' }
       )
       reply_message = create(
         :message,
         account: account,
-        inbox: message.inbox,
-        conversation: message.conversation,
+        inbox: inbox,
+        conversation: conversation,
         content_attributes: { in_reply_to_external_id: replied.source_id }
       )
 
-      service.send_message('5511999999999', reply_message)
+      service.send_message('5551926346969', reply_message)
 
       expect(api_client).to have_received(:send_text).with(
         hash_including(
           quoted: {
             messageId: 'INCOMING1',
-            participant: '5511999999999@s.whatsapp.net'
+            participant: '555126346969@s.whatsapp.net'
           }
         )
       )
@@ -84,21 +133,21 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
       own = create(
         :message,
         account: account,
-        inbox: message.inbox,
-        conversation: message.conversation,
+        inbox: inbox,
+        conversation: conversation,
         message_type: :outgoing,
         source_id: 'OUTGOING1',
-        content_attributes: { evolution_go_remote_jid: '5511999999999@s.whatsapp.net' }
+        content_attributes: { evolution_go_remote_jid: '555126346969@s.whatsapp.net' }
       )
       reply_message = create(
         :message,
         account: account,
-        inbox: message.inbox,
-        conversation: message.conversation,
+        inbox: inbox,
+        conversation: conversation,
         content_attributes: { in_reply_to_external_id: own.source_id }
       )
 
-      service.send_message('5511999999999', reply_message)
+      service.send_message('5551926346969', reply_message)
 
       expect(api_client).to have_received(:send_text).with(
         hash_including(
@@ -110,12 +159,12 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
       )
     end
 
-    it 'sends location attachments via send_location' do
+    it 'sends location attachments via send_location to ChatJid destination' do
       location_message = create(
         :message,
         account: account,
-        inbox: message.inbox,
-        conversation: message.conversation
+        inbox: inbox,
+        conversation: conversation
       )
       location_message.attachments.create!(
         account: account,
@@ -125,11 +174,11 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
         fallback_title: 'São Paulo'
       )
 
-      service.send_message('5511999999999', location_message)
+      service.send_message('5551926346969', location_message)
 
       expect(api_client).to have_received(:send_location).with(
         hash_including(
-          number: '5511999999999',
+          number: '555126346969@s.whatsapp.net',
           latitude: -23.55,
           longitude: -46.63,
           name: 'São Paulo'

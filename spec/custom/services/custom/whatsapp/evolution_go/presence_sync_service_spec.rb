@@ -24,12 +24,30 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::PresenceSyncService do
     allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:for_channel).and_return(api_client)
   end
 
-  it 'sends composing presence for 1:1 conversations' do
+  it 'sends composing presence using ChatJid from contact_inbox' do
     contact = create(:contact, account: account, phone_number: '+5511999999999')
     contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511999999999')
     conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
 
-    expect(api_client).to receive(:set_presence).with(number: '5511999999999', state: 'composing')
+    expect(api_client).to receive(:set_presence).with(
+      number: '5511999999999@s.whatsapp.net',
+      state: 'composing'
+    )
+
+    described_class.new(conversation: conversation, typing_on: true).perform
+  end
+
+  it 'prefers contact @lid for presence' do
+    contact = create(
+      :contact,
+      account: account,
+      phone_number: '+5511999999999',
+      identifier: '123456789012345@lid'
+    )
+    contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: '5511999999999')
+    conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+
+    expect(api_client).to receive(:set_presence).with(number: '123456789012345@lid', state: 'composing')
 
     described_class.new(conversation: conversation, typing_on: true).perform
   end

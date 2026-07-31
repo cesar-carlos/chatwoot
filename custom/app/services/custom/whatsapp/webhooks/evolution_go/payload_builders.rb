@@ -65,23 +65,22 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     body = extract_text_body(message)
     return 'text' if body.present?
 
-    return 'text' if unsupported_placeholder(message).present?
+    # Named placeholders ([List message], [AI message]) stay as text.
+    return 'text' if named_unsupported_placeholder(message).present?
 
-    Rails.logger.info("[EVOLUTION_GO] unsupported inbound message keys=#{message.keys.join(',')}")
+    if catch_all_unsupported_keys?(message)
+      log_unsupported_inbound(message, action: 'unsupported')
+      return 'unsupported'
+    end
+
+    log_unsupported_inbound(message, action: 'skipped_blank_type')
     nil
   end
 
   def build_message_hash(data, wa_id, message_type, key)
     return nil if wa_id.blank?
+    return nil if message_type.blank?
 
-    if message_type.blank?
-      message_type = 'text'
-      data = data.merge(
-        'message' => (data['message'] || data[:message] || {}).merge(
-          'conversation' => '[Unsupported message type]'
-        )
-      )
-    end
     remote_jid = group_remote_jid(key, wa_id)
     message_hash = {
       from: wa_id,
@@ -107,6 +106,8 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
       apply_location_payload!(message_hash, data)
     when 'contacts'
       apply_contacts_payload!(message_hash, data)
+    when 'unsupported'
+      true
     else
       false
     end
@@ -275,24 +276,50 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   end
 
   def unsupported_placeholder(message)
+    named_unsupported_placeholder(message)
+  end
+
+  def named_unsupported_placeholder(message)
     return nil if message.blank?
 
     message = message.with_indifferent_access
     return nil if message['reactionMessage'].present?
+    return nil if message['protocolMessage'].present?
 
     type_key = UNSUPPORTED_TYPE_PLACEHOLDERS.keys.find { |key| message[key].present? }
     return UNSUPPORTED_TYPE_PLACEHOLDERS[type_key] if type_key
 
-    # Wrappers should already be unwrapped by EvolutionGoPayloadAdapter; if they
-    # remain, skip the generic placeholder so callers can retry unwrap.
-    return nil if message.key?('viewOnceMessageV2') ||
-                  message.key?('viewOnceMessage') ||
-                  message.key?('viewOnceMessageV2Extension') ||
-                  message.key?('ephemeralMessage') ||
-                  message.key?('documentWithCaptionMessage') ||
-                  message.key?('secretEncryptedMessage')
+    nil
+  end
 
-    message.keys.any? { |key| key.to_s.end_with?('Message') } ? '[Unsupported message type]' : nil
+  def catch_all_unsupported_keys?(message)
+    return false if message.blank?
+
+    message = message.with_indifferent_access
+    return false if message['reactionMessage'].present?
+    return false if message['protocolMessage'].present?
+    return false if named_unsupported_placeholder(message).present?
+
+    # Wrappers should already be unwrapped by EvolutionGoPayloadAdapter; if they
+    # remain, skip so callers can retry unwrap (do not invent a bubble).
+    return false if message.key?('viewOnceMessageV2') ||
+                    message.key?('viewOnceMessage') ||
+                    message.key?('viewOnceMessageV2Extension') ||
+                    message.key?('ephemeralMessage') ||
+                    message.key?('documentWithCaptionMessage') ||
+                    message.key?('secretEncryptedMessage')
+
+    message.keys.any? { |key| key.to_s.end_with?('Message') }
+  end
+
+  def log_unsupported_inbound(message, action:)
+    message = (message || {}).with_indifferent_access
+    protocol = (message['protocolMessage'] || {}).with_indifferent_access
+    Rails.logger.info(
+      "[EVOLUTION_GO] unsupported inbound action=#{action} " \
+      "channel=#{channel&.id} keys=#{message.keys.join(',')} " \
+      "protocol_type=#{protocol['type'] || protocol['typeName']}"
+    )
   end
 
   def apply_location_payload!(message_hash, data)

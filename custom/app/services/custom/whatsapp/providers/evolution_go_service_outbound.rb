@@ -68,6 +68,12 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     digits
   end
 
+  # Prefer WhatsApp's real chat JID (@lid / WITHOUT-9 PN) over contact_inbox.source_id
+  # (BR WITH-9 after merge_brazil_contacts) — same priority as react/delete/edit.
+  def outbound_destination(phone_number, message)
+    Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message).presence || phone_number
+  end
+
   def delivery_jid(phone_number, context_message = nil)
     stored = context_message&.content_attributes&.dig('evolution_go_remote_jid').presence
     return stored if stored.present?
@@ -85,7 +91,10 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   end
 
   def lid_delivery?(phone_number, message)
-    return true if phone_number.to_s.include?('@lid')
+    return true if phone_number.to_s.end_with?('@lid')
+
+    resolved = Custom::Whatsapp::EvolutionGo::ChatJid.for_message(message).to_s
+    return true if resolved.end_with?('@lid')
 
     jid = message&.content_attributes&.dig('evolution_go_remote_jid').to_s
     jid.end_with?('@lid')

@@ -91,6 +91,11 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     end
 
     canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(params[:data])
+    if Custom::Whatsapp::EvolutionGo::ProtocolNoise.protocol_only?(canonical)
+      Custom::Whatsapp::EvolutionGo::ProtocolNoise.log_skip!(channel: channel, data: canonical)
+      return
+    end
+
     key = canonical['key'] || canonical[:key] || {}
 
     if from_me_message?(key)
