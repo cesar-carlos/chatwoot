@@ -105,7 +105,8 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageContentEditService do
   end
 
   it 'strips legacy edited prefix when comparing noop / editing' do
-    message.update_columns(content: "#{described_class::EDITED_PREFIX}legacy body")
+    # Seed legacy content without callbacks that would re-normalize the prefix.
+    message.update_columns(content: "#{described_class::EDITED_PREFIX}legacy body") # rubocop:disable Rails/SkipsModelValidations
 
     described_class.new(message: message, content: 'legacy body').perform
     expect(Custom::Whatsapp::EvolutionGo::EditSyncService).not_to have_received(:new)

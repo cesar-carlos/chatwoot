@@ -149,13 +149,7 @@ const { t } = useI18n();
 const route = useRoute();
 const inboxGetter = useMapGetter('inboxes/getInbox');
 const inbox = computed(() => inboxGetter.value(props.inboxId) || {});
-const isOnChatwootCloud = useMapGetter('globalConfig/isOnChatwootCloud');
 const { replaceInstallationName } = useBranding();
-
-const isCaptainMessage = computed(() => {
-  const senderType = props.sender?.type ?? props.senderType;
-  return senderType === SENDER_TYPES.CAPTAIN_ASSISTANT;
-});
 
 /**
  * Computes the message variant based on props
@@ -482,11 +476,10 @@ function handleReplyTo() {
 
 const avatarInfo = computed(() => {
   if (props.contentAttributes?.externalEcho) {
-    const { name, avatar_url, channel_type, medium, voice_enabled } =
-      inbox.value;
+    const { name, avatar_url, channel_type, medium } = inbox.value;
     const iconName = avatar_url
       ? null
-      : getInboxIconByType(channel_type, medium, 'fill', voice_enabled);
+      : getInboxIconByType(channel_type, medium);
     return {
       name: iconName ? '' : name || t('CONVERSATION.NATIVE_APP'),
       src: avatar_url || '',

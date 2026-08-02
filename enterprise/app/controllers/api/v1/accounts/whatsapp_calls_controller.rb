@@ -132,7 +132,7 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   # 422 (not 200) so clients treating 2xx as "call placed" can't mistake the
   # permission-template path for a successful dial.
   def handle_no_call_permission
-    status = Whatsapp::CallPermissionRequestService.new(
+    Whatsapp::CallPermissionRequestService.new(
       conversation: @conversation, agent: Current.user
     ).perform
 

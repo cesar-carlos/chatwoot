@@ -22,7 +22,7 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
       raise_or_skip!('Message cannot be synced to WhatsApp')
       return false
     end
-    unless chat_jid.present?
+    if chat_jid.blank?
       raise_or_skip!('Chat JID is required')
       return false
     end

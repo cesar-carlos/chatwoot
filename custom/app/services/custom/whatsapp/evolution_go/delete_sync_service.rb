@@ -20,10 +20,9 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
   private
 
   def can_sync?
-    unless evolution_go_channel? && sync_delete_enabled? && message.source_id.present? && message.outgoing?
-      return false
-    end
-    unless chat_jid.present?
+    return false unless evolution_go_channel? && sync_delete_enabled? && message.source_id.present? && message.outgoing?
+
+    if chat_jid.blank?
       raise_or_skip!('Chat JID is required')
       return false
     end
@@ -67,7 +66,8 @@ class Custom::Whatsapp::EvolutionGo::DeleteSyncService
     attrs.delete(Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService::DELETED_VIA_KEY)
     columns = { content_attributes: attrs, updated_at: Time.current }
     columns[:content] = restore_content unless restore_content.nil?
-    message.update_columns(columns)
+    # Skip validations: revert a failed remote delete without re-triggering callbacks.
+    message.update_columns(columns) # rubocop:disable Rails/SkipsModelValidations
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION_GO] failed to revert local delete for message #{message.id}: #{e.message}"
   end

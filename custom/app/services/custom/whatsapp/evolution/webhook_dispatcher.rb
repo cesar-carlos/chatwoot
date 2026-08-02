@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- intentional Evolution webhook routing
 class Custom::Whatsapp::Evolution::WebhookDispatcher
   MESSAGE_EVENTS = %w[MESSAGES_UPSERT MESSAGES_UPDATE].freeze
   EDIT_EVENTS = %w[MESSAGES_EDITED SEND_MESSAGE_UPDATE].freeze
@@ -69,6 +70,7 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
     end
   end
 
+  # rubocop:disable Metrics/MethodLength -- reaction / status / from_me / inbound branches
   def process_message_item(channel, params, data_item)
     reaction_payload = Custom::Whatsapp::Evolution::MessageReactionPayloadExtractor
                        .extract_reaction_payload(data_item)
@@ -100,6 +102,7 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
       Custom::Whatsapp::Evolution::InboundMessageProcessor.process(channel, flat_params)
     end
   end
+  # rubocop:enable Metrics/MethodLength
 
   def process_inbound_reaction(channel, reaction_payload)
     sender_id = reaction_payload.dig(:key, :remoteJid) ||
@@ -228,3 +231,5 @@ class Custom::Whatsapp::Evolution::WebhookDispatcher
     )
   end
 end
+
+# rubocop:enable Metrics/ClassLength

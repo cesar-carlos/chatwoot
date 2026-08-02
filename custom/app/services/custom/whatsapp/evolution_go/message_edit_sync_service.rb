@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
   EDITED_PREFIX = "Edited message:\n\n"
 
@@ -65,4 +64,3 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
     )
   end
 end
-# rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity

@@ -343,6 +343,7 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     request(:delete, path, nil, headers: headers)
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity -- HTTP retry / network rescue paths
   def request(method, path, body, headers:, attempt: 0)
     options = {
       headers: headers,
@@ -359,13 +360,14 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     response
   rescue *NETWORK_ERRORS => e
     # Honor NON_RETRYABLE_PATHS for network timeouts too (avatar CDN hangs).
-    return retry_request(method, path, body, headers, attempt) if attempt < MAX_RETRIES && !NON_RETRYABLE_PATHS.include?(path)
+    return retry_request(method, path, body, headers, attempt) if attempt < MAX_RETRIES && NON_RETRYABLE_PATHS.exclude?(path)
 
     raise Custom::Whatsapp::EvolutionGo::ApiError.new(
       "Evolution Go API request failed: #{method.to_s.upcase} #{path}",
       body: e.message
     )
   end
+  # rubocop:enable Metrics/CyclomaticComplexity
 
   def timeout_for(path)
     case path

@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ClassLength -- FORK: contact card + quoted template helpers
 class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseService
   include Whatsapp::ContactDelivery
 
@@ -275,4 +276,5 @@ class Whatsapp::Providers::WhatsappCloudService < Whatsapp::Providers::BaseServi
   end
 end
 
+# rubocop:enable Metrics/ClassLength
 Whatsapp::Providers::WhatsappCloudService.prepend_mod_with('Whatsapp::Providers::WhatsappCloudService')

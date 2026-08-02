@@ -110,7 +110,7 @@ class Custom::Whatsapp::EvolutionGo::ContactsRefreshService
 
   def lock_ttl_for(contact_count)
     paced = (contact_count.to_i * ENQUEUE_SPACING.to_i) + LOCK_TTL_BUFFER
-    [[paced, LOCK_TTL_BUFFER].max, LOCK_TTL_MAX].min
+    paced.clamp(LOCK_TTL_BUFFER, LOCK_TTL_MAX)
   end
 
   def schedule_lock_release!(eta_seconds)

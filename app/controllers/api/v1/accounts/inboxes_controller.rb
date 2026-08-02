@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ClassLength -- FORK: Evolution Go / history migration actions extend this controller
 class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   include Api::V1::InboxesHelper
   # rubocop:disable Rails/LexicallyScopedActionFilter -- evolution_go_server_check lives in custom prepend
@@ -257,4 +258,5 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   end
 end
 
+# rubocop:enable Metrics/ClassLength
 Api::V1::Accounts::InboxesController.prepend_mod_with('Api::V1::Accounts::InboxesController')

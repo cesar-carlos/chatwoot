@@ -46,36 +46,38 @@ const links = computed(() => [
 </script>
 
 <template>
-  <div v-if="isOnChatwootCloud" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
-    <component
-      :is="link.href ? 'a' : RouterLink"
-      v-for="link in links"
-      :key="link.key"
-      :href="link.href"
-      :to="link.to"
-      :target="link.href ? '_blank' : undefined"
-      :rel="link.href ? 'noopener noreferrer' : undefined"
-      class="flex items-center gap-3 p-4 transition-colors border rounded-xl bg-n-solid-1 border-n-weak hover:bg-n-alpha-1 group/link"
-    >
-      <span
-        class="grid rounded-lg size-9 shrink-0 place-content-center bg-n-alpha-2 text-n-slate-11"
+  <div>
+    <div v-if="isOnChatwootCloud" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <component
+        :is="link.href ? 'a' : RouterLink"
+        v-for="link in links"
+        :key="link.key"
+        :href="link.href"
+        :to="link.to"
+        :target="link.href ? '_blank' : undefined"
+        :rel="link.href ? 'noopener noreferrer' : undefined"
+        class="flex items-center gap-3 p-4 transition-colors border rounded-xl bg-n-solid-1 border-n-weak hover:bg-n-alpha-1 group/link"
       >
-        <span :class="link.icon" class="size-4" />
-      </span>
-      <div class="flex flex-col min-w-0">
-        <span class="text-sm font-medium text-n-slate-12">
-          {{ link.title }}
+        <span
+          class="grid rounded-lg size-9 shrink-0 place-content-center bg-n-alpha-2 text-n-slate-11"
+        >
+          <span :class="link.icon" class="size-4" />
         </span>
-        <span class="text-xs truncate text-n-slate-11">
-          {{ link.description }}
-        </span>
-      </div>
-      <span
-        :class="
-          link.href ? 'i-lucide-arrow-up-right' : 'i-lucide-chevron-right'
-        "
-        class="ml-auto transition-opacity opacity-0 size-4 text-n-slate-10 group-hover/link:opacity-100"
-      />
-    </component>
+        <div class="flex flex-col min-w-0">
+          <span class="text-sm font-medium text-n-slate-12">
+            {{ link.title }}
+          </span>
+          <span class="text-xs truncate text-n-slate-11">
+            {{ link.description }}
+          </span>
+        </div>
+        <span
+          :class="
+            link.href ? 'i-lucide-arrow-up-right' : 'i-lucide-chevron-right'
+          "
+          class="ml-auto transition-opacity opacity-0 size-4 text-n-slate-10 group-hover/link:opacity-100"
+        />
+      </component>
+    </div>
   </div>
 </template>

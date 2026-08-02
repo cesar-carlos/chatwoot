@@ -182,7 +182,7 @@ RSpec.describe 'Super Admin accounts API', type: :request do
     end
   end
 
-  describe 'PATCH /super_admin/accounts/{account_id}' do
+  describe 'PATCH /super_admin/accounts/{account_id} feature flags' do
     let(:update_params) do
       {
         account: {

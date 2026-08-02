@@ -272,3 +272,8 @@
   display_name: Delayed Automations
   enabled: false
   column: feature_flags_ext_1
+# FORK: upstream reused insert_article_in_reply bit; append to ext_1 to avoid remapping fork slots
+- name: branded_email_templates
+  display_name: Branded Email Templates
+  enabled: false
+  column: feature_flags_ext_1

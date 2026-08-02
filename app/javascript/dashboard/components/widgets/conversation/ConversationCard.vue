@@ -3,7 +3,6 @@ import { computed, ref, watch, inject } from 'vue';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { getLastMessage } from 'dashboard/helper/conversationHelper';
 import Avatar from 'next/avatar/Avatar.vue';
-import Icon from 'dashboard/components-next/icon/Icon.vue';
 import MessagePreview from './MessagePreview.vue';
 import InboxName from '../InboxName.vue';
 import TimeAgo from 'dashboard/components/ui/TimeAgo.vue';
@@ -106,13 +105,7 @@ const showMetaSection = computed(() => {
   );
 });
 
-const isAgentBotAssignee = computed(
-  () => props.chat?.meta?.assignee_type === 'AgentBot'
-);
-
-const hasSlaPolicyId = computed(
-  () => props.chat?.applied_sla?.id && !props.currentContact?.blocked
-);
+const hasSlaPolicyId = computed(() => props.chat?.sla_policy_id);
 
 const showLabelsSection = computed(() => {
   return props.chat.labels?.length > 0 || hasSlaPolicyId.value;
@@ -215,125 +208,11 @@ watch(
           }"
         >
           <span
-            v-if="showAssignee && assignee.name"
-            class="text-n-slate-11 text-xs font-medium leading-3 py-0.5 px-0 inline-flex items-center gap-px truncate"
+            v-if="showAssignee && metaAssignee.name"
+            class="text-n-slate-11 text-xs font-medium leading-3 py-0.5 px-0 inline-flex items-center truncate"
           >
-            <Icon
-              :icon="
-                isAgentBotAssignee ? 'i-lucide-bot' : 'i-lucide-user-round'
-              "
-              class="size-3 text-n-slate-11 flex-shrink-0"
-            />
-            <span class="truncate">{{ assignee.name }}</span>
-          </span>
-          <CardPriorityIcon
-            :priority="chat.priority"
-            class="flex-shrink-0 !size-3.5"
-          />
-        </div>
-      </div>
-      <h4
-        class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12"
-        :class="hasUnread ? 'font-semibold' : 'font-medium'"
-      >
-        {{ currentContact.name }}
-      </h4>
-      <VoiceCallStatus
-        v-if="voiceCallData.status"
-        key="voice-status-row"
-        :status="voiceCallData.status"
-        :direction="voiceCallData.direction"
-        :message-preview-class="messagePreviewClass"
-      />
-      <MessagePreview
-        v-else-if="lastMessageInChat"
-        key="message-preview"
-        :message="lastMessageInChat"
-        class="my-0 mx-2 leading-6 h-6 flex-1 min-w-0 text-sm"
-        :class="messagePreviewClass"
-      />
-      <p
-        v-else
-        key="no-messages"
-        class="text-n-slate-11 text-sm my-0 mx-2 leading-6 h-6 flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-        :class="messagePreviewClass"
-      >
-        <fluent-icon
-          size="16"
-          class="-mt-0.5 align-middle inline-block text-n-slate-10"
-          icon="info"
-        />
-        <span class="mx-0.5">
-          {{ $t(`CHAT_LIST.NO_MESSAGES`) }}
-        </span>
-      </p>
-      <div
-        class="absolute flex flex-col ltr:right-3 rtl:left-3"
-        :class="showMetaSection ? 'top-8' : 'top-4'"
-      >
-        <span class="ml-auto font-normal leading-4 text-xxs">
-          <TimeAgo
-            :last-activity-timestamp="chat.timestamp"
-            :created-at-timestamp="chat.created_at"
-            :conversation-id="chat.id"
-          />
-        </span>
-        <UnreadBadge
-          v-if="hasUnread"
-          :count="unreadCount"
-          class="ltr:ml-auto rtl:mr-auto mt-1"
-        />
-        <button
-          v-show="showAssignmentButton"
-          :key="`assign-btn-${chat.id}-${assignee?.id || 'unassigned'}`"
-          v-tooltip.bottom="$t('CONVERSATION.FAST_ASSIGN')"
-          type="button"
-          class="mt-1 ltr:ml-auto rtl:mr-auto bg-n-slate-5 dark:bg-n-slate-7 text-n-slate-12 text-xxs px-1.5 py-0.5 rounded font-medium transition-all duration-200 hover:bg-n-slate-6 dark:hover:bg-n-slate-8"
-          :class="{ 'opacity-70 pointer-events-none': isAssignPending }"
-          :disabled="isAssignPending"
-          :aria-label="$t('CONVERSATION.FAST_ASSIGN')"
-          @click="fastAssign($event)"
-        >
-          <template v-if="isAssignPending">
-            <Spinner
-              :size="10"
-              class="text-n-slate-12 ltr:mr-1 rtl:ml-1 inline-block"
-            />
-          </div>
-        </div>
-        <h4
-          class="conversation--user text-sm my-0 mx-2 capitalize pt-0.5 text-ellipsis overflow-hidden whitespace-nowrap flex-1 min-w-0 ltr:pr-16 rtl:pl-16 text-n-slate-12"
-          :class="hasUnread ? 'font-semibold' : 'font-medium'"
-        >
-          {{ resolvedContact.name }}
-        </h4>
-        <VoiceCallStatus
-          v-if="voiceCallData.status"
-          key="voice-status-row"
-          :status="voiceCallData.status"
-          :direction="voiceCallData.direction"
-          :message-preview-class="messagePreviewClass"
-        />
-        <MessagePreview
-          v-else-if="lastMessageInChat"
-          key="message-preview"
-          :message="lastMessageInChat"
-          class="my-0 mx-2 leading-6 h-6 flex-1 min-w-0 text-sm"
-          :class="messagePreviewClass"
-        />
-        <p
-          v-else
-          key="no-messages"
-          class="text-n-slate-11 text-sm my-0 mx-2 leading-6 h-6 flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap"
-          :class="messagePreviewClass"
-        >
-          <fluent-icon
-            size="16"
-            class="-mt-0.5 align-middle inline-block text-n-slate-10"
-            icon="info"
-          />
-          <span class="mx-0.5">
-            {{ $t(`CHAT_LIST.NO_MESSAGES`) }}
+            <fluent-icon icon="person" size="12" class="text-n-slate-11" />
+            {{ metaAssignee.name }}
           </span>
           <!-- FORK: custom role team permission normalization -->
           <ConversationCardTeamMeta :team="metaTeam" variant="label" />

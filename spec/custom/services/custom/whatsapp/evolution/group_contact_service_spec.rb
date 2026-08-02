@@ -94,7 +94,7 @@ RSpec.describe Custom::Whatsapp::Evolution::GroupContactService do
         .with(channel: channel)
         .and_return(metadata)
       expect(metadata).to receive(:display_name).with(group_jid, fallback: nil)
-        .and_return('120363123456789012')
+                                                .and_return('120363123456789012')
 
       contact_inbox = service.find_or_create_contact_inbox!
 

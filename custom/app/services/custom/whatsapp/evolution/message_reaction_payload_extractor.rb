@@ -3,6 +3,7 @@
 module Custom::Whatsapp::Evolution::MessageReactionPayloadExtractor
   module_function
 
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- webhook shape variants
   def extract_reaction_payload(data)
     data = unwrap_message((data || {}).with_indifferent_access)
     message = (data[:message] || {}).with_indifferent_access
@@ -24,6 +25,7 @@ module Custom::Whatsapp::Evolution::MessageReactionPayloadExtractor
       participant: envelope_key&.dig(:participant) || target_key[:participant]
     }.compact
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def unwrap_message(data)
     message = data[:message]

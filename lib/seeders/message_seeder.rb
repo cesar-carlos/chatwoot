@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ModuleLength -- seed content fixtures
 module Seeders::MessageSeeder
   def self.create_sample_email_collect_message(conversation)
     Message.create!(
@@ -121,3 +122,4 @@ module Seeders::MessageSeeder
     )
   end
 end
+# rubocop:enable Metrics/ModuleLength

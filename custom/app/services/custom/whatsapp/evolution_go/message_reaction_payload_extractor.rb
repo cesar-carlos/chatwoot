@@ -3,6 +3,7 @@
 module Custom::Whatsapp::EvolutionGo::MessageReactionPayloadExtractor
   module_function
 
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity -- webhook shape variants
   def extract_reaction_payload(data)
     canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
     raw = (data || {}).with_indifferent_access
@@ -30,6 +31,7 @@ module Custom::Whatsapp::EvolutionGo::MessageReactionPayloadExtractor
       participant: envelope_key&.dig(:participant) || target_key[:participant]
     }.compact
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
   def reaction_text(reaction)
     value = Custom::Whatsapp::EvolutionGo::FieldDig.dig_field(reaction, 'text', 'Text')

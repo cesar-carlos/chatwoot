@@ -39,6 +39,7 @@ class Custom::Whatsapp::Evolution::GroupParticipantService
     contact
   end
 
+  # rubocop:disable Metrics/MethodLength -- Evolution Go vs Evolution Node branch
   def enqueue_enrichment_for(contact)
     if evolution_go_channel?
       return unless Custom::Whatsapp::EvolutionGo::ContactEnrichmentService.should_enqueue?(
@@ -67,6 +68,7 @@ class Custom::Whatsapp::Evolution::GroupParticipantService
       { remote_jid: participant_jid, push_name: push_name }.compact
     )
   end
+  # rubocop:enable Metrics/MethodLength
 
   def evolution_go_channel?
     channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'

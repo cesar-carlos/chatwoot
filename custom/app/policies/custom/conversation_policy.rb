@@ -1,4 +1,5 @@
 module Custom::ConversationPolicy
+  # rubocop:disable Metrics/CyclomaticComplexity -- custom-role permission matrix
   def show?
     return false unless administrator? || agent_bot? || agent_can_view_conversation?
     return true unless custom_role_permissions?
@@ -10,6 +11,7 @@ module Custom::ConversationPolicy
 
     permits_participating?(permissions)
   end
+  # rubocop:enable Metrics/CyclomaticComplexity
 
   private
 

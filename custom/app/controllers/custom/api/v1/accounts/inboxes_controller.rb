@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength -- intentional Evolution Go/Wavoip fork overlay
 module Custom::Api::V1::Accounts::InboxesController
   extend ActiveSupport::Concern
 
@@ -718,3 +719,5 @@ module Custom::Api::V1::Accounts::InboxesController
     channel.is_a?(Channel::Wavoip) && channel.voice_enabled?
   end
 end
+
+# rubocop:enable Metrics/ModuleLength
