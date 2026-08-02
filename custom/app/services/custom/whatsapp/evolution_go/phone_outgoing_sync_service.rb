@@ -26,30 +26,33 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   private
 
   def process_sync!(canonical, key)
-    normalized = Custom::Whatsapp::Webhooks::EvolutionGoNormalizer.new(
-      channel,
-      { 'event' => 'MESSAGE', 'data' => canonical }
-    ).perform
-    message_data = normalized&.dig(:messages, 0)
+    message_data = normalize_outgoing_message(canonical)
     content = outgoing_content(canonical, message_data)
-    if content.blank? && !outgoing_media_message?(message_data)
-      Rails.logger.warn(
-        "[EVOLUTION_GO] phone-outgoing blank content: source=#{key['id'] || key[:id]} " \
-        "jid=#{key['remoteJid'] || key[:remoteJid]}"
-      )
-      release_dedup_lock!
-      return
-    end
+    return abort_blank_outgoing!(key) if content.blank? && !outgoing_media_message?(message_data)
 
     contact_inbox = find_or_create_contact_inbox(key)
-    if contact_inbox.blank?
-      release_dedup_lock!
-      return
-    end
+    return release_dedup_lock! if contact_inbox.blank?
 
     message = create_outgoing_message!(contact_inbox, key, content, canonical)
     enqueue_outgoing_media_download!(message, message_data) if message_data.present?
     message
+  end
+
+  def normalize_outgoing_message(canonical)
+    normalized = Custom::Whatsapp::Webhooks::EvolutionGoNormalizer.new(
+      channel,
+      { 'event' => 'MESSAGE', 'data' => canonical }
+    ).perform
+    normalized&.dig(:messages, 0)
+  end
+
+  def abort_blank_outgoing!(key)
+    Rails.logger.warn(
+      "[EVOLUTION_GO] phone-outgoing blank content: source=#{key['id'] || key[:id]} " \
+      "jid=#{key['remoteJid'] || key[:remoteJid]}"
+    )
+    release_dedup_lock!
+    nil
   end
 
   def inbox
@@ -89,7 +92,7 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   end
 
   def ignore_groups?
-    ActiveModel::Type::Boolean.new.cast(config['ignore_groups'])
+    config['ignore_groups'] != false
   end
 
   def acquire_dedup_lock!(source_id)

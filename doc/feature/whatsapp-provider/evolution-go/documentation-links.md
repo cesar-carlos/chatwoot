@@ -173,7 +173,7 @@ Configurados em `POST /instance/connect` body `subscribe: []`.
 | `QRCODE` | QR no wizard | 1 |
 | `READ_RECEIPT` | Status read | 2 |
 | `SEND_MESSAGE` | Echo outbound — filtrar | — |
-| `GROUP` | Evento metadata — inbound grupo via `MESSAGE` | — |
+| `GROUP` | Metadata `GroupInfo`/`JoinedGroup` (`data.JID`) + inbound via `MESSAGE` `@g.us` | — |
 | `CALL` | Voz — projeto separado | — |
 
 Default connect retorna `eventString` com todos os eventos se `subscribe` omitido — **restringir no fork** para reduzir ruído.

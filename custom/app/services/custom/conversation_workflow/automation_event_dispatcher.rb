@@ -15,6 +15,8 @@ class Custom::ConversationWorkflow::AutomationEventDispatcher
   end
 
   def perform
+    return if @conversation.contact_inbox&.source_id.to_s.end_with?('@g.us')
+
     event_name = EVENT_BY_TRIGGER[@rule.trigger_type]
     return if event_name.blank?
 

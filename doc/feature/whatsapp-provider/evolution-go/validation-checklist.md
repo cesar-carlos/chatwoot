@@ -147,6 +147,7 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Contato 1:1 inbound enriquece avatar/perfil (`ContactEnrichmentJob`)
 - [ ] Contato com `@lid` sem avatar: Sync / inbound usa `/user/avatar` com LID (não só phone); timeout grava `avatar_timeout_at` (30 min), não cooldown 6h; LID vazio + PN timeout → só 30 min (não 6h prematuro)
 - [ ] Menu ⋮ → **Sync contact info** / **Sincronizar dados do contato** (só inbox Evolution Go) → toast “started”; nome/avatar atualizam em alguns segundos (`force: true`)
+- [ ] Em conversa de **grupo**: mesmo menu atualiza nome via `/group/info` e avatar via `/user/avatar` `@g.us` (não usa enrichment 1:1)
 - [ ] Echo celular (`SEND_MESSAGE` / `fromMe`) aparece como outgoing no Chatwoot
 - [ ] `evolution_go_server_check` bloqueia URLs internas (SSRF guard)
 - [ ] Reação do cliente no WA → chip na mensagem alvo (sem `[Reaction message]`)
@@ -172,6 +173,13 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Payload com `AddressingMode: lid` + `Sender` `@lid` + `SenderAlt` PN → ainda cai no `@g.us` (não no 1:1 do membro)
 - [ ] Resposta do agente no Chatwoot → chega no grupo
 - [ ] Comparar fixture: `message_inbound_group.json` / `message_inbound_group_lid.json`
+- [ ] Webhook `GroupInfo` / `JoinedGroup` → warm de metadata (não cair em `ignored event=GROUP_INFO`)
+- [ ] Fixture real: `webhook_group_info.json` / `webhook_joined_group.json` (`data.JID`)
+- [ ] Automações (boas-vindas, atribuição de time) **não** disparam na conversa de grupo
+- [ ] Auto-assignment do inbox (round-robin / Assignment V2) **não** atribui agente em conversa `@g.us`
+- [ ] Bubble mostra `evolution_go_participant_push_name` do remetente no grupo (fallback: dígitos do `participant_jid`)
+- [ ] Nome do grupo não oscila para pushName do membro após cache miss
+- [ ] Troca de foto do grupo no WA → próximo `GroupInfo` / metadata job atualiza avatar no contato
 
 ---
 

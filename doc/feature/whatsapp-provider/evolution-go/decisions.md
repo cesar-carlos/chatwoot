@@ -135,10 +135,17 @@ Reusar prepend da Fase 0 com capability `unlimited_session: true`.
 
 | Decisão | Valor |
 |---------|-------|
-| **Default** | `ignore_groups: true` no create/advanced-settings + filtro `@g.us` no normalizer |
-| **Opt-in** | Com `ignore_groups: false`: conversa única por grupo JID (`@g.us`), nome via `POST /group/info`, participante em `evolution_go_participant_jid` |
-| **Reuso** | `GroupContactService`, `GroupParticipantService`, `GroupMetadataService` (provider-aware para EG) |
-| **Fixture** | `message_inbound_group.json` sintética — capturar webhook real no E2E |
+| **Default** | `ignore_groups: true` (nil/ausente = ignorar — predicado `!= false` no job, normalizer, phone sync, subscribe, import) |
+| **Opt-in** | `ignore_groups: false`: conversa única por JID `@g.us`; nome via `POST /group/info`; participante em `evolution_go_participant_*` |
+| **Subscribe** | Categoria `GROUP` → eventos `GroupInfo` / `JoinedGroup` (`data.JID`); job aceita `GROUP` / `GROUP_INFO` / `JOINED_GROUP` |
+| **Metadata** | Inline `warm_cache_from_name!` (`JoinedGroup.GroupName.Name` / `GroupInfo.Name.Name`) + `schedule_metadata_fetch!` (Redis NX, 5 min). API warm força refresh de avatar |
+| **Naming** | Contato só sobrescreve com nome `*(GROUP)`; nunca seed com pushName do membro (fallback = prefixo do JID) |
+| **Automação** | `Custom::AutomationRuleListener` + `AutomationEventDispatcher` ignoram `source_id` `@g.us` |
+| **Auto-assignment** | `Custom::Conversation#should_run_auto_assignment?` + `AssignmentService#assignable?` ignoram `@g.us` |
+| **Sync contact** | Menu: grupo → `GroupMetadataFetchJob`; 1:1 → `ContactEnrichmentJob` (`force: true`) |
+| **UI** | Bubble: `useGroupMessageSender` (`evolution_go_participant_push_name`, fallback dígitos do JID) |
+| **Reuso** | `GroupContactService`, `GroupParticipantService`, `GroupMetadataService` (Go vs Node subject) |
+| **Fixtures** | `message_inbound_group*.json`, `webhook_group_info.json`, `webhook_joined_group.json` |
 
 ---
 
@@ -375,6 +382,7 @@ end
 | 24/jun/2026 | ADR §27 prepend collision; fix EvolutionGoController envelope key; registry format |
 | jul/2026 | §28–§31: echo sync, EventNames, latency, SSRF guard; §7/§18/§25 updated |
 | 13/jul/2026 | §32: avatar backoff + quote participant com phone placeholder |
+| 2/ago/2026 | §9 Grupos expandido: GroupInfo/JoinedGroup, schedule dedup, naming, automação/auto-assign, Sync contact branch |
 | 16/jul/2026 | §33: message reactions chip + context menu |
 | 16/jul/2026 | §33 addendum: `user:self`, timeout 15s, optimistic UI, Node parity, cleanup rake |
 | 16/jul/2026 | §34: pseudo-forward de mensagem no Chatwoot (sem API Go) |

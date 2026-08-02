@@ -14,7 +14,7 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
     cached = Rails.cache.read(cache_key(group_jid))
     return cached if cached.present?
 
-    enqueue_metadata_fetch!(group_jid)
+    schedule_metadata_fetch!(group_jid)
     fallback.presence || group_jid.split('@').first
   end
 
@@ -25,11 +25,31 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
     subject = fetch_subject(group_jid)
     return if subject.blank?
 
-    name = "#{subject} (GROUP)"
+    # Force avatar refresh on API warm so GroupInfo photo changes apply.
+    warm_cache_from_name!(group_jid, subject, force_avatar: true)
+  end
+
+  # Inline subject warm (JoinedGroup); force_avatar only on API metadata job path.
+  def warm_cache_from_name!(group_jid, subject, force_avatar: false)
+    group_jid = group_jid.to_s
+    subject = subject.to_s.strip
+    return if group_jid.blank? || subject.blank?
+
+    name = subject.end_with?('(GROUP)') ? subject : "#{subject} (GROUP)"
     Rails.cache.write(cache_key(group_jid), name, expires_in: CACHE_TTL)
     sync_group_contact_name!(group_jid, name)
-    sync_group_avatar!(group_jid) if evolution_go_channel?
+    sync_group_avatar!(group_jid, force: force_avatar) if evolution_go_channel?
     name
+  end
+
+  # Deduped async fetch for webhook / cache-miss (manual Sync enqueues the job directly).
+  def schedule_metadata_fetch!(group_jid)
+    group_jid = group_jid.to_s
+    return if group_jid.blank?
+    return unless supported_provider?
+    return unless claim_metadata_fetch_enqueue!(group_jid)
+
+    Custom::Whatsapp::Evolution::GroupMetadataFetchJob.perform_later(channel.id, group_jid)
   end
 
   def sync_group_contact_name!(group_jid, name)
@@ -42,20 +62,35 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
 
   private
 
-  def sync_group_avatar!(group_jid)
+  def sync_group_avatar!(group_jid, force: false)
     contact = find_group_contact(group_jid)
-    return if contact.blank?
-    return if contact.avatar.attached?
+    return if contact.blank? || skip_group_avatar_sync?(contact, force)
 
-    response = api_client.user_avatar(number: group_jid, preview: true)
-    unless response&.success?
-      log_group_avatar_http_failure!(group_jid, response)
-      return
-    end
+    response = fetch_group_avatar_response(group_jid)
+    return if response.blank?
 
+    purge_group_avatar_if_forced!(contact, force)
     attach_group_avatar!(contact, response.parsed_response)
   rescue Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.warn("[EVOLUTION_GO] group avatar fetch failed jid=#{group_jid}: #{e.message}")
+  end
+
+  def skip_group_avatar_sync?(contact, force)
+    contact.avatar.attached? && !force
+  end
+
+  def fetch_group_avatar_response(group_jid)
+    response = api_client.user_avatar(number: group_jid, preview: true)
+    return response if response&.success?
+
+    log_group_avatar_http_failure!(group_jid, response)
+    nil
+  end
+
+  def purge_group_avatar_if_forced!(contact, force)
+    return unless force && contact.avatar.attached?
+
+    contact.avatar.purge
   end
 
   def find_group_contact(group_jid)
@@ -118,19 +153,26 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
     )
   end
 
-  def fetch_subject(group_jid) # rubocop:disable Metrics/CyclomaticComplexity
+  def fetch_subject(group_jid)
     response = group_info_response(group_jid)
     return unless response&.success?
 
     parsed = unwrap_group_response(response)
-    parsed['subject'].presence ||
-      parsed['Name'].presence ||
-      parsed.dig('group', 'subject').presence ||
-      parsed.dig('group', 'Name').presence ||
-      parsed.dig('groupMetadata', 'subject')
+    evolution_go_channel? ? go_group_subject(parsed) : node_group_subject(parsed)
   rescue Custom::Whatsapp::Evolution::ApiError, Custom::Whatsapp::EvolutionGo::ApiError => e
     Rails.logger.warn("[#{provider_tag}] group metadata fetch failed jid=#{group_jid}: #{e.message}")
     nil
+  end
+
+  def go_group_subject(parsed)
+    parsed['Name'].presence || parsed['name'].presence
+  end
+
+  def node_group_subject(parsed)
+    parsed['subject'].presence ||
+      parsed.dig('group', 'subject').presence ||
+      parsed.dig('group', 'Name').presence ||
+      parsed.dig('groupMetadata', 'subject')
   end
 
   def group_info_response(group_jid)
@@ -151,13 +193,6 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
     parsed
   end
 
-  def enqueue_metadata_fetch!(group_jid)
-    return unless supported_provider?
-    return unless claim_metadata_fetch_enqueue!(group_jid)
-
-    Custom::Whatsapp::Evolution::GroupMetadataFetchJob.perform_later(channel.id, group_jid)
-  end
-
   def claim_metadata_fetch_enqueue!(group_jid)
     ::Redis::Alfred.set(
       metadata_fetch_lock_key(group_jid),
@@ -168,11 +203,9 @@ class Custom::Whatsapp::Evolution::GroupMetadataService
   end
 
   def api_client
-    if evolution_go_channel?
-      Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel)
-    else
-      Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
-    end
+    return Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel) if evolution_go_channel?
+
+    Custom::Whatsapp::Evolution::ApiClient.for_channel(channel)
   end
 
   def supported_provider?

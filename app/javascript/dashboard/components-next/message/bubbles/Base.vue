@@ -24,7 +24,8 @@ import {
   sendWhatsappReaction,
   extractReactionErrorMessage,
 } from 'customDashboard/composables/useMessageReactions';
-
+// FORK: Evolution Go/Node group participant label
+import { useGroupMessageSender } from 'customDashboard/composables/useGroupMessageSender';
 import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { MESSAGE_VARIANTS, ORIENTATION, SENDER_TYPES } from '../constants';
@@ -46,11 +47,22 @@ const {
   sourceId,
   status,
   isPrivate,
+  messageType, // FORK: group sender label (incoming only)
 } = useMessageContext();
 const { t } = useI18n();
 const store = useStore();
 const getInboxById = useMapGetter('inboxes/getInboxById');
 const isRemovingReaction = ref(false);
+
+// FORK: Evolution Go/Node group participant label
+const { senderName: groupSenderName, isGroupMessage } =
+  useGroupMessageSender(contentAttributes);
+const showGroupSender = computed(
+  () =>
+    isGroupMessage.value &&
+    messageType?.value === MESSAGE_TYPES.INCOMING &&
+    variant.value !== MESSAGE_VARIANTS.ACTIVITY
+);
 
 // FORK: shared locate from MessageList; factory fallback for isolated Message stories
 const { scrollToMessage: locateReplyMessage, isLocating } = inject(
@@ -286,6 +298,13 @@ const replyToPreview = computed(() => {
     >
       <Icon icon="i-lucide-pencil" class="size-3.5 shrink-0" />
       <span>{{ t('CONVERSATION.EDIT.BADGE') }}</span>
+    </div>
+    <!-- FORK: Evolution Go/Node group participant sender label -->
+    <div
+      v-if="showGroupSender"
+      class="mb-1 text-xs font-semibold text-n-blue-11"
+    >
+      {{ groupSenderName }}
     </div>
     <div :class="{ 'opacity-80': isDeleted }">
       <slot />

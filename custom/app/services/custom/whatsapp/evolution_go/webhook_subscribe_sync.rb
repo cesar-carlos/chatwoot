@@ -11,7 +11,7 @@ class Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync
   end
 
   def self.ignore_groups?(config)
-    ActiveModel::Type::Boolean.new.cast((config || {})['ignore_groups'])
+    (config || {})['ignore_groups'] != false
   end
 
   def canonical_events

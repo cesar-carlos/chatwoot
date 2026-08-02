@@ -1,0 +1,20 @@
+{
+  "event": "JoinedGroup",
+  "data": {
+    "Reason": "invite",
+    "JID": "120363012345678901@g.us",
+    "GroupName": {
+      "Name": "NortAgro Suporte",
+      "NameSetAt": "2024-10-01T10:00:00-03:00"
+    },
+    "GroupCreated": "2024-10-01T10:00:00-03:00",
+    "Participants": [
+      {
+        "JID": "5511918798714@s.whatsapp.net",
+        "IsAdmin": true,
+        "IsSuperAdmin": true
+      }
+    ]
+  },
+  "instanceId": "249aad2e-68f9-464f-bc84-aca560c38f0e"
+}

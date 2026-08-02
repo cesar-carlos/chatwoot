@@ -56,9 +56,9 @@ Path confirmado Postman: `GET` + `PUT /instance/{instanceId}/advanced-settings`.
 
 | Campo `provider_config` | Enviar (PUT body) | Ler (GET — aceitar variantes) | Default fork |
 |-------------------------|-------------------|--------------------------------|--------------|
-| `ignore_groups` | `ignoreGroups` | `ignoreGroups` | `true` |
+| `ignore_groups` | `ignoreGroups` | `ignoreGroups` | `true` (nil/ausente = ignorar — `!= false` no job/normalizer/phone sync/subscribe/import) |
 
-Com `ignore_groups: false`, mensagens `@g.us` criam conversa por grupo (`GroupContactService`); nome via `POST /group/info`.
+Com `ignore_groups: false`, mensagens `@g.us` criam conversa por grupo (`GroupContactService`); nome via `POST /group/info`. Webhooks de metadata: categoria subscribe `GROUP` → `GroupInfo`/`JoinedGroup`.
 | `reject_call` | `rejectCall` | `rejectCall`, `rejectCalls` | `false` |
 | `msg_call` | `msgRejectCall` | `msgRejectCall`, `rejectCallMessage` | `""` |
 | `always_online` | `alwaysOnline` | `alwaysOnline` | `false` |

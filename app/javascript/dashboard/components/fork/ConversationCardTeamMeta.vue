@@ -35,7 +35,11 @@ const show = computed(() => Boolean(teamName.value));
     v-tooltip.top="tooltipContent"
     class="text-n-slate-11 text-xs font-medium leading-3 py-0.5 px-0 inline-flex items-center gap-0.5 max-w-[8rem] truncate"
   >
-    <fluent-icon icon="people-team" size="12" class="flex-shrink-0 text-n-slate-11" />
+    <fluent-icon
+      icon="people-team"
+      size="12"
+      class="flex-shrink-0 text-n-slate-11"
+    />
     <span class="truncate">{{ teamName }}</span>
   </span>
   <span

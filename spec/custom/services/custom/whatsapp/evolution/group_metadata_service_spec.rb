@@ -177,5 +177,59 @@ RSpec.describe Custom::Whatsapp::Evolution::GroupMetadataService do
       expect(account.contacts.find_by!(identifier: group_jid).reload.name).to eq('Support Team (GROUP)')
       expect(account.contacts.find_by!(identifier: group_jid).avatar).not_to be_attached
     end
+
+    it 'warms cache from an inline subject without calling group_info' do
+      expect(go_api_client).not_to receive(:group_info)
+      allow(go_api_client).to receive(:user_avatar).with(number: group_jid, preview: true).and_return(
+        instance_double(HTTParty::Response, success?: false, code: 500, parsed_response: {})
+      )
+
+      expect(service.warm_cache_from_name!(group_jid, 'NortAgro Suporte')).to eq('NortAgro Suporte (GROUP)')
+      expect(Rails.cache.read("evolution:group_metadata:#{channel.id}:#{group_jid}")).to eq('NortAgro Suporte (GROUP)')
+      expect(account.contacts.find_by!(identifier: group_jid).reload.name).to eq('NortAgro Suporte (GROUP)')
+    end
+
+    it 'force-refreshes an existing group avatar on API warm_cache!' do
+      contact = account.contacts.find_by!(identifier: group_jid)
+      contact.avatar.attach(
+        io: StringIO.new('old-avatar'),
+        filename: 'old.png',
+        content_type: 'image/png'
+      )
+      expect(contact.avatar).to be_attached
+
+      allow(go_api_client).to receive(:group_info).with(group_jid: group_jid).and_return(
+        instance_double(HTTParty::Response, success?: true, parsed_response: group_info_payload)
+      )
+      allow(go_api_client).to receive(:user_avatar).with(number: group_jid, preview: true).and_return(
+        instance_double(
+          HTTParty::Response,
+          success?: true,
+          parsed_response: { 'data' => { 'url' => 'https://cdn.example.com/group-avatar-new.jpg' } }
+        )
+      )
+
+      expect do
+        expect(service.warm_cache!(group_jid)).to eq('Support Team (GROUP)')
+      end.to have_enqueued_job(Avatar::AvatarFromUrlJob)
+        .with(contact, 'https://cdn.example.com/group-avatar-new.jpg')
+
+      expect(contact.reload.avatar).not_to be_attached
+    end
+
+    it 'does not purge existing avatar on inline warm without force' do
+      contact = account.contacts.find_by!(identifier: group_jid)
+      contact.avatar.attach(
+        io: StringIO.new('old-avatar'),
+        filename: 'old.png',
+        content_type: 'image/png'
+      )
+
+      expect(go_api_client).not_to receive(:user_avatar)
+
+      service.warm_cache_from_name!(group_jid, 'Keep Avatar')
+
+      expect(contact.reload.avatar).to be_attached
+    end
   end
 end

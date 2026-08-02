@@ -86,12 +86,19 @@ Campos: `host`, `port`, `protocol`, `username`, `password`. `POST /instance/prox
 
 | `ignore_groups` | Comportamento |
 |-----------------|---------------|
-| `true` (default) | Mensagens `@g.us` filtradas no normalizer |
-| `false` | Uma conversa por grupo; `ContactInbox#source_id` = JID `@g.us`; nome do contato via `POST /group/info` (`GroupMetadataService`); remetente em `evolution_go_participant_jid` |
+| `true` / `nil` / ausente (default) | Mensagens `@g.us` filtradas (`config['ignore_groups'] != false`) |
+| `false` | Uma conversa por grupo; `ContactInbox#source_id` = JID `@g.us`; nome via `POST /group/info` (`GroupMetadataService`); remetente em `evolution_go_participant_jid` / `push_name` |
 
 Paridade com Evolution API: reutiliza `GroupContactService`, `GroupParticipantService`, `GroupMetadataFetchJob`.
 
-**Limitações:** conversas 1:1 criadas antes de habilitar grupos não se fundem automaticamente; fixture de grupo ainda sintética.
+**Regras fork (grupos habilitados):**
+
+- Nome do contato: só sobrescreve com `*(GROUP)`; create não usa pushName do membro
+- Webhooks `GroupInfo` / `JoinedGroup`: warm inline + fetch deduplicado (`schedule_metadata_fetch!`, lock 5 min)
+- Automações e auto-assignment (inbox + Assignment V2) **não** rodam em `@g.us`
+- Sync contact (MoreActions): grupo → `/group/info` + avatar `@g.us`; 1:1 → enrichment
+
+**Limitações:** conversas 1:1 criadas antes de habilitar grupos não se fundem automaticamente; mensagens de automação já persistidas em threads de grupo não são apagadas.
 
 ---
 

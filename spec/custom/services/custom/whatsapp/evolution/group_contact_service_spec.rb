@@ -45,5 +45,61 @@ RSpec.describe Custom::Whatsapp::Evolution::GroupContactService do
         expect(contact_inbox.contact.additional_attributes['is_whatsapp_group']).to be(true)
       end
     end
+
+    it 'does not overwrite a confirmed group name with a member pushName fallback' do
+      create(
+        :contact,
+        account: account,
+        identifier: group_jid,
+        name: 'Support Team (GROUP)',
+        phone_number: nil,
+        additional_attributes: {
+          'is_whatsapp_group' => true,
+          'evolution_group_jid' => group_jid
+        }
+      )
+      allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new).and_return(
+        instance_double(Custom::Whatsapp::Evolution::GroupMetadataService, display_name: 'Member')
+      )
+
+      contact_inbox = service.find_or_create_contact_inbox!
+
+      expect(contact_inbox.contact.reload.name).to eq('Support Team (GROUP)')
+    end
+
+    it 'updates the contact name when metadata returns a confirmed GROUP name' do
+      create(
+        :contact,
+        account: account,
+        identifier: group_jid,
+        name: 'Member',
+        phone_number: nil,
+        additional_attributes: {
+          'is_whatsapp_group' => true,
+          'evolution_group_jid' => group_jid
+        }
+      )
+      allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new).and_return(
+        instance_double(Custom::Whatsapp::Evolution::GroupMetadataService, display_name: 'Support Team (GROUP)')
+      )
+
+      contact_inbox = service.find_or_create_contact_inbox!
+
+      expect(contact_inbox.contact.reload.name).to eq('Support Team (GROUP)')
+    end
+
+    it 'does not seed the contact name from member pushName on create' do
+      metadata = instance_double(Custom::Whatsapp::Evolution::GroupMetadataService)
+      allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new)
+        .with(channel: channel)
+        .and_return(metadata)
+      expect(metadata).to receive(:display_name).with(group_jid, fallback: nil)
+        .and_return('120363123456789012')
+
+      contact_inbox = service.find_or_create_contact_inbox!
+
+      expect(contact_inbox.contact.name).to eq('120363123456789012')
+      expect(contact_inbox.contact.name).not_to eq('Member')
+    end
   end
 end

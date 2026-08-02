@@ -64,4 +64,29 @@ RSpec.describe Custom::ConversationWorkflow::AutomationEventDispatcher do
 
     expect(AutomationRules::ActionService).not_to have_received(:new)
   end
+
+  it 'skips WhatsApp group conversations' do
+    group_jid = '120363012345678901@g.us'
+    contact = create(:contact, account: account, phone_number: nil, identifier: group_jid)
+    contact_inbox = create(:contact_inbox, inbox: inbox, contact: contact, source_id: group_jid)
+    group_conversation = create(
+      :conversation,
+      account: account,
+      inbox: inbox,
+      contact: contact,
+      contact_inbox: contact_inbox
+    )
+    create(
+      :automation_rule,
+      account: account,
+      event_name: 'conversation_inactivity_threshold',
+      active: true,
+      conditions: []
+    )
+    allow(AutomationRules::ActionService).to receive(:new)
+
+    described_class.new(rule: workflow_rule, conversation: group_conversation).perform
+
+    expect(AutomationRules::ActionService).not_to have_received(:new)
+  end
 end

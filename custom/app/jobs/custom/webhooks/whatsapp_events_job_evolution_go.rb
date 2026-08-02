@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ModuleLength, Metrics/MethodLength, Metrics/CyclomaticComplexity
+# rubocop:disable Metrics/ModuleLength, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/PerceivedComplexity
 module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   def perform(params = {})
     params = params.with_indifferent_access
@@ -62,7 +62,7 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       Custom::Whatsapp::EvolutionGo::ConnectionService.new(channel: channel).handle_event(params)
     when 'HISTORY_SYNC'
       process_history_sync_event(channel, params)
-    when 'GROUP'
+    when 'GROUP', 'GROUP_INFO', 'JOINED_GROUP'
       process_group_event(channel, params)
     when 'SEND_MESSAGE'
       process_send_message_event(channel, params)
@@ -166,16 +166,31 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     group_jid = extract_group_jid(params[:data])
     return if group_jid.blank?
 
-    Custom::Whatsapp::Evolution::GroupMetadataFetchJob.perform_later(channel.id, group_jid)
+    metadata = Custom::Whatsapp::Evolution::GroupMetadataService.new(channel: channel)
+    # JoinedGroup / GroupInfo may include the subject — warm without waiting for /group/info.
+    inline_name = extract_inline_group_name(params[:data])
+    metadata.warm_cache_from_name!(group_jid, inline_name) if inline_name.present?
+    # Dedup burst GroupInfo events (avatar force-refresh is expensive).
+    metadata.schedule_metadata_fetch!(group_jid)
   end
 
   def extract_group_jid(data)
     return if data.blank?
 
     data = data.with_indifferent_access
-    jid = data[:groupJid] || data[:jid] || data[:id] ||
+    # Official GroupInfo/JoinedGroup payloads use data.JID (PascalCase).
+    jid = data[:JID] || data[:groupJid] || data[:jid] || data[:id] ||
           data.dig(:key, :remoteJid) || data.dig('key', 'remoteJid')
-    jid.to_s.include?('@g.us') ? jid.to_s : nil
+    jid.to_s if Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid)
+  end
+
+  def extract_inline_group_name(data)
+    return if data.blank?
+
+    data = data.with_indifferent_access
+    data.dig(:GroupName, :Name).presence ||
+      data.dig(:groupName, :Name).presence ||
+      data.dig(:Name, :Name).presence
   end
 
   def process_edit_event(channel, params)
@@ -330,7 +345,7 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
 
   def ignore_groups?(channel)
     config = channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
-    ActiveModel::Type::Boolean.new.cast(config['ignore_groups'])
+    config['ignore_groups'] != false
   end
 
   def group_jid?(remote_jid)
@@ -341,9 +356,7 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
     canonical = Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.canonicalize_data(data)
     key = canonical['key'] || canonical[:key] || {}
     jid = (key['remoteJid'] || key[:remoteJid]).to_s
-    if Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid)
-      return Custom::Whatsapp::Evolution::GroupContactService.source_id_for(jid)
-    end
+    return Custom::Whatsapp::Evolution::GroupContactService.source_id_for(jid) if Custom::Whatsapp::Evolution::GroupContactService.group_jid?(jid)
 
     Custom::Whatsapp::EvolutionGo::JidResolver.new(channel.provider_config).phone_from_jid(jid)
   end
@@ -356,4 +369,4 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
 end
 
 Webhooks::WhatsappEventsJob.prepend(Custom::Webhooks::WhatsappEventsJobEvolutionGo)
-# rubocop:enable Metrics/ModuleLength, Metrics/MethodLength, Metrics/CyclomaticComplexity
+# rubocop:enable Metrics/ModuleLength, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/AbcSize, Metrics/PerceivedComplexity

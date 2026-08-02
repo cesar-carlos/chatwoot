@@ -82,6 +82,8 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   end
 
   def perform
+    return sync_whatsapp_group! if whatsapp_group_contact?
+
     persist_remote_jid!
     update_name_from_push_name!
     outcome = fetch_and_apply_profile!
@@ -92,6 +94,33 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   private
 
   attr_reader :channel, :contact, :force
+
+  def whatsapp_group_contact?
+    attrs = contact.additional_attributes.to_h.stringify_keys
+    return true if ActiveModel::Type::Boolean.new.cast(
+      attrs[Custom::Whatsapp::Evolution::GroupKeys::IS_WHATSAPP_GROUP_KEY]
+    )
+
+    group_jid_for_contact.present?
+  end
+
+  def group_jid_for_contact
+    attrs = contact.additional_attributes.to_h.stringify_keys
+    [
+      attrs[Custom::Whatsapp::Evolution::GroupKeys::EVOLUTION_GROUP_JID_KEY],
+      contact.identifier,
+      @remote_jid,
+      stored_remote_jid
+    ].find { |value| Custom::Whatsapp::Evolution::GroupContactService.group_jid?(value) }.to_s.presence
+  end
+
+  # Bulk refresh / mistaken 1:1 enqueue still syncs groups via /group/info + avatar.
+  def sync_whatsapp_group!
+    group_jid = group_jid_for_contact
+    return if group_jid.blank?
+
+    Custom::Whatsapp::Evolution::GroupMetadataService.new(channel: channel).warm_cache!(group_jid)
+  end
 
   def api_client
     @api_client ||= Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel)

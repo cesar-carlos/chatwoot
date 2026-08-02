@@ -42,6 +42,12 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync do
       expect(events).to include('GROUP')
       expect(events).to include('MESSAGE', 'HISTORY_SYNC')
     end
+
+    it 'omits GROUP when ignore_groups key is missing (safe default)' do
+      expect(described_class.canonical_events({})).to eq(
+        Custom::Whatsapp::EvolutionGo::ProviderConfig::WEBHOOK_EVENTS
+      )
+    end
   end
 
   describe '#merge_stored!' do
