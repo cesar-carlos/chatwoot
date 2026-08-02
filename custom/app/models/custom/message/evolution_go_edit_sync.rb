@@ -45,4 +45,3 @@ module Custom::Message::EvolutionGoEditSync
     ActiveModel::Type::Boolean.new.cast(attrs[:edited_via_evolution_go_webhook])
   end
 end
-

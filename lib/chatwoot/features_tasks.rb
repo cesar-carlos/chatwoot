@@ -5,14 +5,17 @@ module Chatwoot::FeaturesTasks
   module_function
 
   def verify_catalog!
-    feature_names = YAML.safe_load(Rails.root.join('config/features.yml').read).pluck('name')
-    count = feature_names.size
+    features = YAML.safe_load(Rails.root.join('config/features.yml').read)
+    by_column = features.group_by { |feature| feature['column'].presence || Featurable::DEFAULT_FEATURE_FLAG_COLUMN }
 
-    puts "Feature catalog size: #{count}/64"
-    abort "ERROR: feature catalog exceeds bigint capacity (#{count} > 64)" if count > 64
-    puts 'WARNING: feature catalog is above 60 entries' if count > 60
+    by_column.each do |column, column_features|
+      count = column_features.size
+      puts "Feature catalog #{column}: #{count}/63"
+      abort "ERROR: #{column} exceeds bigint capacity (#{count} > 63)" if count > 63
+      puts "WARNING: #{column} is above 60 entries" if count > 60
+    end
 
-    puts 'Feature catalog OK'
+    puts "Feature catalog OK (#{features.size} total across #{by_column.size} column(s))"
   end
 
   def verify_accounts!

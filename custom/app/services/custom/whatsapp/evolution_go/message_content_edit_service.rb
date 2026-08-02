@@ -18,6 +18,7 @@ class Custom::Whatsapp::EvolutionGo::MessageContentEditService
 
   private
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- sequential edit preconditions
   def validate!
     raise Custom::Whatsapp::EvolutionGo::ApiError, 'Not an Evolution Go channel' unless evolution_go_channel?
     raise Custom::Whatsapp::EvolutionGo::ApiError, 'Message edit sync is disabled' unless sync_edit_enabled?
@@ -28,6 +29,7 @@ class Custom::Whatsapp::EvolutionGo::MessageContentEditService
     raise Custom::Whatsapp::EvolutionGo::ApiError, 'Message content is required' if new_content.blank?
     raise Custom::Whatsapp::EvolutionGo::ApiError, 'Message content is too long' if new_content.length > MAX_LENGTH
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def sync_to_whatsapp!
     synced = Custom::Whatsapp::EvolutionGo::EditSyncService.new(

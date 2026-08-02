@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength -- intentional Evolution Go provider overlay
 module Custom::Channel::Whatsapp
   extend ActiveSupport::Concern
 
@@ -181,3 +182,5 @@ module Custom::Channel::Whatsapp
     end
   end
 end
+
+# rubocop:enable Metrics/ModuleLength

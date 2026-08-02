@@ -6,7 +6,6 @@ import ContextMenu from 'dashboard/components/ui/ContextMenu.vue';
 import AddCannedModal from 'dashboard/routes/dashboard/settings/canned/AddCanned.vue';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 import { copyTextToClipboard } from 'shared/helpers/clipboard';
-import { parseAPIErrorResponse } from 'dashboard/store/utils/api';
 import { conversationUrl, frontendURL } from '../../../helper/URLHelper';
 import {
   ACCOUNT_EVENTS,
@@ -45,7 +44,8 @@ export default {
     MenuItem,
     ContextMenu,
     NextButton,
-    ReportCaptainMessageDialog,
+    MessageForwardModal,
+    MessageEditModal,
   },
   props: {
     message: {
@@ -207,20 +207,20 @@ export default {
       this.showReactionPanel = false;
       this.$emit('close', e);
     },
-    async handleTranslate() {
+    toggleReactionPanel() {
+      if (this.isSendingReaction) return;
+      this.showReactionPanel = !this.showReactionPanel;
+    },
+    handleTranslate() {
       const { locale: accountLocale } = this.getAccount(this.currentAccountId);
       const agentLocale = this.getUISettings?.locale;
       const targetLanguage = agentLocale || accountLocale || 'en';
-      try {
-        await this.$store.dispatch('translateMessage', {
-          conversationId: this.conversationId,
-          messageId: this.messageId,
-          targetLanguage,
-        });
-        useTrack(CONVERSATION_EVENTS.TRANSLATE_A_MESSAGE);
-      } catch (error) {
-        useAlert(parseAPIErrorResponse(error));
-      }
+      this.$store.dispatch('translateMessage', {
+        conversationId: this.conversationId,
+        messageId: this.messageId,
+        targetLanguage,
+      });
+      useTrack(CONVERSATION_EVENTS.TRANSLATE_A_MESSAGE);
       this.handleClose();
     },
     handleReplyTo() {
@@ -460,16 +460,6 @@ export default {
           }"
           variant="icon"
           @click.stop="showCannedResponseModal"
-        />
-        <hr v-if="enabledOptions['report']" />
-        <MenuItem
-          v-if="enabledOptions['report']"
-          :option="{
-            icon: 'warning',
-            label: $t('CONVERSATION.CONTEXT_MENU.REPORT_MESSAGE.LABEL'),
-          }"
-          variant="icon"
-          @click.stop="openReportDialog"
         />
         <hr v-if="enabledOptions['delete']" />
         <MenuItem

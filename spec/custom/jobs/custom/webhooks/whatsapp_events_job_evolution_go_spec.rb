@@ -4,7 +4,10 @@ require 'rails_helper'
 
 RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
   before do
-    allow_any_instance_of(Inbox).to receive(:create_default_working_hours) # rubocop:disable RSpec/AnyInstance
+    # rubocop:disable RSpec/AnyInstance -- Inbox callback stub for channel factory
+    allow_any_instance_of(Inbox).to receive(:create_default_working_hours)
+    # rubocop:enable RSpec/AnyInstance
+    channel
   end
 
   let(:account) { create(:account) }
@@ -22,11 +25,6 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     )
   end
   let(:inbox) { channel.inbox }
-
-  before do
-    allow_any_instance_of(Inbox).to receive(:create_default_working_hours) # rubocop:disable RSpec/AnyInstance
-    channel
-  end
 
   it 'dispatches MESSAGE events through the normalizer' do
     payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_inbound.json').read)

@@ -69,7 +69,7 @@ class Custom::Whatsapp::EvolutionGo::MessageReactionSyncService
     return if jid_or_phone.blank?
 
     phone = Custom::Whatsapp::EvolutionGo::JidResolver.new(channel.provider_config || {})
-                                                     .phone_from_jid(jid_or_phone)
+                                                      .phone_from_jid(jid_or_phone)
     return if phone.blank?
 
     channel.inbox.contacts.find_by(phone_number: "+#{phone}") ||

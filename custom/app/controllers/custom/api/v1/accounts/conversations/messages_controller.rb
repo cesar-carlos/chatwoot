@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ModuleLength -- intentional Evolution Go/Node fork overlay
 module Custom::Api::V1::Accounts::Conversations::MessagesController
   SEARCH_RATE_LIMIT = 30
   SEARCH_RATE_WINDOW = 1.minute
@@ -61,6 +62,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   end
 
   # FORK: Evolution Go/Node WhatsApp reactions
+  # rubocop:disable Metrics/MethodLength -- provider case dispatch
   def evolution_go_react
     provider = message.inbox.channel.provider
     @message = case provider
@@ -83,6 +85,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     error_text = e.respond_to?(:user_message) ? e.user_message : e.message
     render json: { error: error_text.presence || e.message }, status: :unprocessable_entity
   end
+  # rubocop:enable Metrics/MethodLength
 
   # FORK: Evolution Go edit outgoing message (sync_edit_to_whatsapp)
   def evolution_go_edit
@@ -114,6 +117,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     end
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- guard clauses
   def sync_evolution_go_delete_before_soft_delete!
     channel = message.inbox&.channel
     return unless channel.is_a?(Channel::Whatsapp) && channel.provider == 'evolution_go'
@@ -125,6 +129,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     Custom::Whatsapp::EvolutionGo::DeleteSyncService.new(message: message, raise_errors: true).perform
     message.instance_variable_set(:@evolution_go_delete_synced_inline, true)
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def assert_voice_only_public_retry_allowed!
     return if message.blank?
@@ -174,3 +179,4 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     count
   end
 end
+# rubocop:enable Metrics/ModuleLength

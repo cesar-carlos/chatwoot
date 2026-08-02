@@ -25,6 +25,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactsRefreshService do
     )
   end
 
+  # rubocop:disable RSpec/MultipleExpectations -- paced enqueue + lock release contract
   it 'enqueues paced forced enrichment for every inbox contact' do
     contact_a = create(:contact, account: account, phone_number: '+5511888888888')
     contact_b = create(:contact, account: account, phone_number: '+5511777777777')
@@ -57,6 +58,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactsRefreshService do
       .with(wait: (6 + described_class::LOCK_TTL_BUFFER).seconds)
     expect(release_job).to have_received(:perform_later).with(channel.id)
   end
+  # rubocop:enable RSpec/MultipleExpectations
 
   it 'returns empty result without locking when inbox has no contacts' do
     result = described_class.new(channel: channel).perform

@@ -6,9 +6,10 @@ module Custom::Whatsapp::ReactionsStore
 
   module_function
 
+  # rubocop:disable Metrics/ParameterLists -- reaction identity fields are intentional
   def apply!(message, emoji:, actor_key:, from:, actor_id: nil, reaction_message_id: nil, **_extra)
     attrs = (message.content_attributes || {}).stringify_keys
-    reactions = Array.wrap(attrs[REACTIONS_KEY]).map { |entry| entry.stringify_keys }
+    reactions = Array.wrap(attrs[REACTIONS_KEY]).map(&:stringify_keys)
     reactions.reject! { |entry| same_actor?(entry, actor_key: actor_key, from: from, actor_id: actor_id) }
 
     reactions << {
@@ -23,26 +24,27 @@ module Custom::Whatsapp::ReactionsStore
 
     message.update!(content_attributes: attrs.merge(REACTIONS_KEY => reactions))
   end
+  # rubocop:enable Metrics/ParameterLists
 
   def remove_actor!(message, actor_key:, from: nil, actor_id: nil)
     attrs = (message.content_attributes || {}).stringify_keys
-    reactions = Array.wrap(attrs[REACTIONS_KEY]).map { |entry| entry.stringify_keys }
+    reactions = Array.wrap(attrs[REACTIONS_KEY]).map(&:stringify_keys)
     reactions.reject! { |entry| same_actor?(entry, actor_key: actor_key, from: from, actor_id: actor_id) }
     message.update!(content_attributes: attrs.merge(REACTIONS_KEY => reactions))
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- legacy actor key matching
   def same_actor?(entry, actor_key:, from: nil, actor_id: nil)
     entry = entry.stringify_keys
     return true if actor_key.present? && entry['actor_key'] == actor_key.to_s
     # Legacy outbound used user:<id>; treat as same business actor when merging with user:self
-    if actor_key.to_s == BUSINESS_ACTOR_KEY && entry['from'] == 'user'
-      return true
-    end
+    return true if actor_key.to_s == BUSINESS_ACTOR_KEY && entry['from'] == 'user'
     return true if from.present? && actor_id.present? &&
                    entry['from'] == from.to_s && entry['actor_id'].to_s == actor_id.to_s
 
     false
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def business_actor(actor_id: nil)
     {

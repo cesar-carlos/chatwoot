@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ModuleLength -- Slack API fixture helpers
 module SlackStubs
   def slack_url_verification_stub
     {
@@ -118,3 +119,4 @@ module SlackStubs
     }
   end
 end
+# rubocop:enable Metrics/ModuleLength

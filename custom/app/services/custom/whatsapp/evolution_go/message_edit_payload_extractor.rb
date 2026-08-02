@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ModuleLength -- intentional Evolution Go edit payload variants
 module Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor
   EDIT_EVENTS = %w[MESSAGES_EDITED MESSAGE_EDIT SEND_MESSAGE_UPDATE].freeze
   EDIT_TYPES = [
@@ -143,3 +144,5 @@ module Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor
       edited.dig(:documentMessage, :caption)
   end
 end
+
+# rubocop:enable Metrics/ModuleLength

@@ -14,7 +14,9 @@ class Api::V1::Accounts::ContactsController < Api::V1::Accounts::BaseController
   before_action :check_authorization
   before_action :set_current_page, only: [:index, :active, :search, :filter]
   # FORK: :evolution_go_sync lives in Custom::Api::V1::Accounts::ContactsController
+  # rubocop:disable Rails/LexicallyScopedActionFilter -- action defined via Custom prepend
   before_action :fetch_contact, only: [:show, :update, :destroy, :avatar, :contactable_inboxes, :destroy_custom_attributes, :evolution_go_sync]
+  # rubocop:enable Rails/LexicallyScopedActionFilter
   before_action :set_include_contact_inboxes, only: [:index, :active, :search, :filter, :show, :update]
 
   def index

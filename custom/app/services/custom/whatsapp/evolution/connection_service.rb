@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength -- intentional Evolution connection orchestration
 class Custom::Whatsapp::Evolution::ConnectionService
   CONNECTION_STATE_CACHE_TTL = 15.seconds
   QR_FETCH_CACHE_TTL = 45.seconds
@@ -309,3 +310,5 @@ class Custom::Whatsapp::Evolution::ConnectionService
     Rails.cache.delete("evolution:connection_validation:#{channel.id}")
   end
 end
+
+# rubocop:enable Metrics/ClassLength

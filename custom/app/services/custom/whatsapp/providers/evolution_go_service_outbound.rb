@@ -29,12 +29,11 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     }.compact
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- quote JID resolution paths
   def quoted_participant(phone_number, original)
     # Outgoing quotes need the business JID. Do not use evolution_go_remote_jid here —
     # on fromMe messages that field stores the chat peer, not the sender.
-    if original.present? && !original.incoming?
-      return business_participant_jid
-    end
+    return business_participant_jid if original.present? && !original.incoming?
 
     # Group quotes need the member JID; evolution_go_remote_jid is the @g.us chat.
     participant = original&.content_attributes&.dig('evolution_go_participant_jid').presence
@@ -45,6 +44,7 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
 
     delivery_jid(phone_number, original)
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def business_participant_jid
     phone = channel_business_phone

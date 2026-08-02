@@ -76,6 +76,7 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
     @message = inbox.messages.find_by(source_id: source_id)
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- optional Evolution Go attrs
   def message_content_attributes(message)
     attrs = super
     return attrs unless evolution_go_channel?
@@ -94,6 +95,7 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
     attrs['unavailable_type'] = unavailable_type if unavailable_type.present?
     attrs
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Persist a localized placeholder and mark the bubble as unsupported so the
   # dashboard can translate (e.g. view-once media WhatsApp cannot deliver).

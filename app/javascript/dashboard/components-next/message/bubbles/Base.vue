@@ -27,8 +27,7 @@ import {
 // FORK: Evolution Go/Node group participant label
 import { useGroupMessageSender } from 'customDashboard/composables/useGroupMessageSender';
 import MessageFormatter from 'shared/helpers/MessageFormatter.js';
-import { BUS_EVENTS } from 'shared/constants/busEvents';
-import { MESSAGE_VARIANTS, ORIENTATION, SENDER_TYPES } from '../constants';
+import { MESSAGE_TYPES, MESSAGE_VARIANTS, ORIENTATION } from '../constants';
 
 const props = defineProps({
   hideMeta: { type: Boolean, default: false },
@@ -168,9 +167,8 @@ const deletedNotice = computed(() => {
     return t('CONVERSATION.DELETED_BY_CONTACT_NOTICE');
   }
 
-const emailMetaClass = computed(() =>
-  variant.value === MESSAGE_VARIANTS.EMAIL ? 'px-3 pb-3' : ''
-);
+  return t('CONVERSATION.DELETED_MESSAGE_NOTICE');
+});
 
 const varaintBaseMap = {
   [MESSAGE_VARIANTS.AGENT]: 'bg-n-solid-blue text-n-slate-12',

@@ -37,6 +37,7 @@ module Custom::Whatsapp::EvolutionGo::ProtocolNoise
     Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter.unwrap_nested_message(raw)
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- key/message shape variants
   def log_skip!(channel:, data:, reason: 'protocol_noise')
     data = (data || {}).with_indifferent_access
     key = data[:key] || data[:Key] || {}
@@ -49,4 +50,5 @@ module Custom::Whatsapp::EvolutionGo::ProtocolNoise
       "protocol_type=#{protocol[:type] || protocol[:typeName]}"
     )
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 end
