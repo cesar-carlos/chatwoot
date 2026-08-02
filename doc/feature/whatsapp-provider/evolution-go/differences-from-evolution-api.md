@@ -79,7 +79,7 @@ A documentação oficial afirma que ambos compartilham **"API contract REST (com
 | `MESSAGES_EDITED` (+ `editedMessage`) | `MESSAGE` com `IsEdit` + `protocolMessage`/`editedMessage` **ou** `secretEncryptedMessage` | Node costuma plaintext; Go entrega plaintext protocol **ou** encrypted-only — fork atualiza no 1º caso e skip no 2º ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | `MESSAGES_DELETE` / revoke | `MESSAGE` com `IsRevoke` / type 0 / `MESSAGE_DELETE` | Soft-delete no CW (job sempre consome envelope) |
 | — | `PRESENCE`, `CHAT_PRESENCE` | Ignorar MVP |
-| — | `GROUP`, `GROUP_UPDATE` | Ignorar; inbound grupo via `MESSAGE` + `@g.us` quando `ignore_groups: false` |
+| — | `GROUP` → `GroupInfo` / `JoinedGroup` | Com `ignore_groups: false`: metadata warm (`warm_cache_from_name!` + `schedule_metadata_fetch!`); inbound grupo via `MESSAGE` `@g.us` |
 | — | `CALL` | Fase voz separada |
 | — | `HISTORY_SYNC` | Fase import |
 
@@ -116,10 +116,10 @@ Evolution API adiciona `apikey`, `destination`, `date_time`, `sender` no envelop
 | `MessageWindowService` bypass | ✅ Idêntico |
 | Lógica normalizer `data.key` / `remoteJid` | ✅ ~80% — payload whatsmeow ≈ Baileys |
 | Filtros `@g.us`, `fromMe`, `status@broadcast` | ✅ Idêntico |
-| `GroupContactService` / metadata grupo | ✅ Reutilizado (EG usa `POST /group/info`) |
+| `GroupContactService` / metadata grupo | ✅ Reutilizado (EG: `POST /group/info` + avatar `/user/avatar` `@g.us`; Node: `find_group_infos`) |
 | `EvolutionService` / `ApiClient` / rotas webhook | ❌ Paths, auth, eventos diferentes |
 | Wizard Vue | ⚠️ Layout similar; campos e polling diferentes |
-| Fixtures `spec/fixtures/evolution/` | ❌ Criar `spec/fixtures/evolution_go/` |
+| Fixtures `spec/fixtures/evolution/` | ❌ Espelho em `spec/fixtures/evolution_go/` (incl. `webhook_group_info.json` / `webhook_joined_group.json`) |
 
 ---
 

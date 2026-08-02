@@ -1,0 +1,18 @@
+{
+  "event": "GroupInfo",
+  "data": {
+    "JID": "120363012345678901@g.us",
+    "Sender": "5511999999999@s.whatsapp.net",
+    "Timestamp": "2024-10-10T17:25:00-03:00",
+    "Name": {
+      "Name": "NortAgro Suporte",
+      "NameSetAt": "2024-10-10T17:25:00-03:00",
+      "NameSetBy": "5511999999999@s.whatsapp.net"
+    },
+    "Join": [],
+    "Leave": [],
+    "Promote": [],
+    "Demote": []
+  },
+  "instanceId": "249aad2e-68f9-464f-bc84-aca560c38f0e"
+}

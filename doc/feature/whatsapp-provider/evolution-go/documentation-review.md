@@ -31,6 +31,24 @@
 | 27/jul/2026 (pm) | Bugfixes: delete sync-first, dedup lock protocol_only, QR session cancel/pairing clear, isReconnecting reset, enrichment force requeue cap |
 | 27/jul/2026 (eve) | Group LID routing: `@g.us` never rewritten via `remoteJidAlt`; adapter omits group alt; device JID phone strip; Go participant enrichment |
 | 27/jul/2026 (night) | Group avatar: `GroupMetadataService#warm_cache!` → `POST /user/avatar` com JID `@g.us` (não via `/group/info`) |
+| 2/ago/2026 | Grupos: `GROUP_INFO`/`JOINED_GROUP` routing, `schedule_metadata_fetch!` dedup, naming `*(GROUP)`, automação/auto-assign skip, Sync contact branch, Vue sender label, fixtures reais |
+
+---
+
+## Revisão 2/ago/2026 — grupos (correções + guards)
+
+**Escopo:** Fechar gaps de metadata webhook, naming, automação, auto-assignment e Sync contact em grupos.
+
+| Área | Decisão / código |
+|------|------------------|
+| Dispatcher | `GROUP` / `GROUP_INFO` / `JOINED_GROUP`; JID `data.JID`; `group_jid?` via `end_with?('@g.us')` |
+| Metadata | `warm_cache_from_name!` (inline) + `schedule_metadata_fetch!` (Redis NX 5 min); API warm `force_avatar: true` |
+| Naming | `should_update_group_name?` só `*(GROUP)`; create sem pushName do membro |
+| Automação | `Custom::AutomationRuleListener` + `AutomationEventDispatcher` skip `@g.us` |
+| Auto-assignment | `Custom::Conversation` + `Custom::AutoAssignment::AssignmentService` skip `@g.us` |
+| Sync contact | Grupo → `GroupMetadataFetchJob`; 1:1 → enrichment; enrichment delega grupo a `warm_cache!` |
+| UI | `useGroupMessageSender` + FORK em `Base.vue` |
+| Docs | status, decisions §9, feature-mapping, api-reference, webhook-events, business-rules, differences |
 
 ---
 

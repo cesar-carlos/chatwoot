@@ -45,8 +45,9 @@ class Custom::Whatsapp::Evolution::GroupContactService
   end
 
   def display_name
+    # Never seed the contact name with a member pushName — use cache or JID prefix.
     Custom::Whatsapp::Evolution::GroupMetadataService.new(channel: channel)
-                                                     .display_name(remote_jid, fallback: push_name)
+                                                     .display_name(remote_jid, fallback: nil)
   end
 
   def find_or_create_group_contact!
@@ -64,6 +65,7 @@ class Custom::Whatsapp::Evolution::GroupContactService
     return false if new_name.blank?
     return true if contact.name.blank? || contact.name == remote_jid
 
-    contact.additional_attributes&.dig(IS_WHATSAPP_GROUP_KEY) == true
+    # Only overwrite with confirmed group metadata names (never member pushName fallback).
+    new_name.end_with?('(GROUP)')
   end
 end

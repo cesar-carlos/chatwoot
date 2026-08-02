@@ -141,7 +141,7 @@ CHAT_PRESENCE, CALL, CONNECTION, LABEL, CONTACT, GROUP, NEWSLETTER, QRCODE
 | `MESSAGE_DELETE`, `MESSAGES_DELETE` | Delete cliente | UX | `MessageDeleteSyncService` (job sempre consome revoke; soft-delete gated por `mark_inbound_deleted`) |
 | `MESSAGES_EDITED`, `MESSAGE_EDIT`, `SEND_MESSAGE_UPDATE` | Edit cliente | UX | `MessageEditSyncService` — plaintext ✅; encrypted-only skip — ver § Edit abaixo |
 | `CALL` | Chamadas | — | Projeto voz |
-| `GROUP` | Grupos | 5 | Warm `GroupMetadataFetchJob` quando `ignore_groups: false`; inbound grupo via `MESSAGE` com `@g.us` |
+| `GROUP` | Grupos | 5 | Categoria subscribe → `GroupInfo` / `JoinedGroup` (`data.JID`); `warm_cache_from_name!` + `schedule_metadata_fetch!` (Redis NX 5 min) quando `ignore_groups: false`; inbound via `MESSAGE` `@g.us` |
 | `CONTACT` | Contatos | — | Ignorar |
 | `LABEL` | Labels | — | Ignorar |
 | `NEWSLETTER` | Newsletter | — | Ignorar |
@@ -470,8 +470,10 @@ when 'CONNECTION', 'CONNECTED', 'DISCONNECTED', 'LOGGEDOUT', 'LOGGED_OUT', 'QRCO
   ConnectionService#handle_event
 when 'HISTORY_SYNC'
   Import::HistorySyncProcessor
-when 'GROUP'
-  GroupMetadataFetchJob (quando ignore_groups: false)
+when 'GROUP', 'GROUP_INFO', 'JOINED_GROUP'
+  # ignore_groups != false → return
+  # warm_cache_from_name! from GroupName.Name / Name.Name when present
+  # schedule_metadata_fetch! (Redis NX, TTL 5 min) — not raw perform_later
 else
   log ignored
 end

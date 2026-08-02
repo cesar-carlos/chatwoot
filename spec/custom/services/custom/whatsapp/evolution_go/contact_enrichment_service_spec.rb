@@ -444,4 +444,28 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     expect(contact.reload.additional_attributes['evolution_go_avatar_attempted_at']).to be_blank
     expect(contact.additional_attributes['evolution_go_enriched_at']).to be_blank
   end
+
+  it 'delegates WhatsApp group contacts to GroupMetadataService' do
+    group_jid = '120363012345678901@g.us'
+    group_contact = create(
+      :contact,
+      account: account,
+      phone_number: nil,
+      identifier: group_jid,
+      name: 'Old Name (GROUP)',
+      additional_attributes: {
+        Custom::Whatsapp::Evolution::GroupKeys::IS_WHATSAPP_GROUP_KEY => true,
+        Custom::Whatsapp::Evolution::GroupKeys::EVOLUTION_GROUP_JID_KEY => group_jid
+      }
+    )
+    metadata = instance_double(Custom::Whatsapp::Evolution::GroupMetadataService)
+    allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new)
+      .with(channel: channel)
+      .and_return(metadata)
+
+    expect(metadata).to receive(:warm_cache!).with(group_jid)
+    expect(api_client).not_to receive(:user_info)
+
+    described_class.new(channel: channel, contact: group_contact, force: true).perform
+  end
 end

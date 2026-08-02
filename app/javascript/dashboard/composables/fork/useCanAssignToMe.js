@@ -24,7 +24,9 @@ export function useCanAssignToMe() {
   const userInboxIds = computed(() =>
     (inboxes.value || []).map(inbox => inbox.id)
   );
-  const inboxesFetching = computed(() => Boolean(inboxUiFlags.value?.isFetching));
+  const inboxesFetching = computed(() =>
+    Boolean(inboxUiFlags.value?.isFetching)
+  );
 
   function canAssignConversationToMe(conversation) {
     const assigneeId = conversation?.meta?.assignee?.id;

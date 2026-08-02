@@ -390,7 +390,7 @@ Fixture sintética: `spec/fixtures/evolution_go/history_sync.json` — **validar
 | `POST` | `/api/v1/accounts/:account_id/inboxes/evolution_go_server_check` | Valida `base_url` + SSRF guard (wizard step 1) |
 | `POST` | `/api/v1/accounts/:account_id/conversations/:id/messages/:id/evolution_go_react` | Envia reação (`{ reaction }`) via `ReactSyncService` |
 | `POST` | `/api/v1/accounts/:account_id/conversations/:id/messages/:id/evolution_go_edit` | Edita outgoing (`{ content }`) via `MessageContentEditService` — opt-in `sync_edit_to_whatsapp` |
-| `POST` | `/api/v1/accounts/:account_id/contacts/:id/evolution_go_sync` | Force enrichment info+avatar (`ContactEnrichmentJob` `force: true`) — só Evolution Go |
+| `POST` | `/api/v1/accounts/:account_id/contacts/:id/evolution_go_sync` | Force sync — **grupo** (`is_whatsapp_group` / `@g.us`) → `GroupMetadataFetchJob`; **1:1** → `ContactEnrichmentJob` `force: true` (enrichment também delega grupo a `warm_cache!`) |
 
 Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token={webhook_token}` — auth alternativa: `Authorization: Bearer {webhook_token}`
 
@@ -400,9 +400,13 @@ Webhook inbound: `POST /webhooks/evolution_go/:instance_name?token={webhook_toke
 
 | Método | Path | Uso fork |
 |--------|------|----------|
-| `POST` | `/group/info` | `ApiClient#group_info` — nome do grupo (`subject`/`Name`) quando `ignore_groups: false` |
+| `POST` | `/group/info` | `ApiClient#group_info` — subject Go (`Name`/`name`) via `go_group_subject`; Node usa `node_group_subject` (`subject` / nested) |
 
-> Avatar de grupo **não** vem em `/group/info`. Sync de foto: `POST /user/avatar` com `number` = JID `@g.us` (`GroupMetadataService#warm_cache!`). `/group/photo` é só **set**.
+> Avatar de grupo **não** vem em `/group/info`. Sync de foto: `POST /user/avatar` com `number` = JID `@g.us`.
+>
+> - `warm_cache!` (job / Sync contact) → `force_avatar: true` (purge + re-download)
+> - `warm_cache_from_name!` (inline JoinedGroup/GroupInfo name) → anexa só se ainda não houver avatar
+> - `schedule_metadata_fetch!` deduplica enqueue (Redis NX, TTL 5 min) em webhooks / cache miss
 
 Demais rotas de grupo: ver [documentation-links.md § Group](./documentation-links.md#group). Outbound para grupo usa JID `@g.us` no `number` do send.
 

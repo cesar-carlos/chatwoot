@@ -50,13 +50,13 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Quote outbound (própria msg) | `quoted.participant` via `instance_name` se phone `+55000…` | ✅ | `EvolutionGoServiceOutbound#channel_business_phone` |
 | Avatar enrichment backoff | `/user/avatar` timeout 12s; cooldown 6h sem-foto; timeout → 30m (`avatar_timeout_at`); query LID-first + fallback PN | ✅ | `ContactEnrichmentService` · [avatar-failures-report.md](./avatar-failures-report.md) |
 | Contacts refresh (bulk) | paced enqueue 3s + dynamic lock TTL | ✅ | `ContactsRefreshService` |
-| Sync contact (per-conversation menu) | `POST …/contacts/:id/evolution_go_sync` → `ContactEnrichmentJob` `force: true` | ✅ | MoreActions · só Evolution Go |
+| Sync contact (per-conversation menu) | `POST …/contacts/:id/evolution_go_sync` — grupo → `GroupMetadataFetchJob`; 1:1 → `ContactEnrichmentJob` `force: true` | ✅ | MoreActions · só Evolution Go |
 | Client delete | `MESSAGE` revoke (`IsRevoke` / type 0) / `MESSAGE_DELETE` | ✅ | `MessageDeleteSyncService` (job sempre consome; soft-delete gated) |
 | Client edit | `MESSAGES_EDITED` / protocol `IsEdit` + `editedMessage` | ✅ | `MessageEditSyncService` — plaintext ✅; `secretEncryptedMessage` sem texto → skip ([#92](https://github.com/evolution-foundation/evolution-go/issues/92)) |
 | History import | `HISTORY_SYNC` | ✅ | `HistorySyncProcessor` · ⚠️ E2E |
 | Reações | `reactionMessage` → `content_attributes.reactions` | ✅ | `ReactionsStore` + chip/menu; Node parity via `Evolution::*` |
 | Pseudo-forward | — (sem API Go) | ✅ | Chatwoot-only · [message-forward/](../../message-forward/) · ADR §34 |
-| Grupos | `MESSAGE` com `@g.us` | ✅ | Normalizer + `GroupContactService` quando `ignore_groups: false`; LID group fix 27/jul; avatar via `/user/avatar` + `@g.us` no `GroupMetadataService` · ⚠️ E2E |
+| Grupos | `MESSAGE` `@g.us` + `GROUP`→`GroupInfo`/`JoinedGroup` | ✅ | Normalizer + `GroupContactService` (`ignore_groups: false`); warm inline + `schedule_metadata_fetch!`; naming `*(GROUP)`; automação/auto-assign skip; bubble `useGroupMessageSender` · ⚠️ E2E |
 | Echo fromMe | `MESSAGE` / `SEND_MESSAGE` fromMe | ✅ | filtrar ou `PhoneOutgoingSyncService` |
 
 ---

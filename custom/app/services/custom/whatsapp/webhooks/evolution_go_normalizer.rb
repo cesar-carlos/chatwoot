@@ -166,7 +166,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
   end
 
   def ignore_groups?
-    ActiveModel::Type::Boolean.new.cast(config['ignore_groups'])
+    config['ignore_groups'] != false
   end
 
   def group_jid?(remote_jid)

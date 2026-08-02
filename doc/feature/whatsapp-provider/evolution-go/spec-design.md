@@ -314,8 +314,9 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
       ConnectionService.new(channel: channel).handle_event(params)
     when 'HISTORY_SYNC'
       Import::HistorySyncProcessor
-    when 'GROUP'
-      GroupMetadataFetchJob (se ignore_groups: false)
+    when 'GROUP', 'GROUP_INFO', 'JOINED_GROUP'
+      # ignore_groups != false → return
+      # warm_cache_from_name! (GroupName.Name / Name.Name) + schedule_metadata_fetch! (Redis 5 min)
     end
   end
 end

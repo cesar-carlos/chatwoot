@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 27/jul/2026 (group LID routing fix · delete sync-first / QR) · **Integração completa; E2E operador pendente**
+**Última revisão:** 2/ago/2026 (grupos: GroupInfo/JoinedGroup, sync contact branch, automação/auto-assign, dedup metadata) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -22,7 +22,7 @@
 | Diagnóstico (`evolution_go_diagnostics`, test webhook) | ✅ |
 | `convert_markdown_inbound`, `sync_edit_to_whatsapp` + UI edit outgoing | ✅ 17/jul/2026 |
 | Import histórico (`HISTORY_SYNC` + `POST /chat/history-sync`) | ✅ código · ⚠️ fixture sintética |
-| Grupos WhatsApp (`ignore_groups: false`) | ✅ · LID `@g.us` não reescrito · avatar grupo via `/user/avatar` · ⚠️ E2E |
+| Grupos WhatsApp (`ignore_groups: false`) | ✅ · GroupInfo/JoinedGroup + warm/dedup · automação/auto-assign skip `@g.us` · Sync contact grupo · bubble sender · ⚠️ E2E |
 | Webhook subscribe sync (`WebhookSubscribeSync`) | ✅ |
 | Logout UI (health page) | ✅ |
 | Pair API (`POST /instance/pair`) | ✅ |
@@ -35,7 +35,7 @@
 | Outbound quote `participant` com phone placeholder `+55000…` | ✅ 13/jul/2026 |
 | Avatar enrichment backoff (`avatar_attempted_at`, timeout 12s) | ✅ 13/jul/2026 · **18/jul LID-first + timeout 30m** |
 | Contacts refresh paced (3s stagger + lock TTL) | ✅ 17/jul/2026 |
-| Sync contact from conversation MoreActions | ✅ 18/jul/2026 · `POST …/evolution_go_sync` · force info+avatar |
+| Sync contact from conversation MoreActions | ✅ 2/ago/2026 · grupo → `GroupMetadataFetchJob`; 1:1 → `ContactEnrichmentJob` `force: true` |
 | Same-origin Active Storage download (alias hosts) | ✅ 13/jul/2026 |
 | Inbound contact + button/list reply text | ✅ jul/2026 |
 | Contact enrichment on inbound (Go path) | ✅ jul/2026 |
@@ -76,10 +76,10 @@
 - `CorruptMediaRepair` / rake `evolution_go:repair_corrupt_media`
 - `PeerContactInboxResolver`, `ProviderConfigMerger`, `UrlSafetyGuard`
 - Refresh manual de perfis: `ContactsRefreshService` (stagger 3s + lock TTL) + `POST …/evolution_go_refresh_contacts`
-- Sync per-contact (menu ⋮): `POST …/contacts/:id/evolution_go_sync` → `ContactEnrichmentJob` `force: true` (só Evolution Go)
+- Sync per-contact (menu ⋮): `POST …/contacts/:id/evolution_go_sync` — grupo → `GroupMetadataFetchJob`; 1:1 → `ContactEnrichmentJob` `force: true`
 - Import histórico: `MessagesImporter`, `HistorySyncProcessor`, evento `HISTORY_SYNC`
 - Diagnóstico: `DiagnosticsService`, `WebhookTestService`, `MutationStatsRecorder`
-- Grupos: `EvolutionGoNormalizer` (group JID + participant), `GroupContactService` / `GroupParticipantService`, `ApiClient#group_info`, `GroupMetadataService` (nome + avatar Go via `/user/avatar` `@g.us`), `PhoneOutgoingSyncService` (outbound grupo)
+- Grupos: dispatcher `GROUP`/`GROUP_INFO`/`JOINED_GROUP`; `warm_cache_from_name!` + `schedule_metadata_fetch!` (Redis 5 min); naming `*(GROUP)`; automation + auto-assignment skip `@g.us`; `useGroupMessageSender` no bubble
 - `sync_settings!` / `sync_proxy!` (advanced-settings + delete proxy)
 
 ### Frontend
@@ -95,14 +95,15 @@
 - Inbox: `GET evolution_go_diagnostics`, `POST evolution_go_test_webhook`, `POST evolution_go_sync_webhook`, `POST evolution_go_pair`, `POST evolution_go_import`
 - Inbox: `POST evolution_go_refresh_contacts`
 - Messages: `POST …/messages/:id/evolution_go_react`, `POST …/messages/:id/evolution_go_edit`
-- Contacts: `POST …/contacts/:id/evolution_go_sync` (force enrichment)
+- Contacts: `POST …/contacts/:id/evolution_go_sync` (grupo → metadata; 1:1 → enrichment)
 
 ### Specs
-- Normalizer, READ_RECEIPT, ApiClient, job (MESSAGE + READ_RECEIPT + delete/edit)
+- Normalizer, READ_RECEIPT, ApiClient, job (MESSAGE + READ_RECEIPT + delete/edit + GroupInfo/JoinedGroup)
 - Delete/edit sync services, import pipeline
 - Fixture `spec/fixtures/evolution_go/history_sync.json` (sintética)
-- Fixture `spec/fixtures/evolution_go/message_inbound_group.json` (sintética)
-- Normalizer group specs (3 exemplos)
+- Fixtures `message_inbound_group.json` / `message_inbound_group_lid.json` / `webhook_group_info.json` / `webhook_joined_group.json`
+- AutomationRuleListener + AssignmentService + Conversation auto-assign skip `@g.us`
+- Sync contact API group vs 1:1 routing
 
 ---
 

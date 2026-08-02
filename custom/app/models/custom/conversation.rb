@@ -1,6 +1,17 @@
 module Custom::Conversation
   private
 
+  # FORK: WhatsApp Evolution group chats stay unassigned (no inbox round-robin).
+  def should_run_auto_assignment?
+    return false if whatsapp_group_conversation?
+
+    super
+  end
+
+  def whatsapp_group_conversation?
+    contact_inbox&.source_id.to_s.end_with?('@g.us')
+  end
+
   def execute_after_update_commit_callbacks
     super
     reset_first_reply_timestamp_on_single_history_reopen

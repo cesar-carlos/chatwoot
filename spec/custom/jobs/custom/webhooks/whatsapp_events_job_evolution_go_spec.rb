@@ -84,7 +84,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     Webhooks::WhatsappEventsJob.perform_now(job_payload)
   end
 
-  it 'enqueues group metadata fetch for GROUP events when groups are enabled' do
+  it 'enqueues group metadata fetch for legacy GROUP events when groups are enabled' do
     channel.update!(
       provider_config: channel.provider_config.merge('ignore_groups' => false)
     )
@@ -101,6 +101,62 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     Webhooks::WhatsappEventsJob.perform_now(payload)
   end
 
+  it 'enqueues group metadata fetch for GroupInfo events using data.JID' do
+    channel.update!(
+      provider_config: channel.provider_config.merge('ignore_groups' => false)
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/webhook_group_info.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).to receive(:perform_later)
+      .with(channel.id, '120363012345678901@g.us')
+
+    Webhooks::WhatsappEventsJob.perform_now(job_payload)
+  end
+
+  it 'warms cache from JoinedGroup payload name and enqueues metadata fetch' do
+    channel.update!(
+      provider_config: channel.provider_config.merge('ignore_groups' => false)
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/webhook_joined_group.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+    metadata_service = instance_double(Custom::Whatsapp::Evolution::GroupMetadataService)
+    allow(Custom::Whatsapp::Evolution::GroupMetadataService).to receive(:new)
+      .with(channel: channel)
+      .and_return(metadata_service)
+
+    expect(metadata_service).to receive(:warm_cache_from_name!)
+      .with('120363012345678901@g.us', 'NortAgro Suporte')
+    expect(metadata_service).to receive(:schedule_metadata_fetch!)
+      .with('120363012345678901@g.us')
+    expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).not_to receive(:perform_later)
+
+    Webhooks::WhatsappEventsJob.perform_now(job_payload)
+  end
+
+  it 'dedups GroupMetadataFetchJob when GroupInfo events burst' do
+    channel.update!(
+      provider_config: channel.provider_config.merge('ignore_groups' => false)
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/webhook_group_info.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).to receive(:perform_later)
+      .with(channel.id, '120363012345678901@g.us')
+      .once
+
+    2.times { Webhooks::WhatsappEventsJob.perform_now(job_payload) }
+  end
+
   it 'skips GROUP events when ignore_groups is enabled' do
     payload = {
       'event' => 'GROUP',
@@ -112,6 +168,18 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
     expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).not_to receive(:perform_later)
 
     Webhooks::WhatsappEventsJob.perform_now(payload)
+  end
+
+  it 'skips GroupInfo events when ignore_groups is enabled' do
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/webhook_group_info.json').read)
+    job_payload = payload.merge(
+      'evolution_go_instance_name' => 'test-go-instance',
+      'channel_id' => channel.id
+    )
+
+    expect(Custom::Whatsapp::Evolution::GroupMetadataFetchJob).not_to receive(:perform_later)
+
+    Webhooks::WhatsappEventsJob.perform_now(job_payload)
   end
 
   it 'syncs phone-sent SendMessage events into the existing conversation' do

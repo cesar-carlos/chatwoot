@@ -99,8 +99,15 @@ Campo `phone` obrigatório — E.164 sem `+`.
 | `AddressingMode: lid` + `SenderAlt` (bug pré-27/jul) | `JidResolver` **nunca** reescreve `@g.us` via `remoteJidAlt`; adapter omite `remoteJidAlt` em grupos. Mensagens **novas** caem no grupo; históricas em 1:1 não migram sozinhas |
 | Payload EG com `key.remoteJid` = participante | `EvolutionGoPayloadAdapter` prefere `Info.Chat` `@g.us` — fixture `message_inbound_group_lid.json` |
 | `ignore_groups: false` mas conversas antigas | Só **novas** mensagens usam JID do grupo |
+| Avatar de grupo desatualizado | `warm_cache!` (via `GroupMetadataFetchJob` / Sync contact / `GroupInfo`) faz refresh forçado do avatar; warm inline só anexa se ainda não houver foto. Webhooks `GroupInfo` em rajada são deduplicados (`schedule_metadata_fetch!`, lock 5 min). Se travar: `Contact.find(<id>).avatar.purge` e Sync contact |
+| Automações (boas-vindas, times) disparam no grupo | Esperado **não** disparar — `Custom::AutomationRuleListener` + `AutomationEventDispatcher` ignoram `source_id` `@g.us`. Mensagens antigas já gravadas permanecem |
+| Auto-assignment atribui agente no grupo | Esperado **não** — `Custom::Conversation#should_run_auto_assignment?` + `AssignmentService#assignable?` skip `@g.us` |
+| Nome do grupo vira pushName do membro | `should_update_group_name?` só aceita `*(GROUP)`; create usa prefixo JID (não pushName). Aguardar metadata / Sync contact |
+| `ignore_groups` ausente / nil | Tratado como **ignorar** grupos (`!= false`) em job, normalizer, phone sync, subscribe e import |
 
 **Checklist rápido:** settings `ignore_groups: false` → sync webhook inclui `MESSAGE` (+ `GROUP`) → log sem `[EVOLUTION_GO] skipped … group` → `ContactInbox#source_id` termina em `@g.us`.
+
+Webhooks reais de metadata: eventos `GroupInfo` / `JoinedGroup` (não a categoria `GROUP`) — JID em `data.JID`.
 
 ---
 
@@ -243,6 +250,7 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 | Mensagem sem anexo e sem erro visível | `MediaAttachmentService` marca `evolution_go_media_failed` quando base64 vazio; checar `content_attributes` da mensagem |
 | Refresh de contatos não atualiza foto | Preferir `PictureURL`/`PictureID` de `/user/info` (evita `/user/avatar` extra). Avatar query: **LID → PN JID → dígitos do JID** (não priorizar phone BR). Timeout de rede → `evolution_go_avatar_timeout_at` (30 min), **não** cooldown 6h. Cooldown 6h só para sem-foto/privacidade. Relatório: [avatar-failures-report.md](./avatar-failures-report.md). `force: true` / Sync menu / Refresh settings |
 | Contato sem avatar mas tem `evolution_go_picture_id` | Foto existe no WA; `/user/avatar` timeoutou ou usava phone. Sync contact (force) ou aguardar retry (30 min após timeout). Ver relatório account 12 |
+| Sync contact info em conversa de grupo | Menu enfileira `GroupMetadataFetchJob` (`/group/info` + avatar `@g.us`), não o enrichment 1:1. Se nome/avatar não mudarem: conferir Sidekiq `:low` e logs `[EVOLUTION_GO] group` |
 | Menu ⋮ sem “Sync contact info” | Item só aparece em inbox `provider=evolution_go`. Outros WhatsApp (Cloud / Evolution Node) não mostram a opção |
 | Sync contact info não muda avatar | Job async com **retries** (`force`: até 3× por JID + todos candidatos LID/PN/dígitos; download CDN inline). Esperar ~15–30s (poll UI). Se Go continuar em `ReadTimeout`, ver [avatar-failures-report.md](./avatar-failures-report.md). Clicar de novo enquanto o job roda **reenfileira** (não descarta). |
 | Import fica `running` com toggles off | `ImportService` → `abort_disabled_import!` limpa status para `idle` quando import está desligado mid-run |
