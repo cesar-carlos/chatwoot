@@ -133,11 +133,50 @@ const message = computed({
   },
 });
 
+// SingleSelect only emits { id, name }; recover phone/email from search options or API.
+const contactFieldsFrom = contact => {
+  if (!contact) return { phone_number: '', email: '' };
+  const fromOptions = contactOptions.value.find(item => item.id === contact.id);
+  return {
+    phone_number:
+      contact.phone_number ||
+      contact.phoneNumber ||
+      fromOptions?.phone_number ||
+      '',
+    email: contact.email || fromOptions?.email || '',
+  };
+};
+
+const applyResolvedContact = contact => {
+  selectedContact.value = contact;
+  emitContact(contact);
+  validateChannelMatch();
+};
+
+const resolveSelectedContact = async contact => {
+  if (!contact?.id) {
+    applyResolvedContact(null);
+    return;
+  }
+
+  const { phone_number, email } = contactFieldsFrom(contact);
+  if (phone_number || email) {
+    applyResolvedContact({
+      id: contact.id,
+      name: contact.name,
+      email,
+      phone_number,
+    });
+    return;
+  }
+
+  await fetchContactById(contact.id, contact.name);
+};
+
 const contactSelectModel = computed({
   get: () => selectedContact.value,
   set: value => {
-    selectedContact.value = value;
-    emitContact(value);
+    resolveSelectedContact(value);
   },
 });
 
@@ -190,7 +229,9 @@ const emitParams = (inboxId, contactValue, messageValue) => {
 const emitContact = contact => {
   if (!contact?.id) {
     contactMeta.value = { hasPhone: false, hasEmail: false };
-    emitParams(props.actionParams?.[0], null, props.actionParams?.[2]);
+    if (props.actionParams?.[1] != null) {
+      emitParams(props.actionParams?.[0], null, props.actionParams?.[2]);
+    }
     return;
   }
 
@@ -204,6 +245,18 @@ const emitContact = contact => {
     hasPhone: !!payload.phone_number,
     hasEmail: !!payload.email,
   };
+
+  const current = props.actionParams?.[1];
+  if (
+    current &&
+    typeof current === 'object' &&
+    Number(current.id) === Number(payload.id) &&
+    (current.phone_number || current.phoneNumber || '') === payload.phone_number &&
+    (current.email || '') === payload.email
+  ) {
+    return;
+  }
+
   emitParams(props.actionParams?.[0], payload, props.actionParams?.[2]);
 };
 
@@ -240,37 +293,14 @@ const validateChannelMatch = () => {
   return true;
 };
 
-const loadSelectedContact = async contactValue => {
-  if (!contactValue) {
-    selectedContact.value = null;
-    contactMeta.value = { hasPhone: false, hasEmail: false };
-    return;
-  }
+const fetchContactById = async (contactId, fallbackName) => {
+  const id = Number(contactId);
+  if (!id) return;
 
-  if (typeof contactValue === 'object' && contactValue.id) {
-    selectedContact.value = {
-      id: contactValue.id,
-      name:
-        contactValue.name ||
-        formatContactLabel({
-          id: contactValue.id,
-          name: contactValue.name,
-          email: contactValue.email,
-          phoneNumber: contactValue.phone_number || contactValue.phoneNumber,
-        }),
-      email: contactValue.email || '',
-      phone_number: contactValue.phone_number || contactValue.phoneNumber || '',
-    };
-    contactMeta.value = {
-      hasPhone: !!selectedContact.value.phone_number,
-      hasEmail: !!selectedContact.value.email,
-    };
-    validateChannelMatch();
-    return;
-  }
-
-  const id = Number(contactValue);
-  if (selectedContact.value?.id === id && contactMeta.value.hasPhone !== undefined) {
+  if (
+    selectedContact.value?.id === id &&
+    (contactMeta.value.hasPhone || contactMeta.value.hasEmail)
+  ) {
     return;
   }
 
@@ -279,7 +309,7 @@ const loadSelectedContact = async contactValue => {
     const payload = data?.payload || data;
     if (!payload?.id) return;
 
-    selectedContact.value = {
+    applyResolvedContact({
       id: payload.id,
       name: formatContactLabel({
         id: payload.id,
@@ -289,17 +319,49 @@ const loadSelectedContact = async contactValue => {
       }),
       email: payload.email || '',
       phone_number: payload.phone_number || '',
-    };
-    contactMeta.value = {
-      hasPhone: !!payload.phone_number,
-      hasEmail: !!payload.email,
-    };
-    emitContact(selectedContact.value);
+    });
   } catch {
-    selectedContact.value = { id, name: `#${id}` };
-    contactMeta.value = { hasPhone: false, hasEmail: false };
+    applyResolvedContact({
+      id,
+      name: fallbackName || `#${id}`,
+      email: '',
+      phone_number: '',
+    });
   }
-  validateChannelMatch();
+};
+
+const loadSelectedContact = async contactValue => {
+  if (!contactValue) {
+    selectedContact.value = null;
+    contactMeta.value = { hasPhone: false, hasEmail: false };
+    channelError.value = '';
+    return;
+  }
+
+  if (typeof contactValue === 'object' && contactValue.id) {
+    const { phone_number, email } = contactFieldsFrom(contactValue);
+    if (phone_number || email) {
+      applyResolvedContact({
+        id: contactValue.id,
+        name:
+          contactValue.name ||
+          formatContactLabel({
+            id: contactValue.id,
+            name: contactValue.name,
+            email,
+            phoneNumber: phone_number,
+          }),
+        email,
+        phone_number,
+      });
+      return;
+    }
+
+    await fetchContactById(contactValue.id, contactValue.name);
+    return;
+  }
+
+  await fetchContactById(contactValue);
 };
 
 const runContactSearch = async query => {
@@ -381,13 +443,12 @@ const toggleFavorite = () => {
 };
 
 const selectFavorite = favorite => {
-  selectedContact.value = {
+  resolveSelectedContact({
     id: favorite.id,
     name: favorite.name,
     email: favorite.email || '',
     phone_number: favorite.phone_number || '',
-  };
-  emitContact(selectedContact.value);
+  });
 };
 
 watch(
