@@ -45,4 +45,26 @@ RSpec.describe Custom::ConversationWorkflow::SendMessageToContactService do
     skip = ConversationWorkflowRuleSkip.last
     expect(skip.reason).to eq('missing_inbox_or_contact')
   end
+
+  it 'interpolates liquid from the trigger conversation and rule' do
+    channel = create(:channel_api, account: account)
+    target_inbox = channel.inbox
+    target_contact = create(:contact, account: account, name: 'dest', phone_number: '+5566988776655')
+    conversation.contact.update!(name: 'trigger person')
+
+    expect do
+      described_class.new(
+        account: account,
+        rule: rule,
+        conversation: conversation,
+        inbox_id: target_inbox.id,
+        contact_id: target_contact.id,
+        message_template: 'Hi {{contact.name}} via {{rule.name}}'
+      ).perform
+    end.to change(Message, :count).by(1)
+
+    message = Message.last
+    expect(message.content).to eq('Hi Trigger Person via Send contact')
+    expect(message.conversation.contact_id).to eq(target_contact.id)
+  end
 end

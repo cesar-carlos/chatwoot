@@ -125,7 +125,7 @@ export const MESSAGE_VARIABLES = [
   },
   {
     label: 'Contact phone',
-    key: 'contact.phone',
+    key: 'contact.phone_number',
   },
   {
     label: 'Agent name',
@@ -150,6 +150,14 @@ export const MESSAGE_VARIABLES = [
   {
     label: 'Inbox id',
     key: 'inbox.id',
+  },
+  {
+    label: 'Account name',
+    key: 'account.name',
+  },
+  {
+    label: 'Automation rule name',
+    key: 'rule.name',
   },
 ];
 

@@ -3,6 +3,11 @@
 module Custom::Macros::ExecutionService
   VOICE_ONLY_SKIP_LOG = '[Macros] Skipped action on voice-only inbox'
 
+  def perform
+    Current.executed_by = @macro
+    super
+  end
+
   def send_message(message)
     super
   rescue CustomExceptions::Wavoip::VoiceOnlyInbox => e

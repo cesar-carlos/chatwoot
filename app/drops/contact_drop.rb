@@ -11,6 +11,11 @@ class ContactDrop < BaseDrop
     @obj.try(:phone_number)
   end
 
+  # FORK: alias for MESSAGE_VARIABLES / automation chips that use contact.phone
+  def phone
+    phone_number
+  end
+
   def first_name
     @obj.try(:name).try(:split).try(:first).try(:capitalize)
   end
