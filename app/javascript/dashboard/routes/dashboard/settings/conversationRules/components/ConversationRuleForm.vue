@@ -431,8 +431,9 @@ const onConfirmSave = async () => {
 };
 
 const onCancelConfirm = () => {
+  // Do not call confirmDialogRef.close() here — this handler runs from Dialog's
+  // @close emit, and re-entering close() would recurse forever.
   pendingSave.value = false;
-  confirmDialogRef.value?.close();
 };
 
 const closePanel = () => {
