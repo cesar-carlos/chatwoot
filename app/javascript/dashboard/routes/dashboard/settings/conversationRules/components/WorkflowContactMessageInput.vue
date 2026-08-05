@@ -33,18 +33,21 @@ const TEMPLATE_VARIABLES = [
   'conversation.id',
   'contact.name',
   'contact.email',
-  'contact.phone',
+  'contact.phone_number',
   'inbox.name',
+  'account.name',
   'rule.name',
 ];
 
 const SAMPLE_VALUES = {
   'conversation.display_id': '1234',
-  'conversation.id': '99',
+  'conversation.id': '1234',
   'contact.name': 'João',
   'contact.email': 'joao@example.com',
+  'contact.phone_number': '+5511999999999',
   'contact.phone': '+5511999999999',
   'inbox.name': 'WhatsApp',
+  'account.name': 'Acme',
   'rule.name': 'Cliente sem resposta 15 min',
 };
 

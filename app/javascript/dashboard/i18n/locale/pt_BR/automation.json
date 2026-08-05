@@ -144,7 +144,14 @@
       "TEAM_MESSAGE_INPUT_PLACEHOLDER": "Escreva sua mensagem aqui",
       "TEAM_DROPDOWN_PLACEHOLDER": "Selecione times",
       "EMAIL_INPUT_PLACEHOLDER": "Insira o e-mail",
-      "URL_INPUT_PLACEHOLDER": "Insira a URL"
+      "URL_INPUT_PLACEHOLDER": "Insira a URL",
+      "VARIABLES": {
+        "HINT": "Clique em uma variável para inserir. Os valores são preenchidos quando a automação executa (Liquid).",
+        "PREVIEW_LABEL": "Prévia com dados de exemplo",
+        "AGENT_HINT": "agent.* só é preenchido quando a conversa tem um agente atribuído.",
+        "FILTERS_LABEL": "Filtros Liquid",
+        "MACRO_NAME": "macro.name"
+      }
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Ativar regra de automação",

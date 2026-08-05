@@ -91,3 +91,41 @@ export const OPENED_BY_CONDITION_VALUES = [
     i18nKey: 'PHONE',
   },
 ];
+
+// FORK: Liquid-aligned chips for automation send_message / add_private_note
+export const AUTOMATION_MESSAGE_VARIABLES = [
+  'conversation.id',
+  'conversation.display_id',
+  'contact.name',
+  'contact.first_name',
+  'contact.last_name',
+  'contact.email',
+  'contact.phone_number',
+  'agent.name',
+  'inbox.name',
+  'account.name',
+  'rule.name',
+];
+
+export const AUTOMATION_MESSAGE_VARIABLE_PREVIEW = {
+  'conversation.id': '1234',
+  'conversation.display_id': '1234',
+  'contact.name': 'João Silva',
+  'contact.first_name': 'João',
+  'contact.last_name': 'Silva',
+  'contact.email': 'joao@example.com',
+  'contact.phone_number': '+5566999000000',
+  'contact.phone': '+5566999000000',
+  'agent.name': 'Maria',
+  'inbox.name': 'WhatsApp',
+  'account.name': 'Acme',
+  'rule.name': 'Boas vindas',
+  'macro.name': 'Macro exemplo',
+};
+
+// FORK: Liquid filter shortcut chips (snippets are Liquid English, labels via i18n)
+export const AUTOMATION_LIQUID_FILTER_SNIPPETS = [
+  'contact.email | default: "sem email"',
+  'contact.name | default: "cliente"',
+  'contact.phone_number | default: ""',
+];

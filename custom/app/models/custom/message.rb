@@ -11,6 +11,7 @@ module Custom::Message
     prepend Custom::Message::WorkflowRulesScheduler
     prepend Custom::Message::WavoipConversationCycle
     prepend Custom::Message::OpenedByTracking
+    prepend Custom::Message::LiquidRuleContext
 
     before_validation :reject_voice_only_outbound_public_message, on: :create
 

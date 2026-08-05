@@ -1,14 +1,6 @@
-class Custom::ConversationWorkflow::SendMessageToContactService
-  TEMPLATE_VARIABLES = {
-    'conversation.id' => ->(ctx) { ctx[:conversation].id },
-    'conversation.display_id' => ->(ctx) { ctx[:conversation].display_id },
-    'contact.name' => ->(ctx) { ctx[:conversation].contact&.name },
-    'contact.email' => ->(ctx) { ctx[:conversation].contact&.email },
-    'contact.phone' => ->(ctx) { ctx[:conversation].contact&.phone_number },
-    'inbox.name' => ->(ctx) { ctx[:conversation].inbox&.name },
-    'rule.name' => ->(ctx) { ctx[:rule].name }
-  }.freeze
+# frozen_string_literal: true
 
+class Custom::ConversationWorkflow::SendMessageToContactService
   def initialize(account:, rule:, conversation:, inbox_id:, contact_id:, message_template:)
     @account = account
     @rule = rule
@@ -19,7 +11,13 @@ class Custom::ConversationWorkflow::SendMessageToContactService
   end
 
   def perform
-    content = interpolate(@message_template)
+    # Interpolate against the *trigger* conversation (not the target) before MessageBuilder,
+    # otherwise Liquidable would resolve vars from the destination contact.
+    content = Custom::Liquid::MessageContentRenderer.render(
+      @message_template,
+      conversation: @conversation,
+      executed_by: @rule
+    )
     if content.blank?
       skip!(
         'blank_message',
@@ -99,16 +97,5 @@ class Custom::ConversationWorkflow::SendMessageToContactService
       reason: reason,
       metadata: metadata.merge(trigger_conversation_id: @conversation.id)
     )
-  end
-
-  def interpolate(template)
-    return '' if template.blank?
-
-    context = { conversation: @conversation, rule: @rule }
-    template.to_s.gsub(/\{\{\s*([\w.]+)\s*\}\}/) do
-      key = Regexp.last_match(1)
-      resolver = TEMPLATE_VARIABLES[key]
-      resolver ? resolver.call(context).to_s : Regexp.last_match(0)
-    end
   end
 end

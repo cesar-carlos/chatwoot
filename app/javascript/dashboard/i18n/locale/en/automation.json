@@ -143,7 +143,14 @@
       "TEAM_MESSAGE_INPUT_PLACEHOLDER": "Enter your message here",
       "TEAM_DROPDOWN_PLACEHOLDER": "Select teams",
       "EMAIL_INPUT_PLACEHOLDER": "Enter email",
-      "URL_INPUT_PLACEHOLDER": "Enter URL"
+      "URL_INPUT_PLACEHOLDER": "Enter URL",
+      "VARIABLES": {
+        "HINT": "Click a variable to insert it. Values are filled when the automation runs (Liquid).",
+        "PREVIEW_LABEL": "Preview with sample data",
+        "AGENT_HINT": "agent.* is filled only when the conversation has an assignee.",
+        "FILTERS_LABEL": "Liquid filters",
+        "MACRO_NAME": "macro.name"
+      }
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Activate Automation Rule",

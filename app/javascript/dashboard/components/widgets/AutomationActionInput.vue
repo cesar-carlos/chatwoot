@@ -8,6 +8,8 @@ import MultiSelect from 'dashboard/components-next/filter/inputs/MultiSelect.vue
 import NextInput from 'dashboard/components-next/input/Input.vue';
 // FORK: workflow-only action input (send_message_to_contact)
 import WorkflowContactMessageInput from 'dashboard/routes/dashboard/settings/conversationRules/components/WorkflowContactMessageInput.vue';
+// FORK: Liquid variable chips + preview for send_message / add_private_note
+import AutomationMessageVariables from 'dashboard/routes/dashboard/settings/automation/components/AutomationMessageVariables.vue';
 
 export default {
   components: {
@@ -19,6 +21,7 @@ export default {
     MultiSelect,
     NextInput,
     WorkflowContactMessageInput,
+    AutomationMessageVariables,
   },
   props: {
     modelValue: {
@@ -135,6 +138,26 @@ export default {
       this.actionNameAsSelectModel = value;
       this.resetAction();
     },
+    // FORK: insert Liquid variable at ProseMirror cursor when possible
+    insertMessageVariable(token) {
+      const editor = this.$refs.messageEditorRef;
+      if (editor?.insertContentIntoEditor) {
+        const needsSpace =
+          (this.castMessageVmodel || '') &&
+          !/\s$/.test(this.castMessageVmodel || '');
+        editor.insertContentIntoEditor(needsSpace ? ` ${token}` : token);
+        return;
+      }
+
+      const current = this.castMessageVmodel || '';
+      const spacer = current && !/\s$/.test(current) ? ' ' : '';
+      const next = `${current}${spacer}${token}`;
+      if (Array.isArray(this.action_params)) {
+        this.action_params = [next];
+      } else {
+        this.castMessageVmodel = next;
+      }
+    },
   },
 };
 </script>
@@ -205,11 +228,19 @@ export default {
       />
       <WootMessageEditor
         v-if="inputType === 'textarea'"
+        ref="messageEditorRef"
         v-model="castMessageVmodel"
         rows="4"
         enable-variables
         :placeholder="$t('AUTOMATION.ACTION.TEAM_MESSAGE_INPUT_PLACEHOLDER')"
         class="[&_.ProseMirror-menubar]:hidden px-3 py-1 bg-n-alpha-1 rounded-lg outline outline-1 outline-n-weak dark:outline-n-strong"
+      />
+      <!-- FORK: Liquid variable chips + sample preview -->
+      <AutomationMessageVariables
+        v-if="inputType === 'textarea'"
+        :message="castMessageVmodel || ''"
+        :executed-by-kind="isMacro ? 'macro' : 'rule'"
+        @insert-variable="insertMessageVariable"
       />
       <!-- FORK: send_message_to_contact fields -->
       <WorkflowContactMessageInput
