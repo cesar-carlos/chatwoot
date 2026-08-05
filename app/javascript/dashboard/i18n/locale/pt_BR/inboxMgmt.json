@@ -495,8 +495,8 @@
         },
         "PHONE_NUMBER": {
           "LABEL": "Número comercial",
-          "PLACEHOLDER": "+5566999050319",
-          "HELP_TEXT": "Use o formato E.164: + seguido do código do país e do número (ex.: +5566999050319 para celular brasileiro). Deve corresponder ao número pareado no Wavoip.",
+          "PLACEHOLDER": "+556635159875",
+          "HELP_TEXT": "Use o formato E.164 (+ código do país + número). Brasil: celular +5566999050319 (DDD + 9…) ou fixo +556635159875 (DDD + 8 dígitos, 00 0000 0000). Deve corresponder ao número pareado no Wavoip.",
           "ERROR": "Informe um número de telefone válido no formato E.164"
         },
         "DEVICE_TOKEN": {

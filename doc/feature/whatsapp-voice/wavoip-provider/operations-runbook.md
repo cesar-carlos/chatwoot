@@ -106,6 +106,7 @@ Botão **Testar ligação** (Fase 2+): outbound para número de teste interno.
 | `EXTERNAL_INTEGRATION_ERROR` | Verificar integração Evolution/gateway no Wavoip |
 | Agente offline | Marcar availability **online** |
 | Contato sem telefone E.164 | Editar contato |
+| Número comercial fixo BR parece inválido no wizard (borda vermelha) | Falso positivo de help: conferir se o valor é E.164 sem espaços (ex. `+556635159875`). Help deve aparecer como info; erro só sem `+` ou com caracteres inválidos |
 
 ### Chamada inbound não toca
 

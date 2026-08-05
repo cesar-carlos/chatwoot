@@ -6,6 +6,8 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import SingleSelect from 'dashboard/components-next/filter/inputs/SingleSelect.vue';
 import MultiSelect from 'dashboard/components-next/filter/inputs/MultiSelect.vue';
 import NextInput from 'dashboard/components-next/input/Input.vue';
+// FORK: workflow-only action input (send_message_to_contact)
+import WorkflowContactMessageInput from 'dashboard/routes/dashboard/settings/conversationRules/components/WorkflowContactMessageInput.vue';
 
 export default {
   components: {
@@ -16,6 +18,7 @@ export default {
     SingleSelect,
     MultiSelect,
     NextInput,
+    WorkflowContactMessageInput,
   },
   props: {
     modelValue: {
@@ -76,8 +79,9 @@ export default {
       },
     },
     inputType() {
+      // FORK: null-safe when action type is missing from the list
       return this.actionTypes.find(action => action.key === this.action_name)
-        .inputType;
+        ?.inputType;
     },
     actionNameAsSelectModel: {
       get() {
@@ -93,7 +97,20 @@ export default {
       return this.actionTypes.map(a => ({ id: a.key, name: a.label }));
     },
     isVerticalLayout() {
-      return ['team_message', 'textarea'].includes(this.inputType);
+      // FORK: contact_message uses vertical custom input
+      return ['team_message', 'textarea', 'contact_message'].includes(
+        this.inputType
+      );
+    },
+    contactMessageParams: {
+      get() {
+        const params = this.action_params;
+        if (Array.isArray(params) && params.length) return params;
+        return [null, null, ''];
+      },
+      set(value) {
+        this.action_params = value;
+      },
     },
     castMessageVmodel: {
       get() {
@@ -193,6 +210,11 @@ export default {
         enable-variables
         :placeholder="$t('AUTOMATION.ACTION.TEAM_MESSAGE_INPUT_PLACEHOLDER')"
         class="[&_.ProseMirror-menubar]:hidden px-3 py-1 bg-n-alpha-1 rounded-lg outline outline-1 outline-n-weak dark:outline-n-strong"
+      />
+      <!-- FORK: send_message_to_contact fields -->
+      <WorkflowContactMessageInput
+        v-if="inputType === 'contact_message'"
+        v-model:action-params="contactMessageParams"
       />
     </div>
     <span v-if="errorMessage" class="text-sm text-n-ruby-11">

@@ -806,6 +806,7 @@
     "DRAG_HINT": "Drag to reorder",
     "SAVE_SUCCESS": "Conversation rule saved",
     "SAVE_ERROR": "Could not save conversation rule. Please try again.",
+    "LEGACY_CONFLICT": "Migrate legacy auto-resolve before activating inactivity rules.",
     "DELETE_SUCCESS": "Conversation rule deleted",
     "DELETE_ERROR": "Could not delete conversation rule. Please try again.",
     "FETCH_ERROR": "Could not load conversation rules. Please try again.",
@@ -896,7 +897,8 @@
       "DURATION_MIN": "Duration must be at least 10 minutes",
       "DURATION_MAX": "Duration cannot exceed 999 days",
       "AGENT_NO_REPLY_ACTIONS": "Add at least one action for agent no-reply rules",
-      "INACTIVITY_OUTCOME": "Add actions, enable resolve on match, or set a customer message"
+      "INACTIVITY_OUTCOME": "Add actions, enable resolve on match, or set a customer message",
+      "CONTACT_MESSAGE_REQUIRED": "Select an inbox, a contact, and a message for this action"
     },
     "FORM": {
       "SECTIONS": {
@@ -926,6 +928,7 @@
         "HOURS_24": "24 hours"
       },
       "MATCH_PREVIEW": "About {count} conversations would match now",
+      "TRIGGER_UNAVAILABLE": "This trigger’s feature flag is off. The rule keeps its trigger until you change it; it will not run at runtime.",
       "INBOXES": "Inboxes",
       "ALL_INBOXES": "All inboxes",
       "IGNORE_WAITING": "Ignore conversations waiting for agent reply",
@@ -955,6 +958,16 @@
       "REMOVE_ACTION": "Remove action",
       "COUNTS_AS_AGENT_REPLY": "Counts as agent reply (clears waiting)",
       "COUNTS_AS_AGENT_REPLY_HELP": "Treat the sent message as an agent reply so the conversation leaves the unattended queue.",
+      "CONTACT_MESSAGE": {
+        "INBOX_LABEL": "Send via inbox",
+        "INBOX_PLACEHOLDER": "Select an inbox",
+        "CONTACT_LABEL": "Recipient contact",
+        "CONTACT_PLACEHOLDER": "Search contacts...",
+        "MESSAGE_LABEL": "Message",
+        "MESSAGE_PLACEHOLDER": "Conversation {'{{'}conversation.display_id{'}}'} from {'{{'}contact.name{'}}'} needs attention.",
+        "VARIABLES_HINT": "Available variables",
+        "CONTACT_NOT_FOUND": "No contacts found"
+      },
       "CANCEL": "Cancel",
       "SAVE": "Save rule"
     }

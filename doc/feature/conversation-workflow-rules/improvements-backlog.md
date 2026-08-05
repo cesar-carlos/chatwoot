@@ -27,6 +27,18 @@
 | ScheduleOnMessageScheduler | — | jun/2026 — delay desde `waiting_since`, dedup Redis, specs |
 | Gatilhos estendidos + UX | — | jun/2026 — 4 novos triggers, cards, presets, preview, abas lista |
 | Índices pending/unassigned + docs runtime | — | jul/2026 — `index_conv_workflow_pending_stale`, `index_conv_workflow_unassigned`; docs 6 eventos Automação / per-message vs cron |
+| Review fixes ago/2026 (P0–P2) | — | FK delete cascade, `preview_count?`, SQL qualify, BH prefilter×3 + order, matcher FR, ActionService re-raise, legacy guard, reorder tab gate, allowlist FE, migrate refresh, trigger warning, BH preload, pt_BR sidebar |
+| `send_message_to_contact` | — | ago/2026 — business-rules §3.2–3.3 · current-state ActionService + WorkflowContactMessageInput |
+
+---
+
+## Fora de escopo (ainda aberto)
+
+| Item | Nota |
+|------|------|
+| Preview count até 10k rows | Custo/benefício alto; não atacado na rodada ago/2026 |
+| Índices DB novos / pending statuses | Documentado; não nesta entrega |
+| Reorder transaction + reject unknown IDs | P3 auditoria |
 
 ---
 
@@ -36,9 +48,9 @@
 |----------|---------|
 | Direção geral | ✅ Sólida |
 | Maior gap corrigido no plano | Wrapper + guard legacy |
-| Quick win | Condições assignee null na Fase 2 |
+| Quick win | Condições assignee null na Fase 2 — ✅ `is_present` / `is_not_present` em assignee/team |
 | Tiered SLA | Múltiplas regras, não engine de tiers |
 
 ---
 
-*Última atualização: jul/2026 — índices extended + docs runtime*
+*Última atualização: ago/2026 — `send_message_to_contact`*

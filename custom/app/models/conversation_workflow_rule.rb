@@ -1,6 +1,7 @@
 class ConversationWorkflowRule < ApplicationRecord
   belongs_to :account
-  has_many :conversation_workflow_rule_executions, dependent: :destroy_async
+  # FK has no ON DELETE CASCADE — must delete executions before the rule.
+  has_many :conversation_workflow_rule_executions, dependent: :delete_all
 
   enum trigger_type: {
     conversation_inactivity: 0,
@@ -40,7 +41,7 @@ class ConversationWorkflowRule < ApplicationRecord
     base = %w[
       add_label remove_label add_private_note send_message assign_agent assign_team
       remove_assigned_agent remove_assigned_team send_webhook_event send_email_to_team
-      send_email_transcript change_priority
+      send_email_transcript change_priority send_message_to_contact
     ]
     base += %w[resolve_conversation] unless conversation_inactivity?
     base.uniq

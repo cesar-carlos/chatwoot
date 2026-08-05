@@ -68,6 +68,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService do
       expect(message.outgoing?).to be(true)
       expect(message.content).to eq('Mensagem enviada pelo celular para o grupo')
       expect(message.content_attributes['phone_sent']).to be(true)
+      expect(message.content_attributes['external_echo']).to be(true)
       expect(message.conversation.contact_inbox).to eq(contact_inbox)
     end
   end

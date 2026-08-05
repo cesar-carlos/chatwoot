@@ -432,7 +432,8 @@
     "DOCS": "Ler documentos",
     "SECURITY": "Segurança",
     "CAPTAIN_AI": "Capitão",
-    "CONVERSATION_WORKFLOW": "Fluxo de Conversa"
+    "CONVERSATION_WORKFLOW": "Fluxo de Conversa",
+    "CONVERSATION_RULES": "Regras de conversa"
   },
   "DATA_IMPORTS": {
     "HEADER": "Dado",
@@ -675,6 +676,7 @@
     "DRAG_HINT": "Arraste para reordenar",
     "SAVE_SUCCESS": "Regra de conversa salva",
     "SAVE_ERROR": "Não foi possível salvar a regra. Tente novamente.",
+    "LEGACY_CONFLICT": "Migre o auto-resolve legado antes de ativar regras de inatividade.",
     "DELETE_SUCCESS": "Regra de conversa excluída",
     "DELETE_ERROR": "Não foi possível excluir a regra. Tente novamente.",
     "FETCH_ERROR": "Não foi possível carregar as regras. Tente novamente.",
@@ -765,7 +767,8 @@
       "DURATION_MIN": "Duração mínima de 10 minutos",
       "DURATION_MAX": "Duração não pode exceder 999 dias",
       "AGENT_NO_REPLY_ACTIONS": "Adicione pelo menos uma ação para regras de agente sem resposta",
-      "INACTIVITY_OUTCOME": "Adicione ações, ative resolver ao corresponder ou defina uma mensagem ao cliente"
+      "INACTIVITY_OUTCOME": "Adicione ações, ative resolver ao corresponder ou defina uma mensagem ao cliente",
+      "CONTACT_MESSAGE_REQUIRED": "Selecione uma caixa de entrada, um contato e uma mensagem para esta ação"
     },
     "FORM": {
       "SECTIONS": {
@@ -795,6 +798,7 @@
         "HOURS_24": "24 horas"
       },
       "MATCH_PREVIEW": "Cerca de {count} conversas corresponderiam agora",
+      "TRIGGER_UNAVAILABLE": "A feature flag deste gatilho está desligada. A regra mantém o gatilho até você alterá-lo; ela não executa em runtime.",
       "INBOXES": "Caixas de entrada",
       "ALL_INBOXES": "Todas as caixas",
       "IGNORE_WAITING": "Ignorar conversas aguardando resposta",
@@ -824,6 +828,16 @@
       "REMOVE_ACTION": "Remover ação",
       "COUNTS_AS_AGENT_REPLY": "Conta como resposta do agente (zera aguardando)",
       "COUNTS_AS_AGENT_REPLY_HELP": "Trata a mensagem enviada como resposta do agente para sair da fila não atendidas.",
+      "CONTACT_MESSAGE": {
+        "INBOX_LABEL": "Enviar pela caixa de entrada",
+        "INBOX_PLACEHOLDER": "Selecione uma caixa",
+        "CONTACT_LABEL": "Contato destinatário",
+        "CONTACT_PLACEHOLDER": "Buscar contatos...",
+        "MESSAGE_LABEL": "Mensagem",
+        "MESSAGE_PLACEHOLDER": "A conversa {'{{'}conversation.display_id{'}}'} de {'{{'}contact.name{'}}'} precisa de atenção.",
+        "VARIABLES_HINT": "Variáveis disponíveis",
+        "CONTACT_NOT_FOUND": "Nenhum contato encontrado"
+      },
       "CANCEL": "Cancelar",
       "SAVE": "Salvar regra"
     }

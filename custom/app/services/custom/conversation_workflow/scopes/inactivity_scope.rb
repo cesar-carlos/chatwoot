@@ -16,6 +16,6 @@ class Custom::ConversationWorkflow::Scopes::InactivityScope
   def apply_cutoff(scope)
     multiplier = @rule.respect_business_hours? ? 3 : 1
     cutoff = Time.now.utc - (@rule.duration_minutes * multiplier).minutes
-    scope.where('last_activity_at < ?', cutoff)
+    scope.where('conversations.last_activity_at < ?', cutoff)
   end
 end

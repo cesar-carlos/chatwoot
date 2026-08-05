@@ -80,13 +80,13 @@ export const WORKFLOW_CONDITIONS = [
     key: 'assignee_id',
     name: 'ASSIGNEE_NAME',
     inputType: 'search_select',
-    filterOperators: OPERATOR_TYPES_1,
+    filterOperators: OPERATOR_TYPES_3,
   },
   {
     key: 'team_id',
     name: 'TEAM_NAME',
     inputType: 'search_select',
-    filterOperators: OPERATOR_TYPES_1,
+    filterOperators: OPERATOR_TYPES_3,
   },
   {
     key: 'labels',
@@ -109,11 +109,23 @@ const DISALLOWED_ACTIONS = [
   'pending_conversation',
   'change_status',
   'send_attachment',
+  'add_sla',
 ];
 
-export const WORKFLOW_ACTION_TYPES = AUTOMATION_ACTION_TYPES.filter(
-  action => !DISALLOWED_ACTIONS.includes(action.key)
-);
+export const WORKFLOW_ONLY_ACTIONS = [
+  {
+    key: 'send_message_to_contact',
+    label: 'SEND_MESSAGE_TO_CONTACT',
+    inputType: 'contact_message',
+  },
+];
+
+export const WORKFLOW_ACTION_TYPES = [
+  ...AUTOMATION_ACTION_TYPES.filter(
+    action => !DISALLOWED_ACTIONS.includes(action.key)
+  ),
+  ...WORKFLOW_ONLY_ACTIONS,
+];
 
 export const WORKFLOW_STATUS_OPTIONS = [
   { id: 'open', name: 'OPEN' },

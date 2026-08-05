@@ -37,8 +37,12 @@ class Custom::ConversationWorkflow::BusinessHoursElapsedCalculator
     [((@ended_at - @started_at) / 1.day).ceil, 1].max
   end
 
+  def working_hours_by_day
+    @working_hours_by_day ||= @inbox.working_hours.index_by(&:day_of_week)
+  end
+
   def working_minutes_for_day(start_time, end_time)
-    working_hour = @inbox.working_hours.find_by(day_of_week: start_time.wday)
+    working_hour = working_hours_by_day[start_time.wday]
     return 0 if working_hour.blank? || working_hour.closed_all_day?
 
     return ((end_time - start_time) / 60).floor if working_hour.open_all_day?

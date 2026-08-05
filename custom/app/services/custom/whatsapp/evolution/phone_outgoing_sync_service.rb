@@ -162,6 +162,7 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
       source_id: key['id'],
       content_attributes: {
         phone_sent: true,
+        external_echo: true,
         external_created_at: timestamp.iso8601
       },
       created_at: timestamp,

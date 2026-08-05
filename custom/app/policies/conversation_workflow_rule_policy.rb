@@ -26,4 +26,8 @@ class ConversationWorkflowRulePolicy < ApplicationPolicy
   def migrate_legacy?
     @account_user.administrator?
   end
+
+  def preview_count?
+    @account_user.administrator?
+  end
 end

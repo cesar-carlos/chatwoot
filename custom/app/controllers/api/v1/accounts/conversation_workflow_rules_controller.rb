@@ -14,6 +14,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
   def create
     @rule = Current.account.conversation_workflow_rules.new(rule_params)
     assign_position_on_create
+    return render_legacy_conflict_error if legacy_conflict?(@rule)
     return render_could_not_create_error(@rule.errors.messages) unless @rule.save
 
     render json: rule_payload(@rule, include_legacy_warning: @rule.active?), status: :created
@@ -21,6 +22,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
 
   def update
     @rule.assign_attributes(rule_params)
+    return render_legacy_conflict_error if legacy_conflict?(@rule)
     return render_could_not_create_error(@rule.errors.messages) unless @rule.save
 
     render json: rule_payload(@rule)
@@ -50,6 +52,8 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
       attributes: preview_params
     ).perform
     render json: { count: count }
+  rescue ArgumentError
+    render json: { count: 0 }
   end
 
   private
@@ -66,7 +70,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
   end
 
   def rule_params
-    params.permit(
+    permitted = params.permit(
       :name, :description, :active, :position, :trigger_type, :duration_minutes,
       :ignore_waiting, :resolve_on_match, :message,
       inbox_ids: [],
@@ -74,6 +78,77 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
       conditions: [:attribute_key, :filter_operator, :query_operator, :custom_attribute_type, { values: [] }],
       actions: [:action_name, :counts_as_agent_reply, { action_params: [] }]
     )
+
+    # MultiSelect may still send [{id, name}]; coerce to scalar ids.
+    if params.key?(:inbox_ids)
+      permitted[:inbox_ids] = normalize_id_list(params[:inbox_ids])
+    end
+
+    # action_params can be scalars OR nested hashes (send_email_to_team).
+    # `action_params: []` only keeps scalars — reattach full params per action.
+    if params[:actions].present?
+      permitted[:actions] = Array(params[:actions]).map { |action| sanitize_action(action) }
+    end
+
+    permitted
+  end
+
+  def normalize_id_list(values)
+    return nil if values.blank?
+
+    Array(values).filter_map do |value|
+      # Integer/String respond to [] in Ruby — only coerce Hash/Parameters option shapes.
+      if value.is_a?(Hash) || value.is_a?(ActionController::Parameters)
+        value[:id] || value['id']
+      else
+        value
+      end
+    end
+  end
+
+  def sanitize_action(action)
+    action_hash = action.respond_to?(:to_unsafe_h) ? action.to_unsafe_h : action.to_h
+    raw_counts = if action_hash.key?('counts_as_agent_reply')
+                   action_hash['counts_as_agent_reply']
+                 else
+                   action_hash[:counts_as_agent_reply]
+                 end
+
+    {
+      action_name: action_hash['action_name'] || action_hash[:action_name],
+      counts_as_agent_reply: ActiveModel::Type::Boolean.new.cast(raw_counts),
+      action_params: normalize_action_params(
+        action_hash['action_params'] || action_hash[:action_params]
+      )
+    }
+  end
+
+  def normalize_action_params(raw_params)
+    return [] if raw_params.blank?
+
+    if raw_params.is_a?(Hash) || raw_params.respond_to?(:permitted?)
+      hash = raw_params.respond_to?(:to_unsafe_h) ? raw_params.to_unsafe_h : raw_params
+      # search_select often sends a single {id, name} object
+      if select_option_hash?(hash)
+        return [hash[:id] || hash['id']]
+      end
+
+      return [hash.deep_stringify_keys]
+    end
+
+    Array(raw_params).map do |param|
+      next param unless param.is_a?(Hash) || param.respond_to?(:permitted?)
+
+      hash = param.respond_to?(:to_unsafe_h) ? param.to_unsafe_h : param
+      next (hash[:id] || hash['id']) if select_option_hash?(hash)
+
+      hash.deep_stringify_keys
+    end
+  end
+
+  def select_option_hash?(hash)
+    keys = hash.keys.map(&:to_s)
+    keys.include?('id') && keys.include?('name') && keys.exclude?('team_ids')
   end
 
   def rule_payload(rule, include_legacy_warning: false)
@@ -89,6 +164,16 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
 
   def legacy_auto_resolve_active?
     Current.account.auto_resolve_after.present? && !Current.account.workflow_rules_migrated?
+  end
+
+  def legacy_conflict?(rule)
+    rule.active? && rule.conversation_inactivity? && legacy_auto_resolve_active?
+  end
+
+  def render_legacy_conflict_error
+    render_could_not_create_error(
+      base: ['Migrate legacy auto-resolve before activating inactivity workflow rules']
+    )
   end
 
   def preview_params

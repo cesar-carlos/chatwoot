@@ -165,6 +165,7 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   def outgoing_content_attributes(timestamp, remote_jid)
     {
       :phone_sent => true,
+      :external_echo => true,
       :external_created_at => timestamp.iso8601,
       Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY => remote_jid
     }.compact

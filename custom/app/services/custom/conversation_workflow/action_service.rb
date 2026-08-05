@@ -7,6 +7,7 @@ class Custom::ConversationWorkflow::ActionService < AutomationRules::ActionServi
         dispatch_action(action)
       rescue StandardError => e
         ChatwootExceptionTracker.new(e, account: @account).capture_exception
+        raise
       end
     end
   end
@@ -19,9 +20,23 @@ class Custom::ConversationWorkflow::ActionService < AutomationRules::ActionServi
       send_message([action[:action_params]&.first, action[:counts_as_agent_reply]])
     when 'resolve_conversation'
       Custom::Conversations::ResolveService.new(conversation: @conversation, skip_required_attributes: true).perform
+    when 'send_message_to_contact'
+      send_message_to_contact(action[:action_params])
     else
       send(action[:action_name], action[:action_params])
     end
+  end
+
+  def send_message_to_contact(params)
+    inbox_id, contact_id, message_template = Array(params)
+    Custom::ConversationWorkflow::SendMessageToContactService.new(
+      account: @account,
+      rule: @rule,
+      conversation: @conversation,
+      inbox_id: inbox_id.to_i,
+      contact_id: contact_id.to_i,
+      message_template: message_template.to_s
+    ).perform
   end
 
   def send_message(message)

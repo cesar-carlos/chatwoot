@@ -203,6 +203,7 @@
       "SEND_WEBHOOK_EVENT": "Send Webhook Event",
       "SEND_ATTACHMENT": "Send Attachment",
       "SEND_MESSAGE": "Send a Message",
+      "SEND_MESSAGE_TO_CONTACT": "Send message to contact",
       "ADD_PRIVATE_NOTE": "Add a Private Note",
       "CHANGE_PRIORITY": "Change Priority",
       "ADD_SLA": "Add SLA",

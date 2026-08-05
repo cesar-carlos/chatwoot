@@ -406,6 +406,8 @@
     "MESSAGE_ERROR": "Não foi possível enviar esta mensagem, por favor, tente novamente mais tarde",
     "SENT_BY": "Enviado por:",
     "BOT": "Robôs",
+    "NATIVE_APP": "WhatsApp",
+    "NATIVE_APP_ADVISORY": "Esta mensagem foi enviada pelo WhatsApp (celular ou web). Responda pelo Chatwoot para continuar o atendimento por aqui.",
     "SEND_FAILED": "Não foi possível enviar a mensagem! Tente novamente",
     "TRY_AGAIN": "tentar novamente",
     "ASSIGNMENT": {

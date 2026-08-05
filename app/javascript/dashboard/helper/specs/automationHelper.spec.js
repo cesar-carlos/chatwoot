@@ -453,9 +453,10 @@ describe('getCustomAttributeType', () => {
 });
 
 describe('showActionInput', () => {
-  it('returns false for send_email_to_team and send_message actions', () => {
+  it('returns false for send_email_to_team, send_message and send_message_to_contact', () => {
     expect(helpers.showActionInput([], 'send_email_to_team')).toBe(false);
     expect(helpers.showActionInput([], 'send_message')).toBe(false);
+    expect(helpers.showActionInput([], 'send_message_to_contact')).toBe(false);
   });
 
   it('returns true if the action has an input type', () => {
@@ -466,5 +467,9 @@ describe('showActionInput', () => {
   it('returns false if the action does not have an input type', () => {
     const mockActionTypes = [{ key: 'some_action', inputType: null }];
     expect(helpers.showActionInput(mockActionTypes, 'some_action')).toBe(false);
+  });
+
+  it('returns false if the action is missing from action types', () => {
+    expect(helpers.showActionInput([], 'missing_action')).toBe(false);
   });
 });

@@ -393,8 +393,8 @@
         },
         "PHONE_NUMBER": {
           "LABEL": "Business Phone Number",
-          "PLACEHOLDER": "+5566999050319",
-          "HELP_TEXT": "Use E.164 format: + followed by country code and number (e.g. +5566999050319 for a Brazilian mobile). Must match the phone paired in Wavoip.",
+          "PLACEHOLDER": "+556635159875",
+          "HELP_TEXT": "Use E.164 (+ country code + number). Brazil: mobile +5566999050319 (DDD + 9…) or landline +556635159875 (DDD + 8 digits). Must match the phone paired in Wavoip.",
           "ERROR": "Please provide a valid phone number in E.164 format"
         },
         "DEVICE_TOKEN": {

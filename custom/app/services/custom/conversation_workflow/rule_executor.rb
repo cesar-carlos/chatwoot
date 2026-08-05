@@ -5,7 +5,8 @@ class Custom::ConversationWorkflow::RuleExecutor
   end
 
   def perform
-    base_scope.limit(Limits::BULK_ACTIONS_LIMIT).find_each do |conversation|
+    # find_each ignores ORDER BY — load the limited ordered batch explicitly.
+    ordered_base_scope.limit(Limits::BULK_ACTIONS_LIMIT).to_a.each do |conversation|
       process_conversation(conversation)
     end
   end
@@ -32,6 +33,26 @@ class Custom::ConversationWorkflow::RuleExecutor
   end
 
   private
+
+  def ordered_base_scope
+    column = order_column_for_trigger
+    return base_scope if column.blank?
+
+    base_scope.order(Arel.sql("#{column} ASC NULLS LAST"))
+  end
+
+  def order_column_for_trigger
+    case @rule.trigger_type
+    when 'conversation_inactivity', 'pending_stale'
+      'conversations.last_activity_at'
+    when 'agent_no_reply', 'first_response_overdue'
+      'conversations.waiting_since'
+    when 'unassigned_too_long'
+      'conversations.created_at'
+    when 'customer_no_reply'
+      'conversations.last_activity_at'
+    end
+  end
 
   def base_scope
     scope_class = {
@@ -90,23 +111,16 @@ class Custom::ConversationWorkflow::RuleExecutor
   end
 
   def claim_execution!(conversation)
+    dedup = Custom::ConversationWorkflow::ReferenceTimestamp.new(rule: @rule, conversation: conversation).dedup_attributes
     ConversationWorkflowRuleExecution.record!(
       rule: @rule,
       conversation: conversation,
-      waiting_since_epoch: execution_epoch(conversation, :waiting_since),
-      last_activity_epoch: execution_epoch(conversation, :last_activity_at)
+      waiting_since_epoch: dedup[:waiting_since_epoch],
+      last_activity_epoch: dedup[:last_activity_epoch]
     )
     true
   rescue ActiveRecord::RecordNotUnique
     false
-  end
-
-  def execution_epoch(conversation, attribute)
-    dedup = Custom::ConversationWorkflow::ReferenceTimestamp.new(rule: @rule, conversation: conversation).dedup_attributes
-    return dedup[:waiting_since_epoch] if attribute == :waiting_since
-    return dedup[:last_activity_epoch] if attribute == :last_activity_at
-
-    nil
   end
 
   def create_activity_message(conversation)

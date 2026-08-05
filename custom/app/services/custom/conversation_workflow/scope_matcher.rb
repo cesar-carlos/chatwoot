@@ -30,6 +30,7 @@ class Custom::ConversationWorkflow::ScopeMatcher
   def waiting_based_matches?
     return false unless @rule.status_names.include?(@conversation.status)
     return false if @conversation.waiting_since.blank?
+    return false if @rule.first_response_overdue? && @conversation.first_reply_created_at.present?
     return false if @rule.require_no_first_reply? && @conversation.first_reply_created_at.present?
     return false if inbox_mismatch?
 

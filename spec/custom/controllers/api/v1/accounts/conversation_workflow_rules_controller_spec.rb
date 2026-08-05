@@ -40,7 +40,7 @@ RSpec.describe 'Api::V1::Accounts::ConversationWorkflowRulesController', type: :
       expect(account.conversation_workflow_rules.count).to eq(1)
     end
 
-    it 'returns legacy warning when auto resolve is still active' do
+    it 'rejects active inactivity rules while legacy auto resolve is still active' do
       account.update!(auto_resolve_after: 60)
 
       post base_url,
@@ -48,12 +48,14 @@ RSpec.describe 'Api::V1::Accounts::ConversationWorkflowRulesController', type: :
              name: 'New rule',
              trigger_type: 'conversation_inactivity',
              duration_minutes: 60,
-             active: true
+             active: true,
+             resolve_on_match: true
            },
            headers: headers,
            as: :json
 
-      expect(response.parsed_body['legacy_auto_resolve_active']).to be(true)
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(account.conversation_workflow_rules.count).to eq(0)
     end
   end
 
@@ -95,6 +97,22 @@ RSpec.describe 'Api::V1::Accounts::ConversationWorkflowRulesController', type: :
 
       expect(response).to have_http_status(:success)
       expect(account.reload.workflow_rules_migrated?).to be(true)
+    end
+  end
+
+  describe 'POST /conversation_workflow_rules/preview_count' do
+    it 'returns a count for administrators' do
+      post "#{base_url}/preview_count",
+           params: {
+             trigger_type: 'conversation_inactivity',
+             duration_minutes: 60,
+             resolve_on_match: true
+           },
+           headers: headers,
+           as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body).to have_key('count')
     end
   end
 end

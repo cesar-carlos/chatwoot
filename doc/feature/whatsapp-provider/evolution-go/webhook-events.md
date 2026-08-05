@@ -106,7 +106,7 @@ Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via he
 |---------|----------|
 | Protocol revoke/edit on `SEND_MESSAGE` | Always → `MessageDeleteSyncService` / `MessageEditSyncService` (inclui `fromMe`) |
 | `ignore_from_me_echo: true` | Echo de texto/mídia logado e dropado |
-| `ignore_from_me_echo: false` | `PhoneOutgoingSyncService` cria mensagem **outgoing** com `content_attributes.phone_sent: true`; contato via `PeerContactInboxResolver` |
+| `ignore_from_me_echo: false` | `PhoneOutgoingSyncService` cria mensagem **outgoing** com `content_attributes.phone_sent: true` + `external_echo: true` (ícone WhatsApp / aviso native app na UI); contato via `PeerContactInboxResolver` |
 
 Same path for `MESSAGE` events with `fromMe: true` (delete/edit before echo filter).
 ### Event name aliases (after normalization)
