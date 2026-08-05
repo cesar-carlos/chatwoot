@@ -21,20 +21,21 @@ Referência do código em ago/2026 após menu independente **Regras de conversa*
 | Menu sidebar | **Regras de conversa** → `/settings/conversation-rules` (CRUD de regras) |
 | Legacy | **Fluxo de Conversa** → `/settings/conversation-workflow` (auto-resolve + atributos obrigatórios) |
 | i18n | Namespace `CONVERSATION_RULES` (en + pt_BR) |
-| UX | Empty state, busca com contador filtrado (`COUNT_FILTERED`), cards enriquecidos, form por seções, migração com confirmação, clone client-side |
+| UX | Empty state, busca com contador filtrado (`COUNT_FILTERED`), cards enriquecidos, form em **SidePanel**, seções colapsáveis, migração com confirmação, clone client-side |
 | SLA exemplo | `helpers/i18nHelper.js` — `getTieredSlaExample(tm)` evita bug de `t(returnObjects)` |
 | `send_attachment` | Oculto na UI (`DISALLOWED_ACTIONS`); backend não executa |
-| `send_message_to_contact` | Ação workflow-only: inbox + contato + mensagem com variáveis da conversa origem |
+| `send_message_to_contact` | Ação workflow-only: inbox + contato + mensagem; chips/variáveis, preview, templates, favoritos, validação canal×contato, confirmação no save |
+| Atividade | `GET …/activity` — últimas 10 executions + skips; badge `recent_skips_count` na lista |
 
 Componentes em `conversationRules/components/`:
 
 - `ConversationRulesList.vue` — draggable rows, legacy/migrate banners, modals
-- `ConversationRuleForm.vue` — seções (Identificação, Gatilho, Escopo, Condições, Ações)
+- `ConversationRuleForm.vue` — SidePanel; seções (Identificação, Gatilho, Escopo, Condições colapsáveis, Ações, Atividade)
 - `ConversationRuleRow.vue`, `ConversationRulesEmptyState.vue`, `ConversationRulesFeatureDisabled.vue`
 - `TriggerCardSelector.vue` — cards selecionáveis por trigger type (6 tipos)
 - `DurationPresets.vue` — botões de preset de duração rápida
-- `WorkflowContactMessageInput.vue` — inbox + busca de contato + template para `send_message_to_contact`
-- `FormSection.vue`, `FormSwitchRow.vue`
+- `WorkflowContactMessageInput.vue` — inbox + contato + template (chips, preview, templates, favoritos)
+- `FormSection.vue` (colapsável), `FormSwitchRow.vue`
 
 ---
 
@@ -241,12 +242,13 @@ Checklist obrigatório antes de go-live:
 | Cron backstop | `SchedulerJob` a cada 5 min (complementa job per-message) |
 | Business hours | Sem per-message — atraso até ~5 min após threshold em horário útil |
 | `send_attachment` | Não suportado — oculto na UI; ação loga warning se presente via API |
-| `ActionService` | Re-raises errors → `RuleExecutor` libera dedup e rastreia via `ChatwootExceptionTracker`; ações anteriores à falha podem ter executado (sem rollback); sem feedback ao admin na UI |
-| Histórico de execuções | Tabela `conversation_workflow_rule_executions` existe; sem UI de auditoria |
+| `ActionService` | Re-raises errors → `RuleExecutor` libera dedup e rastreia via `ChatwootExceptionTracker`; ações anteriores à falha podem ter executado (sem rollback) |
+| Histórico de execuções | Tabela `conversation_workflow_rule_executions` + UI “Atividade recente” no edit (`GET activity`) |
+| Skips de envio | Tabela `conversation_workflow_rule_skips` (prune 50/regra); `SendMessageToContactService` grava em cada early-return; badge 24h na lista |
 | `ScheduleOnMessageJob` else | Branch sem `conversation_id` (full-account executor) é código morto — nunca acionado pelo `ScheduleOnMessageScheduler` atual |
 | N+1 `customer_no_reply` | `ScopeMatcher` e `ReferenceTimestamp` rodam a mesma query (`messages ORDER BY created_at DESC LIMIT 1`) em instâncias separadas — 2 queries/conversa no cron, sem incorreção |
-| `send_message_to_contact` | Canais via ContactInboxBuilder; reusa conversa aberta (Resolver); WhatsApp sem HSM (janela 24h); falha → skip com warning detalhado, demais ações seguem; UI filtra inboxes suportados |
+| `send_message_to_contact` | Canais via ContactInboxBuilder; reusa conversa aberta (Resolver); WhatsApp sem HSM (janela 24h); falha → skip logado + warning; UI filtra inboxes, chips, preview, confirm save |
 
 ---
 
-*Última atualização: ago/2026 — ação `send_message_to_contact`*
+*Última atualização: ago/2026 — UX pack SidePanel + activity/skips*

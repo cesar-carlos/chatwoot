@@ -1,10 +1,11 @@
 class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts::BaseController
   before_action :check_authorization
-  before_action :fetch_rule, only: [:show, :update, :destroy]
+  before_action :fetch_rule, only: [:show, :update, :destroy, :activity]
 
   def index
     @rules = Current.account.conversation_workflow_rules.ordered
-    render json: @rules.map { |rule| rule_payload(rule) }
+    skip_counts = ConversationWorkflowRuleSkip.recent_count_by_rule_ids(@rules.map(&:id))
+    render json: @rules.map { |rule| rule_payload(rule, recent_skips_count: skip_counts[rule.id] || 0) }
   end
 
   def show
@@ -54,6 +55,36 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
     render json: { count: count }
   rescue ArgumentError
     render json: { count: 0 }
+  end
+
+  def activity
+    executions = @rule.conversation_workflow_rule_executions
+                      .includes(:conversation)
+                      .order(executed_at: :desc)
+                      .limit(10)
+                      .map do |execution|
+      {
+        id: execution.id,
+        conversation_id: execution.conversation_id,
+        display_id: execution.conversation&.display_id,
+        executed_at: execution.executed_at
+      }
+    end
+
+    skips = @rule.conversation_workflow_rule_skips
+                 .order(created_at: :desc)
+                 .limit(10)
+                 .map do |skip|
+      {
+        id: skip.id,
+        action_name: skip.action_name,
+        reason: skip.reason,
+        metadata: skip.metadata,
+        created_at: skip.created_at
+      }
+    end
+
+    render json: { executions: executions, skips: skips }
   end
 
   private
@@ -151,7 +182,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
     keys.include?('id') && keys.include?('name') && keys.exclude?('team_ids')
   end
 
-  def rule_payload(rule, include_legacy_warning: false)
+  def rule_payload(rule, include_legacy_warning: false, recent_skips_count: nil)
     payload = rule.as_json(
       only: %i[
         id account_id name description active position trigger_type duration_minutes inbox_ids
@@ -159,6 +190,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
       ]
     )
     payload['legacy_auto_resolve_active'] = legacy_auto_resolve_active? if include_legacy_warning
+    payload['recent_skips_count'] = recent_skips_count unless recent_skips_count.nil?
     payload
   end
 

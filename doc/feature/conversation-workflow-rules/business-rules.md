@@ -184,8 +184,9 @@ Variáveis interpoladas a partir da conversa **que bateu na regra** (não do des
 | Canais UI | WhatsApp, Wavoip, Twilio, SMS, Email, API, WebWidget (alinhado ao `ContactInboxBuilder`) |
 | Identificador | WhatsApp/SMS/Twilio exigem telefone; Email exige e-mail; API/WebWidget geram UUID |
 | WhatsApp 24h | Texto livre via `MessageBuilder` — **sem HSM**; fora da janela de sessão o provedor pode rejeitar |
-| Validação FE | Exige `inbox_id`, `contact_id` e mensagem não vazia |
-| Falha | Inbox/contato inválidos, mensagem em branco, canal sem identificador → **warning + skip** (não aborta as demais ações); sem feedback na UI admin |
+| Validação FE | Exige `inbox_id`, `contact_id` e mensagem; valida telefone/e-mail conforme canal; confirma destinatário no save |
+| Falha | Inbox/contato inválidos, mensagem em branco, canal sem identificador → **warning + `ConversationWorkflowRuleSkip`** (não aborta as demais ações); UI mostra skips recentes |
+| UX | SidePanel (como Automação), chips de variáveis, preview sample, templates prontos, favoritos localStorage, aviso WhatsApp 24h |
 
 > **i18n:** placeholders de exemplo com `{{…}}` literais devem usar escape vue-i18n `{'{{'}…{'}}'}` — `{{` cru no JSON quebra o message-compiler (`Not allowed nest placeholder`).
 
@@ -266,6 +267,9 @@ Business hours não agenda Sidekiq delay — só o cron de 5 min avalia elapsed 
 | Activity messages | Identificar regra via `Current.executed_by` |
 | i18n | `conversations.activity.workflow_rule.*` (en + pt_BR) |
 | UI unattended | Link “afeta fila Não atendidas” + preview count (Fase 2.5) |
+| Form | SidePanel (`width=3xl`); Condições colapsáveis; scroll até `send_message_to_contact` |
+| Skips | `conversation_workflow_rule_skips` + badge `recent_skips_count` (24h) na lista |
+| Activity API | `GET /conversation_workflow_rules/:id/activity` — últimas 10 executions + skips |
 
 ---
 
@@ -325,4 +329,4 @@ Cron (*/5) e/ou ScheduleOnMessageJob:
 
 ---
 
-*Última atualização: ago/2026 — ação `send_message_to_contact` (inbox + contato + template)*
+*Última atualização: ago/2026 — UX pack SidePanel + activity/skips*

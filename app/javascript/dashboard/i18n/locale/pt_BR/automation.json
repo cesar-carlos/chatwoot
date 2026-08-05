@@ -192,8 +192,8 @@
     "ACTIONS": {
       "ASSIGN_AGENT": "Atribuir ao Agente",
       "ASSIGN_TEAM": "Atribuir um Time",
-      "REMOVE_ASSIGNED_AGENT": "Remove Assigned Agent",
-      "REMOVE_ASSIGNED_TEAM": "Remover Time Atribuído",
+      "REMOVE_ASSIGNED_AGENT": "Remover agente atribuído",
+      "REMOVE_ASSIGNED_TEAM": "Remover time atribuído",
       "ADD_LABEL": "Adicionar uma Etiqueta",
       "REMOVE_LABEL": "Remover uma Etiqueta",
       "SEND_EMAIL_TO_TEAM": "Enviar um e-mail para o Time",
@@ -239,7 +239,13 @@
       "ASSIGNEE_NAME": "Agente atribuído",
       "TEAM_NAME": "Time",
       "PRIORITY": "Prioridade",
-      "LABELS": "Etiquetas"
+      "LABELS": "Etiquetas",
+      "OPENED_BY": "Aberto por"
+    },
+    "OPENED_BY_TYPES": {
+      "CONTACT": "Contato",
+      "AGENT": "Agente",
+      "PHONE": "WhatsApp origem (celular/Web)"
     }
   }
 }

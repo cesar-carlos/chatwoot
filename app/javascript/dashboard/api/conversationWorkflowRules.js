@@ -17,6 +17,10 @@ class ConversationWorkflowRulesAPI extends ApiClient {
   reorder(rules) {
     return axios.post(`${this.url}/reorder`, { rules });
   }
+
+  activity(id) {
+    return axios.get(`${this.url}/${id}/activity`);
+  }
 }
 
 export default new ConversationWorkflowRulesAPI();

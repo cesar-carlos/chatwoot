@@ -243,7 +243,13 @@
       "TEAM_NAME": "Team",
       "PRIORITY": "Priority",
       "LABELS": "Labels",
-      "CAPTAIN": "Captain"
+      "CAPTAIN": "Captain",
+      "OPENED_BY": "Opened by"
+    },
+    "OPENED_BY_TYPES": {
+      "CONTACT": "Contact",
+      "AGENT": "Agent",
+      "PHONE": "WhatsApp origin (phone/Web)"
     }
   }
 }

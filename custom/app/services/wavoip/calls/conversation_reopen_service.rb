@@ -35,12 +35,22 @@ class Wavoip::Calls::ConversationReopenService
   def reopen_as_pending!
     return if conversation.pending?
 
+    # Inbound call = contact-initiated episode for automation filters
+    Custom::Conversations::OpenedByStamper.stamp!(
+      conversation,
+      Custom::Conversations::OpenedByStamper::CONTACT
+    )
     conversation.pending! if conversation.resolved? || conversation.snoozed? || conversation.open?
   end
 
   def reopen_as_open!
     return if conversation.open?
 
+    # Outbound call from the connected inbox = agent/origin episode
+    Custom::Conversations::OpenedByStamper.stamp!(
+      conversation,
+      Custom::Conversations::OpenedByStamper::AGENT
+    )
     conversation.open! if conversation.resolved? || conversation.snoozed? || conversation.pending?
   end
 end

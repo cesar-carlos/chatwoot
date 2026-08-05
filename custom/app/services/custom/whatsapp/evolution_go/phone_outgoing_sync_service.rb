@@ -143,6 +143,7 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   end
 
   def resolve_outgoing_conversation(contact_inbox)
+    Current.conversation_opened_by = Custom::Conversations::OpenedByStamper::PHONE
     Conversations::Resolver.new(
       inbox: inbox,
       contact_inbox: contact_inbox,
@@ -150,9 +151,14 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
         account_id: account.id,
         inbox_id: inbox.id,
         contact_id: contact_inbox.contact_id,
-        contact_inbox_id: contact_inbox.id
+        contact_inbox_id: contact_inbox.id,
+        additional_attributes: {
+          Custom::Conversations::OpenedByStamper::ATTRIBUTE_KEY => Custom::Conversations::OpenedByStamper::PHONE
+        }
       }
     ).perform
+  ensure
+    Current.conversation_opened_by = nil
   end
 
   def outgoing_message_timestamp(canonical)

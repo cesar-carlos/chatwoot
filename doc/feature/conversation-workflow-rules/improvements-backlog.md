@@ -29,6 +29,7 @@
 | Índices pending/unassigned + docs runtime | — | jul/2026 — `index_conv_workflow_pending_stale`, `index_conv_workflow_unassigned`; docs 6 eventos Automação / per-message vs cron |
 | Review fixes ago/2026 (P0–P2) | — | FK delete cascade, `preview_count?`, SQL qualify, BH prefilter×3 + order, matcher FR, ActionService re-raise, legacy guard, reorder tab gate, allowlist FE, migrate refresh, trigger warning, BH preload, pt_BR sidebar |
 | `send_message_to_contact` | — | ago/2026 — business-rules §3.2–3.3 · current-state ActionService + WorkflowContactMessageInput |
+| UX pack SidePanel + activity/skips | — | ago/2026 — SidePanel form, chips/templates/favoritos, confirm save, `conversation_workflow_rule_skips`, `GET activity`, badge skips |
 
 ---
 
@@ -39,6 +40,8 @@
 | Preview count até 10k rows | Custo/benefício alto; não atacado na rodada ago/2026 |
 | Índices DB novos / pending statuses | Documentado; não nesta entrega |
 | Reorder transaction + reject unknown IDs | P3 auditoria |
+| HSM WhatsApp / templates oficiais | Fora do `send_message_to_contact` (texto livre) |
+| Auditoria com filtros/paginação | Só últimas 10 executions/skips |
 
 ---
 
@@ -53,4 +56,4 @@
 
 ---
 
-*Última atualização: ago/2026 — `send_message_to_contact`*
+*Última atualização: ago/2026 — UX pack SidePanel + activity/skips*

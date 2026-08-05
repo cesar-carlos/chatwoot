@@ -10,6 +10,7 @@ module Custom::Message
     prepend Custom::Message::EvolutionGoEditSync
     prepend Custom::Message::WorkflowRulesScheduler
     prepend Custom::Message::WavoipConversationCycle
+    prepend Custom::Message::OpenedByTracking
 
     before_validation :reject_voice_only_outbound_public_message, on: :create
 

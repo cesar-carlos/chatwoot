@@ -183,6 +183,7 @@ export const getConditionOptions = ({
   type,
   priorityOptions,
   messageTypeOptions,
+  openedByOptions,
 }) => {
   if (isCustomAttributeCheckbox(customAttributes, type)) {
     return booleanFilterOptions;
@@ -206,6 +207,8 @@ export const getConditionOptions = ({
     private_note: booleanFilterOptions,
     priority: priorityOptions,
     labels: generateLabelOptions(labels),
+    // FORK: opened_by condition
+    opened_by: openedByOptions,
   };
 
   return conditionFilterMaps[type];

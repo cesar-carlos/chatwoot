@@ -1,5 +1,6 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useStore } from 'dashboard/composables/store';
 import useAutomationValues from 'dashboard/composables/useAutomationValues';
 import { useEditableAutomation } from 'dashboard/composables/useEditableAutomation';
 import {
@@ -8,6 +9,7 @@ import {
 } from 'dashboard/helper/validations';
 import actionQueryGenerator from 'dashboard/helper/actionQueryGenerator';
 import filterQueryGenerator from 'dashboard/helper/filterQueryGenerator';
+import { INBOX_TYPES } from 'dashboard/helper/inbox';
 import {
   DEFAULT_WORKFLOW_RULE,
   WORKFLOW_ACTION_TYPES,
@@ -17,6 +19,24 @@ import {
 import { isInactivityTrigger } from 'dashboard/routes/dashboard/settings/conversationRules/helpers/triggerHelper';
 
 const MAX_DURATION_MINUTES = 1_439_856;
+
+const SUPPORTED_CONTACT_INBOX_TYPES = [
+  INBOX_TYPES.WHATSAPP,
+  INBOX_TYPES.WAVOIP,
+  INBOX_TYPES.TWILIO,
+  INBOX_TYPES.SMS,
+  INBOX_TYPES.EMAIL,
+  INBOX_TYPES.API,
+  INBOX_TYPES.WEB,
+];
+
+const PHONE_REQUIRED_TYPES = [
+  INBOX_TYPES.WHATSAPP,
+  INBOX_TYPES.WAVOIP,
+  INBOX_TYPES.TWILIO,
+  INBOX_TYPES.SMS,
+];
+
 
 const clonePlain = value => JSON.parse(JSON.stringify(value));
 
@@ -43,6 +63,7 @@ const defaultAction = () => ({
 
 export function useWorkflowRule(startValue = null, existingRules = []) {
   const { t } = useI18n();
+  const store = useStore();
   const { getConditionDropdownValues, getActionDropdownValues } =
     useAutomationValues();
   const { formatAutomation } = useEditableAutomation();
@@ -216,6 +237,36 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
     if (contactMessageIncomplete) {
       errors.actions = t(
         'CONVERSATION_RULES.VALIDATION.CONTACT_MESSAGE_REQUIRED'
+      );
+    }
+
+    const contactChannelMismatch = actions.some(action => {
+      if (action.action_name !== 'send_message_to_contact') return false;
+      const [inboxId, contactValue] = action.action_params || [];
+      const inbox = (store.getters['inboxes/getInboxes'] || []).find(
+        item => item.id === Number(inboxId?.id ?? inboxId)
+      );
+      if (!inbox) return true;
+      if (!SUPPORTED_CONTACT_INBOX_TYPES.includes(inbox.channel_type)) {
+        return true;
+      }
+
+      if (typeof contactValue !== 'object' || !contactValue) return false;
+
+      const hasPhone = !!(contactValue.phone_number || contactValue.phoneNumber);
+      const hasEmail = !!contactValue.email;
+
+      if (PHONE_REQUIRED_TYPES.includes(inbox.channel_type) && !hasPhone) {
+        return true;
+      }
+      if (inbox.channel_type === INBOX_TYPES.EMAIL && !hasEmail) {
+        return true;
+      }
+      return false;
+    });
+    if (contactChannelMismatch && !contactMessageIncomplete) {
+      errors.actions = t(
+        'CONVERSATION_RULES.VALIDATION.CONTACT_CHANNEL_MISMATCH'
       );
     }
 

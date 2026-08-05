@@ -2,7 +2,7 @@
 
 module Custom::Whatsapp::IncomingMessageServiceHelpers
   def conversation_params
-    params = super
+    params = with_opened_by_contact(super)
     return params unless evolution_conversation_pending?
 
     params.merge(
@@ -15,6 +15,18 @@ module Custom::Whatsapp::IncomingMessageServiceHelpers
     (existing_attrs || {}).stringify_keys.merge(
       'evolution_pending_since' => Time.current.utc.iso8601(3)
     )
+  end
+
+  def with_opened_by_contact(params)
+    value = if try(:outgoing_echo)
+              Custom::Conversations::OpenedByStamper::PHONE
+            else
+              Custom::Conversations::OpenedByStamper::CONTACT
+            end
+    Current.conversation_opened_by = value
+    attrs = (params[:additional_attributes] || {}).stringify_keys
+    attrs[Custom::Conversations::OpenedByStamper::ATTRIBUTE_KEY] ||= value
+    params.merge(additional_attributes: attrs)
   end
 
   def download_attachment_file(attachment_payload)

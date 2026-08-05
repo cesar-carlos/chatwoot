@@ -2,6 +2,7 @@ class ConversationWorkflowRule < ApplicationRecord
   belongs_to :account
   # FK has no ON DELETE CASCADE — must delete executions before the rule.
   has_many :conversation_workflow_rule_executions, dependent: :delete_all
+  has_many :conversation_workflow_rule_skips, dependent: :delete_all
 
   enum trigger_type: {
     conversation_inactivity: 0,

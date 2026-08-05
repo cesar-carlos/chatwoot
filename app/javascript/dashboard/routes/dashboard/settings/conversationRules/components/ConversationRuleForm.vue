@@ -43,6 +43,7 @@ import TextArea from 'next/textarea/TextArea.vue';
 import NextInput from 'dashboard/components-next/input/Input.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
+import SidePanel from 'dashboard/components-next/side-panel/SidePanel.vue';
 import { DURATION_UNITS } from 'dashboard/components-next/input/constants';
 
 const props = defineProps({
@@ -75,13 +76,18 @@ const isFeatureEnabledonAccount = useMapGetter(
 );
 const { operators } = useOperators();
 const conditionsRef = useTemplateRef('conditionsRef');
-const dialogRef = ref(null);
-const scrollableRef = ref(null);
+const panelRef = ref(null);
+const confirmDialogRef = ref(null);
+const actionsSectionRef = ref(null);
 const unattendedCount = ref(null);
 const previewCount = ref(null);
 const isPreviewLoading = ref(false);
 const durationUnit = ref(DURATION_UNITS.MINUTES);
 const showTieredSlaExample = ref(false);
+const showActivity = ref(false);
+const activityLoading = ref(false);
+const activity = ref({ executions: [], skips: [] });
+const pendingSave = ref(false);
 
 const {
   rule,
@@ -98,24 +104,35 @@ const {
   hydrateRuleForForm,
 } = useWorkflowRule(props.rule, props.existingRules);
 
-const scrollToBottom = () => {
+const hasContactMessageAction = computed(() =>
+  (rule.value.actions || []).some(
+    action => action.action_name === 'send_message_to_contact'
+  )
+);
+
+const conditionsDefaultOpen = computed(() => !hasContactMessageAction.value);
+
+const scrollToContactMessage = () => {
   nextTick(() => {
     nextTick(() => {
-      if (scrollableRef.value) {
-        scrollableRef.value.scrollTop = scrollableRef.value.scrollHeight;
-      }
+      const target =
+        actionsSectionRef.value?.querySelector('[data-contact-message-block]') ||
+        actionsSectionRef.value;
+      target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   });
 };
 
 const appendNewAction = () => {
   appendNewActionBase();
-  scrollToBottom();
+  scrollToContactMessage();
 };
 
 const resetAction = index => {
   resetActionBase(index);
-  scrollToBottom();
+  if (rule.value.actions[index]?.action_name === 'send_message_to_contact') {
+    scrollToContactMessage();
+  }
 };
 
 const isEdit = computed(() => !!props.rule?.id);
@@ -239,6 +256,38 @@ const unattendedPreview = computed(() => {
   });
 });
 
+const contactMessageConfirmSummary = computed(() => {
+  const action = (rule.value.actions || []).find(
+    item => item.action_name === 'send_message_to_contact'
+  );
+  if (!action) return '';
+
+  const [inboxId, contactValue, message] = action.action_params || [];
+  const inbox = (store.getters['inboxes/getInboxes'] || []).find(
+    item => item.id === Number(inboxId)
+  );
+  const contactLabel =
+    (contactValue && typeof contactValue === 'object' && contactValue.name) ||
+    (contactValue?.id ? `#${contactValue.id}` : contactValue ? `#${contactValue}` : '—');
+  const preview = String(message || '')
+    .replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
+      const sample = {
+        'conversation.display_id': '1234',
+        'contact.name': 'João',
+        'inbox.name': inbox?.name || 'Inbox',
+        'rule.name': rule.value.name || 'Rule',
+      };
+      return sample[key] || `{{${key}}}`;
+    })
+    .slice(0, 160);
+
+  return t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.CONFIRM_SUMMARY', {
+    inbox: inbox?.name || `#${inboxId}`,
+    contact: contactLabel,
+    preview: preview || '—',
+  });
+});
+
 const goToUnattended = () => {
   router.push({
     name: 'conversation_unattended',
@@ -273,6 +322,22 @@ const fetchPreviewCount = async () => {
   }
 };
 
+const fetchActivity = async () => {
+  if (!isEdit.value || !props.rule?.id) return;
+  activityLoading.value = true;
+  try {
+    const { data } = await ConversationWorkflowRulesAPI.activity(props.rule.id);
+    activity.value = {
+      executions: data?.executions || [],
+      skips: data?.skips || [],
+    };
+  } catch {
+    activity.value = { executions: [], skips: [] };
+  } finally {
+    activityLoading.value = false;
+  }
+};
+
 let previewTimeout;
 const schedulePreviewCount = () => {
   clearTimeout(previewTimeout);
@@ -297,16 +362,14 @@ watch(
   { deep: true }
 );
 
-const saveRule = async () => {
-  if (!validateRule()) return;
-
-  if (conditionsRef.value?.length) {
-    const allValid = conditionsRef.value.every(condition =>
-      condition.validate()
-    );
-    if (!allValid) return;
+watch(
+  () => rule.value.actions?.map(action => action.action_name).join(','),
+  () => {
+    if (hasContactMessageAction.value) scrollToContactMessage();
   }
+);
 
+const persistRule = async () => {
   try {
     const payload = buildPayload();
     let response;
@@ -338,6 +401,51 @@ const saveRule = async () => {
         ? t('CONVERSATION_RULES.LEGACY_CONFLICT')
         : t('CONVERSATION_RULES.SAVE_ERROR')
     );
+  } finally {
+    pendingSave.value = false;
+  }
+};
+
+const saveRule = async () => {
+  if (!validateRule()) return;
+
+  if (conditionsRef.value?.length) {
+    const allValid = conditionsRef.value.every(condition =>
+      condition.validate()
+    );
+    if (!allValid) return;
+  }
+
+  if (hasContactMessageAction.value) {
+    pendingSave.value = true;
+    nextTick(() => confirmDialogRef.value?.open());
+    return;
+  }
+
+  await persistRule();
+};
+
+const onConfirmSave = async () => {
+  confirmDialogRef.value?.close();
+  await persistRule();
+};
+
+const onCancelConfirm = () => {
+  pendingSave.value = false;
+  confirmDialogRef.value?.close();
+};
+
+const closePanel = () => {
+  panelRef.value?.close();
+  emit('close');
+};
+
+const formatActivityTime = value => {
+  if (!value) return '';
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return value;
   }
 };
 
@@ -363,32 +471,25 @@ onMounted(async () => {
     fetchUnattendedCount();
   }
   schedulePreviewCount();
+  if (isEdit.value) fetchActivity();
+
   nextTick(() => {
-    dialogRef.value?.open();
-    const hasContactMessage = rule.value.actions?.some(
-      a => a.action_name === 'send_message_to_contact'
-    );
-    if (hasContactMessage) scrollToBottom();
+    panelRef.value?.open();
+    if (hasContactMessageAction.value) scrollToContactMessage();
   });
 });
 </script>
 
 <template>
-  <Dialog
-    ref="dialogRef"
+  <SidePanel
+    ref="panelRef"
+    width="3xl"
     :title="
       isEdit ? $t('CONVERSATION_RULES.EDIT') : $t('CONVERSATION_RULES.ADD')
     "
-    width="3xl"
-    position="top"
-    :show-cancel-button="false"
-    :show-confirm-button="false"
     @close="$emit('close')"
   >
-    <div
-      ref="scrollableRef"
-      class="flex flex-col gap-4 max-h-[calc(100vh-220px)] overflow-y-auto p-1"
-    >
+    <div class="flex flex-col gap-4">
       <FormSection
         :title="$t('CONVERSATION_RULES.FORM.SECTIONS.IDENTIFICATION')"
       >
@@ -522,7 +623,11 @@ onMounted(async () => {
         />
       </FormSection>
 
-      <FormSection :title="$t('CONVERSATION_RULES.FORM.SECTIONS.CONDITIONS')">
+      <FormSection
+        :title="$t('CONVERSATION_RULES.FORM.SECTIONS.CONDITIONS')"
+        collapsible
+        :default-open="conditionsDefaultOpen"
+      >
         <div class="flex items-center justify-end">
           <Button
             link
@@ -558,39 +663,116 @@ onMounted(async () => {
         </span>
       </FormSection>
 
-      <FormSection :title="$t('CONVERSATION_RULES.FORM.SECTIONS.ACTIONS')">
-        <div class="flex items-center justify-end">
+      <div ref="actionsSectionRef">
+        <FormSection :title="$t('CONVERSATION_RULES.FORM.SECTIONS.ACTIONS')">
+          <div class="flex items-center justify-end">
+            <Button
+              link
+              :label="$t('CONVERSATION_RULES.FORM.ADD_ACTION')"
+              @click="appendNewAction"
+            />
+          </div>
+          <div
+            v-for="(action, index) in rule.actions"
+            :key="`${index}-${action.action_name}`"
+            class="flex flex-col gap-2"
+          >
+            <AutomationActionInput
+              v-model="rule.actions[index]"
+              :action-types="workflowActionTypes"
+              :dropdown-values="getActionDropdownValues(action.action_name)"
+              :show-action-input="
+                showActionInput(workflowActionTypes, action.action_name)
+              "
+              @reset-action="resetAction(index)"
+              @remove-action="removeAction(index)"
+            />
+            <FormSwitchRow
+              v-if="action.action_name === 'send_message'"
+              v-model="rule.actions[index].counts_as_agent_reply"
+              :label="$t('CONVERSATION_RULES.FORM.COUNTS_AS_AGENT_REPLY')"
+              :help="$t('CONVERSATION_RULES.FORM.COUNTS_AS_AGENT_REPLY_HELP')"
+            />
+          </div>
+          <span v-if="fieldErrors.actions" class="text-xs text-n-ruby-11">
+            {{ fieldErrors.actions }}
+          </span>
+        </FormSection>
+      </div>
+
+      <FormSection
+        v-if="isEdit"
+        :title="$t('CONVERSATION_RULES.FORM.SECTIONS.ACTIVITY')"
+        collapsible
+        :default-open="false"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-sm text-n-slate-11">
+            {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.DESCRIPTION') }}
+          </p>
           <Button
             link
-            :label="$t('CONVERSATION_RULES.FORM.ADD_ACTION')"
-            @click="appendNewAction"
-          />
-        </div>
-        <div
-          v-for="(action, index) in rule.actions"
-          :key="`${index}-${action.action_name}`"
-          class="flex flex-col gap-2"
-        >
-          <AutomationActionInput
-            v-model="rule.actions[index]"
-            :action-types="workflowActionTypes"
-            :dropdown-values="getActionDropdownValues(action.action_name)"
-            :show-action-input="
-              showActionInput(workflowActionTypes, action.action_name)
+            :label="
+              showActivity
+                ? $t('CONVERSATION_RULES.FORM.ACTIVITY.HIDE')
+                : $t('CONVERSATION_RULES.FORM.ACTIVITY.SHOW')
             "
-            @reset-action="resetAction(index)"
-            @remove-action="removeAction(index)"
-          />
-          <FormSwitchRow
-            v-if="action.action_name === 'send_message'"
-            v-model="rule.actions[index].counts_as_agent_reply"
-            :label="$t('CONVERSATION_RULES.FORM.COUNTS_AS_AGENT_REPLY')"
-            :help="$t('CONVERSATION_RULES.FORM.COUNTS_AS_AGENT_REPLY_HELP')"
+            @click="
+              showActivity = !showActivity;
+              if (showActivity) fetchActivity();
+            "
           />
         </div>
-        <span v-if="fieldErrors.actions" class="text-xs text-n-ruby-11">
-          {{ fieldErrors.actions }}
-        </span>
+        <div v-if="showActivity" class="flex flex-col gap-3">
+          <p v-if="activityLoading" class="text-sm text-n-slate-11">
+            {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.LOADING') }}
+          </p>
+          <template v-else>
+            <div>
+              <p class="text-xs font-medium text-n-slate-11 mb-1">
+                {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.EXECUTIONS') }}
+              </p>
+              <p
+                v-if="!activity.executions.length"
+                class="text-sm text-n-slate-10"
+              >
+                {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.EMPTY_EXECUTIONS') }}
+              </p>
+              <ul v-else class="flex flex-col gap-1">
+                <li
+                  v-for="item in activity.executions"
+                  :key="`exec-${item.id}`"
+                  class="text-sm text-n-slate-12"
+                >
+                  #{{ item.display_id || item.conversation_id }}
+                  ·
+                  {{ formatActivityTime(item.executed_at) }}
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p class="text-xs font-medium text-n-slate-11 mb-1">
+                {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.SKIPS') }}
+              </p>
+              <p
+                v-if="!activity.skips.length"
+                class="text-sm text-n-slate-10"
+              >
+                {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.EMPTY_SKIPS') }}
+              </p>
+              <ul v-else class="flex flex-col gap-1">
+                <li
+                  v-for="item in activity.skips"
+                  :key="`skip-${item.id}`"
+                  class="text-sm text-n-slate-12"
+                >
+                  {{ item.action_name }} · {{ item.reason }} ·
+                  {{ formatActivityTime(item.created_at) }}
+                </li>
+              </ul>
+            </div>
+          </template>
+        </div>
       </FormSection>
     </div>
 
@@ -601,14 +783,30 @@ onMounted(async () => {
           slate
           class="w-full"
           :label="$t('CONVERSATION_RULES.FORM.CANCEL')"
-          @click="$emit('close')"
+          @click="closePanel"
         />
         <Button
           class="w-full"
           :label="$t('CONVERSATION_RULES.FORM.SAVE')"
+          :is-loading="pendingSave"
           @click="saveRule"
         />
       </div>
     </template>
-  </Dialog>
+  </SidePanel>
+
+  <Dialog
+    ref="confirmDialogRef"
+    type="edit"
+    :title="$t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.CONFIRM_TITLE')"
+    :description="contactMessageConfirmSummary"
+    :confirm-button-label="
+      $t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.CONFIRM_YES')
+    "
+    :cancel-button-label="
+      $t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.CONFIRM_NO')
+    "
+    @confirm="onConfirmSave"
+    @close="onCancelConfirm"
+  />
 </template>
