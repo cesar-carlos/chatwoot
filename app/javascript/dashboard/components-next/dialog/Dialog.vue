@@ -91,9 +91,12 @@ const open = () => {
 };
 
 const close = () => {
+  // FORK: guard re-entry — close() always emitted, so @close handlers that
+  // call close() again (or native dialog close bubbling) stack-overflowed.
+  if (!isOpen.value) return;
+  isOpen.value = false;
   emit('close');
   dialogRef.value?.close();
-  isOpen.value = false;
 };
 
 // Only close if the close event originated from this dialog,
