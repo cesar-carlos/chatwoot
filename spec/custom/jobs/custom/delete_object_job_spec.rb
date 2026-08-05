@@ -22,9 +22,16 @@ RSpec.describe DeleteObjectJob, type: :job do
     end
 
     it 'purges executions before account destroy via DeleteObjectJob' do
+      ConversationWorkflowRuleSkip.record!(
+        rule: rule,
+        action_name: 'send_message_to_contact',
+        reason: 'blank_message'
+      )
+
       expect do
         described_class.perform_now(account)
       end.to change(ConversationWorkflowRuleExecution, :count).by(-1)
+         .and change(ConversationWorkflowRuleSkip, :count).by(-1)
 
       expect { account.reload }.to raise_error(ActiveRecord::RecordNotFound)
     end

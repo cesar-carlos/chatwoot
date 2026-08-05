@@ -851,8 +851,10 @@
     },
     "ACTION_SUMMARY": {
       "RESOLVE": "Resolve conversation",
-      "MORE": "+{count} more"
+      "MORE": "+{count} more",
+      "SEND_TO_CONTACT": "Send to contact #{contactId} via {inbox}"
     },
+    "RECENT_SKIPS_BADGE": "{count} recent skip | {count} recent skip | {count} recent skips",
     "CLONE": {
       "TOOLTIP": "Clone rule",
       "SUFFIX": "(copy)",
@@ -898,7 +900,8 @@
       "DURATION_MAX": "Duration cannot exceed 999 days",
       "AGENT_NO_REPLY_ACTIONS": "Add at least one action for agent no-reply rules",
       "INACTIVITY_OUTCOME": "Add actions, enable resolve on match, or set a customer message",
-      "CONTACT_MESSAGE_REQUIRED": "Select an inbox, a contact, and a message for this action"
+      "CONTACT_MESSAGE_REQUIRED": "Select an inbox, a contact, and a message for this action",
+      "CONTACT_CHANNEL_MISMATCH": "Selected contact is missing phone or email required by this inbox channel"
     },
     "FORM": {
       "SECTIONS": {
@@ -907,7 +910,8 @@
         "TRIGGER_HELP": "Choose when the rule should run and how long to wait.",
         "SCOPE": "Scope",
         "CONDITIONS": "Conditions",
-        "ACTIONS": "Actions"
+        "ACTIONS": "Actions",
+        "ACTIVITY": "Recent activity"
       },
       "NAME": "Name",
       "DESCRIPTION": "Description",
@@ -965,8 +969,34 @@
         "CONTACT_PLACEHOLDER": "Search contacts...",
         "MESSAGE_LABEL": "Message",
         "MESSAGE_PLACEHOLDER": "Conversation {'{{'}conversation.display_id{'}}'} from {'{{'}contact.name{'}}'} needs attention.",
-        "VARIABLES_HINT": "Available variables",
-        "CONTACT_NOT_FOUND": "No contacts found"
+        "VARIABLES_HINT": "Click a variable to insert it into the message",
+        "CONTACT_NOT_FOUND": "No contacts found",
+        "NO_SUPPORTED_INBOXES": "No compatible inboxes found. Add WhatsApp, Wavoip, Twilio, SMS, Email, API, or Website inbox.",
+        "WHATSAPP_WINDOW_WARNING": "WhatsApp free-text may fail outside the 24-hour customer care window. This action does not send HSM templates.",
+        "FAVORITE_TOGGLE": "Toggle favorite contact",
+        "PREVIEW_LABEL": "Preview with sample data",
+        "CONFIRM_TITLE": "Confirm message to contact?",
+        "CONFIRM_SUMMARY": "Send via {inbox} to {contact}. Preview: {preview}",
+        "CONFIRM_YES": "Yes, save rule",
+        "CONFIRM_NO": "Cancel",
+        "TEMPLATES": {
+          "ATTENTION_LABEL": "Needs attention",
+          "ATTENTION_BODY": "Olá! A conversa {'{{'}conversation.display_id{'}}'} de {'{{'}contact.name{'}}'} está há tempo sem resposta e precisa da sua atenção.",
+          "ESCALATION_LABEL": "Escalation",
+          "ESCALATION_BODY": "Alerta: a conversa {'{{'}conversation.display_id{'}}'} ({'{{'}contact.name{'}}'}) atingiu o limite da regra {'{{'}rule.name{'}}'}. Pode acompanhar, por favor?",
+          "REMINDER_LABEL": "Friendly reminder",
+          "REMINDER_BODY": "Lembrete: {'{{'}contact.name{'}}'} ainda aguarda retorno na conversa {'{{'}conversation.display_id{'}}'} ({'{{'}inbox.name{'}}'})."
+        }
+      },
+      "ACTIVITY": {
+        "DESCRIPTION": "Recent successful runs and skipped send-to-contact attempts.",
+        "SHOW": "Show activity",
+        "HIDE": "Hide activity",
+        "LOADING": "Loading activity...",
+        "EXECUTIONS": "Recent executions",
+        "SKIPS": "Recent skips",
+        "EMPTY_EXECUTIONS": "No executions recorded yet.",
+        "EMPTY_SKIPS": "No skips recorded yet."
       },
       "CANCEL": "Cancel",
       "SAVE": "Save rule"

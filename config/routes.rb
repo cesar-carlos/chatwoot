@@ -134,6 +134,10 @@ Rails.application.routes.draw do
               post :migrate_legacy
               post :preview_count
             end
+            # FORK: recent executions + send_message_to_contact skips
+            member do
+              get :activity
+            end
           end
           resources :macros, only: [:index, :create, :show, :update, :destroy] do
             post :execute, on: :member

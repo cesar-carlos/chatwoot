@@ -2,34 +2,35 @@
 #
 # Table name: conversations
 #
-#  id                     :integer          not null, primary key
-#  additional_attributes  :jsonb
-#  agent_last_seen_at     :datetime
-#  assignee_last_seen_at  :datetime
-#  cached_label_list      :text
-#  contact_last_seen_at   :datetime
-#  custom_attributes      :jsonb
-#  first_reply_created_at :datetime
-#  identifier             :string
-#  last_activity_at       :datetime         not null
-#  priority               :integer
-#  snoozed_until          :datetime
-#  status                 :integer          default("open"), not null
-#  status_changed_at      :datetime
-#  uuid                   :uuid             not null
-#  waiting_since          :datetime
-#  created_at             :datetime         not null
-#  updated_at             :datetime         not null
-#  account_id             :integer          not null
-#  assignee_agent_bot_id  :bigint
-#  assignee_id            :integer
-#  campaign_id            :bigint
-#  contact_id             :bigint
-#  contact_inbox_id       :bigint
-#  display_id             :integer          not null
-#  inbox_id               :integer          not null
-#  sla_policy_id          :bigint
-#  team_id                :bigint
+#  id                        :integer          not null, primary key
+#  additional_attributes     :jsonb
+#  agent_last_seen_at        :datetime
+#  assignee_last_seen_at     :datetime
+#  cached_label_list         :text
+#  contact_last_seen_at      :datetime
+#  current_session_opened_at :datetime
+#  custom_attributes         :jsonb
+#  first_reply_created_at    :datetime
+#  identifier                :string
+#  last_activity_at          :datetime         not null
+#  priority                  :integer
+#  snoozed_until             :datetime
+#  status                    :integer          default("open"), not null
+#  status_changed_at         :datetime
+#  uuid                      :uuid             not null
+#  waiting_since             :datetime
+#  created_at                :datetime         not null
+#  updated_at                :datetime         not null
+#  account_id                :integer          not null
+#  assignee_agent_bot_id     :bigint
+#  assignee_id               :integer
+#  campaign_id               :bigint
+#  contact_id                :bigint
+#  contact_inbox_id          :bigint
+#  display_id                :integer          not null
+#  inbox_id                  :integer          not null
+#  sla_policy_id             :bigint
+#  team_id                   :bigint
 #
 # Indexes
 #
@@ -45,6 +46,7 @@
 #  index_conversations_on_contact_id                  (contact_id)
 #  index_conversations_on_contact_inbox_id            (contact_inbox_id)
 #  index_conversations_on_created_at                  (created_at)
+#  index_conversations_on_current_session_opened_at   (current_session_opened_at)
 #  index_conversations_on_first_reply_created_at      (first_reply_created_at)
 #  index_conversations_on_id_and_account_id           (account_id,id)
 #  index_conversations_on_identifier_and_account_id   (identifier,account_id)

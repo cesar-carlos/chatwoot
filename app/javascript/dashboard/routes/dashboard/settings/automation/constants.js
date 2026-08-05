@@ -228,6 +228,13 @@ export const AUTOMATIONS = {
         inputType: 'multi_select',
         filterOperators: OPERATOR_TYPES_3,
       },
+      // FORK: who opened/created this conversation episode
+      {
+        key: 'opened_by',
+        name: 'OPENED_BY',
+        inputType: 'search_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
     ],
     actions: [
       {
@@ -512,6 +519,13 @@ export const AUTOMATIONS = {
         key: 'labels',
         name: 'LABELS',
         inputType: 'multi_select',
+        filterOperators: OPERATOR_TYPES_3,
+      },
+      // FORK: who reopened this conversation episode
+      {
+        key: 'opened_by',
+        name: 'OPENED_BY',
+        inputType: 'search_select',
         filterOperators: OPERATOR_TYPES_3,
       },
     ],

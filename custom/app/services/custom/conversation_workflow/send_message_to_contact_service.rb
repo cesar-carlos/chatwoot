@@ -21,9 +21,9 @@ class Custom::ConversationWorkflow::SendMessageToContactService
   def perform
     content = interpolate(@message_template)
     if content.blank?
-      Rails.logger.warn(
-        "[ConversationWorkflow] send_message_to_contact skipped blank message " \
-        "(rule_id=#{@rule.id} trigger_conversation_id=#{@conversation.id})"
+      skip!(
+        'blank_message',
+        trigger_conversation_id: @conversation.id
       )
       return
     end
@@ -31,21 +31,25 @@ class Custom::ConversationWorkflow::SendMessageToContactService
     inbox = @account.inboxes.find_by(id: @inbox_id)
     contact = @account.contacts.find_by(id: @contact_id)
     if inbox.blank? || contact.blank?
-      Rails.logger.warn(
-        "[ConversationWorkflow] send_message_to_contact skipped missing inbox/contact " \
-        "(rule_id=#{@rule.id} inbox_id=#{@inbox_id} contact_id=#{@contact_id} " \
-        "inbox_found=#{inbox.present?} contact_found=#{contact.present?})"
+      skip!(
+        'missing_inbox_or_contact',
+        inbox_id: @inbox_id,
+        contact_id: @contact_id,
+        inbox_found: inbox.present?,
+        contact_found: contact.present?
       )
       return
     end
 
     contact_inbox = ContactInboxBuilder.new(contact: contact, inbox: inbox).perform
     if contact_inbox.blank?
-      Rails.logger.warn(
-        "[ConversationWorkflow] send_message_to_contact skipped contact_inbox blank " \
-        "(rule_id=#{@rule.id} inbox_id=#{inbox.id} channel=#{inbox.channel_type} " \
-        "contact_id=#{contact.id} has_phone=#{contact.phone_number.present?} " \
-        "has_email=#{contact.email.present?})"
+      skip!(
+        'contact_inbox_blank',
+        inbox_id: inbox.id,
+        channel: inbox.channel_type,
+        contact_id: contact.id,
+        has_phone: contact.phone_number.present?,
+        has_email: contact.email.present?
       )
       return
     end
@@ -55,9 +59,9 @@ class Custom::ConversationWorkflow::SendMessageToContactService
       contact_inbox: contact_inbox
     ).perform
     if target_conversation.blank?
-      Rails.logger.warn(
-        "[ConversationWorkflow] send_message_to_contact skipped conversation blank " \
-        "(rule_id=#{@rule.id} contact_inbox_id=#{contact_inbox.id})"
+      skip!(
+        'conversation_blank',
+        contact_inbox_id: contact_inbox.id
       )
       return
     end
@@ -72,15 +76,30 @@ class Custom::ConversationWorkflow::SendMessageToContactService
       }
     ).perform
   rescue StandardError => e
-    Rails.logger.warn(
-      "[ConversationWorkflow] send_message_to_contact failed " \
-      "(rule_id=#{@rule.id} inbox_id=#{@inbox_id} contact_id=#{@contact_id}): " \
-      "#{e.class} #{e.message}"
+    skip!(
+      'exception',
+      inbox_id: @inbox_id,
+      contact_id: @contact_id,
+      error_class: e.class.name,
+      error_message: e.message
     )
     ChatwootExceptionTracker.new(e, account: @account).capture_exception
   end
 
   private
+
+  def skip!(reason, metadata = {})
+    Rails.logger.warn(
+      "[ConversationWorkflow] send_message_to_contact skipped #{reason} " \
+      "(rule_id=#{@rule.id} #{metadata.map { |k, v| "#{k}=#{v}" }.join(' ')})"
+    )
+    ConversationWorkflowRuleSkip.record!(
+      rule: @rule,
+      action_name: 'send_message_to_contact',
+      reason: reason,
+      metadata: metadata.merge(trigger_conversation_id: @conversation.id)
+    )
+  end
 
   def interpolate(template)
     return '' if template.blank?

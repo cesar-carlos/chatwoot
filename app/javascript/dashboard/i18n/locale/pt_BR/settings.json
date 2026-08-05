@@ -721,8 +721,10 @@
     },
     "ACTION_SUMMARY": {
       "RESOLVE": "Resolver conversa",
-      "MORE": "+{count} mais"
+      "MORE": "+{count} mais",
+      "SEND_TO_CONTACT": "Enviar p/ contato #{contactId} via {inbox}"
     },
+    "RECENT_SKIPS_BADGE": "{count} skip recente | {count} skip recente | {count} skips recentes",
     "CLONE": {
       "TOOLTIP": "Clonar regra",
       "SUFFIX": "(cópia)",
@@ -768,7 +770,8 @@
       "DURATION_MAX": "Duração não pode exceder 999 dias",
       "AGENT_NO_REPLY_ACTIONS": "Adicione pelo menos uma ação para regras de agente sem resposta",
       "INACTIVITY_OUTCOME": "Adicione ações, ative resolver ao corresponder ou defina uma mensagem ao cliente",
-      "CONTACT_MESSAGE_REQUIRED": "Selecione uma caixa de entrada, um contato e uma mensagem para esta ação"
+      "CONTACT_MESSAGE_REQUIRED": "Selecione uma caixa de entrada, um contato e uma mensagem para esta ação",
+      "CONTACT_CHANNEL_MISMATCH": "O contato selecionado não tem telefone ou e-mail exigido por este canal"
     },
     "FORM": {
       "SECTIONS": {
@@ -777,7 +780,8 @@
         "TRIGGER_HELP": "Escolha quando a regra deve rodar e quanto tempo esperar.",
         "SCOPE": "Escopo",
         "CONDITIONS": "Condições",
-        "ACTIONS": "Ações"
+        "ACTIONS": "Ações",
+        "ACTIVITY": "Atividade recente"
       },
       "NAME": "Nome",
       "DESCRIPTION": "Descrição",
@@ -835,8 +839,34 @@
         "CONTACT_PLACEHOLDER": "Buscar contatos...",
         "MESSAGE_LABEL": "Mensagem",
         "MESSAGE_PLACEHOLDER": "A conversa {'{{'}conversation.display_id{'}}'} de {'{{'}contact.name{'}}'} precisa de atenção.",
-        "VARIABLES_HINT": "Variáveis disponíveis",
-        "CONTACT_NOT_FOUND": "Nenhum contato encontrado"
+        "VARIABLES_HINT": "Clique em uma variável para inserir na mensagem",
+        "CONTACT_NOT_FOUND": "Nenhum contato encontrado",
+        "NO_SUPPORTED_INBOXES": "Nenhuma caixa compatível. Adicione WhatsApp, Wavoip, Twilio, SMS, Email, API ou Website.",
+        "WHATSAPP_WINDOW_WARNING": "Texto livre no WhatsApp pode falhar fora da janela de 24h. Esta ação não envia templates HSM.",
+        "FAVORITE_TOGGLE": "Alternar contato favorito",
+        "PREVIEW_LABEL": "Prévia com dados de exemplo",
+        "CONFIRM_TITLE": "Confirmar mensagem para contato?",
+        "CONFIRM_SUMMARY": "Enviar via {inbox} para {contact}. Prévia: {preview}",
+        "CONFIRM_YES": "Sim, salvar regra",
+        "CONFIRM_NO": "Cancelar",
+        "TEMPLATES": {
+          "ATTENTION_LABEL": "Precisa de atenção",
+          "ATTENTION_BODY": "Olá! A conversa {'{{'}conversation.display_id{'}}'} de {'{{'}contact.name{'}}'} está há tempo sem resposta e precisa da sua atenção.",
+          "ESCALATION_LABEL": "Escalonamento",
+          "ESCALATION_BODY": "Alerta: a conversa {'{{'}conversation.display_id{'}}'} ({'{{'}contact.name{'}}'}) atingiu o limite da regra {'{{'}rule.name{'}}'}. Pode acompanhar, por favor?",
+          "REMINDER_LABEL": "Lembrete",
+          "REMINDER_BODY": "Lembrete: {'{{'}contact.name{'}}'} ainda aguarda retorno na conversa {'{{'}conversation.display_id{'}}'} ({'{{'}inbox.name{'}}'})."
+        }
+      },
+      "ACTIVITY": {
+        "DESCRIPTION": "Execuções recentes e tentativas de envio ignoradas.",
+        "SHOW": "Mostrar atividade",
+        "HIDE": "Ocultar atividade",
+        "LOADING": "Carregando atividade...",
+        "EXECUTIONS": "Execuções recentes",
+        "SKIPS": "Skips recentes",
+        "EMPTY_EXECUTIONS": "Nenhuma execução registrada ainda.",
+        "EMPTY_SKIPS": "Nenhum skip registrado ainda."
       },
       "CANCEL": "Cancelar",
       "SAVE": "Salvar regra"

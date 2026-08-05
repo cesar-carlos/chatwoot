@@ -28,6 +28,43 @@
           "PLACEHOLDER": "Por favor, selecione um",
           "ERROR": "O campo evento é obrigatório"
         },
+        "RUN_TYPE": {
+          "LABEL": "Quando esta regra deve ser executada?",
+          "OPTIONS": {
+            "INSTANT": {
+              "LABEL": "Executar imediatamente",
+              "DESCRIPTION": "Executa no momento em que um evento ocorre, desde que as condições sejam atendidas."
+            },
+            "WAIT": {
+              "LABEL": "Executar após uma espera",
+              "DESCRIPTION": "Aguarda um tempo definido e só executa se tudo continuar igual. Se algo mudar, a regra é ignorada."
+            }
+          }
+        },
+        "WAIT": {
+          "LABEL": "Condição de espera",
+          "WHEN_LABEL": "Quando",
+          "STATUS_LABEL": "Status é",
+          "FOR_LABEL": "Por",
+          "INBOX_LABEL": "Caixa de entrada",
+          "ERROR": "A espera deve ser entre 10 minutos e 30 dias",
+          "OPTIONS": {
+            "CONVERSATION_STATUS": "Conversa permanece em um status",
+            "CUSTOMER_UNRESPONSIVE": "Cliente não respondeu",
+            "AGENT_UNRESPONSIVE": "Nenhum agente respondeu"
+          },
+          "DURATION": {
+            "MINUTES": "{count} minuto | {count} minutos",
+            "HOURS": "{count} hora | {count} horas",
+            "DAYS": "{count} dia | {count} dias"
+          },
+          "EXPLANATION": {
+            "CONVERSATION_STATUS": "O cronômetro começa quando a conversa entra neste status. Se ela ainda estiver nele {duration} depois, as ações abaixo são executadas. Se o status mudar antes, nada acontece.",
+            "CUSTOMER_UNRESPONSIVE": "O cronômetro começa quando um agente responde. Se o cliente não responder {duration} depois, as ações abaixo são executadas. Se o cliente responder, nada acontece, e a próxima resposta do agente reinicia o cronômetro.",
+            "AGENT_UNRESPONSIVE": "O cronômetro começa quando o cliente envia uma mensagem. Se nenhum agente responder {duration} depois, as ações abaixo são executadas. Se alguém responder antes, nada acontece."
+          },
+          "FOOTNOTE": "Somente nova atividade inicia o cronômetro. Conversas que já estão neste estado são consideradas na próxima vez que algo acontecer nelas."
+        },
         "CONDITIONS": {
           "LABEL": "Condições"
         },
@@ -47,9 +84,17 @@
         "NAME": "Nome",
         "DESCRIPTION": "Descrição",
         "ACTIVE": "Ativo",
-        "CREATED_ON": "Criado em"
+        "CREATED_ON": "Criado em",
+        "ACTIONS": "Ações"
       },
-      "404": "Nenhuma regra de automação encontrada"
+      "404": "Nenhuma regra de automação encontrada",
+      "404_DELAYED": "Nenhuma regra com espera ainda",
+      "TABS": {
+        "INSTANT": "Executa imediatamente",
+        "DELAYED": "Executa após uma espera"
+      },
+      "DELAY_BADGE": "Executa após {delay}",
+      "DELAY_DISABLED_BANNER": "A execução com espera está desativada nesta conta, então as regras abaixo que rodam após uma espera ficam pausadas até que seja reativada."
     },
     "DELETE": {
       "TITLE": "Excluir regra de automação",
@@ -130,6 +175,7 @@
       "ATLEAST_ONE_ACTION_REQUIRED": "Pelo menos uma ação é necessária"
     },
     "NONE_OPTION": "Nenhuma",
+    "LAST_RESPONDING_AGENT": "Último agente que respondeu",
     "EVENTS": {
       "CONVERSATION_CREATED": "Conversa Criada",
       "CONVERSATION_UPDATED": "Conversa Atualizada",
@@ -146,6 +192,8 @@
     "ACTIONS": {
       "ASSIGN_AGENT": "Atribuir ao Agente",
       "ASSIGN_TEAM": "Atribuir um Time",
+      "REMOVE_ASSIGNED_AGENT": "Remover agente atribuído",
+      "REMOVE_ASSIGNED_TEAM": "Remover time atribuído",
       "ADD_LABEL": "Adicionar uma Etiqueta",
       "REMOVE_LABEL": "Remover uma Etiqueta",
       "SEND_EMAIL_TO_TEAM": "Enviar um e-mail para o Time",
@@ -160,7 +208,8 @@
       "ADD_PRIVATE_NOTE": "Adicionar uma Nota Privada",
       "CHANGE_PRIORITY": "Alterar Prioridade",
       "ADD_SLA": "Adicionar SLA",
-      "OPEN_CONVERSATION": "Abrir conversa"
+      "OPEN_CONVERSATION": "Abrir conversa",
+      "PENDING_CONVERSATION": "Marcar conversa como pendente"
     },
     "MESSAGE_TYPES": {
       "INCOMING": "Mensagem Recebida",
@@ -175,6 +224,7 @@
     },
     "ATTRIBUTES": {
       "MESSAGE_TYPE": "Tipo da Mensagem",
+      "PRIVATE_NOTE": "Nota privada",
       "MESSAGE_CONTAINS": "A mensagem contém",
       "EMAIL": "E-mail",
       "INBOX": "Caixa de Entrada",
@@ -184,11 +234,18 @@
       "BROWSER_LANGUAGE": "Idioma do navegador",
       "MAIL_SUBJECT": "Assunto do e-mail",
       "COUNTRY_NAME": "País/região",
+      "COMPANY_NAME": "Empresa",
       "REFERER_LINK": "Link de origem",
       "ASSIGNEE_NAME": "Agente atribuído",
       "TEAM_NAME": "Time",
       "PRIORITY": "Prioridade",
-      "LABELS": "Etiquetas"
+      "LABELS": "Etiquetas",
+      "OPENED_BY": "Aberto por"
+    },
+    "OPENED_BY_TYPES": {
+      "CONTACT": "Contato",
+      "AGENT": "Agente",
+      "PHONE": "WhatsApp origem (celular/Web)"
     }
   }
 }

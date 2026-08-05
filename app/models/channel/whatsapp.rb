@@ -9,7 +9,7 @@
 #  phone_number                   :string           not null
 #  phone_number_health            :jsonb            not null
 #  phone_number_health_checked_at :datetime
-#  phone_number_health_error      :string
+#  phone_number_health_error      :string(500)
 #  provider                       :string           default("default")
 #  provider_config                :jsonb
 #  created_at                     :datetime         not null
@@ -18,12 +18,10 @@
 #
 # Indexes
 #
-# FORK: Evolution/Evolution Go unique instance_name partial indexes (long lines)
-# rubocop:disable Layout/LineLength
-#  index_channel_whatsapp_evolution_go_instance_name  (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution_go'::text)
-#  index_channel_whatsapp_evolution_instance_name     (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution'::text)
-# rubocop:enable Layout/LineLength
-#  index_channel_whatsapp_on_phone_number             (phone_number) UNIQUE
+#  index_channel_whatsapp_evolution_go_instance_name         (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution_go'::text)
+#  index_channel_whatsapp_evolution_instance_name            (((provider_config ->> 'instance_name'::text))) UNIQUE WHERE ((provider)::text = 'evolution'::text)
+#  index_channel_whatsapp_on_phone_number                    (phone_number) UNIQUE
+#  index_channel_whatsapp_on_phone_number_health_checked_at  (phone_number_health_checked_at)
 #
 
 class Channel::Whatsapp < ApplicationRecord

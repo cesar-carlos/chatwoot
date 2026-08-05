@@ -238,7 +238,13 @@
       "ASSIGNEE_NAME": "Assignee",
       "TEAM_NAME": "Team",
       "PRIORITY": "Priority",
-      "LABELS": "Labels"
+      "LABELS": "Labels",
+      "OPENED_BY": "Opened by"
+    },
+    "OPENED_BY_TYPES": {
+      "CONTACT": "Contact",
+      "AGENT": "Agent",
+      "PHONE": "WhatsApp origin (phone/Web)"
     }
   }
 }

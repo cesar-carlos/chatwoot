@@ -11,6 +11,7 @@ import {
 import {
   MESSAGE_CONDITION_VALUES,
   PRIORITY_CONDITION_VALUES,
+  OPENED_BY_CONDITION_VALUES,
 } from 'dashboard/constants/automation';
 
 /**
@@ -78,6 +79,14 @@ export default function useAutomationValues() {
     }))
   );
 
+  // FORK: opened_by automation condition options
+  const openedByOptions = computed(() =>
+    OPENED_BY_CONDITION_VALUES.map(item => ({
+      id: item.id,
+      name: t(`AUTOMATION.OPENED_BY_TYPES.${item.i18nKey}`),
+    }))
+  );
+
   /**
    * Adds a translated "None" option to the beginning of a list
    * @param {Array} list - The list to add "None" to
@@ -108,6 +117,7 @@ export default function useAutomationValues() {
       statusFilterOptions: statusFilterOptions.value,
       priorityOptions: priorityOptions.value,
       messageTypeOptions: messageTypeOptions.value,
+      openedByOptions: openedByOptions.value,
       teams: teams.value,
       languages,
       countries,

@@ -5,6 +5,8 @@ module Current
   thread_mattr_accessor :executed_by
   thread_mattr_accessor :contact
   thread_mattr_accessor :inbox
+  # FORK: who opened/created the conversation episode (contact|agent|phone) for automation filters
+  thread_mattr_accessor :conversation_opened_by
 
   def self.reset
     Current.user = nil
@@ -13,5 +15,6 @@ module Current
     Current.executed_by = nil
     Current.contact = nil
     Current.inbox = nil
+    Current.conversation_opened_by = nil # FORK
   end
 end

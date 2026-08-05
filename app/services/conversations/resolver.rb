@@ -33,3 +33,6 @@ class Conversations::Resolver
     contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
   end
 end
+
+# FORK: Custom::Conversations::Resolver (opened_by stamp, wavoip)
+Conversations::Resolver.prepend_mod_with('Conversations::Resolver')

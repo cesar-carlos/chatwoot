@@ -115,4 +115,56 @@ RSpec.describe 'Api::V1::Accounts::ConversationWorkflowRulesController', type: :
       expect(response.parsed_body).to have_key('count')
     end
   end
+
+  describe 'GET /conversation_workflow_rules/:id/activity' do
+    it 'returns recent executions and skips' do
+      rule = ConversationWorkflowRule.create!(
+        account: account,
+        name: 'Activity rule',
+        trigger_type: :agent_no_reply,
+        duration_minutes: 15,
+        actions: [{ 'action_name' => 'add_label', 'action_params' => ['vip'] }]
+      )
+      conversation = create(:conversation, account: account)
+      ConversationWorkflowRuleExecution.record!(
+        rule: rule,
+        conversation: conversation,
+        waiting_since_epoch: Time.current.to_i
+      )
+      ConversationWorkflowRuleSkip.record!(
+        rule: rule,
+        action_name: 'send_message_to_contact',
+        reason: 'blank_message'
+      )
+
+      get "#{base_url}/#{rule.id}/activity", headers: headers
+
+      expect(response).to have_http_status(:success)
+      body = response.parsed_body
+      expect(body['executions'].first['conversation_id']).to eq(conversation.id)
+      expect(body['skips'].first['reason']).to eq('blank_message')
+    end
+  end
+
+  describe 'GET /conversation_workflow_rules index recent_skips_count' do
+    it 'includes recent_skips_count' do
+      rule = ConversationWorkflowRule.create!(
+        account: account,
+        name: 'Skip count',
+        trigger_type: :agent_no_reply,
+        duration_minutes: 15,
+        actions: [{ 'action_name' => 'add_label', 'action_params' => ['vip'] }]
+      )
+      ConversationWorkflowRuleSkip.record!(
+        rule: rule,
+        action_name: 'send_message_to_contact',
+        reason: 'blank_message'
+      )
+
+      get base_url, headers: headers
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body.first['recent_skips_count']).to eq(1)
+    end
+  end
 end

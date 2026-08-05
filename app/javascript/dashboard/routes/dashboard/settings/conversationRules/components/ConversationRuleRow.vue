@@ -76,9 +76,28 @@ const actionSummary = computed(() => {
     return actionName;
   };
 
-  const labels = actions
-    .slice(0, 2)
-    .map(action => getActionLabel(action.action_name));
+  const summarizeContactMessage = action => {
+    const [inboxId, contactValue] = action.action_params || [];
+    const inboxes = store.getters['inboxes/getInboxes'] || [];
+    const inboxName =
+      inboxes.find(inbox => inbox.id === Number(inboxId))?.name ||
+      (inboxId ? `#${inboxId}` : '—');
+    const contactId =
+      contactValue && typeof contactValue === 'object'
+        ? contactValue.id
+        : contactValue;
+    return t('CONVERSATION_RULES.ACTION_SUMMARY.SEND_TO_CONTACT', {
+      contactId: contactId || '—',
+      inbox: inboxName,
+    });
+  };
+
+  const labels = actions.slice(0, 2).map(action => {
+    if (action.action_name === 'send_message_to_contact') {
+      return summarizeContactMessage(action);
+    }
+    return getActionLabel(action.action_name);
+  });
 
   if (actions.length > 2) {
     labels.push(
@@ -133,6 +152,16 @@ const ruleActive = computed({
             class="text-xs px-2 py-0.5 rounded-full bg-n-teal-3 text-n-teal-11 flex-shrink-0"
           >
             {{ $t('CONVERSATION_RULES.ACTIVE_BADGE') }}
+          </span>
+          <span
+            v-if="rule.recent_skips_count > 0"
+            class="text-xs px-2 py-0.5 rounded-full bg-n-amber-3 text-n-amber-11 flex-shrink-0"
+          >
+            {{
+              $t('CONVERSATION_RULES.RECENT_SKIPS_BADGE', {
+                count: rule.recent_skips_count,
+              })
+            }}
           </span>
         </div>
         <span class="text-sm text-n-slate-11 truncate">

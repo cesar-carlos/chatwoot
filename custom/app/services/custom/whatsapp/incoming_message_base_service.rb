@@ -52,6 +52,13 @@ module Custom::Whatsapp::IncomingMessageBaseService
     enqueue_pending_evolution_media_download if evolution_channel?
   end
 
+  def set_conversation
+    super
+  ensure
+    # FORK: avoid leaking opened_by into the next Sidekiq job on this thread
+    Current.conversation_opened_by = nil
+  end
+
   def process_messages
     return super unless evolution_channel?
 

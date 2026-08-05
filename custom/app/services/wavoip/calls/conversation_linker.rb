@@ -97,6 +97,7 @@ class Wavoip::Calls::ConversationLinker
   end
 
   def resolve_conversation!(contact, contact_inbox)
+    Current.conversation_opened_by = Custom::Conversations::OpenedByStamper::AGENT
     Conversations::Resolver.new(
       inbox: inbox,
       contact_inbox: contact_inbox,
@@ -105,9 +106,14 @@ class Wavoip::Calls::ConversationLinker
         inbox_id: inbox.id,
         contact_id: contact.id,
         contact_inbox_id: contact_inbox.id,
-        status: :open
+        status: :open,
+        additional_attributes: {
+          Custom::Conversations::OpenedByStamper::ATTRIBUTE_KEY => Custom::Conversations::OpenedByStamper::AGENT
+        }
       }
     ).perform
+  ensure
+    Current.conversation_opened_by = nil
   end
 
   def create_outgoing_call!(contact, conversation)

@@ -75,3 +75,19 @@ export const PRIORITY_CONDITION_VALUES = [
     i18nKey: 'URGENT',
   },
 ];
+
+// FORK: automation condition — who opened/created the conversation episode
+export const OPENED_BY_CONDITION_VALUES = [
+  {
+    id: 'contact',
+    i18nKey: 'CONTACT',
+  },
+  {
+    id: 'agent',
+    i18nKey: 'AGENT',
+  },
+  {
+    id: 'phone',
+    i18nKey: 'PHONE',
+  },
+];

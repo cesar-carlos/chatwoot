@@ -30,4 +30,8 @@ class ConversationWorkflowRulePolicy < ApplicationPolicy
   def preview_count?
     @account_user.administrator?
   end
+
+  def activity?
+    @account_user.administrator?
+  end
 end
