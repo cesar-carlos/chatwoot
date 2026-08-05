@@ -114,7 +114,7 @@ Doc: [send-a-text-message](https://docs.evolutionfoundation.com.br/evolution-go/
 | Decisão | Valor |
 |---------|-------|
 | **Default** | `ignore_from_me_echo: true` — drop echo events |
-| **Opt-in** | When `false`, `SEND_MESSAGE` and `MESSAGE` with `fromMe: true` → `PhoneOutgoingSyncService` (outgoing, `phone_sent: true`) |
+| **Opt-in** | When `false`, `SEND_MESSAGE` and `MESSAGE` with `fromMe: true` → `PhoneOutgoingSyncService` (outgoing, `phone_sent: true` + `external_echo: true` for native-app UI) |
 | **Contact** | `PeerContactInboxResolver` reuses existing conversations |
 
 ---

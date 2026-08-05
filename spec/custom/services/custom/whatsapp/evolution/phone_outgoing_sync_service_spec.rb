@@ -49,6 +49,7 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
         expect(message.content).to eq('Oi')
         expect(message.source_id).to eq('PHONE-SENT-MSG-001')
         expect(message.content_attributes['phone_sent']).to be(true)
+        expect(message.content_attributes['external_echo']).to be(true)
       end
     end
 

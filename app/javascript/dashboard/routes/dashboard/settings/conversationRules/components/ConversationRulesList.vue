@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Draggable from 'vuedraggable';
 import { useAlert } from 'dashboard/composables';
+import { useStore } from 'dashboard/composables/store';
 import { useAccount } from 'dashboard/composables/useAccount';
 import ConversationWorkflowRulesAPI from 'dashboard/api/conversationWorkflowRules';
 import ConversationRuleRow from 'dashboard/routes/dashboard/settings/conversationRules/components/ConversationRuleRow.vue';
@@ -17,6 +18,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  activeTab: {
+    type: String,
+    default: 'all',
+  },
   isMigrated: {
     type: Boolean,
     default: false,
@@ -30,6 +35,7 @@ const props = defineProps({
 const emit = defineEmits(['edit', 'clone', 'refresh']);
 
 const { t } = useI18n();
+const store = useStore();
 const { currentAccount } = useAccount();
 
 const localRules = ref([]);
@@ -43,7 +49,10 @@ const legacyAutoResolveActive = ref(false);
 const isMigrating = ref(false);
 
 const dragEnabled = computed(
-  () => !props.searchQuery.trim() && localRules.value.length > 1
+  () =>
+    props.activeTab === 'all' &&
+    !props.searchQuery.trim() &&
+    localRules.value.length > 1
 );
 
 const showLegacyBanner = computed(
@@ -138,6 +147,7 @@ const openMigrateConfirmation = async () => {
   isMigrating.value = true;
   try {
     await ConversationWorkflowRulesAPI.migrateLegacy();
+    await store.dispatch('accounts/get');
     emit('refresh');
     useAlert(t('CONVERSATION_RULES.MIGRATE_SUCCESS'));
   } catch {

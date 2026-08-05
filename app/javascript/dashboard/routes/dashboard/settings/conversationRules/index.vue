@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { picoSearch } from '@scmmishra/pico-search';
 import { useMapGetter, useStore } from 'dashboard/composables/store';
@@ -111,7 +111,7 @@ const openCreate = () => {
 };
 
 const openEdit = rule => {
-  editingRule.value = { ...rule };
+  editingRule.value = JSON.parse(JSON.stringify(rule));
   showForm.value = true;
 };
 
@@ -160,12 +160,15 @@ const cloneRule = async rule => {
   }
 };
 
-onMounted(() => {
-  if (showConversationRules.value) {
+watch(
+  showConversationRules,
+  enabled => {
+    if (!enabled) return;
     store.dispatch('inboxes/get');
     fetchRules();
-  }
-});
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
@@ -245,6 +248,7 @@ onMounted(() => {
           v-else-if="rules.length"
           :rules="filteredRules"
           :search-query="searchQuery"
+          :active-tab="activeTriggerTab"
           :is-migrated="isMigrated"
           :action-loading="actionLoading"
           @edit="openEdit"

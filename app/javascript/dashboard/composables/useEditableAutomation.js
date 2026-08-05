@@ -84,7 +84,13 @@ export function useEditableAutomation() {
     const params = action.action_params;
     const inputType = automationActionTypes.find(
       item => item.key === action.action_name
-    ).inputType;
+    )?.inputType;
+
+    // FORK: contact_message stores [inbox_id, contact_id, message]
+    if (inputType === 'contact_message') {
+      return Array.isArray(params) && params.length ? [...params] : [null, null, ''];
+    }
+
     if (inputType === 'multi_select' || inputType === 'search_select') {
       return [...getActionDropdownValues(action.action_name)].filter(item =>
         [...params].includes(item.id)

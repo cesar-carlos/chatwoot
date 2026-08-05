@@ -39,9 +39,9 @@ RSpec.describe ConversationWorkflowRule do
   end
 
   describe '#actions_attributes' do
-    it 'allows resolve_conversation for inactivity' do
+    it 'excludes resolve_conversation for inactivity' do
       rule = build_rule(trigger_type: :conversation_inactivity)
-      expect(rule.actions_attributes).to include('resolve_conversation')
+      expect(rule.actions_attributes).not_to include('resolve_conversation')
     end
 
     it 'allows resolve_conversation for agent no reply' do

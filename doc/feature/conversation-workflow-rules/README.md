@@ -78,6 +78,7 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 | Tiered SLA | **Múltiplas regras** (ex.: 15 min / 2h / 24h), uma por tier |
 | Feature flags | `auto_resolve_conversations` → inatividade + `customer_no_reply`; **`conversation_agent_no_reply_rules`** → waiting / unassigned / pending |
 | `send_message` | Default **não** zera `waiting_since`; opt-in `counts_as_agent_reply` por ação |
+| `send_message_to_contact` | Workflow-only: inbox + contato + template com `{{variáveis}}` da conversa origem; reusa conversa aberta no destinatário (Resolver); canais ContactInboxBuilder; sem HSM WhatsApp |
 | Activity audit | `Current.executed_by = ConversationWorkflowRule` + i18n |
 | i18n | en + pt_BR |
 | Required attrs | Fase 4 — `Custom::Conversations::ResolveService` + `skip_required_attributes` para sistema |
@@ -98,4 +99,4 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 
 ---
 
-*Última atualização: jul/2026 — 6 gatilhos, índices extended, runtime per-message vs cron documentado*
+*Última atualização: ago/2026 — ação `send_message_to_contact`*

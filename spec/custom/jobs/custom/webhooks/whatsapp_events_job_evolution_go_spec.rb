@@ -227,6 +227,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
       expect(message.content).to eq('Mensagem enviada pelo celular')
       expect(message.source_id).to eq('3EB0PHONE-SENT-002')
       expect(message.content_attributes['phone_sent']).to be(true)
+      expect(message.content_attributes['external_echo']).to be(true)
     end
   end
 
@@ -280,6 +281,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
       expect(message.outgoing?).to be(true)
       expect(message.content).to eq('Mensagem enviada pelo celular para o grupo')
       expect(message.content_attributes['phone_sent']).to be(true)
+      expect(message.content_attributes['external_echo']).to be(true)
       expect(message.conversation.contact_inbox).to eq(contact_inbox)
     end
   end
@@ -321,6 +323,7 @@ RSpec.describe Custom::Webhooks::WhatsappEventsJobEvolutionGo do
       expect(message.outgoing?).to be(true)
       expect(message.content).to eq('Mensagem enviada pelo celular para o grupo')
       expect(message.content_attributes['phone_sent']).to be(true)
+      expect(message.content_attributes['external_echo']).to be(true)
       expect(message.conversation.contact_inbox).to eq(contact_inbox)
     end
   end

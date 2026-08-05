@@ -1,17 +1,31 @@
 import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import useAutomationValues from 'dashboard/composables/useAutomationValues';
+import { useEditableAutomation } from 'dashboard/composables/useEditableAutomation';
 import {
   validateSingleFilter,
   validateSingleAction,
 } from 'dashboard/helper/validations';
+import actionQueryGenerator from 'dashboard/helper/actionQueryGenerator';
+import filterQueryGenerator from 'dashboard/helper/filterQueryGenerator';
 import {
   DEFAULT_WORKFLOW_RULE,
+  WORKFLOW_ACTION_TYPES,
   WORKFLOW_CONDITIONS,
+  WORKFLOW_STATUS_OPTIONS,
 } from 'dashboard/routes/dashboard/settings/conversationRules/constants';
 import { isInactivityTrigger } from 'dashboard/routes/dashboard/settings/conversationRules/helpers/triggerHelper';
 
 const MAX_DURATION_MINUTES = 1_439_856;
+
+const clonePlain = value => JSON.parse(JSON.stringify(value));
+
+const toIds = values => {
+  if (!Array.isArray(values) || !values.length) return [];
+  return values.map(value =>
+    value && typeof value === 'object' ? value.id : value
+  );
+};
 
 const defaultCondition = () => ({
   attribute_key: WORKFLOW_CONDITIONS[0].key,
@@ -31,11 +45,10 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
   const { t } = useI18n();
   const { getConditionDropdownValues, getActionDropdownValues } =
     useAutomationValues();
+  const { formatAutomation } = useEditableAutomation();
 
   const rule = ref(
-    startValue
-      ? structuredClone(startValue)
-      : structuredClone(DEFAULT_WORKFLOW_RULE)
+    startValue ? clonePlain(startValue) : clonePlain(DEFAULT_WORKFLOW_RULE)
   );
 
   const fieldErrors = ref({});
@@ -68,7 +81,11 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
           respect_business_hours:
             rule.value.options?.respect_business_hours || false,
         };
-        if (triggerType !== 'conversation_inactivity') {
+        if (triggerType === 'conversation_inactivity') {
+          rule.value.actions = (rule.value.actions || []).filter(
+            action => action.action_name !== 'resolve_conversation'
+          );
+        } else {
           rule.value.ignore_waiting = false;
           rule.value.resolve_on_match = false;
           rule.value.message = '';
@@ -147,7 +164,14 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
   };
 
   const resetAction = index => {
-    rule.value.actions[index] = defaultAction();
+    // Match automation: clear params only — action_name was already set via v-model.
+    const name = rule.value.actions[index].action_name;
+    rule.value.actions[index] = {
+      action_name: name,
+      action_params:
+        name === 'send_message_to_contact' ? [null, null, ''] : [],
+      counts_as_agent_reply: false,
+    };
   };
 
   const getWorkflowConditionDropdownValues = type => {
@@ -184,6 +208,17 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
       errors.actions = t(`AUTOMATION.ERRORS.${actionError}`);
     }
 
+    const contactMessageIncomplete = actions.some(action => {
+      if (action.action_name !== 'send_message_to_contact') return false;
+      const [inboxId, contactId, message] = action.action_params || [];
+      return !inboxId || !contactId || !String(message || '').trim();
+    });
+    if (contactMessageIncomplete) {
+      errors.actions = t(
+        'CONVERSATION_RULES.VALIDATION.CONTACT_MESSAGE_REQUIRED'
+      );
+    }
+
     if (isInactivityTrigger(rule.value.trigger_type)) {
       const hasOutcome =
         actions.length > 0 ||
@@ -207,7 +242,45 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
     return Object.keys(errors).length === 0;
   };
 
+  const normalizeActionsForPayload = actions => {
+    return (actions || []).map(action => {
+      if (action.action_name === 'send_message_to_contact') {
+        const [inboxId, contactId, message] = action.action_params || [];
+        const toId = value => {
+          if (value && typeof value === 'object') return Number(value.id);
+          return value ? Number(value) : null;
+        };
+
+        return {
+          action_name: action.action_name,
+          action_params: [toId(inboxId), toId(contactId), message || ''],
+          counts_as_agent_reply: false,
+        };
+      }
+
+      const [normalized] = actionQueryGenerator([
+        {
+          action_name: action.action_name,
+          action_params: action.action_params || [],
+        },
+      ]);
+
+      return {
+        action_name: normalized.action_name,
+        action_params: normalized.action_params,
+        counts_as_agent_reply: action.counts_as_agent_reply || false,
+      };
+    });
+  };
+
   const buildPayload = () => {
+    const inboxIds = toIds(rule.value.inbox_ids);
+    const statusIds = toIds(rule.value.options?.statuses);
+    const conditions = rule.value.conditions || [];
+    const normalizedConditions = conditions.length
+      ? filterQueryGenerator(conditions).payload
+      : [];
+
     const payload = {
       name: rule.value.name,
       description: rule.value.description,
@@ -215,15 +288,11 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
       position: rule.value.position,
       trigger_type: rule.value.trigger_type,
       duration_minutes: rule.value.duration_minutes,
-      inbox_ids: rule.value.inbox_ids?.length ? rule.value.inbox_ids : null,
-      conditions: rule.value.conditions || [],
-      actions: (rule.value.actions || []).map(action => ({
-        action_name: action.action_name,
-        action_params: action.action_params || [],
-        counts_as_agent_reply: action.counts_as_agent_reply || false,
-      })),
+      inbox_ids: inboxIds.length ? inboxIds : null,
+      conditions: normalizedConditions,
+      actions: normalizeActionsForPayload(rule.value.actions),
       options: {
-        statuses: rule.value.options?.statuses || ['open'],
+        statuses: statusIds.length ? statusIds : ['open'],
         require_no_first_reply:
           rule.value.options?.require_no_first_reply || false,
         respect_business_hours:
@@ -263,6 +332,58 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
     return payload;
   };
 
+  // MultiSelect/AutomationActionInput expect objects; API stores scalar ids.
+  const hydrateRuleForForm = ({ inboxOptions = [], statusLabelFn } = {}) => {
+    const inboxIds = rule.value.inbox_ids || [];
+    if (inboxIds.length && typeof inboxIds[0] !== 'object') {
+      rule.value.inbox_ids = inboxOptions.filter(option =>
+        inboxIds.map(Number).includes(Number(option.id))
+      );
+    } else if (!Array.isArray(rule.value.inbox_ids)) {
+      rule.value.inbox_ids = [];
+    }
+
+    const statuses = rule.value.options?.statuses || [];
+    if (statuses.length && typeof statuses[0] !== 'object') {
+      const statusOptions = WORKFLOW_STATUS_OPTIONS.map(item => ({
+        id: item.id,
+        name: statusLabelFn ? statusLabelFn(item.id) : item.id,
+      }));
+      rule.value.options.statuses = statusOptions.filter(option =>
+        statuses.includes(option.id)
+      );
+    }
+
+    // Only API-backed rules need action/condition object hydration.
+    if (!rule.value.id) return;
+
+    const manifested = formatAutomation(
+      {
+        ...rule.value,
+        event_name: 'conversation_created',
+        conditions: rule.value.conditions || [],
+        actions: (rule.value.actions || []).map(action => ({
+          ...action,
+          action_params: action.action_params || [],
+        })),
+      },
+      [],
+      { conversation_created: { conditions: WORKFLOW_CONDITIONS } },
+      WORKFLOW_ACTION_TYPES
+    );
+
+    rule.value.conditions = manifested.conditions;
+    rule.value.actions = manifested.actions.map(action => {
+      if (action.action_name !== 'send_message_to_contact') return action;
+      return {
+        ...action,
+        action_params: action.action_params?.length
+          ? action.action_params
+          : [null, null, ''],
+      };
+    });
+  };
+
   return {
     rule,
     fieldErrors,
@@ -275,5 +396,6 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
     getActionDropdownValues,
     validateRule,
     buildPayload,
+    hydrateRuleForForm,
   };
 }

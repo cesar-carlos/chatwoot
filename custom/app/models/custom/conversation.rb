@@ -1,4 +1,11 @@
 module Custom::Conversation
+  extend ActiveSupport::Concern
+
+  prepended do
+    # FK has no ON DELETE CASCADE — must delete executions before the conversation.
+    has_many :conversation_workflow_rule_executions, dependent: :delete_all
+  end
+
   private
 
   # FORK: WhatsApp Evolution group chats stay unassigned (no inbox round-robin).

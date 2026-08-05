@@ -77,7 +77,7 @@ Tabela `channel_wavoip` (migration em `db/migrate/`).
 
 | Campo | Uso |
 |-------|-----|
-| `phone_number` | E.164; único por **`[account_id, phone_number]`** |
+| `phone_number` | E.164; único por **`[account_id, phone_number]`**; identidade do device (celular ou fixo — sem restrição de tipo) |
 | `account_id` | Conta |
 | `device_token` | Credencial SDK; `encrypts` se `Chatwoot.encryption_configured?` |
 | `webhook_key` | Chave opaca rotacionável no path do webhook |

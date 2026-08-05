@@ -4,6 +4,7 @@ import {
   h,
   nextTick,
   onMounted,
+  onUnmounted,
   ref,
   useTemplateRef,
   watch,
@@ -75,6 +76,7 @@ const isFeatureEnabledonAccount = useMapGetter(
 const { operators } = useOperators();
 const conditionsRef = useTemplateRef('conditionsRef');
 const dialogRef = ref(null);
+const scrollableRef = ref(null);
 const unattendedCount = ref(null);
 const previewCount = ref(null);
 const isPreviewLoading = ref(false);
@@ -85,15 +87,36 @@ const {
   rule,
   fieldErrors,
   appendNewCondition,
-  appendNewAction,
+  appendNewAction: appendNewActionBase,
   removeCondition,
   removeAction,
-  resetAction,
+  resetAction: resetActionBase,
   getWorkflowConditionDropdownValues,
   getActionDropdownValues,
   validateRule,
   buildPayload,
+  hydrateRuleForForm,
 } = useWorkflowRule(props.rule, props.existingRules);
+
+const scrollToBottom = () => {
+  nextTick(() => {
+    nextTick(() => {
+      if (scrollableRef.value) {
+        scrollableRef.value.scrollTop = scrollableRef.value.scrollHeight;
+      }
+    });
+  });
+};
+
+const appendNewAction = () => {
+  appendNewActionBase();
+  scrollToBottom();
+};
+
+const resetAction = index => {
+  resetActionBase(index);
+  scrollToBottom();
+};
 
 const isEdit = computed(() => !!props.rule?.id);
 const isConversationInactivity = computed(
@@ -179,11 +202,27 @@ const workflowFilterTypes = computed(() =>
   })
 );
 
-const workflowActionTypes = computed(() =>
-  WORKFLOW_ACTION_TYPES.map(action => ({
+const workflowActionTypes = computed(() => {
+  const actions =
+    rule.value.trigger_type === 'conversation_inactivity'
+      ? WORKFLOW_ACTION_TYPES.filter(
+          action => action.key !== 'resolve_conversation'
+        )
+      : WORKFLOW_ACTION_TYPES;
+
+  return actions.map(action => ({
     ...action,
     label: t(`AUTOMATION.ACTIONS.${action.label}`),
-  }))
+  }));
+});
+
+const triggerUnavailable = computed(
+  () =>
+    !!rule.value.trigger_type &&
+    availableTriggers.value.length > 0 &&
+    !availableTriggers.value.some(
+      trigger => trigger.key === rule.value.trigger_type
+    )
 );
 
 const durationValue = computed({
@@ -240,6 +279,8 @@ const schedulePreviewCount = () => {
   previewTimeout = setTimeout(fetchPreviewCount, 400);
 };
 
+onUnmounted(() => clearTimeout(previewTimeout));
+
 watch(
   () => rule.value.trigger_type,
   () => {
@@ -268,33 +309,53 @@ const saveRule = async () => {
 
   try {
     const payload = buildPayload();
+    let response;
     if (isEdit.value) {
-      await ConversationWorkflowRulesAPI.update(props.rule.id, payload);
+      response = await ConversationWorkflowRulesAPI.update(
+        props.rule.id,
+        payload
+      );
     } else {
-      await ConversationWorkflowRulesAPI.create(payload);
+      response = await ConversationWorkflowRulesAPI.create(payload);
+    }
+    if (response?.data?.legacy_auto_resolve_active) {
+      useAlert(t('CONVERSATION_RULES.LEGACY_BANNER'));
     }
     emit('saved');
-  } catch {
-    useAlert(t('CONVERSATION_RULES.SAVE_ERROR'));
+  } catch (error) {
+    const payload = error?.response?.data?.error;
+    const legacyConflict =
+      (typeof payload === 'object' &&
+        Array.isArray(payload?.base) &&
+        payload.base.some(msg =>
+          String(msg).toLowerCase().includes('migrate legacy')
+        )) ||
+      String(payload || '')
+        .toLowerCase()
+        .includes('migrate legacy');
+    useAlert(
+      legacyConflict
+        ? t('CONVERSATION_RULES.LEGACY_CONFLICT')
+        : t('CONVERSATION_RULES.SAVE_ERROR')
+    );
   }
 };
 
-onMounted(() => {
-  store.dispatch('inboxes/get');
-  store.dispatch('agents/get');
-  store.dispatch('teams/get');
-  store.dispatch('labels/get');
+onMounted(async () => {
+  await Promise.all([
+    store.dispatch('inboxes/get'),
+    store.dispatch('agents/get'),
+    store.dispatch('teams/get'),
+    store.dispatch('labels/get'),
+  ]);
+
+  hydrateRuleForForm({
+    inboxOptions: inboxOptions.value,
+    statusLabelFn: statusId => t(`CONVERSATION_RULES.STATUS.${statusId}`),
+  });
 
   if (!rule.value.duration_minutes || rule.value.duration_minutes < 10) {
     rule.value.duration_minutes = 60;
-  }
-  if (
-    availableTriggers.value.length &&
-    !availableTriggers.value.some(
-      trigger => trigger.key === rule.value.trigger_type
-    )
-  ) {
-    rule.value.trigger_type = availableTriggers.value[0].key;
   }
   durationUnit.value = inferDurationUnit(rule.value.duration_minutes);
 
@@ -304,6 +365,10 @@ onMounted(() => {
   schedulePreviewCount();
   nextTick(() => {
     dialogRef.value?.open();
+    const hasContactMessage = rule.value.actions?.some(
+      a => a.action_name === 'send_message_to_contact'
+    );
+    if (hasContactMessage) scrollToBottom();
   });
 });
 </script>
@@ -315,11 +380,15 @@ onMounted(() => {
       isEdit ? $t('CONVERSATION_RULES.EDIT') : $t('CONVERSATION_RULES.ADD')
     "
     width="3xl"
+    position="top"
     :show-cancel-button="false"
     :show-confirm-button="false"
     @close="$emit('close')"
   >
-    <div class="flex flex-col gap-4 max-h-[70vh] overflow-y-auto p-1">
+    <div
+      ref="scrollableRef"
+      class="flex flex-col gap-4 max-h-[calc(100vh-220px)] overflow-y-auto p-1"
+    >
       <FormSection
         :title="$t('CONVERSATION_RULES.FORM.SECTIONS.IDENTIFICATION')"
       >
@@ -343,6 +412,12 @@ onMounted(() => {
           v-model="rule.trigger_type"
           :triggers="availableTriggers"
         />
+        <p
+          v-if="triggerUnavailable"
+          class="text-sm text-n-amber-11 rounded-lg border border-n-amber-6 bg-n-amber-2 p-3"
+        >
+          {{ $t('CONVERSATION_RULES.FORM.TRIGGER_UNAVAILABLE') }}
+        </p>
 
         <div class="flex flex-col gap-2">
           <span class="text-sm font-medium text-n-slate-12">
@@ -493,7 +568,7 @@ onMounted(() => {
         </div>
         <div
           v-for="(action, index) in rule.actions"
-          :key="index"
+          :key="`${index}-${action.action_name}`"
           class="flex flex-col gap-2"
         >
           <AutomationActionInput
@@ -508,7 +583,7 @@ onMounted(() => {
           />
           <FormSwitchRow
             v-if="action.action_name === 'send_message'"
-            v-model="action.counts_as_agent_reply"
+            v-model="rule.actions[index].counts_as_agent_reply"
             :label="$t('CONVERSATION_RULES.FORM.COUNTS_AS_AGENT_REPLY')"
             :help="$t('CONVERSATION_RULES.FORM.COUNTS_AS_AGENT_REPLY_HELP')"
           />
@@ -520,13 +595,20 @@ onMounted(() => {
     </div>
 
     <template #footer>
-      <Button
-        faded
-        slate
-        :label="$t('CONVERSATION_RULES.FORM.CANCEL')"
-        @click="$emit('close')"
-      />
-      <Button :label="$t('CONVERSATION_RULES.FORM.SAVE')" @click="saveRule" />
+      <div class="flex items-center justify-between w-full gap-3">
+        <Button
+          faded
+          slate
+          class="w-full"
+          :label="$t('CONVERSATION_RULES.FORM.CANCEL')"
+          @click="$emit('close')"
+        />
+        <Button
+          class="w-full"
+          :label="$t('CONVERSATION_RULES.FORM.SAVE')"
+          @click="saveRule"
+        />
+      </div>
     </template>
   </Dialog>
 </template>

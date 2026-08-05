@@ -106,6 +106,10 @@ Formato idêntico a `AutomationRule#conditions`. Avaliar com `AutomationRules::C
 
 **Whitelist Fase 2:** `assignee_id`, `team_id`, `labels`, `priority`
 
+**Operadores:**
+- `assignee_id`, `team_id`, `labels` — `equal_to`, `not_equal_to`, `is_present`, `is_not_present`
+- `priority` — `equal_to`, `not_equal_to`
+
 **Fase 3+:** custom attributes de conversa
 
 Duração **não** é condição AND — pertence ao gatilho.
@@ -140,6 +144,51 @@ Usar **`Custom::ConversationWorkflow::ActionService`** (não `AutomationRules::A
 
 `counts_as_agent_reply` (opt-in, só `send_message`): se `true`, limpar `waiting_since` após envio.
 
+#### `send_message_to_contact`
+
+Abre (ou reusa) uma conversa com **outro contato** em uma inbox escolhida e envia mensagem com dados da conversa que disparou a regra:
+
+```json
+{
+  "action_name": "send_message_to_contact",
+  "action_params": [
+    5,
+    42,
+    "Conversa {{conversation.display_id}} do {{contact.name}} precisa de atenção."
+  ],
+  "counts_as_agent_reply": false
+}
+```
+
+| Posição | Campo | Tipo |
+|---------|-------|------|
+| `[0]` | `inbox_id` | integer — inbox pela qual enviar |
+| `[1]` | `contact_id` | integer — contato destinatário |
+| `[2]` | message template | string — com `{{variáveis}}` |
+
+Variáveis interpoladas a partir da conversa **que bateu na regra** (não do destinatário):
+
+| Variável | Valor |
+|----------|-------|
+| `{{conversation.id}}` | ID interno |
+| `{{conversation.display_id}}` | Número de exibição |
+| `{{contact.name}}` / `{{contact.email}}` / `{{contact.phone}}` | Contato da conversa origem |
+| `{{inbox.name}}` | Inbox da conversa origem |
+| `{{rule.name}}` | Nome da regra |
+
+**Runtime:** `ContactInboxBuilder` → `ConversationBuilder` / `Conversations::Resolver` → `Messages::MessageBuilder` com `content_attributes.conversation_workflow_rule_id`.
+
+| Aspecto | Comportamento |
+|---------|---------------|
+| Conversa destino | Resolver **reusa** a conversa aberta mais recente do `contact_inbox` (ou qualquer se `lock_to_single_conversation`); só cria se não houver |
+| Canais UI | WhatsApp, Wavoip, Twilio, SMS, Email, API, WebWidget (alinhado ao `ContactInboxBuilder`) |
+| Identificador | WhatsApp/SMS/Twilio exigem telefone; Email exige e-mail; API/WebWidget geram UUID |
+| WhatsApp 24h | Texto livre via `MessageBuilder` — **sem HSM**; fora da janela de sessão o provedor pode rejeitar |
+| Validação FE | Exige `inbox_id`, `contact_id` e mensagem não vazia |
+| Falha | Inbox/contato inválidos, mensagem em branco, canal sem identificador → **warning + skip** (não aborta as demais ações); sem feedback na UI admin |
+
+> **i18n:** placeholders de exemplo com `{{…}}` literais devem usar escape vue-i18n `{'{{'}…{'}}'}` — `{{` cru no JSON quebra o message-compiler (`Not allowed nest placeholder`).
+
 ### 3.3 Whitelist
 
 | Ação | Inatividade | Todos os outros |
@@ -147,6 +196,7 @@ Usar **`Custom::ConversationWorkflow::ActionService`** (não `AutomationRules::A
 | `add_label` / `remove_label` | ✓ | ✓ |
 | `add_private_note` | ✓ | ✓ |
 | `send_message` | ✓ | ✓ |
+| `send_message_to_contact` | ✓ | ✓ |
 | `assign_agent` / `assign_team` | ✓ | ✓ |
 | `remove_assigned_agent` / `remove_assigned_team` | ✓ | ✓ |
 | `send_webhook_event` | ✓ | ✓ |
@@ -159,6 +209,8 @@ Usar **`Custom::ConversationWorkflow::ActionService`** (não `AutomationRules::A
 > **Nota:** `conversation_inactivity` resolve via flag `resolve_on_match: true` no modelo, não via ação — mantém a distinção semântica entre "template + resolve" do legacy e ações avulsas. O model exclui `resolve_conversation` da whitelist para inatividade (`actions_attributes`).
 
 > **`send_attachment`:** bloqueado na UI via `DISALLOWED_ACTIONS`; no backend, loga `warning` e retorna sem enviar.
+
+> **`send_message_to_contact`:** ação exclusiva do workflow (`WORKFLOW_ONLY_ACTIONS`); não existe na Automação. UI: `WorkflowContactMessageInput.vue`.
 
 ### 3.4 Ordem — `conversation_inactivity`
 
@@ -273,4 +325,4 @@ Cron (*/5) e/ou ScheduleOnMessageJob:
 
 ---
 
-*Última atualização: jul/2026 — 6 gatilhos, flags, dedup e runtime alinhados ao código*
+*Última atualização: ago/2026 — ação `send_message_to_contact` (inbox + contato + template)*

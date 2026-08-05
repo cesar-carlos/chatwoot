@@ -41,7 +41,7 @@ const formErrors = computed(() => ({
     : '',
   phoneNumber: v$.value.phoneNumber?.$error
     ? t('INBOX_MGMT.ADD.WAVOIP.PHONE_NUMBER.ERROR')
-    : t('INBOX_MGMT.ADD.WAVOIP.PHONE_NUMBER.HELP_TEXT'),
+    : '',
   deviceToken: v$.value.deviceToken?.$error
     ? t('INBOX_MGMT.ADD.WAVOIP.DEVICE_TOKEN.ERROR')
     : '',
@@ -105,7 +105,10 @@ async function createChannel() {
         v-model="state.phoneNumber"
         :label="t('INBOX_MGMT.ADD.WAVOIP.PHONE_NUMBER.LABEL')"
         :placeholder="t('INBOX_MGMT.ADD.WAVOIP.PHONE_NUMBER.PLACEHOLDER')"
-        :message="formErrors.phoneNumber"
+        :message="
+          formErrors.phoneNumber ||
+          t('INBOX_MGMT.ADD.WAVOIP.PHONE_NUMBER.HELP_TEXT')
+        "
         :message-type="formErrors.phoneNumber ? 'error' : 'info'"
         @blur="v$.phoneNumber?.$touch"
       />

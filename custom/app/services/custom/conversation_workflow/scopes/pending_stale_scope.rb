@@ -13,9 +13,8 @@ class Custom::ConversationWorkflow::Scopes::PendingStaleScope
   private
 
   def apply_cutoff(scope)
-    return scope if @rule.respect_business_hours?
-
-    cutoff = Time.now.utc - @rule.duration_minutes.minutes
-    scope.where('last_activity_at < ?', cutoff)
+    multiplier = @rule.respect_business_hours? ? 3 : 1
+    cutoff = Time.now.utc - (@rule.duration_minutes * multiplier).minutes
+    scope.where('conversations.last_activity_at < ?', cutoff)
   end
 end

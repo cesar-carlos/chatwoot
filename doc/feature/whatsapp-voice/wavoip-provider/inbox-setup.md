@@ -66,7 +66,7 @@ operar o dispositivo no painel Wavoip.
 | Campo | API / storage | Obrigatório | Validação | Notas |
 |-------|---------------|-------------|-----------|-------|
 | **Nome da caixa de entrada** | `inbox.name` | Não | max 255 | Default: `Wavoip ({phone_number})` se vazio |
-| **Número WhatsApp** | `channel.phone_number` | Sim | E.164 (`isPhoneE164`) | Único entre canais Wavoip; pode coexistir com inbox de mensagens |
+| **Número WhatsApp** | `channel.phone_number` | Sim | E.164 (`isPhoneE164`) | Único entre canais Wavoip; pode coexistir com inbox de mensagens. Aceita celular **e** fixo BR (ex. `+5566999050319` ou `+556635159875`). No form, `HELP_TEXT` usa `message-type: info` — não misturar com erro de validação. |
 
 ### 3.2 Seção — Dispositivo Wavoip
 
@@ -386,7 +386,7 @@ Chaves sugeridas:
         "TITLE": "Wavoip Voice Channel",
         "DESC": "Connect your Wavoip device to handle WhatsApp voice calls.",
         "INBOX_NAME": { "LABEL": "Inbox name", "PLACEHOLDER": "Support (Wavoip)" },
-        "PHONE_NUMBER": { "LABEL": "WhatsApp number", "PLACEHOLDER": "+5511999999999", "ERROR": "..." },
+        "PHONE_NUMBER": { "LABEL": "WhatsApp number", "PLACEHOLDER": "+556635159875", "HELP_TEXT": "E.164; BR mobile or landline", "ERROR": "..." },
         "DEVICE_TOKEN": { "LABEL": "Device token", "PLACEHOLDER": "...", "HELP": "From app.wavoip.com/devices" },
         "ID_SESSION": { "LABEL": "Session ID (optional)", "PLACEHOLDER": "12345" },
         "INBOUND_ENABLED": { "LABEL": "Accept incoming calls" },

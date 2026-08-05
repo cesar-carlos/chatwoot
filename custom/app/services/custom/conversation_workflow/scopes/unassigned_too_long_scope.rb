@@ -15,9 +15,8 @@ class Custom::ConversationWorkflow::Scopes::UnassignedTooLongScope
   private
 
   def apply_cutoff(scope)
-    return scope if @rule.respect_business_hours?
-
-    cutoff = Time.now.utc - @rule.duration_minutes.minutes
-    scope.where('created_at < ?', cutoff)
+    multiplier = @rule.respect_business_hours? ? 3 : 1
+    cutoff = Time.now.utc - (@rule.duration_minutes * multiplier).minutes
+    scope.where('conversations.created_at < ?', cutoff)
   end
 end

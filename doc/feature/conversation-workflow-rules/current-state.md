@@ -1,6 +1,16 @@
 # Conversation Workflow — Estado atual
 
-Referência do código em jun/2026 após menu independente **Regras de conversa**, refactor UX e correções pós-sprint.
+Referência do código em ago/2026 após menu independente **Regras de conversa**, refactor UX e correções da review (FK, preview, BH, FE).
+
+### Delete / cascade (ago/2026)
+
+- Rule → executions: `dependent: :delete_all`
+- Conversation → executions: `Custom::Conversation` `has_many … dependent: :delete_all`
+- Account destroy: `Custom::DeleteObjectJob` purga executions das rules **antes** do purge de conversations
+- Policy: `preview_count?` (admin)
+- Scopes: colunas qualificadas (`conversations.*`); BH usa prefilter wall-clock ×3 (nunca scope aberto)
+- `RuleExecutor`: ordena por timestamp de referência antes do limit 100
+- Legacy: create/update de inactivity **ativa** bloqueado enquanto `auto_resolve_after` presente e não migrado
 
 ---
 
@@ -14,6 +24,7 @@ Referência do código em jun/2026 após menu independente **Regras de conversa*
 | UX | Empty state, busca com contador filtrado (`COUNT_FILTERED`), cards enriquecidos, form por seções, migração com confirmação, clone client-side |
 | SLA exemplo | `helpers/i18nHelper.js` — `getTieredSlaExample(tm)` evita bug de `t(returnObjects)` |
 | `send_attachment` | Oculto na UI (`DISALLOWED_ACTIONS`); backend não executa |
+| `send_message_to_contact` | Ação workflow-only: inbox + contato + mensagem com variáveis da conversa origem |
 
 Componentes em `conversationRules/components/`:
 
@@ -22,6 +33,7 @@ Componentes em `conversationRules/components/`:
 - `ConversationRuleRow.vue`, `ConversationRulesEmptyState.vue`, `ConversationRulesFeatureDisabled.vue`
 - `TriggerCardSelector.vue` — cards selecionáveis por trigger type (6 tipos)
 - `DurationPresets.vue` — botões de preset de duração rápida
+- `WorkflowContactMessageInput.vue` — inbox + busca de contato + template para `send_message_to_contact`
 - `FormSection.vue`, `FormSwitchRow.vue`
 
 ---
@@ -34,7 +46,7 @@ Componentes em `conversationRules/components/`:
 | Gatilhos (6 tipos) | `conversation_inactivity`, `agent_no_reply`, `first_response_overdue`, `unassigned_too_long`, `pending_stale`, `customer_no_reply` |
 | UX gatilhos | Cards selecionáveis, labels contextuais de duração, presets, preview `POST preview_count`, abas na lista |
 | Página rules | `app/javascript/dashboard/routes/dashboard/settings/conversationRules/index.vue` |
-| Rules list + row + form | `conversationRules/components/ConversationRulesList.vue`, `ConversationRuleRow.vue`, `ConversationRuleForm.vue`, `TriggerCardSelector.vue`, `DurationPresets.vue` |
+| Rules list + row + form | `conversationRules/components/ConversationRulesList.vue`, `ConversationRuleRow.vue`, `ConversationRuleForm.vue`, `TriggerCardSelector.vue`, `DurationPresets.vue`, `WorkflowContactMessageInput.vue` |
 | Helpers / form UI | `conversationRules/helpers/durationHelper.js`, `i18nHelper.js`, `triggerHelper.js`, `FormSection.vue`, `FormSwitchRow.vue`, `ConversationRulesEmptyState.vue`, `ConversationRulesFeatureDisabled.vue` |
 | **Fluxo de Conversa (legacy)** | `/accounts/:accountId/settings/conversation-workflow` |
 | Página legacy | `app/javascript/dashboard/routes/dashboard/settings/conversationWorkflow/index.vue` |
@@ -72,7 +84,8 @@ Componentes em `conversationRules/components/`:
 | Preview API | `POST /conversation_workflow_rules/preview_count` |
 | Account processor | `custom/app/services/custom/conversation_workflow/account_processor.rb` — itera regras com gate de feature flag |
 | Executor | `custom/app/services/custom/conversation_workflow/rule_executor.rb` |
-| Action wrapper | `custom/app/services/custom/conversation_workflow/action_service.rb` — `< AutomationRules::ActionService`; webhook prefix `workflow_rule.*` |
+| Action wrapper | `custom/app/services/custom/conversation_workflow/action_service.rb` — `< AutomationRules::ActionService`; webhook prefix `workflow_rule.*`; `send_message_to_contact` |
+| Send to contact | `custom/app/services/custom/conversation_workflow/send_message_to_contact_service.rb` — ContactInboxBuilder + ConversationBuilder + MessageBuilder + interpolação `{{var}}` |
 | Scope matcher | `custom/app/services/custom/conversation_workflow/scope_matcher.rb` — elegibilidade por conversa pós-SQL |
 | Threshold matcher | `custom/app/services/custom/conversation_workflow/threshold_matcher.rb` — duration calendar ou business hours |
 | Reference timestamp | `custom/app/services/custom/conversation_workflow/reference_timestamp.rb` — timestamp de referência + atributos de dedup por trigger |
@@ -228,9 +241,12 @@ Checklist obrigatório antes de go-live:
 | Cron backstop | `SchedulerJob` a cada 5 min (complementa job per-message) |
 | Business hours | Sem per-message — atraso até ~5 min após threshold em horário útil |
 | `send_attachment` | Não suportado — oculto na UI; ação loga warning se presente via API |
-| `ActionService` | Erros por ação engolidos (`StandardError`) — sem feedback ao admin na UI |
+| `ActionService` | Re-raises errors → `RuleExecutor` libera dedup e rastreia via `ChatwootExceptionTracker`; ações anteriores à falha podem ter executado (sem rollback); sem feedback ao admin na UI |
 | Histórico de execuções | Tabela `conversation_workflow_rule_executions` existe; sem UI de auditoria |
+| `ScheduleOnMessageJob` else | Branch sem `conversation_id` (full-account executor) é código morto — nunca acionado pelo `ScheduleOnMessageScheduler` atual |
+| N+1 `customer_no_reply` | `ScopeMatcher` e `ReferenceTimestamp` rodam a mesma query (`messages ORDER BY created_at DESC LIMIT 1`) em instâncias separadas — 2 queries/conversa no cron, sem incorreção |
+| `send_message_to_contact` | Canais via ContactInboxBuilder; reusa conversa aberta (Resolver); WhatsApp sem HSM (janela 24h); falha → skip com warning detalhado, demais ações seguem; UI filtra inboxes suportados |
 
 ---
 
-*Última atualização: jul/2026 — índices extended, runtime per-message vs cron, 6 eventos Automação*
+*Última atualização: ago/2026 — ação `send_message_to_contact`*
