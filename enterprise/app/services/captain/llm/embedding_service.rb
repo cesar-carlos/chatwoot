@@ -36,3 +36,6 @@ class Captain::Llm::EmbeddingService
     }
   end
 end
+
+# FORK: allow Custom::Captain::Llm::EmbeddingService overlay (account OpenAI BYOK)
+Captain::Llm::EmbeddingService.prepend_mod_with('Captain::Llm::EmbeddingService')

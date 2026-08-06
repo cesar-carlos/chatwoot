@@ -21,6 +21,8 @@ RSpec.describe Captain::Copilot::ChatService do
 
   # RubyLLM mocks
   let(:mock_chat) { instance_double(RubyLLM::Chat) }
+  # FORK: ChatHelper wraps calls in Llm::Config.with_api_key → context.chat
+  let(:mock_context) { instance_double(RubyLLM::Context) }
   let(:mock_response) do
     instance_double(RubyLLM::Message, content: '{ "content": "Hey", "reasoning": "Test reasoning", "reply_suggestion": false }')
   end
@@ -30,6 +32,11 @@ RSpec.describe Captain::Copilot::ChatService do
       c.value = 'test-key'
     end
 
+    allow(RubyLLM).to receive(:context) do |&block|
+      block&.call(instance_double('config').as_null_object) # rubocop:disable RSpec/VerifiedDoubleReference
+      mock_context
+    end
+    allow(mock_context).to receive(:chat).and_return(mock_chat)
     allow(RubyLLM).to receive(:chat).and_return(mock_chat)
     allow(mock_chat).to receive(:with_temperature).and_return(mock_chat)
     allow(mock_chat).to receive(:with_params).and_return(mock_chat)
@@ -71,7 +78,8 @@ RSpec.describe Captain::Copilot::ChatService do
     it 'uses the copilot feature model' do
       account.update!(captain_models: { 'copilot' => 'gpt-5.2' })
 
-      expect(RubyLLM).to receive(:chat).with(model: 'gpt-5.2').and_return(mock_chat)
+      # FORK: keyed context.chat instead of global RubyLLM.chat
+      expect(mock_context).to receive(:chat).with(model: 'gpt-5.2').and_return(mock_chat)
 
       described_class.new(assistant, config).generate_response('Hello')
     end

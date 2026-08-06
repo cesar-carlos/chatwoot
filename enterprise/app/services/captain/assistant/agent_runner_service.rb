@@ -169,3 +169,6 @@ class Captain::Assistant::AgentRunnerService
     [message_to_process, context]
   end
 end
+
+# FORK: allow Custom::Captain::Assistant::AgentRunnerService overlay (account OpenAI BYOK)
+Captain::Assistant::AgentRunnerService.prepend_mod_with('Captain::Assistant::AgentRunnerService')

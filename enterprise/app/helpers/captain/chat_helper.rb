@@ -133,3 +133,6 @@ module Captain::ChatHelper
     Rails.logger.info("#{self.class.name} Assistant: #{@assistant.id}, requesting completion for #{@messages} with #{@tools&.length || 0} tools")
   end
 end
+
+# FORK: allow Custom::Captain::ChatHelper overlay (account OpenAI BYOK)
+Captain::ChatHelper.prepend_mod_with('Captain::ChatHelper')

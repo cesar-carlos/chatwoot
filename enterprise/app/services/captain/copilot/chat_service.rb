@@ -126,3 +126,6 @@ class Captain::Copilot::ChatService < Llm::BaseAiService
     'copilot'
   end
 end
+
+# FORK: allow Custom::Captain::Copilot::ChatService overlay (skip usage on BYOK)
+Captain::Copilot::ChatService.prepend_mod_with('Captain::Copilot::ChatService')

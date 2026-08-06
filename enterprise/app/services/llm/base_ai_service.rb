@@ -61,3 +61,6 @@ class Llm::BaseAiService
     @temperature = DEFAULT_TEMPERATURE
   end
 end
+
+# FORK: allow Custom::Llm::BaseAiService overlay (account OpenAI BYOK)
+Llm::BaseAiService.prepend_mod_with('Llm::BaseAiService')

@@ -67,3 +67,6 @@ class Captain::Assistant::ResponseRewriter
     messages[index] = messages[index].merge(content: output)
   end
 end
+
+# FORK: allow Custom::Captain::Assistant::ResponseRewriter overlay (account OpenAI BYOK)
+Captain::Assistant::ResponseRewriter.prepend_mod_with('Captain::Assistant::ResponseRewriter')

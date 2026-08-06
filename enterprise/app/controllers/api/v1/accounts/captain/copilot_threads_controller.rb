@@ -56,3 +56,8 @@ class Api::V1::Accounts::Captain::CopilotThreadsController < Api::V1::Accounts::
     params.permit(:page)
   end
 end
+
+# FORK: allow Custom overlay for account OpenAI BYOK quota bypass
+Api::V1::Accounts::Captain::CopilotThreadsController.prepend_mod_with(
+  'Api::V1::Accounts::Captain::CopilotThreadsController'
+)
