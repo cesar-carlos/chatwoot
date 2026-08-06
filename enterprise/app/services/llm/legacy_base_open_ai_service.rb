@@ -42,3 +42,6 @@ class Llm::LegacyBaseOpenAiService
     @model = (config_value.presence || DEFAULT_MODEL)
   end
 end
+
+# FORK: allow Custom::Llm::LegacyBaseOpenAiService overlay (account OpenAI BYOK)
+Llm::LegacyBaseOpenAiService.prepend_mod_with('Llm::LegacyBaseOpenAiService')

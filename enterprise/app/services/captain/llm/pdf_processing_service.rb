@@ -61,3 +61,6 @@ class Captain::Llm::PdfProcessingService < Llm::LegacyBaseOpenAiService
     end
   end
 end
+
+# FORK: allow Custom::Captain::Llm::PdfProcessingService overlay (account OpenAI BYOK)
+Captain::Llm::PdfProcessingService.prepend_mod_with('Captain::Llm::PdfProcessingService')

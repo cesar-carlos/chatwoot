@@ -174,3 +174,6 @@ class Captain::Conversation::ResponseBuilderJob < ApplicationJob
     end
   end
 end
+
+# FORK: allow Custom overlay to skip captain_responses debit on OpenAI BYOK
+Captain::Conversation::ResponseBuilderJob.prepend_mod_with('Captain::Conversation::ResponseBuilderJob')

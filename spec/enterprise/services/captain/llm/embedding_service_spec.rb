@@ -29,7 +29,7 @@ RSpec.describe Captain::Llm::EmbeddingService, type: :service do
 
     it 'sends the installation embedding model to RubyLLM' do
       configure_embedding_model('custom-embedding-model')
-
+      # FORK: without account OpenAI credentials, embedding still uses global RubyLLM.embed
       expect(RubyLLM).to receive(:embed).with('search text', model: 'custom-embedding-model').and_return(embedding_response)
 
       expect(described_class.new(account_id: account.id).get_embedding('search text')).to eq([0.1, 0.2])

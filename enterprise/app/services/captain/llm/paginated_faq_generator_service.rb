@@ -223,3 +223,6 @@ class Captain::Llm::PaginatedFaqGeneratorService < Llm::LegacyBaseOpenAiService
     @document&.to_llm_metadata || {}
   end
 end
+
+# FORK: allow Custom::Captain::Llm::PaginatedFaqGeneratorService overlay (account OpenAI BYOK)
+Captain::Llm::PaginatedFaqGeneratorService.prepend_mod_with('Captain::Llm::PaginatedFaqGeneratorService')
