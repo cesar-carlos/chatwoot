@@ -3,6 +3,7 @@ import {
   getUserPermissions,
   hasPermissions,
   hasInboxViewPermission,
+  hasReplyAssignedOnlyRestriction,
   filterItemsByPermission,
 } from '../permissionsHelper';
 
@@ -59,6 +60,29 @@ describe('hasInboxViewPermission', () => {
     expect(
       hasInboxViewPermission(['conversation_participating_manage', 'custom_role'])
     ).toBe(false);
+  });
+});
+
+describe('hasReplyAssignedOnlyRestriction', () => {
+  it('returns true when conversation_reply_assigned_only is present', () => {
+    expect(
+      hasReplyAssignedOnlyRestriction([
+        'conversation_team_unassigned_manage',
+        'conversation_reply_assigned_only',
+        'custom_role',
+      ])
+    ).toBe(true);
+  });
+
+  it('returns false when permission is absent', () => {
+    expect(
+      hasReplyAssignedOnlyRestriction([
+        'conversation_team_unassigned_manage',
+        'custom_role',
+      ])
+    ).toBe(false);
+    expect(hasReplyAssignedOnlyRestriction(['agent'])).toBe(false);
+    expect(hasReplyAssignedOnlyRestriction()).toBe(false);
   });
 });
 

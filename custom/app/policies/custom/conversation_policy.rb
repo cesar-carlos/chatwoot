@@ -1,4 +1,6 @@
 module Custom::ConversationPolicy
+  REPLY_ASSIGNED_ONLY_PERMISSION = 'conversation_reply_assigned_only'.freeze
+
   # rubocop:disable Metrics/CyclomaticComplexity -- custom-role permission matrix
   def show?
     return false unless administrator? || agent_bot? || agent_can_view_conversation?
@@ -12,6 +14,15 @@ module Custom::ConversationPolicy
     permits_participating?(permissions)
   end
   # rubocop:enable Metrics/CyclomaticComplexity
+
+  # FORK: custom role reply assigned only
+  def reply?
+    return true if administrator? || agent_bot?
+    return true unless custom_role_permissions?
+    return true unless custom_role_permissions.include?(REPLY_ASSIGNED_ONLY_PERMISSION)
+
+    assigned_to_user?
+  end
 
   private
 

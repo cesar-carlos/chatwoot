@@ -1,4 +1,7 @@
-import { INBOX_VIEW_ROUTE_PERMISSIONS } from 'dashboard/constants/permissions';
+import {
+  INBOX_VIEW_ROUTE_PERMISSIONS,
+  REPLY_ASSIGNED_ONLY_PERMISSION,
+} from 'dashboard/constants/permissions';
 
 export const hasPermissions = (
   requiredPermissions = [],
@@ -30,6 +33,10 @@ export const getUserRole = (user, accountId) => {
 // FORK: custom role inbox view permission
 export const hasInboxViewPermission = (userPermissions = []) =>
   hasPermissions(INBOX_VIEW_ROUTE_PERMISSIONS, userPermissions);
+
+// FORK: custom role reply assigned only — true when restriction is active
+export const hasReplyAssignedOnlyRestriction = (userPermissions = []) =>
+  userPermissions.includes(REPLY_ASSIGNED_ONLY_PERMISSION);
 
 /**
  * Filters and transforms items based on user permissions.

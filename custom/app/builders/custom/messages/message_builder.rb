@@ -1,6 +1,7 @@
 module Custom::Messages::MessageBuilder
   # FORK: share contact card + attachment_ids clone for forward — keep #perform in sync with upstream on merge
   def perform
+    assert_reply_assigned_only_allowed! # FORK: custom role reply assigned only
     assert_wavoip_public_reply_allowed!
     merge_cloned_attachment_blobs!
 
@@ -14,6 +15,17 @@ module Custom::Messages::MessageBuilder
   end
 
   private
+
+  # FORK: custom role reply assigned only — covers API create, macros, conversation create+message
+  def assert_reply_assigned_only_allowed!
+    return if @user.blank? || !@user.is_a?(User)
+
+    account_user = AccountUser.find_by(user_id: @user.id, account_id: @conversation.account_id)
+    context = { user: @user, account: @conversation.account, account_user: account_user }
+    return if ConversationPolicy.new(context, @conversation).reply?
+
+    raise Pundit::NotAuthorizedError, query: :reply?, record: @conversation
+  end
 
   def assert_wavoip_public_reply_allowed!
     return unless wavoip_outgoing_public_message?

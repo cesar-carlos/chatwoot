@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n';
 import { isAIAssigneeType } from 'dashboard/helper/agentHelper';
 import ConversationApi from 'dashboard/api/inbox/conversation';
 import wootConstants from 'dashboard/constants/globals';
+import { getUserPermissions, hasReplyAssignedOnlyRestriction } from 'dashboard/helper/permissionsHelper';
 
 import Banner from 'dashboard/components/ui/Banner.vue';
 
@@ -26,15 +27,32 @@ const { t } = useI18n();
 
 const currentChat = useMapGetter('getSelectedChat');
 const currentUser = useMapGetter('getCurrentUser');
+const currentAccountId = useMapGetter('getCurrentAccountId');
 
 const assignedAgent = computed(() => currentChat.value?.meta?.assignee);
 
-const showSelfAssignBanner = computed(
+// FORK: custom role reply assigned only
+const isReplyRestrictedToAssignee = computed(() => {
+  const userPermissions = getUserPermissions(
+    currentUser.value,
+    currentAccountId.value
+  );
+  return hasReplyAssignedOnlyRestriction(userPermissions);
+});
+
+const notCurrentAssignee = computed(
   () =>
-    props.message !== '' &&
-    !props.isOnPrivateNote &&
-    (!assignedAgent.value || assignedAgent.value.id !== currentUser.value?.id)
+    !assignedAgent.value || assignedAgent.value.id !== currentUser.value?.id
 );
+
+const showSelfAssignBanner = computed(() => {
+  if (isReplyRestrictedToAssignee.value && notCurrentAssignee.value) {
+    return true;
+  }
+  return (
+    props.message !== '' && !props.isOnPrivateNote && notCurrentAssignee.value
+  );
+});
 
 const showBotHandoffBanner = computed(
   () =>

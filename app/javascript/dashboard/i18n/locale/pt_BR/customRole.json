@@ -38,6 +38,7 @@
       "CONVERSATION_TEAM_UNASSIGNED_MANAGE": "Gerenciar conversas não atribuídas dos times do agente e aquelas atribuídas ao agente",
       "CONVERSATION_PARTICIPATING_MANAGE": "Gerenciar conversas que participa e aquelas atribuídas ao agente",
       "INBOX_VIEW_MANAGE": "Ver Caixa de Entrada (notificações e mensagens recentes)",
+      "CONVERSATION_REPLY_ASSIGNED_ONLY": "Permitir responder somente se a conversa estiver atribuída ao agente",
       "CONTACT_MANAGE": "Gerenciar contatos",
       "REPORT_MANAGE": "Gerenciar relatórios",
       "KNOWLEDGE_BASE_MANAGE": "Gerenciar base de conhecimento"

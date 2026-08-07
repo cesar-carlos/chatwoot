@@ -25,6 +25,7 @@ Permitindo ver:
 ## Related features
 
 - **Caixa de Entrada (Inbox View):** permissão dedicada `inbox_view_manage` para controlar se o agente vê o feed de notificações / mensagens recentes — ver [`../custom-role-inbox-view-permission/implementation-plan.md`](../custom-role-inbox-view-permission/implementation-plan.md). Independente desta feature de escopo de conversas por time.
+- **Reply only when assigned:** permissão opt-in `conversation_reply_assigned_only` para permitir resposta apenas se a conversa estiver atribuída ao agente — ver [`../custom-role-reply-assigned-only/implementation-plan.md`](../custom-role-reply-assigned-only/implementation-plan.md). Independente do escopo de visão (`conversation_*`).
 
 ## Objective
 
