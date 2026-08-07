@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Wavoip::AutoNoAnswerRingJob do
+  include ActiveJob::TestHelper
+
   let(:account) { create(:account) }
   let(:channel) { create(:channel_wavoip, account: account) }
   let(:inbox) { channel.inbox }
@@ -86,7 +88,9 @@ RSpec.describe Wavoip::AutoNoAnswerRingJob do
     broadcaster = instance_double(Wavoip::Calls::Broadcaster)
     allow(Wavoip::Calls::Broadcaster).to receive(:new).and_return(broadcaster)
 
-    described_class.perform_now(call.id)
+    expect do
+      described_class.perform_now(call.id)
+    end.to have_enqueued_job(Wavoip::ClaimedRingGraceJob).with(call.id)
 
     aggregate_failures do
       expect(call.reload.status).to eq('ringing')
@@ -100,7 +104,9 @@ RSpec.describe Wavoip::AutoNoAnswerRingJob do
     broadcaster = instance_double(Wavoip::Calls::Broadcaster)
     allow(Wavoip::Calls::Broadcaster).to receive(:new).and_return(broadcaster)
 
-    described_class.perform_now(call.id)
+    expect do
+      described_class.perform_now(call.id)
+    end.to have_enqueued_job(Wavoip::ClaimedRingGraceJob).with(call.id)
 
     expect(call.reload.status).to eq('ringing')
   end

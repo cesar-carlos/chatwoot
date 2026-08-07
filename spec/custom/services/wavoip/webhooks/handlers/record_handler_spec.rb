@@ -47,6 +47,14 @@ RSpec.describe Wavoip::Webhooks::Handlers::RecordHandler do
     account.enable_features!('channel_voice', 'channel_wavoip')
   end
 
+  around do |example|
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = original_cache
+  end
+
   it 'updates call meta and enqueues AttachRecordingJob' do
     expect do
       described_class.new(inbox: inbox, event: event).perform
@@ -173,5 +181,29 @@ RSpec.describe Wavoip::Webhooks::Handlers::RecordHandler do
 
     expect(call.reload.meta['record_url']).to eq(record_url)
     expect(call.meta['record_status']).to eq('READY')
+  end
+
+  it 'debounces duplicate READY retries while call is in progress' do
+    call.update!(status: 'in_progress')
+    in_progress_event = Voice::Dto::WebhookCallEvent.new(
+      provider: :wavoip,
+      external_call_id: provider_call_id,
+      action: :update,
+      external_status: nil,
+      direction: nil,
+      from_phone: channel.phone_number,
+      to_phone: nil,
+      peer_name: nil,
+      duration_seconds: nil,
+      session_id: nil,
+      call_type: nil,
+      record_url: record_url,
+      record_status: 'READY',
+      raw_type: 'RECORD'
+    )
+
+    expect do
+      2.times { described_class.new(inbox: inbox, event: in_progress_event).perform }
+    end.to have_enqueued_job(Wavoip::RetryRecordAttachmentJob).exactly(:once)
   end
 end

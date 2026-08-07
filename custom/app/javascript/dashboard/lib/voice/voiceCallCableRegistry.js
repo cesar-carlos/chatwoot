@@ -27,6 +27,14 @@ import {
 
 const currentUserId = () => store.getters.getCurrentUserID;
 
+const alertAcceptedElsewhere = (t, agentName) => {
+  useAlert(
+    agentName
+      ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
+      : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
+  );
+};
+
 // The SDK is treated as the source of truth for an outbound ringing widget
 // (see GAP-OUTBOUND-01 in the Wavoip changelog): the webhook can report a
 // terminal status before the SDK's own peerAccept/peerReject/unanswered
@@ -109,6 +117,8 @@ export const createWavoipVoiceCableHandlers = t => ({
       t,
       onFailure: () =>
         useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED')),
+      onConflict: () =>
+        useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')),
     });
   },
   onOutboundAccepted(data) {
@@ -148,12 +158,7 @@ export const createWavoipVoiceCableHandlers = t => ({
     // Another agent claimed while this tab still has (or thinks it has) media.
     // Tear down so we do not keep a zombie SDK session after a failed join/PATCH.
     if (ownsLocalSession && !acceptedBySelf) {
-      const agentName = data.accepted_by_agent_name;
-      useAlert(
-        agentName
-          ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
-          : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
-      );
+      alertAcceptedElsewhere(t, data.accepted_by_agent_name);
       endSdkActiveCall(
         data.call_id || callEntry.callSid || callEntry.wavoipOfferId
       );
@@ -173,12 +178,7 @@ export const createWavoipVoiceCableHandlers = t => ({
     // Same-user other tab: silent dismiss (no "accepted elsewhere" toast).
     // Other agent: toast even if this tab is mid-join.
     if (!acceptedBySelf) {
-      const agentName = data.accepted_by_agent_name;
-      useAlert(
-        agentName
-          ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
-          : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
-      );
+      alertAcceptedElsewhere(t, data.accepted_by_agent_name);
     }
 
     dismissWavoipCallFromStore(

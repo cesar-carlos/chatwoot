@@ -19,22 +19,22 @@ module Custom::Api::V1::Accounts::CallsController
     head :ok
   end
 
+  # PATCH remains as an idempotent alias of join for older clients / queued retries.
   def update
     authorize @call.inbox, :show?
 
     return render json: { error: 'Call provider not supported' }, status: :unprocessable_entity unless @call.wavoip?
     return render json: { error: 'Call is not active' }, status: :unprocessable_entity unless @call.ringing? || @call.in_progress?
 
-    record_agent_acceptance!
+    record_join_intent!
 
     render json: @call.push_event_data
   end
 
   private
 
-  # Join runs after the SDK accept succeeds. Persist accepted_by_agent_id here
-  # (not only on PATCH) so a failed follow-up accept still attributes the call
-  # and stops multi-agent ring via ClaimGuard (GAP-02).
+  # Persist accepted_by_agent_id on join so ClaimGuard stops multi-agent ring
+  # even while status is still ringing awaiting webhook ACTIVE.
   def record_join_intent!
     deferred = []
     @call.with_lock do
@@ -42,18 +42,6 @@ module Custom::Api::V1::Accounts::CallsController
       ensure_join_claim!
       next if @call.accepted_by_agent_id == Current.user.id
 
-      accept_call_for_current_user!(deferred: deferred)
-    end
-    run_deferred!(deferred)
-  end
-
-  def record_agent_acceptance!
-    deferred = []
-    @call.with_lock do
-      raise_if_claimed_by_other_agent!
-      next if @call.accepted_by_agent_id == Current.user.id
-
-      ensure_join_claim!
       accept_call_for_current_user!(deferred: deferred)
     end
     run_deferred!(deferred)

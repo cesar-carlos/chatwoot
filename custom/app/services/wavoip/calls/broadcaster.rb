@@ -39,15 +39,21 @@ class Wavoip::Calls::Broadcaster
   end
 
   def broadcast_accepted(call)
-    broadcast(call, 'voice_call.outbound_accepted', streams: lifecycle_streams(call))
+    streams = lifecycle_streams(call)
+    return if streams.blank?
+
+    broadcast(call, 'voice_call.outbound_accepted', streams: streams)
   end
 
   def broadcast_agent_accepted(call, accepted_by_agent_id:)
     agent = User.find_by(id: accepted_by_agent_id)
+    streams = lifecycle_streams(call, accepted_by_agent_id: accepted_by_agent_id)
+    return if streams.blank?
+
     broadcast(
       call,
       'voice_call.accepted',
-      streams: lifecycle_streams(call, accepted_by_agent_id: accepted_by_agent_id),
+      streams: streams,
       accepted_by_agent_id: accepted_by_agent_id,
       accepted_by_agent_name: agent&.available_name || agent&.name
     )
@@ -55,10 +61,13 @@ class Wavoip::Calls::Broadcaster
   end
 
   def broadcast_ended(call)
+    streams = lifecycle_streams(call)
+    return if streams.blank?
+
     broadcast(
       call,
       'voice_call.ended',
-      streams: lifecycle_streams(call),
+      streams: streams,
       status: call.display_status,
       duration_seconds: call.duration_seconds,
       end_reason: call.end_reason
@@ -89,16 +98,25 @@ class Wavoip::Calls::Broadcaster
     ).escalated_pubsub_tokens
   end
 
-  # accepted/ended: inbox recipients (+ accepter), not the full account stream,
-  # so agents outside the inbox do not receive call metadata.
+  # accepted/ended: inbox member base scope (+ accepter). Never fall back to the
+  # full account stream — empty recipients mean skip (or accepter-only).
   def lifecycle_streams(call, accepted_by_agent_id: nil)
-    tokens = agent_streams(call).dup
+    tokens = inbox_member_pubsub_tokens.dup
     accepter_id = accepted_by_agent_id.presence || call.accepted_by_agent_id
     if accepter_id.present?
       token = User.find_by(id: accepter_id)&.pubsub_token
       tokens << token if token.present?
     end
-    tokens.compact.uniq.presence || account_streams
+    tokens.compact.uniq
+  end
+
+  def inbox_member_pubsub_tokens
+    user_ids = inbox.member_ids.dup
+    channel = inbox.channel
+    if channel.is_a?(Channel::Wavoip) && channel.incoming_call_include_administrators?
+      user_ids |= channel.account.administrators.ids
+    end
+    User.where(id: user_ids).pluck(:pubsub_token).compact
   end
 
   def broadcast(call, event, streams: account_streams, **extra)

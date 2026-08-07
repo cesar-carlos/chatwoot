@@ -42,6 +42,10 @@ class Wavoip::Webhooks::Handlers::RecordHandler < Wavoip::Webhooks::Handlers::Ba
     return if Wavoip::Calls::RecordingPolicy::PENDING_STATUSES.include?(event.record_status.to_s.upcase)
 
     persist_record_meta!(call, include_record_url: true)
+    Rails.logger.info(
+      "[WAVOIP] event=record_retry_waiting_completion call_id=#{call.id} inbox_id=#{inbox.id} " \
+      "provider_call_id=#{event.external_call_id}"
+    )
     schedule_retry
   end
 
@@ -52,6 +56,10 @@ class Wavoip::Webhooks::Handlers::RecordHandler < Wavoip::Webhooks::Handlers::Ba
   end
 
   def schedule_retry
+    lock_key = "wavoip:record_retry:#{inbox.id}:#{event.external_call_id}"
+    acquired = Rails.cache.write(lock_key, true, unless_exist: true, expires_in: 2.minutes)
+    return unless acquired
+
     Wavoip::RetryRecordAttachmentJob.perform_later(
       inbox.id,
       event.external_call_id,

@@ -30,8 +30,8 @@ describe('wavoipAcceptRecorder', () => {
     setActivePinia(createPinia());
   });
 
-  it('retries recordAccept with backoff and succeeds on third attempt', async () => {
-    CallsAPI.recordAccept
+  it('retries join with backoff and succeeds on third attempt', async () => {
+    CallsAPI.joinCall
       .mockRejectedValueOnce(new Error('network'))
       .mockRejectedValueOnce(new Error('network'))
       .mockResolvedValueOnce(undefined);
@@ -48,14 +48,12 @@ describe('wavoipAcceptRecorder', () => {
     await vi.advanceTimersByTimeAsync(2000);
     await flushPromise;
 
+    expect(CallsAPI.joinCall).toHaveBeenCalledTimes(3);
     expect(CallsAPI.joinCall).toHaveBeenCalledWith(42);
-    expect(CallsAPI.recordAccept).toHaveBeenCalledTimes(3);
-    expect(CallsAPI.recordAccept).toHaveBeenCalledWith(42);
+    expect(CallsAPI.recordAccept).not.toHaveBeenCalled();
   });
 
   it('resolves db call id via wavoipOfferId when callSid differs', async () => {
-    CallsAPI.recordAccept.mockResolvedValue(undefined);
-
     const store = useCallsStore();
     store.addCall({
       callSid: 'sdk-offer-1',
@@ -67,7 +65,7 @@ describe('wavoipAcceptRecorder', () => {
     await flushAcceptedByRecording('cable-call-1');
 
     expect(CallsAPI.joinCall).toHaveBeenCalledWith(99);
-    expect(CallsAPI.recordAccept).toHaveBeenCalledWith(99);
+    expect(CallsAPI.recordAccept).not.toHaveBeenCalled();
   });
 
   it('does not retry on 409 conflict and invokes onConflict', async () => {
@@ -88,5 +86,18 @@ describe('wavoipAcceptRecorder', () => {
     expect(CallsAPI.recordAccept).not.toHaveBeenCalled();
     expect(onConflict).toHaveBeenCalled();
     expect(onFailure).not.toHaveBeenCalled();
+  });
+
+  it('flush only joins and does not PATCH accept', async () => {
+    CallsAPI.joinCall.mockResolvedValue(undefined);
+
+    const store = useCallsStore();
+    store.addCall({ callSid: 'call-join-only', callId: 11 });
+
+    queueAcceptedByRecording('call-join-only');
+    await flushAcceptedByRecording('call-join-only');
+
+    expect(CallsAPI.joinCall).toHaveBeenCalledWith(11);
+    expect(CallsAPI.recordAccept).not.toHaveBeenCalled();
   });
 });

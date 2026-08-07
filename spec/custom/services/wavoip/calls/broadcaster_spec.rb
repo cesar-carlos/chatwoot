@@ -107,6 +107,28 @@ RSpec.describe Wavoip::Calls::Broadcaster do
     expect(payloads.first.last[:data][:call_id]).to eq('broadcast_test_001')
   end
 
+  it 'does not fall back to the account stream when there are no recipients' do
+    empty_inbox = create(:channel_wavoip, account: account).inbox
+    empty_call = create(
+      :call,
+      account: account,
+      inbox: empty_inbox,
+      conversation: create(:conversation, account: account, inbox: empty_inbox),
+      contact: contact,
+      provider: :wavoip,
+      provider_call_id: 'broadcast_empty_001',
+      direction: :incoming,
+      status: 'ringing'
+    )
+    broadcaster = described_class.new(inbox: empty_inbox)
+    payloads = []
+    allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
+
+    broadcaster.broadcast_ended(empty_call)
+
+    expect(payloads).to be_empty
+  end
+
   it 'clears voice_call_incoming notifications when an agent accepts' do
     clearer = instance_double(Wavoip::Calls::ClearIncomingNotificationsService, perform: true)
     allow(Wavoip::Calls::ClearIncomingNotificationsService).to receive(:new)

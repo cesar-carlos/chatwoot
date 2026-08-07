@@ -143,12 +143,12 @@ HANDLERS = {
 | `Wavoip::Calls::InboundPushService` | Notificação in-app `voice_call_incoming` |
 | `Wavoip::Calls::ClaimGuard` | `accepted_by_agent_id` presente → já claimed |
 | `Wavoip::Calls::ClearIncomingNotificationsService` | Limpa push após accept/ended |
-| `Wavoip::Calls::JoiningAgentCache` | Double-accept no join/PATCH |
+| `Wavoip::Calls::JoiningAgentCache` | Double-accept no join (PATCH é alias) |
 | `Wavoip::Calls::RecordingPolicy` / `DirectRecordingUrl` | Gravação + fallback URL |
 
 Bolha `voice_call`: via upsert + builders EE (`Voice::InboundCallBuilder` / `Voice::CallMessageBuilder`) — **não** existe `MessageSyncService`.
 
-**Parar ring após accept:** `ClaimGuard.claimed?` bloqueia `broadcast_incoming`, escalate e push enquanto status ainda é `ringing`. `broadcast_agent_accepted` limpa notificações via `ClearIncomingNotificationsService`.
+**Parar ring após accept:** `ClaimGuard.claimed?` bloqueia `broadcast_incoming`, escalate e push enquanto status ainda é `ringing`. `broadcast_agent_accepted` limpa notificações via `ClearIncomingNotificationsService`. `AutoNoAnswerRingJob` não mata call claimed — agenda `ClaimedRingGraceJob`. `HANDLED_REMOTELY` claimed+ringing é deferido via `HandledRemotelyStaleJob`.
 
 ### 3.4 Jobs
 
@@ -157,10 +157,12 @@ Bolha `voice_call`: via upsert + builders EE (`Voice::InboundCallBuilder` / `Voi
 | `Wavoip::ProcessWebhookJob` | Ingresso assíncrono |
 | `Wavoip::AttachRecordingJob` | Anexar áudio do webhook RECORD |
 | `Wavoip::FetchDirectRecordingJob` | Fallback `storage.wavoip.com/{id}` |
-| `Wavoip::RetryRecordAttachmentJob` | Retry de anexação |
+| `Wavoip::RetryRecordAttachmentJob` | Retry de anexação (debounce Redis) |
 | `Wavoip::InboundCallPushJob` | Push inbound |
 | `Wavoip::EscalateRingJob` | Escalação de ring offline |
-| `Wavoip::AutoNoAnswerRingJob` | Timeout ringing → no_answer |
+| `Wavoip::AutoNoAnswerRingJob` | Timeout ringing → no_answer (ou grace se claimed) |
+| `Wavoip::ClaimedRingGraceJob` | Fecha ringing claimed se ACTIVE nunca chega (~45 min) |
+| `Wavoip::HandledRemotelyStaleJob` | Fecha ringing claimed após HANDLED_REMOTELY deferido (~2 min) |
 | `Wavoip::StaleInProgressCallJob` | Sweeper de calls presas |
 
 ### 3.5 DTO normalizado
@@ -199,10 +201,10 @@ O webhook usa vocabulário diferente do SDK. Rails: `StatusMapper`. Browser: `li
 
 | Endpoint | Uso |
 |----------|-----|
-| `POST /api/v1/accounts/:id/calls/:id/join` | Aceite: persiste `accepted_by_agent_id` + broadcast; 409 se outro agente |
-| `PATCH /api/v1/accounts/:id/calls/:id` | Attribution / sync pós-accept |
+| `POST /api/v1/accounts/:id/calls/:id/join` | Claim autoritativo: persiste `accepted_by_agent_id` + broadcast; 409 se outro agente |
+| `PATCH /api/v1/accounts/:id/calls/:id` | Alias idempotente de `join` (backcompat) |
 
-Webhook `ACTIVE` usa `JoiningAgentCache` como fallback de attribution.
+Frontend pós-accept chama **somente** `join`. Webhook `ACTIVE` usa `JoiningAgentCache` como fallback de attribution.
 
 ### 3.8 ActionCable e destinatários
 
