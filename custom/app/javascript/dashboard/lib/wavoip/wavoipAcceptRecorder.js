@@ -78,6 +78,7 @@ export async function recordJoinWithRetry(dbCallId, callSid, options = {}) {
   return false;
 }
 
+/** @deprecated Prefer join-only claim; kept for backcompat/tests. */
 export async function recordAcceptWithRetry(dbCallId, callSid, options = {}) {
   const onFailure = resolveFailureHandler(options);
   const onConflict = options.onConflict;
@@ -123,9 +124,8 @@ export async function flushAcceptedByRecording(callSid, options = {}) {
   if (!dbCallId) return;
 
   pendingAcceptByCallSid.delete(callSid);
-  const joined = await recordJoinWithRetry(dbCallId, callSid, options);
-  if (!joined) return;
-  await recordAcceptWithRetry(dbCallId, callSid, options);
+  // Join alone persists accepted_by (PATCH is an alias); no second round-trip.
+  await recordJoinWithRetry(dbCallId, callSid, options);
 }
 
 export function clearAcceptedByQueue() {

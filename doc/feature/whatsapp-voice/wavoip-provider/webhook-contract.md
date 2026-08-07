@@ -82,21 +82,31 @@ return if call.terminal? && !terminal_transition?(new_status)
 
 | Momento | Fonte |
 |---------|-------|
-| Preferencial | Após `offer.accept()` no browser → `PATCH /api/v1/accounts/:account_id/calls/:id` |
-| Fallback | Webhook `ACTIVE` sem agente → campo `nil`; atribuição manual depois |
-| Assignee conversa | Ao aceitar, `conversation.update!(assignee: Current.user)` se inbox com auto-assign habilitado |
+| Preferencial | Após `offer.accept()` no browser → `POST .../calls/:id/join` (persiste claim) |
+| Alias | `PATCH .../calls/:id` — idempotente, mesma lógica de `join` (clientes antigos) |
+| Fallback | Webhook `ACTIVE` sem agente → `JoiningAgentCache` / campo `nil` |
+| Assignee conversa | Só se `inbox.enable_auto_assignment?` **e** `assignee_id` em branco |
 
 ### 4.1 Rota API (implementado)
 
-**Verificado no código (jun/2026):** `custom/app/controllers/api/v1/accounts/calls_controller.rb`
+**Verificado no código:** `custom/app/controllers/custom/api/v1/accounts/calls_controller.rb` (prepend no Enterprise controller)
 
 ```ruby
-# PATCH /api/v1/accounts/:account_id/calls/:id
+# POST /api/v1/accounts/:account_id/calls/:id/join  — claim autoritativo
+# PATCH /api/v1/accounts/:account_id/calls/:id      — alias de join
 # Sem user id no body — o backend usa Current.user
 # Só preenche accepted_by_agent_id quando provider wavoip e campo ainda vazio
 ```
 
 Autorização: `authorize @call.inbox, :show?`. Spec: `spec/custom/controllers/api/v1/accounts/calls_controller_spec.rb`.
+
+### 4.2 ClaimGuard e timeouts
+
+| Situação | Comportamento |
+|----------|---------------|
+| `accepted_by_agent_id` presente | `ClaimGuard.claimed?` — para ring/escalate/push |
+| `AutoNoAnswerRingJob` com claim | Não fecha; agenda `ClaimedRingGraceJob` (~45 min) |
+| `HANDLED_REMOTELY` + claimed + ringing | Ignora (não mata SDK); agenda `HandledRemotelyStaleJob` (~2 min) |
 
 ---
 
@@ -119,15 +129,14 @@ RECORD → PayloadNormalizer → RecordHandler → RecordingPolicy → AttachRec
 | Gate | Comportamento |
 |------|---------------|
 | `!inbox.channel.call_recording_enabled?` | Ignorar (não enfileirar attach) |
-| `Call.status != completed` | Não anexar |
+| `Call.status != completed` | Não anexar agora; persistir URL + `RetryRecordAttachmentJob` (debounce 2 min) |
 | `record_status` desconhecido | Log warn + ignorar attach |
 | `record_status` ∈ `DISABLED`, `EMPTY_RECORDING` | Ignorar |
 | `record_status` ∈ `RECORDING`, `MIXING` | Persistir `record_status` em `Call#meta`; aguardar `READY` |
-| `record_status == READY` (ou ausente com URL) | Enfileirar `AttachRecordingJob` |
-| `Call.status != completed` | Não anexar (UI também só exibe em `completed`) |
-| `Call` ainda não existe | `RetryRecordAttachmentJob` |
+| `record_status == READY` (ou ausente com URL) | Enfileirar `AttachRecordingJob` se call completed |
+| `Call` ainda não existe | `RetryRecordAttachmentJob` (mesmo debounce) |
 
-Idempotência: mesmo `record_url` já em `meta` → não reenfileirar.
+Idempotência: mesmo `record_url` já em `meta` → não reenfileirar attach; retries usam lock Redis por inbox+provider_call_id.
 
 ---
 

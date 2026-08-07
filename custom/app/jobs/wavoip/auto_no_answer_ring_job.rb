@@ -11,28 +11,38 @@ class Wavoip::AutoNoAnswerRingJob < ApplicationJob
     call = Call.find_by(id: call_id)
     return if call.blank?
 
-    transitioned = call.with_lock { transition_to_no_answer!(call) }
-    return unless transitioned
-
-    finalize!(call)
+    outcome = call.with_lock { transition_or_defer!(call) }
+    case outcome
+    when :transitioned
+      finalize!(call)
+    when :deferred_claimed
+      schedule_claimed_grace!(call)
+    end
   end
 
   private
 
-  def transition_to_no_answer!(call)
-    return false unless call.ringing?
-    # Agent already claimed via join/PATCH (status stays ringing until ACTIVE).
-    # Killing the row would tear down live SDK media via broadcast_ended.
-    return false if Wavoip::Calls::ClaimGuard.claimed?(call)
-    # Soft-claim: join wrote cache but PATCH may still be in flight.
-    return false if Wavoip::Calls::JoiningAgentCache.read(call.id).present?
+  def transition_or_defer!(call)
+    return :noop unless call.ringing?
+
+    if Wavoip::Calls::ClaimGuard.claimed?(call) ||
+       Wavoip::Calls::JoiningAgentCache.read(call.id).present?
+      Rails.logger.info(
+        "[WAVOIP] event=claim_skip_auto_no_answer call_id=#{call.id} inbox_id=#{call.inbox_id}"
+      )
+      return :deferred_claimed
+    end
 
     call.update!(
       status: 'no_answer',
       end_reason: 'no_answer',
       meta: (call.meta || {}).merge('ended_at' => Time.zone.now.to_i, 'auto_timeout' => true)
     )
-    true
+    :transitioned
+  end
+
+  def schedule_claimed_grace!(call)
+    Wavoip::ClaimedRingGraceJob.schedule_if_needed(call)
   end
 
   def finalize!(call)

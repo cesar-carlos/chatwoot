@@ -388,6 +388,29 @@ Prerequisite: only one browser client per device token (close Wavoip panel durin
 
 ---
 
+## Deploy (produção neste host)
+
+Após mudanças em Ruby **ou** em `custom/app/javascript`:
+
+```bash
+cd /root/chatwoot
+# fork:invalidate_vite_stamp_if_custom_js_changed roda como enhance de assets:precompile
+RAILS_ENV=production NODE_ENV=production bundle exec rake assets:precompile
+pm2 restart chatwoot-web chatwoot-worker
+```
+
+Se o Vite pular o rebuild (“Watched files have not changed”), apague o stamp e rode de novo:
+
+```bash
+rm -f tmp/cache/vite/last-build-production.json
+RAILS_ENV=production bundle exec rake vite:build
+pm2 restart chatwoot-web chatwoot-worker
+```
+
+Hard refresh no browser após o deploy do JS.
+
+---
+
 ## Métricas e alertas (suporte)
 
 | Sinal | Onde buscar |
@@ -395,6 +418,10 @@ Prerequisite: only one browser client per device token (close Wavoip panel durin
 | Webhook aceito | Rails log `[WAVOIP] webhook accepted inbox_id=…` |
 | Job processado | `[WAVOIP] processed inbox_id=… type=…` |
 | Webhook drop | `[WAVOIP] Dropping webhook: inbox_id=… not found` |
+| Claim skip AutoNoAnswer | `[WAVOIP] event=claim_skip_auto_no_answer call_id=…` |
+| Direction corrected | `[WAVOIP] event=direction_corrected call_id=…` |
+| RECORD waiting completion | `[WAVOIP] event=record_retry_waiting_completion …` |
+| HANDLED_REMOTELY deferred | `[WAVOIP] event=handled_remotely_deferred …` |
 | Recording fetch fail | `[WAVOIP] recording fetch failed call_id=…` |
 | Throttle bootstrap | Rack::Attack log `wavoip_sdk_bootstrap` |
 

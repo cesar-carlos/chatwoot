@@ -23,8 +23,15 @@ class Wavoip::Calls::CallStatusApplier
 
     deferred = []
     applied = call.with_lock do
+      correct_direction_if_needed!(call)
       apply_locked!(call, mapped_status, broadcast: broadcast, deferred: deferred)
     end
+    # HANDLED_REMOTELY deferral returns a sentinel but still needs deferred work.
+    if applied == :handled_remotely_deferred
+      run_deferred!(deferred) if broadcast
+      return false
+    end
+
     run_deferred!(deferred) if applied == true && broadcast
     applied == true
   end
@@ -44,7 +51,32 @@ class Wavoip::Calls::CallStatusApplier
     nil
   end
 
+  # One-shot direction fix while still ringing and unclaimed. CREATE can infer
+  # wrong when payload phones are incomplete; a later UPDATE with clearer
+  # endpoints/status may disagree.
+  def correct_direction_if_needed!(call)
+    return unless call.ringing?
+    return if Wavoip::Calls::ClaimGuard.claimed?(call)
+    return if event.direction.blank?
+    return if call.direction.to_s == event.direction.to_s
+
+    previous = call.direction
+    call.update!(direction: event.direction)
+    Rails.logger.info(
+      "[WAVOIP] event=direction_corrected call_id=#{call.id} inbox_id=#{inbox.id} " \
+      "from=#{previous} to=#{event.direction}"
+    )
+  end
+
   def apply_locked!(call, mapped_status, broadcast:, deferred:)
+    if ignore_handled_remotely_while_claimed?(call)
+      Rails.logger.info(
+        "[WAVOIP] event=handled_remotely_deferred call_id=#{call.id} inbox_id=#{inbox.id}"
+      )
+      deferred << -> { Wavoip::HandledRemotelyStaleJob.schedule_if_needed(call.reload) } if broadcast
+      return :handled_remotely_deferred
+    end
+
     unless transition_allowed?(call, mapped_status)
       Rails.logger.warn(
         "[WAVOIP] Blocked transition inbox_id=#{inbox.id} call_id=#{event.external_call_id} " \
@@ -158,7 +190,7 @@ class Wavoip::Calls::CallStatusApplier
 
   # Dashboard already claimed while still ringing awaiting ACTIVE. A late
   # HANDLED_REMOTELY (handset answered elsewhere) would force-complete and
-  # tear down live SDK media — wait for ACTIVE/ENDED instead.
+  # tear down live SDK media — wait for ACTIVE/ENDED instead (stale job).
   def ignore_handled_remotely_while_claimed?(call)
     return false unless event.external_status.to_s.upcase == 'HANDLED_REMOTELY'
     return false unless call.ringing?

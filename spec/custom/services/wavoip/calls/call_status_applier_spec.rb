@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Wavoip::Calls::CallStatusApplier do
+  include ActiveJob::TestHelper
+
   let(:account) { create(:account) }
   let(:channel) { create(:channel_wavoip, account: account) }
   let(:inbox) { channel.inbox }
@@ -215,19 +217,34 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
     agent = create(:user, account: account)
     call = create_call(direction: :incoming, accepted_by_agent_id: agent.id)
 
-    result = applier_for(
+    expect do
+      result = applier_for(
+        build_event(
+          direction: :incoming,
+          external_status: 'HANDLED_REMOTELY',
+          from_phone: '+15550001111',
+          to_phone: channel.phone_number
+        )
+      ).apply!(call, broadcast: true)
+
+      expect(result).to be(false)
+      expect(call.reload.status).to eq('ringing')
+      expect(broadcaster).not_to have_received(:broadcast_ended)
+    end.to have_enqueued_job(Wavoip::HandledRemotelyStaleJob).with(call.id)
+  end
+
+  it 'corrects direction once while ringing and unclaimed' do
+    call = create_call(direction: :outgoing, status: 'ringing')
+
+    applier_for(
       build_event(
         direction: :incoming,
-        external_status: 'HANDLED_REMOTELY',
+        external_status: 'INCOMING_RING',
         from_phone: '+15550001111',
         to_phone: channel.phone_number
       )
     ).apply!(call, broadcast: true)
 
-    aggregate_failures do
-      expect(result).to be(false)
-      expect(call.reload.status).to eq('ringing')
-      expect(broadcaster).not_to have_received(:broadcast_ended)
-    end
+    expect(call.reload.direction).to eq('incoming')
   end
 end

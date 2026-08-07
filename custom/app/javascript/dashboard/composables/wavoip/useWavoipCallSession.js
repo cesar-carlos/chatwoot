@@ -7,7 +7,6 @@ import {
   queueAcceptedByRecording,
   flushAcceptedByRecording,
   clearAcceptedByQueue,
-  recordAcceptWithRetry,
   recordJoinWithRetry,
 } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
 import { useWavoipConnection } from 'customDashboard/composables/wavoip/useWavoipConnection';
@@ -46,8 +45,8 @@ export function useWavoipCallSession() {
   const { attachToInbox, acceptOffer, rejectOffer } = useWavoipIncomingOffer();
   const { setActiveCall, setMuted, hasActiveCall } = useWavoipActiveCall();
 
-  const tearDownFailedAccept = async callSid => {
-    useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED'));
+  const tearDownAfterAcceptIssue = async (callSid, alertKey) => {
+    useAlert(t(alertKey));
     await endSdkActiveCall(callSid);
     const storeCall = useCallsStore().calls.find(
       c => c.callSid === callSid || c.wavoipOfferId === callSid
@@ -61,8 +60,16 @@ export function useWavoipCallSession() {
   };
 
   const acceptRecordOptions = callSid => ({
-    onFailure: () => tearDownFailedAccept(callSid),
-    onConflict: () => tearDownFailedAccept(callSid),
+    onFailure: () =>
+      tearDownAfterAcceptIssue(
+        callSid,
+        'CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED'
+      ),
+    onConflict: () =>
+      tearDownAfterAcceptIssue(
+        callSid,
+        'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE'
+      ),
   });
 
   const recordAcceptedBy = async callSid => {
@@ -73,13 +80,7 @@ export function useWavoipCallSession() {
       queueAcceptedByRecording(callSid);
       return;
     }
-    const joined = await recordJoinWithRetry(
-      dbCallId,
-      callSid,
-      acceptRecordOptions(callSid)
-    );
-    if (!joined) return;
-    await recordAcceptWithRetry(
+    await recordJoinWithRetry(
       dbCallId,
       callSid,
       acceptRecordOptions(callSid)
