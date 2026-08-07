@@ -1,3 +1,5 @@
+import { INBOX_VIEW_ROUTE_PERMISSIONS } from 'dashboard/constants/permissions';
+
 export const hasPermissions = (
   requiredPermissions = [],
   availablePermissions = []
@@ -24,6 +26,10 @@ export const getUserRole = (user, accountId) => {
 
   return currentAccount.role || 'agent';
 };
+
+// FORK: custom role inbox view permission
+export const hasInboxViewPermission = (userPermissions = []) =>
+  hasPermissions(INBOX_VIEW_ROUTE_PERMISSIONS, userPermissions);
 
 /**
  * Filters and transforms items based on user permissions.

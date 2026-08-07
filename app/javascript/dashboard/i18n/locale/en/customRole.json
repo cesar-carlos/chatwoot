@@ -37,6 +37,7 @@
       "CONVERSATION_UNASSIGNED_MANAGE": "Manage unassigned conversations and those assigned to them",
       "CONVERSATION_TEAM_UNASSIGNED_MANAGE": "Manage unassigned conversations from the agent's teams and those assigned to the agent",
       "CONVERSATION_PARTICIPATING_MANAGE": "Manage participating conversations and those assigned to them",
+      "INBOX_VIEW_MANAGE": "View Inbox (notifications and recent messages)",
       "CONTACT_MANAGE": "Manage contacts",
       "REPORT_MANAGE": "Manage reports",
       "KNOWLEDGE_BASE_MANAGE": "Manage knowledge base"

@@ -12,6 +12,10 @@ RSpec.describe CustomRole, type: :model do
     it 'includes conversation_team_unassigned_manage in PERMISSIONS' do
       expect(described_class::PERMISSIONS).to include('conversation_team_unassigned_manage')
     end
+
+    it 'includes inbox_view_manage in PERMISSIONS' do
+      expect(described_class::PERMISSIONS).to include('inbox_view_manage')
+    end
   end
 
   describe 'filtered unread count invalidation' do

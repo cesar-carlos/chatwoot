@@ -8,6 +8,7 @@ export const customRoleList = [
       'conversation_unassigned_manage',
       'conversation_team_unassigned_manage',
       'conversation_manage',
+      'inbox_view_manage',
       'contact_manage',
       'report_manage',
       'knowledge_base_manage',

@@ -13,6 +13,15 @@ describe('#routeIsAccessibleFor', () => {
     expect(routeIsAccessibleFor(route, ['agent'])).toEqual(false);
     expect(routeIsAccessibleFor(route, ['administrator'])).toEqual(true);
   });
+
+  it('allows inbox_view with inbox_view_manage but not conversation permissions alone', () => {
+    const route = { meta: { permissions: ['agent', 'administrator', 'inbox_view_manage'] } };
+    expect(routeIsAccessibleFor(route, ['conversation_participating_manage'])).toEqual(
+      false
+    );
+    expect(routeIsAccessibleFor(route, ['inbox_view_manage'])).toEqual(true);
+    expect(routeIsAccessibleFor(route, ['agent'])).toEqual(true);
+  });
 });
 
 describe('#defaultRedirectPage', () => {

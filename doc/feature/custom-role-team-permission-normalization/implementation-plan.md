@@ -22,6 +22,10 @@ Permitindo ver:
 - conversas atribuídas ao próprio agente
 - conversas não atribuídas apenas dos times do agente
 
+## Related features
+
+- **Caixa de Entrada (Inbox View):** permissão dedicada `inbox_view_manage` para controlar se o agente vê o feed de notificações / mensagens recentes — ver [`../custom-role-inbox-view-permission/implementation-plan.md`](../custom-role-inbox-view-permission/implementation-plan.md). Independente desta feature de escopo de conversas por time.
+
 ## Objective
 
 Normalizar as regras de negócio de permissões de conversa por custom role no nosso projeto, com rollout seguro e compatível com nosso padrão de fork.
@@ -80,7 +84,7 @@ Estado atual validado no projeto:
 - `conversation.routes.js` importa `CONVERSATION_PERMISSIONS` de `permissions.js` (fonte única; evita lista duplicada local).
 - Frontend (`permissions.js`, `getRoleFilterContext`, `applyRoleFilter`, i18n en/pt_BR) contempla a regra de time + inbox.
 - `Conversations::UnreadCounts::Counter` aplica `team_unassigned_and_mine` via overlay em `custom/` (gap corrigido).
-- Specs automatizados backend e frontend passando; validação manual operacional (PR4) ainda pendente.
+- Specs automatizados backend e frontend passando; validação manual operacional (PR4) aprovada.
 
 ## Business Rules to Normalize
 
@@ -171,7 +175,7 @@ Diretriz:
 - [x] PR1 implemented (backend foundation)
 - [x] PR2 implemented (frontend permission graph + fail-closed)
 - [x] PR3 implemented (conversation route guards + i18n en/pt_BR)
-- [ ] PR4 pending manual operational validation and Go/No-Go
+- [x] PR4 manual operational validation approved (Go)
 
 ### Phase 0 - Alignment and Contract Freeze
 
@@ -244,7 +248,7 @@ Tasks:
 - [x] Revisar guardas que dependem de arrays locais de permissões
 - [x] Validar `defaultRedirectPage()` para usuários com apenas a nova permissão (`routeHelpers.spec.js`)
 - [x] Criar teste de rota/guard para impedir regressão de redirect loop (`routeHelpers.spec.js`)
-- [ ] Executar smoke manual de navegação inicial (`/`, `/dashboard`, inbox/team paths) — pendente PR4
+- [x] Executar smoke manual de navegação inicial (`/`, `/dashboard`, inbox/team paths)
 
 Deliverables:
 
@@ -259,9 +263,9 @@ Tasks:
 - [x] Adicionar label i18n em `en/customRole.json`
 - [x] Adicionar label i18n equivalente em `pt_BR/customRole.json`
 - [x] Não adicionar chaves em outros idiomas nesta entrega
-- [ ] Validar render da nova permissão no modal de Add/Edit Custom Role
-- [ ] Validar render na tabela/lista de permissões
-- [ ] Garantir ausência de hardcoded strings
+- [x] Validar render da nova permissão no modal de Add/Edit Custom Role
+- [x] Validar render na tabela/lista de permissões
+- [x] Garantir ausência de hardcoded strings
 
 Deliverables:
 
@@ -288,15 +292,15 @@ Goal: liberar com segurança operacional.
 
 Tasks:
 
-- [ ] Rodar validação manual dos cenários de permissão (seção abaixo)
-- [ ] Verificar consistência backend x frontend em todos os cenários críticos
-- [ ] Validar consistência por IDs (mesmo usuário/cenário retorna mesmo conjunto de conversas no backend e na UI)
-- [ ] Executar checkpoint de performance em conta com volume representativo (sem aumento material de tempo de listagem)
+- [x] Rodar validação manual dos cenários de permissão (seção abaixo)
+- [x] Verificar consistência backend x frontend em todos os cenários críticos
+- [x] Validar consistência por IDs (mesmo usuário/cenário retorna mesmo conjunto de conversas no backend e na UI)
+- [x] Executar checkpoint de performance em conta com volume representativo (sem aumento material de tempo de listagem)
 - [x] Rodar lint dos arquivos JS/Vue alterados
 - [x] Rodar checks Ruby dos arquivos backend alterados
-- [ ] Validar sem regressão de roles existentes
-- [ ] Executar smoke pós-deploy em homologação com role real
-- [ ] Definir Go/No-Go e plano de rollback
+- [x] Validar sem regressão de roles existentes
+- [x] Executar smoke pós-deploy em homologação com role real
+- [x] Definir Go/No-Go e plano de rollback — **Go** (validação manual aprovada)
 
 Deliverables:
 
@@ -306,38 +310,38 @@ Deliverables:
 
 ### Setup
 
-- [ ] Criar role com apenas `conversation_team_unassigned_manage`
-- [ ] Vincular role a agente que pertence a 1+ times
-- [ ] Preparar conversas:
-  - [ ] atribuída ao agente
-  - [ ] não atribuída no time do agente
-  - [ ] não atribuída no time do agente, mas em inbox sem acesso
-  - [ ] não atribuída em outro time
-  - [ ] não atribuída sem time
-  - [ ] atribuída a outro agente
+- [x] Criar role com apenas `conversation_team_unassigned_manage`
+- [x] Vincular role a agente que pertence a 1+ times
+- [x] Preparar conversas:
+  - [x] atribuída ao agente
+  - [x] não atribuída no time do agente
+  - [x] não atribuída no time do agente, mas em inbox sem acesso
+  - [x] não atribuída em outro time
+  - [x] não atribuída sem time
+  - [x] atribuída a outro agente
 
 ### Expected Visibility
 
-- [ ] Vê conversa atribuída a ele
-- [ ] Vê não atribuída do seu time
-- [ ] Não vê conversa do seu time quando a inbox não está em `assigned_inboxes`
-- [ ] Não vê não atribuída de outro time
-- [ ] Não vê não atribuída sem time
-- [ ] Não vê atribuída a outro agente
-- [ ] Sem `userInboxIds` carregado no frontend, role custom fica em modo fail-closed (não amplia acesso)
+- [x] Vê conversa atribuída a ele
+- [x] Vê não atribuída do seu time
+- [x] Não vê conversa do seu time quando a inbox não está em `assigned_inboxes`
+- [x] Não vê não atribuída de outro time
+- [x] Não vê não atribuída sem time
+- [x] Não vê atribuída a outro agente
+- [x] Sem `userInboxIds` carregado no frontend, role custom fica em modo fail-closed (não amplia acesso)
 
 ### Navigation and Guards
 
-- [ ] Login com usuário que só possui a nova permissão
-- [ ] Acesso ao dashboard sem redirect loop
-- [ ] Navegação por inbox/team sem erro de permissão inconsistente
+- [x] Login com usuário que só possui a nova permissão
+- [x] Acesso ao dashboard sem redirect loop
+- [x] Navegação por inbox/team sem erro de permissão inconsistente
 
 ### Regression Matrix
 
-- [ ] `conversation_manage` continua vendo tudo
-- [ ] `conversation_unassigned_manage` continua vendo não atribuídas globais + próprias
-- [ ] `conversation_participating_manage` continua vendo somente próprias
-- [ ] Sem impacto em permissões de contato, relatório e base de conhecimento
+- [x] `conversation_manage` continua vendo tudo
+- [x] `conversation_unassigned_manage` continua vendo não atribuídas globais + próprias
+- [x] `conversation_participating_manage` continua vendo somente próprias
+- [x] Sem impacto em permissões de contato, relatório e base de conhecimento
 
 ## Risks and Mitigations
 
@@ -357,9 +361,9 @@ Deliverables:
 
 ### Data and Backward Compatibility
 
-- [ ] Confirmar que não há migração de dados obrigatória para roles existentes
-- [ ] Validar que roles atuais continuam válidas sem incluir a nova permissão
-- [ ] Documentar impacto esperado para contas que não usam custom roles
+- [x] Confirmar que não há migração de dados obrigatória para roles existentes
+- [x] Validar que roles atuais continuam válidas sem incluir a nova permissão
+- [x] Documentar impacto esperado para contas que não usam custom roles
 
 ### Deterministic Permission Precedence
 
@@ -380,14 +384,14 @@ Deliverables:
 
 - [x] Definir UX esperada para estado sem `userInboxIds` carregado (fail-closed sem confusão de uso)
 - [x] Evitar flash de conversas indevidas durante hidratação inicial de store (skip inbox gate enquanto `inboxes/getUIFlags.isFetching`)
-- [ ] Validar atualização correta após troca de conta/usuário sem estado residual
+- [x] Validar atualização correta após troca de conta/usuário sem estado residual
 
 ### Counts, Filters, and Deep Links
 
 - [x] Validar coerência dos contadores (`mine`, `unassigned`, `all`) com a nova regra — `UnreadCounts::Counter` overlay em `custom/`
 - [x] Label badges no modo team via Redis `SINTER(label_inbox_unassigned, team_inbox_unassigned)` + assignee keys (sem chave composta nova)
-- [ ] Validar filtros (`q`, `team_id`, `inbox_id`, `assignee_type`) sem bypass de autorização
-- [ ] Validar acesso direto por URL de conversa (deep link) com policy aplicada corretamente
+- [x] Validar filtros (`q`, `team_id`, `inbox_id`, `assignee_type`) sem bypass de autorização
+- [x] Validar acesso direto por URL de conversa (deep link) com policy aplicada corretamente
 
 ### Observability and Rollback Readiness
 

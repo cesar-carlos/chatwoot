@@ -10,6 +10,12 @@ export const mutations = {
   [types.CLEAR_NOTIFICATIONS]: $state => {
     $state.records = {};
     $state.uiFlags.isAllNotificationsLoaded = false;
+    // FORK: custom role inbox view permission — drop stale badge when clearing
+    $state.meta = {
+      ...$state.meta,
+      count: 0,
+      unreadCount: 0,
+    };
   },
   [types.SET_NOTIFICATIONS_META]: ($state, data) => {
     const {
