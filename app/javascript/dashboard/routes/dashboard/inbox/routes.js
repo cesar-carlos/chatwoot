@@ -2,10 +2,7 @@ import { frontendURL } from 'dashboard/helper/URLHelper';
 import InboxListView from './InboxList.vue';
 import InboxDetailView from './InboxView.vue';
 import InboxEmptyStateView from './InboxEmptyState.vue';
-import {
-  ROLES,
-  CONVERSATION_PERMISSIONS,
-} from 'dashboard/constants/permissions.js';
+import { INBOX_VIEW_ROUTE_PERMISSIONS } from 'dashboard/constants/permissions.js';
 
 export const routes = [
   {
@@ -17,7 +14,8 @@ export const routes = [
         name: 'inbox_view',
         component: InboxEmptyStateView,
         meta: {
-          permissions: [...ROLES, ...CONVERSATION_PERMISSIONS],
+          // FORK: custom role inbox view permission
+          permissions: INBOX_VIEW_ROUTE_PERMISSIONS,
         },
       },
       {
@@ -25,7 +23,8 @@ export const routes = [
         name: 'inbox_view_conversation',
         component: InboxDetailView,
         meta: {
-          permissions: [...ROLES, ...CONVERSATION_PERMISSIONS],
+          // FORK: custom role inbox view permission
+          permissions: INBOX_VIEW_ROUTE_PERMISSIONS,
         },
       },
     ],

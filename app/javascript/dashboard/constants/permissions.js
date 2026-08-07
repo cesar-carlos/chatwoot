@@ -3,6 +3,7 @@ export const AVAILABLE_CUSTOM_ROLE_PERMISSIONS = [
   'conversation_unassigned_manage',
   'conversation_team_unassigned_manage', // FORK: custom role team permission normalization
   'conversation_participating_manage',
+  'inbox_view_manage', // FORK: custom role inbox view permission
   'contact_manage',
   'report_manage',
   'knowledge_base_manage',
@@ -27,6 +28,14 @@ export const CONVERSATION_TEAM_UNASSIGNED_PERMISSIONS =
 
 export const CONVERSATION_PARTICIPATING_PERMISSIONS =
   'conversation_participating_manage';
+
+export const INBOX_VIEW_PERMISSIONS = 'inbox_view_manage'; // FORK: custom role inbox view permission
+
+// FORK: custom role inbox view permission — shared route/menu gate
+export const INBOX_VIEW_ROUTE_PERMISSIONS = [
+  ...ROLES,
+  INBOX_VIEW_PERMISSIONS,
+];
 
 export const CONTACT_PERMISSIONS = 'contact_manage';
 

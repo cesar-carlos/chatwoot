@@ -35,7 +35,7 @@ const mockRoutes = [
     featureFlag: MOCK_FEATURE_FLAGS.INBOX_MANAGEMENT,
   },
   { path: 'accounts/:accountId/profile/settings', name: 'profile_settings' },
-  { path: 'accounts/:accountId/notifications', name: 'notifications' },
+  { path: 'accounts/:accountId/inbox-view', name: 'notifications' },
   {
     path: 'accounts/:accountId/reports/overview',
     name: 'reports_overview',
@@ -65,6 +65,9 @@ describe('useGoToCommandHotKeys', () => {
     store = {
       getters: {
         getCurrentAccountId: 1,
+        getCurrentUser: {
+          accounts: [{ id: 1, permissions: ['administrator'] }],
+        },
         'accounts/isFeatureEnabledonAccount': vi.fn().mockReturnValue(true),
       },
     };

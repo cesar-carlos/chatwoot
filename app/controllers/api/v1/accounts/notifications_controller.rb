@@ -2,6 +2,7 @@ class Api::V1::Accounts::NotificationsController < Api::V1::Accounts::BaseContro
   RESULTS_PER_PAGE = 15
   include DateRangeHelper
 
+  before_action :authorize_notification_access! # FORK: custom role inbox view permission
   before_action :fetch_notification, only: [:update, :destroy, :snooze, :unread]
   before_action :set_primary_actor, only: [:read_all]
   before_action :set_current_page, only: [:index]
@@ -60,6 +61,10 @@ class Api::V1::Accounts::NotificationsController < Api::V1::Accounts::BaseContro
   end
 
   private
+
+  def authorize_notification_access! # FORK: custom role inbox view permission
+    authorize(Notification, :access?)
+  end
 
   def set_primary_actor
     return unless params[:primary_actor_type]

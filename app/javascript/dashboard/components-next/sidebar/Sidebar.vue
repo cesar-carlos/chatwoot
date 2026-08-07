@@ -27,6 +27,11 @@ import {
   resolveSidebarSort,
   sortSidebarItems,
 } from 'dashboard/helper/sidebarSort';
+import {
+  ROLES,
+  INBOX_VIEW_PERMISSIONS,
+} from 'dashboard/constants/permissions.js';
+import { usePolicy } from 'dashboard/composables/usePolicy';
 
 const props = defineProps({
   isMobileSidebarOpen: {
@@ -46,6 +51,12 @@ const { accountScopedRoute, isOnChatwootCloud } = useAccount();
 const store = useStore();
 const searchShortcut = useKbd([`$mod`, 'k']);
 const { t } = useI18n();
+const { checkPermissions } = usePolicy();
+
+const canAccessInboxView = computed(() =>
+  // FORK: custom role inbox view permission
+  checkPermissions([...ROLES, INBOX_VIEW_PERMISSIONS])
+);
 
 const isACustomBrandedInstance = useMapGetter(
   'globalConfig/isACustomBrandedInstance'
@@ -225,12 +236,24 @@ const getSidebarSectionSort = useMapGetter(
 onMounted(() => {
   store.dispatch('labels/get');
   store.dispatch('inboxes/get');
-  store.dispatch('notifications/unReadCount');
   store.dispatch('teams/get');
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
 });
+
+// FORK: custom role inbox view permission — refetch/clear on account or permission change
+watch(
+  [accountId, canAccessInboxView],
+  ([, canAccess]) => {
+    if (canAccess) {
+      store.dispatch('notifications/unReadCount');
+    } else {
+      store.dispatch('notifications/clear');
+    }
+  },
+  { immediate: true }
+);
 
 watch([accountId, hasConversationUnreadCounts], fetchConversationUnreadCounts, {
   immediate: true,

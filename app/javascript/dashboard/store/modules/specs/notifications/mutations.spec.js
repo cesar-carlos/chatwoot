@@ -15,9 +15,15 @@ describe('#mutations', () => {
       const state = {
         records: { 1: { id: 1 } },
         uiFlags: { isAllNotificationsLoaded: true },
+        meta: { count: 3, unreadCount: 2, currentPage: 1 },
       };
       mutations[types.CLEAR_NOTIFICATIONS](state);
       expect(state.records).toEqual({});
+      expect(state.meta).toEqual({
+        count: 0,
+        unreadCount: 0,
+        currentPage: 1,
+      });
     });
   });
 

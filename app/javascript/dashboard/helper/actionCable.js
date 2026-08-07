@@ -15,6 +15,10 @@ import { isWavoipOutboundCablePayload } from 'customDashboard/lib/wavoip/wavoipO
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
 import { onEvolutionGoConnectionClosed } from 'customDashboard/lib/evolution_go/evolutionGoCableRegistry';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
+import {
+  getUserPermissions,
+  hasInboxViewPermission,
+} from 'dashboard/helper/permissionsHelper';
 
 const { isImpersonating } = useImpersonation();
 const UNREAD_COUNTS_REFETCH_THROTTLE_MS = 5000;
@@ -339,15 +343,28 @@ class ActionCableConnector extends BaseActionCableConnector {
   };
 
   onNotificationCreated = data => {
+    // FORK: custom role inbox view permission
+    if (!this.canAccessInboxView()) return;
     this.app.$store.dispatch('notifications/addNotification', data);
   };
 
   onNotificationDeleted = data => {
+    // FORK: custom role inbox view permission
+    if (!this.canAccessInboxView()) return;
     this.app.$store.dispatch('notifications/deleteNotification', data);
   };
 
   onNotificationUpdated = data => {
+    // FORK: custom role inbox view permission
+    if (!this.canAccessInboxView()) return;
     this.app.$store.dispatch('notifications/updateNotification', data);
+  };
+
+  // FORK: custom role inbox view permission
+  canAccessInboxView = () => {
+    const user = this.app.$store.getters.getCurrentUser;
+    const accountId = this.app.$store.getters.getCurrentAccountId;
+    return hasInboxViewPermission(getUserPermissions(user, accountId));
   };
 
   onCopilotMessageCreated = data => {

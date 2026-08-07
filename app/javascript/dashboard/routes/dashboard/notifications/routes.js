@@ -2,6 +2,7 @@
 import { frontendURL } from '../../../helper/URLHelper';
 import SettingsWrapper from '../settings/SettingsWrapper.vue';
 import NotificationsView from './components/NotificationsView.vue';
+import { INBOX_VIEW_ROUTE_PERMISSIONS } from 'dashboard/constants/permissions.js';
 
 export const routes = [
   {
@@ -13,7 +14,8 @@ export const routes = [
         name: 'notifications_index',
         component: NotificationsView,
         meta: {
-          permissions: ['administrator', 'agent', 'custom_role'],
+          // FORK: custom role inbox view permission — align with Inbox View gate
+          permissions: INBOX_VIEW_ROUTE_PERMISSIONS,
         },
       },
     ],

@@ -2,6 +2,7 @@ import {
   getCurrentAccount,
   getUserPermissions,
   hasPermissions,
+  hasInboxViewPermission,
   filterItemsByPermission,
 } from '../permissionsHelper';
 
@@ -39,6 +40,25 @@ describe('hasPermissions', () => {
     ).toBe(false);
     expect(hasPermissions()).toBe(false);
     expect(hasPermissions([])).toBe(false);
+  });
+});
+
+describe('hasInboxViewPermission', () => {
+  it('allows agent and administrator roles', () => {
+    expect(hasInboxViewPermission(['agent'])).toBe(true);
+    expect(hasInboxViewPermission(['administrator'])).toBe(true);
+  });
+
+  it('allows inbox_view_manage custom permission', () => {
+    expect(hasInboxViewPermission(['inbox_view_manage', 'custom_role'])).toBe(
+      true
+    );
+  });
+
+  it('denies conversation permissions alone', () => {
+    expect(
+      hasInboxViewPermission(['conversation_participating_manage', 'custom_role'])
+    ).toBe(false);
   });
 });
 
@@ -152,6 +172,26 @@ describe('filterItemsByPermission', () => {
     expect(result).toHaveLength(1);
     expect(result).toContainEqual(
       expect.objectContaining({ key: 'unassignedTab', name: 'Unassigned Tab' })
+    );
+  });
+
+  it('includes items requiring inbox_view_manage permission', () => {
+    const inboxViewItems = {
+      inboxView: {
+        name: 'Inbox View',
+        permissions: ['inbox_view_manage'],
+      },
+    };
+
+    const result = filterItemsByPermission(
+      inboxViewItems,
+      ['inbox_view_manage'],
+      getPermissions
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result).toContainEqual(
+      expect.objectContaining({ key: 'inboxView', name: 'Inbox View' })
     );
   });
 

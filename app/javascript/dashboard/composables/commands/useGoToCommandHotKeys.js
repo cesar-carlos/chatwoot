@@ -22,6 +22,10 @@ import {
 } from 'dashboard/helper/commandbar/icons';
 import { frontendURL } from 'dashboard/helper/URLHelper';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
+import {
+  getUserPermissions,
+  hasInboxViewPermission,
+} from 'dashboard/helper/permissionsHelper';
 
 const GO_TO_COMMANDS = [
   {
@@ -170,8 +174,10 @@ const GO_TO_COMMANDS = [
     title: 'COMMAND_BAR.COMMANDS.GO_TO_NOTIFICATIONS',
     section: 'COMMAND_BAR.SECTIONS.SETTINGS',
     icon: ICON_NOTIFICATION,
-    path: accountId => `accounts/${accountId}/notifications`,
+    // FORK: custom role inbox view permission — modern Inbox View + permission gate
+    path: accountId => `accounts/${accountId}/inbox-view`,
     role: ['administrator', 'agent'],
+    requiresInboxViewPermission: true,
   },
 ];
 
@@ -181,6 +187,7 @@ export function useGoToCommandHotKeys() {
   const { isAdmin } = useAdmin();
 
   const currentAccountId = useMapGetter('getCurrentAccountId');
+  const currentUser = useMapGetter('getCurrentUser');
   const isFeatureEnabledOnAccount = useMapGetter(
     'accounts/isFeatureEnabledonAccount'
   );
@@ -190,12 +197,25 @@ export function useGoToCommandHotKeys() {
   };
 
   const goToCommandHotKeys = computed(() => {
+    const userPermissions = getUserPermissions(
+      currentUser.value,
+      currentAccountId.value
+    );
+
     let commands = GO_TO_COMMANDS.filter(cmd => {
       if (cmd.featureFlag) {
-        return isFeatureEnabledOnAccount.value(
+        const featureEnabled = isFeatureEnabledOnAccount.value(
           currentAccountId.value,
           cmd.featureFlag
         );
+        if (!featureEnabled) return false;
+      }
+      // FORK: custom role inbox view permission
+      if (
+        cmd.requiresInboxViewPermission &&
+        !hasInboxViewPermission(userPermissions)
+      ) {
+        return false;
       }
       return true;
     });
