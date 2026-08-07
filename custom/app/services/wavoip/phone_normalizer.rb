@@ -55,8 +55,14 @@ class Wavoip::PhoneNormalizer
   end
   private_class_method :parse_international
 
+  # US numbers sometimes land on BR inboxes without a country code. Prefer a
+  # valid BR national parse first so DDD landlines that look NANP-shaped
+  # (e.g. Rio 21 + 8 digits) are not mis-attributed to +1.
   def self.parse_as_us_when_nanp_on_brazilian_inbox(phone, country, digits)
     return unless country == 'BR' && digits.match?(NANP_PATTERN)
+
+    parsed_br = Phonelib.parse(digits, 'BR')
+    return if parsed_br.valid?
 
     parsed_us = Phonelib.parse(phone, 'US')
     parsed_us.e164 if parsed_us.valid? && parsed_us.country == 'US'

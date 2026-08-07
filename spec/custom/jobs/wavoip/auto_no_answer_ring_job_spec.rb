@@ -30,6 +30,14 @@ RSpec.describe Wavoip::AutoNoAnswerRingJob do
     account.enable_features!('channel_voice', 'channel_wavoip')
   end
 
+  around do |example|
+    original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    example.run
+  ensure
+    Rails.cache = original_cache
+  end
+
   it 'force-closes a call still ringing as no_answer' do
     broadcaster = instance_double(Wavoip::Calls::Broadcaster, broadcast_ended: true)
     allow(Wavoip::Calls::Broadcaster).to receive(:new).with(inbox: inbox).and_return(broadcaster)
@@ -70,5 +78,30 @@ RSpec.describe Wavoip::AutoNoAnswerRingJob do
 
   it 'no-ops for a missing call id' do
     expect { described_class.perform_now(-1) }.not_to raise_error
+  end
+
+  it 'does not force-close a ringing call already claimed by an agent' do
+    agent = create(:user, account: account)
+    call.update!(accepted_by_agent_id: agent.id)
+    broadcaster = instance_double(Wavoip::Calls::Broadcaster)
+    allow(Wavoip::Calls::Broadcaster).to receive(:new).and_return(broadcaster)
+
+    described_class.perform_now(call.id)
+
+    aggregate_failures do
+      expect(call.reload.status).to eq('ringing')
+      expect(Wavoip::Calls::Broadcaster).not_to have_received(:new)
+    end
+  end
+
+  it 'does not force-close when JoiningAgentCache holds a soft claim' do
+    agent = create(:user, account: account)
+    Wavoip::Calls::JoiningAgentCache.write(call.id, agent.id)
+    broadcaster = instance_double(Wavoip::Calls::Broadcaster)
+    allow(Wavoip::Calls::Broadcaster).to receive(:new).and_return(broadcaster)
+
+    described_class.perform_now(call.id)
+
+    expect(call.reload.status).to eq('ringing')
   end
 end

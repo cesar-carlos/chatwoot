@@ -29,6 +29,7 @@ import {
 import { closeIncomingWavoipOfferNotification } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import { createWavoipAcceptError } from 'customDashboard/lib/wavoip/wavoipAcceptError';
 import { isWavoipWebSocketDisconnected } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
+import { dismissWavoipCallFromStore } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 
 const closeOfferNotificationsForCall = (callSid, call) => {
   closeIncomingWavoipOfferNotification(callSid);
@@ -45,9 +46,24 @@ export function useWavoipCallSession() {
   const { attachToInbox, acceptOffer, rejectOffer } = useWavoipIncomingOffer();
   const { setActiveCall, setMuted, hasActiveCall } = useWavoipActiveCall();
 
-  const acceptRecordFailure = () => {
+  const tearDownFailedAccept = async callSid => {
     useAlert(t('CONVERSATION.WAVOIP_CALL.ACCEPT_RECORD_FAILED'));
+    await endSdkActiveCall(callSid);
+    const storeCall = useCallsStore().calls.find(
+      c => c.callSid === callSid || c.wavoipOfferId === callSid
+    );
+    dismissWavoipCallFromStore(
+      callSid,
+      storeCall?.callSid,
+      storeCall?.wavoipOfferId,
+      storeCall?.callId
+    );
   };
+
+  const acceptRecordOptions = callSid => ({
+    onFailure: () => tearDownFailedAccept(callSid),
+    onConflict: () => tearDownFailedAccept(callSid),
+  });
 
   const recordAcceptedBy = async callSid => {
     const dbCallId = useCallsStore().calls.find(
@@ -57,12 +73,17 @@ export function useWavoipCallSession() {
       queueAcceptedByRecording(callSid);
       return;
     }
-    await recordJoinWithRetry(dbCallId, callSid, {
-      onFailure: acceptRecordFailure,
-    });
-    await recordAcceptWithRetry(dbCallId, callSid, {
-      onFailure: acceptRecordFailure,
-    });
+    const joined = await recordJoinWithRetry(
+      dbCallId,
+      callSid,
+      acceptRecordOptions(callSid)
+    );
+    if (!joined) return;
+    await recordAcceptWithRetry(
+      dbCallId,
+      callSid,
+      acceptRecordOptions(callSid)
+    );
   };
 
   const acceptIncomingCall = async ({ callId, inboxId }) => {
@@ -106,7 +127,7 @@ export function useWavoipCallSession() {
     setActiveCall(sdkCall, { providerCallId: callId, inboxId });
     removePendingOffer(callId);
     await recordAcceptedBy(callId);
-    await flushAcceptedByRecording(callId, { onFailure: acceptRecordFailure });
+    await flushAcceptedByRecording(callId, acceptRecordOptions(callId));
     return sdkCall;
   };
 

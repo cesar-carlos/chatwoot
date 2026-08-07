@@ -20,9 +20,17 @@ RSpec.describe Wavoip::PhoneNormalizer do
   end
 
   it 'does not prefix +55 for US numbers on a Brazilian inbox' do
+    # 310 is valid NANP (LA) but invalid as a BR national number.
     expect(
-      described_class.normalize('2125551234', inbox_phone: brazil_inbox_phone)
-    ).to eq('+12125551234')
+      described_class.normalize('3105551234', inbox_phone: brazil_inbox_phone)
+    ).to eq('+13105551234')
+  end
+
+  it 'prefers BR landline parse over NANP false positive on a Brazilian inbox' do
+    # Rio DDD 21 + 8-digit landline looks NANP-shaped (area 213) but is valid BR.
+    expect(
+      described_class.normalize('2133334444', inbox_phone: brazil_inbox_phone)
+    ).to eq('+552133334444')
   end
 
   it 'parses Argentina mobile without plus when digits include country code' do

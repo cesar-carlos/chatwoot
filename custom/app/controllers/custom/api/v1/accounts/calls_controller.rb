@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
-class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
-  before_action :fetch_call
-
-  rescue_from CustomExceptions::CallAlreadyAccepted, with: :render_call_already_accepted
+# Wavoip join/PATCH accept attribution — prepended onto the Enterprise
+# CallsController (index). See enterprise/.../calls_controller.rb FORK hook.
+module Custom::Api::V1::Accounts::CallsController
+  def self.prepended(base)
+    base.before_action :fetch_wavoip_call, only: [:update, :join]
+    base.rescue_from CustomExceptions::CallAlreadyAccepted, with: :render_call_already_accepted
+  end
 
   def join
     authorize @call.inbox, :show?
@@ -109,7 +112,9 @@ class Api::V1::Accounts::CallsController < Api::V1::Accounts::BaseController
     render json: { error: error.message }, status: :conflict
   end
 
-  def fetch_call
+  def fetch_wavoip_call
     @call = Current.account.calls.find(params[:id])
   end
 end
+
+Api::V1::Accounts::CallsController.prepend_mod_with('Api::V1::Accounts::CallsController')

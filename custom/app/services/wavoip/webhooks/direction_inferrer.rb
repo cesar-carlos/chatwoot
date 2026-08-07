@@ -7,34 +7,35 @@
 # This isolates the multi-heuristic inference so it can be tested against
 # fixtures independently of the rest of the payload parsing.
 class Wavoip::Webhooks::DirectionInferrer
-  def initialize(payload:, webhook_action:, external_call_id: nil)
+  def initialize(payload:, webhook_action:, external_call_id: nil, inbox_phone: nil)
     @payload = payload
     @webhook_action = webhook_action
     @external_call_id = external_call_id
+    @inbox_phone = inbox_phone
   end
 
   def infer
     return :outgoing if inbox_is_caller?
 
-    explicit = map_direction(payload[:direction])
     from_endpoints = infer_direction_from_caller_receiver
-    from_status = infer_direction_from_status(payload[:status])
-
-    return :outgoing if from_endpoints == :outgoing
-    return explicit if explicit.present?
+    # Prefer caller/receiver geometry over an explicit (often wrong) direction
+    # when both are present and disagree.
     return from_endpoints if from_endpoints.present?
 
-    from_status
+    explicit = map_direction(payload[:direction])
+    return explicit if explicit.present?
+
+    infer_direction_from_status(payload[:status])
   end
 
   private
 
-  attr_reader :payload, :webhook_action, :external_call_id
+  attr_reader :payload, :webhook_action, :external_call_id, :inbox_phone
 
   # Highest-confidence signal: the inbox's own number placed the call. Wins
   # over an explicit (but wrong) `direction: INCOMING` from the payload.
   def inbox_is_caller?
-    inbox_digits = phone_digits(payload[:phone])
+    inbox_digits = inbox_digits_for_compare
     caller_digits = phone_digits(payload[:caller])
     inbox_digits.present? && caller_digits.present? && inbox_digits == caller_digits
   end
@@ -50,10 +51,16 @@ class Wavoip::Webhooks::DirectionInferrer
   end
 
   def infer_direction_from_caller_receiver
-    inbox_digits = phone_digits(payload[:phone])
+    inbox_digits = inbox_digits_for_compare
     return nil if inbox_digits.blank?
 
     direction_from_endpoints(inbox_digits)
+  end
+
+  # Prefer payload phone, fall back to the channel number resolved by the
+  # webhook controller (live payloads often omit `phone`).
+  def inbox_digits_for_compare
+    phone_digits(payload[:phone].presence || inbox_phone)
   end
 
   def direction_from_endpoints(inbox_digits)

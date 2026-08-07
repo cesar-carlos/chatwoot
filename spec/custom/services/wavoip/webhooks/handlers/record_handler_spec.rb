@@ -168,6 +168,10 @@ RSpec.describe Wavoip::Webhooks::Handlers::RecordHandler do
 
     expect do
       described_class.new(inbox: inbox, event: in_progress_event).perform
-    end.not_to have_enqueued_job(Wavoip::AttachRecordingJob)
+    end.to have_enqueued_job(Wavoip::RetryRecordAttachmentJob)
+      .with(inbox.id, provider_call_id, record_url, record_status: 'READY')
+
+    expect(call.reload.meta['record_url']).to eq(record_url)
+    expect(call.meta['record_status']).to eq('READY')
   end
 end

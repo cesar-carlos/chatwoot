@@ -190,4 +190,44 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
 
     expect(call.reload.accepted_by_agent_id).to eq(agent.id)
   end
+
+  it 'blocks in_progress to ringing regressions from late CREATE retries' do
+    call = create_call(direction: :incoming, status: 'in_progress', started_at: 1.minute.ago)
+
+    result = applier_for(
+      build_event(
+        action: :create,
+        direction: :incoming,
+        external_status: 'INCOMING_RING',
+        from_phone: '+15550001111',
+        to_phone: channel.phone_number
+      )
+    ).apply!(call, broadcast: true)
+
+    aggregate_failures do
+      expect(result).to be(false)
+      expect(call.reload.status).to eq('in_progress')
+      expect(broadcaster).not_to have_received(:broadcast_incoming)
+    end
+  end
+
+  it 'ignores HANDLED_REMOTELY while claimed and still ringing' do
+    agent = create(:user, account: account)
+    call = create_call(direction: :incoming, accepted_by_agent_id: agent.id)
+
+    result = applier_for(
+      build_event(
+        direction: :incoming,
+        external_status: 'HANDLED_REMOTELY',
+        from_phone: '+15550001111',
+        to_phone: channel.phone_number
+      )
+    ).apply!(call, broadcast: true)
+
+    aggregate_failures do
+      expect(result).to be(false)
+      expect(call.reload.status).to eq('ringing')
+      expect(broadcaster).not_to have_received(:broadcast_ended)
+    end
+  end
 end

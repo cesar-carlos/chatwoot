@@ -92,14 +92,16 @@ RSpec.describe Wavoip::Calls::Broadcaster do
     expect(payloads.map(&:first)).to include(admin.pubsub_token)
   end
 
-  it 'broadcasts voice_call.accepted on account stream' do
+  it 'broadcasts voice_call.accepted to inbox recipients not the full account stream' do
     broadcaster = described_class.new(inbox: inbox)
     payloads = []
     allow(ActionCable.server).to receive(:broadcast) { |stream, payload| payloads << [stream, payload] }
 
     broadcaster.broadcast_agent_accepted(call, accepted_by_agent_id: online_agent.id)
 
-    expect(payloads.first.first).to eq("account_#{account.id}")
+    streams = payloads.map(&:first)
+    expect(streams).to include(online_agent.pubsub_token)
+    expect(streams).not_to include("account_#{account.id}")
     expect(payloads.first.last[:event]).to eq('voice_call.accepted')
     expect(payloads.first.last[:data][:accepted_by_agent_id]).to eq(online_agent.id)
     expect(payloads.first.last[:data][:call_id]).to eq('broadcast_test_001')

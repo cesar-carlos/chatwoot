@@ -62,6 +62,7 @@ import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constant
 import { useAlert } from 'dashboard/composables';
 import {
   clearActiveCall,
+  endActiveCall,
   getActiveProviderCallId,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import {
@@ -77,6 +78,10 @@ describe('wavoipVoiceCableHandlers', () => {
   beforeEach(() => {
     pendingOffers.clear();
     setActivePinia(createPinia());
+    getActiveProviderCallId.mockReturnValue(null);
+    isWavoipSdkCallOwned.mockReturnValue(false);
+    endActiveCall.mockClear();
+    useAlert.mockClear();
   });
 
   describe('onIncoming', () => {
@@ -394,6 +399,31 @@ describe('wavoipVoiceCableHandlers', () => {
         'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY'
       );
       expect(store.calls).toHaveLength(0);
+    });
+
+    it('tears down local active media when another agent claimed the call', () => {
+      getActiveProviderCallId.mockReturnValue('acc_zombie');
+      const store = useCallsStore();
+      store.addCall({
+        callSid: 'acc_zombie',
+        conversationId: 1,
+        inboxId: 2,
+        callDirection: 'incoming',
+        provider: 'wavoip',
+      });
+      store.setCallActive('acc_zombie');
+
+      wavoipVoiceCableHandlers.onAccepted({
+        call_id: 'acc_zombie',
+        accepted_by_agent_id: 42,
+        accepted_by_agent_name: 'Maria',
+      });
+
+      expect(useAlert).toHaveBeenCalledWith(
+        'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY'
+      );
+      expect(endActiveCall).toHaveBeenCalled();
+      expect(store.calls.some(c => c.callSid === 'acc_zombie')).toBe(false);
     });
   });
 

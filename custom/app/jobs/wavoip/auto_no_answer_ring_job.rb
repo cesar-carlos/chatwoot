@@ -21,6 +21,11 @@ class Wavoip::AutoNoAnswerRingJob < ApplicationJob
 
   def transition_to_no_answer!(call)
     return false unless call.ringing?
+    # Agent already claimed via join/PATCH (status stays ringing until ACTIVE).
+    # Killing the row would tear down live SDK media via broadcast_ended.
+    return false if Wavoip::Calls::ClaimGuard.claimed?(call)
+    # Soft-claim: join wrote cache but PATCH may still be in flight.
+    return false if Wavoip::Calls::JoiningAgentCache.read(call.id).present?
 
     call.update!(
       status: 'no_answer',

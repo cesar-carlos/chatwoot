@@ -21,6 +21,7 @@ class Wavoip::RetryRecordAttachmentJob < ApplicationJob
 
     call = Wavoip::Calls::CallLookup.find(inbox: inbox, provider_call_id: ctx.provider_call_id)
     return handle_missing_call(ctx) if call.blank?
+    return handle_not_completed(call, ctx) unless call.status == 'completed'
     return handle_missing_message(call, ctx) if call.message.blank?
 
     attach_recording(call, ctx.record_url, ctx.record_status)
@@ -30,6 +31,14 @@ class Wavoip::RetryRecordAttachmentJob < ApplicationJob
 
   def handle_missing_call(ctx)
     return log_retry_exhausted("inbox_id=#{ctx.inbox_id} call_id=#{ctx.provider_call_id}") if ctx.attempt >= MAX_ATTEMPTS
+
+    retry_later(ctx)
+  end
+
+  def handle_not_completed(call, ctx)
+    return log_retry_exhausted(
+      "call not completed call_id=#{call.id} status=#{call.status}"
+    ) if ctx.attempt >= MAX_ATTEMPTS
 
     retry_later(ctx)
   end

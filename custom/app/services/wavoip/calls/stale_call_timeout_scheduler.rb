@@ -7,6 +7,10 @@
 # realistic ring/escalation window.
 class Wavoip::Calls::StaleCallTimeoutScheduler
   DEFAULT_TIMEOUT_SECONDS = 90
+  DEFAULT_IN_PROGRESS_TIMEOUT_SECONDS = 7200
+  # Floor so a misconfigured max_call_duration_seconds cannot kill live media
+  # within minutes of accept.
+  MIN_IN_PROGRESS_TIMEOUT_SECONDS = 1800
 
   def initialize(call:)
     @call = call
@@ -26,6 +30,7 @@ class Wavoip::Calls::StaleCallTimeoutScheduler
   def schedule_in_progress_safety_net
     timeout = inbox.channel.provider_config['max_call_duration_seconds'].to_i
     timeout = DEFAULT_IN_PROGRESS_TIMEOUT_SECONDS unless timeout.positive?
+    timeout = [timeout, MIN_IN_PROGRESS_TIMEOUT_SECONDS].max
 
     lock_key = "wavoip:stale_progress_lock:#{call.id}"
     acquired = Rails.cache.write(lock_key, true, unless_exist: true, expires_in: (timeout + 60).seconds)
@@ -33,8 +38,6 @@ class Wavoip::Calls::StaleCallTimeoutScheduler
 
     Wavoip::StaleInProgressCallJob.set(wait: timeout.seconds).perform_later(call.id)
   end
-
-  DEFAULT_IN_PROGRESS_TIMEOUT_SECONDS = 7200
 
   private
 
