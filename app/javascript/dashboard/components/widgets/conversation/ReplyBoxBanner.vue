@@ -5,6 +5,7 @@ import { useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import wootConstants from 'dashboard/constants/globals';
+import { getUserPermissions, hasReplyAssignedOnlyRestriction } from 'dashboard/helper/permissionsHelper';
 
 import Banner from 'dashboard/components/ui/Banner.vue';
 
@@ -24,6 +25,7 @@ const { t } = useI18n();
 
 const currentChat = useMapGetter('getSelectedChat');
 const currentUser = useMapGetter('getCurrentUser');
+const currentAccountId = useMapGetter('getCurrentAccountId');
 
 const assignedAgent = computed({
   get() {
@@ -50,7 +52,24 @@ const isAssignedToOtherAgent = computed(
   () => assignedAgent.value?.id !== currentUser.value?.id
 );
 
+// FORK: custom role reply assigned only
+const isReplyRestrictedToAssignee = computed(() => {
+  const userPermissions = getUserPermissions(
+    currentUser.value,
+    currentAccountId.value
+  );
+  return hasReplyAssignedOnlyRestriction(userPermissions);
+});
+
+const needsAssignmentToCurrentUser = computed(() => {
+  return isUnassigned.value || isAssignedToOtherAgent.value;
+});
+
 const showSelfAssignBanner = computed(() => {
+  // FORK: custom role reply assigned only — always show when restricted and not assignee
+  if (isReplyRestrictedToAssignee.value && needsAssignmentToCurrentUser.value) {
+    return true;
+  }
   return (
     isUserTyping.value && (isUnassigned.value || isAssignedToOtherAgent.value)
   );
@@ -80,10 +99,6 @@ const selfAssignConversation = async () => {
   const { avatar_url, ...rest } = currentUser.value || {};
   assignedAgent.value = { ...rest, thumbnail: avatar_url };
 };
-
-const needsAssignmentToCurrentUser = computed(() => {
-  return isUnassigned.value || isAssignedToOtherAgent.value;
-});
 
 const onClickSelfAssign = async () => {
   try {

@@ -16,6 +16,10 @@ RSpec.describe CustomRole, type: :model do
     it 'includes inbox_view_manage in PERMISSIONS' do
       expect(described_class::PERMISSIONS).to include('inbox_view_manage')
     end
+
+    it 'includes conversation_reply_assigned_only in PERMISSIONS' do
+      expect(described_class::PERMISSIONS).to include('conversation_reply_assigned_only')
+    end
   end
 
   describe 'filtered unread count invalidation' do

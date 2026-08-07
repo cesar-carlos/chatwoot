@@ -106,6 +106,7 @@ Idempotente — seguro reexecutar.
 ## Related
 
 - Feature irmã (escopo de conversas por time): [`../custom-role-team-permission-normalization/implementation-plan.md`](../custom-role-team-permission-normalization/implementation-plan.md)
+- Reply only when assigned: [`../custom-role-reply-assigned-only/implementation-plan.md`](../custom-role-reply-assigned-only/implementation-plan.md)
 
 ## Definition of Done
 

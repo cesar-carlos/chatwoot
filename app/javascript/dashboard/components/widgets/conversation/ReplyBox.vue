@@ -49,6 +49,7 @@ import { ROLES, CONTACT_PERMISSIONS } from 'dashboard/constants/permissions';
 import {
   hasPermissions,
   getUserPermissions,
+  hasReplyAssignedOnlyRestriction,
 } from 'dashboard/helper/permissionsHelper';
 import fileUploadMixin from 'dashboard/mixins/fileUploadMixin';
 import {
@@ -178,6 +179,8 @@ export default {
       );
     },
     showWhatsappTemplates() {
+      // FORK: custom role reply assigned only — keep 24h templates when window closed
+      if (this.isReplyBlockedByAssigneeRestriction) return false;
       if (this.isAWavoipChannel) return false;
       // FORK: self-hosted WhatsApp gateways have no WABA templates
       if (this.isGatewayWhatsAppChannel) return false;
@@ -189,6 +192,8 @@ export default {
       return !!(templates && templates.length) && !this.isPrivate;
     },
     showContentTemplates() {
+      // FORK: custom role reply assigned only
+      if (this.isReplyBlockedByAssigneeRestriction) return false;
       return this.isATwilioWhatsAppChannel && !this.isPrivate;
     },
     isWithinMessagingWindow() {
@@ -247,6 +252,10 @@ export default {
     },
     messagePlaceHolder() {
       if (this.isEditorDisabled) {
+        // FORK: custom role reply assigned only
+        if (this.isReplyBlockedByAssigneeRestriction) {
+          return this.$t('CONVERSATION.FOOTER.MESSAGING_RESTRICTED_ASSIGNED_ONLY');
+        }
         if (this.isAWavoipChannel) {
           return this.$t('CONVERSATION.WAVOIP_VOICE_ONLY');
         }
@@ -483,6 +492,8 @@ export default {
       return !this.showAudioRecorderEditor && !this.copilot.isActive.value;
     },
     isEditorDisabled() {
+      // FORK: custom role reply assigned only
+      if (this.isReplyBlockedByAssigneeRestriction) return true;
       // FORK: self-hosted WhatsApp gateways have no 24h messaging window
       if (this.isGatewayWhatsAppChannel) return false;
       // FORK: Wavoip is voice-only — public replies are blocked
@@ -491,6 +502,24 @@ export default {
         (this.isAWhatsAppChannel || this.isAPIInbox) &&
         !this.isOnPrivateNote &&
         !this.currentChat.can_reply
+      );
+    },
+    // FORK: custom role reply assigned only
+    isReplyRestrictedToAssignee() {
+      const userPermissions = getUserPermissions(
+        this.currentUser,
+        this.getCurrentAccountId
+      );
+      return hasReplyAssignedOnlyRestriction(userPermissions);
+    },
+    isAssignedToCurrentUser() {
+      return (
+        this.currentChat?.meta?.assignee?.id === this.currentUser?.id
+      );
+    },
+    isReplyBlockedByAssigneeRestriction() {
+      return (
+        this.isReplyRestrictedToAssignee && !this.isAssignedToCurrentUser
       );
     },
     // FORK: share contact card

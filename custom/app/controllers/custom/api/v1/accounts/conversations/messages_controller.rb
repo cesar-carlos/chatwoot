@@ -27,9 +27,12 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   end
 
   def create
+    authorize_reply! # FORK: custom role reply assigned only
     user = Current.user || @resource
     mb = Messages::MessageBuilder.new(user, @conversation, params)
     @message = mb.perform
+  rescue Pundit::NotAuthorizedError
+    raise # FORK: custom role reply assigned only — let handle_with_exception render 401
   rescue CustomExceptions::Wavoip::VoiceOnlyInbox => e
     render_error_response(e)
   rescue StandardError => e
@@ -41,10 +44,13 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     assert_voice_only_public_retry_allowed!
     return if message.blank?
 
+    authorize_reply! unless message.private? # FORK: custom role reply assigned only
     Messages::StatusUpdateService.new(message, 'sent').perform
     attrs = (message.content_attributes || {}).with_indifferent_access.except(:external_error)
     message.update!(content_attributes: attrs)
     ::SendReplyJob.perform_later(message.id)
+  rescue Pundit::NotAuthorizedError
+    raise # FORK: custom role reply assigned only — let handle_with_exception render 401
   rescue CustomExceptions::Wavoip::VoiceOnlyInbox => e
     render_error_response(e)
   rescue StandardError => e
@@ -64,6 +70,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   # FORK: Evolution Go/Node WhatsApp reactions
   # rubocop:disable Metrics/MethodLength -- provider case dispatch
   def evolution_go_react
+    authorize_reply! # FORK: custom role reply assigned only
     provider = message.inbox.channel.provider
     @message = case provider
                when 'evolution_go'
@@ -89,6 +96,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
 
   # FORK: Evolution Go edit outgoing message (sync_edit_to_whatsapp)
   def evolution_go_edit
+    authorize_reply! # FORK: custom role reply assigned only
     @message = Custom::Whatsapp::EvolutionGo::MessageContentEditService.new(
       message: message,
       content: params[:content]
@@ -99,6 +107,11 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   end
 
   private
+
+  # FORK: custom role reply assigned only
+  def authorize_reply!
+    authorize @conversation, :reply?
+  end
 
   def soft_delete_message!
     ActiveRecord::Base.transaction do

@@ -71,4 +71,75 @@ RSpec.describe ConversationPolicy, type: :policy do
       end
     end
   end
+
+  permissions :reply? do
+    context 'when agent has no custom role' do
+      it 'allows reply on unassigned conversation' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil)
+
+        expect(subject).to permit(context, conversation)
+      end
+    end
+
+    context 'when custom role does not include conversation_reply_assigned_only' do
+      let(:custom_role) do
+        create(:custom_role, account: account, permissions: ['conversation_team_unassigned_manage'])
+      end
+
+      before do
+        agent_account_user.update!(role: :agent, custom_role: custom_role)
+      end
+
+      it 'allows reply on unassigned conversation' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil)
+
+        expect(subject).to permit(context, conversation)
+      end
+    end
+
+    context 'when custom role includes conversation_reply_assigned_only' do
+      let(:custom_role) do
+        create(
+          :custom_role,
+          account: account,
+          permissions: %w[conversation_team_unassigned_manage conversation_reply_assigned_only]
+        )
+      end
+      let(:other_agent) { create(:user, account: account, role: :agent) }
+
+      before do
+        agent_account_user.update!(role: :agent, custom_role: custom_role)
+      end
+
+      it 'allows reply when conversation is assigned to the agent' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: agent)
+
+        expect(subject).to permit(context, conversation)
+      end
+
+      it 'denies reply when conversation is unassigned' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+
+      it 'denies reply when conversation is assigned to another agent' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: other_agent)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+    end
+
+    context 'when user is an administrator' do
+      let(:admin) { create(:user, account: account, role: :administrator) }
+      let(:admin_account_user) { admin.account_users.find_by(account: account) }
+      let(:admin_context) { { user: admin, account: account, account_user: admin_account_user } }
+
+      it 'allows reply on unassigned conversation' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee: nil)
+
+        expect(subject).to permit(admin_context, conversation)
+      end
+    end
+  end
 end
