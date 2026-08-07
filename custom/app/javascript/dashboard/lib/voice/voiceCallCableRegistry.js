@@ -125,33 +125,50 @@ export const createWavoipVoiceCableHandlers = t => ({
     const callEntry = findWavoipCallForCableEvent(callsStore.calls, data);
     if (!callEntry) return;
 
-    if (callEntry.isActive) return;
-
-    const activeId = getActiveProviderCallId();
-    if (
-      activeId &&
-      (activeId === data.call_id ||
-        activeId === callEntry.callSid ||
-        activeId === callEntry.wavoipOfferId)
-    ) {
-      return;
-    }
-
-    // Same user already owns the SDK session on this tab — keep the live call.
-    if (
+    const acceptedBySelf =
       data.accepted_by_agent_id &&
-      data.accepted_by_agent_id === currentUserId() &&
-      isWavoipSdkCallOwned(data.call_id)
-    ) {
+      data.accepted_by_agent_id === currentUserId();
+
+    const ownsLocalSession =
+      callEntry.isActive ||
+      (() => {
+        const activeId = getActiveProviderCallId();
+        return (
+          activeId &&
+          (activeId === data.call_id ||
+            activeId === callEntry.callSid ||
+            activeId === callEntry.wavoipOfferId)
+        );
+      })() ||
+      (acceptedBySelf && isWavoipSdkCallOwned(data.call_id));
+
+    // Same user owns this tab's SDK session — keep the live call.
+    if (ownsLocalSession && acceptedBySelf) return;
+
+    // Another agent claimed while this tab still has (or thinks it has) media.
+    // Tear down so we do not keep a zombie SDK session after a failed join/PATCH.
+    if (ownsLocalSession && !acceptedBySelf) {
+      const agentName = data.accepted_by_agent_name;
+      useAlert(
+        agentName
+          ? t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE_BY', { agentName })
+          : t('CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE')
+      );
+      endSdkActiveCall(
+        data.call_id || callEntry.callSid || callEntry.wavoipOfferId
+      );
+      dismissWavoipCallFromStore(
+        data.call_id,
+        callEntry.callSid,
+        callEntry.wavoipOfferId,
+        callEntry.callId
+      );
       return;
     }
 
     // Another agent (or this user on another tab) accepted. Always dismiss the
     // ringing widget — including while this tab is mid-join — so cable-only
     // agents without SDK `acceptedElsewhere` do not keep ringing.
-    const acceptedBySelf =
-      data.accepted_by_agent_id &&
-      data.accepted_by_agent_id === currentUserId();
 
     // Same-user other tab: silent dismiss (no "accepted elsewhere" toast).
     // Other agent: toast even if this tab is mid-join.

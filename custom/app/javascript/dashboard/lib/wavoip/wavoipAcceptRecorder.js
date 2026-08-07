@@ -30,57 +30,89 @@ const findDbCallId = callSid => {
   );
 };
 
+const httpStatus = error =>
+  error?.response?.status || error?.status || error?.statusCode || null;
+
+/** 409 CallAlreadyAccepted — do not retry; another agent owns the claim. */
+export const isAcceptConflictError = error => httpStatus(error) === 409;
+
 export function queueAcceptedByRecording(callSid) {
   if (callSid) pendingAcceptByCallSid.add(callSid);
 }
 
 export async function recordJoinWithRetry(dbCallId, callSid, options = {}) {
   const onFailure = resolveFailureHandler(options);
+  const onConflict = options.onConflict;
 
   const attemptJoin = async attempt => {
     try {
       await CallsAPI.joinCall(dbCallId);
-      return true;
-    } catch (_) {
-      if (attempt >= MAX_ATTEMPTS - 1) return false;
+      return { ok: true };
+    } catch (error) {
+      if (isAcceptConflictError(error)) {
+        return { conflict: true, error };
+      }
+      if (attempt >= MAX_ATTEMPTS - 1) return { ok: false, error };
       await sleep(RETRY_DELAYS_MS[attempt]);
       return attemptJoin(attempt + 1);
     }
   };
 
-  const joined = await attemptJoin(0);
-  if (joined) return true;
+  const result = await attemptJoin(0);
+  if (result.ok) return true;
+
+  if (result.conflict) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `Join conflict for callSid=${callSid} dbCallId=${dbCallId} — call already accepted`
+    );
+    onConflict?.(result.error);
+    return false;
+  }
 
   // eslint-disable-next-line no-console
   console.warn(
     `Failed to record join intent for callSid=${callSid} dbCallId=${dbCallId} after ${MAX_ATTEMPTS} attempts`
   );
-  onFailure?.();
+  onFailure?.(result.error);
   return false;
 }
 
 export async function recordAcceptWithRetry(dbCallId, callSid, options = {}) {
   const onFailure = resolveFailureHandler(options);
+  const onConflict = options.onConflict;
 
   const attemptRecord = async attempt => {
     try {
       await CallsAPI.recordAccept(dbCallId);
-      return true;
-    } catch (_) {
-      if (attempt >= MAX_ATTEMPTS - 1) return false;
+      return { ok: true };
+    } catch (error) {
+      if (isAcceptConflictError(error)) {
+        return { conflict: true, error };
+      }
+      if (attempt >= MAX_ATTEMPTS - 1) return { ok: false, error };
       await sleep(RETRY_DELAYS_MS[attempt]);
       return attemptRecord(attempt + 1);
     }
   };
 
-  const recorded = await attemptRecord(0);
-  if (recorded) return true;
+  const result = await attemptRecord(0);
+  if (result.ok) return true;
+
+  if (result.conflict) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      `Accept conflict for callSid=${callSid} dbCallId=${dbCallId} — call already accepted`
+    );
+    onConflict?.(result.error);
+    return false;
+  }
 
   // eslint-disable-next-line no-console
   console.warn(
     `Failed to record accept for callSid=${callSid} dbCallId=${dbCallId} after ${MAX_ATTEMPTS} attempts`
   );
-  onFailure?.();
+  onFailure?.(result.error);
   return false;
 }
 
@@ -91,7 +123,8 @@ export async function flushAcceptedByRecording(callSid, options = {}) {
   if (!dbCallId) return;
 
   pendingAcceptByCallSid.delete(callSid);
-  await recordJoinWithRetry(dbCallId, callSid, options);
+  const joined = await recordJoinWithRetry(dbCallId, callSid, options);
+  if (!joined) return;
   await recordAcceptWithRetry(dbCallId, callSid, options);
 }
 

@@ -1,14 +1,6 @@
 # frozen_string_literal: true
 
 module Custom::Voice::InboundCallBuilder
-  private
-
-  def source_id_for_provider
-    return from_number.to_s.delete_prefix('+') if provider == :wavoip
-
-    super
-  end
-
   # FORK: inbound voice creates a contact-initiated episode for automation filters
   def resolve_conversation!(contact, contact_inbox)
     Current.conversation_opened_by = Custom::Conversations::OpenedByStamper::CONTACT

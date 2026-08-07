@@ -86,4 +86,13 @@ RSpec.describe Wavoip::Calls::StaleCallTimeoutScheduler do
 
     scheduler.schedule
   end
+
+  it 'floors misconfigured max_call_duration_seconds for in-progress safety net' do
+    channel.update!(provider_config: channel.provider_config.merge('max_call_duration_seconds' => 60))
+    call.update!(status: 'in_progress', started_at: Time.current)
+    scheduler = described_class.new(call: call)
+
+    expect { scheduler.schedule_in_progress_safety_net }
+      .to have_enqueued_job(Wavoip::StaleInProgressCallJob).with(call.id)
+  end
 end

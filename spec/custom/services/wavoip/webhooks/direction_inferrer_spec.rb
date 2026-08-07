@@ -40,6 +40,42 @@ RSpec.describe Wavoip::Webhooks::DirectionInferrer do
     it { is_expected.to eq(:outgoing) }
   end
 
+  context 'when phone is omitted but channel inbox_phone matches caller' do
+    subject(:result) do
+      described_class.new(
+        payload: payload.with_indifferent_access,
+        webhook_action: webhook_action,
+        external_call_id: 'test_call_id',
+        inbox_phone: '+5566999050312'
+      ).send(:infer)
+    end
+
+    let(:payload) do
+      {
+        'direction' => 'INCOMING',
+        'caller' => '5566999050312',
+        'receiver' => '556697193168'
+      }
+    end
+
+    it { is_expected.to eq(:outgoing) }
+  end
+
+  context 'when endpoints disagree with explicit OUTGOING' do
+    let(:payload) do
+      {
+        'direction' => 'OUTGOING',
+        'phone' => '5566999050312',
+        'caller' => '5511888888888',
+        'receiver' => '5566999050312'
+      }
+    end
+
+    it 'prefers caller/receiver geometry' do
+      expect(result).to eq(:incoming)
+    end
+  end
+
   context 'when direction is absent but caller/receiver imply incoming' do
     let(:payload) do
       {

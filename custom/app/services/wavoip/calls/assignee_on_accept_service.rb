@@ -9,7 +9,9 @@ class Wavoip::Calls::AssigneeOnAcceptService
   def perform!
     return unless call.incoming?
     return if agent.blank?
-    return if call.conversation.assignee_id == agent.id
+    return unless call.inbox.enable_auto_assignment?
+    # Preserve an existing assignee; only claim unassigned inbound threads.
+    return if call.conversation.assignee_id.present?
 
     call.conversation.update!(assignee: agent)
   end

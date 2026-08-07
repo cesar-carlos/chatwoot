@@ -10,14 +10,24 @@ class Wavoip::Calls::ConversationLinker
   end
 
   def self.link_inbound!(inbox:, event:)
+    phone = contact_phone_for(event, inbox_phone: inbox.channel.phone_number)
     extra_meta = build_meta(event)
     extra_meta['contact_name'] = event.peer_name if event.peer_name.present?
 
+    # Digits-only source_id matches Wavoip outbound ContactInbox rows so inbound
+    # reuses the same thread after an outbound (or UI-seeded) contact.
+    source_id = phone.to_s.delete_prefix('+')
     Voice::InboundCallBuilder.perform!(
       inbox: inbox,
-      from_number: contact_phone_for(event, inbox_phone: inbox.channel.phone_number),
       call_sid: event.external_call_id,
       provider: :wavoip,
+      caller: {
+        source_ids: [source_id],
+        contact_attributes: {
+          name: event.peer_name.presence || phone,
+          phone_number: phone
+        }
+      },
       extra_meta: extra_meta
     )
   end

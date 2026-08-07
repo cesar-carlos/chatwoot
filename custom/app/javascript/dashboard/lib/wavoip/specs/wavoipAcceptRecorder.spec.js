@@ -69,4 +69,24 @@ describe('wavoipAcceptRecorder', () => {
     expect(CallsAPI.joinCall).toHaveBeenCalledWith(99);
     expect(CallsAPI.recordAccept).toHaveBeenCalledWith(99);
   });
+
+  it('does not retry on 409 conflict and invokes onConflict', async () => {
+    const conflict = Object.assign(new Error('conflict'), {
+      response: { status: 409 },
+    });
+    CallsAPI.joinCall.mockRejectedValue(conflict);
+
+    const onConflict = vi.fn();
+    const onFailure = vi.fn();
+    const store = useCallsStore();
+    store.addCall({ callSid: 'call-conflict', callId: 7 });
+
+    queueAcceptedByRecording('call-conflict');
+    await flushAcceptedByRecording('call-conflict', { onConflict, onFailure });
+
+    expect(CallsAPI.joinCall).toHaveBeenCalledTimes(1);
+    expect(CallsAPI.recordAccept).not.toHaveBeenCalled();
+    expect(onConflict).toHaveBeenCalled();
+    expect(onFailure).not.toHaveBeenCalled();
+  });
 });

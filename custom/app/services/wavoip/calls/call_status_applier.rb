@@ -1,6 +1,15 @@
 # frozen_string_literal: true
 
 class Wavoip::Calls::CallStatusApplier
+  # Monotonic ranks: never apply ringing over in_progress, etc.
+  STATUS_RANK = {
+    'ringing' => 1,
+    'in_progress' => 2,
+    'completed' => 3,
+    'no_answer' => 3,
+    'failed' => 3
+  }.freeze
+
   def initialize(inbox:, event:, status_mapper:, broadcaster:)
     @inbox = inbox
     @event = event
@@ -130,12 +139,31 @@ class Wavoip::Calls::CallStatusApplier
   end
 
   def transition_allowed?(call, mapped_status)
-    return true unless call.terminal?
-    return false if mapped_status == 'ringing'
-    return false if mapped_status == 'in_progress'
-    return false if status_mapper.terminal?(mapped_status) && mapped_status != call.status
+    return false if ignore_handled_remotely_while_claimed?(call)
 
-    true
+    current_rank = STATUS_RANK[call.status.to_s]
+    new_rank = STATUS_RANK[mapped_status.to_s]
+    return true if current_rank.blank? || new_rank.blank?
+
+    if call.terminal?
+      return false if mapped_status == 'ringing' || mapped_status == 'in_progress'
+      return false if status_mapper.terminal?(mapped_status) && mapped_status != call.status
+
+      return true
+    end
+
+    # Non-terminal: only same or higher rank (blocks in_progress → ringing).
+    new_rank >= current_rank
+  end
+
+  # Dashboard already claimed while still ringing awaiting ACTIVE. A late
+  # HANDLED_REMOTELY (handset answered elsewhere) would force-complete and
+  # tear down live SDK media — wait for ACTIVE/ENDED instead.
+  def ignore_handled_remotely_while_claimed?(call)
+    return false unless event.external_status.to_s.upcase == 'HANDLED_REMOTELY'
+    return false unless call.ringing?
+
+    Wavoip::Calls::ClaimGuard.claimed?(call)
   end
 
   def queue_broadcasts!(call, mapped_status, deferred)

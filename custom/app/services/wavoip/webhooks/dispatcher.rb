@@ -17,7 +17,10 @@ class Wavoip::Webhooks::Dispatcher
   end
 
   def dispatch
-    event = Wavoip::Webhooks::PayloadNormalizer.new(payload).normalize
+    event = Wavoip::Webhooks::PayloadNormalizer.new(
+      payload,
+      inbox_phone: channel_phone_number
+    ).normalize
     return if event.blank?
 
     handler_class = HANDLERS[event.raw_type]
@@ -31,6 +34,11 @@ class Wavoip::Webhooks::Dispatcher
   private
 
   attr_reader :inbox, :payload
+
+  def channel_phone_number
+    channel = inbox.channel
+    channel.phone_number if channel.is_a?(Channel::Wavoip)
+  end
 
   def touch_last_webhook_at!
     channel = inbox.channel

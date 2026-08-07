@@ -26,9 +26,23 @@ class Wavoip::Webhooks::Handlers::RecordHandler < Wavoip::Webhooks::Handlers::Ba
   def handle_call_record(call)
     current_policy = policy(call)
     return persist_record_meta!(call) if current_policy.persist_status_only?
-    return unless current_policy.attachable?
+    unless current_policy.attachable?
+      schedule_retry_if_waiting_for_completion(call)
+      return
+    end
 
     attach_if_new(call)
+  end
+
+  # READY can arrive before ENDED→completed. Persist URL and retry until the
+  # call is attachable, instead of silently dropping the webhook.
+  def schedule_retry_if_waiting_for_completion(call)
+    return if call.status == 'completed'
+    return if Wavoip::Calls::RecordingPolicy::BLOCKED_STATUSES.include?(event.record_status.to_s.upcase)
+    return if Wavoip::Calls::RecordingPolicy::PENDING_STATUSES.include?(event.record_status.to_s.upcase)
+
+    persist_record_meta!(call, include_record_url: true)
+    schedule_retry
   end
 
   def attach_if_new(call)

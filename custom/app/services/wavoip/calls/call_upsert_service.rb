@@ -22,6 +22,7 @@ class Wavoip::Calls::CallUpsertService
   def create!
     @newly_created = false
     return log_skip_create('voice disabled') unless inbox.channel.voice_enabled?
+    return log_skip_create('missing direction') if event.direction.nil?
     return log_skip_create('inbound blocked') if inbound_incoming_blocked?
     return log_skip_create('missing or inbox peer phone') if invalid_contact_phone_for_create?
 

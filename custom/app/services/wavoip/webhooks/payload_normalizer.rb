@@ -3,8 +3,9 @@
 class Wavoip::Webhooks::PayloadNormalizer
   PROVIDER = :wavoip
 
-  def initialize(payload)
+  def initialize(payload, inbox_phone: nil)
     @payload = payload.to_h.with_indifferent_access
+    @inbox_phone = inbox_phone
   end
 
   def normalize
@@ -23,7 +24,7 @@ class Wavoip::Webhooks::PayloadNormalizer
 
   private
 
-  attr_reader :payload
+  attr_reader :payload, :inbox_phone
 
   # Official examples declare `type` twice in CALL payloads; JSON.parse keeps the last value.
   def event_type
@@ -137,7 +138,8 @@ class Wavoip::Webhooks::PayloadNormalizer
     @inferred_direction = Wavoip::Webhooks::DirectionInferrer.new(
       payload: payload,
       webhook_action: webhook_action,
-      external_call_id: external_call_id_from_payload
+      external_call_id: external_call_id_from_payload,
+      inbox_phone: inbox_phone
     ).infer
   end
 
@@ -165,7 +167,7 @@ class Wavoip::Webhooks::PayloadNormalizer
   end
 
   def inbox_phone_hint
-    payload[:phone].presence || payload[:caller].presence || payload[:receiver].presence
+    payload[:phone].presence || inbox_phone.presence || payload[:caller].presence || payload[:receiver].presence
   end
 
   def parse_duration(value)

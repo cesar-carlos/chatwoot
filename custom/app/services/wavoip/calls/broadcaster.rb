@@ -39,7 +39,7 @@ class Wavoip::Calls::Broadcaster
   end
 
   def broadcast_accepted(call)
-    broadcast(call, 'voice_call.outbound_accepted')
+    broadcast(call, 'voice_call.outbound_accepted', streams: lifecycle_streams(call))
   end
 
   def broadcast_agent_accepted(call, accepted_by_agent_id:)
@@ -47,6 +47,7 @@ class Wavoip::Calls::Broadcaster
     broadcast(
       call,
       'voice_call.accepted',
+      streams: lifecycle_streams(call, accepted_by_agent_id: accepted_by_agent_id),
       accepted_by_agent_id: accepted_by_agent_id,
       accepted_by_agent_name: agent&.available_name || agent&.name
     )
@@ -57,6 +58,7 @@ class Wavoip::Calls::Broadcaster
     broadcast(
       call,
       'voice_call.ended',
+      streams: lifecycle_streams(call),
       status: call.display_status,
       duration_seconds: call.duration_seconds,
       end_reason: call.end_reason
@@ -85,6 +87,18 @@ class Wavoip::Calls::Broadcaster
       inbox: inbox,
       conversation: call.conversation
     ).escalated_pubsub_tokens
+  end
+
+  # accepted/ended: inbox recipients (+ accepter), not the full account stream,
+  # so agents outside the inbox do not receive call metadata.
+  def lifecycle_streams(call, accepted_by_agent_id: nil)
+    tokens = agent_streams(call).dup
+    accepter_id = accepted_by_agent_id.presence || call.accepted_by_agent_id
+    if accepter_id.present?
+      token = User.find_by(id: accepter_id)&.pubsub_token
+      tokens << token if token.present?
+    end
+    tokens.compact.uniq.presence || account_streams
   end
 
   def broadcast(call, event, streams: account_streams, **extra)
