@@ -3,8 +3,8 @@ module Custom::SearchService
 
   def filter_conversations
     conversations_query = permitted_conversations
-                                         .joins('INNER JOIN contacts ON conversations.contact_id = contacts.id')
-                                         .where("cast(conversations.display_id as text) ILIKE :search OR contacts.name ILIKE :search OR contacts.email
+                          .joins('INNER JOIN contacts ON conversations.contact_id = contacts.id')
+                          .where("cast(conversations.display_id as text) ILIKE :search OR contacts.name ILIKE :search OR contacts.email
                             ILIKE :search OR contacts.phone_number ILIKE :search OR contacts.identifier ILIKE :search", search: "%#{search_query}%")
 
     if current_account.feature_enabled?('advanced_search')
@@ -50,12 +50,10 @@ module Custom::SearchService
               .page(params[:page])
               .per(15)
   rescue ActiveRecord::StatementInvalid => e
-    if unaccent
-      Rails.logger.warn("Unaccent search failed for global search, falling back to plain ILIKE: #{e.message}")
-      filter_messages_with_like(unaccent: false)
-    else
-      raise
-    end
+    raise unless unaccent
+
+    Rails.logger.warn("Unaccent search failed for global search, falling back to plain ILIKE: #{e.message}")
+    filter_messages_with_like(unaccent: false)
   end
 
   def filter_messages_with_gin # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

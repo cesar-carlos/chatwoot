@@ -37,10 +37,7 @@ export const REPLY_ASSIGNED_ONLY_PERMISSION =
   'conversation_reply_assigned_only';
 
 // FORK: custom role inbox view permission — shared route/menu gate
-export const INBOX_VIEW_ROUTE_PERMISSIONS = [
-  ...ROLES,
-  INBOX_VIEW_PERMISSIONS,
-];
+export const INBOX_VIEW_ROUTE_PERMISSIONS = [...ROLES, INBOX_VIEW_PERMISSIONS];
 
 export const CONTACT_PERMISSIONS = 'contact_manage';
 

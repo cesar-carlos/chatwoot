@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe SearchService, 'custom permission scope and unaccent fallback' do
+RSpec.describe SearchService do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:agent) { create(:user, account: account, role: :agent) }
@@ -47,7 +47,7 @@ RSpec.describe SearchService, 'custom permission scope and unaccent fallback' do
       call_count += 1
       raise ActiveRecord::StatementInvalid, 'unaccent_immutable missing' if kwargs[:unaccent]
 
-      "(messages.content ILIKE :pattern)"
+      '(messages.content ILIKE :pattern)'
     end
 
     result = described_class.new(

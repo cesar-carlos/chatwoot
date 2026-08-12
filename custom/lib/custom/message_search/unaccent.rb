@@ -79,4 +79,3 @@ module Custom::MessageSearch::Unaccent
   end
   private_class_method :unaccent_immutable_available?
 end
-

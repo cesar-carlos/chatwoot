@@ -58,7 +58,10 @@ describe('hasInboxViewPermission', () => {
 
   it('denies conversation permissions alone', () => {
     expect(
-      hasInboxViewPermission(['conversation_participating_manage', 'custom_role'])
+      hasInboxViewPermission([
+        'conversation_participating_manage',
+        'custom_role',
+      ])
     ).toBe(false);
   });
 });
