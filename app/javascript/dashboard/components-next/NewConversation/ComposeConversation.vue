@@ -15,6 +15,7 @@ import {
   fetchContactableInboxes,
   processContactableInboxes,
   mergeInboxDetails,
+  filterAuthorizedInboxes,
 } from 'dashboard/components-next/NewConversation/helpers/composeConversationHelper';
 
 import Popover from 'dashboard/components-next/popover/Popover.vue';
@@ -42,6 +43,7 @@ const { fetchSignatureFlagFromUISettings } = useUISettings();
 const popoverRef = ref(null);
 const contacts = ref([]);
 const selectedContact = ref(null);
+const rawContactInboxes = ref([]);
 const targetInbox = ref(null);
 const isCreatingContact = ref(false);
 const isFetchingInboxes = ref(false);
@@ -62,6 +64,23 @@ const clearFormState = () => {
     bccEmails: '',
     attachedFiles: [],
   });
+};
+
+const applyAuthorizedContactInboxes = () => {
+  if (!selectedContact.value) return;
+
+  selectedContact.value = {
+    ...selectedContact.value,
+    contactInboxes: filterAuthorizedInboxes(
+      mergeInboxDetails(rawContactInboxes.value, inboxesList.value),
+      inboxesList.value
+    ),
+  };
+};
+
+const setRawContactInboxes = inboxes => {
+  rawContactInboxes.value = inboxes || [];
+  applyAuthorizedContactInboxes();
 };
 
 const contactById = useMapGetter('contacts/getContactById');
@@ -131,12 +150,7 @@ const handleSelectedContact = async ({ value, action, ...rest }) => {
     isFetchingInboxes.value = true;
     try {
       const contactableInboxes = await fetchContactableInboxes(contact.id);
-      // Merge the processed contactableInboxes with the inboxesList
-      selectedContact.value.contactInboxes = mergeInboxDetails(
-        contactableInboxes,
-        inboxesList.value
-      );
-
+      setRawContactInboxes(contactableInboxes);
       isFetchingInboxes.value = false;
     } catch (error) {
       isFetchingInboxes.value = false;
@@ -152,6 +166,7 @@ const handleTargetInbox = inbox => {
 
 const clearSelectedContact = () => {
   selectedContact.value = null;
+  rawContactInboxes.value = [];
   targetInbox.value = null;
   clearFormState();
 };
@@ -222,19 +237,20 @@ watch(
         formState.message = '';
       }
 
-      // First process the contactable inboxes to get the right structure
-      const processedInboxes = processContactableInboxes(
-        currentContact.contactInboxes || []
+      selectedContact.value = { ...currentContact };
+      setRawContactInboxes(
+        processContactableInboxes(currentContact.contactInboxes || [])
       );
-      // Then Merge processedInboxes with the inboxes list
-      selectedContact.value = {
-        ...currentContact,
-        contactInboxes: mergeInboxDetails(processedInboxes, inboxesList.value),
-      };
     }
   },
   { immediate: true, deep: true }
 );
+
+// FORK: recompute authorized inboxes when the agent inbox store hydrates
+watch(inboxesList, () => {
+  if (!selectedContact.value || !rawContactInboxes.value.length) return;
+  applyAuthorizedContactInboxes();
+});
 
 onMounted(() => resetContacts());
 </script>

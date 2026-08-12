@@ -33,16 +33,18 @@ Uma única chave: na **reabertura**, o valor é **sobrescrito** para refletir qu
 - Create via `Conversations::Resolver` com `Current.conversation_opened_by` ou `additional_attributes` explícito
 - WhatsApp inbound (`IncomingMessageServiceHelpers`) → `contact` (ou `phone` se `outgoing_echo`)
 - Evolution / Evolution Go phone outgoing sync → `phone`
-- `ConversationsController#create` → `agent`
+- `ConversationsController#create` / `AgentStartService` → `agent`
+- Compose `AgentStartService` promove **pending → open** → stamp `agent` antes do `open!`
 - Reopen por mensagem incoming → `contact` **antes** de `open!` / `pending!`
+- Reopen por mensagem **outgoing humana** (dashboard) em resolved/snoozed → `agent` (`Custom::Message::AgentOutgoingReopen`)
 - `toggle_status` / status → `open` por `User` → `agent`
 - Wavoip: reopen inbound (`pending`) → `contact`; reopen outbound (`open`) → `agent`
 - Wavoip/Voice: create outbound linker → `agent`; create inbound call builder → `contact`
 
 ### Não stamp
 
-- Mensagem outgoing “normal” do dashboard em conversa já aberta (não é create/reopen)
-- Phone sync em conversa **já existente** resolvida com lock single (outgoing não chama reopen de Message)
+- Mensagem outgoing “normal” do dashboard em conversa **já aberta** (não é create/reopen)
+- Phone sync em conversa **já existente** resolvida com lock single (outgoing não chama reopen de Message; limitação permanece)
 - `history_import`
 - Conversas antigas sem valor (não inventar `contact` por default)
 - Widget / API pública de create (ainda sem hook explícito)

@@ -12,6 +12,7 @@ module Custom::Message
     prepend Custom::Message::WavoipConversationCycle
     prepend Custom::Message::OpenedByTracking
     prepend Custom::Message::LiquidRuleContext
+    prepend Custom::Message::AgentOutgoingReopen
 
     before_validation :reject_voice_only_outbound_public_message, on: :create
 

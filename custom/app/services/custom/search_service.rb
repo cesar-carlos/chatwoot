@@ -1,16 +1,43 @@
 module Custom::SearchService
   private
 
-  def filter_messages_with_like # rubocop:disable Metrics/AbcSize
+  def filter_conversations
+    conversations_query = permitted_conversations
+                                         .joins('INNER JOIN contacts ON conversations.contact_id = contacts.id')
+                                         .where("cast(conversations.display_id as text) ILIKE :search OR contacts.name ILIKE :search OR contacts.email
+                            ILIKE :search OR contacts.phone_number ILIKE :search OR contacts.identifier ILIKE :search", search: "%#{search_query}%")
+
+    if current_account.feature_enabled?('advanced_search')
+      conversations_query = apply_time_filter(conversations_query,
+                                              'conversations.last_activity_at')
+    end
+
+    @conversations = conversations_query.order('conversations.created_at DESC')
+                                        .page(params[:page])
+                                        .per(15)
+  end
+
+  def message_base_query
+    query = current_account.messages.where('messages.created_at >= ?', 3.months.ago)
+    query.where(conversation_id: permitted_conversations.select(:id))
+  end
+
+  def permitted_conversations
+    @permitted_conversations ||= Conversations::PermissionFilterService.new(
+      current_account.conversations,
+      current_user,
+      current_account
+    ).perform
+  end
+
+  def filter_messages_with_like(unaccent: Custom::MessageSearch::Unaccent.extension_enabled?) # rubocop:disable Metrics/AbcSize
     base_query = message_base_query
     base_query = apply_message_filters(base_query)
     return base_query.reorder('created_at DESC').page(params[:page]).per(15) if search_query.blank?
 
     pattern = "%#{ActiveRecord::Base.sanitize_sql_like(search_query)}%"
     audio_type = Attachment.file_types[:audio]
-    predicate = Custom::MessageSearch::ContentPredicate.sql(
-      unaccent: Custom::MessageSearch::Unaccent.extension_enabled?
-    )
+    predicate = Custom::MessageSearch::ContentPredicate.sql(unaccent: unaccent)
 
     matching_ids = base_query.left_joins(:attachments)
                              .where(predicate, pattern: pattern, audio_type: audio_type)
@@ -22,6 +49,13 @@ module Custom::SearchService
               .reorder('created_at DESC')
               .page(params[:page])
               .per(15)
+  rescue ActiveRecord::StatementInvalid => e
+    if unaccent
+      Rails.logger.warn("Unaccent search failed for global search, falling back to plain ILIKE: #{e.message}")
+      filter_messages_with_like(unaccent: false)
+    else
+      raise
+    end
   end
 
   def filter_messages_with_gin # rubocop:disable Metrics/AbcSize, Metrics/MethodLength

@@ -3,7 +3,17 @@
 module Custom::Api::V1::Accounts::ConversationsController
   def create
     Current.conversation_opened_by = Custom::Conversations::OpenedByStamper::AGENT
-    super
+    ActiveRecord::Base.transaction do
+      @conversation = Custom::Conversations::AgentStartService.new(
+        contact_inbox: @contact_inbox,
+        user: Current.user,
+        params: params
+      ).perform
+      Messages::MessageBuilder.new(Current.user, @conversation, params[:message]).perform if params[:message].present?
+    end
+  rescue CustomExceptions::Conversation::OpenAssignedToOtherAgent,
+         CustomExceptions::Conversation::OutsidePermissionScope => e
+    render_error_response(e)
   ensure
     Current.conversation_opened_by = nil
   end
