@@ -5,7 +5,10 @@ import { useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import { useI18n } from 'vue-i18n';
 import wootConstants from 'dashboard/constants/globals';
-import { getUserPermissions, hasReplyAssignedOnlyRestriction } from 'dashboard/helper/permissionsHelper';
+import {
+  getUserPermissions,
+  hasReplyAssignedOnlyRestriction,
+} from 'dashboard/helper/permissionsHelper';
 
 import Banner from 'dashboard/components/ui/Banner.vue';
 

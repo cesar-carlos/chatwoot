@@ -65,6 +65,14 @@ const clearFormState = () => {
   });
 };
 
+const contactById = useMapGetter('contacts/getContactById');
+const contactsUiFlags = useMapGetter('contacts/getUIFlags');
+const currentUser = useMapGetter('getCurrentUser');
+const globalConfig = useMapGetter('globalConfig/get');
+const uiFlags = useMapGetter('contactConversations/getUIFlags');
+const messageSignature = useMapGetter('getMessageSignature');
+const inboxesList = useMapGetter('inboxes/getInboxes');
+
 const applyAuthorizedContactInboxes = () => {
   if (!selectedContact.value) return;
 
@@ -81,14 +89,6 @@ const setRawContactInboxes = inboxes => {
   rawContactInboxes.value = inboxes || [];
   applyAuthorizedContactInboxes();
 };
-
-const contactById = useMapGetter('contacts/getContactById');
-const contactsUiFlags = useMapGetter('contacts/getUIFlags');
-const currentUser = useMapGetter('getCurrentUser');
-const globalConfig = useMapGetter('globalConfig/get');
-const uiFlags = useMapGetter('contactConversations/getUIFlags');
-const messageSignature = useMapGetter('getMessageSignature');
-const inboxesList = useMapGetter('inboxes/getInboxes');
 
 const sendWithSignature = computed(() =>
   fetchSignatureFlagFromUISettings(targetInbox.value?.channelType)

@@ -21,6 +21,7 @@ module Custom::Message::AgentOutgoingReopen
     conversation.open!
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- sequential reopen guards
   def should_reopen_for_agent_outgoing?
     return false if conversation.muted?
     return false unless outgoing?
@@ -34,4 +35,5 @@ module Custom::Message::AgentOutgoingReopen
 
     conversation.resolved? || conversation.snoozed?
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 end

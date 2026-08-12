@@ -15,10 +15,12 @@ describe('#routeIsAccessibleFor', () => {
   });
 
   it('allows inbox_view with inbox_view_manage but not conversation permissions alone', () => {
-    const route = { meta: { permissions: ['agent', 'administrator', 'inbox_view_manage'] } };
-    expect(routeIsAccessibleFor(route, ['conversation_participating_manage'])).toEqual(
-      false
-    );
+    const route = {
+      meta: { permissions: ['agent', 'administrator', 'inbox_view_manage'] },
+    };
+    expect(
+      routeIsAccessibleFor(route, ['conversation_participating_manage'])
+    ).toEqual(false);
     expect(routeIsAccessibleFor(route, ['inbox_view_manage'])).toEqual(true);
     expect(routeIsAccessibleFor(route, ['agent'])).toEqual(true);
   });

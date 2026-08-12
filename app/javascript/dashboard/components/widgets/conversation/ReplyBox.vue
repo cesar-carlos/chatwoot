@@ -254,7 +254,9 @@ export default {
       if (this.isEditorDisabled) {
         // FORK: custom role reply assigned only
         if (this.isReplyBlockedByAssigneeRestriction) {
-          return this.$t('CONVERSATION.FOOTER.MESSAGING_RESTRICTED_ASSIGNED_ONLY');
+          return this.$t(
+            'CONVERSATION.FOOTER.MESSAGING_RESTRICTED_ASSIGNED_ONLY'
+          );
         }
         if (this.isAWavoipChannel) {
           return this.$t('CONVERSATION.WAVOIP_VOICE_ONLY');
@@ -513,14 +515,10 @@ export default {
       return hasReplyAssignedOnlyRestriction(userPermissions);
     },
     isAssignedToCurrentUser() {
-      return (
-        this.currentChat?.meta?.assignee?.id === this.currentUser?.id
-      );
+      return this.currentChat?.meta?.assignee?.id === this.currentUser?.id;
     },
     isReplyBlockedByAssigneeRestriction() {
-      return (
-        this.isReplyRestrictedToAssignee && !this.isAssignedToCurrentUser
-      );
+      return this.isReplyRestrictedToAssignee && !this.isAssignedToCurrentUser;
     },
     // FORK: share contact card
     showShareContactButton() {

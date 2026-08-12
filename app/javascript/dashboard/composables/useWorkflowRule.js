@@ -37,7 +37,6 @@ const PHONE_REQUIRED_TYPES = [
   INBOX_TYPES.SMS,
 ];
 
-
 const clonePlain = value => JSON.parse(JSON.stringify(value));
 
 const toIds = values => {
@@ -189,8 +188,7 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
     const name = rule.value.actions[index].action_name;
     rule.value.actions[index] = {
       action_name: name,
-      action_params:
-        name === 'send_message_to_contact' ? [null, null, ''] : [],
+      action_params: name === 'send_message_to_contact' ? [null, null, ''] : [],
       counts_as_agent_reply: false,
     };
   };
@@ -253,7 +251,9 @@ export function useWorkflowRule(startValue = null, existingRules = []) {
 
       if (typeof contactValue !== 'object' || !contactValue) return false;
 
-      const hasPhone = !!(contactValue.phone_number || contactValue.phoneNumber);
+      const hasPhone = !!(
+        contactValue.phone_number || contactValue.phoneNumber
+      );
       const hasEmail = !!contactValue.email;
 
       if (PHONE_REQUIRED_TYPES.includes(inbox.channel_type) && !hasPhone) {

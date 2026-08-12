@@ -9,6 +9,15 @@ import { createContactSearcher } from 'dashboard/components-next/NewConversation
 import SingleSelect from 'dashboard/components-next/filter/inputs/SingleSelect.vue';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
 
+const props = defineProps({
+  actionParams: {
+    type: Array,
+    default: () => [null, null, ''],
+  },
+});
+
+const emit = defineEmits(['update:actionParams']);
+
 const SUPPORTED_INBOX_TYPES = [
   INBOX_TYPES.WHATSAPP,
   INBOX_TYPES.WAVOIP,
@@ -50,15 +59,6 @@ const SAMPLE_VALUES = {
   'account.name': 'Acme',
   'rule.name': 'Cliente sem resposta 15 min',
 };
-
-const props = defineProps({
-  actionParams: {
-    type: Array,
-    default: () => [null, null, ''],
-  },
-});
-
-const emit = defineEmits(['update:actionParams']);
 
 const { t } = useI18n();
 const store = useStore();
@@ -113,6 +113,125 @@ const selectedInboxRecord = computed(() => {
   return inboxRecords.value.find(inbox => inbox.id === inboxId) || null;
 });
 
+const emitParams = (inboxId, contactValue, messageValue) => {
+  emit('update:actionParams', [
+    inboxId ?? null,
+    contactValue ?? null,
+    messageValue ?? '',
+  ]);
+};
+
+const emitContact = contact => {
+  if (!contact?.id) {
+    contactMeta.value = { hasPhone: false, hasEmail: false };
+    if (props.actionParams?.[1] != null) {
+      emitParams(props.actionParams?.[0], null, props.actionParams?.[2]);
+    }
+    return;
+  }
+
+  const payload = {
+    id: contact.id,
+    name: contact.name,
+    phone_number: contact.phone_number || contact.phoneNumber || '',
+    email: contact.email || '',
+  };
+  contactMeta.value = {
+    hasPhone: !!payload.phone_number,
+    hasEmail: !!payload.email,
+  };
+
+  const current = props.actionParams?.[1];
+  if (
+    current &&
+    typeof current === 'object' &&
+    Number(current.id) === Number(payload.id) &&
+    (current.phone_number || current.phoneNumber || '') ===
+      payload.phone_number &&
+    (current.email || '') === payload.email
+  ) {
+    return;
+  }
+
+  emitParams(props.actionParams?.[0], payload, props.actionParams?.[2]);
+};
+
+const formatContactLabel = contact => {
+  const name =
+    contact.name || contact.email || contact.phoneNumber || `#${contact.id}`;
+  const detail = contact.email || contact.phoneNumber;
+  if (detail && contact.name) return `${name} (${detail})`;
+  return name;
+};
+
+const validateChannelMatch = () => {
+  const channel = selectedInboxRecord.value?.channel_type;
+  if (!channel || !selectedContact.value?.id) {
+    channelError.value = '';
+    return true;
+  }
+
+  if (PHONE_REQUIRED_TYPES.includes(channel) && !contactMeta.value.hasPhone) {
+    channelError.value = t(
+      'CONVERSATION_RULES.VALIDATION.CONTACT_CHANNEL_MISMATCH'
+    );
+    return false;
+  }
+
+  if (channel === INBOX_TYPES.EMAIL && !contactMeta.value.hasEmail) {
+    channelError.value = t(
+      'CONVERSATION_RULES.VALIDATION.CONTACT_CHANNEL_MISMATCH'
+    );
+    return false;
+  }
+
+  channelError.value = '';
+  return true;
+};
+
+const applyResolvedContact = contact => {
+  selectedContact.value = contact;
+  emitContact(contact);
+  validateChannelMatch();
+};
+
+const fetchContactById = async (contactId, fallbackName) => {
+  const id = Number(contactId);
+  if (!id) return;
+
+  if (
+    selectedContact.value?.id === id &&
+    (contactMeta.value.hasPhone || contactMeta.value.hasEmail)
+  ) {
+    return;
+  }
+
+  try {
+    const { data } = await ContactAPI.show(id);
+    const payload = data?.payload || data;
+    if (!payload?.id) return;
+
+    applyResolvedContact({
+      id: payload.id,
+      name: formatContactLabel({
+        id: payload.id,
+        name: payload.name,
+        email: payload.email,
+        phoneNumber: payload.phone_number,
+      }),
+      email: payload.email || '',
+      phone_number: payload.phone_number || '',
+    });
+  } catch {
+    applyResolvedContact({
+      id,
+      name: fallbackName || `#${id}`,
+      email: '',
+      phone_number: '',
+    });
+  }
+};
+
 const selectedInbox = computed({
   get() {
     const inboxId = props.actionParams?.[0];
@@ -122,7 +241,11 @@ const selectedInbox = computed({
     );
   },
   set(value) {
-    emitParams(value?.id ?? null, props.actionParams?.[1], props.actionParams?.[2]);
+    emitParams(
+      value?.id ?? null,
+      props.actionParams?.[1],
+      props.actionParams?.[2]
+    );
   },
 });
 
@@ -145,12 +268,6 @@ const contactFieldsFrom = contact => {
       '',
     email: contact.email || fromOptions?.email || '',
   };
-};
-
-const applyResolvedContact = contact => {
-  selectedContact.value = contact;
-  emitContact(contact);
-  validateChannelMatch();
 };
 
 const resolveSelectedContact = async contact => {
@@ -201,7 +318,9 @@ const messagePreview = computed(() => {
 const templateOptions = computed(() => [
   {
     key: 'attention',
-    label: t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.ATTENTION_LABEL'),
+    label: t(
+      'CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.ATTENTION_LABEL'
+    ),
     body: t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.ATTENTION_BODY'),
   },
   {
@@ -209,126 +328,18 @@ const templateOptions = computed(() => [
     label: t(
       'CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.ESCALATION_LABEL'
     ),
-    body: t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.ESCALATION_BODY'),
+    body: t(
+      'CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.ESCALATION_BODY'
+    ),
   },
   {
     key: 'reminder',
-    label: t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.REMINDER_LABEL'),
+    label: t(
+      'CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.REMINDER_LABEL'
+    ),
     body: t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.TEMPLATES.REMINDER_BODY'),
   },
 ]);
-
-const emitParams = (inboxId, contactValue, messageValue) => {
-  emit('update:actionParams', [
-    inboxId ?? null,
-    contactValue ?? null,
-    messageValue ?? '',
-  ]);
-};
-
-const emitContact = contact => {
-  if (!contact?.id) {
-    contactMeta.value = { hasPhone: false, hasEmail: false };
-    if (props.actionParams?.[1] != null) {
-      emitParams(props.actionParams?.[0], null, props.actionParams?.[2]);
-    }
-    return;
-  }
-
-  const payload = {
-    id: contact.id,
-    name: contact.name,
-    phone_number: contact.phone_number || contact.phoneNumber || '',
-    email: contact.email || '',
-  };
-  contactMeta.value = {
-    hasPhone: !!payload.phone_number,
-    hasEmail: !!payload.email,
-  };
-
-  const current = props.actionParams?.[1];
-  if (
-    current &&
-    typeof current === 'object' &&
-    Number(current.id) === Number(payload.id) &&
-    (current.phone_number || current.phoneNumber || '') === payload.phone_number &&
-    (current.email || '') === payload.email
-  ) {
-    return;
-  }
-
-  emitParams(props.actionParams?.[0], payload, props.actionParams?.[2]);
-};
-
-const formatContactLabel = contact => {
-  const name =
-    contact.name || contact.email || contact.phoneNumber || `#${contact.id}`;
-  const detail = contact.email || contact.phoneNumber;
-  if (detail && contact.name) return `${name} (${detail})`;
-  return name;
-};
-
-const validateChannelMatch = () => {
-  const channel = selectedInboxRecord.value?.channel_type;
-  if (!channel || !selectedContact.value?.id) {
-    channelError.value = '';
-    return true;
-  }
-
-  if (PHONE_REQUIRED_TYPES.includes(channel) && !contactMeta.value.hasPhone) {
-    channelError.value = t(
-      'CONVERSATION_RULES.VALIDATION.CONTACT_CHANNEL_MISMATCH'
-    );
-    return false;
-  }
-
-  if (channel === INBOX_TYPES.EMAIL && !contactMeta.value.hasEmail) {
-    channelError.value = t(
-      'CONVERSATION_RULES.VALIDATION.CONTACT_CHANNEL_MISMATCH'
-    );
-    return false;
-  }
-
-  channelError.value = '';
-  return true;
-};
-
-const fetchContactById = async (contactId, fallbackName) => {
-  const id = Number(contactId);
-  if (!id) return;
-
-  if (
-    selectedContact.value?.id === id &&
-    (contactMeta.value.hasPhone || contactMeta.value.hasEmail)
-  ) {
-    return;
-  }
-
-  try {
-    const { data } = await ContactAPI.show(id);
-    const payload = data?.payload || data;
-    if (!payload?.id) return;
-
-    applyResolvedContact({
-      id: payload.id,
-      name: formatContactLabel({
-        id: payload.id,
-        name: payload.name,
-        email: payload.email,
-        phoneNumber: payload.phone_number,
-      }),
-      email: payload.email || '',
-      phone_number: payload.phone_number || '',
-    });
-  } catch {
-    applyResolvedContact({
-      id,
-      name: fallbackName || `#${id}`,
-      email: '',
-      phone_number: '',
-    });
-  }
-};
 
 const loadSelectedContact = async contactValue => {
   if (!contactValue) {
@@ -503,7 +514,9 @@ defineExpose({
         v-if="showWhatsappWarning"
         class="text-xs text-n-amber-11 rounded-lg border border-n-amber-6 bg-n-amber-2 p-2.5"
       >
-        {{ $t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.WHATSAPP_WINDOW_WARNING') }}
+        {{
+          $t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.WHATSAPP_WINDOW_WARNING')
+        }}
       </p>
     </div>
 
@@ -524,7 +537,9 @@ defineExpose({
           <span
             class="size-4"
             :class="
-              isFavoriteSelected ? 'i-lucide-star-fill text-n-amber-11' : 'i-lucide-star'
+              isFavoriteSelected
+                ? 'i-lucide-star-fill text-n-amber-11'
+                : 'i-lucide-star'
             "
             aria-hidden="true"
           />

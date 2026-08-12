@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe 'Agent outgoing message reopen' do
+RSpec.describe Custom::Message::AgentOutgoingReopen do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
   let(:agent) { create(:user, account: account, role: :agent) }

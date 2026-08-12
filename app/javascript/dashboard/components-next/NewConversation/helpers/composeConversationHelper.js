@@ -107,7 +107,10 @@ export const mergeInboxDetails = (inboxesData, inboxesList = []) => {
 };
 
 // FORK: compose must only offer inboxes the agent is authorized to use
-export const filterAuthorizedInboxes = (inboxesData = [], allowedInboxes = []) => {
+export const filterAuthorizedInboxes = (
+  inboxesData = [],
+  allowedInboxes = []
+) => {
   if (!inboxesData.length) return [];
 
   const allowedIds = new Set(

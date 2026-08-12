@@ -88,7 +88,9 @@ export function useEditableAutomation() {
 
     // FORK: contact_message stores [inbox_id, contact_id, message]
     if (inputType === 'contact_message') {
-      return Array.isArray(params) && params.length ? [...params] : [null, null, ''];
+      return Array.isArray(params) && params.length
+        ? [...params]
+        : [null, null, ''];
     }
 
     if (inputType === 'multi_select' || inputType === 'search_select') {

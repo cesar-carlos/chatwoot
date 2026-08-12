@@ -68,13 +68,9 @@ class Custom::Conversations::AgentStartService
   end
 
   def prepare_active!(conversation)
-    if conversation.assignee_id.present? && conversation.assignee_id != user.id
-      raise CustomExceptions::Conversation::OpenAssignedToOtherAgent.new({})
-    end
+    raise CustomExceptions::Conversation::OpenAssignedToOtherAgent.new({}) if conversation.assignee_id.present? && conversation.assignee_id != user.id
 
-    unless conversation_visible?(conversation)
-      raise CustomExceptions::Conversation::OutsidePermissionScope.new({})
-    end
+    raise CustomExceptions::Conversation::OutsidePermissionScope.new({}) unless conversation_visible?(conversation)
 
     if conversation.pending?
       Custom::Conversations::OpenedByStamper.stamp!(
@@ -100,6 +96,7 @@ class Custom::Conversations::AgentStartService
     }
   end
 
+  # rubocop:disable Metrics/AbcSize -- mirrors ConversationBuilder create attrs
   def conversation_params
     additional_attributes = params[:additional_attributes]&.permit! || {}
     custom_attributes = params[:custom_attributes]&.permit! || {}
@@ -117,4 +114,5 @@ class Custom::Conversations::AgentStartService
       team_id: params[:team_id]
     }.merge(status)
   end
+  # rubocop:enable Metrics/AbcSize
 end

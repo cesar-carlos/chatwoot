@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-# rubocop:disable Style/ClassAndModuleChildren -- Zeitwerk expects CustomExceptions::Conversation module
 module CustomExceptions::Conversation
   class OpenAssignedToOtherAgent < CustomExceptions::Base
     def message
@@ -22,4 +21,3 @@ module CustomExceptions::Conversation
     end
   end
 end
-# rubocop:enable Style/ClassAndModuleChildren

@@ -116,8 +116,9 @@ const scrollToContactMessage = () => {
   nextTick(() => {
     nextTick(() => {
       const target =
-        actionsSectionRef.value?.querySelector('[data-contact-message-block]') ||
-        actionsSectionRef.value;
+        actionsSectionRef.value?.querySelector(
+          '[data-contact-message-block]'
+        ) || actionsSectionRef.value;
       target?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
   });
@@ -266,9 +267,14 @@ const contactMessageConfirmSummary = computed(() => {
   const inbox = (store.getters['inboxes/getInboxes'] || []).find(
     item => item.id === Number(inboxId)
   );
-  const contactLabel =
-    (contactValue && typeof contactValue === 'object' && contactValue.name) ||
-    (contactValue?.id ? `#${contactValue.id}` : contactValue ? `#${contactValue}` : '—');
+  let contactLabel = '—';
+  if (contactValue && typeof contactValue === 'object' && contactValue.name) {
+    contactLabel = contactValue.name;
+  } else if (contactValue?.id) {
+    contactLabel = `#${contactValue.id}`;
+  } else if (contactValue) {
+    contactLabel = `#${contactValue}`;
+  }
   const preview = String(message || '')
     .replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, key) => {
       const sample = {
@@ -755,10 +761,7 @@ onMounted(async () => {
               <p class="text-xs font-medium text-n-slate-11 mb-1">
                 {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.SKIPS') }}
               </p>
-              <p
-                v-if="!activity.skips.length"
-                class="text-sm text-n-slate-10"
-              >
+              <p v-if="!activity.skips.length" class="text-sm text-n-slate-10">
                 {{ $t('CONVERSATION_RULES.FORM.ACTIVITY.EMPTY_SKIPS') }}
               </p>
               <ul v-else class="flex flex-col gap-1">
