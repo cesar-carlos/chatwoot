@@ -13,8 +13,10 @@ Inventário do código após review pós-MVP (ago/2026). Specs custom: **17 exam
 | Phone sync | Evolution + Evolution Go `PhoneOutgoingSyncService` → `phone` |
 | WhatsApp inbound | `IncomingMessageServiceHelpers#conversation_params` → `contact` (ou `phone` se echo) |
 | Current cleanup | `IncomingMessageBaseService#set_conversation` limpa `Current.conversation_opened_by` no `ensure` |
-| Agent create | `Custom::Api::V1::Accounts::ConversationsController#create` → `agent` |
+| Agent create | `Custom::Api::V1::Accounts::ConversationsController#create` → `AgentStartService` + stamp `agent` |
+| Agent compose pending | `AgentStartService#prepare_active!` stamp `agent` ao promover pending → open |
 | Contact reopen | `Custom::Message::OpenedByTracking` antes de `open!`/`pending!` |
+| Agent reply reopen | `Custom::Message::AgentOutgoingReopen` — outgoing humano em resolved/snoozed → `open!` + stamp `agent` |
 | Agent reopen | Controller `toggle_status` → stamp `agent` se vai para `open` |
 | Wavoip reopen | `ConversationReopenService` → `contact` (pending/inbound) / `agent` (open/outbound) |
 | Wavoip create | Outbound linker → `agent`; inbound `Voice::InboundCallBuilder` → `contact` |

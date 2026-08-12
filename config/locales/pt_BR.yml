@@ -95,6 +95,8 @@ pt_BR:
       feature_not_enabled: SAML não está habilitado para esta conta
       sso_not_enabled: O SSO via SAML não está habilitado para esta instalação
     conversations:
+      open_assigned_to_other_agent: Esta conversa está aberta e atribuída a outro agente. Você não pode enviar uma nova mensagem até que ela seja resolvida ou atribuída a você.
+      outside_permission_scope: Você não tem permissão para iniciar uma conversa neste atendimento. Ele está fora do escopo das suas conversas.
       unread_counts:
         feature_not_enabled: O recurso de contagem de conversas não lidas não está habilitado para esta conta
     data_import:

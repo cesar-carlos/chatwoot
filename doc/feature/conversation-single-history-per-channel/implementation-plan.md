@@ -46,14 +46,17 @@ The `lock_to_single_conversation` flag, the UI toggle, and the backend logic alr
   - API/Public flows (`ConversationBuilder`)
 - Enterprise Voice (`Voice::InboundCallBuilder`) migrated to `Conversations::Resolver` (orchestration round 3)
 - Incoming messages can reopen resolved conversations through `Message#reopen_conversation` callback (`after_create_commit`)
+- Agent dashboard compose with `lock_to_single_conversation`: `Custom::Conversations::AgentStartService` reuses the latest conversation; if **resolved/snoozed**, reopens and assigns the initiating agent; if **open/pending** and assigned to another agent, returns **422**; if **open/pending** outside `ConversationPolicy#show?`, returns **422** `OutsidePermissionScope`
+- **Wavoip compose:** `AgentStartService` always reuses the latest conversation for the contact inbox (same as `Custom::Conversations::Resolver`), even when `lock_to_single_conversation` is false
+- Agent public outgoing replies also reopen resolved/snoozed via `Custom::Message::AgentOutgoingReopen` (incoming path unchanged)
 - Conversation status transitions: `open → resolved → open` handled by `Conversation#open!` / `Conversation#resolved!`
 
 ### How Conversation Reopen Works (Two-Part Mechanism)
 
 1. **Channel service** finds the conversation (including resolved when flag is `true`)
-2. **Message callback** (`Message#reopen_conversation` in `after_create_commit`) automatically calls `conversation.open!` on resolved conversations
+2. **Message callback** (`Message#reopen_conversation` in `after_create_commit`) automatically calls `conversation.open!` on resolved conversations for **incoming** messages; agent **outgoing** human replies use the Custom overlay for the same reopen
 
-No changes needed to this mechanism.
+Inbound channel selection stays on `Conversations::Resolver` (unchanged).
 
 ### Frontend
 

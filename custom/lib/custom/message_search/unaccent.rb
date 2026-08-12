@@ -50,6 +50,16 @@ module Custom::MessageSearch::Unaccent
 
   def check_extension_enabled
     connection = ActiveRecord::Base.connection
+    return false unless extension_installed?(connection)
+    return false unless unaccent_immutable_available?(connection)
+
+    true
+  rescue StandardError
+    false
+  end
+  private_class_method :check_extension_enabled
+
+  def extension_installed?(connection)
     if connection.respond_to?(:extension_enabled?)
       connection.extension_enabled?('unaccent')
     else
@@ -59,8 +69,14 @@ module Custom::MessageSearch::Unaccent
         )
       ).present?
     end
-  rescue StandardError
-    false
   end
-  private_class_method :check_extension_enabled
+  private_class_method :extension_installed?
+
+  def unaccent_immutable_available?(connection)
+    connection.select_value(
+      "SELECT 1 FROM pg_proc WHERE proname = 'unaccent_immutable' LIMIT 1"
+    ).present?
+  end
+  private_class_method :unaccent_immutable_available?
 end
+

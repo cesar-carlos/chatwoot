@@ -26,6 +26,7 @@ Permitindo ver:
 
 - **Caixa de Entrada (Inbox View):** permissão dedicada `inbox_view_manage` para controlar se o agente vê o feed de notificações / mensagens recentes — ver [`../custom-role-inbox-view-permission/implementation-plan.md`](../custom-role-inbox-view-permission/implementation-plan.md). Independente desta feature de escopo de conversas por time.
 - **Reply only when assigned:** permissão opt-in `conversation_reply_assigned_only` para permitir resposta apenas se a conversa estiver atribuída ao agente — ver [`../custom-role-reply-assigned-only/implementation-plan.md`](../custom-role-reply-assigned-only/implementation-plan.md). Independente do escopo de visão (`conversation_*`).
+- **Agent compose / reopen / search:** `Custom::Conversations::AgentStartService` (compose dashboard), reopen outgoing humano, e `Custom::SearchService` alinhado a `PermissionFilterService` — ver também [`../automation-opened-by/`](../automation-opened-by/) e [`../conversation-single-history-per-channel/implementation-plan.md`](../conversation-single-history-per-channel/implementation-plan.md).
 
 ## Objective
 
@@ -145,6 +146,18 @@ Arquivos implementados:
 | Policy fork | `custom/app/policies/custom/conversation_policy.rb` | Gate inbox + escopo por time |
 | Unread counts hook | `app/services/conversations/unread_counts/counter.rb` | `prepend_mod_with` (`FORK:`) |
 | Unread counts fork | `custom/app/services/custom/conversations/unread_counts/counter.rb` | Modo `:team_unassigned_and_mine` |
+| Search global | `custom/app/services/custom/search_service.rb` | Scope via `PermissionFilterService` (policy + list + search alinhados) |
+| Agent compose start | `custom/app/services/custom/conversations/agent_start_service.rb` | Create/reopen+assign; ativas exigem `show?`; open+outro / fora de escopo → 422 |
+
+### Access control surfaces (alinhadas)
+
+Condição de visibilidade deve permanecer coerente em:
+
+- Policy (`ConversationPolicy#show?`)
+- List filter (`PermissionFilterService` / ConversationFinder)
+- Counts / badges (unread overlay)
+- Frontend gate (`applyRoleFilter` / rotas)
+- **Global search** (`SearchService` → `permitted_conversations`)
 
 Diretriz:
 
@@ -429,6 +442,19 @@ Deliverables:
 1. **Participating vs assignee no frontend** — `applyRoleFilter` para `conversation_participating_manage` verifica assignee, não participant (comportamento pré-existente; lista de conversas não traz participants no payload; backend policy aceita participant).
 2. **Boot antes do fetch de inboxes iniciar** — Se `isFetching` ainda é `false` e a store de inboxes está vazia antes do dispatch do fetch, o gate continua fail-closed. Após o fetch iniciar (`isFetching: true`), a lista confia no backend até os IDs hidratarem.
 
+### Compose / search (fechados nesta entrega)
+
+| Regra | Comportamento |
+|-------|----------------|
+| Search global | Filtra pelo mesmo escopo de `PermissionFilterService` (não só inbox IDs) |
+| Compose inbox FE | Só oferece inboxes em `assigned_inboxes` / `getInboxes` (recomputa quando a store hidrata) |
+| Compose + conversa **open/pending** atribuída a outro | **422** `OpenAssignedToOtherAgent` |
+| Compose + conversa **open/pending** fora de `ConversationPolicy#show?` | **422** `OutsidePermissionScope` (ex.: unassigned de outro time) |
+| Compose + conversa **pending** no escopo | Promove a `open`, stamp `opened_by=agent`, assign se preciso |
+| Compose + conversa **resolved/snoozed** | Reabre + atribui ao iniciador **mesmo sem** `show?` (assimetria intencional de “iniciar conversa”) |
+| Compose + sem conversa | Cria + assignee = agente iniciador |
+| Compose Wavoip | Sempre reusa latest (paridade com Custom Resolver), independente do lock |
+
 ## Manual QA Checklist (pós-deploy / homologação)
 
 1. Role só com `conversation_team_unassigned_manage` → dashboard sem lista vazia falsa no boot (enquanto inboxes carregam)
@@ -436,6 +462,8 @@ Deliverables:
 3. Badges de label coerentes com unassigned do time (SINTER)
 4. Hierarquia: com `conversation_unassigned_manage` junto, prevalece unassigned amplo
 5. Deep link para conversa fora do escopo → 403 / unauthorized
+6. Search global: resultados só no escopo da role; abrir resultado não deve 401 por assimetria search×show
+7. Compose: open de outro agente → mensagem clara; unassigned fora do time → 422 escopo; resolved → reopen+assign; inboxes aparecem após hydrate
 
 ## Code Quality Improvements (Applied)
 

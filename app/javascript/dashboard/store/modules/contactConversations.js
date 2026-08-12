@@ -2,6 +2,7 @@ import * as types from '../mutation-types';
 import ContactAPI from '../../api/contacts';
 import ConversationApi from '../../api/conversations';
 import camelcaseKeys from 'camelcase-keys';
+import { ExceptionWithMessage } from 'shared/helpers/CustomErrors';
 
 export const createMessagePayload = (payload, message) => {
   const { content, cc_emails, bcc_emails } = message;
@@ -105,6 +106,11 @@ export const actions = {
 
       return data;
     } catch (error) {
+      const serverMessage =
+        error.response?.data?.message || error.response?.data?.error;
+      if (serverMessage) {
+        throw new ExceptionWithMessage(serverMessage);
+      }
       throw new Error(error);
     } finally {
       commit(types.default.SET_CONTACT_CONVERSATIONS_UI_FLAG, {

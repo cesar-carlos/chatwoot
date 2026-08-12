@@ -124,6 +124,43 @@ describe('composeConversationHelper', () => {
     });
   });
 
+  describe('filterAuthorizedInboxes', () => {
+    it('returns empty when there is no data or no allowed inboxes', () => {
+      expect(helpers.filterAuthorizedInboxes([], [{ id: 1 }])).toEqual([]);
+      expect(
+        helpers.filterAuthorizedInboxes([{ id: 1 }], [])
+      ).toEqual([]);
+    });
+
+    it('keeps only inboxes the agent is authorized to use', () => {
+      const inboxesData = [
+        { id: 1, name: 'Allowed' },
+        { id: 2, name: 'Denied' },
+        { id: '3', name: 'Also allowed' },
+      ];
+      const allowedInboxes = [{ id: 1 }, { id: 3 }];
+
+      expect(helpers.filterAuthorizedInboxes(inboxesData, allowedInboxes)).toEqual(
+        [
+          { id: 1, name: 'Allowed' },
+          { id: '3', name: 'Also allowed' },
+        ]
+      );
+    });
+
+    it('returns authorized inboxes after allowed list hydrates from empty', () => {
+      const inboxesData = [
+        { id: 10, name: 'WhatsApp' },
+        { id: 20, name: 'Email' },
+      ];
+
+      expect(helpers.filterAuthorizedInboxes(inboxesData, [])).toEqual([]);
+      expect(
+        helpers.filterAuthorizedInboxes(inboxesData, [{ id: 10 }, { id: 20 }])
+      ).toEqual(inboxesData);
+    });
+  });
+
   describe('mergeInboxDetails', () => {
     it('returns empty array if inboxesData is empty or null', () => {
       expect(helpers.mergeInboxDetails(null)).toEqual([]);

@@ -106,6 +106,18 @@ export const mergeInboxDetails = (inboxesData, inboxesList = []) => {
   });
 };
 
+// FORK: compose must only offer inboxes the agent is authorized to use
+export const filterAuthorizedInboxes = (inboxesData = [], allowedInboxes = []) => {
+  if (!inboxesData.length) return [];
+
+  const allowedIds = new Set(
+    (allowedInboxes || []).map(inbox => Number(inbox.id)).filter(Boolean)
+  );
+  if (!allowedIds.size) return [];
+
+  return inboxesData.filter(inbox => allowedIds.has(Number(inbox.id)));
+};
+
 export const prepareAttachmentPayload = (
   attachedFiles,
   directUploadsEnabled

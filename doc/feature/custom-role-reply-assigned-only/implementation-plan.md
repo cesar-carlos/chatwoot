@@ -107,6 +107,7 @@ Só deploy de código. **Sem rake/migration** — roles existentes permanecem se
 
 - Escopo de conversas por time: [`../custom-role-team-permission-normalization/implementation-plan.md`](../custom-role-team-permission-normalization/implementation-plan.md)
 - Caixa de Entrada (Inbox View): [`../custom-role-inbox-view-permission/implementation-plan.md`](../custom-role-inbox-view-permission/implementation-plan.md)
+- **Agent compose:** `Custom::Conversations::AgentStartService` atribui ao iniciador no create/reopen de conversa fechada, então `reply?` passa no happy path do compose. Conversa **open** de outro agente continua bloqueada no compose com **422** (mensagem clara) — distinto do **401** de `reply?` no ReplyBox.
 
 ## Definition of Done
 

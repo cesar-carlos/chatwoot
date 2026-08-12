@@ -122,6 +122,8 @@ en:
       feature_not_enabled: SAML feature not enabled for this account
       sso_not_enabled: SAML SSO is not enabled for this installation
     conversations:
+      open_assigned_to_other_agent: This conversation is open and assigned to another agent. You cannot start a new message here until it is resolved or reassigned to you.
+      outside_permission_scope: You do not have permission to start a conversation on this thread. It is outside your assigned conversation scope.
       unread_counts:
         feature_not_enabled: Conversation unread counts feature not enabled for this account
     data_import:
