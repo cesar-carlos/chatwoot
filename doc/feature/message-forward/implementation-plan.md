@@ -34,9 +34,17 @@ messageCanBeForwarded(message) // content || attachments.length
 
 ### 2. Resolve destino
 
-1. Se `destination.conversationId` → usar
-2. Senão `ContactAPI.getConversations(contactId, { inboxId })` → preferir `open`
-3. Senão `getContactableInboxes` → `ConversationApi.create({ inbox_id, contact_id, source_id, assignee_id })`
+Sempre `getContactableInboxes` → `ConversationApi.create` (`AgentStartService`), **mesmo** quando o modal já tem `conversationId`:
+
+- contactable overlay reusa `contact_inbox` existente (grupos `@g.us`, LID) em vez de exigir telefone
+- modal envia `conversation_id` (`display_id`) quando o destino veio de recentes; `AgentStartService` só honra se for do mesmo `contact_inbox`
+- sem conversa → cria + assignee = agente
+- resolved/snoozed → reopen + assign
+- open/pending atribuída a outro → **422** `OpenAssignedToOtherAgent`
+- open/pending fora de `show?` → **422** `OutsidePermissionScope`
+- open/pending no escopo → assign ao iniciador (inclusive se auto-assign roubar após `open!`), depois `messages#create`
+
+Não reutilizar `destination.conversationId` para `POST …/messages` direto: custom role com `conversation_reply_assigned_only` responde **401** (`reply?`) se o agente ainda não for assignee.
 
 ### 3. Payload de envio
 
@@ -124,9 +132,12 @@ MVP sem suite dedicada (regra: specs sob demanda). Smoke manual:
 1. Inbox `evolution_go` — encaminhar texto para conversa recente
 2. Encaminhar imagem para contato buscado (cria conversa se preciso)
 3. Selecionar 2 destinos — ambos recebem
-4. Destino sem permissão / falha de mídia — toast parcial ou failed
+4. Destino open de outro agente / fora de escopo — toast com mensagem 422 (não 401 genérico)
 5. Badge visível na bolha outgoing encaminhada
+6. Custom role com `conversation_reply_assigned_only`: encaminhar para conversa resolved/unassigned no escopo → reopen+assign e envia
+7. Grupo WhatsApp (`@g.us`) no mesmo inbox — prepare via contactable reusando CI, depois envia
+8. Com `lock_to_single_conversation` false e vários threads — `conversation_id` do modal reabre o chat escolhido
 
 ---
 
-*Última atualização: 16/jul/2026*
+*Última atualização: 13/ago/2026*

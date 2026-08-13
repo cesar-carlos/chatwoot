@@ -50,8 +50,8 @@ Encaminhar mensagem **estilo WhatsApp** no dashboard Chatwoot, **sem** endpoint 
 flowchart LR
   Menu[ContextMenu Forward] --> Modal[MessageForwardModal]
   Modal --> Pick[Recentes e busca]
-  Pick --> Resolve[Find or create conversation]
-  Resolve --> Clone[Fetch attachments plus MessageApi.create]
+  Pick --> Resolve[AgentStartService via conversations create]
+  Resolve --> Clone[MessageApi.create after assign]
   Clone --> Outbound[SendReplyJob to WhatsApp]
 ```
 
@@ -71,4 +71,4 @@ Cross-link provider: [evolution-go/decisions.md §34](../whatsapp-provider/evolu
 
 ---
 
-*Última atualização: 16/jul/2026*
+*Última atualização: 13/ago/2026*

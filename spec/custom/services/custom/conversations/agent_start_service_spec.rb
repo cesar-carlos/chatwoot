@@ -136,6 +136,31 @@ RSpec.describe Custom::Conversations::AgentStartService do
     expect(conversation.additional_attributes['opened_by']).to eq('agent')
   end
 
+  it 'keeps initiator as assignee when pending open! auto-assigns another agent' do
+    inbox.update!(enable_auto_assignment: true)
+    create(:inbox_member, user: other_agent, inbox: inbox)
+    existing = create(
+      :conversation,
+      account: account,
+      inbox: inbox,
+      contact: contact,
+      contact_inbox: contact_inbox,
+      status: :pending,
+      assignee: nil
+    )
+    allow(AutoAssignment::AgentAssignmentService).to receive(:new).and_wrap_original do |method, **kwargs|
+      service = method.call(**kwargs)
+      allow(service).to receive(:perform) { existing.update!(assignee: other_agent) }
+      service
+    end
+
+    conversation = perform_service
+
+    expect(conversation.id).to eq(existing.id)
+    expect(conversation.reload).to be_open
+    expect(conversation.assignee_id).to eq(agent.id)
+  end
+
   context 'with conversation_team_unassigned_manage custom role' do
     let(:agent_team) { create(:team, account: account) }
     let(:other_team) { create(:team, account: account) }
@@ -219,6 +244,62 @@ RSpec.describe Custom::Conversations::AgentStartService do
 
       expect { perform_service }.to change(Conversation, :count).by(1)
       expect(Conversation.order(:id).last.assignee_id).to eq(agent.id)
+    end
+
+    it 'reuses the conversation_id param when it belongs to the contact_inbox' do
+      older = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :open,
+        assignee: agent,
+        created_at: 2.days.ago
+      )
+      create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :open,
+        assignee: agent,
+        created_at: 1.hour.ago
+      )
+      params[:conversation_id] = older.display_id
+
+      conversation = perform_service
+
+      expect(conversation.id).to eq(older.id)
+    end
+
+    it 'ignores conversation_id from a different contact_inbox' do
+      other_contact = create(:contact, account: account)
+      other_ci = create(:contact_inbox, contact: other_contact, inbox: inbox)
+      foreign = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: other_contact,
+        contact_inbox: other_ci,
+        status: :open,
+        assignee: agent
+      )
+      own = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :open,
+        assignee: agent
+      )
+      params[:conversation_id] = foreign.display_id
+
+      conversation = perform_service
+
+      expect(conversation.id).to eq(own.id)
     end
   end
 end

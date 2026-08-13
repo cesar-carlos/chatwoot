@@ -59,7 +59,8 @@ module Custom::Messages::MessageBuilder
 
     blobs = Custom::Messages::AttachmentCloneService.new(
       account: @account,
-      attachment_ids: ids
+      attachment_ids: ids,
+      source_message_id: forwarded_from_message_id
     ).perform
     @attachments = Array.wrap(@attachments) + blobs
   end
@@ -67,6 +68,13 @@ module Custom::Messages::MessageBuilder
   def attachment_ids_from_params
     raw = @params[:attachment_ids] || @params['attachment_ids']
     Array.wrap(raw).compact_blank
+  end
+
+  def forwarded_from_message_id
+    attrs = content_attributes
+    return if attrs.blank?
+
+    attrs[:forwarded_from_message_id].presence || attrs['forwarded_from_message_id'].presence
   end
 end
 

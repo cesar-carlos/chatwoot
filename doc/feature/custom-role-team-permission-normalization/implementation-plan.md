@@ -26,7 +26,7 @@ Permitindo ver:
 
 - **Caixa de Entrada (Inbox View):** permissão dedicada `inbox_view_manage` para controlar se o agente vê o feed de notificações / mensagens recentes — ver [`../custom-role-inbox-view-permission/implementation-plan.md`](../custom-role-inbox-view-permission/implementation-plan.md). Independente desta feature de escopo de conversas por time.
 - **Reply only when assigned:** permissão opt-in `conversation_reply_assigned_only` para permitir resposta apenas se a conversa estiver atribuída ao agente — ver [`../custom-role-reply-assigned-only/implementation-plan.md`](../custom-role-reply-assigned-only/implementation-plan.md). Independente do escopo de visão (`conversation_*`).
-- **Agent compose / reopen / search:** `Custom::Conversations::AgentStartService` (compose dashboard), reopen outgoing humano, e `Custom::SearchService` alinhado a `PermissionFilterService` — ver também [`../automation-opened-by/`](../automation-opened-by/) e [`../conversation-single-history-per-channel/implementation-plan.md`](../conversation-single-history-per-channel/implementation-plan.md).
+- **Agent compose / reopen / search / forward:** `Custom::Conversations::AgentStartService` (compose dashboard **e** destino de encaminhar mensagem), reopen outgoing humano, e `Custom::SearchService` alinhado a `PermissionFilterService` — ver também [`../automation-opened-by/`](../automation-opened-by/), [`../conversation-single-history-per-channel/implementation-plan.md`](../conversation-single-history-per-channel/implementation-plan.md) e [`../message-forward/`](../message-forward/).
 
 ## Objective
 
@@ -450,10 +450,11 @@ Deliverables:
 | Compose inbox FE | Só oferece inboxes em `assigned_inboxes` / `getInboxes` (recomputa quando a store hidrata) |
 | Compose + conversa **open/pending** atribuída a outro | **422** `OpenAssignedToOtherAgent` |
 | Compose + conversa **open/pending** fora de `ConversationPolicy#show?` | **422** `OutsidePermissionScope` (ex.: unassigned de outro time) |
-| Compose + conversa **pending** no escopo | Promove a `open`, stamp `opened_by=agent`, assign se preciso |
+| Compose + conversa **pending** no escopo | Promove a `open`, stamp `opened_by=agent`, **força assignee = iniciador** (mesmo se auto-assign atribuir outro no `open!`) |
 | Compose + conversa **resolved/snoozed** | Reabre + atribui ao iniciador **mesmo sem** `show?` (assimetria intencional de “iniciar conversa”) |
 | Compose + sem conversa | Cria + assignee = agente iniciador |
 | Compose Wavoip | Sempre reusa latest (paridade com Custom Resolver), independente do lock |
+| Encaminhar mensagem | Mesmo `AgentStartService` no destino (não posta `messages#create` sem prepare); envia `conversation_id` opcional; contactable reusa CI de grupos/LID |
 
 ## Manual QA Checklist (pós-deploy / homologação)
 

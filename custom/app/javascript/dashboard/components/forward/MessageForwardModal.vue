@@ -114,7 +114,9 @@ const mapContactOption = contact => {
     props.inboxId
   );
   return {
-    key: conversationId ? `conversation:${conversationId}` : `contact:${contact.id}`,
+    key: conversationId
+      ? `conversation:${conversationId}`
+      : `contact:${contact.id}`,
     contactId: contact.id,
     conversationId,
     label: contact.name,
@@ -181,9 +183,7 @@ const handleConfirm = async () => {
     });
 
     if (results.failed === 0) {
-      useAlert(
-        t('CONVERSATION.FORWARD.SUCCESS', { count: results.succeeded })
-      );
+      useAlert(t('CONVERSATION.FORWARD.SUCCESS', { count: results.succeeded }));
       emit('done', results);
       close();
       return;
@@ -266,7 +266,10 @@ defineExpose({ open, close });
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-n-slate-11" for="forward-caption">
+        <label
+          class="text-xs font-medium text-n-slate-11"
+          for="forward-caption"
+        >
           {{ $t('CONVERSATION.FORWARD.CAPTION_LABEL') }}
         </label>
         <textarea
@@ -302,10 +305,7 @@ defineExpose({ open, close });
         <div class="text-xs font-medium text-n-slate-11">
           {{ $t('CONVERSATION.FORWARD.SEARCH_RESULTS') }}
         </div>
-        <p
-          v-if="isSearching"
-          class="px-1 py-2 text-xs text-n-slate-11"
-        >
+        <p v-if="isSearching" class="px-1 py-2 text-xs text-n-slate-11">
           {{ $t('CONVERSATION.FORWARD.SEARCHING') }}
         </p>
         <p
@@ -330,7 +330,10 @@ defineExpose({ open, close });
           />
           <div class="min-w-0 flex-1">
             <div class="truncate text-sm text-n-slate-12">{{ item.label }}</div>
-            <div v-if="item.phoneNumber" class="truncate text-xs text-n-slate-11">
+            <div
+              v-if="item.phoneNumber"
+              class="truncate text-xs text-n-slate-11"
+            >
               {{ item.phoneNumber }}
             </div>
           </div>
@@ -368,7 +371,10 @@ defineExpose({ open, close });
           />
           <div class="min-w-0 flex-1">
             <div class="truncate text-sm text-n-slate-12">{{ item.label }}</div>
-            <div v-if="item.phoneNumber" class="truncate text-xs text-n-slate-11">
+            <div
+              v-if="item.phoneNumber"
+              class="truncate text-xs text-n-slate-11"
+            >
               {{ item.phoneNumber }}
             </div>
           </div>

@@ -16,8 +16,12 @@ Inventário do que existe no codebase após o MVP de **pseudo-forward** (16/jul/
 | Busca | Contatos com telefone **ou** grupos WhatsApp (`is_whatsapp_group` / `@g.us`); reachability no inbox |
 | Texto | Cópia do `content` da origem (caption editável no modal) |
 | Mídia | Preferência: `attachment_ids[]` → clone ActiveStorage no servidor; fallback: fetch browser + `toSameOriginActiveStorageUrl` |
-| Persistência destino | `MessageApi.create` → `MessageBuilder` (+ clone) → `SendReplyJob` → provider outbound |
-| Conversão nova | Se contato sem conversa no inbox: `conversations#create` (sem message) + depois create message |
+| Persistência destino | `conversations#create` (`AgentStartService`) → `MessageApi.create` → `MessageBuilder` (+ clone) → `SendReplyJob` |
+| Destino existente | Sempre passa por `AgentStartService` (reopen+assign / 422 se open de outro agente ou fora de escopo) — **não** posta direto em `messages#create` |
+| `conversation_id` no prepare | Modal envia `display_id` selecionado; `AgentStartService` só honra se pertencer ao mesmo `contact_inbox` |
+| Grupos / LID | `Custom::Contacts::ContactableInboxesService` reusa `contact_inbox` existente (não exige telefone) |
+| Conversa nova | `AgentStartService` cria + assignee = agente que encaminhou; depois `messages#create` |
+| Clone de mídia | Com `forwarded_from_message_id`, só clona anexos da mensagem origem |
 | Badge dashboard | Chip “Forwarded” quando `content_attributes.forwarded` |
 | Feedback | Toasts sucesso / parcial / falha (EN) |
 | Navegação | Agente **permanece** na conversa atual após encaminhar |
@@ -61,9 +65,10 @@ Metadado gravado na mensagem **enviada** (destino):
 
 | Arquivo | Papel |
 |---------|-------|
-| `custom/app/javascript/dashboard/composables/useMessageForward.js` | Gate, recentes, busca/grupos, clone via `attachment_ids` ou fetch, loop de create |
+| `custom/app/javascript/dashboard/composables/useMessageForward.js` | Gate, recentes, busca/grupos, prepare via create, clone via `attachment_ids` ou fetch |
 | `custom/app/javascript/dashboard/components/forward/MessageForwardModal.vue` | Dialog de destino |
-| `custom/app/services/custom/messages/attachment_clone_service.rb` | Clone ActiveStorage blobs por `attachment_ids` |
+| `custom/app/services/custom/messages/attachment_clone_service.rb` | Clone ActiveStorage; opcionalmente amarra a `source_message_id` |
+| `custom/app/services/custom/contacts/contactable_inboxes_service.rb` | Reusa CI WhatsApp existente (grupos `@g.us`, LID) |
 | `custom/app/builders/custom/messages/message_builder.rb` | Merge de blobs clonados antes de `process_attachments` |
 
 ### Thin FORK (upstream)
@@ -80,11 +85,10 @@ Metadado gravado na mensagem **enviada** (destino):
 
 | API | Uso |
 |-----|-----|
-| `POST /api/v1/accounts/:id/conversations/:id/messages` | Enviar cópia |
-| `POST /api/v1/accounts/:id/conversations` | Criar conversa se necessário |
+| `POST /api/v1/accounts/:id/conversations` | Preparar destino (`AgentStartService`: find-or-start, reopen+assign) |
+| `POST /api/v1/accounts/:id/conversations/:id/messages` | Enviar cópia (depois do prepare; `reply?` passa porque o agente é assignee) |
 | `GET …/contacts/search` | Busca no modal |
-| `GET …/contacts/:id/conversations` | Achar conversa existente no inbox |
-| `GET …/contacts/:id/contactable_inboxes` | `source_id` para create |
+| `GET …/contacts/:id/contactable_inboxes` | `source_id` + inbox autorizada para create |
 
 ---
 
@@ -104,7 +108,8 @@ Metadado gravado na mensagem **enviada** (destino):
 - ADR: [evolution-go/decisions.md §34](../whatsapp-provider/evolution-go/decisions.md)
 - Status provider: [evolution-go/status.md](../whatsapp-provider/evolution-go/status.md)
 - Checklist: [evolution-go/validation-checklist.md](../whatsapp-provider/evolution-go/validation-checklist.md)
+- Custom role prepare: [`../custom-role-reply-assigned-only/implementation-plan.md`](../custom-role-reply-assigned-only/implementation-plan.md) · [`../custom-role-team-permission-normalization/implementation-plan.md`](../custom-role-team-permission-normalization/implementation-plan.md)
 
 ---
 
-*Última atualização: 28/jul/2026*
+*Última atualização: 13/ago/2026*
