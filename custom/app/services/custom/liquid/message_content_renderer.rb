@@ -4,7 +4,7 @@
 # plus rule/macro when Current.executed_by (or an explicit override) is present.
 class Custom::Liquid::MessageContentRenderer
   def self.render(template, conversation:, executed_by: Current.executed_by)
-    new(template:, conversation:, executed_by:).render
+    new(template: template, conversation: conversation, executed_by: executed_by).render
   end
 
   def initialize(template:, conversation:, executed_by: nil)

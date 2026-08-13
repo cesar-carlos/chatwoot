@@ -26,6 +26,7 @@ class Wavoip::Webhooks::Handlers::RecordHandler < Wavoip::Webhooks::Handlers::Ba
   def handle_call_record(call)
     current_policy = policy(call)
     return persist_record_meta!(call) if current_policy.persist_status_only?
+
     unless current_policy.attachable?
       schedule_retry_if_waiting_for_completion(call)
       return

@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass -- integration coverage for macro.name liquid
 RSpec.describe 'Macros::ExecutionService liquid macro.name' do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
@@ -24,3 +25,4 @@ RSpec.describe 'Macros::ExecutionService liquid macro.name' do
     Current.reset
   end
 end
+# rubocop:enable RSpec/DescribeClass

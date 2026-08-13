@@ -57,6 +57,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
     render json: { count: 0 }
   end
 
+  # rubocop:disable Metrics/MethodLength -- executions + skips payload
   def activity
     executions = @rule.conversation_workflow_rule_executions
                       .includes(:conversation)
@@ -86,6 +87,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
 
     render json: { executions: executions, skips: skips }
   end
+  # rubocop:enable Metrics/MethodLength
 
   private
 
@@ -111,15 +113,11 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
     )
 
     # MultiSelect may still send [{id, name}]; coerce to scalar ids.
-    if params.key?(:inbox_ids)
-      permitted[:inbox_ids] = normalize_id_list(params[:inbox_ids])
-    end
+    permitted[:inbox_ids] = normalize_id_list(params[:inbox_ids]) if params.key?(:inbox_ids)
 
     # action_params can be scalars OR nested hashes (send_email_to_team).
     # `action_params: []` only keeps scalars — reattach full params per action.
-    if params[:actions].present?
-      permitted[:actions] = Array(params[:actions]).map { |action| sanitize_action(action) }
-    end
+    permitted[:actions] = Array(params[:actions]).map { |action| sanitize_action(action) } if params[:actions].present?
 
     permitted
   end
@@ -154,15 +152,14 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
     }
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- hash/array coercion
   def normalize_action_params(raw_params)
     return [] if raw_params.blank?
 
     if raw_params.is_a?(Hash) || raw_params.respond_to?(:permitted?)
       hash = raw_params.respond_to?(:to_unsafe_h) ? raw_params.to_unsafe_h : raw_params
       # search_select often sends a single {id, name} object
-      if select_option_hash?(hash)
-        return [hash[:id] || hash['id']]
-      end
+      return [hash[:id] || hash['id']] if select_option_hash?(hash)
 
       return [hash.deep_stringify_keys]
     end
@@ -176,6 +173,7 @@ class Api::V1::Accounts::ConversationWorkflowRulesController < Api::V1::Accounts
       hash.deep_stringify_keys
     end
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   def select_option_hash?(hash)
     keys = hash.keys.map(&:to_s)

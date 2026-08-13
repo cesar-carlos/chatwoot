@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass -- integration coverage for opened_by stamping
 RSpec.describe 'Conversation opened_by tracking' do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
@@ -115,3 +116,4 @@ RSpec.describe 'Conversation opened_by tracking' do
     end
   end
 end
+# rubocop:enable RSpec/DescribeClass

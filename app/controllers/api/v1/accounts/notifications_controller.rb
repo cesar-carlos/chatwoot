@@ -62,7 +62,8 @@ class Api::V1::Accounts::NotificationsController < Api::V1::Accounts::BaseContro
 
   private
 
-  def authorize_notification_access! # FORK: custom role inbox view permission
+  # FORK: custom role inbox view permission
+  def authorize_notification_access!
     authorize(Notification, :access?)
   end
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class Wavoip::Calls::CallStatusApplier
+class Wavoip::Calls::CallStatusApplier # rubocop:disable Metrics/ClassLength -- status machine + meta
   # Monotonic ranks: never apply ringing over in_progress, etc.
   STATUS_RANK = {
     'ringing' => 1,
@@ -170,6 +170,7 @@ class Wavoip::Calls::CallStatusApplier
     base_meta
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- rank + terminal guards
   def transition_allowed?(call, mapped_status)
     return false if ignore_handled_remotely_while_claimed?(call)
 
@@ -187,6 +188,7 @@ class Wavoip::Calls::CallStatusApplier
     # Non-terminal: only same or higher rank (blocks in_progress → ringing).
     new_rank >= current_rank
   end
+  # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
   # Dashboard already claimed while still ringing awaiting ACTIVE. A late
   # HANDLED_REMOTELY (handset answered elsewhere) would force-complete and

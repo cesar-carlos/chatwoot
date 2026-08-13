@@ -113,9 +113,7 @@ class Wavoip::Calls::Broadcaster
   def inbox_member_pubsub_tokens
     user_ids = inbox.member_ids.dup
     channel = inbox.channel
-    if channel.is_a?(Channel::Wavoip) && channel.incoming_call_include_administrators?
-      user_ids |= channel.account.administrators.ids
-    end
+    user_ids |= channel.account.administrators.ids if channel.is_a?(Channel::Wavoip) && channel.incoming_call_include_administrators?
     User.where(id: user_ids).pluck(:pubsub_token).compact
   end
 

@@ -68,7 +68,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
   end
 
   # FORK: Evolution Go/Node WhatsApp reactions
-  # rubocop:disable Metrics/MethodLength -- provider case dispatch
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize -- provider case dispatch
   def evolution_go_react
     authorize_reply! # FORK: custom role reply assigned only
     provider = message.inbox.channel.provider
@@ -92,7 +92,7 @@ module Custom::Api::V1::Accounts::Conversations::MessagesController
     error_text = e.respond_to?(:user_message) ? e.user_message : e.message
     render json: { error: error_text.presence || e.message }, status: :unprocessable_entity
   end
-  # rubocop:enable Metrics/MethodLength
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
   # FORK: Evolution Go edit outgoing message (sync_edit_to_whatsapp)
   def evolution_go_edit

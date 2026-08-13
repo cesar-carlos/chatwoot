@@ -6,7 +6,7 @@ module Custom::Conversations::Resolver
     contact_inbox.with_lock do
       find_conversation || ::Conversation.create!(
         Custom::Conversations::OpenedByStamper.merge_create_params(
-          block ? block.call : conversation_params!
+          block ? yield : conversation_params!
         )
       )
     end

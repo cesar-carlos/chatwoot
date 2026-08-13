@@ -27,6 +27,7 @@ class Custom::ConversationWorkflow::ScopeMatcher
     true
   end
 
+  # rubocop:disable Metrics/CyclomaticComplexity -- sequential waiting guards
   def waiting_based_matches?
     return false unless @rule.status_names.include?(@conversation.status)
     return false if @conversation.waiting_since.blank?
@@ -36,6 +37,7 @@ class Custom::ConversationWorkflow::ScopeMatcher
 
     true
   end
+  # rubocop:enable Metrics/CyclomaticComplexity
 
   def unassigned_matches?
     return false unless @conversation.open?

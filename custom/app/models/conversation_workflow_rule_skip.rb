@@ -15,7 +15,7 @@ class ConversationWorkflowRuleSkip < ApplicationRecord
     prune!(rule)
   rescue StandardError => e
     Rails.logger.warn(
-      "[ConversationWorkflow] failed to record skip " \
+      '[ConversationWorkflow] failed to record skip ' \
       "(rule_id=#{rule&.id} action=#{action_name}): #{e.class} #{e.message}"
     )
   end
