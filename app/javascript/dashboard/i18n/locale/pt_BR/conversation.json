@@ -204,8 +204,6 @@
       "START_CALL_DEVICE_FAILED": "Não foi possível iniciar a chamada no dispositivo Wavoip: {detail}",
       "RECONNECTING": "Reconectando áudio da chamada…",
       "DEVICE_RECONNECTING": "Reconectando ao Wavoip…",
-      "MIC_DEVICE": "Microfone",
-      "SPEAKER_DEVICE": "Alto-falante",
       "CHANNELS_FULL": "Todas as linhas estão ocupadas neste dispositivo Wavoip. Encerre uma chamada em andamento ou aguarde uma linha liberar e tente novamente.",
       "ACCEPT_RECORD_FAILED": "Não foi possível registrar quem atendeu esta chamada. A ligação pode continuar, mas o atendimento pode não aparecer no histórico.",
       "ACCEPTED_ELSEWHERE_BY": "{agentName} atendeu esta chamada.",

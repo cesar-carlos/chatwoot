@@ -40,7 +40,7 @@ const wavoip = new Wavoip({
 | `startCall({ to, fromTokens? })` | Outbound | `useWavoipOutboundCall` |
 | `getDevices()` / `addDevices()` | Lifecycle por inbox | `useWavoipConnection` |
 | `wakeUpDevices()` | Antes de outbound se `hibernating` | `useWavoipConnection` |
-| `getMultimediaDevices()` | Seletor mic/speaker | `useWavoipMedia` (Fase 5+) |
+| `getMultimediaDevices()` | Não usado na UI — o SDK usa o mic/speaker padrão do SO | — |
 
 ---
 
@@ -118,9 +118,9 @@ Fonte: [Mídia](https://wavoip.gitbook.io/api/wavoip-api/conceitos-fundamentais/
 
 | API | Uso Chatwoot |
 |-----|--------------|
-| `getMultimediaDevices()` | Lista mics/speakers |
-| `wavoip.multimedia` | Dispositivo ativo atual |
-| Troca de microfone | `FloatingCallWidget` mute já cobre mic da call; seletor global = Fase 5 |
+| `getMultimediaDevices()` | Não enumerado na UI — o SDK usa o dispositivo padrão do SO |
+| `wavoip.multimedia` | Disponível no SDK; o widget não troca dispositivo |
+| Troca de microfone | Mute no `FloatingCallWidget`; troca de aparelho nas configurações do SO |
 
 **Regra do navegador:** `offer.accept()` deve ocorrer em gesto do usuário, conforme a
 documentação oficial. Por consistência com políticas de mídia/autoplay, iniciar outbound
@@ -343,7 +343,6 @@ Handler em `useWavoipActiveCall` / `useWavoipIncomingOffer` → toast + buffer n
 | `useWavoipIncomingOffer` | `Offer`, `wavoip.on('offer')` |
 | `useWavoipOutboundCall` | `CallOutgoing`, `startCall` |
 | `useWavoipActiveCall` | `CallActive`, mute/end/events |
-| `useWavoipMedia` | `getMultimediaDevices`, `multimedia` |
 | `WavoipDevicePanel` + `useWavoipQrSession` | `qrCodeChanged`, `pairingCode`, wake/reconnect/restart |
 | `wavoipDiagnosticsCollector` | `iceDiagnostics`, `connectivityIssue`, `stats` |
 

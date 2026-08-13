@@ -228,8 +228,6 @@
       "START_CALL_DEVICE_FAILED": "Could not start the call on Wavoip device: {detail}",
       "RECONNECTING": "Reconnecting call audio…",
       "DEVICE_RECONNECTING": "Reconnecting to Wavoip…",
-      "MIC_DEVICE": "Microphone",
-      "SPEAKER_DEVICE": "Speaker",
       "CHANNELS_FULL": "All lines are busy on this Wavoip device. End an active call or wait for a line to free up, then try again.",
       "ACCEPT_RECORD_FAILED": "Could not record who answered this call. The call may still work, but acceptance may not appear in history.",
       "ACCEPTED_ELSEWHERE_BY": "{agentName} answered this call.",
