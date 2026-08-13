@@ -19,7 +19,8 @@ RSpec.describe Wavoip::Calls::StatusMapper do
       'REJECTED' => 'failed',
       'FAILED' => 'failed',
       'CONNECTION_LOST' => 'failed',
-      'REMOTE_CALL_IN_PROGRESS' => nil
+      'REMOTE_CALL_IN_PROGRESS' => nil,
+      'DISCONNECTED' => nil
     }.each do |external_status, expected|
       it "maps #{external_status} to #{expected.inspect}" do
         expect(mapper.to_call_status(external_status)).to eq(expected)

@@ -25,6 +25,9 @@ RSpec.describe 'Wavoip Inboxes API extensions', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body['device_token']).to eq(channel.device_token)
+      expect(response.parsed_body['ice_servers']).to eq(
+        [{ 'urls' => ['stun:stun.l.google.com:19302'] }]
+      )
     end
 
     it 'returns unauthorized for agent not in inbox' do
@@ -73,20 +76,13 @@ RSpec.describe 'Wavoip Inboxes API extensions', type: :request do
   describe 'POST /api/v1/accounts/:account_id/inboxes/:id/test_wavoip_webhook' do
     include ActiveJob::TestHelper
 
-    it 'enqueues a DEVICE fixture webhook test job for administrator' do
-      expect do
-        post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/test_wavoip_webhook",
-             headers: admin.create_new_auth_token
-      end.to have_enqueued_job(Wavoip::ProcessWebhookJob).with(
-        inbox.id,
-        hash_including('type' => 'DEVICE', 'status' => 'open')
-      )
+    it 'processes a DEVICE fixture webhook test for administrator' do
+      post "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}/test_wavoip_webhook",
+           headers: admin.create_new_auth_token
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body['ok']).to be(true)
-      expect(response.parsed_body['webhook_verified']).to be(false)
-
-      perform_enqueued_jobs
+      expect(response.parsed_body['webhook_verified']).to be(true)
       expect(channel.reload.webhook_verified?).to be(true)
     end
 

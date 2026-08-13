@@ -3,7 +3,9 @@
 class Wavoip::Calls::StatusMapper
   RINGING = %w[INCOMING_RING OUTGOING_RING OUTGOING_CALLING CONNECTING CALLING].freeze
   FAILED = %w[REJECTED FAILED CONNECTION_LOST].freeze
-  IGNORE = %w[REMOTE_CALL_IN_PROGRESS].freeze
+  # DISCONNECTED is a recoverable WhatsApp media-leg drop in the browser SDK.
+  # If a webhook ever sends it, keep the CRM call in_progress until ENDED/CONNECTION_LOST.
+  IGNORE = %w[REMOTE_CALL_IN_PROGRESS DISCONNECTED].freeze
 
   DIRECT_STATUS_MAP = {
     'ACTIVE' => 'in_progress',

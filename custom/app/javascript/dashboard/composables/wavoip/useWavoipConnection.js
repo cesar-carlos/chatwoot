@@ -29,6 +29,10 @@ import { normalizeWavoipDeviceStatus } from 'customDashboard/lib/wavoip/wavoipDe
 import { shouldAgentReceiveWavoipCalls } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
 import { recordConnectivityIssue } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 import { getActiveProviderCallId } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
+import {
+  iceConfigFromBootstrap,
+  wavoipIceConfigKey,
+} from 'customDashboard/lib/wavoip/wavoipIceConfig';
 
 const BOOTSTRAP_CACHE_TTL_MS = 15_000;
 const WS_READY_TIMEOUT_MS = 15_000;
@@ -54,20 +58,21 @@ const clearBootstrapCache = inboxId => {
   bootstrapCache.clear();
 };
 
-const fetchBootstrapToken = async (inboxId, { bypassCache = false } = {}) => {
+const fetchBootstrap = async (inboxId, { bypassCache = false } = {}) => {
   if (!bypassCache) {
     const cached = bootstrapCache.get(inboxId);
     if (cached && Date.now() - cached.fetchedAt < BOOTSTRAP_CACHE_TTL_MS) {
-      return cached.token;
+      return cached;
     }
   }
 
   const { data } = await InboxesAPI.getWavoipSdkBootstrap(inboxId);
   const token = data?.device_token;
+  const iceConfig = iceConfigFromBootstrap(data);
   if (token) {
-    bootstrapCache.set(inboxId, { token, fetchedAt: Date.now() });
+    bootstrapCache.set(inboxId, { token, iceConfig, fetchedAt: Date.now() });
   }
-  return token;
+  return { token, iceConfig };
 };
 
 const getAssignedWavoipInboxes = store => {
@@ -190,15 +195,15 @@ async function ensureDeviceReady(client, inboxId) {
 }
 
 /**
- * Wait until Device.connectionStatus is connected (or still unknown), or until
- * disconnected / timeout. Used before offer.accept so we don't hang on a dead WS.
+ * Wait until Device.connectionStatus is connected (or still unknown).
+ * `disconnected` is transient — the SDK retries a few times — so we wait the
+ * full timeout instead of failing on the first drop.
  */
 async function waitForWebSocketConnected(
   inboxId,
   timeoutMs = WS_READY_TIMEOUT_MS
 ) {
   if (isWavoipWebSocketReady(inboxId)) return true;
-  if (isWavoipWebSocketDisconnected(inboxId)) return false;
 
   return new Promise(resolve => {
     const startedAt = Date.now();
@@ -208,10 +213,7 @@ async function waitForWebSocketConnected(
         resolve(true);
         return;
       }
-      if (
-        isWavoipWebSocketDisconnected(inboxId) ||
-        Date.now() - startedAt >= timeoutMs
-      ) {
+      if (Date.now() - startedAt >= timeoutMs) {
         clearInterval(timer);
         resolve(isWavoipWebSocketReady(inboxId));
       }
@@ -222,7 +224,7 @@ async function waitForWebSocketConnected(
 export function useWavoipConnection() {
   const store = useStore();
 
-  const establishInboxConnection = async (inboxId, token) => {
+  const establishInboxConnection = async (inboxId, token, iceConfig) => {
     if (!token) return null;
 
     const inFlight = connectInboxPromises.get(inboxId);
@@ -232,7 +234,9 @@ export function useWavoipConnection() {
       connectingCount.value += 1;
       try {
         sdkBootstrapTokens.set(inboxId, token);
-        const client = await connectWavoipInbox(inboxId, token);
+        const client = iceConfig
+          ? await connectWavoipInbox(inboxId, token, { iceConfig })
+          : await connectWavoipInbox(inboxId, token);
         wireDeviceListeners(inboxId, client);
         connectedInboxIds.add(inboxId);
         return client;
@@ -268,18 +272,23 @@ export function useWavoipConnection() {
 
     if (connectedInboxIds.has(inboxId)) {
       const existingEntry = getWavoipClientEntry(inboxId);
-      // Bypass cache so rotated tokens are detected promptly (GAP-03).
-      const freshToken = await fetchBootstrapToken(inboxId, {
+      // Bypass cache so rotated tokens / ICE config are detected promptly.
+      const bootstrap = await fetchBootstrap(inboxId, {
         bypassCache: true,
       });
+      const freshToken = bootstrap.token;
+      const iceConfig = bootstrap.iceConfig;
       if (freshToken) sdkBootstrapTokens.set(inboxId, freshToken);
 
       const tokenChanged =
         Boolean(freshToken) && existingEntry?.token !== freshToken;
+      const iceChanged =
+        wavoipIceConfigKey(iceConfig) !== (existingEntry?.iceConfigKey || '');
       // Dead WebSocket: cached client is unusable for offer/accept — rebuild.
       const mustReconnect =
         forceReconnect ||
         tokenChanged ||
+        iceChanged ||
         isWavoipWebSocketDisconnected(inboxId);
 
       if (!mustReconnect && freshToken && existingEntry?.token === freshToken) {
@@ -289,12 +298,13 @@ export function useWavoipConnection() {
       await dropInboxConnection(inboxId);
       return establishInboxConnection(
         inboxId,
-        freshToken || existingEntry?.token
+        freshToken || existingEntry?.token,
+        iceConfig
       );
     }
 
-    const token = await fetchBootstrapToken(inboxId);
-    return establishInboxConnection(inboxId, token);
+    const { token, iceConfig } = await fetchBootstrap(inboxId);
+    return establishInboxConnection(inboxId, token, iceConfig);
   };
 
   const connectForInbox = async (inboxId, options = {}) => {

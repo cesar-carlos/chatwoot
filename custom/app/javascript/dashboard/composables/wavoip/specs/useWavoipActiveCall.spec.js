@@ -47,10 +47,11 @@ describe('useWavoipActiveCall', () => {
     );
   });
 
-  it('tears down the active call when SDK emits status DISCONNECTED (2.6.3+)', () => {
+  it('keeps the active call when SDK emits recoverable status DISCONNECTED', () => {
     const handlers = {};
     const sdkCall = {
       connectionStatus: 'connected',
+      status: 'ACTIVE',
       on: vi.fn((event, handler) => {
         handlers[event] = handler;
       }),
@@ -70,6 +71,56 @@ describe('useWavoipActiveCall', () => {
 
     handlers.status('DISCONNECTED');
 
-    expect(store.calls.some(c => c.callSid === 'live_1')).toBe(false);
+    expect(store.calls.some(c => c.callSid === 'live_1')).toBe(true);
+  });
+
+  it('restores the live call when SDK emits ACTIVE after DISCONNECTED', () => {
+    const handlers = {};
+    const sdkCall = {
+      connectionStatus: 'connected',
+      status: 'ACTIVE',
+      on: vi.fn((event, handler) => {
+        handlers[event] = handler;
+      }),
+      off: vi.fn(),
+    };
+
+    const store = useCallsStore();
+    store.addCall({
+      callSid: 'live_2',
+      provider: 'wavoip',
+      inboxId: 7,
+      isActive: true,
+    });
+
+    setActiveCall(sdkCall, { providerCallId: 'live_2', inboxId: 7 });
+    handlers.status('DISCONNECTED');
+    handlers.status('ACTIVE');
+
+    expect(store.calls.some(c => c.callSid === 'live_2')).toBe(true);
+  });
+
+  it('tears down the active call when local transport emits disconnected', () => {
+    const handlers = {};
+    const sdkCall = {
+      connectionStatus: 'connected',
+      on: vi.fn((event, handler) => {
+        handlers[event] = handler;
+      }),
+      off: vi.fn(),
+    };
+
+    const store = useCallsStore();
+    store.addCall({
+      callSid: 'live_3',
+      provider: 'wavoip',
+      inboxId: 7,
+      isActive: true,
+    });
+
+    setActiveCall(sdkCall, { providerCallId: 'live_3', inboxId: 7 });
+    handlers.connectionStatus('disconnected');
+
+    expect(store.calls.some(c => c.callSid === 'live_3')).toBe(false);
   });
 });

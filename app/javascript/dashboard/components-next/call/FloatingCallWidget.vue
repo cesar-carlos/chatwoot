@@ -70,6 +70,7 @@ const {
   setMuted: setWavoipMuted,
   isMuted: wavoipIsMuted,
   mediaConnectionStatus,
+  callLegStatus,
 } = useWavoipActiveCall();
 // Wavoip owns its own isMuted state (reset on setActiveCall/clearActiveCall,
 // and it's the value actually wired to the SDK's mute/unmute calls) — read it
@@ -114,6 +115,9 @@ const deviceConnectionStatus = computed(() => {
 });
 
 const connectionBannerMessage = computed(() => {
+  if (isWavoipActive.value && callLegStatus.value === 'DISCONNECTED') {
+    return t('CONVERSATION.WAVOIP_CALL.RECONNECTING');
+  }
   if (isWavoipActive.value && mediaConnectionStatus.value === 'reconnecting') {
     return t('CONVERSATION.WAVOIP_CALL.RECONNECTING');
   }

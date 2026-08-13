@@ -120,8 +120,8 @@ export function useWavoipOutboundCall() {
   const initiateOutboundCall = async (conversationId, { inboxId, toPhone }) => {
     if (isInitiating.value) return { status: 'locked' };
 
-    // Fail fast with a specific, actionable message instead of letting a
-    // restricted/full device reach the SDK and surface a generic error.
+    // Fail fast when all lines are busy instead of letting startCall
+    // surface a generic SDK error.
     const blockedReasonKey = wavoipOutboundBlockedReasonKey(inboxId);
     if (blockedReasonKey) {
       throw new Error(t(blockedReasonKey));

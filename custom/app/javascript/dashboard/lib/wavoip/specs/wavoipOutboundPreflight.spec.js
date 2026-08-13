@@ -1,8 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  setWavoipRestricted,
   setWavoipActiveCalls,
   setWavoipNumChannels,
+  setWavoipRestricted,
   clearWavoipDeviceStatus,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
 import { wavoipOutboundBlockedReasonKey } from '../wavoipOutboundPreflight';
@@ -18,14 +17,12 @@ describe('wavoipOutboundBlockedReasonKey', () => {
     expect(wavoipOutboundBlockedReasonKey(inboxId)).toBeNull();
   });
 
-  it('flags a Meta-restricted device before capacity', () => {
+  it('does not block a Meta-restricted device (backend decides)', () => {
     setWavoipRestricted(inboxId, true);
-    setWavoipNumChannels(inboxId, 1);
+    setWavoipNumChannels(inboxId, 2);
     setWavoipActiveCalls(inboxId, 1);
 
-    expect(wavoipOutboundBlockedReasonKey(inboxId)).toBe(
-      'INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'
-    );
+    expect(wavoipOutboundBlockedReasonKey(inboxId)).toBeNull();
   });
 
   it('flags a device at channel capacity', () => {

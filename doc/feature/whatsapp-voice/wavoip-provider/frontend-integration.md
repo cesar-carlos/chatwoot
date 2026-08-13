@@ -91,7 +91,7 @@ stateDiagram-v2
 | Agente **offline** | `removeDevices([token])` e remover listeners |
 | Troca de conta / logout | Remover devices/listeners de todas as instâncias |
 | Navega para inbox não-Wavoip | Manter conexão se agente atende múltiplos inboxes Wavoip |
-| `connectionStatus` → `disconnected` | Banner `DEVICE_DISCONNECTED`; no próximo `connectForInbox` / accept → **force reconnect** (drop client + rebuild) |
+| `connectionStatus` → `disconnected` | Banner `DEVICE_DISCONNECTED`. `connectForInbox` espera o retry do SDK (~15s) antes de force-reconnect. Em chamada ativa, `connectionStatus` `"disconnected"` (transporte local após ~30s) encerra o widget; `status` `"DISCONNECTED"` só mostra banner de reconexão. |
 | Token rotacionado no bootstrap | `connectInbox` busca token com `bypassCache: true` quando já havia client — reconecta se mudou |
 
 Implementar em `useWavoipConnection.js` — **não** misturar com lógica de offer/outbound.
