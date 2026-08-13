@@ -36,9 +36,11 @@ class Wavoip::RetryRecordAttachmentJob < ApplicationJob
   end
 
   def handle_not_completed(call, ctx)
-    return log_retry_exhausted(
-      "call not completed call_id=#{call.id} status=#{call.status}"
-    ) if ctx.attempt >= MAX_ATTEMPTS
+    if ctx.attempt >= MAX_ATTEMPTS
+      return log_retry_exhausted(
+        "call not completed call_id=#{call.id} status=#{call.status}"
+      )
+    end
 
     retry_later(ctx)
   end

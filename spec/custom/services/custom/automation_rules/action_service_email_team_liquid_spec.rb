@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass -- integration coverage for send_email_to_team liquid
 RSpec.describe 'AutomationRules::ActionService send_email_to_team liquid' do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
@@ -33,3 +34,4 @@ RSpec.describe 'AutomationRules::ActionService send_email_to_team liquid' do
     AutomationRules::ActionService.new(rule, account, conversation).perform
   end
 end
+# rubocop:enable RSpec/DescribeClass

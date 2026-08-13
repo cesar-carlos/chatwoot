@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class Custom::ConversationWorkflow::SendMessageToContactService
+  # rubocop:disable Metrics/ParameterLists -- workflow send needs trigger + destination context
   def initialize(account:, rule:, conversation:, inbox_id:, contact_id:, message_template:)
     @account = account
     @rule = rule
@@ -9,7 +10,9 @@ class Custom::ConversationWorkflow::SendMessageToContactService
     @contact_id = contact_id
     @message_template = message_template
   end
+  # rubocop:enable Metrics/ParameterLists
 
+  # rubocop:disable Metrics/AbcSize, Metrics/MethodLength -- interpolate, resolve dest, send
   def perform
     # Interpolate against the *trigger* conversation (not the target) before MessageBuilder,
     # otherwise Liquidable would resolve vars from the destination contact.
@@ -83,6 +86,7 @@ class Custom::ConversationWorkflow::SendMessageToContactService
     )
     ChatwootExceptionTracker.new(e, account: @account).capture_exception
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
 
   private
 

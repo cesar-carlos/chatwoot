@@ -27,10 +27,6 @@ namespace :fork do
 end
 
 # Run before the stock assets:precompile / vite:build chain.
-if Rake::Task.task_defined?('assets:precompile')
-  Rake::Task['assets:precompile'].enhance(['fork:invalidate_vite_stamp_if_custom_js_changed'])
-end
+Rake::Task['assets:precompile'].enhance(['fork:invalidate_vite_stamp_if_custom_js_changed']) if Rake::Task.task_defined?('assets:precompile')
 
-if Rake::Task.task_defined?('vite:build')
-  Rake::Task['vite:build'].enhance(['fork:invalidate_vite_stamp_if_custom_js_changed'])
-end
+Rake::Task['vite:build'].enhance(['fork:invalidate_vite_stamp_if_custom_js_changed']) if Rake::Task.task_defined?('vite:build')

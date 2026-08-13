@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass -- integration coverage for opened_by automation condition
 RSpec.describe 'Automation opened_by condition' do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
@@ -91,3 +92,4 @@ RSpec.describe 'Automation opened_by condition' do
     expect(rule.conditions.first['attribute_key']).to eq('opened_by')
   end
 end
+# rubocop:enable RSpec/DescribeClass

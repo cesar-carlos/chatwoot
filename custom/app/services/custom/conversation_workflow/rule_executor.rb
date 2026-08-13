@@ -43,13 +43,7 @@ class Custom::ConversationWorkflow::RuleExecutor
 
   def order_column_for_trigger
     case @rule.trigger_type
-    when 'conversation_inactivity', 'pending_stale'
-      'conversations.last_activity_at'
-    when 'agent_no_reply', 'first_response_overdue'
-      'conversations.waiting_since'
-    when 'unassigned_too_long'
-      'conversations.created_at'
-    when 'customer_no_reply'
+    when 'conversation_inactivity', 'pending_stale', 'customer_no_reply'
       'conversations.last_activity_at'
     end
   end
