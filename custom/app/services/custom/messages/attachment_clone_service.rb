@@ -5,14 +5,15 @@
 class Custom::Messages::AttachmentCloneService
   FORWARDABLE_FILE_TYPES = %w[image audio video file].freeze
 
-  pattr_initialize [:account!, :attachment_ids!]
+  pattr_initialize [:account!, :attachment_ids!, { source_message_id: nil }]
 
   def perform
     ids = Array.wrap(attachment_ids).map(&:to_i).uniq
     return [] if ids.blank?
 
     sources = Attachment.where(account_id: account.id, id: ids, file_type: FORWARDABLE_FILE_TYPES)
-                        .includes(file_attachment: :blob)
+    sources = sources.where(message_id: source_message_id) if source_message_id.present?
+    sources = sources.includes(file_attachment: :blob)
     by_id = sources.index_by(&:id)
 
     ids.filter_map { |id| clone_attachment(by_id[id]) }

@@ -2,7 +2,6 @@
 import ContactAPI from 'dashboard/api/contacts';
 import ConversationApi from 'dashboard/api/conversations';
 import MessageApi from 'dashboard/api/inbox/message';
-import { createPendingMessage } from 'dashboard/helper/commons';
 import { toSameOriginActiveStorageUrl } from 'customDashboard/helper/sameOriginActiveStorageUrl';
 import getUuid from 'widget/helpers/uuid';
 
@@ -66,8 +65,8 @@ function attachmentFileName(attachment, index) {
   if (fromUrl && fromUrl.includes('.')) return decodeURIComponent(fromUrl);
 
   const type = attachmentFileType(attachment) || 'file';
-  const extension =
-    type === 'image' ? 'jpg' : type === 'audio' ? 'ogg' : type === 'video' ? 'mp4' : 'bin';
+  const extensionByType = { image: 'jpg', audio: 'ogg', video: 'mp4' };
+  const extension = extensionByType[type] || 'bin';
   return `attachment-${index + 1}.${extension}`;
 }
 
@@ -86,33 +85,36 @@ export function extractErrorMessage(error, fallback = 'Forward failed') {
   return fallback;
 }
 
-export async function fetchAttachmentFiles(attachments = []) {
-  const files = [];
-  const list = Array.isArray(attachments) ? attachments : [];
-
-  for (let i = 0; i < list.length; i += 1) {
-    const attachment = list[i];
-    if (!FORWARDABLE_FILE_TYPES.includes(attachmentFileType(attachment))) {
-      continue;
-    }
-
-    const url = toSameOriginActiveStorageUrl(attachmentUrl(attachment));
-    if (!url) {
-      throw new Error('Attachment URL is missing');
-    }
-
-    const response = await fetch(url, { credentials: 'same-origin' });
-    if (!response.ok) {
-      throw new Error(`Failed to download attachment (${response.status})`);
-    }
-    const blob = await response.blob();
-    const type =
-      blob.type ||
-      attachment?.content_type ||
-      attachment?.contentType ||
-      'application/octet-stream';
-    files.push(new File([blob], attachmentFileName(attachment, i), { type }));
+async function downloadAttachmentFile(attachment, index) {
+  const url = toSameOriginActiveStorageUrl(attachmentUrl(attachment));
+  if (!url) {
+    throw new Error('Attachment URL is missing');
   }
+
+  const response = await fetch(url, { credentials: 'same-origin' });
+  if (!response.ok) {
+    throw new Error(`Failed to download attachment (${response.status})`);
+  }
+  const blob = await response.blob();
+  const type =
+    blob.type ||
+    attachment?.content_type ||
+    attachment?.contentType ||
+    'application/octet-stream';
+  return new File([blob], attachmentFileName(attachment, index), { type });
+}
+
+export async function fetchAttachmentFiles(attachments = []) {
+  const list = (Array.isArray(attachments) ? attachments : []).filter(
+    attachment =>
+      FORWARDABLE_FILE_TYPES.includes(attachmentFileType(attachment))
+  );
+
+  const files = [];
+  await list.reduce(async (previous, attachment, index) => {
+    await previous;
+    files.push(await downloadAttachmentFile(attachment, index));
+  }, Promise.resolve());
 
   return files;
 }
@@ -183,16 +185,20 @@ export function recentConversationsForInbox(
     .map(conversation => {
       const meta = conversation.meta || {};
       const sender = meta.sender || {};
+      const contactId = sender.id || conversation.meta?.sender?.id;
+      if (!contactId) return null;
+
       return {
         key: `conversation:${conversation.id}`,
         conversationId: conversation.id,
-        contactId: sender.id || conversation.meta?.sender?.id,
+        contactId,
         label: sender.name || `#${conversation.id}`,
         phoneNumber: sender.phone_number || sender.phoneNumber || '',
         thumbnail: sender.thumbnail || '',
         kind: 'conversation',
       };
-    });
+    })
+    .filter(Boolean);
 }
 
 export function isWhatsAppGroupContact(contact) {
@@ -276,21 +282,11 @@ export async function filterContactsReachableOnInbox(
   return [...known, ...checks.filter(Boolean)];
 }
 
-async function findConversationForContact(contactId, inboxId) {
-  const { data } = await ContactAPI.getConversations(contactId, { inboxId });
-  const payload = data?.payload || data || [];
-  const list = Array.isArray(payload) ? payload : [];
-  const forInbox = list.filter(
-    conversation => Number(conversation.inbox_id) === Number(inboxId)
-  );
-  const open = forInbox.find(conversation => conversation.status === 'open');
-  return open || forInbox[0] || null;
-}
-
 async function createConversationForContact({
   contactId,
   inboxId,
   assigneeId,
+  conversationId,
 }) {
   const { data } = await ContactAPI.getContactableInboxes(contactId);
   const list = contactableInboxList(data);
@@ -303,39 +299,40 @@ async function createConversationForContact({
   }
 
   const sourceId = match.source_id || match.sourceId;
-  const response = await ConversationApi.create({
+  const payload = {
     inbox_id: inboxId,
     contact_id: contactId,
     source_id: sourceId,
     assignee_id: assigneeId,
-  });
+  };
+  if (conversationId) {
+    payload.conversation_id = conversationId;
+  }
+
+  const response = await ConversationApi.create(payload);
   return response.data;
 }
 
+// Always go through conversations#create (AgentStartService): reopen+assign,
+// or 422 when the thread is open on another agent / outside permission scope.
+// Posting to an existing conversationId skips that prepare step and 401s on
+// reply? for custom roles with conversation_reply_assigned_only.
 export async function resolveDestinationConversationId({
   destination,
   inboxId,
   assigneeId,
 }) {
-  if (destination.conversationId) {
-    return destination.conversationId;
-  }
   if (!destination.contactId) {
     throw new Error('Destination contact is required');
   }
 
-  const existing = await findConversationForContact(
-    destination.contactId,
-    inboxId
-  );
-  if (existing?.id) return existing.id;
-
-  const created = await createConversationForContact({
+  const prepared = await createConversationForContact({
     contactId: destination.contactId,
     inboxId,
     assigneeId,
+    conversationId: destination.conversationId,
   });
-  return created.id;
+  return prepared.id;
 }
 
 export async function forwardMessageToDestinations({
@@ -372,9 +369,15 @@ export async function forwardMessageToDestinations({
     MAX_FORWARD_DESTINATIONS
   );
 
-  const results = { succeeded: 0, failed: 0, errors: [], failedDestinations: [] };
+  const results = {
+    succeeded: 0,
+    failed: 0,
+    errors: [],
+    failedDestinations: [],
+  };
 
-  for (const destination of uniqueDestinations) {
+  await uniqueDestinations.reduce(async (previous, destination) => {
+    await previous;
     try {
       const conversationId = await resolveDestinationConversationId({
         destination,
@@ -409,11 +412,7 @@ export async function forwardMessageToDestinations({
         message: extractErrorMessage(error),
       });
     }
-  }
+  }, Promise.resolve());
 
   return results;
-}
-
-export function createForwardPendingPayload(payload) {
-  return createPendingMessage(payload);
 }

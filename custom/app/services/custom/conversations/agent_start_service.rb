@@ -19,6 +19,9 @@ class Custom::Conversations::AgentStartService
   end
 
   def find_conversation
+    explicit = conversation_from_param
+    return explicit if explicit.present?
+
     # Parity with Custom::Conversations::Resolver — Wavoip always reuses latest
     return latest_conversation if wavoip_inbox?
 
@@ -27,6 +30,13 @@ class Custom::Conversations::AgentStartService
     else
       contact_inbox.conversations.where.not(status: :resolved).order(created_at: :desc).first
     end
+  end
+
+  def conversation_from_param
+    display_id = params[:conversation_id].presence
+    return if display_id.blank?
+
+    contact_inbox.conversations.find_by(display_id: display_id)
   end
 
   def latest_conversation
@@ -63,7 +73,7 @@ class Custom::Conversations::AgentStartService
       Custom::Conversations::OpenedByStamper::AGENT
     )
     conversation.open!
-    conversation.update!(assignee_id: user.id) if conversation.assignee_id != user.id
+    assign_to_initiator!(conversation)
     conversation
   end
 
@@ -80,8 +90,13 @@ class Custom::Conversations::AgentStartService
       conversation.open!
     end
 
-    conversation.update!(assignee_id: user.id) if conversation.assignee_id.blank?
+    # Force initiator even if open! auto-assigned another agent (reply_assigned_only).
+    assign_to_initiator!(conversation)
     conversation
+  end
+
+  def assign_to_initiator!(conversation)
+    conversation.update!(assignee_id: user.id) if conversation.assignee_id != user.id
   end
 
   def conversation_visible?(conversation)
