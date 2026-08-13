@@ -71,7 +71,7 @@ Procedimentos: [operations-runbook.md](./operations-runbook.md).
 
 - ~~Web Push com aba fechada~~ — ✅ via `voice_call_incoming` + VAPID (atender ainda exige dashboard)
 - ~~Métricas/alertas avançados~~ — ✅ `last_webhook_at` + `WebhookStaleAlertJob` (24h)
-- ~~Seleção de mic/speaker~~ — ✅ no `FloatingCallWidget` para calls Wavoip ativas
+- ~~Seleção de mic/speaker~~ — ✅ SDK usa o dispositivo padrão do SO (Windows/macOS); troca nas configurações do sistema
 - Guardrails soft de volume outbound (toast 20/50) — ✅
 
 ## Legado

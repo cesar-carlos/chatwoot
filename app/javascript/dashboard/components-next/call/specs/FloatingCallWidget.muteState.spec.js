@@ -50,15 +50,6 @@ vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
   }),
 }));
 
-vi.mock('customDashboard/composables/wavoip/useWavoipMedia', () => ({
-  useWavoipMedia: () => ({
-    refreshDevices: vi.fn(),
-    setInputDevice: vi.fn(),
-    setOutputDevice: vi.fn(),
-  }),
-  getWavoipMediaForInbox: () => null,
-}));
-
 vi.mock('customDashboard/lib/wavoip/wavoipDeviceStatus', () => ({
   getWavoipDeviceStatus: () => ({ connectionStatus: ref(null) }),
 }));
