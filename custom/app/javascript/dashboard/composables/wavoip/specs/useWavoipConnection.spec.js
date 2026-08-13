@@ -151,6 +151,27 @@ describe('useWavoipConnection', () => {
     expect(result).toBe(client);
   });
 
+  it('passes ICE servers from bootstrap into the SDK connect', async () => {
+    const client = createOpenDeviceClient();
+    getWavoipSdkBootstrap.mockResolvedValue({
+      data: {
+        device_token: 'token-ice',
+        ice_servers: [{ urls: ['stun:stun.l.google.com:19302'] }],
+      },
+    });
+    connectWavoipInbox.mockResolvedValue(client);
+    getWavoipClient.mockReturnValue(null);
+
+    const { connectForInbox } = useWavoipConnection();
+    await connectForInbox(41);
+
+    expect(connectWavoipInbox).toHaveBeenCalledWith(41, 'token-ice', {
+      iceConfig: {
+        iceServers: [{ urls: ['stun:stun.l.google.com:19302'] }],
+      },
+    });
+  });
+
   it('returns null when bootstrap has no device token', async () => {
     getWavoipSdkBootstrap.mockResolvedValue({ data: {} });
     getWavoipClient.mockReturnValue(null);

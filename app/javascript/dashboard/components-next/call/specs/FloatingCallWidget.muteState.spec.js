@@ -46,6 +46,7 @@ vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
     setMuted: setWavoipMuted,
     isMuted: wavoipIsMuted,
     mediaConnectionStatus: ref(null),
+    callLegStatus: ref(null),
   }),
 }));
 

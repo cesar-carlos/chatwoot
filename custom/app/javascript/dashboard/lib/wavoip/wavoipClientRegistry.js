@@ -4,6 +4,7 @@ import {
   pendingOffers,
   removePendingOffer,
 } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
+import { wavoipIceConfigKey } from 'customDashboard/lib/wavoip/wavoipIceConfig';
 
 const clients = new Map();
 
@@ -36,7 +37,7 @@ export async function disconnectWavoipInbox(inboxId) {
   });
 
   try {
-    entry.client?.removeDevices?.([entry.token]);
+    await Promise.resolve(entry.client?.removeDevices?.([entry.token]));
   } catch (_) {
     /* noop */
   }
@@ -50,19 +51,30 @@ export async function disconnectWavoipInbox(inboxId) {
   clients.delete(inboxId);
 }
 
-export async function connectWavoipInbox(inboxId, deviceToken) {
+export async function connectWavoipInbox(inboxId, deviceToken, options = {}) {
   if (!inboxId || !deviceToken) return null;
 
+  const iceConfig = options.iceConfig;
+  const iceConfigKey = wavoipIceConfigKey(iceConfig);
   const existing = clients.get(inboxId);
-  if (existing?.token === deviceToken) return existing.client;
+  if (
+    existing?.token === deviceToken &&
+    existing.iceConfigKey === iceConfigKey
+  ) {
+    return existing.client;
+  }
 
   if (existing) await disconnectWavoipInbox(inboxId);
 
-  const client = await createWavoipClient({ tokens: [deviceToken] });
+  const client = await createWavoipClient({
+    tokens: [deviceToken],
+    iceConfig,
+  });
   clients.set(inboxId, {
     client,
     token: deviceToken,
     inboxId,
+    iceConfigKey,
     offerUnsubscribers: [],
     deviceUnsubscribers: [],
   });

@@ -8,6 +8,7 @@ const rejectIncomingCallMock = vi.fn();
 const connectForInboxMock = vi.fn();
 const teardownWavoipActiveCallMock = vi.fn();
 const removePendingOfferMock = vi.fn();
+const isWavoipInboxRestrictedMock = vi.fn(() => true);
 
 vi.mock('customDashboard/lib/voice/voiceSessionRegistry', async () => {
   const actual = await vi.importActual(
@@ -37,7 +38,7 @@ vi.mock('customDashboard/composables/wavoip/useWavoipIncomingOffer', () => ({
 }));
 
 vi.mock('customDashboard/composables/wavoip/useWavoipNotifications', () => ({
-  isWavoipInboxRestricted: () => false,
+  isWavoipInboxRestricted: (...args) => isWavoipInboxRestrictedMock(...args),
 }));
 
 vi.mock('dashboard/composables', () => ({ useAlert: vi.fn() }));
@@ -156,5 +157,30 @@ describe('useCallSession Wavoip actions', () => {
 
     expect(rejectIncomingCallMock).toHaveBeenCalledWith('dismiss_2');
     expect(store.calls.some(c => c.callSid === 'dismiss_2')).toBe(false);
+  });
+
+  it('answers a Wavoip inbound call even when the device is Meta-restricted', async () => {
+    acceptIncomingCallMock.mockResolvedValue({});
+    const store = useCallsStore();
+    store.addCall({
+      callSid: 'join_restricted',
+      inboxId: 5,
+      conversationId: 1,
+      provider: VOICE_CALL_PROVIDERS.WAVOIP,
+      callDirection: VOICE_CALL_DIRECTION.INCOMING,
+    });
+
+    const { joinCall } = useCallActions();
+    await joinCall({
+      conversationId: 1,
+      inboxId: 5,
+      callSid: 'join_restricted',
+    });
+
+    expect(acceptIncomingCallMock).toHaveBeenCalledWith({
+      callId: 'join_restricted',
+      inboxId: 5,
+      conversationId: 1,
+    });
   });
 });

@@ -7,6 +7,7 @@ import {
 import { useAlert } from 'dashboard/composables';
 
 const CONNECTIVITY_DEBOUNCE_MS = 5000;
+const STATS_POLL_MS = 2000;
 const lastConnectivityAlertAt = new Map();
 
 const connectivityMessage = (issue, translateFn) => {
@@ -47,26 +48,30 @@ const wireCallDiagnostics = (call, { inboxId, callId, translateFn } = {}) => {
     error: error => {
       recordCallError(inboxId, callId, error);
     },
-    stats: stats => {
-      recordCallStats(inboxId, callId, stats);
-    },
-    serverStats: stats => {
-      recordCallStats(inboxId, callId, { server: stats });
-    },
   };
 
   call.on('iceDiagnostics', handlers.iceDiagnostics);
   call.on('connectivityIssue', handlers.connectivityIssue);
   call.on('error', handlers.error);
-  call.on('stats', handlers.stats);
-  call.on('serverStats', handlers.serverStats);
+
+  // Pull stats on our cadence. The SDK `stats` / `serverStats` events tick
+  // every 200ms and are deprecated (console.warn on first subscribe).
+  let statsTimer;
+  if (typeof call.getStats === 'function') {
+    statsTimer = setInterval(async () => {
+      try {
+        recordCallStats(inboxId, callId, await call.getStats());
+      } catch (_) {
+        /* snapshot is best-effort */
+      }
+    }, STATS_POLL_MS);
+  }
 
   return () => {
+    clearInterval(statsTimer);
     call.off?.('iceDiagnostics', handlers.iceDiagnostics);
     call.off?.('connectivityIssue', handlers.connectivityIssue);
     call.off?.('error', handlers.error);
-    call.off?.('stats', handlers.stats);
-    call.off?.('serverStats', handlers.serverStats);
   };
 };
 

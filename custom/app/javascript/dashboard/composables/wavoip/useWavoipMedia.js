@@ -1,5 +1,11 @@
 import { readonly, ref } from 'vue';
 import { getWavoipClient } from 'customDashboard/lib/wavoip/wavoipClientRegistry';
+import {
+  applyWavoipInputDevice,
+  applyWavoipOutputDevice,
+  normalizeWavoipMultimediaDevices,
+  readActiveMultimediaIds,
+} from 'customDashboard/lib/wavoip/wavoipMultimedia';
 
 const mediaByInbox = new Map();
 
@@ -33,12 +39,13 @@ export function useWavoipMedia(inboxId = null) {
       return { inputDevices: [], outputDevices: [] };
     }
 
-    const devices = await client.getMultimediaDevices();
-    mediaState.inputDevices.value = devices?.inputs || [];
-    mediaState.outputDevices.value = devices?.outputs || [];
-    const multimedia = client.multimedia;
-    mediaState.activeInputId.value = multimedia?.inputDeviceId || null;
-    mediaState.activeOutputId.value = multimedia?.outputDeviceId || null;
+    const devices = await Promise.resolve(client.getMultimediaDevices());
+    const { inputs, outputs } = normalizeWavoipMultimediaDevices(devices);
+    mediaState.inputDevices.value = inputs;
+    mediaState.outputDevices.value = outputs;
+    const { inputId, outputId } = readActiveMultimediaIds(client.multimedia);
+    mediaState.activeInputId.value = inputId;
+    mediaState.activeOutputId.value = outputId;
     return {
       inputDevices: mediaState.inputDevices.value,
       outputDevices: mediaState.outputDevices.value,
@@ -47,16 +54,16 @@ export function useWavoipMedia(inboxId = null) {
 
   const setInputDevice = async (targetInboxId, deviceId) => {
     const client = getWavoipClient(targetInboxId);
-    if (!client?.multimedia?.setInputDevice) return false;
-    await client.multimedia.setInputDevice(deviceId);
+    const applied = await applyWavoipInputDevice(client?.multimedia, deviceId);
+    if (!applied) return false;
     ensureMediaState(targetInboxId).activeInputId.value = deviceId;
     return true;
   };
 
   const setOutputDevice = async (targetInboxId, deviceId) => {
     const client = getWavoipClient(targetInboxId);
-    if (!client?.multimedia?.setOutputDevice) return false;
-    await client.multimedia.setOutputDevice(deviceId);
+    const applied = await applyWavoipOutputDevice(client?.multimedia, deviceId);
+    if (!applied) return false;
     ensureMediaState(targetInboxId).activeOutputId.value = deviceId;
     return true;
   };

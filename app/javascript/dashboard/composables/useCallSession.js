@@ -20,7 +20,6 @@ import {
   shouldRejectWavoipInboundOnDismiss,
   cleanupAfterBrowserVoiceJoinFailure,
 } from 'customDashboard/lib/voice/voiceSessionRegistry';
-import { isWavoipInboxRestricted } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import {
   CONTENT_TYPES,
   VOICE_CALL_DIRECTION,
@@ -213,11 +212,7 @@ const buildCallActions = ({
       });
 
       if (isWavoipVoiceCall(call)) {
-        // FORK: Wavoip restricted-device gate / missing session before SDK accept
-        if (isWavoipInboxRestricted(call.inboxId)) {
-          useAlert(t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED'));
-          return null;
-        }
+        // FORK: missing session before SDK accept
         if (!browserSession?.acceptIncomingCall) {
           useAlert(t('CONVERSATION.WAVOIP_CALL.CLIENT_UNAVAILABLE'));
           return null;
@@ -263,7 +258,10 @@ const buildCallActions = ({
 
       return { conferenceSid: joinResponse?.conference_sid };
     } catch (error) {
-      useAlert(error?.response?.data?.error || t('CONTACT_PANEL.CALL_FAILED'));
+      const alertMessage = error?.i18nKey
+        ? t(error.i18nKey)
+        : error?.response?.data?.error || t('CONTACT_PANEL.CALL_FAILED');
+      useAlert(alertMessage);
       // 409 = the call already ended before accept landed (e.g. caller hung up mid-ring).
       if (error?.response?.status === 409) {
         TwilioVoiceClient.endClientCall();

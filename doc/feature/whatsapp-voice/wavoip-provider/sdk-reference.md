@@ -4,9 +4,9 @@ Mapeamento da documentação oficial do pacote npm para implementação no Chatw
 
 **Índice completo doc oficial:** [official-docs.md](./official-docs.md)
 
-**Versão verificada em 13 jul. 2026:** `2.6.3` (antes `2.6.1`, 03 jul.). Atualizações exigem repetir os testes de contrato.
+**Versão verificada em 13 ago. 2026:** `2.6.3` (latest no npm; sem versão posterior). Atualizações exigem repetir os testes de contrato.
 
-**Delta 2.6.1 → 2.6.3 (tipos públicos idênticos):** o bundle passa a emitir `CallActive` `status` `DISCONNECTED` / `ACTIVE` em mais caminhos de transporte; o gate SDK `Device.restricted` no `startCall` deixou de bloquear no cliente — o Chatwoot continua bloqueando via `isWavoipInboxRestricted` / preflight.
+**Delta 2.6.1 → 2.6.3:** o bundle emite `CallActive` `status` `DISCONNECTED` / `ACTIVE` para queda/restauração da perna de mídia do WhatsApp — **recuperável**, não hangup. `connectionStatus` `"disconnected"` (transporte local após ~30s) continua terminal. O gate SDK `Device.restricted` no `startCall` deixou de bloquear no cliente; o Chatwoot também não bloqueia ligar/atender — o backend decide (contatos conhecidos ainda passam). A UI mostra o badge/banner de restrição.
 
 **Fontes primárias (SDK):**
 
@@ -28,8 +28,11 @@ import { Wavoip } from '@wavoip/wavoip-api';
 const wavoip = new Wavoip({
   tokens: [deviceToken],
   platform: 'chatwoot',
+  iceConfig: { iceServers }, // STUN/TURN de VOICE_CALL_STUN_URLS / VOICE_CALL_ICE_SERVERS
 });
 ```
+
+`iceServers` vem no bootstrap `GET …/wavoip_sdk_bootstrap` (`ice_servers`), a mesma lista do Meta (`Call.default_ice_servers`). Sem isso o SDK usa os STUN default da Wavoip — NAT corporativo falha em chamadas `official`.
 
 | Método / evento | Uso Chatwoot | Composable |
 |-----------------|--------------|------------|
@@ -196,8 +199,9 @@ Fonte: [Active](https://wavoip.gitbook.io/api/wavoip-api/chamadas/active.md)
 |--------|-----|
 | `ended` | Teardown + upload/gravação via webhook |
 | `peerMute` / `peerUnmute` | Indicador UI |
-| `connectionStatus` | Banner: `reconnecting` → `DEVICE_RECONNECTING`; `disconnected` → `DEVICE_DISCONNECTED` |
-| `stats` / `serverStats` | Diagnóstico admin |
+| `connectionStatus` | Banner: `reconnecting` → `RECONNECTING`; `disconnected` → teardown (transporte local perdido) |
+| `status` | `DISCONNECTED` → banner `RECONNECTING` (perna WhatsApp, recuperável); `ACTIVE` restaura; `ENDED`/`FAILED`/`REJECTED`/`NOT_ANSWERED` → teardown |
+| `getStats()` | Diagnóstico admin (poll 2s). Eventos `stats` / `serverStats` estão deprecated (tick 200ms) |
 | `error` | Toast erro transporte |
 
 `connection_status`: `connecting` → `connected` → `reconnecting` (até 30s) → `disconnected`.
@@ -236,7 +240,7 @@ Fonte: [Tipos](https://wavoip.gitbook.io/api/wavoip-api/referencia/types.md)
 | `REJECTED` | failed |
 | `NOT_ANSWERED` | no_answer |
 | `FAILED` | failed |
-| `DISCONNECTED` | failed / reconnect |
+| `DISCONNECTED` | banner reconectando (perna de mídia WhatsApp; **não** hangup) |
 
 Implementado em `lib/wavoip/wavoipCallDiagnostics.js` — **não** misturar com mapper Rails.
 
@@ -356,5 +360,7 @@ Checklist runtime (antes de `startCall` / aceitar `offer`):
 3. Agente **online** no Chatwoot
 4. `inbound_calls_enabled` (inbound) no `provider_config`
 5. Gesto do usuário no clique (accept/start)
+
+`Device.restricted` é informativo (banner). Não bloqueia `startCall` / `accept` — o backend Wavoip decide (contatos conhecidos ainda passam).
 
 Se `WAITING_PAYMENT` ou `EXTERNAL_INTEGRATION_ERROR` → desabilitar botão ligar + banner no inbox settings.

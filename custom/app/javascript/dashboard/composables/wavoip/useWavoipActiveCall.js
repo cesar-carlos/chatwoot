@@ -17,8 +17,11 @@ let ringingDiagnosticsUnwire = null;
 let activeConnectionStatusHandler = null;
 let activeEndedHandler = null;
 let activeStatusHandler = null;
+const TERMINAL_SDK_STATUSES = ['ENDED', 'FAILED', 'REJECTED', 'NOT_ANSWERED'];
+
 const isMuted = ref(false);
 const mediaConnectionStatus = ref(null);
+const callLegStatus = ref(null);
 
 const clearActiveCallHandlers = () => {
   if (activeSdkCall) {
@@ -51,6 +54,7 @@ export const clearActiveCall = () => {
   activeInboxId = null;
   isMuted.value = false;
   mediaConnectionStatus.value = null;
+  callLegStatus.value = null;
 };
 
 export const clearRingingOutgoingCall = () => {
@@ -103,6 +107,7 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
   if (inboxId) activeInboxId = inboxId;
   isMuted.value = false;
   mediaConnectionStatus.value = sdkCall?.connectionStatus || null;
+  callLegStatus.value = sdkCall?.status || null;
 
   activeDiagnosticsUnwire = wireCallDiagnostics(sdkCall, {
     inboxId: activeInboxId,
@@ -110,26 +115,25 @@ export const setActiveCall = (sdkCall, { providerCallId, inboxId } = {}) => {
     translateFn: activeCallTranslateFn,
   });
 
-  activeConnectionStatusHandler = status => {
-    mediaConnectionStatus.value = status;
-  };
   const teardownActiveFromSdk = () => {
     if (activeSdkCall !== sdkCall) return;
     const endedCallId = activeProviderCallId;
     clearActiveCall();
     removeWavoipCallFromStore(endedCallId);
   };
+
+  // Local transport: reconnecting is recoverable; disconnected means the SDK
+  // gave up (≈30s) and the call is lost.
+  activeConnectionStatusHandler = status => {
+    mediaConnectionStatus.value = status;
+    if (status === 'disconnected') teardownActiveFromSdk();
+  };
   activeEndedHandler = teardownActiveFromSdk;
-  // SDK 2.6.3+: call may emit status DISCONNECTED without a separate `ended`.
+  // WhatsApp media-leg drop (`DISCONNECTED`) is recoverable — later `ACTIVE`
+  // restores audio. Only terminal CallStatus values hang up the widget.
   activeStatusHandler = status => {
-    if (
-      status === 'DISCONNECTED' ||
-      status === 'ENDED' ||
-      status === 'FAILED' ||
-      status === 'REJECTED'
-    ) {
-      teardownActiveFromSdk();
-    }
+    callLegStatus.value = status || null;
+    if (TERMINAL_SDK_STATUSES.includes(status)) teardownActiveFromSdk();
   };
 
   sdkCall?.on?.('connectionStatus', activeConnectionStatusHandler);
@@ -178,8 +182,11 @@ export function useWavoipActiveCall() {
   const setMuted = muted => {
     isMuted.value = muted;
     if (!activeSdkCall) return false;
-    if (muted) activeSdkCall.mute?.();
-    else activeSdkCall.unmute?.();
+    const action = muted ? activeSdkCall.mute?.() : activeSdkCall.unmute?.();
+    Promise.resolve(action).catch(error => {
+      // eslint-disable-next-line no-console
+      console.debug('[Wavoip] mute toggle failed', error);
+    });
     return true;
   };
 
@@ -188,6 +195,7 @@ export function useWavoipActiveCall() {
   return {
     isMuted: readonly(isMuted),
     mediaConnectionStatus: readonly(mediaConnectionStatus),
+    callLegStatus: readonly(callLegStatus),
     setActiveCall,
     clearActiveCall,
     setMuted,

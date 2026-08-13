@@ -9,7 +9,10 @@ module Custom::Api::V1::Accounts::InboxesController
     channel = @inbox.channel
     return head :not_found unless wavoip_channel_ready?(channel)
 
-    render json: { device_token: channel.device_token }
+    render json: {
+      device_token: channel.device_token,
+      ice_servers: wavoip_ice_servers
+    }
   end
 
   def wavoip_device_status
@@ -717,6 +720,12 @@ module Custom::Api::V1::Accounts::InboxesController
 
   def wavoip_channel_ready?(channel)
     channel.is_a?(Channel::Wavoip) && channel.voice_enabled?
+  end
+
+  def wavoip_ice_servers
+    return unless defined?(Call)
+
+    Call.default_ice_servers
   end
 end
 

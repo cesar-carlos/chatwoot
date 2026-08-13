@@ -7,7 +7,13 @@ export async function loadWavoipSdk() {
   return WavoipClass;
 }
 
-export async function createWavoipClient({ tokens, platform = 'chatwoot' }) {
+export async function createWavoipClient({
+  tokens,
+  platform = 'chatwoot',
+  iceConfig,
+} = {}) {
   const Wavoip = await loadWavoipSdk();
-  return new Wavoip({ tokens, platform });
+  const params = { tokens, platform };
+  if (iceConfig?.iceServers?.length) params.iceConfig = iceConfig;
+  return new Wavoip(params);
 }
