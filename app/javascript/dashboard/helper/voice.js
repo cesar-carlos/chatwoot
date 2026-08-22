@@ -39,6 +39,8 @@ const dismissedCallSids = new Set();
 export const markCallDismissed = callSid => {
   if (callSid) dismissedCallSids.add(callSid);
 };
+export const isCallDismissed = callSid =>
+  callSid ? dismissedCallSids.has(callSid) : false;
 
 // Which Twilio call (if any) this tab is actively joining/owns. Must be set
 // synchronously BEFORE the join API call — mirrors useWhatsappCallSession's
