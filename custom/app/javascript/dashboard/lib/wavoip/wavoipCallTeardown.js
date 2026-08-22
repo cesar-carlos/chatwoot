@@ -1,5 +1,5 @@
 import { useCallsStore } from 'dashboard/stores/calls';
-import { markCallDismissed } from 'dashboard/composables/useCallSession';
+import { markCallDismissed } from 'dashboard/helper/voiceCallDismissed';
 import { removePendingOffer } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { closeIncomingWavoipOfferNotification } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 

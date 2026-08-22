@@ -70,7 +70,7 @@ import {
   waitForPendingOffer,
 } from '../useWavoipIncomingOffer';
 import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
-import { isCallDismissed } from 'dashboard/composables/useCallSession';
+import { isCallDismissed } from 'dashboard/helper/voiceCallDismissed';
 
 const createOffer = id => {
   const handlers = {};

@@ -9,13 +9,11 @@ import {
   useWhatsappCallSession,
   sendWhatsappTerminateBeacon,
 } from 'dashboard/composables/useWhatsappCallSession';
+import { markLocalCall, clearLocalCall } from 'dashboard/helper/voice';
 import {
-  handleVoiceCallCreated,
-  markCallDismissed,
   isCallDismissed,
-  markLocalCall,
-  clearLocalCall,
-} from 'dashboard/helper/voice';
+  markCallDismissed,
+} from 'dashboard/helper/voiceCallDismissed';
 
 export { isCallDismissed, markCallDismissed };
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
@@ -61,9 +59,6 @@ const silenceCallRingtone = (callSid, call) => {
   // Also silence by wavoipOfferId so aliased entries are covered.
   addToCappedSet(ringtoneSilencedCallSids, call?.wavoipOfferId);
 };
-
-export { markCallDismissed, isCallDismissed };
-
 // Globals attached once across all useCallSession() consumers — bubbles in a
 // long thread call this composable many times, and a per-instance Timer +
 // window listener stack would multiply work.

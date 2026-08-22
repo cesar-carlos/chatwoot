@@ -21,7 +21,7 @@ import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavo
 import {
   isCallDismissed,
   markCallDismissed,
-} from 'dashboard/composables/useCallSession';
+} from 'dashboard/helper/voiceCallDismissed';
 
 const pendingOffers = new Map();
 const boundInboxIds = new Set();
