@@ -36,6 +36,9 @@ const tailwindConfig = {
     './app/javascript/dashboard/components-next/**/*.js',
     './app/javascript/dashboard/routes/dashboard/**/**/*.js',
     './app/views/**/*.erb',
+    // FORK: scan custom overlay so Tailwind emits classes used only there
+    './custom/app/javascript/**/*.vue',
+    './custom/app/javascript/**/*.js',
   ],
   theme: {
     extend: {

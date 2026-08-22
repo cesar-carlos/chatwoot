@@ -11,9 +11,10 @@ Inventário do que existe no codebase após o MVP de **pseudo-forward** (16/jul/
 | Entrada | Item **Forward** (1 msg) ou **Select** (modo multi) no context menu |
 | Gate de canal | Inbox WhatsApp com `provider` ∈ `evolution_go`, `evolution` |
 | Gate de mensagem | Tem `content` e/ou `attachments`; não privada; não failed/progress/deleted |
-| Multi-select | Até **10**; círculo à esquerda; clique no texto marca; mídia/link ignorados; Shift+clique = intervalo |
+| Multi-select | Até **10**; `Checkbox` do design system à esquerda (inset da borda); clique no texto marca; mídia/link ignorados; Shift+clique = intervalo (tooltip no badge `n/10`) |
 | Destinos | Até **5** chats do **mesmo inbox** |
-| Recentes | Até **10** conversas do store, ordenadas por `last_activity_at` (não pelo sort da lista) |
+| Recentes | Até **10** conversas do store, ordenadas por `last_activity_at`; badge Aberta/Pendente |
+| Destino UI | Modal `width="xl"`; Dialog FORK `max-h-[90vh]`; lista `flex-1 overflow-y-auto` (scrollbar na lista); busca `type="text"` com lupa no mesmo outline; footer Cancelar/Encaminhar `shrink-0` |
 | Busca | Contatos com telefone **ou** grupos WhatsApp (`is_whatsapp_group` / `@g.us`); reachability no inbox |
 | Texto | Cópia do `content` da origem (caption editável só com 1 mensagem) |
 | Mídia | Preferência: `attachment_ids[]` → clone ActiveStorage no servidor; fallback: fetch browser + `toSameOriginActiveStorageUrl` |
@@ -69,8 +70,9 @@ Metadado gravado na mensagem **enviada** (destino):
 |---------|-------|
 | `custom/app/javascript/dashboard/composables/useMessageForward.js` | Gate, recentes, busca/grupos, prepare via create, clone via `attachment_ids` ou fetch |
 | `custom/app/javascript/dashboard/composables/useMessageForwardSelection.js` | Estado do modo selecionar (provide/inject) |
-| `custom/app/javascript/dashboard/components/forward/MessageForwardModal.vue` | Dialog de destino (1 ou N mensagens) |
-| `custom/app/javascript/dashboard/components/forward/MessageForwardSelectionBar.vue` | Barra Cancelar / contagem / Encaminhar |
+| `custom/app/javascript/dashboard/components/forward/MessageForwardModal.vue` | Dialog de destino (1 ou N mensagens); lista com scroll; progresso por destino |
+| `custom/app/javascript/dashboard/components/forward/MessageForwardDestinationRow.vue` | Linha de contato (Checkbox + avatar + badge) |
+| `custom/app/javascript/dashboard/components/forward/MessageForwardSelectionBar.vue` | Barra ✕ / `n/10` / Encaminhar |
 | `custom/app/services/custom/messages/attachment_clone_service.rb` | Clone ActiveStorage amarrado a `source_message_id` |
 | `custom/app/services/custom/contacts/contactable_inboxes_service.rb` | Reusa CI WhatsApp existente (grupos `@g.us`, LID) |
 | `custom/app/builders/custom/messages/message_builder.rb` | Merge de blobs clonados antes de `process_attachments` (`super`) |
@@ -81,12 +83,14 @@ Metadado gravado na mensagem **enviada** (destino):
 |---------|---------|
 | `app/javascript/dashboard/modules/conversations/components/MessageContextMenu.vue` | Menu Forward + Select + fallback modal |
 | `app/javascript/dashboard/components/widgets/conversation/MessagesView.vue` | Provide seleção, barra, modal |
-| `app/javascript/dashboard/components-next/message/Message.vue` | `enabledOptions.forward` + círculo/texto no modo select (ignora mídia/link) |
+| `app/javascript/dashboard/components-next/message/Message.vue` | `enabledOptions.forward` + `Checkbox` no modo select (sem hover fantasma; ignora mídia/link) |
 | `app/javascript/dashboard/components-next/message/MessageList.vue` | `setTimeline` para Shift+clique |
 | `app/javascript/dashboard/components-next/message/bubbles/Base.vue` | Badge Forwarded |
 | `app/javascript/dashboard/i18n/locale/en/conversation.json` | `CONTEXT_MENU.FORWARD` + `CONVERSATION.FORWARD.*` |
 | `app/javascript/dashboard/i18n/locale/pt_BR/conversation.json` | Strings de fork (pt_BR) |
 | `app/javascript/dashboard/api/inbox/message.js` | `attachment_ids` no create / FormData |
+| `app/javascript/dashboard/components-next/dialog/Dialog.vue` | `max-h-[90vh] overflow-hidden`; slot `flex-1 min-h-0`; footer `shrink-0` (footer visível em qualquer dialog denso) |
+| `tailwind.config.js` | `content` inclui `custom/app/javascript/**` para emitir classes do overlay |
 
 ### APIs reutilizadas (sem rota nova)
 

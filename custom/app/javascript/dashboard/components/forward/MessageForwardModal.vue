@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { debounce } from '@chatwoot/utils';
 import { useAlert } from 'dashboard/composables';
@@ -11,6 +11,7 @@ import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
 import Icon from 'dashboard/components-next/icon/Icon.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
+import MessageForwardDestinationRow from './MessageForwardDestinationRow.vue';
 import {
   MAX_FORWARD_DESTINATIONS,
   recentConversationsForInbox,
@@ -48,6 +49,7 @@ const selected = ref([]);
 const caption = ref('');
 const isSearching = ref(false);
 const isForwarding = ref(false);
+const searchInputRef = ref(null);
 const searchContacts = createContactSearcher();
 const allConversations = useMapGetter('getAllConversations');
 const currentUser = useMapGetter('getCurrentUser');
@@ -88,11 +90,18 @@ const snippetForMessage = message => {
   return '';
 };
 
-const hasForwardableAttachments = computed(
-  () => getForwardableAttachments(primaryMessage.value).length > 0
-);
-
 const previewText = computed(() => snippetForMessage(primaryMessage.value));
+
+const previewIconForMessage = message => {
+  const attachments = getForwardableAttachments(message);
+  if (!attachments.length) return 'i-lucide-message-square-text';
+  if (attachments.length > 1) return 'i-lucide-paperclip';
+  const type = attachments[0].file_type || attachments[0].fileType;
+  if (type === 'image') return 'i-lucide-image';
+  if (type === 'audio') return 'i-lucide-volume-2';
+  if (type === 'video') return 'i-lucide-video';
+  return 'i-lucide-file';
+};
 
 const dialogTitle = computed(() =>
   isBulkForward.value
@@ -233,6 +242,9 @@ const resetState = () => {
 const open = () => {
   resetState();
   dialogRef.value?.open();
+  nextTick(() => {
+    nextTick(() => searchInputRef.value?.focus());
+  });
 };
 
 const close = () => {
@@ -352,8 +364,7 @@ defineExpose({ open, close });
   <Dialog
     ref="dialogRef"
     type="edit"
-    width="md"
-    overflow-y-auto
+    width="xl"
     :title="dialogTitle"
     :description="dialogDescription"
     :confirm-button-label="confirmLabel"
@@ -363,18 +374,22 @@ defineExpose({ open, close });
     @confirm="handleConfirm"
     @close="resetState"
   >
-    <div class="flex flex-col gap-3">
+    <div class="flex min-h-0 flex-col gap-3">
       <!-- Bulk preview: list of messages -->
       <div
         v-if="isBulkForward"
-        class="flex max-h-40 flex-col gap-1.5 overflow-y-auto"
+        class="thin-scrollbar flex max-h-28 shrink-0 flex-col gap-1.5 overflow-y-auto"
       >
         <div
           v-for="item in sourceMessages"
           :key="item.id"
-          class="rounded-lg border border-n-strong bg-n-alpha-2 px-3 py-2 text-sm text-n-slate-12"
+          class="flex items-start gap-2 rounded-lg border border-n-strong bg-n-alpha-2 px-3 py-2 text-sm text-n-slate-12"
         >
-          <p class="line-clamp-2 whitespace-pre-wrap break-words">
+          <Icon
+            :icon="previewIconForMessage(item)"
+            class="mt-0.5 size-3.5 shrink-0 text-n-slate-10"
+          />
+          <p class="min-w-0 flex-1 line-clamp-2 whitespace-pre-wrap break-words">
             {{ snippetForMessage(item) }}
           </p>
         </div>
@@ -387,8 +402,7 @@ defineExpose({ open, close });
       >
         <div class="mb-1 flex items-center gap-1.5 text-xs text-n-slate-11">
           <Icon
-            v-if="hasForwardableAttachments"
-            icon="i-lucide-paperclip"
+            :icon="previewIconForMessage(primaryMessage)"
             class="size-3.5"
           />
           <span>{{ t('CONVERSATION.FORWARD.PREVIEW_LABEL') }}</span>
@@ -410,7 +424,7 @@ defineExpose({ open, close });
           id="forward-caption"
           v-model="caption"
           rows="2"
-          class="w-full resize-y rounded-lg border border-n-strong bg-n-background px-3 py-2 text-sm outline-none focus:border-n-brand"
+          class="reset-base w-full resize-none rounded-lg bg-n-background px-3 py-2 text-sm text-n-slate-12 outline outline-1 -outline-offset-1 outline-n-weak focus:outline-n-brand"
           :placeholder="t('CONVERSATION.FORWARD.CAPTION_PLACEHOLDER')"
         />
       </div>
@@ -480,145 +494,80 @@ defineExpose({ open, close });
         </div>
       </div>
 
-      <!-- Search input with icon prefix -->
+      <!-- Search stays pinned; only the contact list scrolls -->
       <div
-        class="flex items-center gap-2 rounded-lg border border-n-strong bg-n-background px-3 py-2 focus-within:border-n-brand"
+        class="flex h-10 shrink-0 items-center gap-2 rounded-lg bg-n-background px-3 outline outline-1 -outline-offset-1 outline-n-weak focus-within:outline-n-brand"
       >
         <Icon icon="i-lucide-search" class="size-4 shrink-0 text-n-slate-9" />
         <input
+          ref="searchInputRef"
           v-model="searchQuery"
-          type="search"
-          class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-n-slate-9"
+          type="text"
+          class="reset-base min-w-0 flex-1 bg-transparent p-0 text-sm text-n-slate-12 outline-none placeholder:text-n-slate-9"
           :placeholder="t('CONVERSATION.FORWARD.SEARCH_PLACEHOLDER')"
         />
         <Spinner v-if="isSearching" class="size-4 shrink-0 text-n-slate-9" />
       </div>
 
-      <!-- Search results -->
-      <div v-if="searchQuery.trim()" class="flex flex-col gap-0.5">
-        <div class="mb-1 flex items-center gap-1.5 text-xs font-medium text-n-slate-11">
-          <span>{{ t('CONVERSATION.FORWARD.SEARCH_RESULTS') }}</span>
+      <div class="flex min-h-0 flex-col gap-1">
+        <div class="flex shrink-0 items-center gap-1.5 text-xs font-medium text-n-slate-11">
+          <span>
+            {{
+              searchQuery.trim()
+                ? t('CONVERSATION.FORWARD.SEARCH_RESULTS')
+                : t('CONVERSATION.FORWARD.RECENT')
+            }}
+          </span>
           <span
-            v-if="!isSearching && searchResults.length"
+            v-if="searchQuery.trim() ? !isSearching && searchResults.length : recentOptions.length"
             class="rounded-full bg-n-alpha-2 px-1.5 py-0.5 tabular-nums outline outline-1 outline-n-strong"
           >
-            {{ searchResults.length }}
+            {{ searchQuery.trim() ? searchResults.length : recentOptions.length }}
           </span>
         </div>
-        <p v-if="isSearching" class="px-1 py-2 text-xs text-n-slate-11">
-          {{ t('CONVERSATION.FORWARD.SEARCHING') }}
-        </p>
-        <p
-          v-else-if="!searchResults.length"
-          class="px-1 py-2 text-xs text-n-slate-11"
+        <div
+          class="thin-scrollbar max-h-72 overflow-y-auto"
+          role="listbox"
         >
-          {{ t('CONVERSATION.FORWARD.NO_RESULTS') }}
-        </p>
-        <button
-          v-for="item in searchResults"
-          :key="item.key"
-          type="button"
-          class="flex items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors"
-          :class="
-            isSelected(item)
-              ? 'bg-n-brand/10 outline outline-1 outline-n-brand/40'
-              : isAtMax
-                ? 'opacity-40 cursor-not-allowed'
-                : 'hover:bg-n-alpha-2'
-          "
-          :disabled="isAtMax && !isSelected(item)"
-          @click="toggleDestination(item)"
-        >
-          <Avatar :name="item.label" :src="item.thumbnail" :size="32" rounded-full />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-1.5">
-              <span class="truncate text-sm font-medium text-n-slate-12">
-                {{ item.label }}
-              </span>
-              <span
-                v-if="item.kind === 'conversation'"
-                class="shrink-0 rounded-full bg-n-teal-3 px-1.5 py-0.5 text-[10px] font-medium text-n-teal-11"
-              >
-                {{ t('CONVERSATION.FORWARD.HAS_CONVERSATION') }}
-              </span>
-            </div>
-            <div v-if="item.phoneNumber" class="truncate text-xs text-n-slate-10">
-              {{ item.phoneNumber }}
-            </div>
-          </div>
-          <Icon
-            v-if="isSelected(item)"
-            icon="i-lucide-check-circle-2"
-            class="size-4 shrink-0 text-n-brand"
-          />
-        </button>
-      </div>
-
-      <!-- Recent chats -->
-      <div v-else class="flex flex-col gap-0.5">
-        <div class="mb-1 flex items-center gap-1.5 text-xs font-medium text-n-slate-11">
-          <span>{{ t('CONVERSATION.FORWARD.RECENT') }}</span>
-          <span
-            v-if="recentOptions.length"
-            class="rounded-full bg-n-alpha-2 px-1.5 py-0.5 tabular-nums outline outline-1 outline-n-strong"
-          >
-            {{ recentOptions.length }}
-          </span>
+          <template v-if="searchQuery.trim()">
+            <p v-if="isSearching" class="px-1 py-2 text-xs text-n-slate-11">
+              {{ t('CONVERSATION.FORWARD.SEARCHING') }}
+            </p>
+            <p
+              v-else-if="!searchResults.length"
+              class="px-1 py-2 text-xs text-n-slate-11"
+            >
+              {{ t('CONVERSATION.FORWARD.NO_RESULTS') }}
+            </p>
+            <MessageForwardDestinationRow
+              v-for="item in searchResults"
+              :key="item.key"
+              :item="item"
+              :selected="isSelected(item)"
+              :disabled="isAtMax && !isSelected(item)"
+              @toggle="toggleDestination"
+            />
+          </template>
+          <template v-else>
+            <p
+              v-if="!recentOptions.length"
+              class="px-1 py-2 text-xs text-n-slate-11"
+            >
+              {{ t('CONVERSATION.FORWARD.NO_RECENT') }}
+            </p>
+            <MessageForwardDestinationRow
+              v-for="item in recentOptions"
+              :key="item.key"
+              :item="item"
+              :selected="isSelected(item)"
+              :disabled="isAtMax && !isSelected(item)"
+              @toggle="toggleDestination"
+            />
+          </template>
         </div>
-        <p
-          v-if="!recentOptions.length"
-          class="px-1 py-2 text-xs text-n-slate-11"
-        >
-          {{ t('CONVERSATION.FORWARD.NO_RECENT') }}
-        </p>
-        <button
-          v-for="item in recentOptions"
-          :key="item.key"
-          type="button"
-          class="flex items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors"
-          :class="
-            isSelected(item)
-              ? 'bg-n-brand/10 outline outline-1 outline-n-brand/40'
-              : isAtMax
-                ? 'opacity-40 cursor-not-allowed'
-                : 'hover:bg-n-alpha-2'
-          "
-          :disabled="isAtMax && !isSelected(item)"
-          @click="toggleDestination(item)"
-        >
-          <Avatar :name="item.label" :src="item.thumbnail" :size="32" rounded-full />
-          <div class="min-w-0 flex-1">
-            <div class="flex items-center gap-1.5">
-              <span class="truncate text-sm font-medium text-n-slate-12">
-                {{ item.label }}
-              </span>
-              <span
-                v-if="item.conversationStatus === 'open'"
-                class="shrink-0 rounded-full bg-n-teal-3 px-1.5 py-0.5 text-[10px] font-medium text-n-teal-11"
-              >
-                {{ t('CONVERSATION.FORWARD.STATUS_OPEN') }}
-              </span>
-              <span
-                v-else-if="item.conversationStatus === 'pending'"
-                class="shrink-0 rounded-full bg-n-amber-3 px-1.5 py-0.5 text-[10px] font-medium text-n-amber-11"
-              >
-                {{ t('CONVERSATION.FORWARD.STATUS_PENDING') }}
-              </span>
-            </div>
-            <div v-if="item.phoneNumber" class="truncate text-xs text-n-slate-10">
-              {{ item.phoneNumber }}
-            </div>
-          </div>
-          <Icon
-            v-if="isSelected(item)"
-            icon="i-lucide-check-circle-2"
-            class="size-4 shrink-0 text-n-brand"
-          />
-        </button>
       </div>
 
-      <!-- Selection hint -->
-      <p class="text-xs text-n-slate-10">
+      <p class="shrink-0 text-xs text-n-slate-10">
         {{
           t('CONVERSATION.FORWARD.SELECTION_HINT', {
             count: selected.length,

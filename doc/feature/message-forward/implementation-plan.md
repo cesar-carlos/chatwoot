@@ -22,6 +22,8 @@ Permitir que o agente encaminhe texto e/ou mídia de uma mensagem para até 5 co
 | 6 | Endpoint custom (fallback) | ⏸️ não necessário |
 | 7 | Clone server-side + i18n pt_BR + overlay `MessageBuilder` via `super` | ✅ |
 | 8 | Multi-select timeline + polish UX (progresso, toast Open, Retry, Shift+clique) | ✅ |
+| 9 | Polish UI (Checkbox design system, modal `xl`, barra compacta) | ✅ |
+| 10 | Layout do modal: Dialog `max-h-[90vh]`, lista `flex-1 overflow-y-auto`, Tailwind scan `custom/`, busca alinhada | ✅ |
 
 ---
 
@@ -85,7 +87,7 @@ Clone server-side **exige** `forwarded_from_message_id`; sem ele, `attachment_id
 |----------|-----|
 | `custom/` | Composable + modal + `AttachmentCloneService` |
 | `prepend_mod_with` | `MessageBuilder` (hooks + `super`, sem copiar `#perform` OSS) e contactable |
-| `// FORK:` fino | Menu, options, badge, `MessageList.vue` (`setTimeline`), `message.js` |
+| `// FORK:` fino | Menu, options, badge, `MessageList.vue` (`setTimeline`), `message.js`, `Dialog.vue` (max-h), `tailwind.config.js` (`content`) |
 | Sem | Novo controller/rota |
 
 ---
@@ -97,6 +99,7 @@ Clone server-side **exige** `forwarded_from_message_id`; sem ele, `attachment_id
 | `custom/app/javascript/dashboard/composables/useMessageForward.js` | novo |
 | `custom/app/javascript/dashboard/composables/useMessageForwardSelection.js` | novo |
 | `custom/app/javascript/dashboard/components/forward/MessageForwardModal.vue` | novo |
+| `custom/app/javascript/dashboard/components/forward/MessageForwardDestinationRow.vue` | novo |
 | `custom/app/javascript/dashboard/components/forward/MessageForwardSelectionBar.vue` | novo |
 | `custom/app/services/custom/messages/attachment_clone_service.rb` | novo |
 | `custom/app/services/custom/contacts/contactable_inboxes_service.rb` | overlay |
@@ -107,6 +110,8 @@ Clone server-side **exige** `forwarded_from_message_id`; sem ele, `attachment_id
 | `app/javascript/dashboard/components-next/message/MessageList.vue` | FORK |
 | `app/javascript/dashboard/components-next/message/bubbles/Base.vue` | FORK |
 | `app/javascript/dashboard/api/inbox/message.js` | FORK |
+| `app/javascript/dashboard/components-next/dialog/Dialog.vue` | FORK (max-h + overflow no slot) |
+| `tailwind.config.js` | FORK (`content` → `custom/app/javascript/**`) |
 | `app/javascript/dashboard/i18n/locale/en/conversation.json` | EN |
 | `app/javascript/dashboard/i18n/locale/pt_BR/conversation.json` | pt_BR (fork) |
 | `doc/feature/whatsapp-provider/evolution-go/decisions.md` | ADR §34 |
@@ -120,6 +125,8 @@ Commit de referência: `d3c7d3c61` (`feat(fork): add WhatsApp-like message forwa
 
 - [x] Forward só em inbox Evolution com conteúdo ou anexo
 - [x] Modal: recentes + busca + destinos ≤ 5 + preview + caption (1 msg)
+- [x] Lista de destinos com scroll interno (`flex-1 overflow-y-auto`); footer Cancelar/Encaminhar sempre visível
+- [x] Campo de busca: lupa e texto no mesmo outline (`type="text"`, não `search`)
 - [x] Multi-select na timeline ≤ 10, barra no lugar do composer, envio em ordem
 - [x] Select permanece ativo ao desmarcar; sai só no ✕ / Escape / sucesso
 - [x] Toast Open conversation (1 destino); Retry nos destinos que falharam
@@ -159,6 +166,7 @@ Smoke manual:
 6. Custom role com `conversation_reply_assigned_only`: encaminhar para conversa resolved/unassigned no escopo → reopen+assign e envia
 7. Grupo WhatsApp (`@g.us`) no mesmo inbox — prepare via contactable reusando CI, depois envia
 8. Com `lock_to_single_conversation` false e vários threads — `conversation_id` do modal reabre o chat escolhido
+9. Modal Encaminhar com ~10 recentes: lista tem scrollbar, **Cancelar / Encaminhar** visíveis, lupa alinhada ao campo de busca
 
 Specs de overlay: `spec/custom/services/custom/messages/attachment_clone_service_spec.rb`.
 
