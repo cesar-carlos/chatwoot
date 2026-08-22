@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { debounce } from '@chatwoot/utils';
 import { useAlert } from 'dashboard/composables';
 import { useMapGetter } from 'dashboard/composables/store';
+import { conversationUrl, frontendURL } from 'dashboard/helper/URLHelper';
 import { createContactSearcher } from 'dashboard/components-next/NewConversation/helpers/composeConversationHelper';
 
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -12,18 +13,23 @@ import Icon from 'next/icon/Icon.vue';
 import {
   MAX_FORWARD_DESTINATIONS,
   recentConversationsForInbox,
-  forwardMessageToDestinations,
+  forwardMessagesToDestinations,
   filterContactsReachableOnInbox,
   isSameDestination,
   getForwardableAttachments,
   isForwardSearchEligibleContact,
   conversationIdForContactInInbox,
+  describeForwardError,
 } from 'customDashboard/composables/useMessageForward';
 
 const props = defineProps({
   message: {
     type: Object,
     default: null,
+  },
+  messages: {
+    type: Array,
+    default: () => [],
   },
   inboxId: {
     type: Number,
@@ -44,35 +50,84 @@ const isForwarding = ref(false);
 const searchContacts = createContactSearcher();
 const allConversations = useMapGetter('getAllConversations');
 const currentUser = useMapGetter('getCurrentUser');
+const currentAccountId = useMapGetter('getCurrentAccountId');
+const sendProgress = ref(null);
+const isRetryState = ref(false);
 
-const hasForwardableAttachments = computed(
-  () => getForwardableAttachments(props.message).length > 0
-);
+const sourceMessages = computed(() => {
+  if (Array.isArray(props.messages) && props.messages.length) {
+    return props.messages;
+  }
+  return props.message ? [props.message] : [];
+});
 
-const previewText = computed(() => {
-  const content = props.message?.content || '';
+const primaryMessage = computed(() => sourceMessages.value[0] || null);
+const isBulkForward = computed(() => sourceMessages.value.length > 1);
+
+const snippetForMessage = message => {
+  const content = (message?.content || '').trim();
   if (content) {
     return content.length > 120 ? `${content.slice(0, 120)}…` : content;
   }
-  if (hasForwardableAttachments.value) {
-    return t('CONVERSATION.FORWARD.ATTACHMENT_PREVIEW', {
-      count: getForwardableAttachments(props.message).length,
-    });
+  const count = getForwardableAttachments(message).length;
+  if (count) {
+    return t('CONVERSATION.FORWARD.ATTACHMENT_PREVIEW', { count });
   }
   return '';
-});
+};
+
+const hasForwardableAttachments = computed(
+  () => getForwardableAttachments(primaryMessage.value).length > 0
+);
+
+const previewText = computed(() => snippetForMessage(primaryMessage.value));
+
+const dialogTitle = computed(() =>
+  isBulkForward.value
+    ? t('CONVERSATION.FORWARD.TITLE_MULTI', {
+        count: sourceMessages.value.length,
+      })
+    : t('CONVERSATION.FORWARD.TITLE')
+);
+
+const dialogDescription = computed(() =>
+  isBulkForward.value
+    ? t('CONVERSATION.FORWARD.DESCRIPTION_MULTI')
+    : t('CONVERSATION.FORWARD.DESCRIPTION')
+);
 
 const recentOptions = computed(() =>
   recentConversationsForInbox(
     allConversations.value || [],
     props.inboxId,
-    props.message?.conversation_id || props.message?.conversationId
+    primaryMessage.value?.conversation_id ||
+      primaryMessage.value?.conversationId
   )
 );
 
 const canConfirm = computed(
   () => selected.value.length > 0 && !isForwarding.value
 );
+
+const confirmLabel = computed(() =>
+  isRetryState.value
+    ? t('CONVERSATION.FORWARD.RETRY')
+    : t('CONVERSATION.FORWARD.CONFIRM')
+);
+
+const progressLabel = computed(() => {
+  if (!sendProgress.value) return '';
+  return t('CONVERSATION.FORWARD.SENDING_PROGRESS', sendProgress.value);
+});
+
+const forwardErrorText = entry => {
+  if (entry?.code) {
+    return t(`CONVERSATION.FORWARD.ERRORS.${entry.code}`, {
+      status: entry.details?.status,
+    });
+  }
+  return entry?.message || '';
+};
 
 const isSelected = destination =>
   selected.value.some(item => isSameDestination(item, destination));
@@ -154,8 +209,10 @@ const resetState = () => {
   searchQuery.value = '';
   searchResults.value = [];
   selected.value = [];
-  caption.value = props.message?.content || '';
+  caption.value = primaryMessage.value?.content || '';
   isForwarding.value = false;
+  sendProgress.value = null;
+  isRetryState.value = false;
 };
 
 const open = () => {
@@ -170,20 +227,44 @@ const close = () => {
 };
 
 const handleConfirm = async () => {
-  if (!canConfirm.value || !props.message) return;
+  if (!canConfirm.value || !sourceMessages.value.length) return;
 
   isForwarding.value = true;
+  sendProgress.value = null;
   try {
-    const results = await forwardMessageToDestinations({
-      sourceMessage: props.message,
+    const results = await forwardMessagesToDestinations({
+      sourceMessages: sourceMessages.value,
       destinations: selected.value,
       inboxId: props.inboxId,
       assigneeId: currentUser.value?.id,
-      contentOverride: caption.value,
+      contentOverride: isBulkForward.value ? undefined : caption.value,
+      onProgress: progress => {
+        sendProgress.value = progress;
+      },
     });
 
     if (results.failed === 0) {
-      useAlert(t('CONVERSATION.FORWARD.SUCCESS', { count: results.succeeded }));
+      const conversationId = results.succeededConversationIds?.[0];
+      const openPath =
+        results.succeeded === 1 && conversationId && currentAccountId.value
+          ? frontendURL(
+              conversationUrl({
+                accountId: currentAccountId.value,
+                id: conversationId,
+              })
+            )
+          : null;
+      useAlert(
+        t('CONVERSATION.FORWARD.SUCCESS', { count: results.succeeded }),
+        openPath
+          ? {
+              type: 'link',
+              to: openPath,
+              message: t('CONVERSATION.FORWARD.OPEN_CONVERSATION'),
+              duration: 6000,
+            }
+          : null
+      );
       emit('done', results);
       close();
       return;
@@ -191,7 +272,7 @@ const handleConfirm = async () => {
 
     if (results.succeeded > 0) {
       const detail = results.errors
-        .map(entry => entry.message)
+        .map(forwardErrorText)
         .filter(Boolean)
         .slice(0, 2)
         .join('; ');
@@ -208,18 +289,20 @@ const handleConfirm = async () => {
             })
       );
       selected.value = results.failedDestinations || [];
+      isRetryState.value = true;
       emit('done', results);
       return;
     }
 
-    const detail = results.errors?.[0]?.message;
+    const detail = forwardErrorText(results.errors?.[0]);
     useAlert(
       detail
         ? t('CONVERSATION.FORWARD.FAILED_DETAIL', { detail })
         : t('CONVERSATION.FORWARD.FAILED')
     );
+    isRetryState.value = true;
   } catch (error) {
-    const detail = error?.message;
+    const detail = forwardErrorText(describeForwardError(error));
     useAlert(
       detail
         ? t('CONVERSATION.FORWARD.FAILED_DETAIL', { detail })
@@ -227,6 +310,7 @@ const handleConfirm = async () => {
     );
   } finally {
     isForwarding.value = false;
+    sendProgress.value = null;
   }
 };
 
@@ -239,9 +323,9 @@ defineExpose({ open, close });
     type="edit"
     width="md"
     overflow-y-auto
-    :title="$t('CONVERSATION.FORWARD.TITLE')"
-    :description="$t('CONVERSATION.FORWARD.DESCRIPTION')"
-    :confirm-button-label="$t('CONVERSATION.FORWARD.CONFIRM')"
+    :title="dialogTitle"
+    :description="dialogDescription"
+    :confirm-button-label="confirmLabel"
     :cancel-button-label="$t('CONVERSATION.FORWARD.CANCEL')"
     :disable-confirm-button="!canConfirm"
     :is-loading="isForwarding"
@@ -249,7 +333,25 @@ defineExpose({ open, close });
     @close="resetState"
   >
     <div class="flex flex-col gap-3">
+      <p v-if="isForwarding && progressLabel" class="text-xs text-n-slate-11">
+        {{ progressLabel }}
+      </p>
       <div
+        v-if="isBulkForward"
+        class="flex max-h-40 flex-col gap-1.5 overflow-y-auto"
+      >
+        <div
+          v-for="item in sourceMessages"
+          :key="item.id"
+          class="rounded-lg border border-n-strong bg-n-alpha-2 px-3 py-2 text-sm text-n-slate-12"
+        >
+          <p class="line-clamp-2 whitespace-pre-wrap break-words">
+            {{ snippetForMessage(item) }}
+          </p>
+        </div>
+      </div>
+      <div
+        v-else
         class="rounded-lg border border-n-strong bg-n-alpha-2 px-3 py-2 text-sm text-n-slate-12"
       >
         <div class="mb-1 flex items-center gap-1.5 text-xs text-n-slate-11">
@@ -265,7 +367,7 @@ defineExpose({ open, close });
         </p>
       </div>
 
-      <div class="flex flex-col gap-1">
+      <div v-if="!isBulkForward" class="flex flex-col gap-1">
         <label
           class="text-xs font-medium text-n-slate-11"
           for="forward-caption"

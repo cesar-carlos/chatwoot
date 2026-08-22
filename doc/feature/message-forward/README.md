@@ -9,9 +9,11 @@ Encaminhar mensagem **estilo WhatsApp** no dashboard Chatwoot, **sem** endpoint 
 | API Evolution Go `/message/forward` | ❌ Não existe |
 | Pseudo-forward via `POST …/messages` | ✅ |
 | Context menu + modal de destino | ✅ |
+| Multi-select na timeline (até 10) + barra de ação | ✅ |
+| Caption editável + clone server-side (`attachment_ids`) | ✅ |
 | Badge “Forwarded” no dashboard | ✅ |
 | Rótulo nativo “Encaminhada” no WhatsApp | ❌ (limitação da API) |
-| i18n | ✅ EN only (regra do fork) |
+| i18n | ✅ EN + pt_BR (strings de fork) |
 
 ---
 
@@ -37,10 +39,10 @@ Encaminhar mensagem **estilo WhatsApp** no dashboard Chatwoot, **sem** endpoint 
 | Backend | Sem endpoint novo — reusa `messages#create` + `conversations#create` |
 | Canais MVP | `Channel::Whatsapp` + `provider` `evolution_go` **ou** `evolution` |
 | Destino | Mesmo inbox; 1..5 conversas/contatos |
-| Entrada UI | Context menu da mensagem → modal |
+| Entrada UI | Context menu → **Forward** (1 msg) ou **Select** (modo multi) → modal |
 | Badge | `content_attributes.forwarded` + chip em `Base.vue` |
-| i18n | **Somente EN** |
-| Fork | `custom/` + thin `// FORK:` em menu / `Message.vue` / `Base.vue` |
+| i18n | **EN + pt_BR** (rule do fork: community locales não são mantidos aqui) |
+| Fork | `custom/` + thin `// FORK:` em menu / `Message.vue` / `MessageList.vue` / `Base.vue` / `message.js` |
 
 ---
 
@@ -71,4 +73,4 @@ Cross-link provider: [evolution-go/decisions.md §34](../whatsapp-provider/evolu
 
 ---
 
-*Última atualização: 13/ago/2026*
+*Última atualização: 22/ago/2026*

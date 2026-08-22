@@ -8,23 +8,25 @@ Inventário do que existe no codebase após o MVP de **pseudo-forward** (16/jul/
 
 | Capacidade | Detalhe |
 |------------|---------|
-| Entrada | Item **Forward** no context menu da mensagem |
+| Entrada | Item **Forward** (1 msg) ou **Select** (modo multi) no context menu |
 | Gate de canal | Inbox WhatsApp com `provider` ∈ `evolution_go`, `evolution` |
 | Gate de mensagem | Tem `content` e/ou `attachments`; não privada; não failed/progress/deleted |
+| Multi-select | Até **10**; círculo à esquerda; clique no texto marca; mídia/link ignorados; Shift+clique = intervalo |
 | Destinos | Até **5** chats do **mesmo inbox** |
 | Recentes | Até **10** conversas do store, ordenadas por `last_activity_at` (não pelo sort da lista) |
 | Busca | Contatos com telefone **ou** grupos WhatsApp (`is_whatsapp_group` / `@g.us`); reachability no inbox |
-| Texto | Cópia do `content` da origem (caption editável no modal) |
+| Texto | Cópia do `content` da origem (caption editável só com 1 mensagem) |
 | Mídia | Preferência: `attachment_ids[]` → clone ActiveStorage no servidor; fallback: fetch browser + `toSameOriginActiveStorageUrl` |
 | Persistência destino | `conversations#create` (`AgentStartService`) → `MessageApi.create` → `MessageBuilder` (+ clone) → `SendReplyJob` |
 | Destino existente | Sempre passa por `AgentStartService` (reopen+assign / 422 se open de outro agente ou fora de escopo) — **não** posta direto em `messages#create` |
 | `conversation_id` no prepare | Modal envia `display_id` selecionado; `AgentStartService` só honra se pertencer ao mesmo `contact_inbox` |
 | Grupos / LID | `Custom::Contacts::ContactableInboxesService` reusa `contact_inbox` existente (não exige telefone) |
 | Conversa nova | `AgentStartService` cria + assignee = agente que encaminhou; depois `messages#create` |
-| Clone de mídia | Com `forwarded_from_message_id`, só clona anexos da mensagem origem |
+| Clone de mídia | Com `forwarded_from_message_id`, só clona anexos da mensagem origem (sem o id, não clona) |
 | Badge dashboard | Chip “Forwarded” quando `content_attributes.forwarded` |
-| Feedback | Toasts sucesso / parcial / falha (EN) |
-| Navegação | Agente **permanece** na conversa atual após encaminhar |
+| Feedback | Toasts sucesso / parcial / falha; **Open conversation** se 1 destino; progresso `SENDING_PROGRESS` |
+| Retry | Após falha parcial, confirm vira **Retry** e só os destinos que falharam ficam selecionados |
+| Navegação | Agente **permanece** na conversa atual após encaminhar (link no toast é opcional) |
 
 ---
 
@@ -35,9 +37,8 @@ Inventário do que existe no codebase após o MVP de **pseudo-forward** (16/jul/
 | Endpoint Go `/message/forward` | API não expõe |
 | Flag WhatsApp `ContextInfo.Forwarded` | Soft-forward nativo exigiria mudança upstream no Go |
 | Rótulo “Encaminhada” no app do cliente | Consequência da limitação acima |
-| Multi-select de mensagens na timeline | Fora do MVP |
 | Cross-inbox / outros canais | Fora do MVP |
-| i18n pt/pt_BR | Regra do fork: só EN |
+| i18n além de EN / pt_BR | Community locales não são mantidos neste fork |
 | Clone server-side de blobs | Feito para anexos com `id` via `attachment_ids` + `AttachmentCloneService`; residual: anexos só com URL externa (sem id / sem AS) |
 
 ---
@@ -56,6 +57,7 @@ Metadado gravado na mensagem **enviada** (destino):
 
 - Armazenado em `messages.content_attributes` (jsonb).
 - Lido no frontend (camelCase ou snake_case) para o badge em `Base.vue`.
+- `forwarded_from_message_id` é **obrigatório** para o clone server-side: sem ele, `attachment_ids` é ignorado.
 
 ---
 
@@ -66,19 +68,24 @@ Metadado gravado na mensagem **enviada** (destino):
 | Arquivo | Papel |
 |---------|-------|
 | `custom/app/javascript/dashboard/composables/useMessageForward.js` | Gate, recentes, busca/grupos, prepare via create, clone via `attachment_ids` ou fetch |
-| `custom/app/javascript/dashboard/components/forward/MessageForwardModal.vue` | Dialog de destino |
-| `custom/app/services/custom/messages/attachment_clone_service.rb` | Clone ActiveStorage; opcionalmente amarra a `source_message_id` |
+| `custom/app/javascript/dashboard/composables/useMessageForwardSelection.js` | Estado do modo selecionar (provide/inject) |
+| `custom/app/javascript/dashboard/components/forward/MessageForwardModal.vue` | Dialog de destino (1 ou N mensagens) |
+| `custom/app/javascript/dashboard/components/forward/MessageForwardSelectionBar.vue` | Barra Cancelar / contagem / Encaminhar |
+| `custom/app/services/custom/messages/attachment_clone_service.rb` | Clone ActiveStorage amarrado a `source_message_id` |
 | `custom/app/services/custom/contacts/contactable_inboxes_service.rb` | Reusa CI WhatsApp existente (grupos `@g.us`, LID) |
-| `custom/app/builders/custom/messages/message_builder.rb` | Merge de blobs clonados antes de `process_attachments` |
+| `custom/app/builders/custom/messages/message_builder.rb` | Merge de blobs clonados antes de `process_attachments` (`super`) |
 
 ### Thin FORK (upstream)
 
 | Arquivo | Mudança |
 |---------|---------|
-| `app/javascript/dashboard/modules/conversations/components/MessageContextMenu.vue` | Menu Forward + monta modal |
-| `app/javascript/dashboard/components-next/message/Message.vue` | `enabledOptions.forward` + `attachments` no payload do menu |
+| `app/javascript/dashboard/modules/conversations/components/MessageContextMenu.vue` | Menu Forward + Select + fallback modal |
+| `app/javascript/dashboard/components/widgets/conversation/MessagesView.vue` | Provide seleção, barra, modal |
+| `app/javascript/dashboard/components-next/message/Message.vue` | `enabledOptions.forward` + círculo/texto no modo select (ignora mídia/link) |
+| `app/javascript/dashboard/components-next/message/MessageList.vue` | `setTimeline` para Shift+clique |
 | `app/javascript/dashboard/components-next/message/bubbles/Base.vue` | Badge Forwarded |
 | `app/javascript/dashboard/i18n/locale/en/conversation.json` | `CONTEXT_MENU.FORWARD` + `CONVERSATION.FORWARD.*` |
+| `app/javascript/dashboard/i18n/locale/pt_BR/conversation.json` | Strings de fork (pt_BR) |
 | `app/javascript/dashboard/api/inbox/message.js` | `attachment_ids` no create / FormData |
 
 ### APIs reutilizadas (sem rota nova)
@@ -98,8 +105,10 @@ Metadado gravado na mensagem **enviada** (destino):
 |-----------|-------|---------|
 | `FORWARD_PROVIDERS` | `evolution_go`, `evolution` | `useMessageForward.js` |
 | `MAX_FORWARD_DESTINATIONS` | `5` | idem |
+| `MAX_FORWARD_MESSAGES` | `10` | idem |
 | `MAX_RECENT_CONVERSATIONS` | `10` | idem |
 | `MAX_CONTACTABLE_CHECKS` | `20` | idem |
+| `FORWARD_ERROR_CODES` | códigos i18n de erro do composable | idem |
 
 ---
 
@@ -112,4 +121,4 @@ Metadado gravado na mensagem **enviada** (destino):
 
 ---
 
-*Última atualização: 13/ago/2026*
+*Última atualização: 22/ago/2026*

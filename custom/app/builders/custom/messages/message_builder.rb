@@ -1,20 +1,19 @@
+# frozen_string_literal: true
+
 module Custom::Messages::MessageBuilder
-  # FORK: share contact card + attachment_ids clone for forward — keep #perform in sync with upstream on merge
   def perform
-    assert_reply_assigned_only_allowed! # FORK: custom role reply assigned only
+    assert_reply_assigned_only_allowed!
     assert_wavoip_public_reply_allowed!
     merge_cloned_attachment_blobs!
-
-    @message = @conversation.messages.build(message_params)
-    attach_shared_contact_from_crm
-    process_attachments
-    process_emails
-    process_email_content
-    @message.save!
-    @message
+    super
   end
 
   private
+
+  def process_attachments
+    attach_shared_contact_from_crm
+    super
+  end
 
   # FORK: custom role reply assigned only — covers API create, macros, conversation create+message
   def assert_reply_assigned_only_allowed!
@@ -52,15 +51,17 @@ module Custom::Messages::MessageBuilder
     ).attach_to(@message)
   end
 
-  # FORK: pseudo-forward — clone source attachments by id (avoids browser CORS fetch)
+  # Clone source attachments by id (avoids browser CORS fetch). Requires
+  # forwarded_from_message_id so callers cannot clone arbitrary account blobs.
   def merge_cloned_attachment_blobs!
     ids = attachment_ids_from_params
-    return if ids.blank?
+    source_id = forwarded_from_message_id
+    return if ids.blank? || source_id.blank?
 
     blobs = Custom::Messages::AttachmentCloneService.new(
       account: @account,
       attachment_ids: ids,
-      source_message_id: forwarded_from_message_id
+      source_message_id: source_id
     ).perform
     @attachments = Array.wrap(@attachments) + blobs
   end
@@ -77,5 +78,3 @@ module Custom::Messages::MessageBuilder
     attrs[:forwarded_from_message_id].presence || attrs['forwarded_from_message_id'].presence
   end
 end
-
-Messages::MessageBuilder.prepend(Custom::Messages::MessageBuilder)

@@ -492,7 +492,8 @@ end
 | **UX** | Context menu → modal (preview, recentes mesmo inbox, busca contato, multi-select até 5) |
 | **Escopo** | Inbox `evolution_go` / `evolution`; mesmo inbox da origem |
 | **Badge** | `content_attributes.forwarded` + chip “Forwarded” no dashboard; **sem** rótulo nativo no WhatsApp |
-| **Implementação** | `useMessageForward.js` + `MessageForwardModal.vue` em `custom/`; thin FORK no menu/`Message.vue`/`Base.vue` |
+| **i18n** | EN + pt_BR (strings de fork) |
+| **Implementação** | `useMessageForward.js` + `MessageForwardModal.vue` em `custom/`; overlay `MessageBuilder` via `super`; thin FORK no menu/`Message.vue`/`Base.vue`/`message.js` |
 | **Docs feature** | [doc/feature/message-forward/](../../message-forward/) |
 
 ---

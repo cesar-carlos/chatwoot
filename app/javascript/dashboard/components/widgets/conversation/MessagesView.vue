@@ -1,9 +1,20 @@
 <script>
-import { ref, provide, useTemplateRef } from 'vue';
+import {
+  ref,
+  provide,
+  useTemplateRef,
+  watch,
+  onMounted,
+  onUnmounted,
+  nextTick,
+} from 'vue';
 import { useElementSize } from '@vueuse/core';
 // composable
 import { useLabelSuggestions } from 'dashboard/composables/useLabelSuggestions';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
+import { useAlert } from 'dashboard/composables';
+import { useMapGetter } from 'dashboard/composables/store';
+import { useI18n } from 'vue-i18n';
 
 // components
 import ReplyBox from './ReplyBox.vue';
@@ -13,6 +24,14 @@ import Banner from 'dashboard/components/ui/Banner.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import ResizableEditorWrapper from './ResizableEditorWrapper.vue';
 import ReferralBubble from 'dashboard/components-next/Conversation/ReferralBubble.vue';
+// FORK: WhatsApp-like multi-select forward
+import MessageForwardModal from 'customDashboard/components/forward/MessageForwardModal.vue';
+import MessageForwardSelectionBar from 'customDashboard/components/forward/MessageForwardSelectionBar.vue';
+import {
+  MessageForwardSelectionKey,
+  createMessageForwardSelection,
+} from 'customDashboard/composables/useMessageForwardSelection';
+import { MAX_FORWARD_MESSAGES } from 'customDashboard/composables/useMessageForward';
 
 // stores and apis
 import { mapGetters } from 'vuex';
@@ -49,6 +68,8 @@ export default {
     Spinner,
     ResizableEditorWrapper,
     ReferralBubble,
+    MessageForwardModal,
+    MessageForwardSelectionBar,
   },
   mixins: [inboxMixin],
   setup() {
@@ -67,6 +88,44 @@ export default {
 
     provide('contextMenuElementTarget', conversationPanelRef);
 
+    const { t } = useI18n();
+    const currentChatRef = useMapGetter('getSelectedChat');
+    const forwardModalRef = useTemplateRef('forwardModalRef');
+    const messagesToForward = ref([]);
+    const forwardSelection = createMessageForwardSelection({
+      onOpenForward: messages => {
+        messagesToForward.value = messages;
+        nextTick(() => forwardModalRef.value?.open());
+      },
+      onMaxReached: () => {
+        useAlert(
+          t('CONVERSATION.FORWARD.MAX_MESSAGES', {
+            count: MAX_FORWARD_MESSAGES,
+          })
+        );
+      },
+    });
+    provide(MessageForwardSelectionKey, forwardSelection);
+
+    watch(
+      () => currentChatRef.value?.id,
+      () => forwardSelection.exit()
+    );
+
+    const onForwardEscape = event => {
+      if (event.key !== 'Escape' || !forwardSelection.isSelecting.value) {
+        return;
+      }
+      if (document.querySelector('dialog[open]')) return;
+      forwardSelection.exit();
+    };
+    onMounted(() => window.addEventListener('keydown', onForwardEscape));
+    onUnmounted(() => window.removeEventListener('keydown', onForwardEscape));
+
+    const onForwardDone = results => {
+      if (!results || results.failed === 0) forwardSelection.exit();
+    };
+
     return {
       captainTasksEnabled,
       getLabelSuggestions,
@@ -77,6 +136,9 @@ export default {
       topBannerRef,
       containerHeight,
       topBannerHeight,
+      messagesToForward,
+      isForwardSelecting: forwardSelection.isSelecting,
+      onForwardDone,
     };
   },
   data() {
@@ -561,11 +623,19 @@ export default {
         </div>
       </div>
       <ResizableEditorWrapper
+        v-if="!isForwardSelecting"
         ref="resizableEditorWrapperRef"
         :container-height="Math.max(0, containerHeight - topBannerHeight)"
       >
         <ReplyBox @toggle-editor-size="toggleReplyEditorSize" />
       </ResizableEditorWrapper>
+      <MessageForwardSelectionBar v-else />
     </div>
+    <MessageForwardModal
+      ref="forwardModalRef"
+      :messages="messagesToForward"
+      :inbox-id="inboxId"
+      @done="onForwardDone"
+    />
   </div>
 </template>

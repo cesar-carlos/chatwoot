@@ -503,6 +503,7 @@
       "REACTION_FAILED": "Could not send reaction",
       "REACTION_FAILED_DETAIL": "Could not send reaction: {detail}",
       "FORWARD": "Forward",
+      "SELECT": "Select",
       "EDIT": "Edit",
       "DELETE_CONFIRMATION": {
         "TITLE": "Are you sure you want to delete this message?",
@@ -544,8 +545,11 @@
     },
     "FORWARD": {
       "TITLE": "Forward message",
+      "TITLE_MULTI": "Forward {count} messages",
       "DESCRIPTION": "Choose up to 5 chats in this WhatsApp inbox. Recipients will get a new copy of the message (WhatsApp will not show the native Forwarded label).",
+      "DESCRIPTION_MULTI": "Choose up to 5 chats in this WhatsApp inbox. Each message is sent as a separate copy, in the original order.",
       "CONFIRM": "Forward",
+      "RETRY": "Retry",
       "CANCEL": "Cancel",
       "PREVIEW_LABEL": "Message",
       "ATTACHMENT_PREVIEW": "{count} attachment(s)",
@@ -559,14 +563,25 @@
       "NO_RECENT": "No recent chats in this inbox",
       "SELECTION_HINT": "{count} of {max} selected",
       "MAX_DESTINATIONS": "You can forward to at most {count} chats",
+      "MAX_MESSAGES": "You can select at most {count} messages",
+      "SELECTED_COUNT": "{count} selected",
       "DUPLICATE_DESTINATION": "This chat is already selected",
       "SEARCH_ERROR": "Could not search contacts. Try again.",
       "SUCCESS": "Forwarded to {count} chat(s)",
+      "OPEN_CONVERSATION": "Open conversation",
+      "SENDING_PROGRESS": "Sending message {messageIndex} of {messageCount} to chat {destinationIndex} of {destinationCount}",
       "PARTIAL": "Forwarded to {ok} chat(s); {fail} failed",
       "PARTIAL_DETAIL": "Forwarded to {ok} chat(s); {fail} failed: {detail}",
       "FAILED": "Could not forward the message",
       "FAILED_DETAIL": "Could not forward the message: {detail}",
-      "BADGE": "Forwarded"
+      "BADGE": "Forwarded",
+      "ERRORS": {
+        "ATTACHMENT_URL_MISSING": "Attachment URL is missing",
+        "ATTACHMENT_DOWNLOAD_FAILED": "Failed to download attachment ({status})",
+        "CONTACT_NOT_REACHABLE": "Contact is not reachable on this WhatsApp inbox",
+        "DESTINATION_CONTACT_REQUIRED": "Destination contact is required",
+        "NOTHING_TO_FORWARD": "Nothing to forward"
+      }
     },
     "SIDEBAR": {
       "CONTACT": "Contact",

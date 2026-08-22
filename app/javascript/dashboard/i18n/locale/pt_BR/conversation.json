@@ -448,6 +448,7 @@
       "REACTION_FAILED": "Não foi possível enviar a reação",
       "REACTION_FAILED_DETAIL": "Não foi possível enviar a reação: {detail}",
       "FORWARD": "Encaminhar",
+      "SELECT": "Selecionar",
       "EDIT": "Editar",
       "DELETE_CONFIRMATION": {
         "TITLE": "Você tem certeza que deseja excluir esta mensagem?",
@@ -489,8 +490,11 @@
     },
     "FORWARD": {
       "TITLE": "Encaminhar mensagem",
+      "TITLE_MULTI": "Encaminhar {count} mensagens",
       "DESCRIPTION": "Escolha até 5 chats nesta caixa de entrada WhatsApp. Os destinatários receberão uma nova cópia da mensagem (o WhatsApp não mostrará o rótulo nativo Encaminhada).",
+      "DESCRIPTION_MULTI": "Escolha até 5 chats nesta caixa de entrada WhatsApp. Cada mensagem é enviada como uma cópia separada, na ordem original.",
       "CONFIRM": "Encaminhar",
+      "RETRY": "Tentar novamente",
       "CANCEL": "Cancelar",
       "PREVIEW_LABEL": "Mensagem",
       "ATTACHMENT_PREVIEW": "{count} anexo(s)",
@@ -504,14 +508,25 @@
       "NO_RECENT": "Nenhum chat recente nesta caixa de entrada",
       "SELECTION_HINT": "{count} de {max} selecionados",
       "MAX_DESTINATIONS": "Você pode encaminhar para no máximo {count} chats",
+      "MAX_MESSAGES": "Você pode selecionar no máximo {count} mensagens",
+      "SELECTED_COUNT": "{count} selecionada(s)",
       "DUPLICATE_DESTINATION": "Este chat já está selecionado",
       "SEARCH_ERROR": "Não foi possível buscar contatos. Tente novamente.",
       "SUCCESS": "Encaminhado para {count} chat(s)",
+      "OPEN_CONVERSATION": "Abrir conversa",
+      "SENDING_PROGRESS": "Enviando mensagem {messageIndex} de {messageCount} para o chat {destinationIndex} de {destinationCount}",
       "PARTIAL": "Encaminhado para {ok} chat(s); {fail} falhou(aram)",
       "PARTIAL_DETAIL": "Encaminhado para {ok} chat(s); {fail} falhou(aram): {detail}",
       "FAILED": "Não foi possível encaminhar a mensagem",
       "FAILED_DETAIL": "Não foi possível encaminhar a mensagem: {detail}",
-      "BADGE": "Encaminhada"
+      "BADGE": "Encaminhada",
+      "ERRORS": {
+        "ATTACHMENT_URL_MISSING": "URL do anexo está ausente",
+        "ATTACHMENT_DOWNLOAD_FAILED": "Falha ao baixar o anexo ({status})",
+        "CONTACT_NOT_REACHABLE": "O contato não está acessível nesta caixa de entrada WhatsApp",
+        "DESTINATION_CONTACT_REQUIRED": "O contato de destino é obrigatório",
+        "NOTHING_TO_FORWARD": "Nada para encaminhar"
+      }
     },
     "SIDEBAR": {
       "CONTACT": "Contatos",
