@@ -150,7 +150,8 @@
         "AGENT_HINT": "agent.* is filled only when the conversation has an assignee.",
         "FILTERS_LABEL": "Liquid filters",
         "MACRO_NAME": "macro.name"
-      }
+      },
+      "INSERT_CONTACT_EMAIL": "Use contact's email"
     },
     "TOGGLE": {
       "ACTIVATION_TITLE": "Activate Automation Rule",
@@ -231,7 +232,7 @@
     "ATTRIBUTES": {
       "MESSAGE_TYPE": "Message Type",
       "PRIVATE_NOTE": "Private Note",
-      "MESSAGE_CONTAINS": "Message Contains",
+      "MESSAGE_CONTAINS": "Message Content",
       "EMAIL": "Email",
       "INBOX": "Inbox",
       "CONVERSATION_LANGUAGE": "Conversation Language",

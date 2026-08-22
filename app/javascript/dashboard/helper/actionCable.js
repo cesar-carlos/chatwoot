@@ -7,6 +7,8 @@ import { useImpersonation } from 'dashboard/composables/useImpersonation';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { createWhatsappVoiceCableHandlers } from 'dashboard/lib/voice/whatsappVoiceCableRegistry';
 import { useAlert } from 'dashboard/composables';
+import { useCallsStore } from 'dashboard/stores/calls';
+import { isLocalWhatsappCall } from 'dashboard/composables/useWhatsappCallSession';
 // FORK: Wavoip voice cable handlers (no SDP)
 import { createWavoipVoiceCableHandlers } from 'customDashboard/lib/voice/voiceCallCableRegistry';
 import { shouldReceiveWavoipInboundRing } from 'customDashboard/lib/wavoip/wavoipInboxCallRouting';
@@ -14,6 +16,7 @@ import { isWavoipOutboundCablePayload } from 'customDashboard/lib/wavoip/wavoipO
 // FORK: Evolution disconnect alert
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
 import { onEvolutionGoConnectionClosed } from 'customDashboard/lib/evolution_go/evolutionGoCableRegistry';
+import { markCallDismissed, isLocalCall } from 'dashboard/helper/voice';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import {
   getUserPermissions,
@@ -67,6 +70,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       'account.enrichment_completed': this.onEnrichmentCompleted,
       'copilot.message.created': this.onCopilotMessageCreated,
       'voice_call.incoming': this.onVoiceCallIncoming,
+      'voice_call.accepted': this.onVoiceCallAccepted,
       'voice_call.outbound_connected': this.onVoiceCallOutboundConnected,
       'voice_call.outbound_accepted': this.onVoiceCallOutboundAccepted,
       'voice_call.ended': this.onVoiceCallEnded,
@@ -380,6 +384,9 @@ class ActionCableConnector extends BaseActionCableConnector {
     this.app.$store.dispatch('labels/revalidate', { newKey: keys.label });
     this.app.$store.dispatch('inboxes/revalidate', { newKey: keys.inbox });
     this.app.$store.dispatch('teams/revalidate', { newKey: keys.team });
+    this.app.$store.dispatch('revalidateCannedResponses', {
+      newKey: keys.canned_response,
+    });
 
     if (this.isFilteredUnreadCountsEnabled()) {
       // Inbox/team/label visibility changes can change the accessible set used
@@ -417,6 +424,29 @@ class ActionCableConnector extends BaseActionCableConnector {
     this.whatsappVoiceCableHandlers().onIncoming(data);
   };
 
+  // Inbound call accepted (in this tab or a sibling tab/window on the same
+  // account, on either provider). Broadcast is account-wide, so drop the
+  // ringing card everywhere except the tab that actually owns the now-active
+  // call — removing an active call here would tear down its live WebRTC
+  // session. Check isLocalWhatsappCall/isLocalCall (both set synchronously
+  // before their respective accept/join API calls) rather than the store's
+  // isActive flag, which this tab may not have set yet.
+  // Mark dismissed regardless of locality: the ringing message.created for
+  // this call is queued through ActionCableBroadcastJob and can still be
+  // delivered after this (synchronous) broadcast, which would otherwise
+  // re-add the call as ringing once it finally arrives.
+  // eslint-disable-next-line class-methods-use-this
+  onVoiceCallAccepted = data => {
+    if (!data?.provider) return;
+    markCallDismissed(data.call_id);
+    const isLocal =
+      data.provider === VOICE_CALL_PROVIDERS.WHATSAPP
+        ? isLocalWhatsappCall(data.id)
+        : isLocalCall(data.call_id);
+    if (isLocal) return;
+    useCallsStore().removeCall(data.call_id);
+  };
+
   // `connect` is the WebRTC tunnel-ready signal (fires ~20s before pickup
   // for outbound). Apply the SDP answer so the handshake completes during
   // ringing, but stay non-active until `outbound_accepted` arrives.
@@ -445,8 +475,15 @@ class ActionCableConnector extends BaseActionCableConnector {
       this.wavoipVoiceCableHandlers().onEnded?.(data);
       return;
     }
-    if (data?.provider !== VOICE_CALL_PROVIDERS.WHATSAPP) return;
-    await this.whatsappVoiceCableHandlers().onEnded(data);
+    if (!Object.values(VOICE_CALL_PROVIDERS).includes(data?.provider)) return;
+    // A still-queued ringing message.created (see onVoiceCallAccepted) must not
+    // resurrect a call that has already ended.
+    markCallDismissed(data.call_id);
+    if (data?.provider === VOICE_CALL_PROVIDERS.WHATSAPP) {
+      await this.whatsappVoiceCableHandlers().onEnded(data);
+      return;
+    }
+    useCallsStore().removeCall(data.call_id);
   };
 
   // When another tab or agent accepts an inbound WhatsApp call, dismiss it from

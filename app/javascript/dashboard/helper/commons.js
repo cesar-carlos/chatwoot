@@ -56,6 +56,7 @@ export const createPendingMessage = data => {
   const tempMessageId = getUuid();
   const {
     message,
+    pendingMessageContent,
     file,
     sharedContactId,
     sharedContactPhone,
@@ -64,7 +65,7 @@ export const createPendingMessage = data => {
   const tempAttachments = [{ id: tempMessageId }];
   const pendingMessage = {
     ...data,
-    content: message || null,
+    content: pendingMessageContent || message || null,
     id: tempMessageId,
     echo_id: tempMessageId,
     status: MESSAGE_STATUS.PROGRESS,

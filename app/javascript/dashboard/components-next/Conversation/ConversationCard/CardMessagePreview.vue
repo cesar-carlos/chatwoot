@@ -1,22 +1,19 @@
 <script setup>
-import { computed, toRef } from 'vue';
-import { useConversationListPreview } from 'dashboard/composables/useConversationListPreview';
+import { computed } from 'vue';
+import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 
 import Avatar from 'dashboard/components-next/avatar/Avatar.vue';
+import MessagePreview from './MessagePreview.vue';
 
 const props = defineProps({
   conversation: {
     type: Object,
     required: true,
   },
-  unreadCount: {
-    type: Number,
-    default: 0,
-  },
 });
 
-const lastNonActivityMessageContent = useConversationListPreview(
-  toRef(props, 'conversation')
+const lastNonActivityMessage = computed(() =>
+  useSnakeCase(props.conversation.lastNonActivityMessage ?? {}, { deep: true })
 );
 
 const assignee = computed(() => {
@@ -27,19 +24,22 @@ const assignee = computed(() => {
     status: agent.availabilityStatus,
   };
 });
+
+const unreadMessagesCount = computed(() => {
+  const { unreadCount } = props.conversation;
+  return unreadCount;
+});
 </script>
 
 <template>
   <div class="flex items-end w-full gap-2 pb-1">
-    <p
-      class="w-full mb-0 text-sm leading-7 line-clamp-2"
-      :class="
-        unreadCount > 0 ? 'font-medium text-n-slate-12' : 'text-n-slate-11'
-      "
-    >
-      {{ lastNonActivityMessageContent }}
-    </p>
-    <div class="flex items-center flex-shrink-0 pb-2">
+    <MessagePreview
+      :message="lastNonActivityMessage"
+      multi-line
+      class="w-full"
+      :class="unreadMessagesCount > 0 ? 'text-n-slate-12' : 'text-n-slate-11'"
+    />
+    <div class="flex items-center flex-shrink-0 gap-2 pb-2">
       <Avatar
         v-if="assignee.name"
         :name="assignee.name"
@@ -48,6 +48,14 @@ const assignee = computed(() => {
         :status="assignee.status"
         rounded-full
       />
+      <div
+        v-if="unreadMessagesCount > 0"
+        class="inline-flex items-center justify-center rounded-full size-5 bg-n-brand"
+      >
+        <span class="text-xs font-semibold text-white">
+          {{ unreadMessagesCount }}
+        </span>
+      </div>
     </div>
   </div>
 </template>

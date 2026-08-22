@@ -132,7 +132,8 @@ json.bot_name resource.channel.try(:bot_name) if resource.telegram?
 
 ### WhatsApp Channel
 if resource.whatsapp?
-  json.message_templates resource.channel.try(:message_templates)
+  message_templates = resource.channel.try(:message_templates)
+  json.message_templates message_templates.is_a?(Array) ? message_templates : []
   if Current.account_user&.administrator?
     # FORK: mask Evolution / Evolution Go secrets in dashboard API
     provider_config_json =
@@ -148,6 +149,11 @@ if resource.whatsapp?
     wa_config = resource.channel.provider_config || {}
     json.sync_edit_to_whatsapp ActiveModel::Type::Boolean.new.cast(wa_config['sync_edit_to_whatsapp'])
     json.sync_delete_to_whatsapp ActiveModel::Type::Boolean.new.cast(wa_config['sync_delete_to_whatsapp'])
+  end
+  if Current.account_user&.administrator? &&
+     ChatwootApp.chatwoot_cloud? &&
+     (resource.channel.try(:provider_config) || {}).to_h['source'] == 'embedded_signup'
+    json.business_management_token_configured resource.channel.try(:business_management_token).present?
   end
   # Only show reauthorization for embedded signup; manual flow uses API keys, not OAuth
   json.reauthorization_required(

@@ -69,5 +69,5 @@ class Macros::ExecutionService < ActionService
   end
 end
 
-# FORK: voice-only inbox action guards
+# FORK: voice-only inbox action guards — prepend so Custom#perform can call super
 Macros::ExecutionService.prepend_mod_with('Macros::ExecutionService')

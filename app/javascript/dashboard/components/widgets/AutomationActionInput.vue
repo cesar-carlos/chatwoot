@@ -11,6 +11,8 @@ import WorkflowContactMessageInput from 'dashboard/routes/dashboard/settings/con
 // FORK: Liquid variable chips + preview for send_message / add_private_note
 import AutomationMessageVariables from 'dashboard/routes/dashboard/settings/automation/components/AutomationMessageVariables.vue';
 
+const CONTACT_EMAIL_TOKEN = '{{contact.email}}';
+
 export default {
   components: {
     AutomationActionTeamMessageInput,
@@ -97,11 +99,15 @@ export default {
       },
     },
     actionTypesAsOptions() {
-      return this.actionTypes.map(a => ({ id: a.key, name: a.label }));
+      return this.actionTypes.map(a => ({
+        id: a.key,
+        name: a.label,
+        icon: a.icon,
+      }));
     },
     isVerticalLayout() {
       // FORK: contact_message uses vertical custom input
-      return ['team_message', 'textarea', 'contact_message'].includes(
+      return ['team_message', 'textarea', 'email', 'contact_message'].includes(
         this.inputType
       );
     },
@@ -158,6 +164,19 @@ export default {
         this.castMessageVmodel = next;
       }
     },
+    insertContactEmailToken() {
+      const existingEmails = (this.castMessageVmodel || '')
+        .split(',')
+        .map(email => email.trim())
+        .filter(Boolean);
+
+      const hasContactEmail = existingEmails.some(
+        email => email.replace(/\s+/g, '') === CONTACT_EMAIL_TOKEN
+      );
+      if (hasContactEmail) return;
+
+      this.action_params = [[...existingEmails, CONTACT_EMAIL_TOKEN].join(',')];
+    },
   },
 };
 </script>
@@ -191,13 +210,6 @@ export default {
             :dropdown-max-height="dropdownMaxHeight"
           />
           <NextInput
-            v-else-if="inputType === 'email'"
-            v-model="action_params"
-            type="email"
-            size="sm"
-            :placeholder="$t('AUTOMATION.ACTION.EMAIL_INPUT_PLACEHOLDER')"
-          />
-          <NextInput
             v-else-if="inputType === 'url'"
             v-model="action_params"
             type="url"
@@ -220,14 +232,31 @@ export default {
           @click="removeAction"
         />
       </div>
+      <div v-if="inputType === 'email'" class="flex items-center w-full gap-2">
+        <NextInput
+          v-model="action_params"
+          type="text"
+          size="sm"
+          class="flex-1"
+          :placeholder="$t('AUTOMATION.ACTION.EMAIL_INPUT_PLACEHOLDER')"
+        />
+        <NextButton
+          sm
+          faded
+          slate
+          class="flex-shrink-0 whitespace-nowrap"
+          :label="$t('AUTOMATION.ACTION.INSERT_CONTACT_EMAIL')"
+          @click="insertContactEmailToken"
+        />
+      </div>
       <AutomationActionTeamMessageInput
-        v-if="inputType === 'team_message'"
+        v-else-if="inputType === 'team_message'"
         v-model="action_params"
         :teams="dropdownValues"
         :dropdown-max-height="dropdownMaxHeight"
       />
       <WootMessageEditor
-        v-if="inputType === 'textarea'"
+        v-else-if="inputType === 'textarea'"
         ref="messageEditorRef"
         v-model="castMessageVmodel"
         rows="4"

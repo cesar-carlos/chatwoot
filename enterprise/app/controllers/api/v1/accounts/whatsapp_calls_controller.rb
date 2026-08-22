@@ -8,9 +8,9 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   before_action :ensure_call_message, only: :upload_recording
 
   rescue_from Voice::CallErrors::NotRinging,
-              Voice::CallErrors::AlreadyAccepted,
               Voice::CallErrors::CallFailed,
               with: :render_call_error
+  rescue_from Voice::CallErrors::AlreadyAccepted, with: :render_call_already_accepted
   rescue_from Voice::CallErrors::CallAlreadyEnded, with: :render_call_ended
   rescue_from Voice::CallErrors::NoCallPermission, with: :render_permission_request
 
@@ -126,40 +126,6 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
     'uploaded'
   end
 
-  # FORK: delegate opt-in flow to CallPermissionRequestService
-  # Meta error 138006 means the contact hasn't opted in yet; delegate opt-in
-  # flow to the dedicated service (throttle, template, activity, WAMID record).
-  # 422 (not 200) so clients treating 2xx as "call placed" can't mistake the
-  # permission-template path for a successful dial.
-  def handle_no_call_permission
-    Whatsapp::CallPermissionRequestService.new(
-      conversation: @conversation, agent: Current.user
-    ).perform
-
-    result = provider_service.initiate_call(@contact.phone_number.delete('+'), params[:sdp_offer])
-    provider_call_id = result.dig('calls', 0, 'id') || result['call_id']
-
-    @conversation = open_conversation!
-    @conversation.with_lock { @conversation.update!(assignee: Current.user) } if claim_for_caller
-
-    create_call_record(provider_call_id)
-  end
-
-  def create_call_record(provider_call_id)
-    existing = Current.account.calls.whatsapp.find_by(provider_call_id: provider_call_id)
-    return existing if existing
-
-    Current.account.calls.create!(
-      provider: :whatsapp, inbox: @conversation.inbox, conversation: @conversation, contact: @conversation.contact,
-      provider_call_id: provider_call_id, direction: :outgoing, status: 'ringing',
-      accepted_by_agent_id: Current.user.id,
-      meta: { 'sdp_offer' => params[:sdp_offer], 'ice_servers' => Call.default_ice_servers }
-    )
-  rescue ActiveRecord::RecordNotUnique
-    # A webhook inserted the row between the find_by above and this create; reconcile to it.
-    Current.account.calls.whatsapp.find_by!(provider_call_id: provider_call_id)
-  end
-
   def render_permission_request
     # Raised mid-dial, so a fresh contact has no thread yet — open one for the opt-in template to land in.
     @conversation = open_conversation!
@@ -180,5 +146,12 @@ class Api::V1::Accounts::WhatsappCallsController < Api::V1::Accounts::BaseContro
   # 409 (not 422) so the FE can tell "already ended" from a generic failure and dismiss the ringing UI.
   def render_call_ended
     render json: { error: I18n.t('errors.whatsapp.calls.already_ended') }, status: :conflict
+  end
+
+  # 409 (not 422) so a losing tab in an accept race dismisses its own ringing UI via the
+  # same path as render_call_ended, instead of waiting on the winner's broadcast — which
+  # this tab's own optimistic local state can cause it to mistake for its own accept.
+  def render_call_already_accepted
+    render json: { error: I18n.t('errors.whatsapp.calls.already_accepted') }, status: :conflict
   end
 end
