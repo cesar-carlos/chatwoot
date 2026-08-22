@@ -762,19 +762,34 @@ export default {
         @reply="revealReplyBox"
         @go-to-latest="openConversation(latestConversation)"
       />
-      <ResizableEditorWrapper
-        v-if="!isForwardSelecting"
-        v-show="!isReadingHistory"
-        ref="resizableEditorWrapperRef"
-        :class="{ 'animate-fade-in-up': isReplyRevealed }"
-        :container-height="Math.max(0, containerHeight - topBannerHeight)"
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-1"
+        mode="out-in"
       >
-        <ReplyBox
-          ref="replyBoxRef"
-          @toggle-editor-size="toggleReplyEditorSize"
+        <!-- FORK: selection bar replaces reply box during multi-select forward -->
+        <MessageForwardSelectionBar
+          v-if="isForwardSelecting"
+          key="forward-bar"
         />
-      </ResizableEditorWrapper>
-      <MessageForwardSelectionBar v-else />
+        <ResizableEditorWrapper
+          v-else
+          v-show="!isReadingHistory"
+          key="reply-box"
+          ref="resizableEditorWrapperRef"
+          :class="{ 'animate-fade-in-up': isReplyRevealed }"
+          :container-height="Math.max(0, containerHeight - topBannerHeight)"
+        >
+          <ReplyBox
+            ref="replyBoxRef"
+            @toggle-editor-size="toggleReplyEditorSize"
+          />
+        </ResizableEditorWrapper>
+      </Transition>
     </div>
     <MessageForwardModal
       ref="forwardModalRef"
