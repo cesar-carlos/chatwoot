@@ -125,18 +125,19 @@ defineExpose({ open, close });
       :class="[
         maxWidthClass,
         positionClass,
-        overflowYAuto ? 'overflow-y-auto' : 'overflow-visible',
+        'max-h-[90vh] overflow-hidden', // FORK: keep dialog footer on screen
       ]"
       @close.prevent="handleDialogClose"
     >
       <OnClickOutside @trigger="handleClickOutside">
+        <!-- FORK: max-h + overflow-hidden so action buttons stay visible -->
         <form
           ref="dialogContentRef"
-          class="flex flex-col w-full h-auto gap-6 p-6 overflow-visible text-start align-middle transition-all duration-300 ease-in-out transform bg-n-alpha-3 backdrop-blur-[100px] shadow-xl rounded-xl"
+          class="flex flex-col w-full min-h-0 max-h-[90vh] gap-6 p-6 overflow-hidden text-start align-middle transition-all duration-300 ease-in-out transform bg-n-alpha-3 backdrop-blur-[100px] shadow-xl rounded-xl"
           @submit.prevent="confirm"
           @click.stop
         >
-          <div v-if="title || description" class="flex flex-col gap-2">
+          <div v-if="title || description" class="flex flex-col shrink-0 gap-2">
             <h3 class="text-base font-medium leading-6 text-n-slate-12">
               {{ title }}
             </h3>
@@ -146,12 +147,17 @@ defineExpose({ open, close });
               </p>
             </slot>
           </div>
-          <slot v-if="isOpen" />
+          <div
+            class="flex min-h-0 flex-1 flex-col"
+            :class="overflowYAuto ? 'overflow-y-auto' : 'overflow-hidden'"
+          >
+            <slot v-if="isOpen" />
+          </div>
           <!-- Dialog content will be injected here -->
           <slot name="footer">
             <div
               v-if="showCancelButton || showConfirmButton"
-              class="flex items-center justify-between w-full gap-3"
+              class="flex items-center justify-between w-full gap-3 shrink-0"
             >
               <Button
                 v-if="showCancelButton"

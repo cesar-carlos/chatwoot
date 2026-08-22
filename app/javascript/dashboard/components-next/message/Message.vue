@@ -23,7 +23,7 @@ import {
 } from './constants';
 
 import Avatar from 'next/avatar/Avatar.vue';
-import Icon from 'next/icon/Icon.vue';
+import Checkbox from 'dashboard/components-next/checkbox/Checkbox.vue';
 
 import TextBubble from './bubbles/Text/Index.vue';
 import ActivityBubble from './bubbles/Activity.vue';
@@ -614,43 +614,29 @@ provideMessageContext({
   <div
     v-if="shouldRenderMessage"
     :id="`message${props.id}`"
-    class="group flex w-full mb-2 gap-2 message-bubble-container"
+    class="flex w-full mb-2 gap-2 message-bubble-container"
     :data-message-id="props.id"
     :class="{
+      'ps-2': showForwardSelectControl,
       'rounded-lg bg-n-brand/10 ring-1 ring-inset ring-n-brand/20': isForwardSelected,
       'group-with-next': shouldGroupWithNext,
     }"
   >
-    <!-- FORK: ghost checkbox shown on hover before selection mode starts -->
-    <button
-      v-if="showForwardSelectControl || (canSelectForForward && isBubble)"
-      type="button"
-      class="mt-1 flex size-7 shrink-0 items-center justify-center self-center transition-opacity"
+    <!-- FORK: selection checkbox only while multi-select forward is active -->
+    <div
+      v-if="showForwardSelectControl"
+      class="ms-1 mt-1.5 flex h-4 w-4 shrink-0 self-start"
       :class="
-        showForwardSelectControl
-          ? canSelectForForward
-            ? 'cursor-pointer'
-            : 'cursor-default opacity-40'
-          : 'cursor-pointer opacity-0 group-hover:opacity-50'
+        canSelectForForward ? 'cursor-pointer' : 'pointer-events-none opacity-40'
       "
-      :disabled="!canSelectForForward && showForwardSelectControl"
       @click.stop="onForwardSelectToggle"
     >
-      <span
-        class="flex size-5 items-center justify-center rounded-full border transition-colors"
-        :class="
-          isForwardSelected
-            ? 'border-n-brand bg-n-brand'
-            : 'border-n-slate-8 bg-n-background'
-        "
-      >
-        <Icon
-          v-if="isForwardSelected"
-          icon="i-lucide-check"
-          class="size-3 text-white"
-        />
-      </span>
-    </button>
+      <Checkbox
+        :model-value="isForwardSelected"
+        :disabled="!canSelectForForward"
+        class="pointer-events-none"
+      />
+    </div>
     <div
       class="flex min-w-0 flex-1"
       :class="[

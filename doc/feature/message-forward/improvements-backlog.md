@@ -9,6 +9,10 @@ Pós-MVP. Não bloqueia o uso atual.
 - Pseudo-forward texto + anexos
 - Modal recentes + busca + multi-select de destinos (máx. 5)
 - Multi-select de mensagens na timeline (máx. 10) + barra de ação
+- Checkbox do design system (timeline e destinos); sem hover fantasma
+- Modal `xl`; Dialog `max-h-[90vh]`; só a lista de contatos rola; footer fixo
+- Busca alinhada (lupa + input no mesmo outline; `type="text"`)
+- Tailwind `content` inclui `custom/app/javascript/**`
 - Shift+clique para intervalo; modo Select só sai no ✕ / Escape / sucesso
 - Toast Open conversation (1 destino) + Retry no modal
 - Caption editável enviado com o forward
@@ -37,6 +41,7 @@ Pós-MVP. Não bloqueia o uso atual.
 | ID | Item | Notas |
 |----|------|-------|
 | F-P2-1 | Multi-select de mensagens na timeline | ✅ Entregue — context menu **Select**, barra, até 10 msgs, envio em ordem |
+| F-P2-5 | Polish UI do modo Select + modal | ✅ Entregue — `Checkbox` design system, inset da borda, modal `xl`, Dialog `max-h-[90vh]` + lista `flex-1 overflow-y-auto`, busca `type="text"` com outline no wrapper, Tailwind scan `custom/`, Cancelar ícone-only, tooltip Shift, badges Aberta/Pendente, progresso por destino |
 | F-P2-2 | Encaminhar para outros canais do mesmo account | Regras por channel_type |
 | F-P2-3 | Prefetch / cache de blobs | Evitar re-download se encaminhar de novo |
 | F-P2-4 | Endpoint server-side clone | **Parcial:** clone via `attachment_ids` no `messages#create` + `AttachmentCloneService` (exige `forwarded_from_message_id`). Residual: anexos sem id / URL externa cross-origin (Instagram, S3 direto). Alias-host AS também coberto por `toSameOriginActiveStorageUrl` no fallback fetch |

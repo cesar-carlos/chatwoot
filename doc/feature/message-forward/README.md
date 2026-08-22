@@ -10,6 +10,7 @@ Encaminhar mensagem **estilo WhatsApp** no dashboard Chatwoot, **sem** endpoint 
 | Pseudo-forward via `POST …/messages` | ✅ |
 | Context menu + modal de destino | ✅ |
 | Multi-select na timeline (até 10) + barra de ação | ✅ |
+| Modal `xl` + Dialog `max-h-[90vh]` + scroll só na lista + busca alinhada | ✅ |
 | Caption editável + clone server-side (`attachment_ids`) | ✅ |
 | Badge “Forwarded” no dashboard | ✅ |
 | Rótulo nativo “Encaminhada” no WhatsApp | ❌ (limitação da API) |
@@ -42,7 +43,7 @@ Encaminhar mensagem **estilo WhatsApp** no dashboard Chatwoot, **sem** endpoint 
 | Entrada UI | Context menu → **Forward** (1 msg) ou **Select** (modo multi) → modal |
 | Badge | `content_attributes.forwarded` + chip em `Base.vue` |
 | i18n | **EN + pt_BR** (rule do fork: community locales não são mantidos aqui) |
-| Fork | `custom/` + thin `// FORK:` em menu / `Message.vue` / `MessageList.vue` / `Base.vue` / `message.js` |
+| Fork | `custom/` + thin `// FORK:` em menu / `Message.vue` / `MessageList.vue` / `Base.vue` / `message.js` / `Dialog.vue` / `tailwind.config.js` |
 
 ---
 
