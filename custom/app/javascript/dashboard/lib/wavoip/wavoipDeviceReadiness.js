@@ -79,8 +79,8 @@ const STATUS_I18N_KEYS = {
 export function wavoipDeviceErrorKey(status) {
   const normalized = normalizeWavoipDeviceStatus(status);
   return (
-    STATUS_I18N_KEYS[normalized] ||
     STATUS_I18N_KEYS[status] ||
+    STATUS_I18N_KEYS[normalized] ||
     'CONVERSATION.WAVOIP_CALL.DEVICE_NOT_READY'
   );
 }

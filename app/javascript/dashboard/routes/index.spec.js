@@ -15,6 +15,7 @@ vi.mock('../store', () => ({
       'accounts/getAccount': () => ({}),
     },
     dispatch: vi.fn(() => Promise.resolve()),
+    watch: vi.fn(),
   },
 }));
 

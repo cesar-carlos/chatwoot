@@ -1,3 +1,8 @@
+vi.mock('../actions', () => ({ default: {} }));
+vi.mock('dashboard/store', () => ({
+  default: { getters: {} },
+}));
+
 import { mutations } from '../index';
 import types from '../../../mutation-types';
 

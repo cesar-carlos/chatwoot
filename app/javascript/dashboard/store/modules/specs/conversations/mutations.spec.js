@@ -1,5 +1,10 @@
 import { describe } from 'vitest';
 import types from '../../../mutation-types';
+
+vi.mock('dashboard/store', () => ({
+  default: { getters: {} },
+}));
+
 import { mutations } from '../../conversations';
 import { mergeConversationOnListRefresh } from '../../../../helper/conversationHelper';
 

@@ -278,4 +278,30 @@ describe('useWavoipIncomingOffer', () => {
     expect(offer.off).toHaveBeenCalledTimes(4);
     expect(offer.activeHandlerCount()).toBe(0);
   });
+
+  it('does not double-wire listeners when the SDK emits the same offer twice', () => {
+    const { attachToInbox } = useWavoipIncomingOffer();
+    attachToInbox(302);
+
+    const offer = createOffer('offer_duplicate');
+    offerHandlers.offer(offer);
+    expect(offer.on).toHaveBeenCalledTimes(4);
+
+    offerHandlers.offer(offer);
+    expect(offer.on).toHaveBeenCalledTimes(4);
+    expect(useCallsStore().calls).toHaveLength(1);
+  });
+
+  it('coalesces concurrent waitForPendingOffer callers onto one waiter', async () => {
+    const first = waitForPendingOffer('coalesce_id');
+    const second = waitForPendingOffer('coalesce_id');
+    const { attachToInbox } = useWavoipIncomingOffer();
+    attachToInbox(303);
+
+    const offer = createOffer('coalesce_id');
+    offerHandlers.offer(offer);
+
+    await expect(first).resolves.toBe(offer);
+    await expect(second).resolves.toBe(offer);
+  });
 });

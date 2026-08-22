@@ -30,6 +30,30 @@ export function recordCallStats(inboxId, callId, stats) {
   pushEntry(callStats, { inboxId, callId, stats });
 }
 
+let liveStatsSource = null;
+
+export function setLiveWavoipStatsSource(source) {
+  liveStatsSource = source;
+}
+
+export function clearLiveWavoipStatsSource(source) {
+  if (liveStatsSource === source) liveStatsSource = null;
+}
+
+async function snapshotLiveCallStats() {
+  if (typeof liveStatsSource?.getStats !== 'function') return;
+
+  try {
+    recordCallStats(
+      liveStatsSource.inboxId,
+      liveStatsSource.callId,
+      await liveStatsSource.getStats()
+    );
+  } catch (_) {
+    /* snapshot is best-effort */
+  }
+}
+
 function buildDeviceSnapshot(inboxId) {
   if (!inboxId) return null;
 
@@ -54,12 +78,14 @@ export function getRecentConnectivityIssues(inboxId) {
     .slice(-10);
 }
 
-export function exportWavoipDiagnostics({
+export async function exportWavoipDiagnostics({
   inboxId,
   callId,
   panelStatus,
   statusVerifiedLive,
 } = {}) {
+  await snapshotLiveCallStats();
+
   return JSON.stringify(
     {
       generatedAt: new Date().toISOString(),

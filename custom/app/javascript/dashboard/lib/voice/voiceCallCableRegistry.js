@@ -195,6 +195,7 @@ export const createWavoipVoiceCableHandlers = t => ({
       useAlert(t('CONVERSATION.WAVOIP_CALL.HANDLED_REMOTELY'));
     } else if (
       !isOutboundCallDirection(callEntry.callDirection) &&
+      !callEntry.isActive &&
       (data.end_reason === 'no_answer' ||
         data.status === 'no_answer' ||
         data.status === 'missed' ||

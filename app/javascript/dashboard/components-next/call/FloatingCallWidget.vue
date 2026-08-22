@@ -255,11 +255,8 @@ const handleJoinCall = async call => {
     callSid: call.callSid,
   });
 
-  if (result && conversation) {
-    router.push({
-      name: 'inbox_conversation',
-      params: { conversation_id: call.conversationId },
-    });
+  if (result) {
+    goToConversation(call);
   }
 };
 
@@ -374,6 +371,7 @@ onBeforeUnmount(() => {
         :call="call"
         :state="stackedCardState(call)"
         :call-info="getCallInfo(call)"
+        :is-joining="isJoining"
         :is-ringtone-muted="isRingtoneMuted"
         @accept="handleJoinCall(call)"
         @reject="rejectIncomingCall(call.callSid)"
@@ -414,6 +412,5 @@ onBeforeUnmount(() => {
         "
       />
     </div>
-    <template v-else />
   </Transition>
 </template>

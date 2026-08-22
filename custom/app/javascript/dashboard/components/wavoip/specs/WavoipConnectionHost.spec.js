@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { createStore } from 'vuex';
 
 const {
@@ -20,6 +20,10 @@ vi.mock('customDashboard/lib/voice/voiceSessionRegistry', () => ({
 
 vi.mock('customDashboard/composables/wavoip/useWavoipCallSession', () => ({
   useWavoipCallSession,
+}));
+
+vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
+  endActiveCall: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('customDashboard/composables/wavoip/useWavoipNotifications', () => ({
@@ -63,12 +67,13 @@ describe('WavoipConnectionHost', () => {
     expect(registerWavoipCallSession).toHaveBeenCalledWith(session);
   });
 
-  it('clears the singleton on unmount', () => {
+  it('clears the singleton on unmount', async () => {
     const wrapper = mount(WavoipConnectionHost, {
       global: { plugins: [store] },
     });
 
     wrapper.unmount();
+    await flushPromises();
 
     expect(registerWavoipCallSession).toHaveBeenLastCalledWith(null);
     expect(cleanupSession).toHaveBeenCalledTimes(1);

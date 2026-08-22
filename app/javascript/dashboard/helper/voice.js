@@ -5,7 +5,6 @@ import {
 import { MESSAGE_TYPE } from 'shared/constants/messages';
 import { useCallsStore } from 'dashboard/stores/calls';
 import types from 'dashboard/store/mutation-types';
-import store from 'dashboard/store';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import {
   handleWebRtcRemoteEnd,
@@ -18,6 +17,8 @@ import {
   isWavoipSdkCallOwned,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import { normalizeCallDirection } from 'customDashboard/lib/voice/voiceCallDirection';
+import { getRuntimeStore as getDashboardStore } from 'dashboard/store/runtimeStore';
+import { addToCappedSet } from 'customDashboard/lib/voice/cappedSet';
 
 export const TERMINAL_STATUSES = [
   'completed',
@@ -37,7 +38,7 @@ export const TERMINAL_STATUSES = [
 // has already cleared.
 const dismissedCallSids = new Set();
 export const markCallDismissed = callSid => {
-  if (callSid) dismissedCallSids.add(callSid);
+  addToCappedSet(dismissedCallSids, callSid);
 };
 export const isCallDismissed = callSid =>
   callSid ? dismissedCallSids.has(callSid) : false;
@@ -224,8 +225,10 @@ export function handleVoiceCallCreated(
     provider === VOICE_CALL_PROVIDERS.WAVOIP &&
     callDirection === 'inbound' &&
     !shouldReceiveWavoipInboundRing({
-      inbox: store.getters['inboxes/getInbox']?.(inboxId),
-      isAdministrator: store.getters.getCurrentRole === 'administrator',
+      // FORK: lazy store access avoids conversations → voice → store cycle
+      inbox: getDashboardStore()?.getters['inboxes/getInbox']?.(inboxId),
+      isAdministrator:
+        getDashboardStore()?.getters.getCurrentRole === 'administrator',
       availability: currentUserAvailability,
     })
   ) {

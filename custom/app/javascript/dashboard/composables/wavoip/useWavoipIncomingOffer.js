@@ -118,13 +118,21 @@ export const waitForPendingOffer = (callId, timeoutMs = 10_000) => {
     return Promise.resolve(pendingOffers.get(callId).offer);
   }
 
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => {
-      offerWaiters.delete(callId);
-      reject(new Error('Wavoip offer timeout'));
-    }, timeoutMs);
-    offerWaiters.set(callId, { resolve, reject, timer });
+  const existing = offerWaiters.get(callId);
+  if (existing) return existing.promise;
+
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
   });
+  const timer = setTimeout(() => {
+    offerWaiters.delete(callId);
+    reject(new Error('Wavoip offer timeout'));
+  }, timeoutMs);
+  offerWaiters.set(callId, { resolve, reject, timer, promise });
+  return promise;
 };
 
 const mergeIncomingOffer = (offer, inboxId) => {
@@ -233,9 +241,12 @@ const bindOfferListener = (inboxId, t, store) => {
       return;
     }
 
+    const alreadyPending = pendingOffers.has(offer.id);
     storeOffer(offer, inboxId, aliasCallSids);
     resolveOfferWaiters(offer, aliasCallSids);
-    wireOfferEvents(offer, t);
+    if (!alreadyPending) {
+      wireOfferEvents(offer, t);
+    }
     mergeIncomingOffer(offer, inboxId);
     const inbox = store?.getters?.['inboxes/getInbox']?.(inboxId);
     notifyIncomingWavoipOffer(offer, inbox);

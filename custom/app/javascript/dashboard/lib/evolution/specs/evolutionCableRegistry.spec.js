@@ -5,7 +5,10 @@ const { mockUnsubscribe, subscriptions, createConsumer } = vi.hoisted(() => {
   const subs = {
     create: vi.fn(() => ({ unsubscribe: unsub })),
   };
-  const consumer = vi.fn(() => ({ subscriptions: subs }));
+  const consumer = vi.fn(() => ({
+    subscriptions: subs,
+    disconnect: vi.fn(),
+  }));
   return {
     mockUnsubscribe: unsub,
     subscriptions: subs,

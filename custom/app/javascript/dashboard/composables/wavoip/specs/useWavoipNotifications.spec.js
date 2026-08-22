@@ -51,4 +51,23 @@ describe('useWavoipNotifications', () => {
       closeIncomingWavoipOfferNotification('missing_offer')
     ).not.toThrow();
   });
+
+  it('focuses the dashboard window when the OS notification is clicked', () => {
+    const focusMock = vi.fn();
+    const originalFocus = window.focus;
+    window.focus = focusMock;
+
+    notifyIncomingWavoipOffer(
+      { id: 'offer_click', peer: { displayName: 'Bob', phone: '+5511' } },
+      { provider_config: {} }
+    );
+
+    const notification = global.Notification.mock.results[0].value;
+    notification.onclick();
+
+    expect(focusMock).toHaveBeenCalled();
+    expect(closeMock).toHaveBeenCalled();
+
+    window.focus = originalFocus;
+  });
 });

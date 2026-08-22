@@ -28,7 +28,10 @@ import {
 import { closeIncomingWavoipOfferNotification } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import { createWavoipAcceptError } from 'customDashboard/lib/wavoip/wavoipAcceptError';
 import { isWavoipWebSocketDisconnected } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
-import { dismissWavoipCallFromStore } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
+import {
+  dismissWavoipCallFromStore,
+  removeWavoipCallFromStore,
+} from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 
 const closeOfferNotificationsForCall = (callSid, call) => {
   closeIncomingWavoipOfferNotification(callSid);
@@ -141,7 +144,16 @@ export function useWavoipCallSession() {
   const endActiveCallSession = async callIdOverride => {
     const targetId = callIdOverride || getActiveProviderCallId();
     await endSdkActiveCall(callIdOverride);
-    if (targetId) useCallsStore().removeCall(targetId);
+    if (!targetId) return;
+    const storeCall = useCallsStore().calls.find(
+      c => c.callSid === targetId || c.wavoipOfferId === targetId
+    );
+    removeWavoipCallFromStore(
+      targetId,
+      storeCall?.callSid,
+      storeCall?.wavoipOfferId,
+      storeCall?.callId
+    );
   };
 
   const cleanupSession = () => {
