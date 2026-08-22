@@ -19,6 +19,14 @@ ActiveRecord::Schema[7.2].define(version: 2026_08_14_000000) do
   enable_extension "unaccent"
   enable_extension "vector"
 
+  # FORK: immutable unaccent wrapper required by index_messages_on_unaccent_content_trgm
+  execute <<~SQL
+    CREATE OR REPLACE FUNCTION unaccent_immutable(text)
+    RETURNS text AS $$
+      SELECT public.unaccent('public.unaccent', $1)
+    $$ LANGUAGE sql IMMUTABLE PARALLEL SAFE;
+  SQL
+
   create_table "access_tokens", force: :cascade do |t|
     t.string "owner_type"
     t.bigint "owner_id"

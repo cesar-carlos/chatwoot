@@ -225,8 +225,10 @@
       "ACCEPTED_ELSEWHERE_BY": "{agentName} atendeu esta chamada.",
       "PEER_REJECTED": "O contato recusou a ligação ou ela não pôde ser concluída.",
       "OUTBOUND_PERMISSION_DENIED": "Este contato não autorizou ligações pelo WhatsApp. Envie um pedido de permissão e tente novamente depois.",
+      "OUTBOUND_VOLUME_SOFT": "Volume alto de ligações de saída hoje (20+). Diminua o ritmo se isso parecer incomum.",
+      "OUTBOUND_VOLUME_ELEVATED": "Volume muito alto de ligações de saída hoje (50+). Verifique se há loops ou uso indevido.",
       "RECORDING_PROCESSING": "Processando gravação da chamada…",
-      "INCOMING_CALLS_OVERFLOW": "+{count} chamadas recebidas"
+      "INCOMING_CALLS_OVERFLOW": "+{count} chamadas recebidas a mais"
     },
     "WAVOIP_CONNECTIVITY": {
       "GENERIC": "Problema na conexão da chamada. Verifique sua rede e tente novamente.",

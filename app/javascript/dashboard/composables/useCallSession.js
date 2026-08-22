@@ -10,7 +10,6 @@ import {
   sendWhatsappTerminateBeacon,
 } from 'dashboard/composables/useWhatsappCallSession';
 import {
-  handleVoiceCallCreated,
   markCallDismissed,
   isCallDismissed,
   markLocalCall,
@@ -27,10 +26,11 @@ import {
   cleanupAfterBrowserVoiceJoinFailure,
 } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import {
-  CONTENT_TYPES,
-  VOICE_CALL_DIRECTION,
-  VOICE_CALL_STATUS,
-} from 'dashboard/components-next/message/constants';
+  seedVoiceCallsFromHydratedMessages as seedVoiceCallsFromHydratedMessagesHelper,
+  resetSeedVoiceCallsFingerprints,
+} from 'customDashboard/lib/voice/seedVoiceCallsFromHydratedMessages';
+import { addToCappedSet } from 'customDashboard/lib/voice/cappedSet';
+import { VOICE_CALL_DIRECTION } from 'dashboard/components-next/message/constants';
 import Timer from 'dashboard/helper/Timer';
 
 const isBrowserVoiceCall = call => isBrowserVoiceProvider(call?.provider);
@@ -50,9 +50,9 @@ const ringtoneSilencedCallSids = new Set();
 export const isCallRingtoneSilenced = callSid =>
   callSid ? ringtoneSilencedCallSids.has(callSid) : false;
 const silenceCallRingtone = (callSid, call) => {
-  if (callSid) ringtoneSilencedCallSids.add(callSid);
+  addToCappedSet(ringtoneSilencedCallSids, callSid);
   // Also silence by wavoipOfferId so aliased entries are covered.
-  if (call?.wavoipOfferId) ringtoneSilencedCallSids.add(call.wavoipOfferId);
+  addToCappedSet(ringtoneSilencedCallSids, call?.wavoipOfferId);
 };
 const markDismissed = markCallDismissed;
 
@@ -134,6 +134,8 @@ const detachGlobalsOnLastUnmount = () => {
   globalDurationTimer = null;
   globalCallDuration.value = 0;
   storedCallsStoreRef = null;
+  // FORK: drop hydrated voice-call seed fingerprints with the session
+  resetSeedVoiceCallsFingerprints();
   TwilioVoiceClient.removeEventListener(
     'call:disconnected',
     handleTwilioDisconnectedGlobal
@@ -385,15 +387,12 @@ export function useCallSession() {
   // skips calls already dismissed (locally or via a real-time accepted/ended
   // event) so they don't re-pop on the next conversation update.
   const seedCallsFromHydratedMessages = () => {
-    const conversations = store.getters.getAllConversations || [];
-    const currentUserId = store.getters.getCurrentUserID;
-    const currentUserAvailability = store.getters.getCurrentUserAvailability;
-    conversations.forEach(conv => {
-      (conv.messages || []).forEach(msg => {
-        if (msg.content_type !== CONTENT_TYPES.VOICE_CALL) return;
-        if (msg.call?.status !== VOICE_CALL_STATUS.RINGING) return;
-        handleVoiceCallCreated(msg, currentUserId, currentUserAvailability);
-      });
+    // FORK: skip unchanged threads and inboxes without voice
+    seedVoiceCallsFromHydratedMessagesHelper({
+      conversations: store.getters.getAllConversations || [],
+      inboxes: store.getters['inboxes/getInboxes'] || [],
+      currentUserId: store.getters.getCurrentUserID,
+      currentUserAvailability: store.getters.getCurrentUserAvailability,
     });
   };
   seedCallsFromHydratedMessagesFn = seedCallsFromHydratedMessages;

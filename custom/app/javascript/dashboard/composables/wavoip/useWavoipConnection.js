@@ -1,4 +1,4 @@
-import { computed, readonly, ref } from 'vue';
+import { computed, readonly, ref, watch } from 'vue';
 import { useStore } from 'vuex';
 import InboxesAPI from 'dashboard/api/inboxes';
 import { INBOX_TYPES } from 'dashboard/helper/inbox';
@@ -22,6 +22,7 @@ import {
   setWavoipWhatsAppStatus,
   setWavoipActiveCalls,
   clearWavoipDeviceStatus,
+  getWavoipDeviceStatus,
   isWavoipWebSocketDisconnected,
   isWavoipWebSocketReady,
 } from 'customDashboard/lib/wavoip/wavoipDeviceStatus';
@@ -34,9 +35,8 @@ import {
   wavoipIceConfigKey,
 } from 'customDashboard/lib/wavoip/wavoipIceConfig';
 
-const BOOTSTRAP_CACHE_TTL_MS = 15_000;
+export const BOOTSTRAP_CACHE_TTL_MS = 15_000;
 const WS_READY_TIMEOUT_MS = 15_000;
-const WS_POLL_INTERVAL_MS = 100;
 
 const connectedInboxIds = new Set();
 const connectInboxPromises = new Map();
@@ -203,18 +203,30 @@ async function waitForWebSocketConnected(
   if (isWavoipWebSocketReady(inboxId)) return true;
 
   return new Promise(resolve => {
-    const startedAt = Date.now();
-    const timer = setInterval(() => {
-      if (isWavoipWebSocketReady(inboxId)) {
-        clearInterval(timer);
-        resolve(true);
-        return;
-      }
-      if (Date.now() - startedAt >= timeoutMs) {
-        clearInterval(timer);
-        resolve(isWavoipWebSocketReady(inboxId));
-      }
-    }, WS_POLL_INTERVAL_MS);
+    let settled = false;
+    let stopWatch;
+    let timer;
+
+    const finish = result => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      stopWatch?.();
+      resolve(result);
+    };
+
+    stopWatch = watch(
+      getWavoipDeviceStatus(inboxId).connectionStatus,
+      () => {
+        if (isWavoipWebSocketReady(inboxId)) finish(true);
+      },
+      { flush: 'sync', immediate: true }
+    );
+
+    timer = setTimeout(
+      () => finish(isWavoipWebSocketReady(inboxId)),
+      timeoutMs
+    );
   });
 }
 
@@ -269,9 +281,8 @@ export function useWavoipConnection() {
 
     if (connectedInboxIds.has(inboxId)) {
       const existingEntry = getWavoipClientEntry(inboxId);
-      // Bypass cache so rotated tokens / ICE config are detected promptly.
       const bootstrap = await fetchBootstrap(inboxId, {
-        bypassCache: true,
+        bypassCache: forceReconnect || isWavoipWebSocketDisconnected(inboxId),
       });
       const freshToken = bootstrap.token;
       const iceConfig = bootstrap.iceConfig;
@@ -305,6 +316,19 @@ export function useWavoipConnection() {
   };
 
   const connectForInbox = async (inboxId, options = {}) => {
+    // Accept/outbound hot path: reuse the live client instead of hitting
+    // bootstrap on every click. Token/ICE rotation is picked up by
+    // syncConnections → connectInbox (and by forceReconnect / dead WS).
+    if (!options.forceReconnect && connectedInboxIds.has(inboxId)) {
+      const existingEntry = getWavoipClientEntry(inboxId);
+      if (existingEntry && !isWavoipWebSocketDisconnected(inboxId)) {
+        await ensureDeviceReady(existingEntry.client, inboxId);
+        if (await waitForWebSocketConnected(inboxId)) {
+          return existingEntry.client;
+        }
+      }
+    }
+
     let client = await connectInbox(inboxId, options);
     if (!client) return null;
     await ensureDeviceReady(client, inboxId);

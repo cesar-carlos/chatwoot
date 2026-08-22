@@ -403,7 +403,7 @@ const confirmLogout = async () => {
 const copyDiagnostics = async () => {
   isCopyingDiagnostics.value = true;
   try {
-    const payload = exportWavoipDiagnostics({
+    const payload = await exportWavoipDiagnostics({
       inboxId: inboxId.value,
       panelStatus: whatsAppStatus.value,
       statusVerifiedLive: statusVerifiedLive.value,

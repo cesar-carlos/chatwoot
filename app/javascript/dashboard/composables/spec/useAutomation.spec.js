@@ -197,11 +197,10 @@ describe('useAutomation', () => {
 
   it('manifests custom attributes correctly', () => {
     const { manifestCustomAttributes, automationTypes } = useAutomation();
-    automationTypes.message_created = { conditions: [] };
-    automationTypes.conversation_created = { conditions: [] };
-    automationTypes.conversation_updated = { conditions: [] };
-    automationTypes.conversation_opened = { conditions: [] };
-    automationTypes.conversation_resolved = { conditions: [] };
+    // FORK: include workflow synthetic events, not only the five OSS types
+    Object.keys(automationTypes).forEach(key => {
+      automationTypes[key] = { conditions: [] };
+    });
 
     automationHelper.generateCustomAttributeTypes.mockReturnValue([]);
     automationHelper.generateCustomAttributes.mockReturnValue([]);

@@ -1,4 +1,5 @@
 import { createStore } from 'vuex';
+import { setRuntimeStore } from './runtimeStore';
 
 import accounts from './modules/accounts';
 import agentBots from './modules/agentBots';
@@ -65,7 +66,7 @@ import captainCustomTools from './captain/customTools';
 
 const plugins = [];
 
-export default createStore({
+const store = createStore({
   modules: {
     accounts,
     agentBots,
@@ -132,3 +133,7 @@ export default createStore({
   },
   plugins,
 });
+
+setRuntimeStore(store); // FORK: voice helpers read the store after init, not at import time
+
+export default store;

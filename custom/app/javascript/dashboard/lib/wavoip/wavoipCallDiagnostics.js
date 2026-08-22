@@ -3,11 +3,13 @@ import {
   recordConnectivityIssue,
   recordIceDiagnostics,
   recordCallStats,
+  setLiveWavoipStatsSource,
+  clearLiveWavoipStatsSource,
 } from 'customDashboard/lib/wavoip/wavoipDiagnosticsCollector';
 import { useAlert } from 'dashboard/composables';
 
 const CONNECTIVITY_DEBOUNCE_MS = 5000;
-const STATS_POLL_MS = 2000;
+export const STATS_POLL_MS = 5000;
 const lastConnectivityAlertAt = new Map();
 
 const connectivityMessage = (issue, translateFn) => {
@@ -57,8 +59,18 @@ const wireCallDiagnostics = (call, { inboxId, callId, translateFn } = {}) => {
   // Pull stats on our cadence. The SDK `stats` / `serverStats` events tick
   // every 200ms and are deprecated (console.warn on first subscribe).
   let statsTimer;
-  if (typeof call.getStats === 'function') {
+  const statsSource =
+    typeof call.getStats === 'function'
+      ? {
+          inboxId,
+          callId,
+          getStats: () => call.getStats(),
+        }
+      : null;
+  if (statsSource) {
+    setLiveWavoipStatsSource(statsSource);
     statsTimer = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       try {
         recordCallStats(inboxId, callId, await call.getStats());
       } catch (_) {
@@ -69,6 +81,7 @@ const wireCallDiagnostics = (call, { inboxId, callId, translateFn } = {}) => {
 
   return () => {
     clearInterval(statsTimer);
+    if (statsSource) clearLiveWavoipStatsSource(statsSource);
     call.off?.('iceDiagnostics', handlers.iceDiagnostics);
     call.off?.('connectivityIssue', handlers.connectivityIssue);
     call.off?.('error', handlers.error);

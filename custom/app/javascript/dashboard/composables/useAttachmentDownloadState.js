@@ -84,14 +84,16 @@ const flashMarked = attachmentId => {
 };
 
 // Single store watcher — not tied to any component lifecycle.
-store.watch(
-  (_state, getters) => [getters.getCurrentAccountId, getters.getCurrentUserID],
-  () => {
-    currentScopeKey = null;
-    ensureLoaded();
-  },
-  { immediate: true }
-);
+if (typeof store.watch === 'function') {
+  store.watch(
+    (_state, getters) => [getters.getCurrentAccountId, getters.getCurrentUserID],
+    () => {
+      currentScopeKey = null;
+      ensureLoaded();
+    },
+    { immediate: true }
+  );
+}
 
 /**
  * Local-only attachment download tracking (count + lastDownloadedAt per attachment).

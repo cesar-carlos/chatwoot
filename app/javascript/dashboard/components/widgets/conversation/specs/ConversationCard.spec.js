@@ -1,4 +1,5 @@
 import { shallowMount } from '@vue/test-utils';
+import { createStore } from 'vuex';
 import ConversationCard from '../ConversationCard.vue';
 
 const defaultChat = {
@@ -24,6 +25,13 @@ const mountComponent = (chat, currentContact = {}) =>
       inbox: { id: 1 },
     },
     global: {
+      plugins: [
+        createStore({
+          getters: {
+            getCurrentUser: () => ({ id: 1, name: 'Agent' }),
+          },
+        }),
+      ],
       stubs: {
         'fluent-icon': true,
       },

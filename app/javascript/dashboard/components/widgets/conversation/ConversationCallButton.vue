@@ -91,8 +91,19 @@ const isCallButtonLoading = computed(() => {
 });
 
 const callButtonTooltip = computed(() => {
+  if (isWavoipVoiceInbox.value) {
+    if (isWavoipRestricted.value) {
+      return t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.RESTRICTED');
+    }
+    if (isWavoipAtCapacity.value) {
+      return t('CONVERSATION.WAVOIP_CALL.CHANNELS_FULL');
+    }
+    if (callsStore.hasActiveCall || callsStore.hasIncomingCall) {
+      return t('CONVERSATION.VOICE_WIDGET.CALL_IN_PROGRESS');
+    }
+    return t('CONVERSATION.HEADER.VOICE_CALL');
+  }
   if (isWhatsappVoiceInbox.value) return t('CONVERSATION.HEADER.WHATSAPP_CALL');
-  if (isWavoipVoiceInbox.value) return t('CONVERSATION.HEADER.VOICE_CALL');
   return t('CONVERSATION.HEADER.VOICE_CALL');
 });
 

@@ -221,7 +221,7 @@ const channelIcon = computed(() => {
           <!-- Reject / end call (all states) -->
           <NextButton
             v-tooltip.top="
-              isOngoing
+              isOngoing || isOutgoing
                 ? $t('CONVERSATION.VOICE_WIDGET.END_CALL')
                 : $t('CONVERSATION.VOICE_WIDGET.REJECT_CALL')
             "

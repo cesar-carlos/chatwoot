@@ -491,6 +491,9 @@ describe('wavoipVoiceCableHandlers', () => {
 
       expect(clearActiveCall).toHaveBeenCalled();
       expect(store.calls).toHaveLength(0);
+      expect(useAlert).not.toHaveBeenCalledWith(
+        'CONVERSATION.WAVOIP_CALL.CALLER_ENDED'
+      );
     });
 
     it('keeps outbound ringing call when SDK still owns the session', () => {

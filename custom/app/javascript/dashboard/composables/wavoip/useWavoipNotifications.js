@@ -49,6 +49,11 @@ export function notifyIncomingWavoipOffer(offer, inbox) {
     }
   );
   openOfferNotifications.set(offer.id, notification);
+  notification.onclick = event => {
+    event?.preventDefault?.();
+    window.focus();
+    notification.close();
+  };
   notification.onclose = () => {
     if (openOfferNotifications.get(offer.id) === notification) {
       openOfferNotifications.delete(offer.id);

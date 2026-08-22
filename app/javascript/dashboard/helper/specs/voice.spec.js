@@ -26,7 +26,10 @@ import {
   handleVoiceCallCreated,
   handleVoiceCallUpdated,
   isStaleWavoipRingingMessage,
+  markCallDismissed,
+  isCallDismissed,
 } from '../voice';
+import { CALL_SID_SET_CAP } from 'customDashboard/lib/voice/cappedSet';
 
 const nowSeconds = () => Math.floor(Date.now() / 1000);
 
@@ -116,5 +119,18 @@ describe('handleVoiceCallCreated / handleVoiceCallUpdated ghost-call guard', () 
     handleVoiceCallUpdated(commit, message, 1, 'online');
 
     expect(useCallsStore().calls).toHaveLength(0);
+  });
+});
+
+describe('markCallDismissed cap', () => {
+  it('evicts the oldest sid once the set exceeds the cap', () => {
+    const first = `cap_first_${Date.now()}`;
+    markCallDismissed(first);
+    for (let i = 0; i < CALL_SID_SET_CAP; i += 1) {
+      markCallDismissed(`cap_${first}_${i}`);
+    }
+
+    expect(isCallDismissed(first)).toBe(false);
+    expect(isCallDismissed(`cap_${first}_${CALL_SID_SET_CAP - 1}`)).toBe(true);
   });
 });
