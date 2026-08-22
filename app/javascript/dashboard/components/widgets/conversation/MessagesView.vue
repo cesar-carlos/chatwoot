@@ -622,14 +622,26 @@ export default {
           />
         </div>
       </div>
-      <ResizableEditorWrapper
-        v-if="!isForwardSelecting"
-        ref="resizableEditorWrapperRef"
-        :container-height="Math.max(0, containerHeight - topBannerHeight)"
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        enter-from-class="opacity-0 translate-y-1"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition-all duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-1"
+        mode="out-in"
       >
-        <ReplyBox @toggle-editor-size="toggleReplyEditorSize" />
-      </ResizableEditorWrapper>
-      <MessageForwardSelectionBar v-else />
+        <!-- FORK: selection bar replaces reply box during multi-select forward -->
+        <MessageForwardSelectionBar v-if="isForwardSelecting" key="forward-bar" />
+        <ResizableEditorWrapper
+          v-else
+          key="reply-box"
+          ref="resizableEditorWrapperRef"
+          :container-height="Math.max(0, containerHeight - topBannerHeight)"
+        >
+          <ReplyBox @toggle-editor-size="toggleReplyEditorSize" />
+        </ResizableEditorWrapper>
+      </Transition>
     </div>
     <MessageForwardModal
       ref="forwardModalRef"

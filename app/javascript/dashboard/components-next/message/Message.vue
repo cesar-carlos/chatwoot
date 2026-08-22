@@ -614,25 +614,30 @@ provideMessageContext({
   <div
     v-if="shouldRenderMessage"
     :id="`message${props.id}`"
-    class="flex w-full mb-2 gap-2 message-bubble-container"
+    class="group flex w-full mb-2 gap-2 message-bubble-container"
     :data-message-id="props.id"
     :class="{
-      'rounded-lg bg-n-alpha-2': isForwardSelected,
+      'rounded-lg bg-n-brand/10 ring-1 ring-inset ring-n-brand/20': isForwardSelected,
       'group-with-next': shouldGroupWithNext,
     }"
   >
+    <!-- FORK: ghost checkbox shown on hover before selection mode starts -->
     <button
-      v-if="showForwardSelectControl"
+      v-if="showForwardSelectControl || (canSelectForForward && isBubble)"
       type="button"
-      class="mt-1 flex size-7 shrink-0 items-center justify-center self-center"
-      :disabled="!canSelectForForward"
+      class="mt-1 flex size-7 shrink-0 items-center justify-center self-center transition-opacity"
       :class="
-        canSelectForForward ? 'cursor-pointer' : 'cursor-default opacity-40'
+        showForwardSelectControl
+          ? canSelectForForward
+            ? 'cursor-pointer'
+            : 'cursor-default opacity-40'
+          : 'cursor-pointer opacity-0 group-hover:opacity-50'
       "
+      :disabled="!canSelectForForward && showForwardSelectControl"
       @click.stop="onForwardSelectToggle"
     >
       <span
-        class="flex size-5 items-center justify-center rounded-full border"
+        class="flex size-5 items-center justify-center rounded-full border transition-colors"
         :class="
           isForwardSelected
             ? 'border-n-brand bg-n-brand'

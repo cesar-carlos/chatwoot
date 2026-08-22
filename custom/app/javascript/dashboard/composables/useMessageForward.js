@@ -229,6 +229,7 @@ export function recentConversationsForInbox(
         phoneNumber: sender.phone_number || sender.phoneNumber || '',
         thumbnail: sender.thumbnail || '',
         kind: 'conversation',
+        conversationStatus: conversation.status || null,
       };
     })
     .filter(Boolean);
