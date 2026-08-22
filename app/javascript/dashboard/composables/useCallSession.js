@@ -13,6 +13,7 @@ import {
   handleVoiceCallCreated,
   isCallDismissed,
   markCallDismissed,
+  isCallDismissed,
   markLocalCall,
   clearLocalCall,
 } from 'dashboard/helper/voice';
@@ -60,6 +61,8 @@ const silenceCallRingtone = (callSid, call) => {
   // Also silence by wavoipOfferId so aliased entries are covered.
   if (call?.wavoipOfferId) ringtoneSilencedCallSids.add(call.wavoipOfferId);
 };
+
+export { markCallDismissed, isCallDismissed };
 
 // Globals attached once across all useCallSession() consumers — bubbles in a
 // long thread call this composable many times, and a per-instance Timer +
