@@ -1,4 +1,5 @@
 <script>
+import { inject } from 'vue';
 import { useAlert } from 'dashboard/composables';
 import { mapGetters } from 'vuex';
 import { useMessageFormatter } from 'shared/composables/useMessageFormatter';
@@ -29,6 +30,7 @@ import {
   messageCanBeForwarded,
 } from 'customDashboard/composables/useMessageForward';
 import MessageForwardModal from 'customDashboard/components/forward/MessageForwardModal.vue';
+import { MessageForwardSelectionKey } from 'customDashboard/composables/useMessageForwardSelection';
 // FORK: Evolution Go edit outgoing message
 import {
   inboxSupportsMessageEdit,
@@ -76,10 +78,12 @@ export default {
   emits: ['open', 'close', 'replyTo'],
   setup() {
     const { getPlainText } = useMessageFormatter();
+    const forwardSelection = inject(MessageForwardSelectionKey, null);
 
     return {
       getPlainText,
       evolutionGoReactionEmojis: EVOLUTION_GO_REACTION_EMOJIS,
+      forwardSelection,
     };
   },
   data() {
@@ -249,9 +253,17 @@ export default {
     // FORK: WhatsApp-like message forward
     openForwardModal() {
       this.handleClose();
+      if (this.forwardSelection?.openForward) {
+        this.forwardSelection.openForward([this.message]);
+        return;
+      }
       this.$nextTick(() => {
         this.$refs.forwardModal?.open();
       });
+    },
+    enterForwardSelection() {
+      this.handleClose();
+      this.forwardSelection?.enterWith(this.message);
     },
     // FORK: Evolution Go edit outgoing message
     openEditModal() {
@@ -432,6 +444,15 @@ export default {
           variant="icon"
           @click.stop="openForwardModal"
         />
+        <MenuItem
+          v-if="canForwardMessage && forwardSelection"
+          :option="{
+            icon: 'checkmark-circle',
+            label: $t('CONVERSATION.CONTEXT_MENU.SELECT'),
+          }"
+          variant="icon"
+          @click.stop="enterForwardSelection"
+        />
         <!-- FORK: Evolution Go edit outgoing message -->
         <MenuItem
           v-if="canEditMessage"
@@ -475,7 +496,7 @@ export default {
     </ContextMenu>
     <!-- FORK: WhatsApp-like message forward -->
     <MessageForwardModal
-      v-if="canForwardMessage"
+      v-if="canForwardMessage && !forwardSelection"
       ref="forwardModal"
       :message="message"
       :inbox-id="inboxId"

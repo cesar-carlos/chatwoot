@@ -7,9 +7,30 @@ import getUuid from 'widget/helpers/uuid';
 
 export const FORWARD_PROVIDERS = ['evolution_go', 'evolution'];
 export const MAX_FORWARD_DESTINATIONS = 5;
+export const MAX_FORWARD_MESSAGES = 10;
 export const MAX_RECENT_CONVERSATIONS = 10;
 export const MAX_CONTACTABLE_CHECKS = 20;
 export const FORWARDABLE_FILE_TYPES = ['image', 'audio', 'video', 'file'];
+export const FORWARD_ERROR_CODES = {
+  ATTACHMENT_URL_MISSING: 'ATTACHMENT_URL_MISSING',
+  ATTACHMENT_DOWNLOAD_FAILED: 'ATTACHMENT_DOWNLOAD_FAILED',
+  CONTACT_NOT_REACHABLE: 'CONTACT_NOT_REACHABLE',
+  DESTINATION_CONTACT_REQUIRED: 'DESTINATION_CONTACT_REQUIRED',
+  NOTHING_TO_FORWARD: 'NOTHING_TO_FORWARD',
+};
+
+export class ForwardError extends Error {
+  constructor(code, details = {}) {
+    super(code);
+    this.name = 'ForwardError';
+    this.code = code;
+    this.details = details;
+  }
+}
+
+export function isForwardErrorCode(code) {
+  return Object.values(FORWARD_ERROR_CODES).includes(code);
+}
 
 export function inboxSupportsForward(inbox) {
   if (!inbox || inbox.channel_type !== 'Channel::Whatsapp') return false;
@@ -70,7 +91,7 @@ function attachmentFileName(attachment, index) {
   return `attachment-${index + 1}.${extension}`;
 }
 
-export function extractErrorMessage(error, fallback = 'Forward failed') {
+export function extractErrorMessage(error) {
   const data = error?.response?.data;
   if (typeof data?.error === 'string' && data.error.trim()) return data.error;
   if (typeof data?.message === 'string' && data.message.trim()) {
@@ -79,21 +100,33 @@ export function extractErrorMessage(error, fallback = 'Forward failed') {
   if (Array.isArray(data?.errors) && data.errors[0]) {
     return String(data.errors[0]);
   }
+  if (isForwardErrorCode(error?.code)) return '';
   if (typeof error?.message === 'string' && error.message.trim()) {
     return error.message;
   }
-  return fallback;
+  return '';
+}
+
+export function describeForwardError(error) {
+  const code = isForwardErrorCode(error?.code) ? error.code : undefined;
+  return {
+    code,
+    details: code ? error.details || {} : undefined,
+    message: extractErrorMessage(error),
+  };
 }
 
 async function downloadAttachmentFile(attachment, index) {
   const url = toSameOriginActiveStorageUrl(attachmentUrl(attachment));
   if (!url) {
-    throw new Error('Attachment URL is missing');
+    throw new ForwardError(FORWARD_ERROR_CODES.ATTACHMENT_URL_MISSING);
   }
 
   const response = await fetch(url, { credentials: 'same-origin' });
   if (!response.ok) {
-    throw new Error(`Failed to download attachment (${response.status})`);
+    throw new ForwardError(FORWARD_ERROR_CODES.ATTACHMENT_DOWNLOAD_FAILED, {
+      status: response.status,
+    });
   }
   const blob = await response.blob();
   const type =
@@ -273,8 +306,10 @@ export async function filterContactsReachableOnInbox(
         const { data } = await ContactAPI.getContactableInboxes(contact.id);
         if (!contactIsReachableOnInbox(data, inboxId)) return null;
         return contact;
-      } catch {
-        return null;
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status && status >= 400 && status < 500) return null;
+        throw error;
       }
     })
   );
@@ -295,7 +330,7 @@ async function createConversationForContact({
     return Number(inbox.id) === Number(inboxId);
   });
   if (!match) {
-    throw new Error('Contact is not reachable on this WhatsApp inbox');
+    throw new ForwardError(FORWARD_ERROR_CODES.CONTACT_NOT_REACHABLE);
   }
 
   const sourceId = match.source_id || match.sourceId;
@@ -323,7 +358,7 @@ export async function resolveDestinationConversationId({
   assigneeId,
 }) {
   if (!destination.contactId) {
-    throw new Error('Destination contact is required');
+    throw new ForwardError(FORWARD_ERROR_CODES.DESTINATION_CONTACT_REQUIRED);
   }
 
   const prepared = await createConversationForContact({
@@ -335,14 +370,29 @@ export async function resolveDestinationConversationId({
   return prepared.id;
 }
 
-export async function forwardMessageToDestinations({
-  sourceMessage,
-  destinations,
-  inboxId,
-  assigneeId,
-  sendMessage,
-  contentOverride,
-}) {
+export function messageCreatedAt(message) {
+  return Number(message?.created_at ?? message?.createdAt ?? 0);
+}
+
+export function sortForwardMessages(messages = []) {
+  return [...messages].sort((a, b) => {
+    const timeDelta = messageCreatedAt(a) - messageCreatedAt(b);
+    if (timeDelta !== 0) return timeDelta;
+    return Number(a.id) - Number(b.id);
+  });
+}
+
+export function dedupeForwardMessages(messages = []) {
+  const unique = [];
+  messages.forEach(message => {
+    if (!message?.id) return;
+    if (unique.some(item => Number(item.id) === Number(message.id))) return;
+    unique.push(message);
+  });
+  return unique;
+}
+
+async function buildForwardPayload(sourceMessage, contentOverride) {
   const content =
     typeof contentOverride === 'string'
       ? contentOverride
@@ -360,10 +410,70 @@ export async function forwardMessageToDestinations({
   }
 
   if (!content.trim() && files.length === 0 && !useServerClone) {
-    throw new Error('Nothing to forward');
+    throw new ForwardError(FORWARD_ERROR_CODES.NOTHING_TO_FORWARD);
   }
 
-  const contentAttributes = buildForwardContentAttributes(sourceMessage);
+  return {
+    content,
+    files: useServerClone ? [] : files,
+    attachmentIds: useServerClone ? attachmentIds : [],
+    contentAttributes: buildForwardContentAttributes(sourceMessage),
+  };
+}
+
+async function deliverForwardPayload({
+  payload,
+  conversationId,
+  sendMessage,
+}) {
+  const echoId = getUuid();
+  const body = {
+    conversationId,
+    message: payload.content,
+    private: false,
+    contentAttributes: payload.contentAttributes,
+    echo_id: echoId,
+    files: payload.files,
+  };
+  if (payload.attachmentIds.length) {
+    body.attachment_ids = payload.attachmentIds;
+  }
+
+  if (typeof sendMessage === 'function') {
+    await sendMessage(body);
+    return;
+  }
+  await MessageApi.create(body);
+}
+
+export async function forwardMessagesToDestinations({
+  sourceMessages,
+  destinations,
+  inboxId,
+  assigneeId,
+  sendMessage,
+  contentOverride,
+  onProgress,
+}) {
+  const messages = sortForwardMessages(
+    dedupeForwardMessages(sourceMessages)
+  ).slice(0, MAX_FORWARD_MESSAGES);
+
+  if (!messages.length) {
+    throw new ForwardError(FORWARD_ERROR_CODES.NOTHING_TO_FORWARD);
+  }
+
+  const singleOverride =
+    messages.length === 1 && typeof contentOverride === 'string'
+      ? contentOverride
+      : undefined;
+
+  const prepared = [];
+  await messages.reduce(async (previous, sourceMessage) => {
+    await previous;
+    prepared.push(await buildForwardPayload(sourceMessage, singleOverride));
+  }, Promise.resolve());
+
   const uniqueDestinations = dedupeDestinations(destinations).slice(
     0,
     MAX_FORWARD_DESTINATIONS
@@ -374,45 +484,75 @@ export async function forwardMessageToDestinations({
     failed: 0,
     errors: [],
     failedDestinations: [],
+    succeededConversationIds: [],
   };
 
-  await uniqueDestinations.reduce(async (previous, destination) => {
+  await uniqueDestinations.reduce(async (previous, destination, destIndex) => {
     await previous;
+    let conversationId;
     try {
-      const conversationId = await resolveDestinationConversationId({
+      conversationId = await resolveDestinationConversationId({
         destination,
         inboxId,
         assigneeId,
       });
-
-      const echoId = getUuid();
-      const payload = {
-        conversationId,
-        message: content,
-        private: false,
-        contentAttributes,
-        echo_id: echoId,
-        files: useServerClone ? [] : files,
-      };
-      if (useServerClone) {
-        payload.attachment_ids = attachmentIds;
-      }
-
-      if (typeof sendMessage === 'function') {
-        await sendMessage(payload);
-      } else {
-        await MessageApi.create(payload);
-      }
-      results.succeeded += 1;
     } catch (error) {
       results.failed += 1;
       results.failedDestinations.push(destination);
       results.errors.push({
         destination,
-        message: extractErrorMessage(error),
+        ...describeForwardError(error),
       });
+      return;
     }
+
+    let destFailed = false;
+    await prepared.reduce(async (innerPrevious, payload, msgIndex) => {
+      await innerPrevious;
+      onProgress?.({
+        destinationIndex: destIndex + 1,
+        destinationCount: uniqueDestinations.length,
+        messageIndex: msgIndex + 1,
+        messageCount: prepared.length,
+      });
+      try {
+        await deliverForwardPayload({ payload, conversationId, sendMessage });
+      } catch (error) {
+        destFailed = true;
+        results.errors.push({
+          destination,
+          ...describeForwardError(error),
+        });
+      }
+    }, Promise.resolve());
+
+    if (destFailed) {
+      results.failed += 1;
+      results.failedDestinations.push(destination);
+      return;
+    }
+
+    results.succeeded += 1;
+    results.succeededConversationIds.push(conversationId);
   }, Promise.resolve());
 
   return results;
+}
+
+export async function forwardMessageToDestinations({
+  sourceMessage,
+  destinations,
+  inboxId,
+  assigneeId,
+  sendMessage,
+  contentOverride,
+}) {
+  return forwardMessagesToDestinations({
+    sourceMessages: sourceMessage ? [sourceMessage] : [],
+    destinations,
+    inboxId,
+    assigneeId,
+    sendMessage,
+    contentOverride,
+  });
 }

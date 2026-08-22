@@ -84,11 +84,12 @@ flowchart TD
 
 ### 1. Entrada UX
 
-**Decisão:** Context menu → modal (não multi-select na timeline).
+**Decisão:** Context menu → **Forward** (1 mensagem) **ou** **Select** (multi na timeline).
 
-- Menor churn na timeline
-- Alinhado a reactions / copy / delete
-- Multi-select de mensagens → backlog P2
+- Forward direto permanece o happy path de 1 mensagem
+- Select entra em modo WhatsApp-like: checkboxes + barra no lugar do composer
+- Até **10** mensagens, enviadas em ordem cronológica como cópias separadas
+- Caption editável só no forward de 1 mensagem
 
 ### 2. Multi-destino
 
@@ -113,7 +114,7 @@ flowchart TD
 
 ### 5. i18n
 
-**Decisão:** **Somente EN** (regra do fork: community mantém outros idiomas).
+**Decisão:** **EN + pt_BR** (rule do fork: strings de produto do fork podem ter pt_BR; community mantém os demais idiomas).
 
 ### 6. Backend
 
@@ -137,4 +138,4 @@ flowchart TD
 
 ---
 
-*Última atualização: 16/jul/2026*
+*Última atualização: 22/ago/2026*

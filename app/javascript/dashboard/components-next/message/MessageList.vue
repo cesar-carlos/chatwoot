@@ -1,5 +1,5 @@
 <script setup>
-import { computed, provide, toRef } from 'vue';
+import { computed, provide, toRef, watch } from 'vue';
 import Message from './Message.vue';
 import CampaignMessage from './CampaignMessage.vue';
 import { MESSAGE_TYPES } from './constants.js';
@@ -11,6 +11,8 @@ import {
   useScrollToConversationMessage,
 } from 'dashboard/composables/fork/useScrollToConversationMessage';
 import { useInReplyToMessage } from 'dashboard/composables/fork/useInReplyToMessage';
+// FORK: multi-select forward timeline order for Shift+click
+import { useMessageForwardSelection } from 'customDashboard/composables/useMessageForwardSelection';
 
 /**
  * Props definition for the component
@@ -93,6 +95,15 @@ const { getInReplyToMessage } = useInReplyToMessage({
   messages: toRef(props, 'messages'),
   currentChat,
 });
+
+const forwardSelection = useMessageForwardSelection();
+watch(
+  allMessages,
+  messages => {
+    forwardSelection?.setTimeline?.(messages);
+  },
+  { immediate: true }
+);
 
 /**
  * Determines if a message should be grouped with the next message

@@ -23,6 +23,7 @@ import {
 } from './constants';
 
 import Avatar from 'next/avatar/Avatar.vue';
+import Icon from 'next/icon/Icon.vue';
 
 import TextBubble from './bubbles/Text/Index.vue';
 import ActivityBubble from './bubbles/Activity.vue';
@@ -49,6 +50,10 @@ import ContextMenu from 'dashboard/modules/conversations/components/MessageConte
 import { useBranding } from 'shared/composables/useBranding';
 // FORK: WhatsApp-like message forward
 import { messageCanBeForwarded } from 'customDashboard/composables/useMessageForward';
+import {
+  useMessageForwardSelection,
+  isForwardableTimelineMessage,
+} from 'customDashboard/composables/useMessageForwardSelection';
 
 /**
  * @typedef {Object} Attachment
@@ -152,6 +157,14 @@ const route = useRoute();
 const inboxGetter = useMapGetter('inboxes/getInbox');
 const inbox = computed(() => inboxGetter.value(props.inboxId) || {});
 const { replaceInstallationName } = useBranding();
+// FORK: multi-select forward
+const forwardSelection = useMessageForwardSelection();
+const isForwardSelecting = computed(() =>
+  Boolean(forwardSelection?.isSelecting?.value)
+);
+const isForwardSelected = computed(() =>
+  Boolean(forwardSelection?.isSelected?.(props.id))
+);
 
 /**
  * Computes the message variant based on props
@@ -361,7 +374,7 @@ const componentToRender = computed(() => {
 });
 
 const shouldShowContextMenu = computed(() => {
-  return !props.contentAttributes?.isUnsupported;
+  return !props.contentAttributes?.isUnsupported && !isForwardSelecting.value;
 });
 
 const isBubble = computed(() => {
@@ -386,14 +399,42 @@ const payloadForContextMenu = computed(() => {
     conversation_id: props.conversationId,
     // FORK: WhatsApp-like message forward needs attachments for re-send
     attachments: props.attachments,
+    created_at: props.createdAt,
+    status: props.status,
     // FORK: Evolution Go edit outgoing message
     message_type: props.messageType,
     source_id: props.sourceId,
     private: props.private,
-    // FORK: Evolution Go/Node reactions gate
-    status: props.status,
   };
 });
+
+const canSelectForForward = computed(() =>
+  isForwardableTimelineMessage(payloadForContextMenu.value)
+);
+
+const showForwardSelectControl = computed(
+  () => isForwardSelecting.value && isBubble.value
+);
+
+function onForwardSelectToggle(event) {
+  if (!showForwardSelectControl.value || !canSelectForForward.value) return;
+  forwardSelection?.toggle(payloadForContextMenu.value, {
+    shiftKey: Boolean(event?.shiftKey),
+  });
+}
+
+function shouldSkipForwardToggle(event) {
+  const target = event?.target;
+  if (!target?.closest) return false;
+  return Boolean(
+    target.closest('.skip-context-menu, a, button, img, audio, video')
+  );
+}
+
+function onBubbleForwardClick(event) {
+  if (shouldSkipForwardToggle(event)) return;
+  onForwardSelectToggle(event);
+}
 
 const contextMenuEnabledOptions = computed(() => {
   const hasText = !!props.content;
@@ -459,6 +500,12 @@ const shouldRenderMessage = computed(() => {
 });
 
 function openContextMenu(e) {
+  if (isForwardSelecting.value) {
+    e.preventDefault();
+    if (!shouldSkipForwardToggle(e)) onForwardSelectToggle(e);
+    return;
+  }
+
   const shouldSkipContextMenu =
     e.target?.classList.contains('skip-context-menu') ||
     ['a', 'img'].includes(e.target?.tagName.toLowerCase());
@@ -567,16 +614,45 @@ provideMessageContext({
   <div
     v-if="shouldRenderMessage"
     :id="`message${props.id}`"
-    class="flex w-full mb-2 message-bubble-container"
+    class="flex w-full mb-2 gap-2 message-bubble-container"
     :data-message-id="props.id"
-    :class="[
-      flexOrientationClass,
-      {
-        'group-with-next': shouldGroupWithNext,
-        'bg-n-alpha-1': showBackgroundHighlight,
-      },
-    ]"
+    :class="{
+      'rounded-lg bg-n-alpha-2': isForwardSelected,
+      'group-with-next': shouldGroupWithNext,
+    }"
   >
+    <button
+      v-if="showForwardSelectControl"
+      type="button"
+      class="mt-1 flex size-7 shrink-0 items-center justify-center self-center"
+      :disabled="!canSelectForForward"
+      :class="
+        canSelectForForward ? 'cursor-pointer' : 'cursor-default opacity-40'
+      "
+      @click.stop="onForwardSelectToggle"
+    >
+      <span
+        class="flex size-5 items-center justify-center rounded-full border"
+        :class="
+          isForwardSelected
+            ? 'border-n-brand bg-n-brand'
+            : 'border-n-slate-8 bg-n-background'
+        "
+      >
+        <Icon
+          v-if="isForwardSelected"
+          icon="i-lucide-check"
+          class="size-3 text-white"
+        />
+      </span>
+    </button>
+    <div
+      class="flex min-w-0 flex-1"
+      :class="[
+        flexOrientationClass,
+        { 'bg-n-alpha-1': showBackgroundHighlight },
+      ]"
+    >
     <div v-if="variant === MESSAGE_VARIANTS.ACTIVITY">
       <ActivityBubble :content="content" />
     </div>
@@ -609,6 +685,7 @@ provideMessageContext({
           'flex-col items-start gap-2': shouldShowWhatsappReferral,
         }"
         @contextmenu="openContextMenu($event)"
+        @click="onBubbleForwardClick"
       >
         <WhatsappReferral
           v-if="shouldShowWhatsappReferral"
@@ -637,6 +714,7 @@ provideMessageContext({
         @close="closeContextMenu"
         @reply-to="handleReplyTo"
       />
+    </div>
     </div>
   </div>
 </template>

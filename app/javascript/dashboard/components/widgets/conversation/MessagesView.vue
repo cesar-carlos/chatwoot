@@ -1,5 +1,14 @@
 <script>
-import { ref, provide, inject, nextTick, useTemplateRef } from 'vue';
+import {
+  ref,
+  provide,
+  inject,
+  nextTick,
+  useTemplateRef,
+  watch,
+  onMounted,
+  onUnmounted,
+} from 'vue';
 import { useElementSize, useEventListener } from '@vueuse/core';
 // composable
 import { useLabelSuggestions } from 'dashboard/composables/useLabelSuggestions';
@@ -7,6 +16,9 @@ import { useCampaignHistory } from 'dashboard/composables/useCampaignHistory';
 import { useKeyboardEvents } from 'dashboard/composables/useKeyboardEvents';
 import { useSnakeCase } from 'dashboard/composables/useTransformKeys';
 import { CONTACT_CONVERSATION_NAVIGATION } from 'dashboard/composables/useContactConversationNavigation';
+import { useAlert } from 'dashboard/composables';
+import { useMapGetter } from 'dashboard/composables/store';
+import { useI18n } from 'vue-i18n';
 
 // components
 import ReplyBox from './ReplyBox.vue';
@@ -19,6 +31,14 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import OlderConversationBar from './OlderConversationBar.vue';
 import ResizableEditorWrapper from './ResizableEditorWrapper.vue';
 import ReferralBubble from 'dashboard/components-next/Conversation/ReferralBubble.vue';
+// FORK: WhatsApp-like multi-select forward
+import MessageForwardModal from 'customDashboard/components/forward/MessageForwardModal.vue';
+import MessageForwardSelectionBar from 'customDashboard/components/forward/MessageForwardSelectionBar.vue';
+import {
+  MessageForwardSelectionKey,
+  createMessageForwardSelection,
+} from 'customDashboard/composables/useMessageForwardSelection';
+import { MAX_FORWARD_MESSAGES } from 'customDashboard/composables/useMessageForward';
 
 // stores and apis
 import { mapGetters } from 'vuex';
@@ -64,6 +84,8 @@ export default {
     OlderConversationBar,
     ResizableEditorWrapper,
     ReferralBubble,
+    MessageForwardModal,
+    MessageForwardSelectionBar,
   },
   mixins: [inboxMixin],
   setup() {
@@ -109,6 +131,45 @@ export default {
       if (e.clipboardData?.files.length) revealReplyBox();
     });
 
+    // FORK: WhatsApp-like multi-select forward
+    const { t } = useI18n();
+    const currentChatRef = useMapGetter('getSelectedChat');
+    const forwardModalRef = useTemplateRef('forwardModalRef');
+    const messagesToForward = ref([]);
+    const forwardSelection = createMessageForwardSelection({
+      onOpenForward: messages => {
+        messagesToForward.value = messages;
+        nextTick(() => forwardModalRef.value?.open());
+      },
+      onMaxReached: () => {
+        useAlert(
+          t('CONVERSATION.FORWARD.MAX_MESSAGES', {
+            count: MAX_FORWARD_MESSAGES,
+          })
+        );
+      },
+    });
+    provide(MessageForwardSelectionKey, forwardSelection);
+
+    watch(
+      () => currentChatRef.value?.id,
+      () => forwardSelection.exit()
+    );
+
+    const onForwardEscape = event => {
+      if (event.key !== 'Escape' || !forwardSelection.isSelecting.value) {
+        return;
+      }
+      if (document.querySelector('dialog[open]')) return;
+      forwardSelection.exit();
+    };
+    onMounted(() => window.addEventListener('keydown', onForwardEscape));
+    onUnmounted(() => window.removeEventListener('keydown', onForwardEscape));
+
+    const onForwardDone = results => {
+      if (!results || results.failed === 0) forwardSelection.exit();
+    };
+
     return {
       ...useCampaignHistory(),
       captainTasksEnabled,
@@ -130,6 +191,9 @@ export default {
       topBannerRef,
       containerHeight,
       topBannerHeight,
+      messagesToForward,
+      isForwardSelecting: forwardSelection.isSelecting,
+      onForwardDone,
     };
   },
   data() {
@@ -699,6 +763,7 @@ export default {
         @go-to-latest="openConversation(latestConversation)"
       />
       <ResizableEditorWrapper
+        v-if="!isForwardSelecting"
         v-show="!isReadingHistory"
         ref="resizableEditorWrapperRef"
         :class="{ 'animate-fade-in-up': isReplyRevealed }"
@@ -709,6 +774,13 @@ export default {
           @toggle-editor-size="toggleReplyEditorSize"
         />
       </ResizableEditorWrapper>
+      <MessageForwardSelectionBar v-else />
     </div>
+    <MessageForwardModal
+      ref="forwardModalRef"
+      :messages="messagesToForward"
+      :inbox-id="inboxId"
+      @done="onForwardDone"
+    />
   </div>
 </template>

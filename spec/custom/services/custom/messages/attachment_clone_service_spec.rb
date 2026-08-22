@@ -33,7 +33,7 @@ RSpec.describe Custom::Messages::AttachmentCloneService do
     expect(blobs.first).to be_a(ActiveStorage::Blob)
   end
 
-  it 'clones any account attachment ids when source_message_id is blank' do
+  it 'does not clone attachments when source_message_id is blank' do
     source = attach_image!(source_message)
     other = attach_image!(other_message)
 
@@ -42,6 +42,6 @@ RSpec.describe Custom::Messages::AttachmentCloneService do
       attachment_ids: [source.id, other.id]
     ).perform
 
-    expect(blobs.size).to eq(2)
+    expect(blobs).to eq([])
   end
 end
