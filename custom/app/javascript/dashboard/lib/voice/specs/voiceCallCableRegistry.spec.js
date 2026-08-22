@@ -45,7 +45,7 @@ vi.mock('dashboard/composables', () => ({
   useAlert: vi.fn(),
 }));
 
-vi.mock('dashboard/composables/useCallSession', () => ({
+vi.mock('dashboard/helper/voiceCallDismissed', () => ({
   isCallDismissed: vi.fn(() => false),
   markCallDismissed: vi.fn(),
 }));
@@ -65,7 +65,7 @@ import {
   endActiveCall,
   getActiveProviderCallId,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
-import { isCallDismissed } from 'dashboard/composables/useCallSession';
+import { isCallDismissed } from 'dashboard/helper/voiceCallDismissed';
 import { createWavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
 import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
 

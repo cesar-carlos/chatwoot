@@ -9,12 +9,8 @@ import {
   useWhatsappCallSession,
   sendWhatsappTerminateBeacon,
 } from 'dashboard/composables/useWhatsappCallSession';
-import {
-  markCallDismissed,
-  isCallDismissed,
-  markLocalCall,
-  clearLocalCall,
-} from 'dashboard/helper/voice';
+import { markLocalCall, clearLocalCall } from 'dashboard/helper/voice';
+import { markCallDismissed } from 'dashboard/helper/voiceCallDismissed';
 import { VOICE_CALL_PROVIDERS } from 'dashboard/helper/inbox';
 import { isBrowserVoiceProvider } from 'customDashboard/lib/voice/browserVoiceProviders';
 // FORK: Wavoip voice session registry (factory wired in Phase 2)
@@ -54,9 +50,6 @@ const silenceCallRingtone = (callSid, call) => {
   // Also silence by wavoipOfferId so aliased entries are covered.
   addToCappedSet(ringtoneSilencedCallSids, call?.wavoipOfferId);
 };
-const markDismissed = markCallDismissed;
-
-export { markCallDismissed, isCallDismissed };
 
 // Globals attached once across all useCallSession() consumers — bubbles in a
 // long thread call this composable many times, and a per-instance Timer +
@@ -283,7 +276,7 @@ const buildCallActions = ({
       // eslint-disable-next-line no-console
       console.error('Failed to join call:', error);
       if (cleanupAfterBrowserVoiceJoinFailure(call, callSid)) {
-        markDismissed(callSid);
+        markCallDismissed(callSid);
         callsStore.dismissCall(callSid);
       }
       return null;
@@ -343,7 +336,7 @@ const buildCallActions = ({
       await rejectIncomingCall(callSid);
       return;
     }
-    markDismissed(callSid);
+    markCallDismissed(callSid);
     callsStore.dismissCall(callSid);
   };
 

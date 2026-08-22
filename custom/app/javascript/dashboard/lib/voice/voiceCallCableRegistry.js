@@ -19,7 +19,7 @@ import {
   removeWavoipCallFromStore,
 } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 import { shouldIgnoreInboundWavoipCable } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
-import { isCallDismissed } from 'dashboard/composables/useCallSession';
+import { isCallDismissed } from 'dashboard/helper/voiceCallDismissed';
 
 const currentUserId = () => store.getters.getCurrentUserID;
 

@@ -18,7 +18,12 @@ import {
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
 import { normalizeCallDirection } from 'customDashboard/lib/voice/voiceCallDirection';
 import { getRuntimeStore as getDashboardStore } from 'dashboard/store/runtimeStore';
-import { addToCappedSet } from 'customDashboard/lib/voice/cappedSet';
+import {
+  isCallDismissed,
+  markCallDismissed,
+} from 'dashboard/helper/voiceCallDismissed';
+
+export { isCallDismissed, markCallDismissed };
 
 export const TERMINAL_STATUSES = [
   'completed',
@@ -36,13 +41,6 @@ export const TERMINAL_STATUSES = [
 // Track dismissed call sids at module scope so that late, stale "ringing" snapshot doesn't
 // resurrect a card every caller of handleVoiceCallCreated (hydration and real-time alike)
 // has already cleared.
-const dismissedCallSids = new Set();
-export const markCallDismissed = callSid => {
-  addToCappedSet(dismissedCallSids, callSid);
-};
-export const isCallDismissed = callSid =>
-  callSid ? dismissedCallSids.has(callSid) : false;
-
 // Which Twilio call (if any) this tab is actively joining/owns. Must be set
 // synchronously BEFORE the join API call — mirrors useWhatsappCallSession's
 // activeCallId — so the account-wide voice_call.accepted broadcast (which can
@@ -192,7 +190,7 @@ export function handleVoiceCallCreated(
     senderId,
   } = extractCallData(message);
 
-  if (callSid && dismissedCallSids.has(callSid)) return;
+  if (isCallDismissed(callSid)) return;
 
   // A voice_call message can be created already terminal when the caller hangs
   // up before connect. Only ring while the call is actually ringing; mirrors the
