@@ -41,7 +41,7 @@ class Conversations::EventDataPresenter < SimpleDelegator
 
   def push_meta
     {
-      sender: contact.push_event_data,
+      sender: contact&.push_event_data, # FORK: orphan conversations after contact delete
       assignee: assigned_entity&.push_event_data,
       assignee_type: assignee_type,
       team: team&.push_event_data,
