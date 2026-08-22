@@ -35,8 +35,7 @@ const pruneRecords = records => {
   return Object.fromEntries(
     entries
       .sort(
-        (a, b) =>
-          (b[1]?.lastDownloadedAt || 0) - (a[1]?.lastDownloadedAt || 0)
+        (a, b) => (b[1]?.lastDownloadedAt || 0) - (a[1]?.lastDownloadedAt || 0)
       )
       .slice(0, MAX_ENTRIES)
   );

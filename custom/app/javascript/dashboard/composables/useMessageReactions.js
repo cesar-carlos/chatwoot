@@ -44,8 +44,7 @@ export function messageCanReceiveReaction(message) {
 
   if (message.private) return false;
 
-  const attrs =
-    message.content_attributes || message.contentAttributes || {};
+  const attrs = message.content_attributes || message.contentAttributes || {};
   if (attrs.deleted) return false;
 
   const status = message.status;

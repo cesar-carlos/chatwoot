@@ -92,10 +92,7 @@ const wireDeviceListeners = (inboxId, client) => {
   const device = getPrimaryDevice(client);
   if (!device?.on) return;
 
-  setWavoipWhatsAppStatus(
-    inboxId,
-    normalizeWavoipDeviceStatus(device.status)
-  );
+  setWavoipWhatsAppStatus(inboxId, normalizeWavoipDeviceStatus(device.status));
   setWavoipConnectionStatus(inboxId, device.connectionStatus || 'connected');
   setWavoipRestricted(inboxId, !!device.restricted, device.restrictedUntil);
   syncDeviceChannelStats(inboxId, device);

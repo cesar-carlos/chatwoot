@@ -121,9 +121,7 @@ describe('useWavoipIncomingOffer', () => {
     expect(mockAlert).toHaveBeenCalledWith(
       'CONVERSATION.WAVOIP_CALL.ACCEPTED_ELSEWHERE'
     );
-    expect(closeIncomingWavoipOfferNotification).toHaveBeenCalledWith(
-      offer.id
-    );
+    expect(closeIncomingWavoipOfferNotification).toHaveBeenCalledWith(offer.id);
     expect(isCallDismissed(offer.id)).toBe(true);
     expect(pendingOffers.has(offer.id)).toBe(false);
     expect(store.calls.some(c => c.callSid === offer.id)).toBe(false);

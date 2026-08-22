@@ -76,10 +76,7 @@ let pendingForceRefresh = false;
 let panelOpenedSdkConnection = false;
 
 const webhookUrl = computed(
-  () =>
-    props.inbox.wavoip_webhook_url ||
-    props.inbox.wavoipWebhookUrl ||
-    ''
+  () => props.inbox.wavoip_webhook_url || props.inbox.wavoipWebhookUrl || ''
 );
 
 const whatsAppStatus = computed(() => {
@@ -170,19 +167,6 @@ const recentIssues = computed(() =>
   getRecentConnectivityIssues(inboxId.value).slice(-5)
 );
 
-watch(
-  whatsAppStatus,
-  status => {
-    emit('update:liveDeviceStatus', status);
-    if (PREPARING_STATUSES.has(status)) {
-      startPreparingTimer();
-    } else {
-      stopPreparingTimer();
-    }
-  },
-  { immediate: true }
-);
-
 function startPreparingTimer() {
   if (preparingTimer) return;
   preparingStartedAt = Date.now();
@@ -202,6 +186,19 @@ function stopPreparingTimer() {
   preparingStartedAt = null;
   preparingElapsedSeconds.value = 0;
 }
+
+watch(
+  whatsAppStatus,
+  status => {
+    emit('update:liveDeviceStatus', status);
+    if (PREPARING_STATUSES.has(status)) {
+      startPreparingTimer();
+    } else {
+      stopPreparingTimer();
+    }
+  },
+  { immediate: true }
+);
 
 function stopPolling() {
   if (pollTimer) {
@@ -555,7 +552,9 @@ onBeforeUnmount(() => {
             class="inline-flex items-center gap-1 rounded-full bg-n-ruby-3 px-2 py-0.5 text-xs font-medium text-n-ruby-11"
           >
             <Icon icon="i-ph-warning-bold" class="size-3 shrink-0" />
-            {{ $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAITING_PAYMENT_HINT') }}
+            {{
+              $t('INBOX_MGMT.WAVOIP_CALL.DEVICE_STATUS.WAITING_PAYMENT_HINT')
+            }}
           </span>
           <span
             v-else-if="badStatusKey === 'EXTERNAL_INTEGRATION_ERROR'"

@@ -8,7 +8,6 @@ import WavoipDevicePanel from 'customDashboard/routes/dashboard/settings/inbox/s
 import WavoipOnboardingChecklist from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipOnboardingChecklist.vue';
 import WavoipRecordingChecklist from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/WavoipRecordingChecklist.vue';
 import { patchWavoipProviderConfig } from 'customDashboard/routes/dashboard/settings/inbox/settingsPage/wavoipProviderConfigPatch';
-import NextButton from 'dashboard/components-next/button/Button.vue';
 import Spinner from 'dashboard/components-next/spinner/Spinner.vue';
 import { useBranding } from 'shared/composables/useBranding';
 
@@ -20,7 +19,6 @@ export default {
     WavoipDevicePanel,
     WavoipOnboardingChecklist,
     WavoipRecordingChecklist,
-    NextButton,
     Spinner,
   },
   props: {

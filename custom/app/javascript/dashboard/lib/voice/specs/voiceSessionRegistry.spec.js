@@ -93,9 +93,9 @@ describe('voiceSessionRegistry', () => {
 
   describe('provider helpers', () => {
     it('detects Wavoip and WhatsApp calls', () => {
-      expect(
-        isWavoipVoiceCall({ provider: VOICE_CALL_PROVIDERS.WAVOIP })
-      ).toBe(true);
+      expect(isWavoipVoiceCall({ provider: VOICE_CALL_PROVIDERS.WAVOIP })).toBe(
+        true
+      );
       expect(
         isWhatsappVoiceCall({ provider: VOICE_CALL_PROVIDERS.WHATSAPP })
       ).toBe(true);

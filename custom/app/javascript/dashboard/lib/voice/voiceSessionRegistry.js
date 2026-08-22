@@ -51,6 +51,11 @@ export function shouldRejectWavoipInboundOnDismiss(call) {
   );
 }
 
+export function teardownWavoipActiveCall() {
+  endSdkActiveCall();
+  clearSdkActiveCall();
+}
+
 /**
  * Provider-specific cleanup after join/accept failure.
  * Returns whether the local store entry should be dismissed.
@@ -71,11 +76,6 @@ export function cleanupAfterBrowserVoiceJoinFailure(call, callSid) {
     return false;
   }
   return false;
-}
-
-export function teardownWavoipActiveCall() {
-  endSdkActiveCall();
-  clearSdkActiveCall();
 }
 
 export function teardownBrowserVoiceSession(provider) {

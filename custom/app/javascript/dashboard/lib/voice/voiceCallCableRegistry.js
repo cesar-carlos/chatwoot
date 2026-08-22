@@ -11,9 +11,7 @@ import {
   getActiveProviderCallId,
   isWavoipSdkCallOwned,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
-import {
-  pendingOffers,
-} from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
+import { pendingOffers } from 'customDashboard/composables/wavoip/useWavoipIncomingOffer';
 import { flushAcceptedByRecording } from 'customDashboard/lib/wavoip/wavoipAcceptRecorder';
 import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
 import {
@@ -21,9 +19,7 @@ import {
   removeWavoipCallFromStore,
 } from 'customDashboard/lib/wavoip/wavoipCallTeardown';
 import { shouldIgnoreInboundWavoipCable } from 'customDashboard/lib/wavoip/wavoipOutboundGuard';
-import {
-  isCallDismissed,
-} from 'dashboard/composables/useCallSession';
+import { isCallDismissed } from 'dashboard/composables/useCallSession';
 
 const currentUserId = () => store.getters.getCurrentUserID;
 
