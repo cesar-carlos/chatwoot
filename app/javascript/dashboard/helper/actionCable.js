@@ -74,7 +74,6 @@ class ActionCableConnector extends BaseActionCableConnector {
       'voice_call.outbound_connected': this.onVoiceCallOutboundConnected,
       'voice_call.outbound_accepted': this.onVoiceCallOutboundAccepted,
       'voice_call.ended': this.onVoiceCallEnded,
-      'voice_call.accepted': this.onVoiceCallAccepted,
       'voice_call.permission_granted': this.onVoiceCallPermissionGranted,
       // FORK: Evolution WhatsApp disconnect
       'evolution.connection_closed': this.onEvolutionConnectionClosed,

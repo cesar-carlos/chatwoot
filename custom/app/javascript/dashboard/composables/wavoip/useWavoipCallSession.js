@@ -80,11 +80,7 @@ export function useWavoipCallSession() {
       queueAcceptedByRecording(callSid);
       return;
     }
-    await recordJoinWithRetry(
-      dbCallId,
-      callSid,
-      acceptRecordOptions(callSid)
-    );
+    await recordJoinWithRetry(dbCallId, callSid, acceptRecordOptions(callSid));
   };
 
   const acceptIncomingCall = async ({ callId, inboxId }) => {

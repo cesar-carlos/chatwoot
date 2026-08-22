@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  iceConfigFromBootstrap,
-  wavoipIceConfigKey,
-} from '../wavoipIceConfig';
+import { iceConfigFromBootstrap, wavoipIceConfigKey } from '../wavoipIceConfig';
 
 describe('iceConfigFromBootstrap', () => {
   it('returns undefined when bootstrap has no servers', () => {

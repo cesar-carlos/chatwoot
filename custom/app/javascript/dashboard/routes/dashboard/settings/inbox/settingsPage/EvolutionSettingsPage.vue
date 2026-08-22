@@ -346,7 +346,9 @@ async function refreshContactProfiles() {
       const remaining = error?.response?.data?.remaining_seconds;
       if (remaining > 0) startRefreshCountdown(remaining);
       useAlert(
-        t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.ALREADY_RUNNING')
+        t(
+          'INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.ALREADY_RUNNING'
+        )
       );
       return;
     }
@@ -669,9 +671,7 @@ function importStatusLabel(status) {
       </p>
       <p class="text-sm text-n-slate-11">
         {{
-          t(
-            'INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.DESCRIPTION'
-          )
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.DESCRIPTION')
         }}
       </p>
     </SettingsAccordion>

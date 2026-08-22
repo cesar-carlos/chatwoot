@@ -98,7 +98,10 @@ describe('useWavoipQrSession', () => {
     expect(getWavoipQr).toHaveBeenCalledTimes(1);
     expect(getWavoipQr).toHaveBeenCalledWith(9, { refresh: false });
     expect(connectInbox).toHaveBeenCalledWith(9);
-    expect(device.on).toHaveBeenCalledWith('qrCodeChanged', expect.any(Function));
+    expect(device.on).toHaveBeenCalledWith(
+      'qrCodeChanged',
+      expect.any(Function)
+    );
     expect(session.hasSdkConnection()).toBe(true);
     // SDK sync prefers the live device.qrCode when present.
     expect(session.qrDataUrl.value).toBe('data:image/png;base64,seed-qr');

@@ -65,9 +65,7 @@ import {
   endActiveCall,
   getActiveProviderCallId,
 } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
-import {
-  isCallDismissed,
-} from 'dashboard/composables/useCallSession';
+import { isCallDismissed } from 'dashboard/composables/useCallSession';
 import { createWavoipVoiceCableHandlers } from '../voiceCallCableRegistry';
 import { reopenWavoipInboundConversation } from 'customDashboard/lib/wavoip/wavoipInboundConversation';
 

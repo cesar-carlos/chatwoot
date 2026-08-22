@@ -264,7 +264,9 @@ async function refreshContactProfiles() {
       'inboxes/evolutionGoRefreshContacts',
       props.inbox.id
     );
-    startRefreshCountdown(payload.remaining_seconds || payload.eta_seconds || 0);
+    startRefreshCountdown(
+      payload.remaining_seconds || payload.eta_seconds || 0
+    );
     useAlert(
       t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.RUN_SUCCESS', {
         count: payload.enqueued || 0,
@@ -278,7 +280,9 @@ async function refreshContactProfiles() {
       const remaining = error?.response?.data?.remaining_seconds;
       if (remaining > 0) startRefreshCountdown(remaining);
       useAlert(
-        t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.ALREADY_RUNNING')
+        t(
+          'INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.ALREADY_RUNNING'
+        )
       );
       return;
     }
@@ -560,7 +564,9 @@ async function removeProxy() {
       </p>
       <SettingsFieldSection
         v-if="state.importMessages"
-        :label="t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.HISTORY_COUNT.LABEL')"
+        :label="
+          t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.HISTORY_COUNT.LABEL')
+        "
         :help-text="
           t('INBOX_MGMT.EVOLUTION_GO.SETTINGS.IMPORT.HISTORY_COUNT.DESCRIPTION')
         "
@@ -633,9 +639,7 @@ async function removeProxy() {
       </p>
       <p class="text-sm text-n-slate-11">
         {{
-          t(
-            'INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.DESCRIPTION'
-          )
+          t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.REFRESH_CONTACTS.DESCRIPTION')
         }}
       </p>
     </SettingsAccordion>
