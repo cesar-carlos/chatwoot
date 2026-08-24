@@ -11,6 +11,7 @@ import {
 
 const POLL_MS = 5000;
 const MAX_POLL_FAILURES = 3;
+const RATE_LIMIT_BACKOFF_MS = 30_000;
 
 function resolveInboxRef(inboxRef) {
   const value = unref(inboxRef);
@@ -26,6 +27,10 @@ function applySeedToState(inbox, { connectionStatus, phoneNumber }) {
     phoneNumber.value = seeded.phoneNumber;
   }
   return seeded;
+}
+
+function isRateLimited(error) {
+  return error?.response?.status === 429;
 }
 
 export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
@@ -45,7 +50,9 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   const confirmDescription = ref('');
 
   let pollTimer = null;
+  let rateLimitTimer = null;
   let pollFailureCount = 0;
+  let refreshInFlight = null;
   let unsubscribeCable = null;
 
   const inboxId = computed(() => resolveInboxRef(inboxRef)?.id);
@@ -61,12 +68,38 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
     }
   }
 
+  function clearRateLimitTimer() {
+    if (rateLimitTimer) {
+      clearTimeout(rateLimitTimer);
+      rateLimitTimer = null;
+    }
+  }
+
   function applyPhoneFromPayload(payload, normalized) {
     const phone =
       normalized.phoneNumber || payload.phoneNumber || payload.phone_number;
     if (phone && !isEvolutionPlaceholderPhone(phone)) {
       phoneNumber.value = phone;
     }
+  }
+
+  async function refreshInboxRecord() {
+    if (!inboxId.value) return;
+    try {
+      await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
+    } catch {
+      // Connection payload already applied; store refresh is best-effort.
+    }
+  }
+
+  function fetchConnectionPayload() {
+    if (refreshInFlight) return refreshInFlight;
+    refreshInFlight = store
+      .dispatch('inboxes/fetchEvolutionGoConnection', inboxId.value)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+    return refreshInFlight;
   }
 
   async function applyPayload(payload) {
@@ -77,25 +110,34 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
     const normalized = normalizeEvolutionConnectionPayload(payload) || {};
 
     if (normalized.connectionStatus) {
+      if (
+        connectionStatus.value === 'open' &&
+        normalized.connectionStatus === 'connecting' &&
+        !isQrModalOpen.value
+      ) {
+        applyPhoneFromPayload(payload, normalized);
+        return;
+      }
+
       const wasConnected = isConnected.value;
       connectionStatus.value = normalized.connectionStatus;
 
       if (isConnected.value && !wasConnected) {
-        try {
-          const full = await store.dispatch(
-            'inboxes/fetchEvolutionGoConnection',
-            inboxId.value
-          );
-          applyPhoneFromPayload(
-            full,
-            normalizeEvolutionConnectionPayload(full) || {}
-          );
-        } catch {
-          applyPhoneFromPayload(payload, normalized);
-        }
+        applyPhoneFromPayload(payload, normalized);
         stopPolling();
         isQrModalOpen.value = false;
-        await store.dispatch('inboxes/get', inboxId.value);
+        if (!phoneNumber.value) {
+          try {
+            const full = await fetchConnectionPayload();
+            applyPhoneFromPayload(
+              full,
+              normalizeEvolutionConnectionPayload(full) || {}
+            );
+          } catch {
+            applyPhoneFromPayload(payload, normalized);
+          }
+        }
+        await refreshInboxRecord();
       }
     }
 
@@ -106,10 +148,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
     if (!inboxId.value) return;
 
     try {
-      const payload = await store.dispatch(
-        'inboxes/fetchEvolutionGoConnection',
-        inboxId.value
-      );
+      const payload = await fetchConnectionPayload();
       await applyPayload(payload);
       pollFailureCount = 0;
       staleData.value = false;
@@ -119,7 +158,11 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
         connectionStatus,
         phoneNumber,
       });
-      if (pollFailureCount >= MAX_POLL_FAILURES) {
+      if (isRateLimited(error)) {
+        // eslint-disable-next-line no-use-before-define -- backoff resumes startPolling
+        scheduleRateLimitBackoff();
+      }
+      if (pollFailureCount === MAX_POLL_FAILURES) {
         staleData.value = true;
         useAlert(
           error?.response?.data?.error ||
@@ -132,9 +175,20 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   function startPolling() {
-    if (isQrModalOpen.value || isConnected.value) return;
+    if (isQrModalOpen.value || isConnected.value || rateLimitTimer) return;
     stopPolling();
     pollTimer = setInterval(refreshConnection, POLL_MS);
+  }
+
+  function scheduleRateLimitBackoff() {
+    stopPolling();
+    if (rateLimitTimer) return;
+    rateLimitTimer = setTimeout(() => {
+      rateLimitTimer = null;
+      if (!isConnected.value && !isQrModalOpen.value) {
+        refreshConnection().then(() => startPolling());
+      }
+    }, RATE_LIMIT_BACKOFF_MS);
   }
 
   function openQrModal({ fresh = false } = {}) {
@@ -149,7 +203,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
     try {
       const payload = await store.dispatch(`inboxes/${action}`, inboxId.value);
       await applyPayload(payload);
-      await store.dispatch('inboxes/get', inboxId.value);
+      await refreshInboxRecord();
       useAlert(t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.ACTION_SUCCESS'));
       return true;
     } catch (error) {
@@ -201,7 +255,11 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
   function onQrConnected() {
     isReconnecting.value = false;
     isQrModalOpen.value = false;
-    refreshConnection();
+    if (isConnected.value) {
+      refreshInboxRecord();
+      return;
+    }
+    refreshConnection().then(() => startPolling());
   }
 
   watch(
@@ -238,6 +296,7 @@ export function useEvolutionGoHealthConnection(inboxRef, { qrModalRef } = {}) {
 
   onBeforeUnmount(() => {
     stopPolling();
+    clearRateLimitTimer();
     unsubscribeCable?.();
   });
 

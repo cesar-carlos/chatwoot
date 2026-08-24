@@ -91,7 +91,7 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
         }
         stopPolling();
         isQrModalOpen.value = false;
-        await store.dispatch('inboxes/get', inboxId.value);
+        await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
       }
     }
 
@@ -166,7 +166,7 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
   }
 
   async function onQrConnected() {
-    await store.dispatch('inboxes/get', inboxId.value);
+    await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
     await refreshConnection();
   }
 
@@ -176,7 +176,7 @@ export function useEvolutionHealthConnection(inboxRef, { qrModalRef } = {}) {
     try {
       const payload = await store.dispatch(`inboxes/${action}`, inboxId.value);
       await applyPayload(payload);
-      await store.dispatch('inboxes/get', inboxId.value);
+      await store.dispatch('inboxes/fetchInboxItem', inboxId.value);
       useAlert(t('INBOX_MGMT.EVOLUTION.SETTINGS.HEALTH.ACTION_SUCCESS'));
       return true;
     } catch (error) {

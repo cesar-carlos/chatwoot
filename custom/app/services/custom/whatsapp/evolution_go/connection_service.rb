@@ -162,7 +162,8 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     end
 
     data = api_client.unwrap(response, context: 'connection_status')
-    update_connection_status(connection_state_from_status_data(data))
+    next_state = connection_state_from_status_data(data)
+    update_connection_status(next_state) unless provider_config['connection_status'] == 'open' && next_state == 'connecting'
     Rails.cache.write(cache_key, true, expires_in: CONNECTION_STATE_CACHE_TTL)
     :success
   end

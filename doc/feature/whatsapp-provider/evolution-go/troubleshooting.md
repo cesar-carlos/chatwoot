@@ -63,8 +63,19 @@ Campo `phone` obrigatório — E.164 sem `+`.
 
 ### `Connected: true` mas `LoggedIn: false`
 
-- Aguardar alguns segundos após scan
+- Aguardar alguns segundos após scan — o adapter **não** marca `open` até `loggedIn`.
 - Sessão duplicada em outro dispositivo → `DELETE /instance/logout` e reconectar
+- Health page não deve piscar nem spammar 429 nesse intervalo (webhook `CONNECTED` ≠ sessão pronta)
+
+### Health page pisca / console cheio de 429 após escanear o QR
+
+| Causa | Ação |
+|-------|------|
+| Poll + cable + remount da settings (`inboxes/get` ligava `isFetching`) | Corrigido: `fetchInboxItem` + lock + backoff 30s em 429 |
+| Go emite `QRCODE` / `CONNECTION` residual depois do scan | Adapter ignora se já `open`; GET status não rebaixa `open` → `connecting` |
+| Throttle `evolution_go_connection` (60/min) | Esperado se o bug antigo ainda estiver no deploy; atualizar o fork |
+
+Sintoma antigo: spinner “Conectando”, toasts de status desatualizado, `GET .../evolution_go_connection` 429 em loop.
 
 ---
 

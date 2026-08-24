@@ -110,4 +110,28 @@ describe('useEvolutionGoQrSession', () => {
 
     expect(store.dispatch).not.toHaveBeenCalled();
   });
+
+  it('pauses QR polling after a 429', async () => {
+    const store = {
+      dispatch: vi.fn().mockRejectedValue({
+        response: { status: 429 },
+      }),
+    };
+    const { startSession, stopSession } = useEvolutionGoQrSession({
+      inboxId: 1,
+      store,
+    });
+
+    await startSession();
+    store.dispatch.mockClear();
+
+    vi.advanceTimersByTime(3000);
+    await Promise.resolve();
+    expect(store.dispatch).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(30_000);
+    await Promise.resolve();
+    expect(store.dispatch).toHaveBeenCalled();
+    stopSession();
+  });
 });

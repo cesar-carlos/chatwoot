@@ -289,7 +289,16 @@ Emitir ActionCable `evolution_go:connection:{inbox_id}`.
 }
 ```
 
-`ConnectionService` deve aceitar variantes: `data.state`, `data.Connected`, string livre.
+`ConnectionService` deve aceitar variantes: `data.state`, `data.Connected` / `data.connected`, `data.LoggedIn` / `data.loggedIn`, string livre.
+
+**Handshake após o QR:** o Go costuma emitir `CONNECTED` (socket up) **antes** de `loggedIn: true`, e ainda pode mandar `QRCODE` residual. Regras do adapter:
+
+- `open` só quando o payload diz `connected && loggedIn` (ou `state/status` explícito `open` / `connected`).
+- Evento `CONNECTED` **sem** `loggedIn` vira `connecting`, não `open`.
+- Com `connection_status` já `open`, ignorar `QRCODE` e qualquer `CONNECTION` que mapeie para `connecting` (ruído de pairing).
+- `GET /instance/status` **não** rebaixa `open` → `connecting` enquanto o Go ainda reporta `connected && !loggedIn`.
+
+Isso evita oscilação `connecting` ↔ `open` na health page e tempestade de `GET evolution_go_connection` (429).
 
 ---
 
@@ -309,7 +318,7 @@ Payload contém QR base64 — broadcast para wizard.
 }
 ```
 
-Fallback polling: `GET /instance/qr` a cada 3s até status conectado.
+Fallback polling: `GET /instance/qr` a cada 3s até status conectado. Se `connection_status` já for `open`, o webhook `QRCODE` é ignorado (não volta a `connecting` nem substitui o QR).
 
 **Casing status (`GET /instance/status`):** OpenAPI usa `Connected` / `LoggedIn` (PascalCase). `ApiClient#unwrap` deve aceitar também `connected` / `loggedIn` até E2E definir canônico.
 
