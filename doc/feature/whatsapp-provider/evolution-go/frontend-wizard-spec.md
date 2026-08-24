@@ -86,6 +86,13 @@ Componentes: `EvolutionGo.vue` (wizard), `EvolutionGoSettingsPage.vue`, `Evoluti
 
 **QR sob demanda:** health poll **não** busca QR a cada 5s — apenas o modal (`include_qr=true`) dispara `GET /instance/qr`.
 
+**Health page após o QR:**
+
+- Poll de status a cada 5s só enquanto `connecting` / `close`; para em `open`.
+- Transição para `open` atualiza **um** inbox (`inboxes/fetchInboxItem`) — **não** dispara `inboxes/get` (lista + `isFetching`), que desmontava a tela de settings e piscava.
+- Ruído de pairing (`connecting` depois de `open`) é ignorado no frontend enquanto o modal de QR estiver fechado.
+- HTTP 429: um toast de dado stale; poll pausa 30s (health e modal QR) em vez de martelar o throttle Rack::Attack (60 req/min).
+
 ---
 
 ## Fluxo backend (sequence)

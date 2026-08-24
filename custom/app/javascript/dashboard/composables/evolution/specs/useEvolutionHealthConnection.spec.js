@@ -145,7 +145,7 @@ describe('useEvolutionHealthConnection', () => {
       if (action === 'inboxes/evolutionRestart') {
         return Promise.resolve({ connection_status: 'connecting' });
       }
-      if (action === 'inboxes/get') return Promise.resolve({});
+      if (action === 'inboxes/fetchInboxItem') return Promise.resolve({});
       return Promise.reject(
         new Error(`unexpected dispatch in test: ${action}`)
       );

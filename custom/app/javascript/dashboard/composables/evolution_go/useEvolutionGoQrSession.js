@@ -3,6 +3,7 @@ import { normalizeEvolutionConnectionPayload } from 'customDashboard/lib/evoluti
 
 const POLL_MS = 3000;
 const QR_EXPIRY_MS = 45_000;
+const RATE_LIMIT_BACKOFF_MS = 30_000;
 
 export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
   const connectionStatus = ref('connecting');
@@ -16,6 +17,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
 
   let pollTimer = null;
   let expiryTimer = null;
+  let rateLimitTimer = null;
   let sessionStartedConnected = false;
   let hasEmittedConnected = false;
   let refreshInFlight = null;
@@ -44,11 +46,19 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     }
   }
 
+  function clearRateLimitTimer() {
+    if (rateLimitTimer) {
+      clearTimeout(rateLimitTimer);
+      rateLimitTimer = null;
+    }
+  }
+
   function stopSession() {
     sessionActive = false;
     sessionGeneration += 1;
     stopPolling();
     clearExpiryTimer();
+    clearRateLimitTimer();
     refreshInFlight = null;
   }
 
@@ -103,6 +113,9 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
       .catch(error => {
         if (isInboxNotFoundError(error)) {
           handleInboxNotFound();
+        } else if (error?.response?.status === 429) {
+          // eslint-disable-next-line no-use-before-define -- backoff resumes startPolling
+          scheduleRateLimitBackoff(sessionGeneration);
         } else {
           qrRefreshError.value = true;
         }
@@ -183,8 +196,8 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
   }
 
   function startPolling() {
+    if (!sessionActive || rateLimitTimer) return;
     stopPolling();
-    if (!sessionActive) return;
 
     const generation = sessionGeneration;
     pollTimer = setInterval(() => {
@@ -194,6 +207,20 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
       }
       refreshConnection({ includeQr: true });
     }, POLL_MS);
+  }
+
+  function scheduleRateLimitBackoff(generation) {
+    stopPolling();
+    if (rateLimitTimer) return;
+    rateLimitTimer = setTimeout(() => {
+      rateLimitTimer = null;
+      if (!currentSessionActive(generation) || isConnected()) return;
+      refreshConnection({ includeQr: true }).then(() => {
+        if (currentSessionActive(generation) && !isConnected()) {
+          startPolling();
+        }
+      });
+    }, RATE_LIMIT_BACKOFF_MS);
   }
 
   async function startSession({ fetchFreshQr = false } = {}) {

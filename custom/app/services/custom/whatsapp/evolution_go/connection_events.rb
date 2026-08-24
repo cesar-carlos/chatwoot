@@ -50,6 +50,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
     data = envelope[:data]
     state = map_connection_state(data, event: envelope[:event])
     return if state.blank?
+    return if residual_pairing_noise?(state)
 
     previous_status = provider_config['connection_status']
     connection_service.update_connection_status(state)
@@ -65,6 +66,8 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
   end
 
   def handle_qrcode_event(envelope)
+    return if provider_config['connection_status'] == 'open'
+
     attrs = qrcode_storage_attrs(envelope[:data])
     return if attrs.blank?
 
@@ -79,10 +82,23 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
     )
   end
 
-  def map_connection_state(data, event: nil) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def residual_pairing_noise?(state)
+    state == 'connecting' && provider_config['connection_status'] == 'open'
+  end
+
+  def map_connection_state(data, event: nil)
+    payload_state = state_from_payload(data)
+    return payload_state if payload_state.present?
+
     event_state = state_from_event_name(event)
     return event_state if event_state.present?
 
+    return if data.blank?
+
+    'close'
+  end
+
+  def state_from_payload(data) # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
     return if data.blank?
 
     data = data.with_indifferent_access if data.is_a?(Hash)
@@ -97,12 +113,12 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
     reason = dig_field(data, 'reason', 'Reason')
     return 'close' if reason.present? && !connected
 
-    'close'
+    nil
   end
 
   def state_from_event_name(event)
     case event.to_s.upcase
-    when 'CONNECTED' then 'open'
+    when 'CONNECTED' then 'connecting'
     when 'DISCONNECTED', 'LOGGEDOUT', 'LOGGED_OUT' then 'close'
     end
   end
