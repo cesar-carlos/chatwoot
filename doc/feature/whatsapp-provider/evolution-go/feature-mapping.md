@@ -92,7 +92,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Inbound 1:1 `data.key.remoteJid` | dígitos antes de `@` |
 | Inbound grupo `@g.us` | JID completo do grupo (`GroupContactService`) — **nunca** via `remoteJidAlt` |
 | Participante em grupo | `evolution_go_participant_jid` em `content_attributes` |
-| LID + alt (1:1) | `wa_id` = PN do alt; `identifier` + `evolution_go_remote_jid` = `@lid` (addressing) |
+| LID + alt (1:1) | `wa_id` = PN do alt; `identifier` + `evolution_go_remote_jid` = `@lid` (addressing). Unique ID na UI = `identifier` (pode ficar vazio se só o remote JID foi preenchido) |
 | LID-only (1:1) | `wa_id` + `ContactInbox#source_id` = JID `@lid` completo; **sem** `phone_number` fabricado |
 | Outbound ID | `data.Info.ID` (string) |
 

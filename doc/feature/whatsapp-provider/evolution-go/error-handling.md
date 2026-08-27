@@ -106,6 +106,7 @@ Evolution Go espera **200** rápido. Não retornar 401 após validar — logar e
 |-----|-------|
 | `WhatsappEventsJob` (Evolution Go) | Sidekiq default — falha real re-enfileira |
 | `MediaDownloadJob` | Sidekiq default + dedup lock |
+| Inbound / `fromMe` echo (Evolution Go) | `MessageDedupLock` **por inbox** (`inbox-{id}-{source_id}`). Lock OSS global por `source_id` **não** vale entre dois canais Go da mesma conta ([decisions.md §38](./decisions.md)) |
 | `MarkReadJob` | **Sem** `retry_on` — best-effort; falha logada apenas |
 | `ContactEnrichmentJob` | Sidekiq default; lock liberado só se adquirido |
 

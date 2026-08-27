@@ -360,10 +360,12 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
 
     remote = canonical_remote_jid(profile, jid)
     incoming_jid = lid.to_s.end_with?('@lid') ? lid : remote
-    additional[EVOLUTION_GO_REMOTE_JID_KEY] = Custom::Whatsapp::EvolutionGo::JidResolver.merge_addressing_jid(
-      additional[EVOLUTION_GO_REMOTE_JID_KEY],
-      incoming_jid
-    )
+    if incoming_jid.present?
+      additional[EVOLUTION_GO_REMOTE_JID_KEY] = Custom::Whatsapp::EvolutionGo::JidResolver.merge_addressing_jid(
+        additional[EVOLUTION_GO_REMOTE_JID_KEY],
+        incoming_jid
+      )
+    end
     updates[:additional_attributes] = additional if additional != contact.additional_attributes.stringify_keys
     contact.update!(updates) if updates.present?
     true
