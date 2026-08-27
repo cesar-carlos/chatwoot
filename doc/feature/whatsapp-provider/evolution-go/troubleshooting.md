@@ -132,6 +132,7 @@ Dois WhatsApp (ou qualquer peer em modo LID) ficam assimétricos se o código mi
 | Visto azul no remetente, silêncio no destinatário (texto/mídia) | `evolution_go_remote_jid` PN stale (BR sem 9). `ChatJid` já prioriza `@lid`; inbound/echo passam a **persistir** o addressing LID. Checar `contacts.identifier` e `additional_attributes.evolution_go_remote_jid` |
 | Contato duplicado `+149215…` | Bug se dígitos do LID virarem `phone_number` — **não** deve acontecer. LID-only usa `identifier` + `source_id` `@lid`, sem E.164 inventado |
 | Primeiro send após o fix ainda vai em PN | Esperado se o contato ainda não foi enrichment/echo. O **seguinte** deve ir em LID |
+| Unique ID vazio na sidebar mas o envio funciona | Unique ID = `contacts.identifier`. O addressing LID pode estar só em `additional_attributes.evolution_go_remote_jid`. Não é drop — `ChatJid` lê o remote JID |
 | Grupos com `AddressingMode: lid` | Continua `@g.us` (não este bug). Ver seção de grupos acima |
 
 ADR: [decisions.md §37](./decisions.md). Sem rake de “adivinhar LID”.
@@ -287,6 +288,7 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 | Reação do cliente não aparece no CW | Mensagem alvo precisa existir com `source_id` = `reactionMessage.key.id`. Checar `mutation_stats.inbound_reaction_skipped` (Go) ou logs `[EVOLUTION] inbound_reaction_skipped` (Node) |
 | Agente não consegue reagir / API hang | Context menu → Reações → painel → Go `POST /message/react` (timeout 15s, sem retry). Node `POST /message/sendReaction/:instance`. Em algumas versões Go ([#28](https://github.com/evolution-foundation/evolution-go/issues/28)) o endpoint pode hang — atualizar Evolution Go / validar no E2E |
 | Reação no CW (HTTP 200) mas não aparece no WhatsApp | Peer LID-mode com `evolution_go_remote_jid` PN stale (ex. faltando 9º dígito BR). `ChatJid` prioriza `@lid` no send (jul/2026); inbound/echo passam a **gravar** o `@lid` em vez do PN (ago/2026, [§37](./decisions.md)). Mesmo sintoma em **texto/mídia**. Checar `contact.identifier` e `evolution_go_remote_jid` |
+| Dois inboxes Evolution Go conversam: um lado envia (visto azul) e o outro não cria bolha | A ID do WhatsApp é a mesma nos dois lados. O lock Redis `MESSAGE_SOURCE_KEY` era **global** por `source_id` — o eco `fromMe` do remetente engolia o inbound do destinatário (job ~20 ms, sem log). Corrigido ago/2026: lock Evolution Go é `inbox-{id}-{source_id}` ([§38](./decisions.md)). Reenviar a mensagem após o deploy (lock antigo TTL 1 dia) |
 | Chip duplicado (celular + dashboard) | Ator unificado `user:self`; reagir no dashboard substitui a reação `fromMe` do negócio |
 | Bolha “pula” para a direita ao reagir | Optimistic update usava payload do menu sem `sender` → `isBotOrAgentMessage` default right. Corrigido: `findStoreMessage` + merge na store |
 | Clique no chip não remove | Só chips do negócio (`user:self` / `from: user`) são clicáveis; inbox precisa ser `evolution_go` ou `evolution` com `source_id` |

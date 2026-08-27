@@ -255,6 +255,35 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     expect(described_class.should_enqueue?(contact: contact, force: true)).to be(true)
   end
 
+  it 'does not stamp an empty evolution_go_remote_jid when the profile has no LID or Devices' do
+    stub_user_check(exists: true)
+    allow(api_client).to receive(:user_info).with(numbers: ['5511999999999']).and_return(
+      instance_double(
+        HTTParty::Response,
+        success?: true,
+        parsed_response: {
+          'data' => {
+            'Users' => {
+              '5511999999999@s.whatsapp.net' => {
+                'Status' => 'Available'
+              }
+            }
+          },
+          'message' => 'success'
+        }
+      )
+    )
+    allow(api_client).to receive(:user_avatar).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => {} })
+    )
+
+    described_class.new(channel: channel, contact: contact, force: true).perform
+
+    contact.reload
+    expect(contact.custom_attributes['whatsapp_status']).to eq('Available')
+    expect(contact.additional_attributes).not_to have_key('evolution_go_remote_jid')
+  end
+
   it 'queries /user/info with digits only and applies status/LID from filled Users payload' do
     stub_user_check(exists: true)
     allow(api_client).to receive(:user_info).with(numbers: ['5511999999999']).and_return(

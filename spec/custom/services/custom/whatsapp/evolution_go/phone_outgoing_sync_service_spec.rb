@@ -89,6 +89,31 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService do
     expect(Whatsapp::MessageDedupLock).not_to have_received(:new)
   end
 
+  it 'stores the LID addressing jid (not the phone alt) on the echoed message' do
+    contact = create(:contact, account: account, phone_number: '+556696971841')
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
+    create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_lid_alt.json').read)
+
+    described_class.new(channel: channel, data: payload['data']).perform
+
+    message = Message.find_by!(source_id: '3EB0PHONELID00001')
+    expect(message.content_attributes['evolution_go_remote_jid']).to eq('123456789012345@lid')
+  end
+
+  it 'scopes the outgoing echo dedup lock to the inbox' do
+    contact = create(:contact, account: account, phone_number: '+556696971841')
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
+    create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_lid_alt.json').read)
+    allow(Whatsapp::MessageDedupLock).to receive(:new).and_call_original
+
+    described_class.new(channel: channel, data: payload['data']).perform
+
+    expect(Whatsapp::MessageDedupLock).to have_received(:new).with("inbox-#{inbox.id}-3EB0PHONELID00001")
+  end
+
   it 'does not create a message when content is blank and there is no media' do
     contact = create(
       :contact,

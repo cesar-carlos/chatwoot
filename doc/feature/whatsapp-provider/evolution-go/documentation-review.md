@@ -33,6 +33,7 @@
 | 27/jul/2026 (night) | Group avatar: `GroupMetadataService#warm_cache!` → `POST /user/avatar` com JID `@g.us` (não via `/group/info`) |
 | 2/ago/2026 | Grupos: `GROUP_INFO`/`JOINED_GROUP` routing, `schedule_metadata_fetch!` dedup, naming `*(GROUP)`, automação/auto-assign skip, Sync contact branch, Vue sender label, fixtures reais |
 | 27/ago/2026 | 1:1 LID vs PN: persistir addressing `@lid`; inbound LID-only; adapter prefere alt de telefone; ADR §37 |
+| 27/ago/2026 (pm) | Dedup lock Evolution Go por inbox (dois canais da mesma conta); Unique ID vs `evolution_go_remote_jid`; ADR §38 |
 
 ---
 
@@ -50,6 +51,22 @@
 | Docs | decisions §37, troubleshooting, webhook-events, feature-mapping, validation-checklist, status, inbox-business-rules |
 
 **Fora de escopo:** Evolution Node; rake de backfill LID; grupos (`@g.us` continua primeiro).
+
+---
+
+## Revisão 27/ago/2026 (pm) — dedup lock por inbox
+
+**Escopo:** Dois inboxes Evolution Go na mesma conta conversando. Eco `fromMe` no remetente e inbound no destinatário compartilhavam a mesma `source_id`. `MessageDedupLock` OSS é global — o eco engolia a bolha do outro canal (~20 ms, sem log).
+
+| Área | Decisão / código |
+|------|------------------|
+| Lock | `Custom::Whatsapp::EvolutionGo::MessageDedupLock` — chave `inbox-{id}-{source_id}` |
+| Inbound | `IncomingMessageEvolutionGo#lock_message_source_id!` |
+| Echo | `PhoneOutgoingSyncService#acquire_dedup_lock!` |
+| UI | Unique ID (`identifier`) pode ficar vazio; addressing LID em `evolution_go_remote_jid` |
+| Docs | decisions §38, troubleshooting, webhook-events, error-handling, validation-checklist, status, README, feature-mapping, inbox-business-rules |
+
+**Fora de escopo:** Cloud/Meta (lock OSS continua global); Evolution Node.
 
 ---
 

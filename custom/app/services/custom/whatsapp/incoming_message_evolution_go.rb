@@ -58,6 +58,9 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
   def process_messages
     super
     enqueue_pending_evolution_go_media_download if evolution_go_channel?
+  rescue StandardError
+    release_evolution_go_inbound_dedup_lock!
+    raise
   end
 
   def download_attachment_file(attachment_payload)
@@ -74,6 +77,27 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
     return unless source_id
 
     @message = inbox.messages.find_by(source_id: source_id)
+  end
+
+  def lock_message_source_id!
+    return super unless evolution_go_channel?
+
+    source_id = messages_data&.first&.dig(:id)
+    return false if source_id.blank?
+
+    lock = Custom::Whatsapp::EvolutionGo::MessageDedupLock.build(inbox: inbox, source_id: source_id)
+    return false unless lock.acquire!
+
+    @evolution_go_dedup_lock = lock
+    @evolution_go_dedup_lock_acquired = true
+    true
+  end
+
+  def release_evolution_go_inbound_dedup_lock!
+    return unless @evolution_go_dedup_lock_acquired
+
+    @evolution_go_dedup_lock.release!
+    @evolution_go_dedup_lock_acquired = false
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- optional Evolution Go attrs

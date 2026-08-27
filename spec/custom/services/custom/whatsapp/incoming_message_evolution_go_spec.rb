@@ -188,4 +188,106 @@ RSpec.describe Custom::Whatsapp::IncomingMessageEvolutionGo do
       expect(inbox.contact_inboxes.where(contact: contact).count).to eq(1)
     end
   end
+
+  it 'creates inbound even when another inbox already locked the same WhatsApp source_id' do
+    create(:contact_inbox, inbox: inbox, source_id: '5511999999999')
+    global_lock = Whatsapp::MessageDedupLock.new('SHARED-WA-ID-1')
+    global_lock.acquire!
+
+    Whatsapp::IncomingMessageService.new(
+      inbox: inbox,
+      params: {
+        contacts: [{ profile: { name: 'Alice' }, wa_id: '5511999999999' }],
+        messages: [
+          {
+            from: '5511999999999',
+            id: 'SHARED-WA-ID-1',
+            timestamp: Time.now.to_i.to_s,
+            type: 'text',
+            text: { body: 'cross-inbox' }
+          }
+        ]
+      }
+    ).perform
+
+    expect(inbox.messages.find_by(source_id: 'SHARED-WA-ID-1')).to be_present
+  ensure
+    global_lock.release!
+    Whatsapp::MessageDedupLock.new(
+      Custom::Whatsapp::EvolutionGo::MessageDedupLock.lock_id(inbox, 'SHARED-WA-ID-1')
+    ).release!
+  end
+
+  it 'lets two evolution_go inboxes persist the same WhatsApp message id' do
+    other_channel = create(
+      :channel_whatsapp,
+      account: account,
+      provider: 'evolution_go',
+      sync_templates: false,
+      validate_provider_config: false,
+      provider_config: Custom::Whatsapp::EvolutionGo::ProviderConfig.build(
+        'instance_name' => 'test-go-instance-b',
+        'instance_token' => 'token-b'
+      )
+    )
+    other_inbox = other_channel.inbox
+    create(:contact_inbox, inbox: inbox, source_id: '5511999999999')
+    create(:contact_inbox, inbox: other_inbox, source_id: '5511888888888')
+
+    payload_for = lambda do |wa_id, body|
+      {
+        contacts: [{ profile: { name: 'Peer' }, wa_id: wa_id }],
+        messages: [
+          {
+            from: wa_id,
+            id: 'SHARED-WA-ID-2',
+            timestamp: Time.now.to_i.to_s,
+            type: 'text',
+            text: { body: body }
+          }
+        ]
+      }
+    end
+
+    Whatsapp::IncomingMessageService.new(inbox: inbox, params: payload_for.call('5511999999999', 'on a')).perform
+    Whatsapp::IncomingMessageService.new(inbox: other_inbox, params: payload_for.call('5511888888888', 'on b')).perform
+
+    expect(inbox.messages.find_by(source_id: 'SHARED-WA-ID-2')).to be_present
+    expect(other_inbox.messages.find_by(source_id: 'SHARED-WA-ID-2')).to be_present
+  ensure
+    Whatsapp::MessageDedupLock.new(
+      Custom::Whatsapp::EvolutionGo::MessageDedupLock.lock_id(inbox, 'SHARED-WA-ID-2')
+    ).release!
+    if defined?(other_inbox) && other_inbox
+      Whatsapp::MessageDedupLock.new(
+        Custom::Whatsapp::EvolutionGo::MessageDedupLock.lock_id(other_inbox, 'SHARED-WA-ID-2')
+      ).release!
+    end
+  end
+
+  it 'skips inbound when the inbox-scoped dedup lock is already held' do
+    create(:contact_inbox, inbox: inbox, source_id: '5511999999999')
+    lock = Custom::Whatsapp::EvolutionGo::MessageDedupLock.build(inbox: inbox, source_id: 'SCOPED-DUP-1')
+    lock.acquire!
+
+    Whatsapp::IncomingMessageService.new(
+      inbox: inbox,
+      params: {
+        contacts: [{ profile: { name: 'Alice' }, wa_id: '5511999999999' }],
+        messages: [
+          {
+            from: '5511999999999',
+            id: 'SCOPED-DUP-1',
+            timestamp: Time.now.to_i.to_s,
+            type: 'text',
+            text: { body: 'dup' }
+          }
+        ]
+      }
+    ).perform
+
+    expect(inbox.messages.find_by(source_id: 'SCOPED-DUP-1')).to be_blank
+  ensure
+    lock.release!
+  end
 end

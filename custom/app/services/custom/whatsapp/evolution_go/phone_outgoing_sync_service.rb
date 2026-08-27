@@ -96,7 +96,7 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   end
 
   def acquire_dedup_lock!(source_id)
-    lock = Whatsapp::MessageDedupLock.new(source_id)
+    lock = Custom::Whatsapp::EvolutionGo::MessageDedupLock.build(inbox: inbox, source_id: source_id)
     return false unless lock.acquire!
 
     @dedup_lock = lock
@@ -127,7 +127,7 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   def create_outgoing_message!(contact_inbox, key, content, canonical)
     conversation = resolve_outgoing_conversation(contact_inbox)
     timestamp = outgoing_message_timestamp(canonical)
-    remote_jid = jid_resolver.resolve_message_jid(key.with_indifferent_access)
+    remote_jid = outgoing_remote_jid(key)
 
     conversation.messages.create!(
       account_id: account.id,
@@ -159,6 +159,13 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     ).perform
   ensure
     Current.conversation_opened_by = nil
+  end
+
+  # Store the addressing JID (@lid / @g.us), not the phone-rewritten one — otherwise
+  # ChatJid falls back to a stale PN when reacting/editing/deleting this exact echo.
+  def outgoing_remote_jid(key)
+    key_data = key.with_indifferent_access
+    jid_resolver.addressing_jid(key_data).presence || jid_resolver.resolve_message_jid(key_data)
   end
 
   def outgoing_message_timestamp(canonical)

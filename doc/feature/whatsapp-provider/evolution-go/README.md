@@ -65,6 +65,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
 - message reactions (chip + context menu) — ADR §33
 - 1:1 LID vs PN (persistir addressing `@lid`; inbound LID-only) — ADR §37
+- Dedup lock por inbox (dois canais Go conversando) — ADR §38
 - **pseudo-forward** de mensagem no Chatwoot (mesmo inbox) — ADR §34 · docs em [../../message-forward/](../../message-forward/)
 - sem provisionar o servidor Go dentro deste repositório
 

@@ -1,0 +1,19 @@
+{
+  "event": "SendMessage",
+  "instance": "test-go-instance",
+  "data": {
+    "Info": {
+      "ID": "3EB0PHONELID00001",
+      "Chat": "123456789012345@lid",
+      "Sender": "5566999511286@s.whatsapp.net",
+      "RecipientAlt": "556696971841@s.whatsapp.net",
+      "IsFromMe": true,
+      "AddressingMode": "lid",
+      "PushName": "Agent",
+      "Timestamp": 1699999999
+    },
+    "Message": {
+      "conversation": "Mensagem enviada pelo celular para peer LID"
+    }
+  }
+}

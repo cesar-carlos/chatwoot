@@ -53,7 +53,7 @@ Evolution Go POST na `webhookUrl` configurada em `POST /instance/connect`:
 
 - 5 tentativas, intervalo 30s
 - Chatwoot deve responder **HTTP 200** rápido e processar async
-- Dedup: Redis lock por `source_id` em `IncomingMessageBaseService`
+- Dedup: Redis lock por `source_id` em `IncomingMessageBaseService`. Evolution Go: chave **por inbox** (`inbox-{id}-{source_id}` — [decisions.md §38](./decisions.md)), senão dois canais da mesma conta engolem o inbound um do outro
 
 ---
 

@@ -391,6 +391,7 @@ end
 | 18/jul/2026 | Meta AI `richResponseMessage` + unwrap `botInvokeMessage` |
 | 18/jul/2026 | §36 addendum: avatar `/user/avatar` LID-first; timeout → cooldown 30m (`avatar_timeout_at`), não 6h |
 | 27/ago/2026 | §37: 1:1 LID vs PN — persistir addressing `@lid`; não dropar inbound LID-only; não inventar E.164 dos dígitos LID |
+| 27/ago/2026 | §38: `MessageDedupLock` Evolution Go por inbox — dois canais da mesma conta podem persistir a mesma ID WhatsApp |
 
 ---
 
@@ -400,7 +401,7 @@ end
 |---------|-------|
 | **Service** | `PhoneOutgoingSyncService` + `PeerContactInboxResolver` |
 | **Setting** | `ignore_from_me_echo` (default `true`) |
-| **Dedup** | `source_id` + `MessageDedupLock`; release lock on early exit |
+| **Dedup** | `source_id` + `MessageDedupLock` **por inbox** (`inbox-{id}-{source_id}` — §38); release lock on early exit |
 
 ---
 
@@ -568,3 +569,22 @@ Dois JIDs distintos. Misturá-los dropava inbound LID-only e enviava texto/mídi
 | **Backfill** | Sem rake de “adivinhar LID”. Enrichment + próximo inbound/echo corrigem organicamente |
 
 **Não é regra a preservar:** o drop LID-only 1:1 e o PN stale em `evolution_go_remote_jid` nunca foram ADR — lacuna. O addendum de jul/2026 em §33 cobriu só a **prioridade de envio** (`ChatJid`).
+
+**Unique ID na sidebar:** o campo Unique ID do contato lê `contacts.identifier`. Em contato já existente por PN, o inbound/enrichment pode gravar só `additional_attributes.evolution_go_remote_jid` (`@lid`) e deixar `identifier` vazio. `ChatJid` usa o `evolution_go_remote_jid` — o envio está certo mesmo sem Unique ID visível.
+
+---
+
+## 38. Dedup lock por inbox (27/ago/2026)
+
+Dois inboxes Evolution Go na **mesma conta** (dois WhatsApp conectados conversando) recebem a **mesma** `source_id` Baileys: eco `fromMe` no remetente + `MESSAGE` inbound no destinatário.
+
+| Decisão | Valor |
+|---------|-------|
+| **Lock OSS** | `Whatsapp::MessageDedupLock` continua global por `source_id` (Cloud / Meta) |
+| **Lock Evolution Go** | `Custom::Whatsapp::EvolutionGo::MessageDedupLock` — chave `inbox-{inbox_id}-{source_id}` |
+| **Onde** | `IncomingMessageEvolutionGo#lock_message_source_id!` e `PhoneOutgoingSyncService#acquire_dedup_lock!` |
+| **Por quê** | Lock global: o eco do remetente adquiria Redis (TTL 1 dia) e o inbound do outro inbox saía em ~20 ms **sem bolha e sem log** |
+| **Lookup de mensagem** | Continua **por inbox** (`inbox.messages.find_by(source_id:)`) — já era assim no Go |
+| **Deploy** | Reenviar mensagem de teste; lock antigo `alfred:MESSAGE_SOURCE_KEY::{id}` TTL 1 dia pode ser apagado no Redis |
+
+Dois canais **não** compartilham o lock. Duplicata no **mesmo** inbox continua bloqueada.
