@@ -182,9 +182,13 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     updates[:identifier] = @remote_jid if @remote_jid.end_with?('@lid') && contact.identifier != @remote_jid && lid_available?(@remote_jid)
 
     additional = contact.additional_attributes.stringify_keys
-    return if additional[EVOLUTION_GO_REMOTE_JID_KEY] == @remote_jid && updates.blank?
+    merged = Custom::Whatsapp::EvolutionGo::JidResolver.merge_addressing_jid(
+      additional[EVOLUTION_GO_REMOTE_JID_KEY],
+      @remote_jid
+    )
+    return if additional[EVOLUTION_GO_REMOTE_JID_KEY] == merged && updates.blank?
 
-    additional[EVOLUTION_GO_REMOTE_JID_KEY] = @remote_jid
+    additional[EVOLUTION_GO_REMOTE_JID_KEY] = merged
     updates[:additional_attributes] = additional
     contact.update!(updates)
   end
@@ -355,7 +359,11 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
     additional[EVOLUTION_GO_PICTURE_ID_KEY] = picture_id if picture_id.present?
 
     remote = canonical_remote_jid(profile, jid)
-    additional[EVOLUTION_GO_REMOTE_JID_KEY] ||= remote if remote.present?
+    incoming_jid = lid.to_s.end_with?('@lid') ? lid : remote
+    additional[EVOLUTION_GO_REMOTE_JID_KEY] = Custom::Whatsapp::EvolutionGo::JidResolver.merge_addressing_jid(
+      additional[EVOLUTION_GO_REMOTE_JID_KEY],
+      incoming_jid
+    )
     updates[:additional_attributes] = additional if additional != contact.additional_attributes.stringify_keys
     contact.update!(updates) if updates.present?
     true

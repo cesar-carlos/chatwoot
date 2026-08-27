@@ -72,6 +72,7 @@ RSpec.describe Custom::Whatsapp::Providers::EvolutionGoService do
       expect(api_client).to have_received(:send_text).with(
         hash_including(number: '555126346969@s.whatsapp.net')
       )
+      expect(api_client).not_to have_received(:send_text).with(hash_including(format_jid: true))
     end
 
     it 'sets formatJid when destination is @lid' do

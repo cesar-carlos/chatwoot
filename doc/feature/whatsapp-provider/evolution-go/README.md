@@ -8,7 +8,7 @@ Landing page do provider Evolution Go (implementado).
 |------|--------|
 | Chave planejada | `evolution_go` |
 | Documentação de contrato e plano | ✅ |
-| Código em `custom/` | ✅ Fases 0–4 + UX/diagnóstico/import/grupos/presence (jul/2026; sync doc 27/jul) |
+| Código em `custom/` | ✅ Fases 0–4 + UX/diagnóstico/import/grupos/presence (jul/2026; sync doc 27/ago LID 1:1) |
 | `PROVIDERS`, registry e webhook | ✅ |
 | Fixtures reais | ⚠️ sintéticas — E2E pendente |
 
@@ -48,6 +48,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 | Modelar `provider_config` | [provider-config-mapping.md](./provider-config-mapping.md) |
 | Projetar o frontend | [frontend-wizard-spec.md](./frontend-wizard-spec.md) |
 | Validar com servidor real | [validation-checklist.md](./validation-checklist.md) |
+| Diagnosticar inbound/outbound | [troubleshooting.md](./troubleshooting.md) |
 | Diagnosticar contatos sem avatar | [avatar-failures-report.md](./avatar-failures-report.md) |
 
 ## Escopo (implementado)
@@ -63,6 +64,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 - refresh manual de contatos paced (`evolution_go_refresh_contacts`, stagger 3s)
 - grupos WhatsApp como conversa única quando `ignore_groups: false` (opt-in)
 - message reactions (chip + context menu) — ADR §33
+- 1:1 LID vs PN (persistir addressing `@lid`; inbound LID-only) — ADR §37
 - **pseudo-forward** de mensagem no Chatwoot (mesmo inbox) — ADR §34 · docs em [../../message-forward/](../../message-forward/)
 - sem provisionar o servidor Go dentro deste repositório
 
@@ -87,7 +89,7 @@ O que muda: cliente REST, normalizer, auth, rotas, settings e payloads.
 | [postman-validation.md](./postman-validation.md) | Cruzamento de OpenAPI e Postman |
 | [documentation-links.md](./documentation-links.md) | Links oficiais |
 | [tasks.md](./tasks.md) | Backlog da implementação |
-| [troubleshooting.md](./troubleshooting.md) | Runbook planejado |
+| [troubleshooting.md](./troubleshooting.md) | Sintomas, causas e ações (inclui 1:1 LID) |
 | [documentation-review.md](./documentation-review.md) | Auditoria / revisão completa |
 
 ## Relação com a documentação pai

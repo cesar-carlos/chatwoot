@@ -133,11 +133,16 @@ class Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter
     end
 
     def peer_alt_jid(info, from_me:)
-      if from_me
-        (info[:RecipientAlt] || info[:SenderAlt]).to_s
-      else
-        (info[:SenderAlt] || info[:RecipientAlt]).to_s
-      end
+      ordered = if from_me
+                  [info[:RecipientAlt], info[:SenderAlt]]
+                else
+                  [info[:SenderAlt], info[:RecipientAlt]]
+                end
+      candidates = ordered.map(&:to_s)
+      pn = candidates.find { |jid| phone_jid?(jid) }
+      return pn if pn.present?
+
+      candidates.find(&:present?).to_s
     end
 
     def participant_jid_from_info(info)

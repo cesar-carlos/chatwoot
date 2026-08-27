@@ -32,6 +32,24 @@
 | 27/jul/2026 (eve) | Group LID routing: `@g.us` never rewritten via `remoteJidAlt`; adapter omits group alt; device JID phone strip; Go participant enrichment |
 | 27/jul/2026 (night) | Group avatar: `GroupMetadataService#warm_cache!` → `POST /user/avatar` com JID `@g.us` (não via `/group/info`) |
 | 2/ago/2026 | Grupos: `GROUP_INFO`/`JOINED_GROUP` routing, `schedule_metadata_fetch!` dedup, naming `*(GROUP)`, automação/auto-assign skip, Sync contact branch, Vue sender label, fixtures reais |
+| 27/ago/2026 | 1:1 LID vs PN: persistir addressing `@lid`; inbound LID-only; adapter prefere alt de telefone; ADR §37 |
+
+---
+
+## Revisão 27/ago/2026 — 1:1 LID vs PN
+
+**Escopo:** Inbound 1:1 só `@lid` era dropado (`wa_id` vazio). Outbound texto/mídia ia para PN stale. `ChatJid` já preferia `@lid` no send (jul/2026) mas o inbound/echo gravava PN.
+
+| Área | Decisão / código |
+|------|------------------|
+| Adapter | `peer_alt_jid` prefere JID de telefone ao `@lid` (SenderAlt/RecipientAlt). Grupos sem `remoteJidAlt` |
+| Normalizer | `resolve_wa_id`: telefone do peer; senão `@lid` completo. `evolution_go_remote_jid` = addressing JID |
+| Contato | `whatsapp_lid_inbound?` → `PeerContactInboxResolver`. Sem E.164 dos dígitos LID |
+| Enrichment / echo | LID sobe por cima de PN; PN não regride LID |
+| `ContactInbox` | `source_id` `@lid` só em `evolution_go` (espelha `@g.us`) |
+| Docs | decisions §37, troubleshooting, webhook-events, feature-mapping, validation-checklist, status, inbox-business-rules |
+
+**Fora de escopo:** Evolution Node; rake de backfill LID; grupos (`@g.us` continua primeiro).
 
 ---
 

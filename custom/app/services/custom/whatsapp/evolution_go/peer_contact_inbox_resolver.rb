@@ -9,7 +9,10 @@ class Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver
     key_data = key.with_indifferent_access
     peer_jids_for_lookup(key_data).each do |remote_jid|
       existing = find_existing_contact_inbox(remote_jid)
-      return existing if existing.present?
+      next if existing.blank?
+
+      stamp_addressing_jid!(existing.contact, key_data)
+      return existing
     end
 
     create_contact_inbox!(key_data)
@@ -37,6 +40,7 @@ class Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver
     [
       key_data[:remoteJid],
       key_data[:remoteJidAlt],
+      jid_resolver.addressing_jid(key_data),
       jid_resolver.resolve_message_jid(key_data)
     ].map(&:to_s).grep(/@/).uniq
   end
@@ -75,16 +79,19 @@ class Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver
   end
 
   def create_contact_inbox!(key_data)
-    remote_jid = jid_resolver.resolve_message_jid(key_data)
+    addressing = jid_resolver.addressing_jid(key_data).to_s
     phone = jid_resolver.phone_from_message_key(key_data)
 
-    return create_lid_contact_inbox!(remote_jid) if remote_jid.end_with?('@lid') && phone.blank?
-
+    return create_lid_contact_inbox!(addressing) if addressing.end_with?('@lid') && phone.blank?
     return if phone.blank?
 
+    create_phone_contact_inbox!(key_data, addressing, phone)
+  end
+
+  def create_phone_contact_inbox!(key_data, addressing, phone)
     source_id = jid_resolver.normalize_phone(phone)
     contact = account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
-    apply_remote_jid!(contact, remote_jid.presence || key_data[:remoteJid].to_s)
+    apply_remote_jid!(contact, addressing.presence || key_data[:remoteJid].to_s)
     contact.name = contact.name.presence || contact.phone_number
     contact.save!
 
@@ -100,12 +107,27 @@ class Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver
     ContactInboxBuilder.new(contact: contact, inbox: inbox, source_id: remote_jid).perform
   end
 
+  def stamp_addressing_jid!(contact, key_data)
+    apply_remote_jid!(contact, jid_resolver.addressing_jid(key_data))
+    contact.save! if contact.changed?
+  end
+
   def apply_remote_jid!(contact, remote_jid)
     return if remote_jid.blank?
 
     additional = contact.additional_attributes.stringify_keys
-    additional[REMOTE_JID_KEY] = remote_jid
+    additional[REMOTE_JID_KEY] = Custom::Whatsapp::EvolutionGo::JidResolver.merge_addressing_jid(
+      additional[REMOTE_JID_KEY],
+      remote_jid
+    )
     contact.additional_attributes = additional
-    contact.identifier = remote_jid if remote_jid.end_with?('@lid')
+    return unless remote_jid.end_with?('@lid')
+    return unless lid_available?(contact, remote_jid)
+
+    contact.identifier = remote_jid
+  end
+
+  def lid_available?(contact, lid)
+    !contact.account.contacts.where(identifier: lid).where.not(id: contact.id).exists?
   end
 end

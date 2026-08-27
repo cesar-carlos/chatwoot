@@ -146,6 +146,30 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoPayloadAdapter do
       expect(result[:key][:remoteJidAlt]).to eq('556696971841@s.whatsapp.net')
     end
 
+    it 'prefers a phone alt over an @lid alt on inbound 1:1' do
+      data = {
+        'Info' => {
+          'ID' => 'INBOUND-LID-ALT',
+          'Chat' => '123456789012345@lid',
+          'Sender' => '123456789012345@lid',
+          'SenderAlt' => '123456789012345@lid',
+          'RecipientAlt' => '556696971841@s.whatsapp.net',
+          'IsFromMe' => false,
+          'AddressingMode' => 'lid'
+        },
+        'Message' => {
+          'conversation' => 'hello'
+        }
+      }
+
+      result = described_class.canonicalize_data(data)
+
+      aggregate_failures do
+        expect(result[:key][:remoteJid]).to eq('123456789012345@lid')
+        expect(result[:key][:remoteJidAlt]).to eq('556696971841@s.whatsapp.net')
+      end
+    end
+
     it 'omits remoteJidAlt for group chats and prefers SenderAlt as participant' do
       data = {
         'Info' => {

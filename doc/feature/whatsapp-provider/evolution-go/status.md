@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 2/ago/2026 (grupos: GroupInfo/JoinedGroup, sync contact branch, automação/auto-assign, dedup metadata) · **Integração completa; E2E operador pendente**
+**Última revisão:** 27/ago/2026 (1:1 LID vs PN: persistir addressing `@lid`, não dropar LID-only) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -53,6 +53,7 @@
 | `GET evolution_go_connection`, `POST evolution_go_logout`, `POST evolution_go_server_check` | ✅ |
 | Fase 3 (poll / link outbound) | ⚠️ parcial |
 | Message reactions (inbound chip + outbound menu) | ✅ 16/jul/2026 · improvements (actor/timeout/Node) · 18/jul LID + menu UX |
+| 1:1 LID vs PN (inbound persist + LID-only) | ✅ 27/ago/2026 · ADR §37 |
 | Pseudo-forward (Chatwoot-only, same inbox) | ✅ 16/jul/2026 · ADR §34 |
 
 ---
@@ -75,6 +76,7 @@
 - Import stuck `running` com toggles off → `abort_disabled_import!` → `idle`
 - `CorruptMediaRepair` / rake `evolution_go:repair_corrupt_media`
 - `PeerContactInboxResolver`, `ProviderConfigMerger`, `UrlSafetyGuard`
+- 1:1 LID: `JidResolver#addressing_jid`; normalizer não dropa LID-only; `whatsapp_lid_inbound?`; enrichment promove PN→LID (ADR §37)
 - Refresh manual de perfis: `ContactsRefreshService` (stagger 3s + lock TTL) + `POST …/evolution_go_refresh_contacts`
 - Sync per-contact (menu ⋮): `POST …/contacts/:id/evolution_go_sync` — grupo → `GroupMetadataFetchJob`; 1:1 → `ContactEnrichmentJob` `force: true`
 - Import histórico: `MessagesImporter`, `HistorySyncProcessor`, evento `HISTORY_SYNC`

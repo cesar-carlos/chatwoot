@@ -291,7 +291,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     contact.reload
     expect(contact.custom_attributes['whatsapp_status']).to eq('Available')
     expect(contact.identifier).to eq('123456789012345@lid')
-    expect(contact.additional_attributes['evolution_go_remote_jid']).to eq('5511999999999@s.whatsapp.net')
+    expect(contact.additional_attributes['evolution_go_remote_jid']).to eq('123456789012345@lid')
   end
 
   it 'retries /user/info with digits when phone@s.whatsapp.net returns empty Users fields' do
