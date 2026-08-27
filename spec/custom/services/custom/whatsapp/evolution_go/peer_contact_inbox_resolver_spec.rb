@@ -66,4 +66,28 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver do
     expect(contact_inbox.source_id).to eq('5566999999999')
     expect(contact_inbox.contact.phone_number).to eq('+5566999999999')
   end
+
+  it 'creates a LID-only contact without fabricating a phone number' do
+    key.delete('remoteJidAlt')
+
+    expect { resolver.find_or_create! }.to change(ContactInbox, :count).by(1)
+
+    contact_inbox = ContactInbox.last
+    expect(contact_inbox.source_id).to eq('123456789012345@lid')
+    expect(contact_inbox.contact.identifier).to eq('123456789012345@lid')
+    expect(contact_inbox.contact.phone_number).to be_nil
+    expect(contact_inbox.contact.additional_attributes['evolution_go_remote_jid']).to eq('123456789012345@lid')
+  end
+
+  it 'reuses a phone contact_inbox for LID+alt and stamps identifier' do
+    contact = create(:contact, account: account, phone_number: '+556696971841')
+    existing = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
+
+    expect(resolver.find_or_create!).to eq(existing)
+    expect(ContactInbox.where(inbox: inbox).count).to eq(1)
+
+    contact.reload
+    expect(contact.identifier).to eq('123456789012345@lid')
+    expect(contact.additional_attributes['evolution_go_remote_jid']).to eq('123456789012345@lid')
+  end
 end

@@ -430,6 +430,9 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   end
 
   def group_remote_jid(key, wa_id)
+    addressing = jid_resolver.addressing_jid(key)
+    return addressing if addressing.present?
+
     remote_jid = extract_remote_jid(key)
     return remote_jid if group_jid?(remote_jid)
 

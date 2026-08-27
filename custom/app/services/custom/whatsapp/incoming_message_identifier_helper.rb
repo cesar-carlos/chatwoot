@@ -13,6 +13,8 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
       return contact_inbox
     end
 
+    return find_or_create_lid_contact_inbox! if whatsapp_lid_inbound?
+
     super
   end
 
@@ -37,6 +39,11 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
       return
     end
 
+    if whatsapp_lid_inbound?
+      set_contact_from_lid_message
+      return
+    end
+
     super
     return if @contact.blank?
 
@@ -52,6 +59,14 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
       contact_attributes: attrs
     )
     @contact = @contact_inbox&.contact
+  end
+
+  def set_contact_from_lid_message
+    @contact_inbox = find_or_create_lid_contact_inbox!
+    @contact = @contact_inbox&.contact
+    return if @contact.blank?
+
+    enqueue_evolution_go_contact_enrichment
   end
 
   private
@@ -71,6 +86,38 @@ module Custom::Whatsapp::IncomingMessageIdentifierHelper
   def whatsapp_group_inbound?
     evolution_gateway_channel? &&
       Custom::Whatsapp::Evolution::GroupContactService.group_jid?(remote_jid_from_message)
+  end
+
+  def whatsapp_lid_inbound?
+    evolution_go_channel? &&
+      !whatsapp_group_inbound? &&
+      remote_jid_from_message.to_s.end_with?('@lid')
+  end
+
+  def find_or_create_lid_contact_inbox!
+    Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver.new(
+      channel: inbox.channel,
+      key: lid_inbound_key
+    ).find_or_create!
+  end
+
+  def lid_inbound_key
+    addressing = remote_jid_from_message
+    from = messages_data&.first&.with_indifferent_access&.[](:from).to_s
+    alt = phone_alt_jid_from_wa_id(from)
+    {
+      'remoteJid' => addressing,
+      'remoteJidAlt' => alt,
+      'addressingMode' => 'lid',
+      'fromMe' => false
+    }.compact
+  end
+
+  def phone_alt_jid_from_wa_id(from)
+    return if from.blank? || from.end_with?('@lid')
+    return unless from.match?(/\A\d+\z/)
+
+    "#{from}@s.whatsapp.net"
   end
 
   def whatsapp_group_provider?

@@ -117,7 +117,12 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
     remote_jid = extract_remote_jid(key)
     return group_wa_id(remote_jid) if group_jid?(remote_jid)
 
-    phone_from_jid(remote_jid)
+    phone_from_jid(remote_jid).presence || lid_wa_id(key)
+  end
+
+  def lid_wa_id(key)
+    addressing = jid_resolver.addressing_jid(key)
+    addressing if addressing.to_s.end_with?('@lid')
   end
 
   def group_wa_id(remote_jid)

@@ -390,6 +390,7 @@ end
 | 18/jul/2026 | §33 addendum: ChatJid prefere `@lid`; menu Reações expansível; optimistic `findStoreMessage` |
 | 18/jul/2026 | Meta AI `richResponseMessage` + unwrap `botInvokeMessage` |
 | 18/jul/2026 | §36 addendum: avatar `/user/avatar` LID-first; timeout → cooldown 30m (`avatar_timeout_at`), não 6h |
+| 27/ago/2026 | §37: 1:1 LID vs PN — persistir addressing `@lid`; não dropar inbound LID-only; não inventar E.164 dos dígitos LID |
 
 ---
 
@@ -480,6 +481,7 @@ end
 - Optimistic update usa a mensagem completa da store (`findStoreMessage`) — payload do context menu sem `sender` fazia a bolha pular L→R.
 - Menu: item padrão “Reactions”/`Reações` (ícone emoji) expande painel com o set curto; emojis como `div` (não `<button>`) para não disparar `@blur` do `ContextMenu`.
 - E2E local Contas-Receber / Pedidos: `/message/react` OK com LID (~0,2–1s).
+- **27/ago/2026:** `ChatJid` já priorizava `@lid` no send; o inbound/echo ainda gravava PN stale. Persistência do addressing JID: **§37**.
 
 ---
 
@@ -544,3 +546,25 @@ end
 | **Cooldown deferred** | `finalize_avatar_miss!` só após esgotar candidatos (evita 6h prematuro se LID vazio e PN ainda pode responder) |
 | **Cooldown 6h** | Apenas ausência de foto / privacidade (HTTP sem URL/base64), não falha transitória da Go |
 | **Relatório prod** | [avatar-failures-report.md](./avatar-failures-report.md) (account 12) |
+
+---
+
+## 37. 1:1 LID vs PN — identidade e endereçamento (27/ago/2026)
+
+Dois JIDs distintos. Misturá-los dropava inbound LID-only e enviava texto/mídia para PN morto (ACK no remetente, silêncio no destinatário).
+
+| Decisão | Valor |
+|---------|-------|
+| **Phone JID** | `resolve_message_jid` / `phone_from_message_key` (igual hoje) → `wa_id`, `source_id`, merge BR com/sem 9 |
+| **Addressing JID** | `remoteJid` se `@lid` ou `@g.us`; senão o primeiro `@lid` em `remoteJidAlt` → `evolution_go_remote_jid` + `contact.identifier` |
+| **LID-only inbound** | `wa_id` / `from` = JID `@lid` completo (mesmo padrão de grupos `@g.us`). **Não dropa** |
+| **Dígitos LID** | Nunca viram `phone_number` / E.164 (`+149215…`) |
+| **Adapter 1:1** | Entre `SenderAlt`/`RecipientAlt`, preferir JID de telefone ao `@lid`. Grupos continuam sem `remoteJidAlt` |
+| **Match de contato** | `whatsapp_lid_inbound?` → `PeerContactInboxResolver` (remote_jid, identifier, depois PN BR). Grupos têm prioridade |
+| **Enrichment / echo** | LID sobe por cima de PN; PN **não** regride LID (`JidResolver.merge_addressing_jid`) |
+| **Outbound** | `ChatJid` / `format_jid` **não mudam** prioridade — passam a acertar texto/mídia quando o addressing está persistido |
+| **`source_id` LID-only** | `ContactInbox` aceita `@lid` só em inbox `evolution_go` (espelha `@g.us`) |
+| **Escopo** | Só Evolution Go. Node (`Evolution::JidResolver#resolve_message_jid`) intocado |
+| **Backfill** | Sem rake de “adivinhar LID”. Enrichment + próximo inbound/echo corrigem organicamente |
+
+**Não é regra a preservar:** o drop LID-only 1:1 e o PN stale em `evolution_go_remote_jid` nunca foram ADR — lacuna. O addendum de jul/2026 em §33 cobriu só a **prioridade de envio** (`ChatJid`).

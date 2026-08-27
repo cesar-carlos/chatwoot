@@ -145,6 +145,9 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Typing no dashboard → `POST /message/presence` (`composing` / `paused`); nota privada não envia
 - [ ] Mark-read ao abrir conversa de grupo (`@g.us`) envia `/message/markread`
 - [ ] Contato 1:1 inbound enriquece avatar/perfil (`ContactEnrichmentJob`)
+- [ ] Inbound 1:1 `Chat=@lid` + SenderAlt PN → bolha criada; `wa_id` telefone; `evolution_go_remote_jid` = `@lid`; **não** duplica contato se já existe PN WITH-9
+- [ ] Inbound 1:1 `Chat=@lid` **sem** alt → bolha criada (`wa_id` = `@lid` completo); **não** log `normalizer returned blank`; **não** cria `phone_number` com dígitos LID
+- [ ] Par LID-mode: send texto/mídia chega no celular **e** no outro inbox (não só visto azul no remetente). Primeiro send após enrichment pode ainda ir em PN; o seguinte deve ir em LID
 - [ ] Contato com `@lid` sem avatar: Sync / inbound usa `/user/avatar` com LID (não só phone); timeout grava `avatar_timeout_at` (30 min), não cooldown 6h; LID vazio + PN timeout → só 30 min (não 6h prematuro)
 - [ ] Menu ⋮ → **Sync contact info** / **Sincronizar dados do contato** (só inbox Evolution Go) → toast “started”; nome/avatar atualizam em alguns segundos (`force: true`)
 - [ ] Em conversa de **grupo**: mesmo menu atualiza nome via `/group/info` e avatar via `/user/avatar` `@g.us` (não usa enrichment 1:1)

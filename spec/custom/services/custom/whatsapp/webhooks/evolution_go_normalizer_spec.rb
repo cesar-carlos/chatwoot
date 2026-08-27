@@ -25,12 +25,66 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_inbound.json').read)
   end
 
-  it 'normalizes inbound text MESSAGE events from Info/Message payloads' do
-    result = described_class.new(channel, fixture).perform
+  it 'normalizes 1:1 LID inbound with phone alt as wa_id and stores addressing @lid' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'LID-ALT-1',
+          'Chat' => '123456789012345@lid',
+          'Sender' => '123456789012345@lid',
+          'SenderAlt' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'AddressingMode' => 'lid',
+          'PushName' => 'Alice',
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'conversation' => 'hello from lid peer'
+        }
+      }
+    }
 
-    expect(result[:contacts].first[:wa_id]).to eq('5511999999999')
-    expect(result[:messages].first[:id]).to eq('3EB0C5A277F7F9B6C599')
-    expect(result[:messages].first[:text][:body]).to eq('Olá from Evolution Go!')
+    result = described_class.new(channel, payload).perform
+
+    aggregate_failures do
+      expect(result[:contacts].first[:wa_id]).to eq('5511999999999')
+      expect(result[:messages].first[:from]).to eq('5511999999999')
+      expect(result[:messages].first[:id]).to eq('LID-ALT-1')
+      expect(result[:messages].first[:text][:body]).to eq('hello from lid peer')
+      expect(result[:messages].first[:evolution_go_remote_jid]).to eq('123456789012345@lid')
+    end
+  end
+
+  it 'normalizes 1:1 LID-only inbound without dropping the message' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'LID-ONLY-1',
+          'Chat' => '123456789012345@lid',
+          'Sender' => '123456789012345@lid',
+          'IsFromMe' => false,
+          'AddressingMode' => 'lid',
+          'PushName' => 'Lid Peer',
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'conversation' => 'lid only hello'
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    aggregate_failures do
+      expect(result).to be_present
+      expect(result[:contacts].first[:wa_id]).to eq('123456789012345@lid')
+      expect(result[:messages].first[:from]).to eq('123456789012345@lid')
+      expect(result[:messages].first[:id]).to eq('LID-ONLY-1')
+      expect(result[:messages].first[:text][:body]).to eq('lid only hello')
+      expect(result[:messages].first[:evolution_go_remote_jid]).to eq('123456789012345@lid')
+    end
   end
 
   it 'normalizes legacy key/message payloads' do

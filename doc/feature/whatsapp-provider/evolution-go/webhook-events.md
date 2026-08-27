@@ -179,7 +179,8 @@ Lista completa: wiki `events-system.md` § Tipos de Eventos.
 |------|-------------|---------------------|
 | Contato normal | `5511...@s.whatsapp.net` | Dígitos antes de `@` |
 | Bot (Meta AI, etc.) | `8670…@bot` | Dígitos antes de `@` (`phone_from_jid`); pushName costuma ser o nome do bot |
-| LID | `xxx@lid` + `remoteJidAlt` | Usar `remoteJidAlt` se presente (**só 1:1**; nunca em `@g.us`) |
+| LID 1:1 + alt | `xxx@lid` + alt de telefone | `wa_id` = dígitos do alt (adapter prefere PN sobre `@lid` em SenderAlt/RecipientAlt). `evolution_go_remote_jid` = `@lid` (addressing — **não** o PN reescrito) |
+| LID 1:1 sem alt | `xxx@lid` sem PN | **Não dropa.** `wa_id`/`from` = JID `@lid` completo (igual grupos `@g.us`). Não inventar E.164 dos dígitos LID |
 | Grupo | `120363...@g.us` | Filtrar se `ignore_groups: true`; senão `source_id` = JID grupo + `participant` no key. **`@g.us` nunca é resolvido via `remoteJidAlt`** (mesmo com `AddressingMode: lid`) |
 | Status | `status@broadcast` | Ignorar |
 | Echo | `fromMe: true` | Filtrar se `ignore_from_me_echo: true` (default); senão `PhoneOutgoingSyncService` |

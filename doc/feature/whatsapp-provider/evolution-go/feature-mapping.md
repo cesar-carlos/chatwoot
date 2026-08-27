@@ -2,7 +2,7 @@
 
 Checklist feature a feature vs código. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
 
-**Última sync código:** 27/jul/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
+**Última sync código:** 27/ago/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
 
 ---
 
@@ -92,7 +92,8 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Inbound 1:1 `data.key.remoteJid` | dígitos antes de `@` |
 | Inbound grupo `@g.us` | JID completo do grupo (`GroupContactService`) — **nunca** via `remoteJidAlt` |
 | Participante em grupo | `evolution_go_participant_jid` em `content_attributes` |
-| LID + alt (1:1) | usar `remoteJidAlt` se presente |
+| LID + alt (1:1) | `wa_id` = PN do alt; `identifier` + `evolution_go_remote_jid` = `@lid` (addressing) |
+| LID-only (1:1) | `wa_id` + `ContactInbox#source_id` = JID `@lid` completo; **sem** `phone_number` fabricado |
 | Outbound ID | `data.Info.ID` (string) |
 
 ---

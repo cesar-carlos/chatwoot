@@ -185,6 +185,8 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 
 `data.key.id` no webhook `MESSAGE` — formato Baileys-like no envelope, distinto do outbound `data.Info.ID`.
 
+**Contato 1:1 LID** (ago/2026): `wa_id` é telefone quando há alt PN; senão o JID `@lid` completo. `evolution_go_remote_jid` / `identifier` guardam o addressing `@lid` — não o PN reescrito. Dígitos LID não viram `phone_number`. Ver [decisions.md §37](./decisions.md).
+
 ---
 
 ## 7. Webhook (automático)

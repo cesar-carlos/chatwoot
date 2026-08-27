@@ -145,7 +145,7 @@ O exemplo oficial **não** inclui JID. Na implementação, tentar nesta ordem (c
 | 1 | `data.jid` ou `data.myJid` | Dígitos antes de `@` |
 | 2 | `data.JID` / `data.MyJid` | PascalCase — aceitar no `ApiClient#unwrap` |
 | 3 | Webhook `CONNECTION` | JID no payload de conexão |
-| 4 | Primeiro `MESSAGE` inbound | `key.remoteJid` / `remoteJidAlt` |
+| 4 | Primeiro `MESSAGE` inbound | `key.remoteJid` / `remoteJidAlt` — **JID do negócio**, não do peer. Peer 1:1 LID: [webhook-events.md](./webhook-events.md) + [decisions.md §37](./decisions.md) |
 
 **Não usar** `Name` como `phone_number` — é display name WhatsApp.
 
