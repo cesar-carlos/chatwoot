@@ -29,6 +29,21 @@ RSpec.describe InboxMember do
       account.enable_features!(:unread_count_for_filters)
     end
 
+    it 'updates the inbox cache key when inbox access is added' do
+      inbox
+      user
+
+      expect(account).to receive(:update_cache_key).with('inbox').once
+      create(:inbox_member, inbox: inbox, user: user)
+    end
+
+    it 'updates the inbox cache key when inbox access is removed' do
+      inbox_member = create(:inbox_member, inbox: inbox, user: user)
+
+      expect(inbox.account).to receive(:update_cache_key).with('inbox')
+      inbox_member.destroy!
+    end
+
     it 'invalidates the user built-in filter version when inbox access is added' do
       expect do
         create(:inbox_member, inbox: inbox, user: user)

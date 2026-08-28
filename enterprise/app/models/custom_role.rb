@@ -24,6 +24,8 @@
 # - 'conversation_participating_manage': Can manage conversations they are participating in (assigned to or a participant).
 # - 'inbox_view_manage': Can access Inbox View (notifications / recent messages).
 # FORK: custom role inbox view permission
+# - 'inbox_manage': Can manage assigned inboxes (settings, agents, channel tools). Cannot create or delete inboxes.
+# FORK: custom role inbox manage permission
 # - 'conversation_reply_assigned_only': Can reply only when the conversation is assigned to them.
 # FORK: custom role reply assigned only
 # - 'contact_manage': Can manage contacts.
@@ -38,13 +40,15 @@ class CustomRole < ApplicationRecord
   after_update_commit :invalidate_filtered_unread_count_visibility_update, if: :filtered_unread_count_permissions_changed?
   after_destroy_commit :invalidate_filtered_unread_count_visibility_destroy
 
+  # FORK: conversation_team_unassigned_manage, inbox_view_manage, inbox_manage, conversation_reply_assigned_only
   PERMISSIONS = %w[
     conversation_manage
     conversation_unassigned_manage
-    conversation_team_unassigned_manage # FORK: custom role team permission normalization
+    conversation_team_unassigned_manage
     conversation_participating_manage
-    inbox_view_manage # FORK: custom role inbox view permission
-    conversation_reply_assigned_only # FORK: custom role reply assigned only
+    inbox_view_manage
+    inbox_manage
+    conversation_reply_assigned_only
     contact_manage
     report_manage
     knowledge_base_manage

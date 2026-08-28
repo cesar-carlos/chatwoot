@@ -14,6 +14,20 @@ RSpec.describe ConversationPolicy, type: :policy do
   end
 
   permissions :show? do
+    context 'when custom role grants conversation_unassigned_manage' do
+      let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_unassigned_manage']) }
+
+      before do
+        agent_account_user.update!(role: :agent, custom_role: custom_role)
+      end
+
+      it 'denies conversations assigned to an agent bot' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee_agent_bot: create(:agent_bot, account: account))
+
+        expect(subject).not_to permit(context, conversation)
+      end
+    end
+
     context 'when custom role grants conversation_team_unassigned_manage' do
       let(:custom_role) { create(:custom_role, account: account, permissions: ['conversation_team_unassigned_manage']) }
       let(:agent_team) { create(:team, account: account) }
@@ -51,6 +65,13 @@ RSpec.describe ConversationPolicy, type: :policy do
 
       it 'denies unassigned conversations without a team' do
         conversation = create(:conversation, account: account, inbox: inbox, assignee: nil, team: nil)
+
+        expect(subject).not_to permit(context, conversation)
+      end
+
+      it 'denies conversations assigned to an agent bot' do
+        conversation = create(:conversation, account: account, inbox: inbox, assignee_agent_bot: create(:agent_bot, account: account),
+                                             team: agent_team)
 
         expect(subject).not_to permit(context, conversation)
       end

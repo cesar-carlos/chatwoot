@@ -142,29 +142,30 @@ export const applyRoleFilter = (
   const conversationAssignee = conversation.meta.assignee;
   const isUnassigned = !conversationAssignee;
   const isAssignedToUser = conversationAssignee?.id === currentUserId;
+  const conversationTeamId = conversation.meta?.team?.id;
+  const userTeamIds = userTeams.map(team => Number(team.id));
+  const belongsToUserTeam =
+    Number.isFinite(Number(conversationTeamId)) &&
+    userTeamIds.includes(Number(conversationTeamId));
 
-  // Check unassigned management permission
+  // FORK: union granted conversation scopes so list matches ConversationPolicy#show?
+  let allowed = false;
+
   if (permissions.includes('conversation_unassigned_manage')) {
-    return isUnassigned || isAssignedToUser;
+    allowed = allowed || isUnassigned || isAssignedToUser;
+  } else if (permissions.includes('conversation_team_unassigned_manage')) {
+    allowed =
+      allowed || isAssignedToUser || (isUnassigned && belongsToUserTeam);
   }
 
-  // FORK: custom role team permission normalization
-  if (permissions.includes('conversation_team_unassigned_manage')) {
-    const conversationTeamId = conversation.meta?.team?.id;
-    const userTeamIds = userTeams.map(team => Number(team.id));
-    const belongsToUserTeam =
-      Number.isFinite(Number(conversationTeamId)) &&
-      userTeamIds.includes(Number(conversationTeamId));
-
-    return isAssignedToUser || (isUnassigned && belongsToUserTeam);
-  }
-
-  // Check participating conversation management permission
   if (permissions.includes('conversation_participating_manage')) {
-    return isAssignedToUser;
+    allowed =
+      allowed ||
+      isAssignedToUser ||
+      Boolean(conversation?.meta?.current_user_participating);
   }
 
-  return false;
+  return allowed;
 };
 
 const SORT_OPTIONS = {

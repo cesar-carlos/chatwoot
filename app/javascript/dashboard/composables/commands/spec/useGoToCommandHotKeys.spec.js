@@ -38,7 +38,7 @@ const ROUTE_META = {
   },
   settings_inbox_list: {
     featureFlag: MOCK_FEATURE_FLAGS.INBOX_MANAGEMENT,
-    permissions: ['administrator'],
+    permissions: ['administrator', 'inbox_manage'],
   },
   labels_list: {
     featureFlag: MOCK_FEATURE_FLAGS.LABELS,
@@ -166,6 +166,18 @@ describe('useGoToCommandHotKeys', () => {
 
     expect(
       goToCommandHotKeys.value.find(cmd => cmd.id.includes('reports_overview'))
+    ).toBeDefined();
+    expect(
+      goToCommandHotKeys.value.find(cmd => cmd.id.includes('agent_settings'))
+    ).toBeUndefined();
+  });
+
+  it('should include inbox settings for inbox_manage custom permission', () => {
+    userPermissions = ['custom_role', 'inbox_manage'];
+    const { goToCommandHotKeys } = useGoToCommandHotKeys();
+
+    expect(
+      goToCommandHotKeys.value.find(cmd => cmd.id.includes('inbox_settings'))
     ).toBeDefined();
     expect(
       goToCommandHotKeys.value.find(cmd => cmd.id.includes('agent_settings'))

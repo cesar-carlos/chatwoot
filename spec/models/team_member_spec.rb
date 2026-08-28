@@ -18,6 +18,21 @@ RSpec.describe TeamMember do
       account.enable_features!(:unread_count_for_filters)
     end
 
+    it 'updates the team cache key when team access is added' do
+      team
+      user
+
+      expect(account).to receive(:update_cache_key).with('team').once
+      create(:team_member, team: team, user: user)
+    end
+
+    it 'updates the team cache key when team access is removed' do
+      team_member = create(:team_member, team: team, user: user)
+
+      expect(team.account).to receive(:update_cache_key).with('team')
+      team_member.destroy!
+    end
+
     it 'invalidates the user built-in filter version when team access is added' do
       expect do
         create(:team_member, team: team, user: user)

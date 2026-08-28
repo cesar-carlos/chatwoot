@@ -24,7 +24,10 @@ class TeamMember < ApplicationRecord
   private
 
   def invalidate_filtered_unread_count_visibility
-    ::Conversations::UnreadCounts::FilteredCountInvalidator.new(team&.account).user_visibility_changed!(user_id: user_id)
+    account = team&.account
+    # FORK: membership changes must invalidate the account-scoped IndexedDB team list
+    account&.update_cache_key('team')
+    ::Conversations::UnreadCounts::FilteredCountInvalidator.new(account).user_visibility_changed!(user_id: user_id)
   end
 end
 

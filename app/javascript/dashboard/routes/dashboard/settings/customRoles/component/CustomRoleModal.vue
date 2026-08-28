@@ -11,7 +11,13 @@ import {
   CONVERSATION_UNASSIGNED_PERMISSIONS,
   CONVERSATION_TEAM_UNASSIGNED_PERMISSIONS,
   CONVERSATION_PARTICIPATING_PERMISSIONS,
+  CONVERSATION_PERMISSIONS,
 } from 'dashboard/constants/permissions.js';
+import {
+  effectiveConversationScopePermission,
+  hasOverlappingConversationScope,
+  otherCustomRolePermissionsFrom,
+} from 'dashboard/helper/customRoleConversationScope';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 
@@ -119,6 +125,28 @@ const permissionsScopeNote = computed(() =>
   t('CUSTOM_ROLE.FORM.PERMISSIONS.INBOX_SCOPE_NOTE')
 ); // FORK: custom role inbox access note
 
+const conversationScopePermissions = CONVERSATION_PERMISSIONS;
+const otherPermissions = otherCustomRolePermissionsFrom(
+  AVAILABLE_CUSTOM_ROLE_PERMISSIONS
+);
+
+const effectiveScopePermission = computed(() =>
+  effectiveConversationScopePermission(selectedPermissions.value)
+);
+
+const hasScopeOverlap = computed(() =>
+  hasOverlappingConversationScope(selectedPermissions.value)
+);
+
+const effectiveScopeLabel = computed(() => {
+  const permission = effectiveScopePermission.value;
+  if (!permission) return '';
+
+  return t('CUSTOM_ROLE.FORM.PERMISSIONS.EFFECTIVE_SCOPE', {
+    scope: t(`CUSTOM_ROLE.PERMISSIONS.${permission.toUpperCase()}`),
+  });
+});
+
 const handleCustomRole = async () => {
   v$.value.$touch();
   if (v$.value.$invalid) return;
@@ -198,9 +226,37 @@ const isSubmitDisabled = computed(
         <p class="text-xs text-n-slate-11 mt-1">
           {{ permissionsScopeNote }}
         </p>
+        <p class="text-xs text-n-slate-11 mt-2">
+          {{ $t('CUSTOM_ROLE.FORM.PERMISSIONS.HIERARCHY_NOTE') }}
+        </p>
         <div class="flex flex-col gap-2.5 mb-4 mt-2">
           <div
-            v-for="permission in AVAILABLE_CUSTOM_ROLE_PERMISSIONS"
+            v-for="permission in conversationScopePermissions"
+            :key="permission"
+            class="flex items-center"
+          >
+            <input
+              :id="permission"
+              v-model="selectedPermissions"
+              type="checkbox"
+              :value="permission"
+              name="permissions"
+              class="ltr:mr-2 rtl:ml-2"
+            />
+            <label :for="permission" class="text-sm font-normal">
+              {{ $t(`CUSTOM_ROLE.PERMISSIONS.${permission.toUpperCase()}`) }}
+            </label>
+          </div>
+        </div>
+        <p v-if="effectiveScopePermission" class="text-xs text-n-slate-12 mb-2">
+          {{ effectiveScopeLabel }}
+        </p>
+        <p v-if="hasScopeOverlap" class="text-xs text-n-amber-11 mb-4">
+          {{ $t('CUSTOM_ROLE.FORM.PERMISSIONS.OVERLAP_WARNING') }}
+        </p>
+        <div class="flex flex-col gap-2.5 mb-4 mt-2">
+          <div
+            v-for="permission in otherPermissions"
             :key="permission"
             class="flex items-center"
           >

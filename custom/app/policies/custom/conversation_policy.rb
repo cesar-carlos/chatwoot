@@ -58,7 +58,7 @@ module Custom::ConversationPolicy
   end
 
   def unassigned_conversation?
-    record.assignee_id.nil?
+    record.assignee_id.nil? && record.assignee_agent_bot_id.nil?
   end
 
   def custom_role_permissions?

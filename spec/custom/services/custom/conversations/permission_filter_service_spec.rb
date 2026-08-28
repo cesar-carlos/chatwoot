@@ -78,5 +78,66 @@ RSpec.describe Conversations::PermissionFilterService do
       expect(result).to include(other_team_unassigned)
       expect(result).to include(no_team_unassigned)
     end
+
+    it 'includes participating conversations when participating is combined with unassigned' do
+      test_account = create(:account)
+      test_inbox = create(:inbox, account: test_account)
+      test_agent = create(:user, account: test_account, role: :agent)
+      other_agent = create(:user, account: test_account, role: :agent)
+      create(:inbox_member, user: test_agent, inbox: test_inbox)
+
+      test_custom_role = create(
+        :custom_role,
+        account: test_account,
+        permissions: %w[conversation_unassigned_manage conversation_participating_manage]
+      )
+      account_user = AccountUser.find_by(user: test_agent, account: test_account)
+      account_user.update(role: :agent, custom_role: test_custom_role)
+
+      participating = create(:conversation, account: test_account, inbox: test_inbox, assignee: other_agent)
+      create(:conversation_participant, conversation: participating, user: test_agent, account: test_account)
+      other_assigned = create(:conversation, account: test_account, inbox: test_inbox, assignee: other_agent)
+
+      result = described_class.new(
+        test_account.conversations,
+        test_agent,
+        test_account
+      ).perform
+
+      expect(result).to include(participating)
+      expect(result).not_to include(other_assigned)
+    end
+
+    it 'includes participating conversations when participating is combined with team unassigned' do
+      test_account = create(:account)
+      test_inbox = create(:inbox, account: test_account)
+      test_agent = create(:user, account: test_account, role: :agent)
+      other_agent = create(:user, account: test_account, role: :agent)
+      create(:inbox_member, user: test_agent, inbox: test_inbox)
+
+      agent_team = create(:team, account: test_account)
+      create(:team_member, team: agent_team, user: test_agent)
+
+      test_custom_role = create(
+        :custom_role,
+        account: test_account,
+        permissions: %w[conversation_team_unassigned_manage conversation_participating_manage]
+      )
+      account_user = AccountUser.find_by(user: test_agent, account: test_account)
+      account_user.update(role: :agent, custom_role: test_custom_role)
+
+      participating = create(:conversation, account: test_account, inbox: test_inbox, assignee: other_agent)
+      create(:conversation_participant, conversation: participating, user: test_agent, account: test_account)
+      other_assigned = create(:conversation, account: test_account, inbox: test_inbox, assignee: other_agent)
+
+      result = described_class.new(
+        test_account.conversations,
+        test_agent,
+        test_account
+      ).perform
+
+      expect(result).to include(participating)
+      expect(result).not_to include(other_assigned)
+    end
   end
 end

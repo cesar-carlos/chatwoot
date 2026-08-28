@@ -107,6 +107,8 @@ Idempotente — seguro reexecutar.
 
 - Feature irmã (escopo de conversas por time): [`../custom-role-team-permission-normalization/implementation-plan.md`](../custom-role-team-permission-normalization/implementation-plan.md)
 - Reply only when assigned: [`../custom-role-reply-assigned-only/implementation-plan.md`](../custom-role-reply-assigned-only/implementation-plan.md)
+- Gerenciar canal (`inbox_manage`): [`../custom-role-inbox-manage-permission/implementation-plan.md`](../custom-role-inbox-manage-permission/implementation-plan.md)
+- Inbox IndexedDB / membership cache: [`../inbox-cache-logout-invalidation/implementation-plan.md`](../inbox-cache-logout-invalidation/implementation-plan.md)
 
 ## Definition of Done
 

@@ -59,4 +59,26 @@ RSpec.describe Conversations::UnreadCounts::Counter do
     expect(result[:teams]).to eq(team.id.to_s => 2)
     expect(store.assignment_ready?(account.id)).to be(true)
   end
+
+  it 'unions participant-only unread into inbox counts when participating is also granted' do
+    account_user.update!(
+      custom_role: create(
+        :custom_role,
+        account: account,
+        permissions: %w[conversation_unassigned_manage conversation_participating_manage]
+      )
+    )
+    create_unread_conversation(account: account, inbox: inbox, assignee: agent, team: team)
+    create_unread_conversation(account: account, inbox: inbox, team: team)
+    participant_only = create_unread_conversation(account: account, inbox: inbox, assignee: other_agent, team: team)
+    create(:conversation_participant, conversation: participant_only, user: agent, account: account)
+    create_unread_conversation(account: account, inbox: inbox, assignee: other_agent, team: team)
+
+    result = described_class.new(account: account, user: agent).perform
+
+    expect(result[:all_count]).to eq(3)
+    expect(result[:inboxes]).to eq(inbox.id.to_s => 3)
+    expect(result[:teams]).to eq(team.id.to_s => 3)
+    expect(store.assignment_ready?(account.id)).to be(true)
+  end
 end

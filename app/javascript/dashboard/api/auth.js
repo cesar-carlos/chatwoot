@@ -2,10 +2,7 @@
 
 import Cookies from 'js-cookie';
 import endPoints from './endPoints';
-import {
-  clearCookiesOnLogout,
-  deleteIndexedDBOnLogout,
-} from '../store/utils/api';
+import { clearCookiesOnLogout } from '../store/utils/api';
 
 export default {
   validityCheck() {
@@ -20,9 +17,8 @@ export default {
     const fetchPromise = new Promise((resolve, reject) => {
       axios
         .delete(urlData.url)
-        .then(response => {
-          deleteIndexedDBOnLogout();
-          clearCookiesOnLogout();
+        .then(async response => {
+          await clearCookiesOnLogout();
           resolve(response);
         })
         .catch(error => {

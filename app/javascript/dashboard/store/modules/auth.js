@@ -111,7 +111,7 @@ export const actions = {
       context.commit(types.SET_CURRENT_USER, currentUser);
     } catch (error) {
       if (error?.response?.status === 401) {
-        clearCookiesOnLogout();
+        await clearCookiesOnLogout();
       }
     }
   },

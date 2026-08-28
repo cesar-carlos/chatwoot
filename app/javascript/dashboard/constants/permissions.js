@@ -4,6 +4,7 @@ export const AVAILABLE_CUSTOM_ROLE_PERMISSIONS = [
   'conversation_team_unassigned_manage', // FORK: custom role team permission normalization
   'conversation_participating_manage',
   'inbox_view_manage', // FORK: custom role inbox view permission
+  'inbox_manage', // FORK: custom role inbox manage permission
   'conversation_reply_assigned_only', // FORK: custom role reply assigned only
   'contact_manage',
   'report_manage',
@@ -32,12 +33,20 @@ export const CONVERSATION_PARTICIPATING_PERMISSIONS =
 
 export const INBOX_VIEW_PERMISSIONS = 'inbox_view_manage'; // FORK: custom role inbox view permission
 
+export const INBOX_MANAGE_PERMISSIONS = 'inbox_manage'; // FORK: custom role inbox manage permission
+
 // FORK: custom role reply assigned only — opt-in restriction (present = restrict)
 export const REPLY_ASSIGNED_ONLY_PERMISSION =
   'conversation_reply_assigned_only';
 
 // FORK: custom role inbox view permission — shared route/menu gate
 export const INBOX_VIEW_ROUTE_PERMISSIONS = [...ROLES, INBOX_VIEW_PERMISSIONS];
+
+// FORK: custom role inbox manage permission — settings list/show, not create/delete
+export const INBOX_MANAGE_ROUTE_PERMISSIONS = [
+  'administrator',
+  INBOX_MANAGE_PERMISSIONS,
+];
 
 export const CONTACT_PERMISSIONS = 'contact_manage';
 

@@ -198,7 +198,7 @@ export default {
         this.$t('RESET_PASSWORD.API.ERROR_MESSAGE')
       );
 
-      if (hasEmailChanged && success) clearCookiesOnLogout();
+      if (hasEmailChanged && success) await clearCookiesOnLogout();
     },
     async updateSignature(signature) {
       const payload = { message_signature: signature };
