@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 class Custom::CustomRoles::AuditScopeOverlapService
+  SCOPE_PERMISSIONS = %w[
+    conversation_manage
+    conversation_unassigned_manage
+    conversation_team_unassigned_manage
+    conversation_participating_manage
+  ].freeze
+
   EXCLUSIVE_PERMISSIONS = %w[
     conversation_manage
     conversation_unassigned_manage
