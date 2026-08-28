@@ -11,6 +11,8 @@ describe('DataManager', () => {
   });
 
   afterEach(async () => {
+    if (!dataManager.db) return;
+
     const tx = dataManager.db.transaction(
       dataManager.modelsToSync,
       'readwrite'
@@ -19,6 +21,7 @@ describe('DataManager', () => {
       tx.objectStore(modelName).clear();
     });
     await tx.done;
+    dataManager.close();
   });
 
   describe('initDb', () => {
@@ -56,7 +59,18 @@ describe('DataManager', () => {
         'canned_response'
       );
       expect(await legacyManager.getCacheKey('inbox')).toBe('existing-key');
-      legacyManager.db.close();
+      legacyManager.close();
+    });
+  });
+
+  describe('close', () => {
+    it('closes the database and allows a fresh init', async () => {
+      expect(dataManager.db).not.toBeNull();
+      dataManager.close();
+      expect(dataManager.db).toBeNull();
+
+      await dataManager.initDb();
+      expect(dataManager.db).not.toBeNull();
     });
   });
 

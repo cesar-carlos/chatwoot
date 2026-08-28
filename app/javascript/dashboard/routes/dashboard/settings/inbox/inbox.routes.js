@@ -29,7 +29,7 @@ export default {
           component: InboxHome,
           meta: {
             featureFlag: FEATURE_FLAGS.INBOX_MANAGEMENT,
-            permissions: ['administrator'],
+            permissions: ['administrator', 'inbox_manage'],
           },
         },
       ],
@@ -99,7 +99,7 @@ export default {
           component: Settings,
           meta: {
             featureFlag: FEATURE_FLAGS.INBOX_MANAGEMENT,
-            permissions: ['administrator'],
+            permissions: ['administrator', 'inbox_manage'],
           },
         },
       ],

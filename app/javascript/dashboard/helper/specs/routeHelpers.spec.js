@@ -24,6 +24,41 @@ describe('#routeIsAccessibleFor', () => {
     expect(routeIsAccessibleFor(route, ['inbox_view_manage'])).toEqual(true);
     expect(routeIsAccessibleFor(route, ['agent'])).toEqual(true);
   });
+
+  it('allows inbox settings list for inbox_manage custom permission', () => {
+    const route = {
+      meta: { permissions: ['administrator', 'inbox_manage'] },
+    };
+    expect(routeIsAccessibleFor(route, ['agent'])).toEqual(false);
+    expect(routeIsAccessibleFor(route, ['inbox_manage'])).toEqual(true);
+    expect(routeIsAccessibleFor(route, ['administrator'])).toEqual(true);
+  });
+
+  it('allows inbox settings show for inbox_manage custom permission', () => {
+    const route = {
+      name: 'settings_inbox_show',
+      meta: { permissions: ['administrator', 'inbox_manage'] },
+    };
+    expect(routeIsAccessibleFor(route, ['inbox_manage'])).toEqual(true);
+  });
+
+  it('denies inbox wizard routes for inbox_manage custom permission', () => {
+    const wizardRoutes = [
+      'settings_inbox_new',
+      'settings_inbox_finish',
+      'settings_inboxes_page_channel',
+      'settings_inboxes_add_agents',
+    ];
+
+    wizardRoutes.forEach(name => {
+      const route = {
+        name,
+        meta: { permissions: ['administrator'] },
+      };
+      expect(routeIsAccessibleFor(route, ['inbox_manage'])).toEqual(false);
+      expect(routeIsAccessibleFor(route, ['administrator'])).toEqual(true);
+    });
+  });
 });
 
 describe('#defaultRedirectPage', () => {

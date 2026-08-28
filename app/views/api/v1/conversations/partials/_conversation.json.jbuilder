@@ -27,6 +27,8 @@ json.meta do
     end
   end
   json.hmac_verified conversation.contact_inbox&.hmac_verified
+  # FORK: ChatList applyRoleFilter — per-request, not ActionCable
+  json.current_user_participating current_user_participating?(conversation)
 end
 
 json.id conversation.display_id

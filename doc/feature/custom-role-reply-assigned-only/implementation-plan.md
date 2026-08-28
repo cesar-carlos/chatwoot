@@ -107,6 +107,8 @@ Só deploy de código. **Sem rake/migration** — roles existentes permanecem se
 
 - Escopo de conversas por time: [`../custom-role-team-permission-normalization/implementation-plan.md`](../custom-role-team-permission-normalization/implementation-plan.md)
 - Caixa de Entrada (Inbox View): [`../custom-role-inbox-view-permission/implementation-plan.md`](../custom-role-inbox-view-permission/implementation-plan.md)
+- Gerenciar canal (`inbox_manage`): [`../custom-role-inbox-manage-permission/implementation-plan.md`](../custom-role-inbox-manage-permission/implementation-plan.md)
+- Inbox IndexedDB / membership cache: [`../inbox-cache-logout-invalidation/implementation-plan.md`](../inbox-cache-logout-invalidation/implementation-plan.md)
 - **Agent compose:** `Custom::Conversations::AgentStartService` atribui ao iniciador no create/reopen de conversa fechada (e após promover `pending`, mesmo se auto-assign atribuir outro no `open!`), então `reply?` passa no happy path do compose. Conversa **open** de outro agente continua bloqueada no compose com **422** (mensagem clara) — distinto do **401** de `reply?` no ReplyBox.
 - **Message forward:** o destino também passa por `AgentStartService` (`conversations#create`, com `conversation_id` opcional) antes de `messages#create`, para o mesmo prepare (reopen+assign / 422). Sem isso, encaminhar para conversa visível mas não atribuída 401 em `reply?`. Contactable reusa CI de grupos/LID. Ver [`../message-forward/`](../message-forward/).
 

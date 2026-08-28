@@ -37,7 +37,10 @@ class InboxMember < ApplicationRecord
   end
 
   def invalidate_filtered_unread_count_visibility
-    ::Conversations::UnreadCounts::FilteredCountInvalidator.new(inbox&.account).user_visibility_changed!(user_id: user_id)
+    account = inbox&.account
+    # FORK: membership changes must invalidate the account-scoped IndexedDB inbox list
+    account&.update_cache_key('inbox')
+    ::Conversations::UnreadCounts::FilteredCountInvalidator.new(account).user_visibility_changed!(user_id: user_id)
   end
 end
 

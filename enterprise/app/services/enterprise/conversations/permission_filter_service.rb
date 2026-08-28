@@ -19,15 +19,26 @@ module Enterprise::Conversations::PermissionFilterService
     # Permission-based filtering with hierarchy
     # conversation_manage > conversation_unassigned_manage > conversation_participating_manage
     # conversation_team_unassigned_manage is handled by Custom::Conversations::PermissionFilterService overlay
-    if permissions.include?('conversation_manage')
-      accessible_conversations
-    elsif permissions.include?('conversation_unassigned_manage')
-      filter_unassigned_and_mine
-    elsif permissions.include?('conversation_participating_manage')
-      filter_participating_and_mine
-    else
-      Conversation.none
-    end
+    # Union participating when present so the list matches ConversationPolicy#show?
+    return accessible_conversations if permissions.include?('conversation_manage')
+
+    scopes = []
+    scopes << filter_unassigned_and_mine if permissions.include?('conversation_unassigned_manage')
+    scopes << filter_participating_and_mine if permissions.include?('conversation_participating_manage')
+
+    return Conversation.none if scopes.empty?
+
+    union_conversation_scopes(scopes)
+  end
+
+  def union_conversation_scopes(scopes)
+    return Conversation.none if scopes.blank?
+    return scopes.first if scopes.one?
+
+    ids = scopes.flat_map { |scope| scope.unscope(:order).pluck(:id) }.uniq
+    return Conversation.none if ids.empty?
+
+    conversations.where(id: ids)
   end
 
   def filter_participating_and_mine

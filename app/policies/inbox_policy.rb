@@ -54,6 +54,11 @@ class InboxPolicy < ApplicationPolicy
     @account_user.administrator?
   end
 
+  # FORK: custom role inbox manage permission — collaborators vs create/destroy inbox
+  def manage_members?
+    @account_user.administrator?
+  end
+
   def set_agent_bot?
     @account_user.administrator?
   end
@@ -94,3 +99,5 @@ class InboxPolicy < ApplicationPolicy
     @account_user.administrator?
   end
 end
+
+InboxPolicy.prepend_mod_with('InboxPolicy')

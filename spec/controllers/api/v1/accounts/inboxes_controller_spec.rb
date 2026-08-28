@@ -443,6 +443,19 @@ RSpec.describe 'Inboxes API', type: :request do
 
         expect(response).to have_http_status(:unauthorized)
       end
+
+      it 'is unable to delete inbox as custom role with inbox_manage' do
+        agent = create(:user, account: account, role: :agent)
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
+        create(:inbox_member, user: agent, inbox: inbox)
+
+        delete "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}",
+               headers: agent.create_new_auth_token,
+               as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
     end
   end
 
@@ -463,6 +476,20 @@ RSpec.describe 'Inboxes API', type: :request do
 
       it 'will not create inbox for agent' do
         agent = create(:user, account: account, role: :agent)
+
+        post "/api/v1/accounts/#{account.id}/inboxes",
+             headers: agent.create_new_auth_token,
+             params: valid_params,
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'will not create inbox for custom role with inbox_manage' do
+        agent = create(:user, account: account, role: :agent)
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
+        create(:inbox_member, user: agent, inbox: inbox)
 
         post "/api/v1/accounts/#{account.id}/inboxes",
              headers: agent.create_new_auth_token,
@@ -559,6 +586,34 @@ RSpec.describe 'Inboxes API', type: :request do
 
       it 'will not update inbox for agent' do
         agent = create(:user, account: account, role: :agent)
+
+        patch "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}",
+              headers: agent.create_new_auth_token,
+              params: valid_params,
+              as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it 'updates inbox when custom role has inbox_manage and inbox membership' do
+        agent = create(:user, account: account, role: :agent)
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
+        create(:inbox_member, user: agent, inbox: inbox)
+
+        patch "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}",
+              headers: agent.create_new_auth_token,
+              params: valid_params,
+              as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(inbox.reload.name).to eq('new test inbox')
+      end
+
+      it 'does not update inbox when custom role has inbox_manage without inbox membership' do
+        agent = create(:user, account: account, role: :agent)
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
 
         patch "/api/v1/accounts/#{account.id}/inboxes/#{inbox.id}",
               headers: agent.create_new_auth_token,

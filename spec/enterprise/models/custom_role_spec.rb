@@ -17,8 +17,8 @@ RSpec.describe CustomRole, type: :model do
       expect(described_class::PERMISSIONS).to include('inbox_view_manage')
     end
 
-    it 'includes conversation_reply_assigned_only in PERMISSIONS' do
-      expect(described_class::PERMISSIONS).to include('conversation_reply_assigned_only')
+    it 'includes inbox_manage in PERMISSIONS' do
+      expect(described_class::PERMISSIONS).to include('inbox_manage')
     end
   end
 

@@ -26,6 +26,8 @@ Permitindo ver:
 
 - **Caixa de Entrada (Inbox View):** permissão dedicada `inbox_view_manage` para controlar se o agente vê o feed de notificações / mensagens recentes — ver [`../custom-role-inbox-view-permission/implementation-plan.md`](../custom-role-inbox-view-permission/implementation-plan.md). Independente desta feature de escopo de conversas por time.
 - **Reply only when assigned:** permissão opt-in `conversation_reply_assigned_only` para permitir resposta apenas se a conversa estiver atribuída ao agente — ver [`../custom-role-reply-assigned-only/implementation-plan.md`](../custom-role-reply-assigned-only/implementation-plan.md). Independente do escopo de visão (`conversation_*`).
+- **Gerenciar canal (`inbox_manage`):** Settings → Caixas de Entrada for assigned inboxes only — [`../custom-role-inbox-manage-permission/implementation-plan.md`](../custom-role-inbox-manage-permission/implementation-plan.md).
+- **Inbox IndexedDB / membership cache:** [`../inbox-cache-logout-invalidation/implementation-plan.md`](../inbox-cache-logout-invalidation/implementation-plan.md).
 - **Agent compose / reopen / search / forward:** `Custom::Conversations::AgentStartService` (compose dashboard **e** destino de encaminhar mensagem), reopen outgoing humano, e `Custom::SearchService` alinhado a `PermissionFilterService` — ver também [`../automation-opened-by/`](../automation-opened-by/), [`../conversation-single-history-per-channel/implementation-plan.md`](../conversation-single-history-per-channel/implementation-plan.md) e [`../message-forward/`](../message-forward/).
 
 ## Objective
@@ -98,6 +100,10 @@ Ordem proposta (mais ampla -> mais restrita):
 2. `conversation_unassigned_manage`
 3. `conversation_team_unassigned_manage` (nova)
 4. `conversation_participating_manage`
+
+`conversation_manage` still short-circuits to all accessible conversations. Unassigned vs team-unassigned remains broadest-wins (not a union). When `conversation_participating_manage` is also granted, the list filter **unions** participating conversations so it matches `ConversationPolicy#show?` (a participant-only conversation is listed even if a broader unassigned/team scope is present).
+
+The custom-role modal groups these four checkboxes, shows the effective (broadest) scope, and warns when unassigned and team-unassigned are both checked (not when participating is the extra flag, and not when `conversation_manage` auto-expands children). The roles table shows the same overlap warning. Audit: `bundle exec rake custom_roles:audit_scope_overlap` (optional `ACCOUNT_ID=`). Time Financeiro (team-only intent): `ACCOUNT_ID=<id> CONFIRM=1 bundle exec rake custom_roles:normalize_time_financeiro`.
 
 ### Access Semantics
 
@@ -439,8 +445,10 @@ Deliverables:
 
 ## Known Limitations (Documented)
 
-1. **Participating vs assignee no frontend** — `applyRoleFilter` para `conversation_participating_manage` verifica assignee, não participant (comportamento pré-existente; lista de conversas não traz participants no payload; backend policy aceita participant).
+1. **ChatList participating** — REST list payloads set `meta.current_user_participating` (not ActionCable `push_data`). `applyRoleFilter` allows assignee **or** that flag when `conversation_participating_manage` is granted. `UPDATE_CONVERSATION` keeps the existing flag when a websocket payload omits it so participant-only rows are not dropped.
 2. **Boot antes do fetch de inboxes iniciar** — Se `isFetching` ainda é `false` e a store de inboxes está vazia antes do dispatch do fetch, o gate continua fail-closed. Após o fetch iniciar (`isFetching: true`), a lista confia no backend até os IDs hidratarem.
+3. **Overlapping conversation scopes** — Exclusive conflict is `conversation_unassigned_manage` **and** `conversation_team_unassigned_manage` while `conversation_manage` is not set (auto-expanded children of manage-all are not a warning). Participating is additive and is not overlap. Unassigned vs team remains broadest-wins; participating unions with the exclusive scope. `PermissionFilterService` unscope(`:order`) before the team SQL UNION. Agent-bot assigned conversations are **not** unassigned (`assignee_id` and `assignee_agent_bot_id` must both be nil). Audit: `bundle exec rake custom_roles:audit_scope_overlap` (optional `ACCOUNT_ID=`; prints `participating=true` when that permission is also present). Time Financeiro (team-only intent): `ACCOUNT_ID=<id> CONFIRM=1 bundle exec rake custom_roles:normalize_time_financeiro`.
+4. **Unread counts union participating** — Inbox/team/label badges merge participant-only unread (assigned to someone else, user is `ConversationParticipant`) when `conversation_participating_manage` is granted. Unassigned vs team Redis keys stay exclusive.
 
 ### Compose / search (fechados nesta entrega)
 

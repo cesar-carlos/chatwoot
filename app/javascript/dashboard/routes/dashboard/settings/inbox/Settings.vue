@@ -630,6 +630,12 @@ export default {
       this.$store.dispatch('labels/get');
       this.$store.dispatch('portals/index');
       this.$store.dispatch('automations/get'); // FORK: single-history automation warning
+      // FORK: inbox_manage fail-closed — bounce if this inbox is not in assigned list
+      this.$store.dispatch('inboxes/get').then(() => {
+        if (!this.inbox?.id) {
+          this.$router.replace({ name: 'settings_inbox_list' });
+        }
+      });
     },
     syncInboxData() {
       if (!this.inbox || !this.inbox.id) return;

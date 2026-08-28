@@ -1,6 +1,8 @@
 import { openDB } from 'idb';
 import { DATA_VERSION } from './version';
 
+const openManagers = new Set();
+
 export class DataManager {
   constructor(accountId) {
     this.modelsToSync = ['inbox', 'label', 'team', 'canned_response'];
@@ -28,6 +30,8 @@ export class DataManager {
       },
     });
 
+    openManagers.add(this);
+
     // Store the database name in LocalStorage
     const dbNames = JSON.parse(localStorage.getItem('cw-idb-names') || '[]');
     if (!dbNames.includes(dbName)) {
@@ -36,6 +40,14 @@ export class DataManager {
     }
 
     return this.db;
+  }
+
+  close() {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+    openManagers.delete(this);
   }
 
   validateModel(name) {
@@ -84,3 +96,7 @@ export class DataManager {
     return this.db.get('cache-keys', modelName);
   }
 }
+
+export const closeAllDataManagers = () => {
+  [...openManagers].forEach(manager => manager.close());
+};

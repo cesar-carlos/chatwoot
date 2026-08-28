@@ -33,7 +33,7 @@ describe('#actions', () => {
         response: { status: 401 },
       });
       await actions.validityCheck({ commit });
-      expect(APIHelpers.clearCookiesOnLogout);
+      expect(APIHelpers.clearCookiesOnLogout).toHaveBeenCalled();
     });
   });
 

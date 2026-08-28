@@ -30,7 +30,8 @@
         "DESCRIPTION": "Descrição",
         "PERMISSIONS": "Permissões",
         "ACTIONS": "Ações"
-      }
+      },
+      "SCOPE_OVERLAP_WARNING": "Não atribuídas e não atribuídas do time estão ambas marcadas. O escopo de time não vale. Participar continua unindo quando essa permissão também está marcada."
     },
     "PERMISSIONS": {
       "CONVERSATION_MANAGE": "Gerenciar todas conversas",
@@ -38,6 +39,7 @@
       "CONVERSATION_TEAM_UNASSIGNED_MANAGE": "Gerenciar conversas não atribuídas dos times do agente e aquelas atribuídas ao agente",
       "CONVERSATION_PARTICIPATING_MANAGE": "Gerenciar conversas que participa e aquelas atribuídas ao agente",
       "INBOX_VIEW_MANAGE": "Ver Caixa de Entrada (notificações e mensagens recentes)",
+      "INBOX_MANAGE": "Gerenciar canais atribuídos (configurações, agentes e ferramentas do canal)",
       "CONVERSATION_REPLY_ASSIGNED_ONLY": "Permitir responder somente se a conversa estiver atribuída ao agente",
       "CONTACT_MANAGE": "Gerenciar contatos",
       "REPORT_MANAGE": "Gerenciar relatórios",
@@ -57,7 +59,10 @@
       "PERMISSIONS": {
         "LABEL": "Permissões",
         "ERROR": "Permissões são necessárias.",
-        "INBOX_SCOPE_NOTE": "As permissões de conversa também são limitadas pelas caixas de entrada às quais o agente tem acesso."
+        "INBOX_SCOPE_NOTE": "As permissões de conversa também são limitadas pelas caixas de entrada às quais o agente tem acesso.",
+        "HIERARCHY_NOTE": "Escopo de conversa: vale a permissão mais ampla que estiver marcada.",
+        "EFFECTIVE_SCOPE": "Escopo efetivo: {scope}",
+        "OVERLAP_WARNING": "Não atribuídas e não atribuídas do time estão ambas marcadas. O escopo de time não vale. Participar continua unindo quando essa permissão também está marcada."
       },
       "CANCEL_BUTTON_TEXT": "Cancelar",
       "API": {

@@ -128,6 +128,13 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
     authorize @inbox, :show?
   end
 
+  # FORK: custom role inbox manage permission — authorize the inbox instance, not the Inbox class
+  def check_authorization(model = nil)
+    return authorize(@inbox) if @inbox.present?
+
+    super
+  end
+
   def fetch_agent_bot
     @agent_bot = AgentBot.accessible_to(Current.account).find(params[:agent_bot]) if params[:agent_bot]
   end

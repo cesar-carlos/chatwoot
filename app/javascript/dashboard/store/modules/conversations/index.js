@@ -373,6 +373,16 @@ export const mutations = {
       }
 
       const { messages, ...updates } = conversation;
+      // FORK: websocket payloads omit current_user_participating — keep the REST flag
+      if (updates.meta) {
+        updates.meta = {
+          ...selectedConversation.meta,
+          ...updates.meta,
+          current_user_participating:
+            updates.meta.current_user_participating ??
+            selectedConversation.meta?.current_user_participating,
+        };
+      }
       allConversations[index] = { ...selectedConversation, ...updates };
       if (_state.selectedChatId === conversation.id) {
         emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE);

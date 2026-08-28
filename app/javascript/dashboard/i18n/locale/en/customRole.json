@@ -30,7 +30,8 @@
         "DESCRIPTION": "Description",
         "PERMISSIONS": "Permissions",
         "ACTIONS": "Actions"
-      }
+      },
+      "SCOPE_OVERLAP_WARNING": "Unassigned and team-unassigned are both checked. Team-unassigned does not apply. Participating still unions when that permission is also checked."
     },
     "PERMISSIONS": {
       "CONVERSATION_MANAGE": "Manage all conversations",
@@ -38,6 +39,7 @@
       "CONVERSATION_TEAM_UNASSIGNED_MANAGE": "Manage unassigned conversations from the agent's teams and those assigned to the agent",
       "CONVERSATION_PARTICIPATING_MANAGE": "Manage participating conversations and those assigned to them",
       "INBOX_VIEW_MANAGE": "View Inbox (notifications and recent messages)",
+      "INBOX_MANAGE": "Manage assigned inboxes (settings, agents, and channel tools)",
       "CONVERSATION_REPLY_ASSIGNED_ONLY": "Allow replies only when the conversation is assigned to the agent",
       "CONTACT_MANAGE": "Manage contacts",
       "REPORT_MANAGE": "Manage reports",
@@ -57,7 +59,10 @@
       "PERMISSIONS": {
         "LABEL": "Permissions",
         "ERROR": "Permissions are required.",
-        "INBOX_SCOPE_NOTE": "Conversation permissions are also limited by the inboxes the agent can access."
+        "INBOX_SCOPE_NOTE": "Conversation permissions are also limited by the inboxes the agent can access.",
+        "HIERARCHY_NOTE": "Conversation scope: the broadest checked permission is the one that applies.",
+        "EFFECTIVE_SCOPE": "Effective scope: {scope}",
+        "OVERLAP_WARNING": "Unassigned and team-unassigned are both checked. Team-unassigned does not apply. Participating still unions when that permission is also checked."
       },
       "CANCEL_BUTTON_TEXT": "Cancel",
       "API": {

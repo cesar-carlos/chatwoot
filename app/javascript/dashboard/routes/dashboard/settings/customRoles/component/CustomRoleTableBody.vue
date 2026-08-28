@@ -1,8 +1,10 @@
 <script setup>
 import { useI18n } from 'vue-i18n';
 import { getI18nKey } from 'dashboard/routes/dashboard/settings/helper/settingsHelper';
+import { hasOverlappingConversationScope } from 'dashboard/helper/customRoleConversationScope';
 
 import Button from 'dashboard/components-next/button/Button.vue';
+import Icon from 'next/icon/Icon.vue';
 import { BaseTableRow, BaseTableCell } from 'dashboard/components-next/table';
 
 defineProps({
@@ -47,9 +49,18 @@ const getFormattedPermissions = role => {
       </BaseTableCell>
 
       <BaseTableCell>
-        <span class="text-body-main text-n-slate-11 block">
-          {{ getFormattedPermissions(customRole) }}
-        </span>
+        <div class="flex items-start gap-2 min-w-0">
+          <span class="text-body-main text-n-slate-11 block min-w-0">
+            {{ getFormattedPermissions(customRole) }}
+          </span>
+          <span
+            v-if="hasOverlappingConversationScope(customRole.permissions)"
+            v-tooltip.top="$t('CUSTOM_ROLE.LIST.SCOPE_OVERLAP_WARNING')"
+            class="shrink-0 text-n-amber-11"
+          >
+            <Icon icon="i-lucide-alert-triangle" class="size-4" />
+          </span>
+        </div>
       </BaseTableCell>
 
       <BaseTableCell align="end" class="w-24">

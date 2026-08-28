@@ -258,6 +258,27 @@ describe('Conversation Helpers', () => {
           )
         ).toBe(false);
       });
+
+      it('returns true for other-assignee conversations when current_user_participating is set', () => {
+        const participatingConversation = {
+          ...conversationWithDifferentAssignee,
+          meta: {
+            ...conversationWithDifferentAssignee.meta,
+            current_user_participating: true,
+          },
+        };
+
+        expect(
+          applyRoleFilter(
+            participatingConversation,
+            role,
+            permissions,
+            currentUserId,
+            [],
+            userInboxIds
+          )
+        ).toBe(true);
+      });
     });
 
     describe('with conversation_team_unassigned_manage permission', () => {
@@ -476,6 +497,76 @@ describe('Conversation Helpers', () => {
             [],
             [],
             true
+          )
+        ).toBe(true);
+      });
+    });
+
+    describe('with unassigned and participating permissions together', () => {
+      const role = 'custom_role';
+      const permissions = [
+        'conversation_unassigned_manage',
+        'conversation_participating_manage',
+      ];
+      const currentUserId = 1;
+      const userInboxIds = [10];
+
+      it('still allows unassigned conversations', () => {
+        expect(
+          applyRoleFilter(
+            conversationWithoutAssignee,
+            role,
+            permissions,
+            currentUserId,
+            [],
+            userInboxIds
+          )
+        ).toBe(true);
+      });
+
+      it('still allows conversations assigned to the user', () => {
+        expect(
+          applyRoleFilter(
+            conversationWithAssignee,
+            role,
+            permissions,
+            currentUserId,
+            [],
+            userInboxIds
+          )
+        ).toBe(true);
+      });
+
+      it('does not allow other-assignee conversations without participant data in the list payload', () => {
+        expect(
+          applyRoleFilter(
+            conversationWithDifferentAssignee,
+            role,
+            permissions,
+            currentUserId,
+            [],
+            userInboxIds
+          )
+        ).toBe(false);
+      });
+
+      it('allows other-assignee conversations when current_user_participating is set', () => {
+        const participatingConversation = {
+          ...conversationWithDifferentAssignee,
+          meta: {
+            ...conversationWithDifferentAssignee.meta,
+            current_user_participating: true,
+          },
+        };
+
+        expect(
+          applyRoleFilter(
+            participatingConversation,
+            role,
+            permissions,
+            currentUserId,
+            [],
+            userInboxIds
           )
         ).toBe(true);
       });

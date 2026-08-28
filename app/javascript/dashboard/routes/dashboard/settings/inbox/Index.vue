@@ -5,6 +5,8 @@ import { useAlert } from 'dashboard/composables';
 import { picoSearch } from '@chatwoot/pico-search';
 import Avatar from 'next/avatar/Avatar.vue';
 import { useAdmin } from 'dashboard/composables/useAdmin';
+import { usePolicy } from 'dashboard/composables/usePolicy';
+import { INBOX_MANAGE_ROUTE_PERMISSIONS } from 'dashboard/constants/permissions.js';
 import SettingsLayout from '../SettingsLayout.vue';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import {
@@ -20,6 +22,10 @@ const getters = useStoreGetters();
 const store = useStore();
 const { t } = useI18n();
 const { isAdmin } = useAdmin();
+const { checkPermissions } = usePolicy();
+const canManageInbox = computed(() =>
+  checkPermissions(INBOX_MANAGE_ROUTE_PERMISSIONS)
+);
 
 const showDeletePopup = ref(false);
 const selectedInbox = ref({});
@@ -156,13 +162,13 @@ const openDelete = inbox => {
           </div>
           <div class="flex gap-3 justify-end">
             <router-link
+              v-if="canManageInbox"
               :to="{
                 name: 'settings_inbox_show',
                 params: { inboxId: inbox.id },
               }"
             >
               <Button
-                v-if="isAdmin"
                 v-tooltip.top="$t('INBOX_MGMT.SETTINGS')"
                 icon="i-woot-settings"
                 slate

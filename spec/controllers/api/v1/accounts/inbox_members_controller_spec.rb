@@ -71,6 +71,50 @@ RSpec.describe 'Inbox Member API', type: :request do
       end
     end
 
+    context 'when it is an agent with inbox_manage on the inbox' do
+      let(:agent) { create(:user, account: account, role: :agent) }
+      let(:agent_to_add) { create(:user, account: account, role: :agent) }
+
+      before do
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
+        create(:inbox_member, user: agent, inbox: inbox)
+      end
+
+      it 'add inbox members' do
+        params = { inbox_id: inbox.id, user_ids: [agent.id, agent_to_add.id] }
+
+        post "/api/v1/accounts/#{account.id}/inbox_members",
+             headers: agent.create_new_auth_token,
+             params: params,
+             as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(inbox.inbox_members.count).to eq(2)
+      end
+    end
+
+    context 'when it is an agent with inbox_manage without inbox membership' do
+      let(:agent) { create(:user, account: account, role: :agent) }
+      let(:agent_to_add) { create(:user, account: account, role: :agent) }
+
+      before do
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
+      end
+
+      it 'returns unauthorized' do
+        params = { inbox_id: inbox.id, user_ids: [agent.id, agent_to_add.id] }
+
+        post "/api/v1/accounts/#{account.id}/inbox_members",
+             headers: agent.create_new_auth_token,
+             params: params,
+             as: :json
+
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
     context 'when it is an administrator' do
       let(:administrator) { create(:user, account: account, role: :administrator) }
       let(:old_agent) { create(:user, account: account, role: :agent) }
@@ -146,6 +190,29 @@ RSpec.describe 'Inbox Member API', type: :request do
       end
     end
 
+    context 'when it is an agent with inbox_manage on the inbox' do
+      let(:agent) { create(:user, account: account, role: :agent) }
+      let(:agent_to_add) { create(:user, account: account, role: :agent) }
+
+      before do
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
+        create(:inbox_member, user: agent, inbox: inbox)
+      end
+
+      it 'modifies inbox members' do
+        params = { inbox_id: inbox.id, user_ids: [agent.id, agent_to_add.id] }
+
+        patch "/api/v1/accounts/#{account.id}/inbox_members",
+              headers: agent.create_new_auth_token,
+              params: params,
+              as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(inbox.inbox_members.count).to eq(2)
+      end
+    end
+
     context 'when it is an administrator' do
       let(:administrator) { create(:user, account: account, role: :administrator) }
       let(:old_agent) { create(:user, account: account, role: :agent) }
@@ -218,6 +285,30 @@ RSpec.describe 'Inbox Member API', type: :request do
                as: :json
 
         expect(response).to have_http_status(:unauthorized)
+      end
+    end
+
+    context 'when it is an agent with inbox_manage on the inbox' do
+      let(:agent) { create(:user, account: account, role: :agent) }
+      let(:agent_to_delete) { create(:user, account: account, role: :agent) }
+
+      before do
+        custom_role = create(:custom_role, account: account, permissions: ['inbox_manage'])
+        agent.account_users.find_by(account: account).update!(custom_role: custom_role)
+        create(:inbox_member, user: agent, inbox: inbox)
+        create(:inbox_member, user: agent_to_delete, inbox: inbox)
+      end
+
+      it 'deletes inbox members' do
+        params = { inbox_id: inbox.id, user_ids: [agent_to_delete.id] }
+
+        delete "/api/v1/accounts/#{account.id}/inbox_members",
+               headers: agent.create_new_auth_token,
+               params: params,
+               as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(inbox.inbox_members.count).to eq(1)
       end
     end
 

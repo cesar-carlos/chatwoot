@@ -1135,6 +1135,31 @@ describe('#mutations', () => {
       expect(state.allConversations[0].status).toEqual('resolved');
     });
 
+    it('preserves current_user_participating when the update omits the flag', () => {
+      const state = {
+        allConversations: [
+          {
+            id: 1,
+            status: 'open',
+            updated_at: 100,
+            meta: { current_user_participating: true, assignee: { id: 2 } },
+          },
+        ],
+      };
+
+      const conversation = {
+        id: 1,
+        status: 'open',
+        updated_at: 200,
+        meta: { assignee: { id: 2 } },
+      };
+
+      mutations[types.UPDATE_CONVERSATION](state, conversation);
+      expect(state.allConversations[0].meta.current_user_participating).toBe(
+        true
+      );
+    });
+
     it('should preserve dataFetched and allMessagesLoaded during update', () => {
       const state = {
         allConversations: [
