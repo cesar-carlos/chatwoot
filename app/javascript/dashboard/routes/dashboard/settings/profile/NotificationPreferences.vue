@@ -12,6 +12,13 @@ import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import { NOTIFICATION_TYPES } from './constants';
 import { isIosSafariWithoutPwa } from 'customDashboard/lib/wavoip/wavoipNotificationEnvironment';
+// FORK: in-app popup notification preferences
+import {
+  popupFlagsForSettings,
+  requestPopupNotificationPermission,
+  supportsPopupNotificationType,
+  withPopupFlagsForAccount,
+} from 'customDashboard/composables/usePopupNotifications';
 
 export default {
   components: {
@@ -23,6 +30,7 @@ export default {
     return {
       selectedEmailFlags: [],
       selectedPushFlags: [],
+      selectedPopupFlags: [],
       enableAudioAlerts: false,
       hasEnabledPushPermissions: false,
       notificationTypes: NOTIFICATION_TYPES,
@@ -34,6 +42,7 @@ export default {
       accountId: 'getCurrentAccountId',
       emailFlags: 'userNotificationSettings/getSelectedEmailFlags',
       pushFlags: 'userNotificationSettings/getSelectedPushFlags',
+      uiSettings: 'getUISettings',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
     }),
     hasPushAPISupport() {
@@ -53,6 +62,12 @@ export default {
             ].includes(notification.value)
       );
     },
+    // FORK: voice calls already open a dedicated incoming-call popup
+    popupNotificationTypes() {
+      return this.filteredNotificationTypes.filter(notification =>
+        supportsPopupNotificationType(notification.value)
+      );
+    },
   },
   watch: {
     emailFlags(value) {
@@ -60,6 +75,16 @@ export default {
     },
     pushFlags(value) {
       this.selectedPushFlags = value;
+    },
+    // FORK: popup flags live in ui_settings, scoped to the active account
+    uiSettings: {
+      immediate: true,
+      handler() {
+        this.syncPopupFlags();
+      },
+    },
+    accountId() {
+      this.syncPopupFlags();
     },
   },
   mounted() {
@@ -69,10 +94,22 @@ export default {
     this.$store.dispatch('userNotificationSettings/get');
   },
   methods: {
+    syncPopupFlags() {
+      this.selectedPopupFlags = popupFlagsForSettings(
+        this.uiSettings,
+        this.accountId
+      );
+    },
+    canSelectPopup(notification) {
+      return supportsPopupNotificationType(notification.value);
+    },
     checkFlagStatus(type, flagType) {
-      const selectedFlags =
-        type === 'email' ? this.selectedEmailFlags : this.selectedPushFlags;
-      return selectedFlags.includes(`${type}_${flagType}`);
+      const selectedFlags = {
+        email: this.selectedEmailFlags,
+        push: this.selectedPushFlags,
+        popup: this.selectedPopupFlags,
+      }[type];
+      return (selectedFlags || []).includes(`${type}_${flagType}`);
     },
     onRegistrationSuccess() {
       this.hasEnabledPushPermissions = true;
@@ -135,8 +172,10 @@ export default {
     handleInput(type, id) {
       if (type === 'email') {
         this.handleEmailInput(id);
-      } else {
+      } else if (type === 'push') {
         this.handlePushInput(id);
+      } else if (type === 'popup') {
+        this.handlePopupInput(id);
       }
     },
     handleEmailInput(id) {
@@ -146,6 +185,30 @@ export default {
     handlePushInput(id) {
       this.selectedPushFlags = this.toggleInput(this.selectedPushFlags, id);
       this.updateNotificationSettings();
+    },
+    // FORK: persist popup flags in ui_settings and request Notification permission
+    async handlePopupInput(id) {
+      const isEnabling = !this.selectedPopupFlags.includes(id);
+      if (isEnabling) {
+        const permission = await requestPopupNotificationPermission();
+        if (permission !== 'granted') {
+          useAlert(
+            this.$t(
+              'PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_PERMISSION_ERROR'
+            )
+          );
+          return;
+        }
+      }
+      this.selectedPopupFlags = this.toggleInput(this.selectedPopupFlags, id);
+      this.$store.dispatch('updateUISettings', {
+        uiSettings: withPopupFlagsForAccount(
+          this.uiSettings,
+          this.accountId,
+          this.selectedPopupFlags
+        ),
+      });
+      useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
     },
     toggleInput(selected, current) {
       if (selected.includes(current)) {
@@ -178,7 +241,7 @@ export default {
         class="grid content-center h-12 grid-cols-12 gap-4 py-0 rounded-t-xl"
       >
         <TableHeaderCell
-          :span="7"
+          :span="6"
           label="`${$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPE_TITLE')}`"
         >
           <span class="text-heading-3 normal-case text-n-slate-12">
@@ -194,7 +257,7 @@ export default {
           </span>
         </TableHeaderCell>
         <TableHeaderCell
-          :span="3"
+          :span="2"
           label="`${$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH')}`"
         >
           <div class="flex items-center justify-between gap-1">
@@ -205,6 +268,17 @@ export default {
             </span>
           </div>
         </TableHeaderCell>
+        <!-- FORK: popup visual alerts column -->
+        <TableHeaderCell
+          :span="2"
+          label="`${$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP')}`"
+        >
+          <span
+            class="text-heading-3 normal-case text-n-slate-12 whitespace-nowrap"
+          >
+            {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP') }}
+          </span>
+        </TableHeaderCell>
       </div>
       <div
         v-for="(notification, index) in filteredNotificationTypes"
@@ -214,28 +288,38 @@ export default {
           class="grid items-center content-center h-12 grid-cols-12 gap-4 py-0 rounded-t-xl"
         >
           <div
-            class="flex flex-row items-start gap-2 col-span-7 px-0 py-2 text-sm tracking-[0.5] rtl:text-right"
+            class="flex flex-row items-start gap-2 col-span-6 px-0 py-2 text-sm tracking-[0.5] rtl:text-right"
           >
             <span class="text-body-main text-n-slate-12">
               {{ $t(notification.label) }}
             </span>
           </div>
           <div
-            v-for="(type, typeIndex) in ['email', 'push']"
-            :key="typeIndex"
-            class="flex items-start gap-2 px-0 text-sm tracking-[0.5] text-left rtl:text-right"
-            :class="`col-span-${type === 'push' ? 3 : 2}`"
+            v-for="type in ['email', 'push', 'popup']"
+            :key="type"
+            class="flex items-start col-span-2 gap-2 px-0 text-sm tracking-[0.5] text-left rtl:text-right"
           >
             <CheckBox
+              v-if="type !== 'popup' || canSelectPopup(notification)"
               :value="`${type}_${notification.value}`"
-              :is-checked="
-                checkFlagStatus(type, notification.value, selectedPushFlags)
-              "
+              :is-checked="checkFlagStatus(type, notification.value)"
               @update="id => handleInput(type, id)"
             />
+            <span
+              v-else
+              class="text-body-main text-n-slate-11"
+              :title="
+                $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_VOICE_NOTE')
+              "
+            >
+              —
+            </span>
           </div>
         </div>
       </div>
+      <p class="pt-2 text-body-main text-n-slate-11">
+        {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_VOICE_NOTE') }}
+      </p>
     </div>
     <!--  Layout for mobile devices -->
     <div class="flex flex-col gap-6 sm:hidden">
@@ -277,6 +361,34 @@ export default {
             :value="`push_${notification.value}`"
             :is-checked="checkFlagStatus('push', notification.value)"
             @update="handlePushInput"
+          />
+          <span class="text-body-main text-n-slate-12">{{
+            $t(notification.label)
+          }}</span>
+        </div>
+      </div>
+
+      <!-- FORK: popup visual alerts -->
+      <p class="text-body-main text-n-slate-11">
+        {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_VOICE_NOTE') }}
+      </p>
+      <div class="flex items-center justify-start gap-2">
+        <span class="text-heading-3 text-n-slate-12">
+          {{ $t('PROFILE_SETTINGS.FORM.POPUP_NOTIFICATIONS_SECTION.TITLE') }}
+        </span>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <div
+          v-for="(notification, index) in popupNotificationTypes"
+          :key="index"
+          class="flex flex-row items-start gap-2"
+        >
+          <CheckBox
+            :id="`popup_${notification.value}`"
+            :value="`popup_${notification.value}`"
+            :is-checked="checkFlagStatus('popup', notification.value)"
+            @update="handlePopupInput"
           />
           <span class="text-body-main text-n-slate-12">{{
             $t(notification.label)

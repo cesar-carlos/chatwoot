@@ -16,6 +16,11 @@ import { isWavoipOutboundCablePayload } from 'customDashboard/lib/wavoip/wavoipO
 // FORK: Evolution disconnect alert
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
 import { onEvolutionGoConnectionClosed } from 'customDashboard/lib/evolution_go/evolutionGoCableRegistry';
+// FORK: in-app popup notifications when the dashboard window is not focused
+import {
+  closePopupNotification,
+  showPopupNotification,
+} from 'customDashboard/composables/usePopupNotifications';
 import { markCallDismissed, isLocalCall } from 'dashboard/helper/voice';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import {
@@ -143,6 +148,8 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onConversationRead = data => {
     this.app.$store.dispatch('updateConversation', data);
+    // FORK: dismiss the visual popup once this conversation is read
+    closePopupNotification(data?.id);
   };
 
   // eslint-disable-next-line class-methods-use-this
@@ -349,6 +356,8 @@ class ActionCableConnector extends BaseActionCableConnector {
     // FORK: custom role inbox view permission
     if (!this.canAccessInboxView()) return;
     this.app.$store.dispatch('notifications/addNotification', data);
+    // FORK: in-app popup when the dashboard window is not focused
+    showPopupNotification(data, this.app.$store);
   };
 
   onNotificationDeleted = data => {

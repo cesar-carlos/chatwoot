@@ -182,6 +182,7 @@
         "TYPE_TITLE": "Tipo de notificação",
         "EMAIL": "E-mail",
         "PUSH": "Notificação ",
+        "POPUP": "Popup",
         "TYPES": {
           "CONVERSATION_CREATED": "Uma nova conversa foi criada",
           "CONVERSATION_ASSIGNED": "Uma conversa foi atribuída a você",
@@ -194,6 +195,8 @@
           "VOICE_CALL_INCOMING": "Uma chamada de voz recebida toca nesta caixa de entrada"
         },
         "BROWSER_PERMISSION": "Ative notificações push em seu navegador para poder recebê-las",
+        "POPUP_PERMISSION_ERROR": "As notificações do navegador estão bloqueadas. Ative-as nas configurações do navegador para receber popups.",
+        "POPUP_VOICE_NOTE": "Chamadas de voz recebidas já usam o popup próprio, por isso esta coluna não as inclui.",
         "WAVOIP_IOS_PWA_HINT": "No iPhone e iPad, notificações de chamadas recebidas no navegador só funcionam com o Chatwoot instalado na tela inicial (PWA).",
         "WAVOIP_PUSH_HINT": "Ative as notificações push abaixo e marque “Chamada de voz recebida” para receber alertas com a aba do painel fechada."
       },
@@ -214,6 +217,9 @@
         "SLA_MISSED_FIRST_RESPONSE": "Enviar notificações quando uma conversa perder a primeira resposta SLA",
         "SLA_MISSED_NEXT_RESPONSE": "Enviar notificações quando uma conversa perder a próxima resposta SLA",
         "SLA_MISSED_RESOLUTION": "Enviar notificações quando uma conversa perder resolução de resolução SLA"
+      },
+      "POPUP_NOTIFICATIONS_SECTION": {
+        "TITLE": "Notificações em popup"
       },
       "PROFILE_IMAGE": {
         "LABEL": "Imagem do Perfil"
