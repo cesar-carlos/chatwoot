@@ -6,8 +6,8 @@
 name: Mark stale issues and pull requests
 
 on:
-  schedule:
-  - cron: '28 3 * * *'
+  # FORK: disable scheduled stale bot; keep manual trigger
+  workflow_dispatch:
 
 jobs:
   stale:

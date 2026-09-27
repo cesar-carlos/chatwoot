@@ -10,8 +10,7 @@
 
 name: Run Linux nightly installer
 on:
-  schedule:
-    - cron: "0 0 * * *"
+  # FORK: disable nightly installer schedule; keep manual trigger
   workflow_dispatch:
 
 permissions:
