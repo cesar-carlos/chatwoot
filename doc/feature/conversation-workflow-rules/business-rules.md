@@ -316,9 +316,9 @@ Cron (*/5) e/ou ScheduleOnMessageJob:
   Para cada conta com regras ativas:
     Para cada regra (position ASC):
       IF NOT feature_flag(trigger_type) → skip
-      scope = Scope do trigger (+ inbox_ids, cutoff se calendar time)
-      conversations = scope.limit(BULK_ACTIONS_LIMIT)
-      Para cada conversa:
+      scope = Scope do trigger (+ inbox_ids, prefilter wall-clock seguro)
+      Paginar conversas por timestamp de referência + ID
+      Para cada conversa, até BULK_ACTIONS_LIMIT tentativas reivindicadas:
         IF ScopeMatcher / ThresholdMatcher falha → skip
         IF conditions present → ConditionsFilterService
         IF claim_execution! falha (dedup) → skip
@@ -329,4 +329,4 @@ Cron (*/5) e/ou ScheduleOnMessageJob:
 
 ---
 
-*Última atualização: ago/2026 — UX pack SidePanel + activity/skips*
+*Última atualização: set/2026 — paginação estável e business hours sem truncamento*

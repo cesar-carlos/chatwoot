@@ -87,7 +87,7 @@ const showTieredSlaExample = ref(false);
 const showActivity = ref(false);
 const activityLoading = ref(false);
 const activity = ref({ executions: [], skips: [] });
-const pendingSave = ref(false);
+const isSaving = ref(false);
 
 const {
   rule,
@@ -376,6 +376,9 @@ watch(
 );
 
 const persistRule = async () => {
+  if (isSaving.value) return;
+
+  isSaving.value = true;
   try {
     const payload = buildPayload();
     let response;
@@ -408,11 +411,13 @@ const persistRule = async () => {
         : t('CONVERSATION_RULES.SAVE_ERROR')
     );
   } finally {
-    pendingSave.value = false;
+    isSaving.value = false;
   }
 };
 
 const saveRule = async () => {
+  if (isSaving.value) return;
+
   if (!validateRule()) return;
 
   if (conditionsRef.value?.length) {
@@ -423,7 +428,6 @@ const saveRule = async () => {
   }
 
   if (hasContactMessageAction.value) {
-    pendingSave.value = true;
     nextTick(() => confirmDialogRef.value?.open());
     return;
   }
@@ -434,12 +438,6 @@ const saveRule = async () => {
 const onConfirmSave = async () => {
   confirmDialogRef.value?.close();
   await persistRule();
-};
-
-const onCancelConfirm = () => {
-  // Do not call confirmDialogRef.close() here — this handler runs from Dialog's
-  // @close emit, and re-entering close() would recurse forever.
-  pendingSave.value = false;
 };
 
 const closePanel = () => {
@@ -792,7 +790,7 @@ onMounted(async () => {
         <Button
           class="w-full"
           :label="$t('CONVERSATION_RULES.FORM.SAVE')"
-          :is-loading="pendingSave"
+          :is-loading="isSaving"
           @click="saveRule"
         />
       </div>
@@ -811,6 +809,5 @@ onMounted(async () => {
       $t('CONVERSATION_RULES.FORM.CONTACT_MESSAGE.CONFIRM_NO')
     "
     @confirm="onConfirmSave"
-    @close="onCancelConfirm"
   />
 </template>

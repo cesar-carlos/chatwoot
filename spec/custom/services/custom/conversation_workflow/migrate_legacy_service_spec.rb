@@ -40,4 +40,14 @@ RSpec.describe Custom::ConversationWorkflow::MigrateLegacyService do
     expect { service.perform }.not_to change(ConversationWorkflowRule, :count)
     expect(account.reload.workflow_rules_migrated?).to be(false)
   end
+
+  it 'rolls back the rule when marking the account as migrated fails' do
+    allow(account).to receive(:update!).and_raise(ActiveRecord::RecordInvalid.new(account))
+
+    expect do
+      service.perform
+    end.to raise_error(ActiveRecord::RecordInvalid)
+
+    expect(account.conversation_workflow_rules.reload).to be_empty
+  end
 end

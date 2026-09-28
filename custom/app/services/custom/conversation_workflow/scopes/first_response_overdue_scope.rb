@@ -17,8 +17,7 @@ class Custom::ConversationWorkflow::Scopes::FirstResponseOverdueScope
   private
 
   def apply_cutoff(scope)
-    multiplier = @rule.respect_business_hours? ? 3 : 1
-    cutoff = Time.now.utc - (@rule.duration_minutes * multiplier).minutes
+    cutoff = Time.now.utc - @rule.duration_minutes.minutes
     scope.where('conversations.waiting_since < ?', cutoff)
   end
 end

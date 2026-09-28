@@ -8,8 +8,8 @@ Referência do código em ago/2026 após menu independente **Regras de conversa*
 - Conversation → executions: `Custom::Conversation` `has_many … dependent: :delete_all`
 - Account destroy: `Custom::DeleteObjectJob` purga executions das rules **antes** do purge de conversations
 - Policy: `preview_count?` (admin)
-- Scopes: colunas qualificadas (`conversations.*`); BH usa prefilter wall-clock ×3 (nunca scope aberto)
-- `RuleExecutor`: ordena por timestamp de referência antes do limit 100
+- Scopes: colunas qualificadas (`conversations.*`); BH usa prefilter wall-clock pelo threshold e valida os minutos úteis no matcher
+- `RuleExecutor`: pagina por timestamp de referência + ID; o limite de 100 conta apenas tentativas reivindicadas
 - Legacy: create/update de inactivity **ativa** bloqueado enquanto `auto_resolve_after` presente e não migrado
 
 ---
@@ -91,9 +91,9 @@ Componentes em `conversationRules/components/`:
 | Threshold matcher | `custom/app/services/custom/conversation_workflow/threshold_matcher.rb` — duration calendar ou business hours |
 | Reference timestamp | `custom/app/services/custom/conversation_workflow/reference_timestamp.rb` — timestamp de referência + atributos de dedup por trigger |
 | Conditions filter | `custom/app/services/custom/conversation_workflow/conditions_filter.rb` → `AutomationRules::ConditionsFilterService` |
-| Conditions adapter | `custom/app/services/custom/conversation_workflow/conditions_rule_adapter.rb` — duck-typing de regra como AutomationRule |
+| Conditions adapter | `custom/app/services/custom/conversation_workflow/conditions_rule_adapter.rb` — expõe conta/condições no contrato de AutomationRule e normaliza o operador final |
 | Template sender | `custom/app/services/custom/conversation_workflow/template_message_sender.rb` — `MessageTemplates::Template::AutoResolve` |
-| Migrate legacy | `custom/app/services/custom/conversation_workflow/migrate_legacy_service.rb` |
+| Migrate legacy | `custom/app/services/custom/conversation_workflow/migrate_legacy_service.rb` — migração transacional serializada por conta |
 | Preview count | `custom/app/services/custom/conversation_workflow/preview_count_service.rb` |
 | Business hours | `custom/app/services/custom/conversation_workflow/business_hours_elapsed_calculator.rb` — minutos úteis via `inbox.working_hours` |
 | Automation events | `custom/app/services/custom/conversation_workflow/automation_event_dispatcher.rb` — eventos sintéticos |
@@ -238,7 +238,7 @@ Checklist obrigatório antes de go-live:
 
 | Limitação | Detalhe |
 |-----------|---------|
-| `BULK_ACTIONS_LIMIT` | 100 conversas por execução do scheduler / regra |
+| `BULK_ACTIONS_LIMIT` | Até 100 tentativas reivindicadas por execução do scheduler/regra; candidatos são paginados para evitar starvation |
 | Cron backstop | `SchedulerJob` a cada 5 min (complementa job per-message) |
 | Business hours | Sem per-message — atraso até ~5 min após threshold em horário útil |
 | `send_attachment` | Não suportado — oculto na UI; ação loga warning se presente via API |
@@ -251,4 +251,4 @@ Checklist obrigatório antes de go-live:
 
 ---
 
-*Última atualização: ago/2026 — UX pack SidePanel + activity/skips*
+*Última atualização: set/2026 — robustez de condições, paginação, business hours e migração legacy*

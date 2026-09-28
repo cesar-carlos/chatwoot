@@ -70,4 +70,71 @@ RSpec.describe Custom::ConversationWorkflow::RuleExecutor do
       executor.perform_for_conversation(conversation)
     end.not_to change(ConversationWorkflowRuleExecution, :count)
   end
+
+  it 'executes a rule when its conditions match' do
+    agent = create(:user, account: account)
+    conversation.update!(assignee: agent)
+    rule.update!(
+      conditions: [
+        {
+          'attribute_key' => 'assignee_id',
+          'filter_operator' => 'equal_to',
+          'values' => [agent.id],
+          'query_operator' => 'AND'
+        }
+      ]
+    )
+
+    executor.perform_for_conversation(conversation)
+
+    expect(conversation.reload).to be_resolved
+  end
+
+  it 'evaluates business-hour rules as soon as their wall-clock prefilter is reached' do
+    inbox.update!(working_hours_enabled: true, timezone: 'UTC')
+    inbox.working_hours.delete_all
+    7.times do |day_of_week|
+      create(
+        :working_hour,
+        inbox: inbox,
+        day_of_week: day_of_week,
+        open_all_day: true,
+        closed_all_day: false
+      )
+    end
+    conversation.update!(last_activity_at: 70.minutes.ago)
+    rule.update!(options: { 'respect_business_hours' => true })
+
+    executor.perform
+
+    expect(conversation.reload).to be_resolved
+  end
+
+  it 'continues past already claimed candidates on later scheduler runs' do
+    stub_const('Limits::BULK_ACTIONS_LIMIT', 2)
+    bulk_rule = ConversationWorkflowRule.create!(
+      account: account,
+      name: 'Label inactive',
+      trigger_type: :conversation_inactivity,
+      duration_minutes: 60,
+      actions: [{ 'action_name' => 'add_label', 'action_params' => ['reviewed'] }]
+    )
+    3.times do
+      create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        status: :open,
+        last_activity_at: 2.hours.ago,
+        waiting_since: nil
+      )
+    end
+    bulk_executor = described_class.new(account: account, rule: bulk_rule)
+
+    bulk_executor.perform
+    expect(bulk_rule.conversation_workflow_rule_executions.count).to eq(2)
+
+    bulk_executor.perform
+    expect(bulk_rule.conversation_workflow_rule_executions.count).to eq(3)
+  end
 end
