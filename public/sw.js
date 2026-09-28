@@ -1,10 +1,12 @@
-/* eslint-disable no-restricted-globals, no-console */
+/* eslint-disable no-restricted-globals */
 /* globals clients */
 self.addEventListener('push', event => {
-  let notification = event.data && event.data.json();
+  const notification = event.data.json();
 
   event.waitUntil(
     self.registration.showNotification(notification.title, {
+      body: notification.body,
+      icon: notification.icon,
       tag: notification.tag,
       data: {
         url: notification.url,
@@ -14,24 +16,29 @@ self.addEventListener('push', event => {
 });
 
 self.addEventListener('notificationclick', event => {
-  let notification = event.notification;
+  const { notification } = event;
+  notification.close();
 
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then(windowClients => {
-      let matchingWindowClients = windowClients.filter(
-        client => client.url === notification.data.url
+    (async () => {
+      const targetUrl = new URL(notification.data.url, self.location.origin)
+        .href;
+      const windowClients = await clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
+      const sameOriginClient = windowClients.find(
+        client => new URL(client.url).origin === self.location.origin
       );
 
-      if (matchingWindowClients.length) {
-        let firstWindow = matchingWindowClients[0];
-        if (firstWindow && 'focus' in firstWindow) {
-          firstWindow.focus();
-          return;
+      if (sameOriginClient) {
+        if ('navigate' in sameOriginClient) {
+          await sameOriginClient.navigate(targetUrl);
         }
+        return sameOriginClient.focus();
       }
-      if (clients.openWindow) {
-        clients.openWindow(notification.data.url);
-      }
-    })
+
+      return clients.openWindow(targetUrl);
+    })()
   );
 });

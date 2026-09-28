@@ -1,33 +1,74 @@
-/* eslint-disable no-console */
 import NotificationSubscriptions from '../api/notificationSubscription';
 import auth from '../api/auth';
-import { useAlert } from 'dashboard/composables';
 
-export const verifyServiceWorkerExistence = (callback = () => {}) => {
-  if (!('serviceWorker' in navigator)) {
-    // Service Worker isn't supported on this browser, disable or hide UI.
-    return;
-  }
-
-  if (!('PushManager' in window)) {
-    // Push isn't supported on this browser, disable or hide UI.
-    return;
-  }
-
-  navigator.serviceWorker
-    .register('/sw.js')
-    .then(registration => callback(registration))
-    .catch(registrationError => {
-      // eslint-disable-next-line
-      console.log('SW registration failed: ', registrationError);
-    });
+const PUSH_STATUS = {
+  UNSUPPORTED: 'unsupported',
+  REQUIRES_INSTALL: 'requires_install',
+  DEFAULT: 'default',
+  DENIED: 'denied',
+  SUBSCRIBED: 'subscribed',
+  UNSUBSCRIBED: 'unsubscribed',
 };
 
-export const hasPushPermissions = () => {
-  if ('Notification' in window) {
-    return Notification.permission === 'granted';
+const isIosDevice = () =>
+  /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+const isStandalone = () =>
+  window.matchMedia('(display-mode: standalone)').matches ||
+  navigator.standalone === true;
+
+export const getPushEnvironment = () => {
+  const permission =
+    'Notification' in window ? Notification.permission : PUSH_STATUS.DEFAULT;
+
+  if (isIosDevice() && !isStandalone()) {
+    return {
+      supported: false,
+      status: PUSH_STATUS.REQUIRES_INSTALL,
+      permission,
+    };
   }
-  return false;
+
+  const supported =
+    window.isSecureContext &&
+    'serviceWorker' in navigator &&
+    'PushManager' in window &&
+    'Notification' in window &&
+    Boolean(window.chatwootConfig.vapidPublicKey);
+
+  return {
+    supported,
+    status: supported ? permission : PUSH_STATUS.UNSUPPORTED,
+    permission,
+  };
+};
+
+const registerServiceWorker = () => navigator.serviceWorker.register('/sw.js');
+
+const currentApplicationServerKey = () => {
+  const key = window.chatwootConfig.vapidPublicKey;
+  if (typeof key !== 'string') {
+    return new Uint8Array(key);
+  }
+
+  const padding = '='.repeat((4 - (key.length % 4)) % 4);
+  const base64 = (key + padding).replace(/-/g, '+').replace(/_/g, '/');
+  return Uint8Array.from(atob(base64), character => character.charCodeAt(0));
+};
+
+const subscriptionUsesCurrentKey = subscription => {
+  const subscriptionKey = subscription.options.applicationServerKey;
+  if (!subscriptionKey) {
+    return false;
+  }
+
+  const actual = new Uint8Array(subscriptionKey);
+  const expected = currentApplicationServerKey();
+  return (
+    actual.length === expected.length &&
+    actual.every((value, index) => value === expected[index])
+  );
 };
 
 const generateKeys = str =>
@@ -44,49 +85,111 @@ export const getPushSubscriptionPayload = subscription => ({
   },
 });
 
-export const sendRegistrationToServer = subscription => {
-  if (auth.hasAuthCookie()) {
-    return NotificationSubscriptions.create(
-      getPushSubscriptionPayload(subscription)
+export const sendRegistrationToServer = async subscription => {
+  if (!auth.hasAuthCookie()) {
+    throw new Error(
+      'Cannot synchronize a push subscription without authentication'
     );
   }
-  return null;
+
+  return NotificationSubscriptions.create(
+    getPushSubscriptionPayload(subscription)
+  );
 };
 
-export const registerSubscription = (onSuccess = () => {}) => {
-  if (!window.chatwootConfig.vapidPublicKey) {
-    return;
+const subscribe = registration =>
+  registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: window.chatwootConfig.vapidPublicKey,
+  });
+
+const synchronizePushSubscription = async environment => {
+  const registration = await registerServiceWorker();
+  let subscription = await registration.pushManager.getSubscription();
+
+  if (subscription && !subscriptionUsesCurrentKey(subscription)) {
+    await NotificationSubscriptions.destroyBrowserSubscription(
+      subscription.endpoint
+    );
+    const removed = await subscription.unsubscribe();
+    if (!removed) {
+      throw new Error('The browser did not remove the stale push subscription');
+    }
+    subscription = null;
   }
-  navigator.serviceWorker.ready
-    .then(serviceWorkerRegistration =>
-      serviceWorkerRegistration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: window.chatwootConfig.vapidPublicKey,
-      })
-    )
-    .then(sendRegistrationToServer)
-    .then(() => {
-      onSuccess();
-    })
-    .catch(error => {
-      // eslint-disable-next-line no-console
-      console.error('Push subscription registration failed:', error);
-      useAlert('This browser does not support desktop notification');
-    });
+
+  if (!subscription) {
+    subscription = await subscribe(registration);
+  }
+  await sendRegistrationToServer(subscription);
+
+  return {
+    ...environment,
+    status: PUSH_STATUS.SUBSCRIBED,
+    subscription,
+  };
 };
 
-export const requestPushPermissions = ({ onSuccess }) => {
-  if (!('Notification' in window)) {
-    // eslint-disable-next-line no-console
-    console.warn('Notification is not supported');
-    useAlert('This browser does not support desktop notification');
-  } else if (Notification.permission === 'granted') {
-    registerSubscription(onSuccess);
-  } else if (Notification.permission !== 'denied') {
-    Notification.requestPermission(permission => {
-      if (permission === 'granted') {
-        registerSubscription(onSuccess);
-      }
-    });
+export const ensurePushSubscription = async () => {
+  const environment = getPushEnvironment();
+  if (!environment.supported || environment.permission !== 'granted') {
+    return environment;
   }
+
+  return synchronizePushSubscription(environment);
+};
+
+export const requestAndSubscribe = async () => {
+  const environment = getPushEnvironment();
+  if (!environment.supported) {
+    return environment;
+  }
+
+  const permission =
+    environment.permission === PUSH_STATUS.DEFAULT
+      ? await Notification.requestPermission()
+      : environment.permission;
+
+  if (permission !== 'granted') {
+    return { ...environment, status: permission, permission };
+  }
+
+  return synchronizePushSubscription({
+    ...environment,
+    status: permission,
+    permission,
+  });
+};
+
+export const unsubscribePush = async () => {
+  const environment = getPushEnvironment();
+  if (!environment.supported) {
+    return environment;
+  }
+
+  const registration = await registerServiceWorker();
+  const subscription = await registration.pushManager.getSubscription();
+  if (!subscription) {
+    return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
+  }
+
+  let serverError;
+  try {
+    await NotificationSubscriptions.destroyBrowserSubscription(
+      subscription.endpoint
+    );
+  } catch (error) {
+    serverError = error;
+  }
+
+  const removedLocally = await subscription.unsubscribe();
+  if (!removedLocally) {
+    throw new Error('The browser did not remove the push subscription');
+  }
+
+  return {
+    ...environment,
+    status: PUSH_STATUS.UNSUBSCRIBED,
+    serverError,
+  };
 };

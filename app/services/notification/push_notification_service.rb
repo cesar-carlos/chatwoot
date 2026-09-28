@@ -1,4 +1,12 @@
 class Notification::PushNotificationService
+  WEB_PUSH_OPTIONS = {
+    ttl: 1.day.to_i,
+    urgency: 'high',
+    ssl_timeout: 5,
+    open_timeout: 5,
+    read_timeout: 5
+  }.freeze
+
   include Rails.application.routes.url_helpers
 
   pattr_initialize [:notification!]
@@ -33,6 +41,8 @@ class Notification::PushNotificationService
   def push_message
     {
       title: notification.push_message_title,
+      body: notification.push_message_body,
+      icon: GlobalConfigService.load('PWA_ICON_URL', '/favicon-512x512.png'),
       tag: "#{notification.notification_type}_#{conversation.display_id}_#{notification.id}",
       url: push_url
     }
@@ -57,9 +67,7 @@ class Notification::PushNotificationService
         public_key: VapidService.public_key,
         private_key: VapidService.private_key
       },
-      ssl_timeout: 5,
-      open_timeout: 5,
-      read_timeout: 5
+      **WEB_PUSH_OPTIONS
     }
   end
 
@@ -67,20 +75,22 @@ class Notification::PushNotificationService
     return unless can_send_browser_push?(subscription)
 
     WebPush.payload_send(**browser_push_payload(subscription))
-    Rails.logger.info("Browser push sent to #{user.email} with title #{push_message[:title]}")
+    Rails.logger.info("Browser push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push")
   rescue StandardError => e
     handle_browser_push_error(e, subscription)
   end
 
   def handle_browser_push_error(error, subscription)
+    log_context = "user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push error_class=#{error.class.name}"
+
     case error
     when WebPush::ExpiredSubscription, WebPush::InvalidSubscription, WebPush::Unauthorized
-      Rails.logger.info "WebPush subscription expired: #{error.message}"
+      Rails.logger.info "WebPush subscription expired #{log_context}"
       subscription.destroy!
     when WebPush::TooManyRequests
-      Rails.logger.warn "WebPush rate limited for #{user.email} on account #{notification.account.id}: #{error.message}"
+      Rails.logger.warn "WebPush rate limited #{log_context}"
     when Errno::ECONNRESET, Net::OpenTimeout, Net::ReadTimeout, Socket::ResolutionError
-      Rails.logger.error "WebPush operation error: #{error.message}"
+      Rails.logger.error "WebPush operation error #{log_context}"
     else
       ChatwootExceptionTracker.new(error, account: notification.account).capture_exception
       true
@@ -119,7 +129,7 @@ class Notification::PushNotificationService
     if JSON.parse(response[:body])['results']&.first&.keys&.include?('error')
       subscription.destroy!
     else
-      Rails.logger.info("FCM push sent to #{user.email} with title #{push_message[:title]}")
+      Rails.logger.info("FCM push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=fcm")
     end
   end
 

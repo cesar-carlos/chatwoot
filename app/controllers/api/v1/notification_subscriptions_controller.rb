@@ -24,3 +24,6 @@ class Api::V1::NotificationSubscriptionsController < Api::BaseController
     params.require(:notification_subscription).permit(:subscription_type, subscription_attributes: {})
   end
 end
+
+# FORK: remove browser push subscriptions by endpoint while preserving FCM cleanup
+Api::V1::NotificationSubscriptionsController.prepend_mod_with('Api::V1::NotificationSubscriptionsController')
