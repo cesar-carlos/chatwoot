@@ -44,7 +44,7 @@ class Notification::PushTestService
     return result(subscription, 'browser_push', :skipped, 'VAPID keys not configured') unless VapidService.public_key
 
     WebPush.payload_send(**browser_push_payload(subscription))
-    result(subscription, 'browser_push', :success, 'Web push accepted by endpoint')
+    result(subscription, 'browser_push', :success, 'Accepted by push service; device display is not confirmed')
   rescue StandardError => e
     result(subscription, 'browser_push', :failure, "#{e.class.name}: #{e.message}")
   end
@@ -93,6 +93,8 @@ class Notification::PushTestService
     {
       message: JSON.generate(
         title: resolved_title,
+        body: resolved_body,
+        icon: GlobalConfigService.load('PWA_ICON_URL', '/favicon-512x512.png'),
         tag: "super_admin_test_#{Time.zone.now.to_i}",
         url: ENV.fetch('FRONTEND_URL', 'https://app.chatwoot.com')
       ),
@@ -104,9 +106,7 @@ class Notification::PushTestService
         public_key: VapidService.public_key,
         private_key: VapidService.private_key
       },
-      ssl_timeout: 5,
-      open_timeout: 5,
-      read_timeout: 5
+      **Notification::PushNotificationService::WEB_PUSH_OPTIONS
     }
   end
 

@@ -16,28 +16,40 @@ describe Notification::PushNotificationService do
         allow(fcm_double).to receive(:send_v1).and_return({ body: { 'results': [] }.to_json })
         allow(GlobalConfigService).to receive(:load).with('FIREBASE_PROJECT_ID', nil).and_return('test_project_id')
         allow(GlobalConfigService).to receive(:load).with('FIREBASE_CREDENTIALS', nil).and_return('test_credentials')
+        allow(GlobalConfigService).to receive(:load).with('PWA_ICON_URL', '/favicon-512x512.png').and_return('/pwa-icon.png')
       end
 
       it 'sends webpush notifications for webpush subscription' do
         with_modified_env VAPID_PUBLIC_KEY: 'test' do
-          create(:notification_subscription, user: notification.user)
+          subscription = create(:notification_subscription, user: notification.user)
 
           described_class.new(notification: notification).perform
-          expect(WebPush).to have_received(:payload_send)
+
+          expect(WebPush).to have_received(:payload_send) do |payload|
+            message = JSON.parse(payload[:message]).with_indifferent_access
+            expect(message).to include(
+              title: notification.push_message_title,
+              body: notification.push_message_body,
+              icon: '/pwa-icon.png'
+            )
+            expect(payload).to include(ttl: 1.day.to_i, urgency: 'high')
+          end
           expect(Notification::FcmService).not_to have_received(:new)
-          expect(Rails.logger).to have_received(:info).with("Browser push sent to #{user.email} with title #{notification.push_message_title}")
+          expect(Rails.logger).to have_received(:info)
+            .with("Browser push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push")
         end
       end
 
       it 'sends a fcm notification for firebase subscription' do
         with_modified_env ENABLE_PUSH_RELAY_SERVER: 'false' do
-          create(:notification_subscription, user: notification.user, subscription_type: 'fcm')
+          subscription = create(:notification_subscription, user: notification.user, subscription_type: 'fcm')
 
           described_class.new(notification: notification).perform
           expect(Notification::FcmService).to have_received(:new)
           expect(fcm_double).to have_received(:send_v1)
           expect(WebPush).not_to have_received(:payload_send)
-          expect(Rails.logger).to have_received(:info).with("FCM push sent to #{user.email} with title #{notification.push_message_title}")
+          expect(Rails.logger).to have_received(:info)
+            .with("FCM push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=fcm")
         end
       end
     end
@@ -52,13 +64,14 @@ describe Notification::PushNotificationService do
         allow(WebPush).to receive(:payload_send).and_raise(WebPush::InvalidSubscription.new(mock_response, mock_host))
         allow(Rails.logger).to receive(:info)
 
-        create(:notification_subscription, :browser_push, user: notification.user)
+        subscription = create(:notification_subscription, :browser_push, user: notification.user)
 
         expect(Rails.logger).to receive(:info) do |message|
-          expect(message).to include('WebPush subscription expired:')
+          expect(message).to include('WebPush subscription expired')
         end
 
         described_class.new(notification: notification).perform
+        expect { subscription.reload }.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
   end
