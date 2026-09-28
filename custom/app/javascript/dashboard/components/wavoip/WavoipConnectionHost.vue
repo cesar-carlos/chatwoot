@@ -3,15 +3,16 @@ import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import { useStore } from 'vuex';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useI18n } from 'vue-i18n';
+import { useBranding } from 'shared/composables/useBranding';
 import { useWavoipCallSession } from 'customDashboard/composables/wavoip/useWavoipCallSession';
 import { getWavoipSdkSyncKey } from 'customDashboard/composables/wavoip/useWavoipConnection';
 import { registerWavoipCallSession } from 'customDashboard/lib/voice/voiceSessionRegistry';
 import { endActiveCall } from 'customDashboard/composables/wavoip/useWavoipActiveCall';
-import { requestWavoipNotificationPermission } from 'customDashboard/composables/wavoip/useWavoipNotifications';
 import { isIosSafariWithoutPwa } from 'customDashboard/lib/wavoip/wavoipNotificationEnvironment';
 
 const store = useStore();
 const { t } = useI18n();
+const { replaceInstallationName } = useBranding();
 const currentUserAvailability = useMapGetter('getCurrentUserAvailability');
 const wavoipSdkSyncKey = computed(() => getWavoipSdkSyncKey(store));
 const wavoipSession = useWavoipCallSession();
@@ -23,9 +24,6 @@ registerWavoipCallSession(wavoipSession);
 watch(
   [currentUserAvailability, wavoipSdkSyncKey],
   async ([availability]) => {
-    if (availability === 'online') {
-      await requestWavoipNotificationPermission();
-    }
     await syncWithAvailability(availability);
   },
   { immediate: true }
@@ -47,7 +45,11 @@ onBeforeUnmount(async () => {
     >
       <div class="flex items-start justify-between gap-3">
         <p>
-          {{ t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.WAVOIP_IOS_PWA_HINT') }}
+          {{
+            replaceInstallationName(
+              t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.IOS_PWA_HINT')
+            )
+          }}
         </p>
         <button
           type="button"
