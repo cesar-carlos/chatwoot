@@ -124,8 +124,25 @@ describe('usePopupNotifications', () => {
     );
 
     expect(global.Notification).not.toHaveBeenCalled();
-    expect(isViewingConversation(42)).toBe(true);
-    expect(isViewingConversation(7)).toBe(false);
+    expect(isViewingConversation(1, 42)).toBe(true);
+    expect(isViewingConversation(1, 7)).toBe(false);
+  });
+
+  it('shows the same display id when it belongs to another account', () => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => 'visible',
+    });
+    window.history.pushState({}, '', '/app/accounts/2/conversations/42');
+
+    showPopupNotification(
+      messageNotification(),
+      storeFor({ 1: ['popup_assigned_conversation_new_message'] }, 2)
+    );
+
+    expect(global.Notification).toHaveBeenCalled();
+    expect(isViewingConversation(1, 42)).toBe(false);
+    expect(isViewingConversation(2, 42)).toBe(true);
   });
 
   it('shows a popup when the window is visible on another conversation', () => {
@@ -140,7 +157,7 @@ describe('usePopupNotifications', () => {
     );
 
     expect(global.Notification).toHaveBeenCalledWith('Maria', {
-      tag: 'chatwoot-popup-42',
+      tag: 'chatwoot-popup-1-42',
       body: 'oi',
       icon: '/avatar.png',
     });
@@ -184,7 +201,9 @@ describe('usePopupNotifications', () => {
       storeFor({ 1: ['popup_assigned_conversation_new_message'] })
     );
 
-    closePopupNotification(42);
+    closePopupNotification(2, 42);
+    expect(closeMock).not.toHaveBeenCalled();
+    closePopupNotification(1, 42);
 
     expect(closeMock).toHaveBeenCalled();
   });

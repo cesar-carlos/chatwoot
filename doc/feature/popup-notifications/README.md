@@ -2,14 +2,14 @@
 
 Aviso nativo do navegador (`new Notification`) quando chega um evento de notificação e o agente não está com aquela conversa aberta.
 
-**Estado:** implementado · 27/set/2026
+**Estado:** implementado e revisado · 28/set/2026
 
 | Área | Status |
 |------|--------|
 | Coluna Popup na tabela de preferências | ✅ desktop + mobile |
 | Persistência em `users.ui_settings` | ✅ por conta (`popup_notification_flags_by_account`) |
 | Disparo no `notification.created` | ✅ omite só a conversa que já está aberta |
-| Permissão do navegador no primeiro checkbox | ✅ |
+| Permissão do navegador no primeiro checkbox ou CTA explícito | ✅ |
 | Chamada de voz (`voice_call_incoming`) | ❌ sem checkbox (popup já existe no Wavoip) |
 | Push com a aba fechada | ❌ continua na coluna Notificação |
 | i18n | ✅ en + pt_BR |
@@ -35,13 +35,13 @@ Aviso nativo do navegador (`new Notification`) quando chega um evento de notific
 | Canal | `Notification` da página, não Web Push / service worker |
 | Evento | `notification.created` (Action Cable), depois do gate de inbox |
 | Quando mostrar | Janela oculta, ou visível numa conversa diferente |
-| Persistência | `users.ui_settings.popup_notification_flags_by_account`, por conta |
+| Persistência | `users.ui_settings.popup_notification_flags_by_account`, por conta, com rollback em erro |
 | Padrão | Array vazio por conta — o agente marca o que quer |
-| Janela visível | Mostra se a conversa aberta for outra; omite se a URL já é essa conversa |
+| Janela visível | Mostra se conta ou conversa forem diferentes; omite somente a rota exata |
 | Corpo | Texto da mensagem, sem repetir o nome que já está no título |
 | Backend | Nenhum endpoint, migration ou flag em `notification_settings` |
-| Voz | Sem checkbox; `useWavoipNotifications` já abre o popup de chamada |
-| Clique | `window.focus()` + rota da conversa (`display_id`) |
+| Voz | Sem checkbox; CTA explícito concede a permissão usada pelo popup Wavoip |
+| Clique | `window.focus()` + rota da conversa (`account_id` + `display_id`) |
 | i18n | **en + pt_BR** |
 | Fork | Helper em `custom/` + `// FORK:` em `actionCable.js` e `NotificationPreferences.vue` |
 
@@ -65,4 +65,4 @@ A tabela de preferências só tinha e-mail e push. O som fica em outra seção e
 
 ---
 
-*Última atualização: 27/set/2026*
+*Última atualização: 28/set/2026*

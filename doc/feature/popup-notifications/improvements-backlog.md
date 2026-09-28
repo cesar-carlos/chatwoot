@@ -1,6 +1,6 @@
 # Popup visual — Improvements backlog
 
-Itens fora da entrega de 27/set/2026.
+Itens fora da entrega, revisados em 28/set/2026.
 
 ---
 
@@ -12,6 +12,10 @@ Itens fora da entrega de 27/set/2026.
 - Popup com a janela em foco quando a conversa aberta é outra
 - Fecha o aviso em `conversation.read`
 - Nota na linha de chamada de voz
+- Chaves, tags e detecção da conversa visível isoladas por conta
+- Persistência estrita com rollback da seleção quando a API falha
+- Ação explícita para conceder permissão aos alertas com painel aberto
+- Opt-in Web Push independente e persistido por dispositivo
 - Specs do helper
 
 ---

@@ -149,7 +149,7 @@ class ActionCableConnector extends BaseActionCableConnector {
   onConversationRead = data => {
     this.app.$store.dispatch('updateConversation', data);
     // FORK: dismiss the visual popup once this conversation is read
-    closePopupNotification(data?.id);
+    closePopupNotification(data?.account_id, data?.id);
   };
 
   // eslint-disable-next-line class-methods-use-this

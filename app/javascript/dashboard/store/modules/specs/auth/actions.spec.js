@@ -172,7 +172,38 @@ describe('#actions', () => {
       ]);
     });
   });
+  describe('#updateUISettingsStrict', () => {
+    it('commits server state after a successful update', async () => {
+      axios.put.mockResolvedValue({
+        data: {
+          id: 1,
+          ui_settings: { popup_notification_flags_by_account: { 1: [] } },
+        },
+      });
+      const params = {
+        uiSettings: { popup_notification_flags_by_account: { 1: [] } },
+      };
+      await actions.updateUISettingsStrict({ commit }, params);
 
+      expect(commit).toHaveBeenCalledWith(types.SET_CURRENT_USER, {
+        id: 1,
+        ui_settings: { popup_notification_flags_by_account: { 1: [] } },
+      });
+    });
+
+    it('propagates API failures without committing optimistic state', async () => {
+      const error = new Error('request failed');
+      axios.put.mockRejectedValue(error);
+      const params = {
+        uiSettings: { popup_notification_flags_by_account: { 1: [] } },
+      };
+
+      await expect(
+        actions.updateUISettingsStrict({ commit }, params)
+      ).rejects.toBe(error);
+      expect(commit).not.toHaveBeenCalled();
+    });
+  });
   describe('#setUser', () => {
     it('sends correct actions if user is logged in', async () => {
       Cookies.get.mockImplementation(() => true);

@@ -2,7 +2,7 @@
 
 Comparação de abordagens para o aviso visual quando chega mensagem, no estilo do WhatsApp Web.
 
-**Decisões fechadas:** 27/set/2026.
+**Decisões revisadas:** 28/set/2026.
 
 ---
 
@@ -77,7 +77,7 @@ Descartada. `ui_settings` já sincroniza entre aparelhos pela API de perfil.
 
 | Tópico | Escolha | Motivo |
 |--------|---------|--------|
-| Popup com a janela em foco | Mostra se a conversa aberta for outra | A URL `/conversations/<id>` é o que indica que o agente já está vendo aquela conversa |
-| `voice_call_incoming` | Sem checkbox | Wavoip já chama `new Notification` |
-| Permissão | Pedir ao marcar, não no toggle de push | O toggle registra subscription Web Push |
-| Tag | Por `display_id` da conversa | Rajada substitui o aviso anterior |
+| Popup com a janela em foco | Mostra se a conversa aberta for outra | A URL `/accounts/<account_id>/conversations/<display_id>` identifica conta e conversa; o mesmo `display_id` pode existir em contas diferentes |
+| `voice_call_incoming` | Sem checkbox próprio | Wavoip usa a permissão comum de notificações; uma ação explícita na tela permite concedê-la sem ativar Web Push |
+| Permissão | Pedir ao marcar Popup ou pela ação explícita de alertas com painel aberto | O toggle Push registra a subscription Web Push e mantém opt-in próprio por dispositivo |
+| Tag | Por `account_id` e `display_id` | Rajadas da mesma conversa se substituem sem colidir entre contas |

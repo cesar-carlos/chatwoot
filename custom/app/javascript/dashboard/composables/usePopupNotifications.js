@@ -6,6 +6,8 @@ export const POPUP_FLAGS_BY_ACCOUNT_KEY = 'popup_notification_flags_by_account';
 const LEGACY_POPUP_FLAGS_KEY = 'popup_notification_flags';
 
 const openPopups = new Map();
+const popupKey = (accountId, conversationId) =>
+  `${accountId}:${conversationId}`;
 
 export const popupFlagFor = notificationType => `popup_${notificationType}`;
 
@@ -68,11 +70,13 @@ export const popupMessageBody = (body, senderName) => {
   return text;
 };
 
-export const isViewingConversation = conversationId => {
+export const isViewingConversation = (accountId, conversationId) => {
   if (document.visibilityState !== 'visible') return false;
   if (conversationId == null || conversationId === '') return false;
   const path = window.location.pathname || '';
-  return new RegExp(`/conversations/${conversationId}(?:/|$)`).test(path);
+  return new RegExp(
+    `/accounts/${accountId}/conversations/${conversationId}(?:/|$)`
+  ).test(path);
 };
 
 const conversationFromNotification = notification => {
@@ -93,18 +97,18 @@ const navigateToConversation = (accountId, conversationId) => {
   });
 };
 
-export const closePopupNotification = conversationId => {
+export const closePopupNotification = (accountId, conversationId) => {
   if (conversationId == null) return;
-  const key = String(conversationId);
+  const key = popupKey(accountId, conversationId);
   const notification = openPopups.get(key);
   if (!notification) return;
   openPopups.delete(key);
   notification.close();
 };
 
-const rememberPopup = (conversationId, nativeNotification) => {
+const rememberPopup = (accountId, conversationId, nativeNotification) => {
   if (conversationId == null) return;
-  const key = String(conversationId);
+  const key = popupKey(accountId, conversationId);
   openPopups.set(key, nativeNotification);
   nativeNotification.onclose = () => {
     if (openPopups.get(key) === nativeNotification) openPopups.delete(key);
@@ -130,17 +134,21 @@ export const showPopupNotification = (payload, store) => {
 
   const { conversationId, senderName, icon } =
     conversationFromNotification(notification);
-  if (isViewingConversation(conversationId)) return;
+  if (isViewingConversation(accountId, conversationId)) return;
 
   const title = senderName || notification.notification_type;
   const body = popupMessageBody(notification.push_message_body, senderName);
 
   const nativeNotification = new Notification(title, {
-    tag: `chatwoot-popup-${conversationId || notification.id}`,
+    tag: `chatwoot-popup-${accountId}-${conversationId || notification.id}`,
     body,
     icon,
   });
-  rememberPopup(conversationId || notification.id, nativeNotification);
+  rememberPopup(
+    accountId,
+    conversationId || notification.id,
+    nativeNotification
+  );
 
   nativeNotification.onclick = event => {
     event?.preventDefault?.();
