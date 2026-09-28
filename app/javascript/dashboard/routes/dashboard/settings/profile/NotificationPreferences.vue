@@ -1,17 +1,18 @@
 <script>
 import { mapGetters } from 'vuex';
 import { useAlert } from 'dashboard/composables';
+import { useBranding } from 'shared/composables/useBranding';
 import TableHeaderCell from 'dashboard/components/widgets/TableHeaderCell.vue';
 import CheckBox from 'v3/components/Form/CheckBox.vue';
 import {
-  hasPushPermissions,
-  requestPushPermissions,
-  verifyServiceWorkerExistence,
+  ensurePushSubscription,
+  getPushEnvironment,
+  requestAndSubscribe,
+  unsubscribePush,
 } from 'dashboard/helper/pushHelper.js';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import { NOTIFICATION_TYPES } from './constants';
-import { isIosSafariWithoutPwa } from 'customDashboard/lib/wavoip/wavoipNotificationEnvironment';
 // FORK: in-app popup notification preferences
 import {
   popupFlagsForSettings,
@@ -26,6 +27,12 @@ export default {
     ToggleSwitch,
     CheckBox,
   },
+  setup() {
+    const { replaceInstallationName } = useBranding();
+    return {
+      replaceInstallationName,
+    };
+  },
   data() {
     return {
       selectedEmailFlags: [],
@@ -34,7 +41,7 @@ export default {
       enableAudioAlerts: false,
       hasEnabledPushPermissions: false,
       notificationTypes: NOTIFICATION_TYPES,
-      showIosPwaHint: isIosSafariWithoutPwa(),
+      pushStatus: getPushEnvironment().status,
     };
   },
   computed: {
@@ -45,8 +52,26 @@ export default {
       uiSettings: 'getUISettings',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
     }),
-    hasPushAPISupport() {
-      return !!('Notification' in window);
+    isPushToggleDisabled() {
+      return ['unsupported', 'requires_install'].includes(this.pushStatus);
+    },
+    pushStatusMessage() {
+      const statusKeys = {
+        unsupported: 'PUSH_STATUS_UNSUPPORTED',
+        requires_install: 'PUSH_STATUS_REQUIRES_INSTALL',
+        default: 'PUSH_STATUS_DEFAULT',
+        denied: 'PUSH_STATUS_DENIED',
+        subscribed: 'PUSH_STATUS_SUBSCRIBED',
+        unsubscribed: 'PUSH_STATUS_UNSUBSCRIBED',
+        error: 'PUSH_STATUS_ERROR',
+      };
+      const key = statusKeys[this.pushStatus] || statusKeys.error;
+      return this.replaceInstallationName(
+        this.$t(`PROFILE_SETTINGS.FORM.NOTIFICATIONS.${key}`)
+      );
+    },
+    showIosPwaHint() {
+      return this.pushStatus === 'requires_install';
     },
     isSLAEnabled() {
       return this.isFeatureEnabledonAccount(this.accountId, FEATURE_FLAGS.SLA);
@@ -88,9 +113,7 @@ export default {
     },
   },
   mounted() {
-    if (hasPushPermissions()) {
-      this.getPushSubscription();
-    }
+    this.refreshPushSubscription();
     this.$store.dispatch('userNotificationSettings/get');
   },
   methods: {
@@ -111,61 +134,58 @@ export default {
       }[type];
       return (selectedFlags || []).includes(`${type}_${flagType}`);
     },
-    onRegistrationSuccess() {
-      this.hasEnabledPushPermissions = true;
-    },
-    onRequestPermissions(value) {
-      if (value) {
-        // Enable / re-enable push notifications
-        requestPushPermissions({
-          onSuccess: this.onRegistrationSuccess,
-        });
-      } else {
-        // Disable push notifications
-        this.disablePushPermissions();
+    async refreshPushSubscription() {
+      const environment = getPushEnvironment();
+      this.pushStatus = environment.status;
+      this.hasEnabledPushPermissions = false;
+
+      if (!environment.supported || environment.permission !== 'granted') {
+        return;
+      }
+
+      try {
+        const result = await ensurePushSubscription();
+        this.pushStatus = result.status;
+        this.hasEnabledPushPermissions = result.status === 'subscribed';
+      } catch (error) {
+        this.pushStatus = 'error';
       }
     },
-    disablePushPermissions() {
-      verifyServiceWorkerExistence(registration =>
-        registration.pushManager
-          .getSubscription()
-          .then(subscription => {
-            if (subscription) {
-              return subscription.unsubscribe();
-            }
-            return null;
-          })
-          .finally(() => {
-            this.hasEnabledPushPermissions = false;
-          })
-          .catch(() => {
-            // error
-          })
-      );
-    },
-    getPushSubscription() {
-      verifyServiceWorkerExistence(registration =>
-        registration.pushManager
-          .getSubscription()
-          .then(subscription => {
-            if (!subscription) {
-              this.hasEnabledPushPermissions = false;
-            } else {
-              this.hasEnabledPushPermissions = true;
-            }
-          })
-          // eslint-disable-next-line no-console
-          .catch(error => console.log(error))
-      );
-    },
-    async updateNotificationSettings() {
+    async onRequestPermissions(value) {
+      const previousValue = !value;
+
       try {
-        this.$store.dispatch('userNotificationSettings/update', {
+        const result = value
+          ? await requestAndSubscribe()
+          : await unsubscribePush();
+        this.pushStatus = result.status;
+        this.hasEnabledPushPermissions = result.status === 'subscribed';
+
+        if (result.serverError) {
+          useAlert(
+            this.$t(
+              'PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_UNSUBSCRIBE_ERROR'
+            )
+          );
+        }
+      } catch (error) {
+        this.pushStatus = 'error';
+        this.hasEnabledPushPermissions = previousValue;
+        useAlert(
+          this.$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_SUBSCRIPTION_ERROR')
+        );
+      }
+    },
+    async updateNotificationSettings(previousEmailFlags, previousPushFlags) {
+      try {
+        await this.$store.dispatch('userNotificationSettings/update', {
           selectedEmailFlags: this.selectedEmailFlags,
           selectedPushFlags: this.selectedPushFlags,
         });
         useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
       } catch (error) {
+        this.selectedEmailFlags = previousEmailFlags;
+        this.selectedPushFlags = previousPushFlags;
         useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_ERROR'));
       }
     },
@@ -178,13 +198,23 @@ export default {
         this.handlePopupInput(id);
       }
     },
-    handleEmailInput(id) {
+    async handleEmailInput(id) {
+      const previousEmailFlags = [...this.selectedEmailFlags];
+      const previousPushFlags = [...this.selectedPushFlags];
       this.selectedEmailFlags = this.toggleInput(this.selectedEmailFlags, id);
-      this.updateNotificationSettings();
+      await this.updateNotificationSettings(
+        previousEmailFlags,
+        previousPushFlags
+      );
     },
-    handlePushInput(id) {
+    async handlePushInput(id) {
+      const previousEmailFlags = [...this.selectedEmailFlags];
+      const previousPushFlags = [...this.selectedPushFlags];
       this.selectedPushFlags = this.toggleInput(this.selectedPushFlags, id);
-      this.updateNotificationSettings();
+      await this.updateNotificationSettings(
+        previousEmailFlags,
+        previousPushFlags
+      );
     },
     // FORK: persist popup flags in ui_settings and request Notification permission
     async handlePopupInput(id) {
@@ -200,15 +230,21 @@ export default {
           return;
         }
       }
+      const previousPopupFlags = [...this.selectedPopupFlags];
       this.selectedPopupFlags = this.toggleInput(this.selectedPopupFlags, id);
-      this.$store.dispatch('updateUISettings', {
-        uiSettings: withPopupFlagsForAccount(
-          this.uiSettings,
-          this.accountId,
-          this.selectedPopupFlags
-        ),
-      });
-      useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
+      try {
+        await this.$store.dispatch('updateUISettings', {
+          uiSettings: withPopupFlagsForAccount(
+            this.uiSettings,
+            this.accountId,
+            this.selectedPopupFlags
+          ),
+        });
+        useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
+      } catch (error) {
+        this.selectedPopupFlags = previousPopupFlags;
+        useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_ERROR'));
+      }
     },
     toggleInput(selected, current) {
       if (selected.includes(current)) {
@@ -227,13 +263,16 @@ export default {
       v-if="showIosPwaHint"
       class="rounded-lg border border-n-amber-6 bg-n-amber-2 px-4 py-3 text-sm text-n-amber-12"
     >
-      {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.WAVOIP_IOS_PWA_HINT') }}
+      {{
+        replaceInstallationName(
+          $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.IOS_PWA_HINT')
+        )
+      }}
     </p>
     <p
-      v-if="hasPushAPISupport"
       class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-4 py-3 text-sm text-n-slate-11"
     >
-      {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.WAVOIP_PUSH_HINT') }}
+      {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.DELIVERY_MODES_HINT') }}
     </p>
     <!-- Layout for desktop devices -->
     <div class="hidden sm:block">
@@ -406,12 +445,18 @@ export default {
           class="flex-shrink-0 text-n-slate-12"
           size="18"
         />
-        <span class="text-body-main text-n-slate-12">
-          {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.BROWSER_PERMISSION') }}
-        </span>
+        <div class="flex flex-col gap-1">
+          <span class="text-body-main text-n-slate-12">
+            {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.BROWSER_PERMISSION') }}
+          </span>
+          <span class="text-body-small text-n-slate-11">
+            {{ pushStatusMessage }}
+          </span>
+        </div>
       </div>
       <ToggleSwitch
         v-model="hasEnabledPushPermissions"
+        :disabled="isPushToggleDisabled"
         @change="onRequestPermissions"
       />
     </div>

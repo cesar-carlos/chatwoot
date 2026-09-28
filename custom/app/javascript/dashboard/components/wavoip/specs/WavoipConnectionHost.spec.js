@@ -7,11 +7,13 @@ const {
   syncWithAvailability,
   cleanupSession,
   useWavoipCallSession,
+  requestWavoipNotificationPermission,
 } = vi.hoisted(() => ({
   registerWavoipCallSession: vi.fn(),
   syncWithAvailability: vi.fn(),
   cleanupSession: vi.fn(),
   useWavoipCallSession: vi.fn(),
+  requestWavoipNotificationPermission: vi.fn(),
 }));
 
 vi.mock('customDashboard/lib/voice/voiceSessionRegistry', () => ({
@@ -27,7 +29,7 @@ vi.mock('customDashboard/composables/wavoip/useWavoipActiveCall', () => ({
 }));
 
 vi.mock('customDashboard/composables/wavoip/useWavoipNotifications', () => ({
-  requestWavoipNotificationPermission: vi.fn().mockResolvedValue('granted'),
+  requestWavoipNotificationPermission,
 }));
 
 vi.mock('customDashboard/lib/wavoip/wavoipNotificationEnvironment', () => ({
@@ -65,6 +67,16 @@ describe('WavoipConnectionHost', () => {
 
     expect(useWavoipCallSession).toHaveBeenCalledTimes(1);
     expect(registerWavoipCallSession).toHaveBeenCalledWith(session);
+  });
+
+  it('does not request notification permission during setup', async () => {
+    mount(WavoipConnectionHost, {
+      global: { plugins: [store] },
+    });
+
+    await flushPromises();
+
+    expect(requestWavoipNotificationPermission).not.toHaveBeenCalled();
   });
 
   it('clears the singleton on unmount', async () => {
