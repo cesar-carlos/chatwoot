@@ -1,0 +1,9 @@
+require 'rails_helper'
+
+RSpec.describe Custom::SuperAdmin::AppConfigsController do
+  it 'extends the Enterprise custom branding options with the PWA icon' do
+    controller = SuperAdmin::AppConfigsController.new
+
+    expect(controller.send(:custom_branding_options)).to include('PWA_ICON_URL')
+  end
+end

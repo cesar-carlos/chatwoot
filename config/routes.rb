@@ -1,4 +1,8 @@
 Rails.application.routes.draw do
+  # FORK: White-label PWA manifest with legacy URL compatibility
+  get '/manifest.webmanifest', to: 'custom/web_app_manifests#show'
+  get '/manifest.json', to: 'custom/web_app_manifests#show'
+
   # AUTH STARTS
   mount_devise_token_auth_for 'User', at: 'auth', controllers: {
     confirmations: 'devise_overrides/confirmations',
