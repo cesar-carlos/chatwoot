@@ -2,9 +2,14 @@ require 'rails_helper'
 
 describe '/app/login', type: :request do
   context 'without DEFAULT_LOCALE' do
-    it 'renders the dashboard' do
+    it 'renders the PWA manifest link when DISPLAY_MANIFEST is false' do
+      allow(GlobalConfig).to receive(:get).and_call_original
+      allow(GlobalConfig).to receive(:get).with(*DashboardController::GLOBAL_CONFIG_KEYS)
+                                          .and_return({ 'DISPLAY_MANIFEST' => false })
+
       get '/app/login'
       expect(response).to have_http_status(:success)
+      expect(response.body).to include('<link rel="manifest" href="/manifest.webmanifest">')
     end
   end
 
