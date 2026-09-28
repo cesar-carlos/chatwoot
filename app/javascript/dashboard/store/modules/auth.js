@@ -177,6 +177,20 @@ export const actions = {
     }
   },
 
+  // FORK: propagate popup preference failures so the UI can rollback
+  updateUISettingsStrict: async ({ commit }, params) => {
+    const isImpersonating = SessionStorage.get(
+      SESSION_STORAGE_KEYS.IMPERSONATION_USER
+    );
+    if (isImpersonating) {
+      commit(types.SET_CURRENT_USER_UI_SETTINGS, params);
+      return;
+    }
+
+    const response = await authAPI.updateUISettings(params);
+    commit(types.SET_CURRENT_USER, response.data);
+  },
+
   updateAvailability: async (
     { commit, dispatch, getters: _getters },
     params

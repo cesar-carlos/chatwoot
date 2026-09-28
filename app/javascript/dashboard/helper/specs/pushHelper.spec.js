@@ -42,6 +42,7 @@ describe('pushHelper', () => {
     };
 
     vi.clearAllMocks();
+    localStorage.clear();
     subscriptionApi.create.mockResolvedValue({});
     subscriptionApi.destroyBrowserSubscription.mockResolvedValue({});
     window.chatwootConfig = { vapidPublicKey: applicationServerKey };
@@ -92,7 +93,16 @@ describe('pushHelper', () => {
     });
   });
 
+  it('does not subscribe when permission was granted only for open-panel alerts', async () => {
+    const result = await ensurePushSubscription();
+
+    expect(pushManager.subscribe).not.toHaveBeenCalled();
+    expect(subscriptionApi.create).not.toHaveBeenCalled();
+    expect(result.status).toBe('unsubscribed');
+  });
+
   it('recreates a missing granted subscription and synchronizes it', async () => {
+    localStorage.setItem('chatwoot_push_enabled', 'true');
     const result = await ensurePushSubscription();
 
     expect(pushManager.subscribe).toHaveBeenCalledWith({
@@ -151,5 +161,19 @@ describe('pushHelper', () => {
       status: 'unsubscribed',
       serverError,
     });
+  });
+
+  it('does not recreate a subscription after an explicit opt-out', async () => {
+    pushManager.getSubscription
+      .mockResolvedValueOnce(subscription)
+      .mockResolvedValue(null);
+
+    await unsubscribePush();
+    const result = await ensurePushSubscription();
+
+    expect(localStorage.getItem('chatwoot_push_enabled')).toBe('false');
+    expect(pushManager.subscribe).not.toHaveBeenCalled();
+    expect(subscriptionApi.create).not.toHaveBeenCalled();
+    expect(result.status).toBe('unsubscribed');
   });
 });

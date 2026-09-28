@@ -10,6 +10,9 @@ const PUSH_STATUS = {
   UNSUBSCRIBED: 'unsubscribed',
 };
 
+// FORK: keep the mobile PWA Web Push opt-in explicit and persistent per device
+const PUSH_ENABLED_STORAGE_KEY = 'chatwoot_push_enabled';
+
 const isIosDevice = () =>
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -103,9 +106,15 @@ const subscribe = registration =>
     applicationServerKey: window.chatwootConfig.vapidPublicKey,
   });
 
-const synchronizePushSubscription = async environment => {
-  const registration = await registerServiceWorker();
-  let subscription = await registration.pushManager.getSubscription();
+const synchronizePushSubscription = async (
+  environment,
+  serviceWorkerRegistration,
+  currentSubscription
+) => {
+  const registration =
+    serviceWorkerRegistration || (await registerServiceWorker());
+  let subscription =
+    currentSubscription ?? (await registration.pushManager.getSubscription());
 
   if (subscription && !subscriptionUsesCurrentKey(subscription)) {
     await NotificationSubscriptions.destroyBrowserSubscription(
@@ -136,7 +145,24 @@ export const ensurePushSubscription = async () => {
     return environment;
   }
 
-  return synchronizePushSubscription(environment);
+  const pushPreference = localStorage.getItem(PUSH_ENABLED_STORAGE_KEY);
+  if (pushPreference === 'false') {
+    return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
+  }
+
+  const registration = await registerServiceWorker();
+  const subscription = await registration.pushManager.getSubscription();
+  if (pushPreference === null && !subscription) {
+    return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
+  }
+
+  const result = await synchronizePushSubscription(
+    environment,
+    registration,
+    subscription
+  );
+  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'true');
+  return result;
 };
 
 export const requestAndSubscribe = async () => {
@@ -154,11 +180,13 @@ export const requestAndSubscribe = async () => {
     return { ...environment, status: permission, permission };
   }
 
-  return synchronizePushSubscription({
+  const result = await synchronizePushSubscription({
     ...environment,
     status: permission,
     permission,
   });
+  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'true');
+  return result;
 };
 
 export const unsubscribePush = async () => {
@@ -170,6 +198,7 @@ export const unsubscribePush = async () => {
   const registration = await registerServiceWorker();
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) {
+    localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
   }
 
@@ -187,6 +216,7 @@ export const unsubscribePush = async () => {
     throw new Error('The browser did not remove the push subscription');
   }
 
+  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
   return {
     ...environment,
     status: PUSH_STATUS.UNSUBSCRIBED,

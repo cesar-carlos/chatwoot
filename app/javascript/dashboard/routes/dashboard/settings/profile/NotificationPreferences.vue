@@ -12,6 +12,7 @@ import {
 } from 'dashboard/helper/pushHelper.js';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
+import NextButton from 'dashboard/components-next/button/Button.vue';
 import { NOTIFICATION_TYPES } from './constants';
 // FORK: in-app popup notification preferences
 import {
@@ -26,6 +27,7 @@ export default {
     TableHeaderCell,
     ToggleSwitch,
     CheckBox,
+    NextButton,
   },
   setup() {
     const { replaceInstallationName } = useBranding();
@@ -42,6 +44,10 @@ export default {
       hasEnabledPushPermissions: false,
       notificationTypes: NOTIFICATION_TYPES,
       pushStatus: getPushEnvironment().status,
+      browserNotificationPermission:
+        typeof Notification === 'undefined'
+          ? 'unsupported'
+          : Notification.permission,
     };
   },
   computed: {
@@ -72,6 +78,9 @@ export default {
     },
     showIosPwaHint() {
       return this.pushStatus === 'requires_install';
+    },
+    showOpenPanelPermissionAction() {
+      return this.browserNotificationPermission === 'default';
     },
     isSLAEnabled() {
       return this.isFeatureEnabledonAccount(this.accountId, FEATURE_FLAGS.SLA);
@@ -151,7 +160,8 @@ export default {
         this.pushStatus = 'error';
       }
     },
-    async onRequestPermissions(value) {
+    async onRequestPermissions() {
+      const value = this.hasEnabledPushPermissions;
       const previousValue = !value;
 
       try {
@@ -159,6 +169,7 @@ export default {
           ? await requestAndSubscribe()
           : await unsubscribePush();
         this.pushStatus = result.status;
+        this.browserNotificationPermission = result.permission;
         this.hasEnabledPushPermissions = result.status === 'subscribed';
 
         if (result.serverError) {
@@ -216,24 +227,47 @@ export default {
         previousPushFlags
       );
     },
-    // FORK: persist popup flags in ui_settings and request Notification permission
-    async handlePopupInput(id) {
-      const isEnabling = !this.selectedPopupFlags.includes(id);
-      if (isEnabling) {
+    async requestOpenPanelPermission() {
+      try {
         const permission = await requestPopupNotificationPermission();
+        this.browserNotificationPermission = permission;
         if (permission !== 'granted') {
           useAlert(
             this.$t(
               'PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_PERMISSION_ERROR'
             )
           );
-          return;
         }
+        return permission;
+      } catch (error) {
+        this.browserNotificationPermission = 'error';
+        useAlert(
+          this.$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_PERMISSION_ERROR')
+        );
+        return 'error';
+      }
+    },
+    async enableOpenPanelNotifications() {
+      const permission = await this.requestOpenPanelPermission();
+      if (permission === 'granted') {
+        useAlert(
+          this.$t(
+            'PROFILE_SETTINGS.FORM.NOTIFICATIONS.OPEN_PANEL_PERMISSION_SUCCESS'
+          )
+        );
+      }
+    },
+    // FORK: persist popup flags in ui_settings and request Notification permission
+    async handlePopupInput(id) {
+      const isEnabling = !this.selectedPopupFlags.includes(id);
+      if (isEnabling) {
+        const permission = await this.requestOpenPanelPermission();
+        if (permission !== 'granted') return;
       }
       const previousPopupFlags = [...this.selectedPopupFlags];
       this.selectedPopupFlags = this.toggleInput(this.selectedPopupFlags, id);
       try {
-        await this.$store.dispatch('updateUISettings', {
+        await this.$store.dispatch('updateUISettingsStrict', {
           uiSettings: withPopupFlagsForAccount(
             this.uiSettings,
             this.accountId,
@@ -274,6 +308,25 @@ export default {
     >
       {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.DELIVERY_MODES_HINT') }}
     </p>
+    <div
+      v-if="showOpenPanelPermissionAction"
+      class="flex flex-col items-start gap-3 rounded-lg border border-n-slate-6 bg-n-solid-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <span class="text-sm text-n-slate-11">
+        {{
+          $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.OPEN_PANEL_PERMISSION_HINT')
+        }}
+      </span>
+      <NextButton
+        type="button"
+        faded
+        sm
+        :label="
+          $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.OPEN_PANEL_PERMISSION_ACTION')
+        "
+        @click="enableOpenPanelNotifications"
+      />
+    </div>
     <!-- Layout for desktop devices -->
     <div class="hidden sm:block">
       <div
