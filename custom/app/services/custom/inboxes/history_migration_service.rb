@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
 class Custom::Inboxes::HistoryMigrationService
-  HEARTBEAT_EVERY = 25
+  class ExecutionStopped < StandardError; end
 
   pattr_initialize [:migration!]
 
   def perform
-    @processed = 0
     migration.mark_running!
     migrate_contact_inboxes!
+    ensure_running!
     migration.mark_completed!
+  rescue ExecutionStopped => e
+    Rails.logger.warn("[InboxHistoryMigration] ##{migration.id} stopped: #{e.message}")
   rescue StandardError => e
     Rails.logger.error("[InboxHistoryMigration] ##{migration.id} failed: #{e.class} #{e.message}")
     migration.mark_failed!(e.message)
@@ -38,32 +40,31 @@ class Custom::Inboxes::HistoryMigrationService
     migration.update!(stats: migration.stats.merge('total' => total))
 
     source_inbox.contact_inboxes.find_each do |contact_inbox|
+      ensure_running!
+      migration.touch_heartbeat!
       migrate_contact_inbox!(contact_inbox)
-      heartbeat_if_needed!
     end
   end
 
   def migrate_contact_inbox!(contact_inbox)
-    target_contact_inbox = nil
-    contact_inbox.with_lock do
-      target_contact_inbox = contact_inbox_resolver.resolve(contact_inbox)
-      if target_contact_inbox
-        # Process newest-first so the most recent conversation becomes the
-        # surviving container in the target; older ones are merged into it.
-        contact_inbox.conversations.order(id: :desc).find_each do |conversation|
-          migrate_conversation!(conversation, target_contact_inbox)
-        end
-      end
+    target_contact_inbox = contact_inbox.with_lock do
+      contact_inbox_resolver.resolve(contact_inbox)
     end
 
-    # Increment outside the lock — a non-local `return` inside with_lock rolls
-    # back the transaction and would undo stats updates.
     if target_contact_inbox.nil?
       increment_failed_for_contact_inbox!(contact_inbox)
-    else
-      cleanup_orphaned_source_contact_inbox!(contact_inbox)
+      return
     end
+
+    # Active Record ignores a scoped order in find_each. Passing order explicitly
+    # guarantees that the newest source conversation becomes the target container.
+    contact_inbox.conversations.find_each(order: :desc) do |conversation|
+      migrate_conversation_safely!(conversation, target_contact_inbox)
+    end
+    cleanup_orphaned_source_contact_inbox!(contact_inbox)
   rescue StandardError => e
+    raise if e.is_a?(ExecutionStopped)
+
     Rails.logger.error(
       "[InboxHistoryMigration] ##{migration.id} contact_inbox=#{contact_inbox.id} failed: #{e.class} #{e.message}"
     )
@@ -75,6 +76,20 @@ class Custom::Inboxes::HistoryMigrationService
     return if count.zero?
 
     migration.increment_stat!(:failed, by: count)
+  end
+
+  def migrate_conversation_safely!(conversation, target_contact_inbox)
+    conversation.with_lock do
+      ensure_running!
+      migrate_conversation!(conversation, target_contact_inbox)
+    end
+  rescue StandardError => e
+    raise if e.is_a?(ExecutionStopped)
+
+    Rails.logger.error(
+      "[InboxHistoryMigration] ##{migration.id} conversation=#{conversation.id} failed: #{e.class} #{e.message}"
+    )
+    migration.increment_stat!(:failed)
   end
 
   def cleanup_orphaned_source_contact_inbox!(contact_inbox)
@@ -130,10 +145,9 @@ class Custom::Inboxes::HistoryMigrationService
     migration.increment_stat!(:moved)
   end
 
-  def heartbeat_if_needed!
-    @processed += 1
-    return unless (@processed % HEARTBEAT_EVERY).zero?
+  def ensure_running!
+    return if migration.reload.status == 'running'
 
-    migration.touch_heartbeat!
+    raise ExecutionStopped, "migration status changed to #{migration.status}"
   end
 end

@@ -135,4 +135,106 @@ RSpec.describe Custom::Inboxes::HistoryMigration::ConversationMerger do
     expect(call.reload.conversation_id).to eq(target_conversation.id)
     expect(call.inbox_id).to eq(target_inbox.id)
   end
+
+  it 'preserves Enterprise and Captain records on the target conversation' do
+    assistant = create(:captain_assistant, account: account)
+    create(
+      :conversation_outcome,
+      account: account,
+      assistant: assistant,
+      inbox: target_inbox,
+      conversation: target_conversation,
+      started_at: 2.hours.ago
+    )
+    source_outcome = create(
+      :conversation_outcome,
+      account: account,
+      assistant: assistant,
+      inbox: source_inbox,
+      conversation: source_conversation,
+      started_at: 1.hour.ago
+    )
+    response = create(
+      :captain_assistant_response,
+      account: account,
+      assistant: assistant,
+      documentable: source_conversation
+    )
+    observation = Captain::FaqObservation.create!(
+      account: account,
+      conversation: source_conversation,
+      generated_question: 'How do I migrate?',
+      generated_answer: 'Use the history migration.',
+      language: 'en',
+      status: :discarded
+    )
+    report = create(
+      :captain_message_report,
+      message: source_message,
+      user: create(:user, account: account)
+    )
+
+    described_class.new(
+      source_conversation: source_conversation,
+      target_conversation: target_conversation,
+      target_inbox: target_inbox
+    ).perform
+
+    expect(source_outcome.reload).to have_attributes(
+      conversation_id: target_conversation.id,
+      inbox_id: target_inbox.id,
+      episode_trigger: 'reopen'
+    )
+    expect(source_outcome.ended_at).to be_present
+    expect(response.reload.documentable).to eq(target_conversation)
+    expect(observation.reload.conversation_id).to eq(target_conversation.id)
+    expect(report.reload.conversation_id).to eq(target_conversation.id)
+  end
+
+  it 'keeps one applied SLA and remounts historical events when policies differ' do
+    source_policy = create(:sla_policy, account: account, name: 'Source SLA')
+    target_policy = create(:sla_policy, account: account, name: 'Target SLA')
+    source_conversation.update!(sla_policy_id: source_policy.id)
+    target_conversation.update!(sla_policy_id: target_policy.id)
+    source_applied_sla = AppliedSla.find_by!(conversation: source_conversation)
+    target_applied_sla = AppliedSla.find_by!(conversation: target_conversation)
+    source_event = create(
+      :sla_event,
+      applied_sla: source_applied_sla,
+      conversation: source_conversation,
+      inbox: source_inbox,
+      sla_policy: source_policy
+    )
+
+    described_class.new(
+      source_conversation: source_conversation,
+      target_conversation: target_conversation,
+      target_inbox: target_inbox
+    ).perform
+
+    expect(AppliedSla.where(conversation: target_conversation)).to contain_exactly(target_applied_sla)
+    expect(AppliedSla.exists?(source_applied_sla.id)).to be(false)
+    expect(source_event.reload).to have_attributes(
+      applied_sla_id: target_applied_sla.id,
+      conversation_id: target_conversation.id,
+      inbox_id: target_inbox.id,
+      sla_policy_id: source_policy.id
+    )
+  end
+
+  it 'does not enqueue post-commit work when the outer transaction rolls back' do
+    expect(Conversations::UnreadCounts::Refresher).not_to receive(:new)
+    expect do
+      ActiveRecord::Base.transaction(requires_new: true) do
+        described_class.new(
+          source_conversation: source_conversation,
+          target_conversation: target_conversation,
+          target_inbox: target_inbox
+        ).perform
+        raise ActiveRecord::Rollback
+      end
+    end.not_to have_enqueued_job(Conversations::ActivityMessageJob)
+
+    expect(source_conversation.reload).to be_present
+  end
 end

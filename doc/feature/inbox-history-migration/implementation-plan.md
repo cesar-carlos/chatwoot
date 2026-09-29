@@ -1,6 +1,6 @@
 # Inbox History Migration — Plano de implementação (as-built)
 
-Documento **as-built** do MVP (25/jul/2026) com hardening de 27/jul/2026. Fonte normativa para manutenção; decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
+Documento **as-built** do MVP (25/jul/2026) com hardening até 29/set/2026. Fonte normativa para manutenção; decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
 
 ---
 
@@ -25,6 +25,7 @@ Permitir que um **administrador** mova todo o histórico de conversas/mensagens 
 | 9 | Docs `doc/feature/inbox-history-migration/` | ✅ |
 | 10 | Hardening: preview, toast, orphan CI `delete`, 503, activity note | ✅ |
 | 11 | Bug fixes: toast partial, ordem merge newest-first, normalização phone, query N+1 | ✅ |
+| 12 | Hardening: mutex de execução, transaction por conversa, sessões API e preservação Enterprise/Captain/SLA | ✅ |
 
 ---
 
@@ -43,7 +44,7 @@ Permitir que um **administrador** mova todo o histórico de conversas/mensagens 
 
 Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progress` em A ou B.
 
-- API→API preserva `contact_inbox.source_id` (sessão opaca).
+- API→API preserva `contact_inbox.source_id` (sessão opaca) e não colapsa sessões diferentes do mesmo contato.
 - WA↔API: **nunca** copia `source_id` entre famílias; destino WA deriva phone (sem phone → peer `failed`); destino API gera UUID e reusa CI existente do contato (idempotente).
 - API→WA Evolution: grupos com JID `@g.us` em `contact.identifier` são recuperados e usados como `source_id` no destino — **sem** phone, mas com JID válido.
 - WA↔WA: preserva/`converte` `source_id` (Twilio↔Cloud); funciona sem `phone_number` se o id for válido.
@@ -58,34 +59,44 @@ Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progre
    - limpar `assignee_id` se não for member de B
    - limpar `assignee_agent_bot_id` se o bot não estiver no destino
    - `Message` / `Call` / `ReportingEvent` / `SlaEvent` → `inbox_id = B`
-3. `Conversations::UnreadCounts::Refresher`
+3. Após o commit externo: `Conversations::UnreadCounts::Refresher`
 
 ### 3. Merge (já existe conversa no destino ou source tem múltiplas convs)
 
 1. Conversa mais recente do `contact_inbox` de B (**inclui resolved**) é o container
    - Quando **não** há peer em B e o source tem N convs para o mesmo contato: processadas em `order(id: :desc)` — a mais nova é remontada primeiro e torna-se o container; as mais antigas são merged dentro dela (preserva `created_at` mais recente e métricas de SLA)
 2. Reparent: messages, mentions, participants (sem colidir UNIQUE), notifications, CSAT, reporting, SLA, calls
+   - Enterprise/Captain: outcomes, assistant responses, FAQ observations e message reports
+   - Se origem e destino têm SLA diferentes, eventos migram para o único `AppliedSla` do container
 3. Labels + `custom_attributes` + `additional_attributes` (destino vence em chave duplicada via `merge`)
 4. Abortar destroy se origem ainda tiver messages
 5. `source_conversation.destroy!`
-6. Activity note via `Conversations::ActivityMessageJob`
+6. Após o commit externo: activity note e refresh de unread Redis
 
 ### 4. Orquestração
 
 ```ruby
-source_inbox.contact_inboxes.find_each do |ci|
-  ci.with_lock do
-    # order(id: :desc): conv mais recente remontada → torna-se container
-    ci.conversations.order(id: :desc).find_each { ... Remounter ou ConversationMerger ... }
+ExecutionLock.synchronize(migration.id) do
+  source_inbox.contact_inboxes.find_each do |ci|
+    touch_heartbeat!
+    target_ci = ci.with_lock { resolver.resolve(ci) }
+    ci.conversations.find_each(order: :desc) do |conversation|
+      conversation.with_lock do
+        ensure_running!
+        migrate_and_increment_stat!(conversation, target_ci)
+      end
+    end
+    cleanup_orphaned_source_contact_inbox!(ci)
   end
-  # fora do lock: failed stats OU delete do CI órfão na origem
-  touch_heartbeat! a cada 25 peers
 end
 ```
 
 - Cleanup do CI origem usa **`delete`** (não `destroy!`) para não disparar `dependent: :destroy_async` em conversas.
 - Falha fatal do service: `mark_failed!` **sem** re-raise (evita retry Sidekiq inútil).
 - Status: `pending` → `running` → `completed` | `failed`.
+- O advisory lock é de sessão e o PostgreSQL o libera se o worker/conexão morrer.
+- Cada stat atualiza também o heartbeat; uma falha de conversa reverte apenas aquela unidade e incrementa `failed`.
+- Uma consulta de status não expira migration stale enquanto o lock indicar execução ativa.
 
 ### 5. API / UI
 
@@ -95,7 +106,7 @@ end
 - Destinos: mesma família **ou** WA↔API; exclusão da própria inbox via `Number(id)`; empty state; aviso Evolution→Cloud
 - Preview: `conversations_count` / `contact_inboxes_count`
 - Toast ao `completed`: "Completed" (sem falhas) ou "Completed with N failure(s)" (quando `stats.failed > 0`) + link para a inbox destino
-- Lock: `Inbox.lock` em ordem de id no POST + `pending`/`running` frescos bloqueiam novo start
+- Lock: `Inbox.lock` no POST + `pending`/`running` frescos + advisory lock no job
 - Tabela ausente → HTTP **503** `unavailable`
 
 ### 6. Calls / colisões
@@ -136,6 +147,10 @@ end
 - [x] Peer já em B → merge (`merged`)
 - [x] UI mostra status/stats via poll
 - [x] Specs verdes
+- [x] Sessões API→API distintas do mesmo contato continuam separadas
+- [x] Execução duplicada do mesmo job não processa a migration duas vezes
+- [x] Merge preserva dados Enterprise/Captain e mantém um `AppliedSla`
+- [x] Rollback externo não publica activity/unread antes do commit
 
 ### Comando de teste
 
@@ -144,6 +159,7 @@ bundle exec rspec \
   spec/custom/services/custom/inboxes/history_migration/compatibility_guard_spec.rb \
   spec/custom/services/custom/inboxes/history_migration/remounter_spec.rb \
   spec/custom/services/custom/inboxes/history_migration/conversation_merger_spec.rb \
+  spec/custom/jobs/custom/inboxes/history_migration_job_spec.rb \
   spec/custom/services/custom/inboxes/history_migration_service_spec.rb \
   spec/custom/controllers/custom/api/v1/accounts/inboxes_controller_move_history_spec.rb
 ```
@@ -164,11 +180,11 @@ bundle exec rspec \
 |-------|-----------|
 | `custom/` | Model, services, job, Vue page |
 | `# FORK:` / `// FORK:` mínimo | routes, except list, Settings import/tab, API client, channelActions |
-| Um service = uma ação | Guard / Remounter / Merger / Orchestrator |
+| Um service = uma ação | Guard / Lock / Resolver / Remounter / Merger / Enterprise merger / Orchestrator |
 | i18n EN only | `en.yml` + `inboxMgmt.json` |
 | Specs em `spec/custom/` | Mirror do overlay |
 | Happy-path MVP | Sem sub-jobs; falha por peer continua |
 
 ---
 
-*Última atualização: 27/jul/2026 (fase 11: bug fixes pós-deploy)*
+*Última atualização: 29/set/2026 (fase 12: hardening de integridade e concorrência)*

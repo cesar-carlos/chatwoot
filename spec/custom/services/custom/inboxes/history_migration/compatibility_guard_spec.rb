@@ -197,4 +197,23 @@ RSpec.describe Custom::Inboxes::HistoryMigration::CompatibilityGuard do
       expect(described_class.compatible?(source, email_inbox)).to be(false)
     end
   end
+
+  describe '.expire_stale_migration!' do
+    it 'does not expire a migration while its execution lock is held' do
+      stale = InboxHistoryMigration.create!(
+        account: account,
+        source_inbox: source,
+        target_inbox: target,
+        status: 'running',
+        started_at: 3.hours.ago,
+        heartbeat_at: 3.hours.ago
+      )
+      allow(Custom::Inboxes::HistoryMigration::ExecutionLock).to receive(:synchronize).with(stale.id).and_return(false)
+
+      expect(described_class.expire_stale_migration!(stale)).to be(false)
+
+      expect(stale.reload.status).to eq('running')
+      expect(stale.heartbeat_at).to be > 1.minute.ago
+    end
+  end
 end

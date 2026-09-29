@@ -80,4 +80,22 @@ RSpec.describe Custom::Inboxes::HistoryMigration::Remounter do
 
     expect(call.reload.inbox_id).to eq(target_inbox.id)
   end
+
+  it 'does not refresh unread counts when the outer transaction rolls back' do
+    target_contact_inbox
+    expect(Conversations::UnreadCounts::Refresher).not_to receive(:new)
+
+    ActiveRecord::Base.transaction(requires_new: true) do
+      described_class.new(
+        conversation: conversation,
+        target_inbox: target_inbox,
+        target_contact_inbox: target_contact_inbox,
+        source_inbox: source_inbox
+      ).perform
+      raise ActiveRecord::Rollback
+    end
+
+    expect(conversation.reload.inbox_id).to eq(source_inbox.id)
+    expect(message.reload.inbox_id).to eq(source_inbox.id)
+  end
 end

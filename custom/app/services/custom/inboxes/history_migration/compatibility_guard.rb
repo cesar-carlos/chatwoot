@@ -39,11 +39,25 @@ class Custom::Inboxes::HistoryMigration::CompatibilityGuard
     inbox.channel.provider.to_s.in?(%w[evolution evolution_go])
   end
 
-  def self.expire_stale_for_inbox_ids!(ids)
+  def self.expire_stale_for_inbox_ids!(ids, except_id: nil)
     InboxHistoryMigration
       .where(status: %w[pending running])
       .for_inbox_ids(ids)
-      .find_each(&:expire_if_stale!)
+      .where.not(id: except_id)
+      .find_each { |migration| expire_stale_migration!(migration) }
+  end
+
+  def self.expire_stale_migration!(migration)
+    return false unless migration.stale?
+
+    expired = false
+    acquired = Custom::Inboxes::HistoryMigration::ExecutionLock.synchronize(migration.id) do
+      expired = migration.reload.expire_if_stale!
+    end
+    return expired if acquired
+
+    migration.reload.touch_heartbeat! if migration.status == 'running'
+    false
   end
 
   private

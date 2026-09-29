@@ -101,6 +101,30 @@ RSpec.describe Custom::Inboxes::HistoryMigrationService do
       expect(target_conversation.reload.messages.count).to eq(2)
     end
 
+    it 'preserves separate sessions for the same contact' do
+      other_target_contact_inbox = create(
+        :contact_inbox,
+        inbox: target_inbox,
+        contact: contact,
+        source_id: 'another-api-session'
+      )
+      other_target_conversation = create(
+        :conversation,
+        account: account,
+        inbox: target_inbox,
+        contact: contact,
+        contact_inbox: other_target_contact_inbox
+      )
+
+      described_class.new(migration: migration).perform
+
+      expect(migration.reload.stats['moved']).to eq(1)
+      expect(conversation.reload.contact_inbox.source_id).to eq(session_id)
+      expect(conversation.contact_inbox_id).not_to eq(other_target_contact_inbox.id)
+      expect(other_target_conversation.reload.messages).to be_empty
+      expect(ContactInbox.where(inbox: target_inbox, contact: contact).count).to eq(2)
+    end
+
     it 'marks the peer failed when source_id collides with another contact' do
       other_contact = create(:contact, account: account)
       create(:contact_inbox, inbox: target_inbox, contact: other_contact, source_id: session_id)
@@ -336,6 +360,24 @@ RSpec.describe Custom::Inboxes::HistoryMigrationService do
     expect(migration.stats['merged']).to eq(1)
     expect { conversation.reload }.to raise_error(ActiveRecord::RecordNotFound)
     expect(target_conversation.reload.messages.count).to eq(2)
+  end
+
+  it 'keeps the newest source conversation as the destination container' do
+    newer_conversation = create(
+      :conversation,
+      account: account,
+      inbox: source_inbox,
+      contact: contact,
+      contact_inbox: source_contact_inbox
+    )
+    create(:message, account: account, inbox: source_inbox, conversation: newer_conversation, content: 'newest')
+
+    described_class.new(migration: migration).perform
+
+    expect(migration.reload.stats).to include('moved' => 1, 'merged' => 1)
+    expect { conversation.reload }.to raise_error(ActiveRecord::RecordNotFound)
+    expect(newer_conversation.reload.inbox_id).to eq(target_inbox.id)
+    expect(newer_conversation.messages.pluck(:content)).to include('newest', message.content)
   end
 
   it 'does not steal source_id owned by another contact on the target' do

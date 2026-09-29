@@ -5,6 +5,8 @@ class Custom::Inboxes::HistoryMigration::ContactInboxResolver
   pattr_initialize [:source_inbox!, :target_inbox!]
 
   def resolve(contact_inbox)
+    return resolve_api_session(contact_inbox) if source_inbox.api? && target_inbox.api?
+
     existing_for_contact = ContactInbox.find_by(
       inbox_id: target_inbox.id,
       contact_id: contact_inbox.contact_id
@@ -19,6 +21,10 @@ class Custom::Inboxes::HistoryMigration::ContactInboxResolver
   end
 
   private
+
+  def resolve_api_session(contact_inbox)
+    create_contact_inbox_safely!(contact_inbox.contact, contact_inbox.source_id)
+  end
 
   def resolved_source_id(contact_inbox)
     explicit = source_id_for_target(contact_inbox)
