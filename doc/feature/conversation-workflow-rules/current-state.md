@@ -1,8 +1,8 @@
 # Conversation Workflow — Estado atual
 
-Referência do código em ago/2026 após menu independente **Regras de conversa**, refactor UX e correções da review (FK, preview, BH, FE).
+Referência do código em set/2026 após menu independente **Regras de conversa**, refactor UX e hardening de execução.
 
-### Delete / cascade (ago/2026)
+### Integridade e execução (ago–set/2026)
 
 - Rule → executions: `dependent: :delete_all`
 - Conversation → executions: `Custom::Conversation` `has_many … dependent: :delete_all`
@@ -11,6 +11,9 @@ Referência do código em ago/2026 após menu independente **Regras de conversa*
 - Scopes: colunas qualificadas (`conversations.*`); BH usa prefilter wall-clock pelo threshold e valida os minutos úteis no matcher
 - `RuleExecutor`: pagina por timestamp de referência + ID; o limite de 100 conta apenas tentativas reivindicadas
 - Legacy: create/update de inactivity **ativa** bloqueado enquanto `auto_resolve_after` presente e não migrado
+- Conditions adapter expõe a conta, duplica o payload e remove o operador terminal antes do filtro upstream
+- Migração legacy usa lock por conta e uma transação para criação da regra + marcador
+- Form usa `isSaving` para impedir persistências concorrentes e refletir apenas a requisição ativa
 
 ---
 
@@ -21,7 +24,7 @@ Referência do código em ago/2026 após menu independente **Regras de conversa*
 | Menu sidebar | **Regras de conversa** → `/settings/conversation-rules` (CRUD de regras) |
 | Legacy | **Fluxo de Conversa** → `/settings/conversation-workflow` (auto-resolve + atributos obrigatórios) |
 | i18n | Namespace `CONVERSATION_RULES` (en + pt_BR) |
-| UX | Empty state, busca com contador filtrado (`COUNT_FILTERED`), cards enriquecidos, form em **SidePanel**, seções colapsáveis, migração com confirmação, clone client-side |
+| UX | Empty state, busca com contador filtrado (`COUNT_FILTERED`), cards enriquecidos, form em **SidePanel**, seções colapsáveis, migração com confirmação, clone client-side e save single-flight |
 | SLA exemplo | `helpers/i18nHelper.js` — `getTieredSlaExample(tm)` evita bug de `t(returnObjects)` |
 | `send_attachment` | Oculto na UI (`DISALLOWED_ACTIONS`); backend não executa |
 | `send_message_to_contact` | Ação workflow-only: inbox + contato + mensagem; chips/variáveis, preview, templates, favoritos, validação canal×contato, confirmação no save |
@@ -84,7 +87,7 @@ Componentes em `conversationRules/components/`:
 | Indexes | `index_conv_workflow_waiting`, `_inactivity`, `_pending_stale`, `_unassigned` |
 | Preview API | `POST /conversation_workflow_rules/preview_count` |
 | Account processor | `custom/app/services/custom/conversation_workflow/account_processor.rb` — itera regras com gate de feature flag |
-| Executor | `custom/app/services/custom/conversation_workflow/rule_executor.rb` |
+| Executor | `custom/app/services/custom/conversation_workflow/rule_executor.rb` — keyset pagination por timestamp + ID; cap conta apenas claims |
 | Action wrapper | `custom/app/services/custom/conversation_workflow/action_service.rb` — `< AutomationRules::ActionService`; webhook prefix `workflow_rule.*`; `send_message_to_contact` |
 | Send to contact | `custom/app/services/custom/conversation_workflow/send_message_to_contact_service.rb` — ContactInboxBuilder + ConversationBuilder + MessageBuilder + interpolação `{{var}}` |
 | Scope matcher | `custom/app/services/custom/conversation_workflow/scope_matcher.rb` — elegibilidade por conversa pós-SQL |
@@ -95,7 +98,7 @@ Componentes em `conversationRules/components/`:
 | Template sender | `custom/app/services/custom/conversation_workflow/template_message_sender.rb` — `MessageTemplates::Template::AutoResolve` |
 | Migrate legacy | `custom/app/services/custom/conversation_workflow/migrate_legacy_service.rb` — migração transacional serializada por conta |
 | Preview count | `custom/app/services/custom/conversation_workflow/preview_count_service.rb` |
-| Business hours | `custom/app/services/custom/conversation_workflow/business_hours_elapsed_calculator.rb` — minutos úteis via `inbox.working_hours` |
+| Business hours | `custom/app/services/custom/conversation_workflow/business_hours_elapsed_calculator.rb` — minutos úteis sem truncamento; short-circuit no threshold ou calendário fechado |
 | Automation events | `custom/app/services/custom/conversation_workflow/automation_event_dispatcher.rb` — eventos sintéticos |
 | Scopes (6) | `custom/app/services/custom/conversation_workflow/scopes/` — `inactivity_scope.rb`, `agent_no_reply_scope.rb`, `first_response_overdue_scope.rb`, `unassigned_too_long_scope.rb`, `pending_stale_scope.rb`, `customer_no_reply_scope.rb` |
 | Resolve | `custom/app/services/custom/conversations/resolve_service.rb` |
@@ -196,6 +199,20 @@ Constantes em `automation/constants.js` e `conversationRules/constants.js` (`WOR
 | `ScheduleOnMessageJob` | Aceita `reference_epoch:` para deletar a chave Redis correta no `ensure` |
 | Dead code | `ConversationWorkflowRuleExecution#already_executed?` removido — dedup usa insert-first |
 | `RuleExecutor` | Guards redundantes removidos de `conversation_eligible?`; `customer_waiting_on_agent_reply?` movido para `ScopeMatcher` |
+
+## Hardening pós-review (set/2026)
+
+| Área | Estado atual |
+|------|--------------|
+| Scheduler | Keyset pagination por timestamp de referência + ID; continua além de candidatos inelegíveis/já reivindicados |
+| Limite | `BULK_ACTIONS_LIMIT` conta apenas executions reivindicadas; falha pós-claim conta como tentativa e libera o claim |
+| Business hours | Scope usa o threshold wall-clock mínimo seguro; calculator atravessa dias fechados sem truncar e para ao alcançar a duração |
+| Condições | Adapter expõe `account`, usa `deep_dup` e remove `query_operator` da última condição |
+| Migração legacy | `account.with_lock` serializa chamadas; regra e marcador são gravados ou revertidos juntos |
+| Form | `isSaving` bloqueia persistências concorrentes; confirmação não deixa spinner preso nem reentra no close |
+| Regressões | Specs cobrem fim de semana fechado, calendário totalmente fechado, starvation do batch, condição com operador terminal, preview e rollback legacy |
+
+Implementação publicada no commit `f372e527dc` da branch `fix/conversation-workflow-review`.
 
 ---
 
