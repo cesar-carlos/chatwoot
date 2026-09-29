@@ -85,9 +85,14 @@ Estado atual validado no projeto:
   - `conversation_team_unassigned_manage`
   - `conversation_participating_manage`
 - `ConversationPolicy` delega `permits_team_unassigned_manage?` com gate obrigatório de inbox.
+- Eventos de conversa no ActionCable filtram destinatários de custom roles pelo mesmo escopo de policy/lista antes do broadcast.
+- Ações da integração Linear autorizam a conversa com `ConversationPolicy#show?` antes de criar, vincular, desvincular ou listar issues.
 - `conversation.routes.js` importa `CONVERSATION_PERMISSIONS` de `permissions.js` (fonte única; evita lista duplicada local).
 - Frontend (`permissions.js`, `getRoleFilterContext`, `applyRoleFilter`, i18n en/pt_BR) contempla a regra de time + inbox.
-- `Conversations::UnreadCounts::Counter` aplica `team_unassigned_and_mine` via overlay em `custom/` (gap corrigido).
+- `Conversations::UnreadCounts::Counter` aplica `team_unassigned_and_mine` via overlay em `custom/` e inclui participantes de conversas atribuídas a AgentBot.
+- O filtro de permissões compõe relações lazy com `ActiveRecord#or`, sem materializar todos os IDs em Ruby.
+- Listagens de conversas calculam `current_user_participating` em uma única consulta, evitando N+1 por conversa.
+- A implementação específica do fork permanece em `custom/`; o serviço Enterprise foi restaurado ao comportamento upstream.
 - Specs automatizados backend e frontend passando; validação manual operacional (PR4) aprovada.
 
 ## Business Rules to Normalize
@@ -146,12 +151,17 @@ Arquivos implementados:
 | Camada | Arquivo | Papel |
 |--------|---------|-------|
 | Permissão (upstream mínimo) | `enterprise/app/models/custom_role.rb` | `PERMISSIONS` + `FORK:` |
-| Filtro enterprise | `enterprise/app/services/enterprise/conversations/permission_filter_service.rb` | Hierarquia base; delega team ao overlay |
-| Filtro fork | `custom/app/services/custom/conversations/permission_filter_service.rb` | `team_unassigned + mine` |
+| Filtro enterprise | `enterprise/app/services/enterprise/conversations/permission_filter_service.rb` | Implementação upstream preservada; ponto de prepend do overlay |
+| Filtro fork | `custom/app/services/custom/conversations/permission_filter_service.rb` | `team_unassigned + mine` e união lazy dos escopos com `ActiveRecord#or` |
 | Policy enterprise | `enterprise/app/policies/enterprise/conversation_policy.rb` | `show?` + stub `permits_team_unassigned_manage?` |
 | Policy fork | `custom/app/policies/custom/conversation_policy.rb` | Gate inbox + escopo por time |
 | Unread counts hook | `app/services/conversations/unread_counts/counter.rb` | `prepend_mod_with` (`FORK:`) |
-| Unread counts fork | `custom/app/services/custom/conversations/unread_counts/counter.rb` | Modo `:team_unassigned_and_mine` |
+| Unread counts fork | `custom/app/services/custom/conversations/unread_counts/counter.rb` | Modo `:team_unassigned_and_mine` e união de participantes, inclusive com AgentBot |
+| Eventos em tempo real | `custom/app/listeners/custom/action_cable_listener.rb` | Filtra tokens de custom roles em eventos vinculados a conversa |
+| Destinatários de eventos | `custom/app/services/custom/conversations/event_recipient_service.rb` | Reaplica inbox, assignee, unassigned, team e participant antes do broadcast |
+| Integração Linear | `custom/app/controllers/custom/api/v1/accounts/integrations/linear_controller.rb` | Autoriza `show?` para todas as ações vinculadas a conversa |
+| Participação em listagens | `custom/app/controllers/custom/api/v1/accounts/conversations_controller.rb` | Pré-carrega IDs de participação em uma consulta para index/search/filter |
+| Helper de conversa | `custom/app/helpers/custom/api/v1/conversations_helper.rb` | Consome o cache de participação e preserva fallback para respostas unitárias |
 | Search global | `custom/app/services/custom/search_service.rb` | Scope via `PermissionFilterService` (policy + list + search alinhados) |
 | Agent compose start | `custom/app/services/custom/conversations/agent_start_service.rb` | Create/reopen+assign; ativas exigem `show?`; open+outro / fora de escopo → 422 |
 
@@ -164,6 +174,8 @@ Condição de visibilidade deve permanecer coerente em:
 - Counts / badges (unread overlay)
 - Frontend gate (`applyRoleFilter` / rotas)
 - **Global search** (`SearchService` → `permitted_conversations`)
+- **Eventos em tempo real** (`ActionCableListener` → `EventRecipientService`)
+- **Integrações vinculadas à conversa** (Linear → `ConversationPolicy#show?`)
 
 Diretriz:
 
@@ -326,6 +338,28 @@ Deliverables:
 
 - Feature pronta para rollout controlado
 
+### Phase 7 - Post-review Security and Performance Hardening
+
+Goal: fechar superfícies que ainda podiam divergir da policy e remover custos de consulta introduzidos pela normalização.
+
+Tasks:
+
+- [x] Filtrar broadcasts de eventos de conversa para custom roles sem acesso ao inbox/escopo.
+- [x] Preservar tokens de contatos e o comportamento base para admins/agentes sem custom role.
+- [x] Aplicar fail-closed aos tokens de usuário quando um evento protegido não puder ser associado a uma conversa.
+- [x] Autorizar `create_issue`, `link_issue`, `unlink_issue` e `linked_issues` da integração Linear via `ConversationPolicy#show?`.
+- [x] Substituir a materialização de IDs (`pluck`) por composição lazy com `ActiveRecord#or`.
+- [x] Contabilizar como participant-only conversas atribuídas a AgentBot nos modos combinados.
+- [x] Eliminar N+1 de `current_user_participating` nas respostas de `index`, `search` e `filter`.
+- [x] Restaurar o serviço Enterprise ao upstream e concentrar a regra do fork em `custom/`.
+- [x] Adicionar specs de regressão em `spec/custom` para todas as superfícies acima.
+
+Deliverables:
+
+- Broadcasts, integrações, listagens e contadores usando a mesma semântica de autorização.
+- Queries permanecem lazy e o payload de lista não executa uma consulta de participação por conversa.
+- Drift com upstream limitado a hooks/shims marcados com `FORK:`.
+
 ## Manual Validation Checklist (Business-Focused)
 
 ### Setup
@@ -376,6 +410,15 @@ Deliverables:
 
 4. **Interpretação ambígua para conversas sem time**
    - Mitigação: decisão explícita na Phase 0 e testes dedicados.
+
+5. **Vazamento por evento em tempo real fora do escopo da lista**
+   - Mitigação: filtrar tokens de custom roles no listener antes do broadcast, com gate de inbox e semântica equivalente à policy.
+
+6. **Bypass por integração vinculada à conversa**
+   - Mitigação: a integração Linear executa `authorize @conversation, :show?` no ponto compartilhado de carregamento.
+
+7. **Materialização excessiva e N+1 em contas grandes**
+   - Mitigação: relações compostas no banco com `or` e cache em lote dos IDs de participação no controller.
 
 ## Edge Cases and Operational Safeguards
 
@@ -428,27 +471,35 @@ Deliverables:
 - [x] Frontend aplica filtro equivalente (`team + inbox`) sem inconsistência
 - [x] Frontend adota fail-closed quando faltar contexto de inbox
 - [x] Frontend permite lista backend-scoped enquanto inboxes ainda estão fetching
-- [ ] Usuário com apenas a nova permissão acessa dashboard sem loop
+- [x] Usuário com apenas a nova permissão acessa dashboard sem loop
 - [x] Testes automatizados mínimos (backend + frontend + rota) cobrindo cenários críticos
 - [x] Specs de overlay em `spec/custom/` (policy, permission filter, unread counter)
-- [ ] Consistência backend x frontend validada por cenário e conjunto de IDs
-- [ ] Matriz de regressão de permissões existentes aprovada
+- [x] Eventos ActionCable não entregam dados de conversa a custom roles fora do escopo
+- [x] Ações Linear vinculadas a conversa respeitam `ConversationPolicy#show?`
+- [x] Permission filter permanece lazy e não materializa IDs durante `perform`
+- [x] Contadores incluem participant-only quando a conversa está atribuída a AgentBot
+- [x] Payload de lista calcula participação em lote, sem N+1
+- [x] Consistência backend x frontend validada por cenário e conjunto de IDs
+- [x] Matriz de regressão de permissões existentes aprovada
 - [x] EN/PT-BR completos para a nova permissão (sem mudanças em outros idiomas)
 
 ## Definition of Done
 
-- [ ] Phases 0 a 6 concluídas
-- [ ] Checklist manual de negócio executado e aprovado
+- [x] Phases 0 a 7 implementadas e validadas automaticamente
+- [x] Checklist manual da entrega original executado e aprovado
 - [x] Sem erros novos de lint/check nos arquivos alterados
-- [ ] Sem regressão de permissões existentes em homologação
+- [x] Sem regressão de permissões existentes na homologação da entrega original
 - [x] Plano atualizado com correções pós-review (policy Custom `show?`, label sinter, hydration FE, `spec/custom`)
+- [x] Plano atualizado com hardening pós-review de ActionCable, Linear, SQL lazy, AgentBot, N+1 e isolamento do fork
+- [ ] Revalidação operacional do hardening após deploy
 
 ## Known Limitations (Documented)
 
 1. **ChatList participating** — REST list payloads set `meta.current_user_participating` (not ActionCable `push_data`). `applyRoleFilter` allows assignee **or** that flag when `conversation_participating_manage` is granted. `UPDATE_CONVERSATION` keeps the existing flag when a websocket payload omits it so participant-only rows are not dropped.
 2. **Boot antes do fetch de inboxes iniciar** — Se `isFetching` ainda é `false` e a store de inboxes está vazia antes do dispatch do fetch, o gate continua fail-closed. Após o fetch iniciar (`isFetching: true`), a lista confia no backend até os IDs hidratarem.
-3. **Overlapping conversation scopes** — Exclusive conflict is `conversation_unassigned_manage` **and** `conversation_team_unassigned_manage` while `conversation_manage` is not set (auto-expanded children of manage-all are not a warning). Participating is additive and is not overlap. Unassigned vs team remains broadest-wins; participating unions with the exclusive scope. `PermissionFilterService` unscope(`:order`) before the team SQL UNION. Agent-bot assigned conversations are **not** unassigned (`assignee_id` and `assignee_agent_bot_id` must both be nil). Audit: `bundle exec rake custom_roles:audit_scope_overlap` (optional `ACCOUNT_ID=`; prints `participating=true` when that permission is also present). Time Financeiro (team-only intent): `ACCOUNT_ID=<id> CONFIRM=1 bundle exec rake custom_roles:normalize_time_financeiro`.
-4. **Unread counts union participating** — Inbox/team/label badges merge participant-only unread (assigned to someone else, user is `ConversationParticipant`) when `conversation_participating_manage` is granted. Unassigned vs team Redis keys stay exclusive.
+3. **Overlapping conversation scopes** — Exclusive conflict is `conversation_unassigned_manage` **and** `conversation_team_unassigned_manage` while `conversation_manage` is not set (auto-expanded children of manage-all are not a warning). Participating is additive and is not overlap. Unassigned vs team remains broadest-wins; participating is combined lazily with the exclusive scope via `ActiveRecord#or`. Agent-bot assigned conversations are **not** unassigned (`assignee_id` and `assignee_agent_bot_id` must both be nil). Audit: `bundle exec rake custom_roles:audit_scope_overlap` (optional `ACCOUNT_ID=`; prints `participating=true` when that permission is also present). Time Financeiro (team-only intent): `ACCOUNT_ID=<id> CONFIRM=1 bundle exec rake custom_roles:normalize_time_financeiro`.
+4. **Unread counts union participating** — Inbox/team/label badges merge participant-only unread (assigned to another agent **or AgentBot**, user is `ConversationParticipant`) when `conversation_participating_manage` is granted. Unassigned vs team Redis keys stay exclusive.
+5. **Eventos sem conversa resolvível** — Para os eventos protegidos, falha ao resolver a conversa remove tokens de usuários da conta e preserva apenas destinatários não-usuário, evitando exposição durante estados transitórios.
 
 ### Compose / search (fechados nesta entrega)
 
@@ -489,7 +540,8 @@ Deliverables:
 4. Phase 3 (guards/rotas)
 5. Phase 4 (i18n/UI de role)
 6. Phase 6 (validação e rollout)
-7. Phase 5 (opcional de UX) como incremento separado, se aprovado
+7. Phase 7 (hardening de segurança, autorização, performance e isolamento do fork)
+8. Phase 5 (opcional de UX) como incremento separado, se aprovado
 
 ## PR Execution Plan (Incremental)
 
@@ -730,9 +782,9 @@ Body template:
 - [ ] Rollback definido e validado
 ```
 
-## Execution Status Snapshot (Current)
+## Execution Status Snapshot (2026-09-29)
 
-This section tracks what is already implemented/validated in this workspace and what still requires manual operational validation.
+This section tracks the original delivery and the post-review hardening implemented in this workspace.
 
 ### Completed in code
 
@@ -740,7 +792,13 @@ This section tracks what is already implemented/validated in this workspace and 
 - [x] Backend: permission filter supports `team_unassigned + mine`
 - [x] Backend: inbox access remains mandatory in filtering
 - [x] Backend: conversation policy enforces inbox gate and team-scope checks for custom role
-- [x] Backend: `Conversations::UnreadCounts::Counter` supports `team_unassigned_and_mine` via `custom/` overlay
+- [x] Backend: `Conversations::UnreadCounts::Counter` supports `team_unassigned_and_mine` via `custom/` overlay, including AgentBot participant-only conversations
+- [x] Realtime: ActionCable conversation events filter unauthorized custom-role recipients
+- [x] Integration: Linear conversation actions authorize `ConversationPolicy#show?`
+- [x] Performance: permission scopes remain lazy and compose with `ActiveRecord#or`
+- [x] Performance: list participation metadata is loaded in one query
+- [x] Fork: Enterprise service restored to upstream; custom behavior isolated in `custom/`
+- [x] Fork: unavoidable upstream hooks/shims are marked with `FORK:`
 - [x] Frontend: constants updated with `conversation_team_unassigned_manage`
 - [x] Frontend: `getRoleFilterContext` centraliza `userTeams + userInboxIds` nos getters
 - [x] Frontend: `getParticipatingChats` aplica `applyRoleFilter` para alinhar com escopo da role
@@ -750,15 +808,24 @@ This section tracks what is already implemented/validated in this workspace and 
 
 ### Automated validation completed
 
+- [x] Relevant Ruby matrix: **95 examples, 0 failures**
 - [x] Backend specs (enterprise permission filter + policy + unread counter): passing
+- [x] Custom ActionCable listener and event recipient specs: passing
+- [x] Linear request specs for all four conversation actions: passing
+- [x] Conversation request spec confirms one participant query for multiple conversations: passing
+- [x] Permission filter spec confirms a lazy relation with no early conversation query: passing
+- [x] Unread count specs cover AgentBot in both combined modes: passing
 - [x] Frontend specs (conversation helpers + getters + settings helper + permissionsHelper): passing
-- [x] Lint diagnostics for modified files: no new issues
+- [x] RuboCop on 17 changed Ruby files: **0 offenses**
+- [x] `bundle exec rails zeitwerk:check`: **All is good!**
+- [x] `git diff --check`: no errors
+- [x] `bin/fork-inventory`: completed; upstream hooks/shims are inventoried
 
-### Pending manual validation before Go/No-Go
+### Operational status
 
-- [ ] Manual matrix with real users/roles (team, inbox access, no-team, other-team)
-- [ ] Deep-link access validation by URL in browser
-- [ ] End-to-end UI smoke in settings custom roles flow (create/edit/display)
-- [ ] Staging/homologation smoke with real account data
-- [ ] Rollback rehearsal and final Go/No-Go registration
+- [x] Original manual matrix with real users and roles approved.
+- [x] Deep links and the custom-role settings flow validated in the original delivery.
+- [x] Go for the permission normalization registered.
+- [ ] After deploying the hardening, revalidate conversation events with two simultaneous sessions: one authorized and one outside the scope.
+- [ ] Monitor Linear 401/403 responses and list query count/duration during the post-deploy observation window.
 

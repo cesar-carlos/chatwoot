@@ -123,7 +123,7 @@ module Custom::Conversations::UnreadCounts::Counter
 
     case permission_mode
     when :unassigned_and_mine
-      relation.where.not(assignee_id: nil)
+      relation.assigned
     when :team_unassigned_and_mine
       exclude_already_counted_team_unassigned(relation)
     when :mine
@@ -136,10 +136,11 @@ module Custom::Conversations::UnreadCounts::Counter
   def participant_unread_base
     participant_ids = ConversationParticipant.where(account_id: account.id, user_id: user.id).select(:conversation_id)
 
-    Conversations::PermissionFilterService.new(unread_open_conversations, user, account)
-                                          .perform
-                                          .where(id: participant_ids)
-                                          .where.not(assignee_id: user.id)
+    participating = Conversations::PermissionFilterService.new(unread_open_conversations, user, account)
+                                                          .perform
+                                                          .where(id: participant_ids)
+
+    participating.where(assignee_id: nil).or(participating.where.not(assignee_id: user.id))
   end
 
   def exclude_already_counted_team_unassigned(relation)
@@ -147,7 +148,8 @@ module Custom::Conversations::UnreadCounts::Counter
     return relation if team_ids.empty?
 
     relation.where(
-      'conversations.assignee_id IS NOT NULL OR conversations.team_id IS NULL OR conversations.team_id NOT IN (?)',
+      'conversations.assignee_id IS NOT NULL OR conversations.assignee_agent_bot_id IS NOT NULL OR ' \
+      'conversations.team_id IS NULL OR conversations.team_id NOT IN (?)',
       team_ids
     )
   end

@@ -1,11 +1,6 @@
-module Api::V1::ConversationsHelper
-  def current_user_participating?(conversation)
-    return false if Current.user.blank?
+# frozen_string_literal: true
 
-    if conversation.association(:conversation_participants).loaded?
-      conversation.conversation_participants.any? { |participant| participant.user_id == Current.user.id }
-    else
-      conversation.conversation_participants.exists?(user_id: Current.user.id)
-    end
-  end
+module Api::V1::ConversationsHelper
+  # FORK: delegate the participation flag to the Custom overlay
+  include Custom::Api::V1::ConversationsHelper
 end

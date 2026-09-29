@@ -15,15 +15,15 @@ module Custom::Conversations::PermissionFilterService
 
     return Conversation.none if scopes.empty?
 
-    union_conversation_scopes(scopes)
+    scopes.reduce { |combined_scope, scope| combined_scope.or(scope) }
   end
 
   def filter_team_unassigned_and_mine
     user_team_ids = user.teams.where(account_id: account.id).pluck(:id)
-    mine = accessible_conversations.assigned_to(user).unscope(:order)
-    team_unassigned = accessible_conversations.unassigned.where(team_id: user_team_ids).unscope(:order)
+    conversations = accessible_conversations
+    mine = conversations.assigned_to(user)
+    team_unassigned = conversations.unassigned.where(team_id: user_team_ids)
 
-    Conversation.from("(#{mine.to_sql} UNION #{team_unassigned.to_sql}) as conversations")
-                .where(account_id: account.id)
+    mine.or(team_unassigned)
   end
 end

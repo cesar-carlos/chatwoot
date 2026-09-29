@@ -1,6 +1,29 @@
 # frozen_string_literal: true
 
 module Custom::Api::V1::Accounts::ConversationsController
+  def self.prepended(base)
+    base.helper_method :current_user_participating_conversation_ids
+  end
+
+  def index
+    super
+    cache_current_user_participation!
+  end
+
+  def search
+    super
+    cache_current_user_participation!
+  end
+
+  def filter
+    super
+    cache_current_user_participation! unless performed?
+  end
+
+  def current_user_participating_conversation_ids
+    @current_user_participating_conversation_ids
+  end
+
   def create
     Current.conversation_opened_by = Custom::Conversations::OpenedByStamper::AGENT
     ActiveRecord::Base.transaction do
@@ -29,6 +52,13 @@ module Custom::Api::V1::Accounts::ConversationsController
   end
 
   private
+
+  def cache_current_user_participation!
+    conversation_ids = @conversations.load.map(&:id)
+    @current_user_participating_conversation_ids = ConversationParticipant.where(
+      conversation_id: conversation_ids, user_id: Current.user.id
+    ).pluck(:conversation_id).to_set
+  end
 
   def stamp_opened_by_agent_on_reopen!
     return unless Current.user.is_a?(User)
