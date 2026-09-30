@@ -70,4 +70,34 @@ RSpec.describe 'Custom notification subscription deletion', type: :request do
     expect(response).to have_http_status(:ok)
     expect { subscription.reload }.to raise_error(ActiveRecord::RecordNotFound)
   end
+
+  it 'rejects a deletion without a supported identifier' do
+    delete '/api/v1/notification_subscriptions', headers: headers, as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body['error']).to eq('Provide exactly one of endpoint or push_token')
+  end
+
+  it 'rejects an ambiguous deletion request' do
+    delete '/api/v1/notification_subscriptions',
+           params: {
+             endpoint: 'https://push.example.test/current-user',
+             push_token: 'fcm-token'
+           },
+           headers: headers,
+           as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body['error']).to eq('Provide exactly one of endpoint or push_token')
+  end
+
+  it 'rejects a non-scalar endpoint' do
+    delete '/api/v1/notification_subscriptions',
+           params: { endpoint: ['https://push.example.test/device'] },
+           headers: headers,
+           as: :json
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body['error']).to eq('Provide exactly one of endpoint or push_token')
+  end
 end
