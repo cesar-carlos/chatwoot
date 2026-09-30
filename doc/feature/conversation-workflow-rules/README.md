@@ -2,7 +2,7 @@
 
 Evolução de **Fluxos de Conversa**: regras configuráveis de resolução automática e escalonamento quando o agente não responde, com filtro por caixa de entrada, condições e ações no estilo Automação.
 
-**Estado:** implementado (Fases 1–4) — regras CRUD em menu independente **Regras de conversa** (`/settings/conversation-rules`); legacy **Fluxo de Conversa** mantém auto-resolve + atributos obrigatórios.
+**Estado:** implementado (Fases 1–5) — regras CRUD em menu independente **Regras de conversa** (`/settings/conversation-rules`); legacy **Fluxo de Conversa** mantém auto-resolve + atributos obrigatórios; hardening de execução concluído em set/2026.
 
 | Área | Status |
 |------|--------|
@@ -13,7 +13,11 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 | Gatilho “agente não respondeu” (`waiting_since`) | ✅ `agent_no_reply` + flag `conversation_agent_no_reply_rules` |
 | Gatilhos estendidos (jun/2026) | ✅ `first_response_overdue`, `unassigned_too_long`, `pending_stale`, `customer_no_reply` |
 | Eventos sintéticos na Automação (6 eventos) | ✅ Fase 4 — `conversation_inactivity_threshold`, `conversation_agent_no_reply`, `conversation_first_response_overdue`, `conversation_unassigned_too_long`, `conversation_pending_stale`, `conversation_customer_no_reply` |
-| Business hours | ✅ `BusinessHoursElapsedCalculator` (opt-in por regra) |
+| Business hours | ✅ cálculo exato até o threshold, inclusive após dias fechados configurados |
+| Capacidade do scheduler | ✅ paginação por timestamp + ID; limite conta apenas tentativas reivindicadas |
+| Condições | ✅ contrato compatível com Automação e operador final normalizado |
+| Migração legacy | ✅ lock por conta e transação única para regra + marcador |
+| Persistência do formulário | ✅ single-flight durante a requisição; loading acompanha o save real |
 | Job per-message | ✅ `ScheduleOnMessageJob` + `ScheduleOnMessageScheduler` (dedup Redis por epoch — previne re-agendamento no mesmo episódio) |
 
 ---
@@ -72,7 +76,11 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 | Tópico | Decisão |
 |--------|---------|
 | Scheduler | Cron 5 min (todos os triggers); per-message em incoming (`agent_no_reply`, `first_response_overdue`) e outgoing (`customer_no_reply`) |
-| Business hours | Opt-in por regra; **só cron** (delay Sidekiq não expressa horário útil) |
+| Batch do scheduler | Keyset pagination por timestamp de referência + ID; `BULK_ACTIONS_LIMIT` conta apenas candidatos com execution reivindicada |
+| Business hours | Opt-in por regra; **só cron**; prefilter wall-clock pelo threshold e contagem útil sem limite artificial de dias |
+| Condições | Adapter expõe `account`, não muta a regra e remove `query_operator` terminal antes do filtro upstream |
+| Migração legacy | `Account#with_lock`; criação da regra e `workflow_rules_migrated_at` na mesma transação |
+| Save no frontend | `isSaving` impede persistências concorrentes e representa somente a chamada de API |
 | Dedup waiting | `(rule_id, conversation_id, waiting_since_epoch)` — `agent_no_reply`, `first_response_overdue` |
 | Dedup activity | `(rule_id, conversation_id, last_activity_epoch)` — inatividade, pending, unassigned, customer_no_reply |
 | Tiered SLA | **Múltiplas regras** (ex.: 15 min / 2h / 24h), uma por tier |
@@ -93,10 +101,10 @@ Evolução de **Fluxos de Conversa**: regras configuráveis de resolução autom
 |-----------|----------|
 | [current-state.md](./current-state.md) | Baseline + código implementado |
 | [business-rules.md](./business-rules.md) | Regras normativas completas |
-| [implementation-plan.md](./implementation-plan.md) | Fases 0–4, arquivos, migração, testes |
+| [implementation-plan.md](./implementation-plan.md) | Fases 0–5, arquivos, migração, hardening e testes |
 | [implementation-decision-tree.md](./implementation-decision-tree.md) | Opções A–D |
 | [improvements-backlog.md](./improvements-backlog.md) | Log da reavaliação (incorporado nos docs acima) |
 
 ---
 
-*Última atualização: ago/2026 — UX pack SidePanel + activity/skips*
+*Última atualização: set/2026 — hardening de execução, business hours, condições, migração e save*

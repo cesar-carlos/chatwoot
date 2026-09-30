@@ -5,9 +5,16 @@ class Custom::ConversationWorkflow::RuleExecutor
   end
 
   def perform
-    # find_each ignores ORDER BY — load the limited ordered batch explicitly.
-    ordered_base_scope.limit(Limits::BULK_ACTIONS_LIMIT).to_a.each do |conversation|
-      process_conversation(conversation)
+    attempted = 0
+    each_candidate_batch do |conversations|
+      conversations.each do |conversation|
+        next unless process_conversation(conversation)
+
+        attempted += 1
+        break if attempted >= Limits::BULK_ACTIONS_LIMIT
+      end
+
+      attempted >= Limits::BULK_ACTIONS_LIMIT
     end
   end
 
@@ -34,18 +41,54 @@ class Custom::ConversationWorkflow::RuleExecutor
 
   private
 
+  def each_candidate_batch
+    cursor_time = nil
+    cursor_id = nil
+
+    loop do
+      conversations = candidate_scope_after(cursor_time, cursor_id).to_a
+      break if conversations.empty?
+
+      next_cursor_time = order_value(conversations.last)
+      next_cursor_id = conversations.last.id
+      break if yield conversations
+
+      cursor_time = next_cursor_time
+      cursor_id = next_cursor_id
+    end
+  end
+
+  def candidate_scope_after(cursor_time, cursor_id)
+    scope = ordered_base_scope.limit(Limits::BULK_ACTIONS_LIMIT)
+    return scope if cursor_time.nil?
+
+    column = order_column_for_trigger
+    scope.where(
+      "(#{column} > :cursor_time) OR (#{column} = :cursor_time AND conversations.id > :cursor_id)",
+      cursor_time: cursor_time,
+      cursor_id: cursor_id
+    )
+  end
+
   def ordered_base_scope
     column = order_column_for_trigger
-    return base_scope if column.blank?
-
-    base_scope.order(Arel.sql("#{column} ASC NULLS LAST"))
+    base_scope.reorder(Arel.sql("#{column} ASC, conversations.id ASC"))
   end
 
   def order_column_for_trigger
     case @rule.trigger_type
     when 'conversation_inactivity', 'pending_stale', 'customer_no_reply'
       'conversations.last_activity_at'
+    when 'agent_no_reply', 'first_response_overdue'
+      'conversations.waiting_since'
+    when 'unassigned_too_long'
+      'conversations.created_at'
     end
+  end
+
+  def order_value(conversation)
+    attribute = order_column_for_trigger.delete_prefix('conversations.')
+    conversation.public_send(attribute)
   end
 
   def base_scope
@@ -63,20 +106,21 @@ class Custom::ConversationWorkflow::RuleExecutor
   end
 
   def process_conversation(conversation)
-    return unless conversation_eligible?(conversation)
-    return unless Custom::ConversationWorkflow::ConditionsFilter.new(@rule, conversation).perform
-    return unless claim_execution!(conversation)
+    return false unless conversation_eligible?(conversation)
+    return false unless Custom::ConversationWorkflow::ConditionsFilter.new(@rule, conversation).perform
+    return false unless claim_execution!(conversation)
 
     begin
       execute_pipeline(conversation)
     rescue StandardError => e
       ConversationWorkflowRuleExecution.release!(rule: @rule, conversation: conversation)
       ChatwootExceptionTracker.new(e, account: @account).capture_exception
-      return
+      return true
     end
 
     create_activity_message(conversation)
     Custom::ConversationWorkflow::AutomationEventDispatcher.new(rule: @rule, conversation: conversation).perform
+    true
   end
 
   def conversation_eligible?(conversation)

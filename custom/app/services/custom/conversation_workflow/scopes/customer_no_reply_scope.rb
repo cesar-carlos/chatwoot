@@ -11,8 +11,7 @@ class Custom::ConversationWorkflow::Scopes::CustomerNoReplyScope
     scope = @account.conversations.open.where.not(contact_id: nil)
     scope = scope.where(inbox_id: Array(@rule.inbox_ids)) if @rule.inbox_ids.present?
 
-    multiplier = @rule.respect_business_hours? ? 3 : 1
-    cutoff = Time.now.utc - (@rule.duration_minutes * multiplier).minutes
+    cutoff = Time.now.utc - @rule.duration_minutes.minutes
     scope.where(last_outgoing_message_older_than_sql, cutoff)
   end
 

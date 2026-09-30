@@ -16,7 +16,7 @@ RSpec.describe Custom::ConversationWorkflow::PreviewCountService do
       waiting_since: 2.hours.ago,
       assignee: agent
     )
-    create(
+    non_matching = create(
       :conversation,
       account: account,
       inbox: inbox,
@@ -24,6 +24,11 @@ RSpec.describe Custom::ConversationWorkflow::PreviewCountService do
       waiting_since: 2.hours.ago,
       assignee_id: nil
     )
+    # before_create initializes waiting_since from created_at, so set the episode timestamps explicitly.
+    # rubocop:disable Rails/SkipsModelValidations
+    matching.update_column(:waiting_since, 2.hours.ago)
+    non_matching.update_column(:waiting_since, 2.hours.ago)
+    # rubocop:enable Rails/SkipsModelValidations
 
     count = described_class.new(
       account: account,

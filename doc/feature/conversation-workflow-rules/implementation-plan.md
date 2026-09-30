@@ -2,7 +2,7 @@
 
 > Menu independente **Regras de conversa** (`/settings/conversation-rules`) — ver [current-state.md](./current-state.md).
 
-Plano revisado com melhorias P0–P2 incorporadas.
+Plano revisado com melhorias P0–P2 e hardening pós-review de set/2026 incorporados.
 
 **Pré-requisitos:** [README.md](./README.md) · [business-rules.md](./business-rules.md) · [implementation-decision-tree.md](./implementation-decision-tree.md)
 
@@ -20,7 +20,8 @@ Evoluir Fluxos de Conversa de config global para **regras multi-inbox** com seis
 4. Condições na Fase 2
 5. Feature flag separada para `agent_no_reply`
 6. i18n en + pt_BR
-7. Roadmap Fase 3–4 (UI avançada, business hours, ResolveService, Automação)
+7. Fases 3–4: UI avançada, business hours, ResolveService e Automação
+8. Fase 5: execução justa por batch, migração atômica, condições compatíveis e save single-flight
 
 ---
 
@@ -36,10 +37,10 @@ Evoluir Fluxos de Conversa de config global para **regras multi-inbox** com seis
 | 2.1 | `pending` status, filtros opcionais waiting |
 | 3 | Business hours, job per-message (opcional) |
 | 4 | ResolveService + required attrs; eventos Automação (Opção D) |
+| 5 | Hardening: scheduler, business hours, condições, migração legacy e persistência do form |
 
 ### Out of Scope inicial
 
-- Specs automatizados (salvo pedido)
 - Alterar Captain pending job
 
 ---
@@ -62,7 +63,7 @@ Evoluir Fluxos de Conversa de config global para **regras multi-inbox** com seis
 ```mermaid
 flowchart TB
   UI1["Regras de conversa\n(/settings/conversation-rules)"] --> API["CRUD rules"]
-  UI2["Fluxo de Conversa (legacy)\n(/settings/conversation-workflow)"] --> MIGRATE["POST migrate_legacy"]
+  UI2["Fluxo de Conversa (legacy)\n(/settings/conversation-workflow)"] --> MIGRATE["POST migrate_legacy\n(account lock + transaction)"]
   API --> DB[(conversation_workflow_rules)]
   CRON["TriggerScheduledItemsJob (*/5 * * * *)"] --> SCH["Custom::ConversationWorkflow::SchedulerJob"]
   MSG["Message after_create_commit"] --> SMS["ScheduleOnMessageScheduler\n(Redis, dedup por epoch)"]
@@ -72,9 +73,9 @@ flowchart TB
   AP --> LEGACY{workflow_rules_migrated?}
   LEGACY -->|sim| SKIP[Skip ResolutionJob]
   LEGACY -->|não| OLD[ResolutionJob legacy]
-  AP --> EXEC["RuleExecutor"]
-  EXEC --> SCOPE["6 Scopes (SQL pre-filter)"]
-  SCOPE --> MATCH["ScopeMatcher + ThresholdMatcher\n(+ BusinessHoursElapsedCalculator)"]
+  AP --> EXEC["RuleExecutor\n(keyset timestamp + ID)"]
+  EXEC --> SCOPE["6 Scopes\n(prefilter wall-clock seguro)"]
+  SCOPE --> MATCH["ScopeMatcher + ThresholdMatcher\n(BH exato até threshold)"]
   MATCH --> COND["ConditionsFilter → ConditionsFilterService"]
   COND --> DEDUP["claim_execution! (RecordNotUnique)"]
   DEDUP --> ACT["ActionService < AutomationRules::ActionService"]
@@ -160,18 +161,18 @@ Migrations: `20260618130200_add_conversation_workflow_conversation_indexes.rb`,
 | `custom/app/models/custom/message.rb` | Hook `after_create_commit` → `WorkflowRulesScheduler` |
 | `custom/app/models/custom/message/workflow_rules_scheduler.rb` | Fan-out incoming/outgoing para `ScheduleOnMessageScheduler` |
 | `custom/app/services/custom/conversation_workflow/account_processor.rb` | Itera regras ativas da conta com gate de feature flag |
-| `custom/app/services/custom/conversation_workflow/rule_executor.rb` | Orquestração: scope → match → claim → pipeline → audit → events |
+| `custom/app/services/custom/conversation_workflow/rule_executor.rb` | Orquestração + keyset pagination por timestamp/ID; limite conta somente claims |
 | `custom/app/services/custom/conversation_workflow/action_service.rb` | Subclass de `AutomationRules::ActionService`; webhook prefix `workflow_rule.*` |
 | `custom/app/services/custom/conversation_workflow/scope_matcher.rb` | Elegibilidade por conversa pós-SQL (status, waiting_since, inbox_ids, etc.) |
-| `custom/app/services/custom/conversation_workflow/threshold_matcher.rb` | Checagem de duration (calendar ou business hours) |
+| `custom/app/services/custom/conversation_workflow/threshold_matcher.rb` | Checagem calendar ou business hours; interrompe ao alcançar o threshold |
 | `custom/app/services/custom/conversation_workflow/reference_timestamp.rb` | Timestamp de referência e atributos de dedup por trigger type |
 | `custom/app/services/custom/conversation_workflow/conditions_filter.rb` | Wrapper de `AutomationRules::ConditionsFilterService` |
-| `custom/app/services/custom/conversation_workflow/conditions_rule_adapter.rb` | Duck-typing de regra como AutomationRule para filtro de condições |
+| `custom/app/services/custom/conversation_workflow/conditions_rule_adapter.rb` | Expõe `account`, duplica condições e limpa o `query_operator` terminal |
 | `custom/app/services/custom/conversation_workflow/template_message_sender.rb` | Envia template via `MessageTemplates::Template::AutoResolve` |
-| `custom/app/services/custom/conversation_workflow/migrate_legacy_service.rb` | Migração one-shot de `auto_resolve_*` → regra inatividade |
+| `custom/app/services/custom/conversation_workflow/migrate_legacy_service.rb` | Migração one-shot serializada com `account.with_lock` e rollback atômico |
 | `custom/app/services/custom/conversation_workflow/preview_count_service.rb` | `POST preview_count` — contagem de elegíveis sem salvar regra |
 | `custom/app/services/custom/conversation_workflow/automation_event_dispatcher.rb` | Dispara eventos sintéticos para `AutomationRule`s na Automação |
-| `custom/app/services/custom/conversation_workflow/business_hours_elapsed_calculator.rb` | Minutos úteis entre dois timestamps via `inbox.working_hours` |
+| `custom/app/services/custom/conversation_workflow/business_hours_elapsed_calculator.rb` | Minutos úteis sem truncamento; retorna cedo no threshold ou se todos os dias estão fechados |
 | `custom/app/services/custom/conversation_workflow/schedule_on_message_scheduler.rb` | Agendamento Redis per-message com dedup por epoch de referência |
 | `custom/app/services/custom/conversation_workflow/scopes/inactivity_scope.rb` | Open; cutoff em `last_activity_at` |
 | `custom/app/services/custom/conversation_workflow/scopes/agent_no_reply_scope.rb` | `waiting_since` não nulo; statuses configuráveis |
@@ -285,7 +286,7 @@ Registrar em `config/features.yml`:
 | `conversationRules/conversationRules.routes.js` | Rota `/settings/conversation-rules` → `conversation_rules_index` |
 | `conversationRules/constants.js` | Tipos de trigger (6), `DEFAULT_WORKFLOW_RULE`, `DISALLOWED_ACTIONS` |
 | `conversationRules/components/ConversationRulesList.vue` | Draggable rows, banners legacy/migrate, modais toggle/delete, reorder API |
-| `conversationRules/components/ConversationRuleForm.vue` | Seções: Identificação, Gatilho, Escopo, Condições, Ações; `DurationInput` com unidade; validação inline |
+| `conversationRules/components/ConversationRuleForm.vue` | SidePanel e validação; `isSaving` impede persistências concorrentes e controla o loading real |
 | `conversationRules/components/ConversationRuleRow.vue` | Row com edit/clone/toggle/delete |
 | `conversationRules/components/TriggerCardSelector.vue` | Cards selecionáveis por trigger type (6 tipos) |
 | `conversationRules/components/DurationPresets.vue` | Botões de preset de duração rápida |
@@ -316,23 +317,11 @@ FORK no frontend:
 ```ruby
 # rake conversation_workflow:migrate_legacy
 Account.with_auto_resolve.find_each do |account|
-  next if account.settings['workflow_rules_migrated_at']
-
-  ConversationWorkflowRule.create!(
-    account: account,
-    name: 'Auto-resolve (migrated)',
-    trigger_type: :conversation_inactivity,
-    duration_minutes: account.auto_resolve_after,
-    message: account.auto_resolve_message,
-    ignore_waiting: account.auto_resolve_ignore_waiting,
-    resolve_on_match: true,
-    actions: build_label_action(account.auto_resolve_label)
-  )
-
-  account.settings['workflow_rules_migrated_at'] = Time.current.iso8601
-  account.save!
+  Custom::ConversationWorkflow::MigrateLegacyService.new(account).perform
 end
 ```
+
+O serviço usa `account.with_lock`: revalida idempotência dentro do lock e grava a regra e `workflow_rules_migrated_at` na mesma transação. Se qualquer escrita falhar, ambas são revertidas.
 
 Manter leitura `auto_resolve_*` 1 release com log deprecation.
 
@@ -398,6 +387,17 @@ Manter leitura `auto_resolve_*` 1 release com log deprecation.
 | 4.3 | Eventos Automação: 6 sintéticos (um por trigger) | Done |
 | 4.4 | Doc fronteira SLA vs workflow | Done |
 
+### Fase 5 — Hardening pós-review (set/2026)
+
+| # | Tarefa | Done |
+|---|--------|------|
+| 5.1 | Paginar scheduler por timestamp + ID e contar apenas executions reivindicadas | Done |
+| 5.2 | Remover truncamento de business hours e tratar calendário totalmente fechado | Done |
+| 5.3 | Normalizar adapter de condições para o contrato upstream | Done |
+| 5.4 | Serializar e tornar atômica a migração legacy | Done |
+| 5.5 | Impedir persistências concorrentes no formulário e corrigir o loading | Done |
+| 5.6 | Adicionar regressões automatizadas para executor, BH, condições, preview e rollback | Done |
+
 ---
 
 ## Runtime: per-message vs cron
@@ -435,16 +435,41 @@ Ver [current-state.md](./current-state.md) § Runtime. Resumo:
 2. Conversa atribuída → skip
 3. Não atribuída → executa
 
+### Hardening do scheduler
+
+1. Com `BULK_ACTIONS_LIMIT = 2`, criar três candidatas elegíveis.
+2. Primeira execução reivindica duas.
+3. Segunda execução pagina além dos claims existentes e processa a terceira.
+
+### Business hours
+
+1. Validar threshold dividido entre sexta-feira e segunda-feira, com fim de semana fechado.
+2. Validar retorno zero quando todos os dias estão fechados.
+3. Confirmar execução assim que o prefilter wall-clock mínimo é atingido.
+
+### Condições e migração
+
+1. Persistir condição única com `query_operator: AND`; o adapter deve normalizar sem alterar o JSON da regra.
+2. Forçar falha ao salvar `workflow_rules_migrated_at`; a regra criada deve sofrer rollback.
+
+### Persistência do formulário
+
+1. Clicar repetidamente em salvar/confirmar durante a requisição.
+2. Deve existir uma única chamada de persistência; o loading termina no `finally`.
+
 ---
 
 ## Risks (atualizado)
 
 | Risco | Mitigação |
 |-------|-----------|
-| Duplo job | `workflow_rules_migrated_at` + FORK legacy skip |
+| Duplo job ou migração parcial | `workflow_rules_migrated_at` + FORK legacy skip + `account.with_lock` transacional |
 | send_message loop | dedup + counts_as_agent_reply explícito |
 | waiting_since = created_at | Filtros opcionais Fase 2.1 + doc |
-| Performance | Índices compostos + BULK_ACTIONS_LIMIT |
+| Starvation no batch | Keyset pagination por timestamp + ID; limite conta apenas claims |
+| Business hours truncado | Prefilter wall-clock seguro + cálculo útil até o threshold, sem limite artificial de dias |
+| Condição termina em AND/OR | Adapter duplica e limpa o operador terminal antes de delegar ao upstream |
+| Duplo submit | `isSaving` protege a persistência e controla o loading |
 | ActionService drift | Wrapper único + whitelist compartilhada |
 | SLA vs workflow confusão | Doc Fase 4 § fronteira |
 
@@ -462,4 +487,4 @@ Ver [current-state.md](./current-state.md) § Runtime. Resumo:
 
 ---
 
-*Última atualização: jul/2026 — 6 gatilhos no schema, índices extended, runtime documentado*
+*Última atualização: set/2026 — Fase 5 de hardening e matriz de regressão*

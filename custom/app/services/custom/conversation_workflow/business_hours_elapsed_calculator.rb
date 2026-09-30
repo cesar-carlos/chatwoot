@@ -1,9 +1,9 @@
 class Custom::ConversationWorkflow::BusinessHoursElapsedCalculator
-  def initialize(inbox:, started_at:, ended_at: Time.current, max_calendar_days: nil)
+  def initialize(inbox:, started_at:, ended_at: Time.current, stop_after_minutes: nil)
     @inbox = inbox
     @started_at = started_at
     @ended_at = ended_at
-    @max_calendar_days = max_calendar_days
+    @stop_after_minutes = stop_after_minutes
   end
 
   def elapsed_minutes
@@ -13,14 +13,15 @@ class Custom::ConversationWorkflow::BusinessHoursElapsedCalculator
     cursor = @started_at.in_time_zone(@inbox.timezone)
     finish = @ended_at.in_time_zone(@inbox.timezone)
     return 0 if cursor >= finish
+    return 0 unless open_days?
 
-    days_iterated = 0
-    while cursor < finish && days_iterated < max_days_limit
-      day_end = cursor.end_of_day
-      segment_end = [day_end, finish].min
+    while cursor < finish
+      next_day = cursor.tomorrow.beginning_of_day
+      segment_end = [next_day, finish].min
       minutes += working_minutes_for_day(cursor, segment_end)
-      cursor = day_end + 1.second
-      days_iterated += 1
+      return minutes if stop_after_reached?(minutes)
+
+      cursor = next_day
     end
     minutes
   end
@@ -31,10 +32,12 @@ class Custom::ConversationWorkflow::BusinessHoursElapsedCalculator
     ((@ended_at - @started_at) / 60).floor
   end
 
-  def max_days_limit
-    return @max_calendar_days if @max_calendar_days.present?
+  def open_days?
+    working_hours_by_day.values.any? { |working_hour| !working_hour.closed_all_day? }
+  end
 
-    [((@ended_at - @started_at) / 1.day).ceil, 1].max
+  def stop_after_reached?(minutes)
+    @stop_after_minutes.present? && minutes >= @stop_after_minutes
   end
 
   def working_hours_by_day

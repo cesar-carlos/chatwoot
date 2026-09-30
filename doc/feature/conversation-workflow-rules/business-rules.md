@@ -114,6 +114,13 @@ Formato idêntico a `AutomationRule#conditions`. Avaliar com `AutomationRules::C
 
 Duração **não** é condição AND — pertence ao gatilho.
 
+**Contrato do adapter de condições:**
+
+- expor `id`, `account` e `conditions`, como esperado por `AutomationRules::ConditionsFilterService`;
+- trabalhar sobre `deep_dup` para não alterar o JSON persistido na regra;
+- forçar `query_operator = nil` na última condição, normalizando payloads legados/API que terminaram em `AND` ou `OR`;
+- manter a autorização fail-closed do filtro upstream.
+
 ### 2.3 Multi-regra
 
 **Todas** as regras ativas que match executam, na ordem de `position`, salvo dedup.
@@ -247,6 +254,15 @@ Variáveis interpoladas a partir da conversa **que bateu na regra** (não do des
 | Qualquer + `respect_business_hours` | ❌ | ✅ |
 
 Business hours não agenda Sidekiq delay — só o cron de 5 min avalia elapsed útil.
+
+## 4.2 Capacidade e ordenação do scheduler
+
+- O `RuleExecutor` pagina candidatos por **timestamp de referência + ID**, sempre em ordem crescente e determinística.
+- Timestamp por gatilho: `last_activity_at` para inatividade, pending stale e customer no reply; `waiting_since` para agent no reply e first response overdue; `created_at` para unassigned too long.
+- `BULK_ACTIONS_LIMIT` conta apenas conversas cuja execution foi reivindicada; candidatos inelegíveis, sem match de condição ou já deduplicados não consomem o limite.
+- Uma execução que falha após o claim conta como tentativa; o claim é liberado para permitir retry futuro.
+- A paginação continua além dos primeiros candidatos já processados, evitando starvation em execuções posteriores do cron.
+
 ---
 
 ## 5. Legacy e coexistência
@@ -257,6 +273,7 @@ Business hours não agenda Sidekiq delay — só o cron de 5 min avalia elapsed 
 | `workflow_rules_migrated_at` | Quando setado, **skip** `Conversations::ResolutionJob` para a conta |
 | Período transição | Nunca rodar legacy + novo scheduler na mesma conta |
 | `auto_resolve_ignore_waiting` | = regra inatividade + `ignore_waiting: true` |
+| Operação de migração | `account.with_lock`; criar regra e gravar marcador na mesma transação; qualquer falha faz rollback integral |
 
 ---
 
@@ -267,7 +284,7 @@ Business hours não agenda Sidekiq delay — só o cron de 5 min avalia elapsed 
 | Activity messages | Identificar regra via `Current.executed_by` |
 | i18n | `conversations.activity.workflow_rule.*` (en + pt_BR) |
 | UI unattended | Link “afeta fila Não atendidas” + preview count (Fase 2.5) |
-| Form | SidePanel (`width=3xl`); Condições colapsáveis; scroll até `send_message_to_contact` |
+| Form | SidePanel (`width=3xl`); Condições colapsáveis; scroll até `send_message_to_contact`; save single-flight via `isSaving` |
 | Skips | `conversation_workflow_rule_skips` + badge `recent_skips_count` (24h) na lista |
 | Activity API | `GET /conversation_workflow_rules/:id/activity` — últimas 10 executions + skips |
 
@@ -281,7 +298,15 @@ Business hours não agenda Sidekiq delay — só o cron de 5 min avalia elapsed 
 | Required attributes | Fase 4: backend via `ResolveService`; sistema usa `skip_required_attributes` |
 | Captain pending job | Escopo separado — não alterar Fase 1–3 |
 | SLA Enterprise | **Distinto** — SLA = compromisso contratual (prazos, métricas, políticas Enterprise); workflow = automação operacional por regra de conta. Não compartilham tabela nem scheduler. |
-| Business hours | Implementado — `BusinessHoursElapsedCalculator`; pausar contagem via `inbox.working_hours` (opt-in `respect_business_hours` por regra) |
+| Business hours | Implementado — `BusinessHoursElapsedCalculator`; pausar contagem via `inbox.working_hours` (opt-in `respect_business_hours` por regra), sem truncar após dias fechados |
+
+### 7.1 Semântica de business hours
+
+1. O scope SQL elimina apenas conversas cujo tempo de calendário ainda é menor que `duration_minutes`; esse prefilter nunca descarta uma conversa que já possa ter acumulado o threshold útil.
+2. O matcher percorre os dias no timezone da inbox e soma somente intervalos abertos.
+3. A contagem para assim que alcança `duration_minutes`; não há heurística `×3` nem limite artificial de dias.
+4. Se todos os dias configurados estiverem fechados, o resultado é zero imediatamente.
+5. Regras com `respect_business_hours` continuam cron-only.
 
 ---
 
@@ -305,7 +330,7 @@ Config: **administrator**.
 | `duration_minutes` | 10 .. 1_439_856 |
 | `inbox_ids` | IDs da conta |
 | `actions` | Whitelist + validação espelhada de `AutomationRule` |
-| `conditions` | Atributos permitidos por fase |
+| `conditions` | Atributos permitidos por fase; adapter normaliza o operador terminal antes do filtro upstream |
 
 ---
 
@@ -316,9 +341,9 @@ Cron (*/5) e/ou ScheduleOnMessageJob:
   Para cada conta com regras ativas:
     Para cada regra (position ASC):
       IF NOT feature_flag(trigger_type) → skip
-      scope = Scope do trigger (+ inbox_ids, cutoff se calendar time)
-      conversations = scope.limit(BULK_ACTIONS_LIMIT)
-      Para cada conversa:
+      scope = Scope do trigger (+ inbox_ids, prefilter wall-clock seguro)
+      Paginar conversas por timestamp de referência + ID
+      Para cada conversa, até BULK_ACTIONS_LIMIT tentativas reivindicadas:
         IF ScopeMatcher / ThresholdMatcher falha → skip
         IF conditions present → ConditionsFilterService
         IF claim_execution! falha (dedup) → skip
@@ -329,4 +354,4 @@ Cron (*/5) e/ou ScheduleOnMessageJob:
 
 ---
 
-*Última atualização: ago/2026 — UX pack SidePanel + activity/skips*
+*Última atualização: set/2026 — paginação estável e business hours sem truncamento*

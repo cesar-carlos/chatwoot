@@ -2,7 +2,7 @@
 
 Comparação de abordagens arquiteturais antes/durante implementação.
 
-**Atualizado jun/2026**
+**Atualizado set/2026**
 
 ---
 
@@ -33,16 +33,16 @@ flowchart TD
 
 ## Opção A — `conversation_workflow_rules` em `custom/` (RECOMENDADA)
 
-**Ideia:** entidade dedicada, scheduler próprio, UI em Fluxos de Conversa, ações via wrapper sobre `ActionService`.
+**Ideia:** entidade dedicada, scheduler próprio, UI em **Regras de conversa**, ações via wrapper sobre `ActionService`.
 
 | Prós | Contras |
 |------|---------|
 | Separação clara: temporal vs event-driven | Nova tabela + CRUD |
 | Múltiplas regras, inbox, dedup nativos | Mais uma superfície para manter |
 | Fork-friendly (`custom/` isolado) | Período de transição com legacy job |
-| UI coesa no produto (“Fluxos de Conversa”) | |
+| UI coesa no produto (“Regras de conversa”) | |
 
-**Veredito:** ✅ MVP Fase 1–2.
+**Veredito:** ✅ implementada nas Fases 1–5.
 
 ---
 
@@ -76,7 +76,7 @@ flowchart TD
 
 ---
 
-## Opção D — Híbrido (A + eventos Automação Fase 3)
+## Opção D — Híbrido (A + eventos Automação Fase 4)
 
 **Ideia:** scheduler dispara eventos `conversation_agent_no_reply` / `conversation_inactivity_threshold`; admin configura **ações** na UI Automação.
 
@@ -86,7 +86,7 @@ flowchart TD
 | Condições ricas sem duplicar UI | Mais moving parts no dispatcher |
 | Admins power-users já conhecem Automação | |
 
-**Veredito:** ✅ evolução natural pós-MVP se times preferirem Automação para ações complexas.
+**Veredito:** ✅ implementada na Fase 4 para ações complexas, sem substituir a entidade temporal dedicada.
 
 ---
 
@@ -101,6 +101,18 @@ flowchart TD
 | T5 | Condições | **Fase 2** — assignee, team, labels, priority |
 | T6 | Status pending | MVP `open`; Fase 2.1 inclui `pending` |
 
+## Validação pós-implementação (set/2026)
+
+O hardening confirmou a Opção A e não alterou a fronteira arquitetural:
+
+| Achado | Resposta dentro da Opção A |
+|--------|----------------------------|
+| Candidatos já deduplicados bloqueavam o batch | Keyset pagination no executor dedicado |
+| Business hours podiam truncar após dias fechados | Calculator dedicado percorre até o threshold |
+| Filtro upstream exige contrato de `AutomationRule` | Adapter local expõe conta e normaliza condições |
+| Migração podia deixar regra sem marcador | Serviço dedicado usa lock e transação |
+| Form podia disparar persistências concorrentes | Estado `isSaving` no SidePanel |
+
 ---
 
-*Última atualização: jun/2026 — alinhado com README e implementation-plan*
+*Última atualização: set/2026 — Opção A reafirmada após hardening de execução*
