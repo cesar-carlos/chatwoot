@@ -124,6 +124,9 @@ RSpec.describe 'Linear Integration API', type: :request do
       }
     end
 
+    # FORK: conversation-scoped Linear actions now authorize inbox access
+    before { create(:inbox_member, user: agent, inbox: conversation.inbox) }
+
     context 'when it is an authenticated user' do
       context 'when the issue is created successfully' do
         let(:created_issue) { { data: { identifier: 'ENG-123', title: 'Sample Issue' } } }
@@ -182,6 +185,9 @@ RSpec.describe 'Linear Integration API', type: :request do
     let(:link) { "#{ENV.fetch('FRONTEND_URL', nil)}/app/accounts/#{account.id}/conversations/#{conversation.display_id}" }
     let(:title) { 'Sample Issue' }
 
+    # FORK: conversation-scoped Linear actions now authorize inbox access
+    before { create(:inbox_member, user: agent, inbox: conversation.inbox) }
+
     context 'when it is an authenticated user' do
       context 'when the issue is linked successfully' do
         let(:linked_issue) { { data: { 'id' => 'issue1', 'link' => 'https://linear.app/issue1' } } }
@@ -229,6 +235,9 @@ RSpec.describe 'Linear Integration API', type: :request do
     let(:link_id) { 'attachment1' }
     let(:issue_id) { 'ENG-789' }
     let(:conversation) { create(:conversation, account: account) }
+
+    # FORK: conversation-scoped Linear actions now authorize inbox access
+    before { create(:inbox_member, user: agent, inbox: conversation.inbox) }
 
     context 'when it is an authenticated user' do
       context 'when the issue is unlinked successfully' do
@@ -308,6 +317,9 @@ RSpec.describe 'Linear Integration API', type: :request do
   describe 'GET /api/v1/accounts/:account_id/integrations/linear/linked_issues' do
     let(:conversation) { create(:conversation, account: account) }
     let(:link) { "#{ENV.fetch('FRONTEND_URL', nil)}/app/accounts/#{account.id}/conversations/#{conversation.display_id}" }
+
+    # FORK: conversation-scoped Linear actions now authorize inbox access
+    before { create(:inbox_member, user: agent, inbox: conversation.inbox) }
 
     context 'when it is an authenticated user' do
       context 'when linked issue is found' do

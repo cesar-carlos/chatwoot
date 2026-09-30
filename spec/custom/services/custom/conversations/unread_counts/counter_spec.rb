@@ -81,4 +81,54 @@ RSpec.describe Conversations::UnreadCounts::Counter do
     expect(result[:teams]).to eq(team.id.to_s => 3)
     expect(store.assignment_ready?(account.id)).to be(true)
   end
+
+  it 'counts a participating AgentBot conversation when unassigned permission is also granted' do
+    account_user.update!(
+      custom_role: create(
+        :custom_role,
+        account: account,
+        permissions: %w[conversation_unassigned_manage conversation_participating_manage]
+      )
+    )
+    agent_bot_conversation = create_unread_conversation(
+      account: account,
+      inbox: inbox,
+      labels: [label.title],
+      team: team
+    )
+    agent_bot_conversation.update!(assignee_agent_bot: create(:agent_bot, account: account))
+    create(:conversation_participant, conversation: agent_bot_conversation, user: agent, account: account)
+
+    result = described_class.new(account: account, user: agent).perform
+
+    expect(result[:all_count]).to eq(1)
+    expect(result[:inboxes]).to eq(inbox.id.to_s => 1)
+    expect(result[:labels]).to eq(label.id.to_s => 1)
+    expect(result[:teams]).to eq(team.id.to_s => 1)
+  end
+
+  it 'counts a participating AgentBot conversation when team-unassigned permission is also granted' do
+    account_user.update!(
+      custom_role: create(
+        :custom_role,
+        account: account,
+        permissions: %w[conversation_team_unassigned_manage conversation_participating_manage]
+      )
+    )
+    agent_bot_conversation = create_unread_conversation(
+      account: account,
+      inbox: inbox,
+      labels: [label.title],
+      team: team
+    )
+    agent_bot_conversation.update!(assignee_agent_bot: create(:agent_bot, account: account))
+    create(:conversation_participant, conversation: agent_bot_conversation, user: agent, account: account)
+
+    result = described_class.new(account: account, user: agent).perform
+
+    expect(result[:all_count]).to eq(1)
+    expect(result[:inboxes]).to eq(inbox.id.to_s => 1)
+    expect(result[:labels]).to eq(label.id.to_s => 1)
+    expect(result[:teams]).to eq(team.id.to_s => 1)
+  end
 end

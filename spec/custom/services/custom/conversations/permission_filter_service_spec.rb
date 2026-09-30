@@ -139,5 +139,37 @@ RSpec.describe Conversations::PermissionFilterService do
       expect(result).to include(participating)
       expect(result).not_to include(other_assigned)
     end
+
+    it 'builds combined permission scopes without loading conversation IDs into Ruby' do
+      test_account = create(:account)
+      test_inbox = create(:inbox, account: test_account)
+      test_agent = create(:user, account: test_account, role: :agent)
+      create(:inbox_member, user: test_agent, inbox: test_inbox)
+      agent_team = create(:team, account: test_account)
+      create(:team_member, team: agent_team, user: test_agent)
+      account_user = test_account.account_users.find_by!(user: test_agent)
+      account_user.update!(
+        custom_role: create(
+          :custom_role,
+          account: test_account,
+          permissions: %w[conversation_team_unassigned_manage conversation_participating_manage]
+        )
+      )
+
+      conversation_queries = []
+      subscriber = lambda do |_name, _started, _finished, _unique_id, payload|
+        sql = payload[:sql]
+        conversation_queries << sql if sql.include?('FROM "conversations"')
+      end
+      result = nil
+
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') do
+        result = described_class.new(test_account.conversations, test_agent, test_account).perform
+      end
+
+      expect(conversation_queries).to be_empty
+      expect(result).not_to be_loaded
+      expect(result.to_sql).to include(' OR ')
+    end
   end
 end

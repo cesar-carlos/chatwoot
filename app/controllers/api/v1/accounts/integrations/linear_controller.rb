@@ -134,3 +134,6 @@ class Api::V1::Accounts::Integrations::LinearController < Api::V1::Accounts::Int
     end
   end
 end
+
+# FORK: authorize conversation-scoped Linear actions through the Custom overlay
+Api::V1::Accounts::Integrations::LinearController.prepend_mod_with('Api::V1::Accounts::Integrations::LinearController')
