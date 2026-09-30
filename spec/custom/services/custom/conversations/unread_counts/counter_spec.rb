@@ -96,7 +96,7 @@ RSpec.describe Conversations::UnreadCounts::Counter do
       labels: [label.title],
       team: team
     )
-    agent_bot_conversation.update!(assignee_agent_bot: create(:agent_bot, account: account))
+    agent_bot_conversation.update!(ai_assignee: create(:agent_bot, account: account))
     create(:conversation_participant, conversation: agent_bot_conversation, user: agent, account: account)
 
     result = described_class.new(account: account, user: agent).perform
@@ -121,7 +121,7 @@ RSpec.describe Conversations::UnreadCounts::Counter do
       labels: [label.title],
       team: team
     )
-    agent_bot_conversation.update!(assignee_agent_bot: create(:agent_bot, account: account))
+    agent_bot_conversation.update!(ai_assignee: create(:agent_bot, account: account))
     create(:conversation_participant, conversation: agent_bot_conversation, user: agent, account: account)
 
     result = described_class.new(account: account, user: agent).perform

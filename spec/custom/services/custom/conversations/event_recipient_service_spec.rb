@@ -68,7 +68,7 @@ RSpec.describe Custom::Conversations::EventRecipientService do
 
   it 'does not treat an AgentBot assignment as unassigned' do
     agent_bot = create(:agent_bot, account: account)
-    conversation.update!(assignee: nil, assignee_agent_bot: agent_bot)
+    conversation.update!(assignee: nil, ai_assignee: agent_bot)
 
     result = described_class.new(
       account: account,

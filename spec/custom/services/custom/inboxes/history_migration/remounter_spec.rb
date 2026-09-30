@@ -52,9 +52,9 @@ RSpec.describe Custom::Inboxes::HistoryMigration::Remounter do
     expect(conversation.reload.assignee_id).to be_nil
   end
 
-  it 'clears assignee_agent_bot when the bot is not attached to the target inbox' do
+  it 'clears the AI assignee when the bot is not attached to the target inbox' do
     bot = create(:agent_bot, account: account)
-    conversation.update!(assignee_agent_bot: bot)
+    conversation.update!(ai_assignee: bot)
 
     described_class.new(
       conversation: conversation,
@@ -64,6 +64,7 @@ RSpec.describe Custom::Inboxes::HistoryMigration::Remounter do
     ).perform
 
     expect(conversation.reload.assignee_agent_bot_id).to be_nil
+    expect(conversation.ai_assignee_type).to be_nil
   end
 
   it 'remounts call inbox_id when Call is available' do
