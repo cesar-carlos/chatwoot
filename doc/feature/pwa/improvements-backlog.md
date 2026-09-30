@@ -15,19 +15,19 @@
 - Asserção da área segura dos ícones, conferida também diretamente com MiniMagick.
 - Vitest isolado por worktree com 19 testes PWA/Push passando; ESLint e RuboCop direcionados passando.
 - Verificador público `bin/fork-pwa-smoke` para release, manifesto e ícones.
-- Integração no `origin/main` do fork, sem PR ou push para `upstream`, concluída no commit `092c8eeaf7`.
+- Candidato isolado com 18 exemplos RSpec, 19 Vitest, RuboCop direcionado e build Vite de produção aprovados.
+- Integração no `origin/main` do fork, sem PR ou push para `upstream`, até o commit `4254116ffd`.
 
 ## Pendente operacional e de validação
 
 | Prioridade | Item | Critério |
 |------------|------|----------|
-| P0 | Publicar o commit `092c8eeaf7` ou posterior | O `GIT_SHA` do dashboard corresponde ao release novo |
-| P0 | Reconciliar produção e fork | Preservar 480 commits exclusivos e as alterações locais do checkout de produção antes de trocar o release |
+| P0 | Publicar o commit `4254116ffd` ou posterior | O `GIT_SHA` do dashboard corresponde ao release novo |
+| P0 | Concluir reconciliação e publicar | Os commits da PWA já foram aplicados ao `main` de produção em worktree isolado; preservar as 27 alterações locais do checkout ativo antes de trocar o release |
 | P0 | Executar `db:chatwoot_prepare` | As duas configurações de ícone existem no Super Admin |
 | P0 | Configurar ícones Se7e | URLs públicas retornam PNG nos tamanhos declarados |
 | P0 | Invalidar caches antigos | `/manifest.json` e `/manifest.webmanifest` entregam o mesmo JSON dinâmico |
 | P0 | Validar Android e iOS | Instalação standalone e Push com app fechado funcionam |
-| P1 | Executar RSpec com banco autenticado | Specs Ruby direcionados passam; RuboCop já passou |
 | P1 | Monitorar entrega | Jobs, inscrições expiradas e diagnósticos não mostram regressão |
 
 ## Melhorias futuras, fora do escopo
