@@ -1,37 +1,37 @@
 # PWA — decisões de implementação
 
-Decisões do branch `fix/pwa-mobile-push`, 30/set/2026.
-
-## Qual manifesto entregar?
+## Separação de responsabilidades
 
 ```mermaid
 flowchart TD
-  A[Instalação do painel] --> B{A marca varia por instalação?}
-  B -->|Sim| C[Manifesto público gerado pelo Rails]
-  C --> D[Link sempre presente no HTML]
-  D --> E[PNG 192 e 512 na mesma origem]
-  A --> F[Web Push]
-  F --> G[Service worker estável em /sw.js]
+  A[Página do painel] --> B[Manifesto dinâmico white-label]
+  A --> C[Instalação guiada]
+  A --> D[Preferências]
+  D --> E[Push do sistema]
+  D --> F[Pop-up com painel aberto]
+  E --> G[Service worker]
+  G --> H[Notificação e navegação da mesma origem]
+  F --> I[Notification API e sessão ativa]
 ```
 
-O antigo `public/manifest.json` era estático e fixava o nome “Chatwoot”. O builder em `custom/` usa `INSTALLATION_NAME`, `BRAND_NAME` e as URLs configuradas para os ícones. `/manifest.webmanifest` é canônico; `/manifest.json` continua como alias. Remover o arquivo estático evita duas fontes de verdade.
+Push e Pop-up não são equivalentes. Push usa inscrição, serviço do navegador e worker, podendo funcionar com a página fechada. Pop-up usa a página ativa e a conexão em tempo real. Por isso conceder permissão a Pop-up não cria automaticamente uma inscrição Push.
 
-O link do manifesto fica fora do bloco `DISPLAY_MANIFEST`: essa opção controla metadados padrão do Chatwoot, enquanto a instalação white-label precisa permanecer disponível. O manifesto mantém `id: "/"`, `start_url: "/"`, `scope: "/"` e `display: "standalone"`.
+## Manifesto dinâmico e identidade estável
 
-## Por que dois ícones?
+O manifesto fica em `custom/` porque nome e ícones variam por instalação. `/manifest.webmanifest` é canônico e `/manifest.json` é somente um alias; não existe arquivo estático concorrente. `id: "/"` preserva a identidade das instalações antigas. `prefer_related_applications: false` deixa explícita a preferência pela PWA.
 
-O Chrome exige entradas de 192×192 e 512×512 para a promoção de instalação. Um favicon 512 acessível no servidor não atende ao critério se não estiver declarado no manifesto. As configurações `PWA_ICON_192_URL` e `PWA_ICON_URL` permitem trocar ambos sem editar código. Os arquivos informados devem ser PNGs quadrados reais, na origem do painel.
+O link e os metadados mínimos ficam fora de `DISPLAY_MANIFEST`. Essa configuração continua controlando apenas os metadados padrão do Chatwoot. Os dois ícones são declarados como `any maskable`; o conteúdo ocupa no máximo 80% do quadro e permanece centralizado.
 
-## Por que manter o worker sem cache offline?
+## Instalação guiada
 
-O worker existente recebe eventos `push` e `notificationclick`, mesmo com a página fechada. O painel depende de API, autenticação e Action Cable; não há política de cache de sessão ou experiência offline implementada. `workbox-config.js` não entra no build: gerar `public/sw.js` por ele substituiria os handlers de Push.
+No Chromium, o evento `beforeinstallprompt` é guardado sem abrir UI automaticamente. O botão aparece somente enquanto existe um prompt utilizável e chama `prompt()` por clique. No iOS não há esse evento: a interface ensina o fluxo nativo do Safari. O menu do navegador permanece uma alternativa ao botão interno.
 
-O Chrome removeu a exigência de um handler `fetch` para instalação no Android. Registrar o worker na tela de login ou adicionar um handler vazio não corrige um manifesto ausente ou incompleto. O worker continua indispensável para Web Push, e seu registro ocorre após o carregamento da conta.
+## Ciclo Push por dispositivo
 
-## Como o usuário instala?
+O opt-in é persistido localmente para não transformar uma permissão já concedida em nova inscrição contra a escolha do usuário. No carregamento, uma inscrição optada é recriada se sumiu e sincronizada com o backend. Se a chave VAPID mudou, a inscrição antiga é removida remotamente quando possível, cancelada localmente e recriada. Operações são serializadas para impedir cliques concorrentes.
 
-No Android Chrome, o navegador oferece **Instalar** quando a página e o manifesto atendem aos critérios e o app ainda não está instalado. Um botão próprio com `beforeinstallprompt` não é necessário para a opção do menu. No iOS/iPadOS, o caminho é Safari → Compartilhar → Adicionar à Tela de Início. Um atalho comum no Chrome não comprova que a PWA foi instalada.
+O worker é registrado com `updateViaCache: "none"`. Ele não implementa cache offline. No clique, URLs externas ou inválidas são substituídas pela raiz da própria origem; uma janela da aplicação é focada e navegada antes de abrir outra.
 
-Push e Pop-up são canais distintos: Push usa o serviço do navegador e o worker; Pop-up usa a sessão aberta. A suspensão do WebSocket no celular é esperada e não deve ser contornada com polling em segundo plano.
+## Extensão do fork
 
-Referências: [critérios de instalação do Chrome](https://web.dev/articles/install-criteria) e [remoção do requisito de `fetch` no Android](https://developer.chrome.com/blog/whats-new-in-web-on-android-io2023/).
+Lógica específica vive em `custom/`. Controllers e serviços Ruby usam `prepend_mod_with`; arquivos upstream mantêm apenas hooks/imports mínimos com `FORK:`. Essa organização reduz conflitos ao rebasear o fork sobre novas versões do Chatwoot.

@@ -1,48 +1,71 @@
-# PWA — implementação e publicação
+# PWA — implementação, testes e publicação
 
-Registro do que foi implementado no branch `fix/pwa-mobile-push` em 30/set/2026. As verificações de produção abaixo ainda precisam ocorrer após o deploy.
+## Código implementado
 
-## Código
-
-| Arquivo | Responsabilidade |
+| Caminho | Responsabilidade |
 |---------|------------------|
-| `custom/app/builders/custom/web_app_manifest_builder.rb` | Monta identidade, cores e os ícones 192×192 e 512×512 |
-| `custom/app/controllers/custom/web_app_manifests_controller.rb` | Serve o manifesto público com `application/manifest+json` e cache de cinco minutos |
-| `config/routes.rb` | Expõe `/manifest.webmanifest` e o alias `/manifest.json` |
-| `app/views/layouts/vueapp.html.erb` | Inclui o link do manifesto fora do bloco `DISPLAY_MANIFEST` |
-| `config/installation_config.yml` | Define `PWA_ICON_192_URL` e `PWA_ICON_URL` |
-| `custom/app/controllers/custom/super_admin/app_configs_controller.rb` | Expõe as duas URLs em Custom Branding |
-| `public/brand-assets/pwa-icon-se7e-192.png` e `pwa-icon-se7e-512.png` | Ícones PNG quadrados da marca Se7e |
-| `public/sw.js` | Exibe Push e navega até a conversa no clique |
-| `app/javascript/dashboard/helper/pushHelper.js` | Inscrição, sincronização e remoção de Push por dispositivo |
-| `app/services/notification/push_notification_service.rb` | Envia título, corpo, ícone, tag e URL, com TTL de 24 horas e urgência alta |
+| `custom/app/builders/custom/web_app_manifest_builder.rb` | Identidade, cores, modo standalone e ícones do manifesto |
+| `custom/app/controllers/custom/web_app_manifests_controller.rb` | Resposta pública e cache de cinco minutos |
+| `custom/app/javascript/dashboard/composables/usePwaInstallation.js` | Eventos e estados de instalação |
+| `custom/app/javascript/dashboard/components/pwa/PwaDeviceSettings.vue` | Interface de instalação e Push por dispositivo |
+| `custom/app/javascript/dashboard/helper/pushHelper.js` | Ambiente, opt-in, sincronização, VAPID, remoção e concorrência |
+| `custom/app/controllers/custom/api/v1/notification_subscriptions_controller.rb` | Exclusão autenticada por endpoint ou `push_token` |
+| `custom/app/services/custom/notification/push_notification_service.rb` | Payload, TTL, urgência, remoção expirada e logs sem PII |
+| `custom/app/services/custom/notification/push_test_service.rb` | Diagnóstico com o mesmo formato do Push real |
+| `public/sw.js` | Exibição e clique seguro da notificação |
 
-O antigo `public/manifest.json` foi removido do branch. O mesmo JSON dinâmico atende às duas URLs. O manifesto usa `id`, `start_url` e `scope` em `/` para preservar a identidade da instalação. `name` vem de `INSTALLATION_NAME`; `short_name` usa `BRAND_NAME`, com fallback para o nome da instalação. `DISPLAY_MANIFEST=false` continua ocultando metadados e ícones padrão do Chatwoot no HTML, mas não a PWA.
+Os pontos upstream foram limitados aos hooks/imports necessários no controller da API, serviços, layout, bootstrap do dashboard e preferências.
 
-As configurações têm padrões funcionais (`/android-icon-192x192.png` e `/favicon-512x512.png`). Para a marca Se7e, configurar explicitamente as duas URLs após publicar o código.
+## Validação automatizada
 
-## Publicação
+Executar a partir do worktree, inicializando rbenv antes dos comandos Ruby:
 
-1. Integrar e publicar os commits da PWA a partir do fork, com web e workers na mesma versão. Executar o preparo padrão `db:chatwoot_prepare` para criar as novas `InstallationConfig`.
-2. Em Super Admin → Settings → Custom Branding, definir `PWA_ICON_192_URL=/brand-assets/pwa-icon-se7e-192.png` e `PWA_ICON_URL=/brand-assets/pwa-icon-se7e-512.png`. Manter `DISPLAY_MANIFEST=false` se a instalação usa white-label.
-3. Garantir que o arquivo estático antigo `public/manifest.json` não permaneça no diretório servido pelo Nginx. Invalidar os caches de HTML, `/manifest.json`, `/manifest.webmanifest`, `/sw.js` e dos ícones no proxy/CDN. O manifesto antigo observado em produção tinha cache público de aproximadamente um ano.
-4. Reiniciar web e workers e verificar pelo domínio público, incluindo o HTML de `/app/login`:
+```bash
+eval "$(rbenv init -)"
+bundle exec rspec \
+  spec/custom/builders/custom/web_app_manifest_builder_spec.rb \
+  spec/custom/controllers/dashboard_controller_spec.rb \
+  spec/custom/controllers/custom/web_app_manifests_controller_spec.rb \
+  spec/custom/controllers/custom/super_admin/app_configs_controller_spec.rb \
+  spec/custom/controllers/custom/api/v1/notification_subscriptions_controller_spec.rb \
+  spec/services/notification/push_notification_service_spec.rb \
+  spec/custom/services/notification/push_test_service_spec.rb
+bundle exec rubocop ARQUIVOS_RUBY_ALTERADOS
+pnpm vitest run ARQUIVOS_DE_TESTE_PWA_E_PUSH
+pnpm exec eslint ARQUIVOS_JS_E_VUE_ALTERADOS
+git diff --check
+bin/fork-inventory
+```
+
+Os testes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opacidade/área segura dos PNGs, exclusão browser/FCM e parâmetros 422, payload/TTL/urgência, expiração, opt-in/opt-out, VAPID, falhas parciais, concorrência, instalação guiada e segurança do worker.
+
+## Publicação no fork
+
+1. Integrar o branch apenas ao `main` de `cesar-carlos/chatwoot` e publicar somente em `origin`. Não criar PR nem push para `upstream`.
+2. Gerar a imagem limpa e executar `db:chatwoot_prepare` para criar `PWA_ICON_192_URL` e `PWA_ICON_URL` nas configurações.
+3. Em Super Admin → Settings → Custom Branding, definir:
+   - `PWA_ICON_192_URL=/brand-assets/pwa-icon-se7e-192.png`
+   - `PWA_ICON_URL=/brand-assets/pwa-icon-se7e-512.png`
+   - manter `DISPLAY_MANIFEST=false` no white-label.
+4. Preservar as chaves VAPID atuais e reiniciar web e workers na mesma versão.
+5. Remover artefatos estáticos antigos do release e invalidar HTML, `/manifest.json`, `/manifest.webmanifest`, `/sw.js` e os dois ícones no proxy/CDN.
+6. Verificar pelo domínio público:
 
    ```bash
-   curl -fsS https://DOMINIO/app/login | rg 'rel="manifest"'
-   curl -fsS https://DOMINIO/manifest.webmanifest | jq '{id,name,short_name,display,icons}'
+   curl -fsS https://DOMINIO/app/login | rg 'manifest|apple-mobile-web-app|theme-color'
+   curl -fsS https://DOMINIO/manifest.webmanifest | jq '{id,name,short_name,display,prefer_related_applications,icons}'
    curl -fsS https://DOMINIO/manifest.json | jq '{id,name,icons}'
    curl -I https://DOMINIO/brand-assets/pwa-icon-se7e-192.png
    curl -I https://DOMINIO/brand-assets/pwa-icon-se7e-512.png
    ```
 
-   Ambos os manifestos devem responder 200 com `Content-Type: application/manifest+json`, declarar ícones 192×192 e 512×512 e apontar para PNGs acessíveis na mesma origem.
+## Validação manual obrigatória
 
-5. No Chrome Android, abrir a página no navegador, usar **Instalar** e confirmar que o ícone abre uma janela standalone. Em iOS/iPadOS 16.4+, abrir no Safari, adicionar à Tela de Início e iniciar pelo ícone; atalhos antigos podem exigir remoção e nova instalação.
-6. Em cada plataforma, testar permissão Push por interação do usuário, diagnóstico de Push, uma mensagem real com o app fechado e o clique abrindo a conversa. Confirmar separadamente que o Pop-up só aparece com o painel aberto e que o painel sincroniza ao retornar do segundo plano.
+- Android Chrome/PWA em primeiro plano, segundo plano e encerrada.
+- iOS/iPadOS 16.4+ instalado pelo Safari, fechado e com tela bloqueada.
+- iOS no Safari ou navegador embutido, confirmando instrução em vez de falso sucesso.
+- Desktop, diagnóstico do Super Admin e notificação real de mensagem.
+- Clique focando a PWA existente e abrindo a conversa correta.
+- Suspender e retomar, confirmando reconexão do Action Cable e sincronização das mensagens.
 
-## Validação automatizada
-
-Os testes do manifesto cobrem o conteúdo white-label, os dois tamanhos, as rotas públicas, o tipo de resposta e o link com `DISPLAY_MANIFEST=false`. Executar os specs de `spec/custom/builders/custom/web_app_manifest_builder_spec.rb`, `spec/custom/controllers/custom/web_app_manifests_controller_spec.rb`, `spec/custom/controllers/custom/super_admin/app_configs_controller_spec.rb` e `spec/controllers/dashboard_controller_spec.rb`, além de RuboCop nos Ruby alterados e `bin/fork-inventory`.
-
-Nenhum teste automatizado garante que um Chrome específico exibirá **Instalar**: essa decisão também depende do navegador, do estado de instalação e de o deploy entregar os arquivos corretos. O painel não implementa navegação offline; o worker não tem handler `fetch`.
+Atalhos antigos podem precisar ser apagados e instalados novamente.

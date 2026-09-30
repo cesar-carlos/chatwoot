@@ -1,29 +1,31 @@
-# PWA do painel
+# PWA e Web Push do painel
 
-O painel oferece instalação como aplicativo web e notificações Web Push. A instalação depende do manifesto entregue ao navegador; as notificações dependem também da permissão e de uma inscrição Push ativa.
+O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 
-**Estado do código:** branch `fix/pwa-mobile-push`, 30/set/2026. **Estado da produção consultada:** ainda usa o manifesto antigo; veja [estado atual](./current-state.md).
+**Estado do código:** implementação concluída no branch `fix/pwa-mobile-push` em 30/set/2026. **Produção:** requer publicação, configuração e validação nos aparelhos descritas em [implementação e publicação](./implementation-plan.md).
 
-| Recurso | Implementação no branch |
-|---------|-------------------------|
-| Manifesto white-label | `/manifest.webmanifest`, com `/manifest.json` como alias |
-| Link no HTML | Sempre presente, inclusive com `DISPLAY_MANIFEST=false` |
-| Instalação no Chrome | Ícones PNG de 192×192 e 512×512, `display: standalone` |
-| Nome e ícones | `INSTALLATION_NAME`, `BRAND_NAME`, `PWA_ICON_192_URL` e `PWA_ICON_URL` |
-| Service worker | `/sw.js`, para Push e clique na notificação; sem cache offline |
-| iOS | Instruções para abrir no Safari e adicionar à Tela de Início |
+| Recurso | Implementação |
+|---------|---------------|
+| Manifesto white-label | `/manifest.webmanifest`, com `/manifest.json` como alias dinâmico |
+| Instalação | Link e metadados PWA presentes mesmo com `DISPLAY_MANIFEST=false` |
+| Identidade | `INSTALLATION_NAME`, `BRAND_NAME`, `id: "/"` e modo `standalone` |
+| Ícones | PNGs 192×192 e 512×512, opacos, centralizados e `any maskable` |
+| Instalação guiada | `beforeinstallprompt` no Chromium e instruções Safari no iOS/iPadOS |
+| Web Push | Opt-in explícito por dispositivo, recuperação da inscrição e rotação VAPID |
+| Clique no Push | Reutiliza uma janela da mesma origem e navega para a conversa |
+| Pop-up | Canal separado, dependente do painel aberto e da conexão em tempo real |
 
 ## Documentos
 
-- [Estado do código e da produção](./current-state.md)
-- [Implementação e publicação](./implementation-plan.md)
+- [Estado atual e arquitetura](./current-state.md)
+- [Implementação, testes e publicação](./implementation-plan.md)
 - [Decisões técnicas](./implementation-decision-tree.md)
-- [Melhorias posteriores](./improvements-backlog.md)
+- [Pendências operacionais e melhorias futuras](./improvements-backlog.md)
 
-## Instalação e notificações
+## Requisitos do aparelho
 
-O Chrome precisa encontrar o link do manifesto no HTML e carregar os dois ícones declarados. Ter o arquivo `/manifest.json` acessível, isoladamente, não torna a página instalável. No iOS/iPadOS, o usuário abre o site no Safari, usa **Adicionar à Tela de Início** e inicia o app pelo ícone.
+- Android: Chrome atual, HTTPS e manifesto/ícones acessíveis na mesma origem.
+- iPhone/iPad: iOS/iPadOS 16.4 ou superior; abrir no Safari, adicionar à Tela de Início e iniciar pelo ícone.
+- Push: chaves VAPID válidas, permissão concedida por interação do usuário e inscrição ativa para aquele navegador.
 
-Push é uma notificação do sistema e pode chegar com o painel suspenso ou fechado. O alerta **Pop-up** depende da página aberta e da conexão em tempo real. O WebSocket pode ser suspenso pelo celular sem impedir a entrega de Push.
-
-O resultado de instalação no aparelho e a entrega de Push devem ser conferidos após o deploy; testes de código não substituem essa validação.
+O sucesso do diagnóstico significa que o serviço Push aceitou a mensagem. A exibição final ainda depende do sistema operacional, das permissões e das políticas de energia do aparelho.

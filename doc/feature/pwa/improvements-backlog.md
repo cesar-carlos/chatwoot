@@ -1,32 +1,33 @@
 # PWA — pendências e melhorias
 
-Estado em 30/set/2026. Itens implementados no branch ainda precisam de publicação e validação no aparelho.
+## Concluído no código
 
-## Implementado no branch
+- Manifesto white-label dinâmico nas duas URLs e independente de `DISPLAY_MANIFEST`.
+- Ícones Se7e 192×192 e 512×512 configuráveis, opacos, centralizados e `any maskable`.
+- Metadados Android/Apple e modo standalone.
+- Botão de instalação Chromium e instruções específicas para iOS/iPadOS.
+- Opt-in Push explícito por dispositivo, preservação de opt-out, serialização e rotação VAPID.
+- Exclusão autenticada de browser Push sem quebrar FCM.
+- Payload real e de diagnóstico com corpo, ícone, tag, URL, TTL de 24 horas e urgência alta.
+- Worker com payload defensivo, reutilização da janela e proteção de mesma origem.
+- Separação visual e funcional entre Push e Pop-up.
+- Testes automatizados dos fluxos críticos e documentação de rollout.
 
-- Manifesto white-label em `/manifest.webmanifest` e alias `/manifest.json`, com link presente mesmo quando `DISPLAY_MANIFEST=false`.
-- Ícones PNG declarados em 192×192 e 512×512; URLs configuráveis em Custom Branding.
-- Identidade da instalação no manifesto, com `id` estável e `display: standalone`.
-- Fluxo de inscrição e remoção de Web Push por dispositivo, payload com corpo e ícone e clique que navega à conversa.
-- Explicação de Push, Pop-up e instalação no iOS nas preferências.
-
-## Pendente antes de considerar o incidente resolvido
+## Pendente operacional
 
 | Prioridade | Item | Critério |
 |------------|------|----------|
-| P0 | Publicar o branch da PWA | `/manifest.webmanifest` retorna 200 e o HTML o referencia com `DISPLAY_MANIFEST=false` |
-| P0 | Configurar os dois ícones Se7e | Manifesto aponta para PNGs 192×192 e 512×512 acessíveis na mesma origem |
-| P0 | Eliminar manifesto estático e cache antigo | `/manifest.json` entrega o mesmo conteúdo dinâmico de `/manifest.webmanifest` |
-| P0 | Validar instalação Android | Chrome oferece **Instalar** e o app abre em standalone |
-| P0 | Validar instalação iOS | Atalho criado pelo Safari abre em standalone; Push é testado com o app fechado |
-| P1 | Verificar entrega de Push real | Mensagem elegível aparece com o app fechado e o clique abre a conversa correta |
+| P0 | Publicar o `main` do fork | HTML e os dois manifestos refletem a nova versão |
+| P0 | Executar `db:chatwoot_prepare` | As duas configurações de ícone existem no Super Admin |
+| P0 | Configurar ícones Se7e | URLs públicas retornam PNG nos tamanhos declarados |
+| P0 | Invalidar caches antigos | `/manifest.json` e `/manifest.webmanifest` entregam o mesmo JSON dinâmico |
+| P0 | Validar Android e iOS | Instalação standalone e Push com app fechado funcionam |
+| P1 | Monitorar entrega | Jobs, inscrições expiradas e diagnósticos não mostram regressão |
 
-## Melhorias opcionais
+## Melhorias futuras, fora do escopo
 
-| Item | Motivo |
-|------|--------|
-| Metadados Apple adicionais | Avaliar somente se um iOS suportado abrir com barras do Safari após instalação correta |
-| Experiência offline | Requer projeto próprio para autenticação, APIs, cache e atualização; não é requisito para esta correção |
-| Botão interno de instalação | O menu do Chrome já oferece instalação; avaliar depois de observar a experiência real |
+- Experiência offline, que exige projeto próprio de cache, autenticação e atualização.
+- Métrica de conversão do botão de instalação, caso haja necessidade de produto.
+- Diagnóstico de permissões por fabricante Android, se surgirem incidentes reproduzíveis.
 
-Não adicionar handler `fetch` vazio nem registro antecipado do worker apenas para tentar satisfazer o critério do Chrome. Os bloqueios confirmados foram o manifesto ausente no HTML e a falta do ícone 512×512 no manifesto publicado.
+Não adicionar polling em segundo plano, Firebase para a PWA ou tentativa de manter o WebSocket vivo durante suspensão. Esses mecanismos não substituem Web Push e aumentam consumo de bateria e complexidade.
