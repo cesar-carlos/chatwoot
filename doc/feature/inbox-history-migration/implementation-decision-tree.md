@@ -105,7 +105,7 @@ flowchart TD
 | 2 | Conflito de peer em B | **Merge** (não skip) |
 | 3 | Onde guardar status | `inbox_history_migrations` (par de inboxes ≠ um channel) |
 | 4 | Feature flag | Não no v1 — gate = admin + compatibilidade |
-| 5 | Assignee sem membership em B | Limpar `assignee_id` (+ `assignee_agent_bot` se bot não estiver em B) |
+| 5 | Assignee sem membership em B | Limpar `assignee_id` (+ `ai_assignee` se AgentBot não estiver em B) |
 | 6 | Grupos `@g.us` | Só Evolution family → Evolution family; grupo → API = UUID novo |
 | 7 | Cross-channel outbound | **Não** é requisito de aceite |
 | 8 | Cleanup CI origem | `delete` se sem conversas (evita `destroy_async`) |

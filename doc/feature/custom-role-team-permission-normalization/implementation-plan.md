@@ -1,5 +1,7 @@
 # Custom Role Team Permission - Normalization Plan (Chatwoot Fork)
 
+Implementação integrada ao `main` do fork a partir da branch `fix/custom-role-team-permission-normalization`.
+
 ## Context
 
 Hoje o projeto atual possui `custom_roles` com estas permissões de conversa:

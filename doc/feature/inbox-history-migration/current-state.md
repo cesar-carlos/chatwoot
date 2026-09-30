@@ -1,6 +1,8 @@
 # Inbox History Migration — Estado atual
 
 Inventário do que existe no codebase após o suporte a **WhatsApp-like A → B**, **API/Webhook A → B** e **cross-channel WA ↔ API** (histórico/leitura), incluindo hardening de UI, concorrência, transações e dados Enterprise (29/set/2026).
+Implementação integrada ao `main` do fork a partir da branch `fix/inbox-history-migration-hardening`.
+
 
 ---
 

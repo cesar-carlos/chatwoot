@@ -28,7 +28,7 @@ Pós-MVP. Não bloqueia o uso atual.
 - Activity note na conversa mergeada (IHM-P1-5)
 - Cleanup de ContactInbox órfão na origem (`delete`, não `destroy!`)
 - Stats `failed` sem inflar CI vazio
-- Clear `assignee_agent_bot` no remount quando bot não está no destino
+- Limpar `ai_assignee` no remount quando o AgentBot não está no destino
 - UI exclui a própria inbox com comparação numérica de id
 - HTTP 503 `unavailable` quando a tabela/migrations não estão aplicadas
 - Falha fatal do service sem re-raise (evita retry Sidekiq)

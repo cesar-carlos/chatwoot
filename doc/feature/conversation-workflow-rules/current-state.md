@@ -212,7 +212,7 @@ Constantes em `automation/constants.js` e `conversationRules/constants.js` (`WOR
 | Form | `isSaving` bloqueia persistências concorrentes; confirmação não deixa spinner preso nem reentra no close |
 | Regressões | Specs cobrem fim de semana fechado, calendário totalmente fechado, starvation do batch, condição com operador terminal, preview e rollback legacy |
 
-Implementação publicada no commit `f372e527dc` da branch `fix/conversation-workflow-review`.
+Implementação integrada ao `main` do fork a partir da branch `fix/conversation-workflow-review`.
 
 ---
 

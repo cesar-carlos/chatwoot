@@ -57,7 +57,7 @@ Mesma `account_id`, `source.id != target.id`, nenhuma migration `blocking_progre
 2. Transaction:
    - `conversation.update!(inbox_id:, contact_inbox_id:)`
    - limpar `assignee_id` se não for member de B
-   - limpar `assignee_agent_bot_id` se o bot não estiver no destino
+   - limpar `ai_assignee` (ID e tipo polimórfico) se o AgentBot não estiver no destino
    - `Message` / `Call` / `ReportingEvent` / `SlaEvent` → `inbox_id = B`
 3. Após o commit externo: `Conversations::UnreadCounts::Refresher`
 
