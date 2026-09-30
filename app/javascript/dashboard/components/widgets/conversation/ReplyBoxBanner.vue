@@ -44,8 +44,7 @@ const isReplyRestrictedToAssignee = computed(() => {
 });
 
 const notCurrentAssignee = computed(
-  () =>
-    !assignedAgent.value || assignedAgent.value.id !== currentUser.value?.id
+  () => !assignedAgent.value || assignedAgent.value.id !== currentUser.value?.id
 );
 
 const showSelfAssignBanner = computed(() => {

@@ -124,11 +124,10 @@ defineExpose({ open, close });
   <TeleportWithDirection to="body">
     <dialog
       ref="dialogRef"
-      class="w-full transition-all duration-300 ease-in-out shadow-xl rounded-xl"
+      class="w-full transition-all duration-300 ease-in-out shadow-xl rounded-xl max-h-[90vh] overflow-hidden"
       :class="[
         maxWidthClass,
-        positionClass,
-        'max-h-[90vh] overflow-hidden', // FORK: keep dialog footer on screen
+        positionClass, // FORK: keep dialog footer on screen
       ]"
       @close.prevent="handleDialogClose"
     >

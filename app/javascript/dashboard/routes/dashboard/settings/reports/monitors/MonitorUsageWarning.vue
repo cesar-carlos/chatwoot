@@ -13,7 +13,12 @@ const formatTime = timestamp =>
 </script>
 
 <template>
-  <Banner v-if="usage?.limit_reached" color="amber" role="status" class="mb-4">
+  <Banner
+    v-show="usage?.limit_reached"
+    color="amber"
+    role="status"
+    class="mb-4"
+  >
     <div class="flex items-start gap-2">
       <span
         class="i-lucide-triangle-alert mt-0.5 size-4 shrink-0"

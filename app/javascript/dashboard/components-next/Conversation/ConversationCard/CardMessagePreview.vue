@@ -28,7 +28,6 @@ const assignee = computed(() => {
     status: agent.availabilityStatus,
   };
 });
-
 </script>
 
 <template>
