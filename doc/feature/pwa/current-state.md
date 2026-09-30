@@ -1,38 +1,34 @@
 # PWA — estado atual
 
-Inventário em 30/set/2026. O código do branch e a instalação publicada têm estados diferentes.
+Inventário final do branch `fix/pwa-mobile-push` em 30/set/2026.
 
-## Código no branch `fix/pwa-mobile-push`
+## Arquitetura implementada
 
 | Peça | Comportamento |
 |------|---------------|
-| Layout do painel | Aponta sempre para `/manifest.webmanifest`, mesmo com `DISPLAY_MANIFEST=false` |
-| Manifesto | Resposta pública `application/manifest+json`, cache de cinco minutos e alias `/manifest.json` |
-| Identidade | `id`, `start_url` e `scope` em `/`; nome vindo de `INSTALLATION_NAME`, nome curto de `BRAND_NAME` |
-| Ícones | `PWA_ICON_192_URL` e `PWA_ICON_URL` declaram PNGs de 192×192 e 512×512; padrões `/android-icon-192x192.png` e `/favicon-512x512.png` |
-| Aparência | `display: standalone`, cor `#2781F6`; `DISPLAY_MANIFEST` controla apenas metadados e ícones padrão do Chatwoot no HTML |
-| Service worker | `/sw.js` mostra título, corpo, ícone e tag do Push; no clique, foca e navega uma janela da mesma origem ou abre outra |
-| Inscrição Push | Revalida a inscrição existente com permissão concedida; a solicitação de permissão ocorre após interação do usuário |
-| Preferências | Push do sistema e Pop-up com painel aberto são explicados separadamente; iOS fora do app instalado recebe instruções |
+| Manifesto | Controller e builder públicos em `custom/`; resposta `application/manifest+json`, cache público de cinco minutos |
+| URLs | `/manifest.webmanifest` é canônica; `/manifest.json` entrega o mesmo conteúdo por compatibilidade |
+| Identidade | `id`, `start_url` e `scope` em `/`; `name` de `INSTALLATION_NAME`; `short_name` de `BRAND_NAME` |
+| Instalação | `display: standalone`, `prefer_related_applications: false`, tema `#2781F6` |
+| Ícones | `PWA_ICON_192_URL` e `PWA_ICON_URL`; PNGs Se7e validados em 192×192 e 512×512, opacos e dentro da área segura |
+| HTML | Manifesto, `theme-color`, `apple-touch-icon` e metadados Apple independem de `DISPLAY_MANIFEST` |
+| Interface | Componente Vue customizado apresenta disponível, instalado, instruções iOS, indisponível e incompatível |
+| Push | Helper customizado controla opt-in local, inscrição, remoção, concorrência e troca da chave VAPID |
+| Backend | Controllers e serviços estendidos por `prepend_mod_with`; o core contém apenas hooks/imports marcados com `FORK:` |
+| Worker | Valida payload, mostra título/corpo/ícone/tag e aceita somente navegação para a mesma origem |
 
-Não há cache offline do painel, polling em segundo plano nem tentativa de manter o WebSocket ativo quando o sistema suspende a página. O registro do service worker ocorre após o carregamento da conta; nas versões atuais do Chrome, um handler `fetch` não é requisito de instalação. O worker continua necessário para Web Push.
+O arquivo estático `public/manifest.json` foi removido. Não há cache offline, polling em segundo plano nem tentativa de manter o WebSocket ativo durante a suspensão.
 
-## Produção observada em 30/set/2026
+## Comportamento por plataforma
 
-No domínio da captura (`chat.se7esistemassinop.com.br`), a inspeção pública mostrou:
+- Chromium: o app captura `beforeinstallprompt`, exibe o botão somente quando o navegador oferece instalação e chama `prompt()` apenas após clique. `appinstalled` atualiza o estado.
+- iOS/iPadOS: fora do modo standalone, a interface orienta Safari → Compartilhar → Adicionar à Tela de Início. A inscrição Push fica desabilitada até o app ser aberto pelo ícone.
+- Desktop: a mesma PWA e o mesmo fluxo Push continuam disponíveis sem alterar o comportamento do Action Cable.
 
-| Verificação | Resultado |
-|-------------|-----------|
-| `DISPLAY_MANIFEST` no HTML de `/app/login` | `false` |
-| Link `rel="manifest"` nesse HTML | Ausente |
-| `GET /manifest.webmanifest` | 404 |
-| `GET /manifest.json` | 200, manifesto estático com nome `Chatwoot` e ícones até 192×192 |
-| `GET /favicon-512x512.png` | 200, mas o ícone não é declarado no manifesto publicado |
+## Estado da produção observado antes da publicação
 
-Esses dados explicam o aviso **“Não é possível instalar o app”** do Chrome: a página não associa manifesto e o manifesto disponível não contém o ícone 512×512 exigido para a promoção de instalação. O menu **Criar atalho** não comprova instalação da PWA.
+Em 30/set/2026, `chat.se7esistemassinop.com.br` ainda não entregava `/manifest.webmanifest`, não ligava o manifesto ao HTML quando `DISPLAY_MANIFEST=false` e servia um `/manifest.json` estático com ícones até 192×192. Esse estado explica o aviso **Não é possível instalar o app** e deve desaparecer somente após deploy e invalidação dos caches.
 
-O manifesto antigo e o service worker publicados tinham `Cache-Control` de aproximadamente um ano. No deploy, confirmar a remoção do arquivo estático antigo do diretório servido pelo proxy e invalidar caches de HTML, manifesto e worker.
+## Critério de aceite
 
-## Critério de aceite no aparelho
-
-Após a publicação, o HTML deve incluir `/manifest.webmanifest`; os dois endpoints de manifesto devem responder 200 com os ícones 192×192 e 512×512 acessíveis como `image/png`. No Android Chrome, o menu deve permitir **Instalar** e o ícone deve abrir uma janela standalone. No iOS, a instalação é feita pelo Safari em **Adicionar à Tela de Início**. A entrega de Push com a PWA fechada é uma validação separada.
+O domínio público deve entregar ambos os manifestos com os dois ícones. O Chrome Android deve oferecer **Instalar** e abrir o painel sem barras do navegador. No iOS/iPadOS 16.4+, a instalação pela Tela de Início deve abrir em standalone. Uma mensagem elegível deve gerar Push com a PWA fechada, e o clique deve reutilizar a PWA aberta ou criar uma janela na conversa correta.
