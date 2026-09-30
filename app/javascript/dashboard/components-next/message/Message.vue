@@ -618,7 +618,8 @@ provideMessageContext({
     :data-message-id="props.id"
     :class="{
       'ps-2': showForwardSelectControl,
-      'rounded-lg bg-n-brand/10 ring-1 ring-inset ring-n-brand/20': isForwardSelected,
+      'rounded-lg bg-n-brand/10 ring-1 ring-inset ring-n-brand/20':
+        isForwardSelected,
       'group-with-next': shouldGroupWithNext,
     }"
   >
@@ -627,7 +628,9 @@ provideMessageContext({
       v-if="showForwardSelectControl"
       class="ms-1 mt-1.5 flex h-4 w-4 shrink-0 self-start"
       :class="
-        canSelectForForward ? 'cursor-pointer' : 'pointer-events-none opacity-40'
+        canSelectForForward
+          ? 'cursor-pointer'
+          : 'pointer-events-none opacity-40'
       "
       @click.stop="onForwardSelectToggle"
     >
@@ -644,68 +647,68 @@ provideMessageContext({
         { 'bg-n-alpha-1': showBackgroundHighlight },
       ]"
     >
-    <div v-if="variant === MESSAGE_VARIANTS.ACTIVITY">
-      <ActivityBubble :content="content" />
-    </div>
-    <div
-      v-else
-      :class="[
-        gridClass,
-        {
-          'gap-y-2': contentAttributes.externalError,
-          'w-full': variant === MESSAGE_VARIANTS.EMAIL,
-        },
-      ]"
-      class="gap-x-2"
-      :style="{
-        gridTemplateAreas: gridTemplate,
-      }"
-    >
-      <div
-        v-if="!shouldGroupWithNext && shouldShowAvatar"
-        v-tooltip.left-end="avatarTooltip"
-        class="[grid-area:avatar] flex items-end"
-      >
-        <Avatar v-bind="avatarInfo" :size="24" />
+      <div v-if="variant === MESSAGE_VARIANTS.ACTIVITY">
+        <ActivityBubble :content="content" />
       </div>
       <div
-        class="[grid-area:bubble] flex min-w-0"
-        :class="{
-          'ltr:ml-8 rtl:mr-8 justify-end': orientation === ORIENTATION.RIGHT,
-          'ltr:mr-8 rtl:ml-8': orientation === ORIENTATION.LEFT,
-          'flex-col items-start gap-2': shouldShowWhatsappReferral,
+        v-else
+        :class="[
+          gridClass,
+          {
+            'gap-y-2': contentAttributes.externalError,
+            'w-full': variant === MESSAGE_VARIANTS.EMAIL,
+          },
+        ]"
+        class="gap-x-2"
+        :style="{
+          gridTemplateAreas: gridTemplate,
         }"
-        @contextmenu="openContextMenu($event)"
-        @click="onBubbleForwardClick"
       >
-        <WhatsappReferral
-          v-if="shouldShowWhatsappReferral"
-          :referral="contentAttributes.referral"
+        <div
+          v-if="!shouldGroupWithNext && shouldShowAvatar"
+          v-tooltip.left-end="avatarTooltip"
+          class="[grid-area:avatar] flex items-end"
+        >
+          <Avatar v-bind="avatarInfo" :size="24" />
+        </div>
+        <div
+          class="[grid-area:bubble] flex min-w-0"
+          :class="{
+            'ltr:ml-8 rtl:mr-8 justify-end': orientation === ORIENTATION.RIGHT,
+            'ltr:mr-8 rtl:ml-8': orientation === ORIENTATION.LEFT,
+            'flex-col items-start gap-2': shouldShowWhatsappReferral,
+          }"
+          @contextmenu="openContextMenu($event)"
+          @click="onBubbleForwardClick"
+        >
+          <WhatsappReferral
+            v-if="shouldShowWhatsappReferral"
+            :referral="contentAttributes.referral"
+          />
+          <Component :is="componentToRender" />
+        </div>
+        <MessageError
+          v-if="contentAttributes.externalError"
+          class="[grid-area:meta]"
+          :class="flexOrientationClass"
+          :error="contentAttributes.externalError"
+          @retry="emit('retry')"
         />
-        <Component :is="componentToRender" />
       </div>
-      <MessageError
-        v-if="contentAttributes.externalError"
-        class="[grid-area:meta]"
-        :class="flexOrientationClass"
-        :error="contentAttributes.externalError"
-        @retry="emit('retry')"
-      />
-    </div>
-    <div v-if="shouldShowContextMenu" class="context-menu-wrap">
-      <ContextMenu
-        v-if="isBubble"
-        :context-menu-position="contextMenuPosition"
-        :is-open="showContextMenu"
-        :enabled-options="contextMenuEnabledOptions"
-        :message="payloadForContextMenu"
-        :inbox-id="inboxId"
-        hide-button
-        @open="openContextMenu"
-        @close="closeContextMenu"
-        @reply-to="handleReplyTo"
-      />
-    </div>
+      <div v-if="shouldShowContextMenu" class="context-menu-wrap">
+        <ContextMenu
+          v-if="isBubble"
+          :context-menu-position="contextMenuPosition"
+          :is-open="showContextMenu"
+          :enabled-options="contextMenuEnabledOptions"
+          :message="payloadForContextMenu"
+          :inbox-id="inboxId"
+          hide-button
+          @open="openContextMenu"
+          @close="closeContextMenu"
+          @reply-to="handleReplyTo"
+        />
+      </div>
     </div>
   </div>
 </template>

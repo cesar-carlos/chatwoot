@@ -107,12 +107,9 @@ export default {
     },
     isVerticalLayout() {
       // FORK: contact_message uses vertical custom input
-      return [
-        'team_message',
-        'textarea',
-        'email',
-        'contact_message',
-      ].includes(this.inputType);
+      return ['team_message', 'textarea', 'email', 'contact_message'].includes(
+        this.inputType
+      );
     },
     contactMessageParams: {
       get() {

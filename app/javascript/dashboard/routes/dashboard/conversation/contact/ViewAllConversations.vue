@@ -41,7 +41,7 @@ const viewAllConversations = () => {
 
 <template>
   <NextButton
-    v-if="navigation?.hasHistory.value"
+    v-show="navigation?.hasHistory.value"
     v-tooltip.top-end="$t('CONTACT_PANEL.CONVERSATIONS.VIEW_ALL')"
     :aria-label="$t('CONTACT_PANEL.CONVERSATIONS.VIEW_ALL')"
     icon="i-ph-clock-counter-clockwise"

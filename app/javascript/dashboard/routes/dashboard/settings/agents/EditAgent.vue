@@ -129,6 +129,8 @@ const editAgent = async () => {
     };
 
     if (selectedRole.value.name.startsWith('custom_')) {
+      // FORK: custom role is an agent with extra permissions
+      payload.role = 'agent';
       payload.custom_role_id = selectedRole.value.id;
     } else {
       payload.role = selectedRole.value.name;

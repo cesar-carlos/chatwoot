@@ -39,14 +39,9 @@ class Enterprise::Api::V1::AccountsController < Api::BaseController
 
   # rubocop:disable Metrics/MethodLength
   def limits
+    # FORK: Self-hosted Enterprise gets unlimited usage (no billing)
     limits = if ChatwootApp.self_hosted_enterprise?
-               # FORK: Self-hosted Enterprise gets unlimited usage (no billing)
-               {
-                 'conversation' => {},
-                 'non_web_inboxes' => {},
-                 'agents' => {},
-                 'captain' => {}
-               }
+               { 'conversation' => {}, 'non_web_inboxes' => {}, 'agents' => {}, 'captain' => {} }
              elsif @account.billing_provider == Account::DEFAULT_BILLING_PROVIDER && default_plan?(@account)
                {
                  'conversation' => {

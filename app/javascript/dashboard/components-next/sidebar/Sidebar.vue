@@ -33,6 +33,7 @@ import {
   INBOX_VIEW_PERMISSIONS,
 } from 'dashboard/constants/permissions.js';
 import { usePolicy } from 'dashboard/composables/usePolicy';
+import { useConfig } from 'dashboard/composables/useConfig';
 
 const props = defineProps({
   isMobileSidebarOpen: {
@@ -53,6 +54,7 @@ const store = useStore();
 const searchShortcut = useKbd([`$mod`, 'k']);
 const { t } = useI18n();
 const { checkPermissions } = usePolicy();
+const { isEnterprise } = useConfig();
 
 const canAccessInboxView = computed(() =>
   // FORK: custom role inbox view permission

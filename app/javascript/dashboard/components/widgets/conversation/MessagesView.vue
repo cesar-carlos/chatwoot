@@ -192,6 +192,7 @@ export default {
       containerHeight,
       topBannerHeight,
       messagesToForward,
+      forwardModalRef,
       isForwardSelecting: forwardSelection.isSelecting,
       onForwardDone,
     };

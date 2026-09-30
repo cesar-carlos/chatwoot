@@ -139,7 +139,6 @@ export default {
     'selectWhatsappTemplate',
     'selectContentTemplate',
     'requestContactInfoTemplate',
-    'toggleQuotedReply',
     'openShareContact',
     'openWebcamCapture',
   ],
