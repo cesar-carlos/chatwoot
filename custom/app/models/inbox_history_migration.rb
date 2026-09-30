@@ -105,7 +105,10 @@ class InboxHistoryMigration < ApplicationRecord
     key = key.to_s
     current = (stats || {}).dup
     current[key] = current.fetch(key, 0).to_i + by
-    update_columns(stats: current, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+    now = Time.current
+    attrs = { stats: current, updated_at: now }
+    attrs[:heartbeat_at] = now if status == 'running'
+    update_columns(attrs) # rubocop:disable Rails/SkipsModelValidations
   end
 
   private

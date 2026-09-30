@@ -16,13 +16,13 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
       reparent_applied_slas!
       reparent_reporting_events!
       reparent_sla_events!
+      reparent_enterprise_data!
       clear_workflow_executions!
       merge_conversation_metadata!
       destroy_empty_source!
     end
 
-    create_merge_activity!
-    refresh_unread_counts!
+    schedule_after_commit_actions!
     target_conversation.reload
   end
 
@@ -92,25 +92,23 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
   def reparent_applied_slas!
     return unless defined?(AppliedSla)
 
+    target_applied_sla = AppliedSla.find_by(conversation_id: target_conversation.id)
     AppliedSla.where(conversation_id: source_conversation.id).find_each do |source_applied_sla|
-      merge_or_move_applied_sla!(source_applied_sla)
+      target_applied_sla = merge_or_move_applied_sla!(source_applied_sla, target_applied_sla)
     end
   end
 
-  def merge_or_move_applied_sla!(source_applied_sla)
-    target_applied_sla = AppliedSla.find_by(
-      account_id: source_applied_sla.account_id,
-      sla_policy_id: source_applied_sla.sla_policy_id,
-      conversation_id: target_conversation.id
-    )
-
+  def merge_or_move_applied_sla!(source_applied_sla, target_applied_sla)
     if target_applied_sla
       remount_sla_events_for!(source_applied_sla.id, new_applied_sla_id: target_applied_sla.id)
       source_applied_sla.destroy!
     else
       source_applied_sla.update!(conversation_id: target_conversation.id)
-      remount_sla_events_for!(source_applied_sla.id)
+      remount_sla_events_for!(source_applied_sla.id, new_applied_sla_id: source_applied_sla.id)
+      target_conversation.sla_policy_id ||= source_applied_sla.sla_policy_id
+      target_applied_sla = source_applied_sla
     end
+    target_applied_sla
   end
 
   def remount_sla_events_for!(source_applied_sla_id, new_applied_sla_id: nil)
@@ -143,6 +141,17 @@ class Custom::Inboxes::HistoryMigration::ConversationMerger
               inbox_id: target_inbox.id,
               updated_at: Time.current
             )
+  end
+
+  def reparent_enterprise_data!
+    Custom::Inboxes::HistoryMigration::EnterpriseDataMerger.perform(source_conversation, target_conversation, target_inbox)
+  end
+
+  def schedule_after_commit_actions!
+    ActiveRecord.after_all_transactions_commit do
+      create_merge_activity!
+      refresh_unread_counts!
+    end
   end
 
   def clear_workflow_executions!

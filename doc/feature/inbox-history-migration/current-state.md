@@ -1,6 +1,6 @@
 # Inbox History Migration — Estado atual
 
-Inventário do que existe no codebase após o suporte a **WhatsApp-like A → B**, **API/Webhook A → B** e **cross-channel WA ↔ API** (histórico/leitura), incluindo hardening de UI/erros (27/jul/2026).
+Inventário do que existe no codebase após o suporte a **WhatsApp-like A → B**, **API/Webhook A → B** e **cross-channel WA ↔ API** (histórico/leitura), incluindo hardening de UI, concorrência, transações e dados Enterprise (29/set/2026).
 
 ---
 
@@ -15,20 +15,22 @@ Inventário do que existe no codebase após o suporte a **WhatsApp-like A → B*
 | Escopo | **Todas** as conversas / `contact_inboxes` da origem |
 | Remount | `conversation.inbox_id` + `contact_inbox_id`; `messages.inbox_id`; reporting/SLA; limpa bot assignee se não estiver no destino |
 | Merge | Conversa mais recente do peer **no destino** (inclui resolved) é o container; quando o source tem múltiplas convs por contato sem peer no destino, processadas em ordem decrescente de id — a **mais nova** vira container, as mais antigas são merged + activity note |
-| Merge FKs | Limpa `conversation_workflow_rule_executions`; reparent/resolve `AppliedSla` + CSAT |
+| Merge FKs | Limpa workflow executions; reparenta CSAT, calls, outcomes e Captain; consolida políticas divergentes em um único `AppliedSla` no container |
 | Merge metadata | Labels + `custom_attributes` + `additional_attributes` (destino vence em conflito) |
 | Cleanup | Remove `ContactInbox` órfão na origem com `delete` (não `destroy!`) após move bem-sucedido |
 | Grupos Evolution | `source_id` `@g.us` só entre Evolution ↔ Evolution Go; grupo → API gera UUID novo; aviso UI Evolution→Cloud |
 | Grupos via API inbox | Contatos de grupo oriundos de API inbox têm o JID `@g.us` em `contact.identifier`; resolver usa esse JID ao migrar para destino Evolution family (API → WA Evolution) |
-| API identity | Preserva `source_id` opaco só em API→API; colisão com outro contato → `failed` |
+| API identity | Preserva `source_id` opaco em API→API; sessões distintas do mesmo contato permanecem separadas; colisão com outro contato → `failed` |
 | Cross-channel identity | Nunca copia UUID/JID entre famílias; WA destino deriva phone (sem phone → `failed`); API destino gera UUID e **reusa** CI do contato; grupos com JID em `contact.identifier` → recuperado para destino Evolution |
 | WA same-family | Preserva/`converte` `source_id` (funciona sem phone se o id for válido) |
 | Anti-steal | Cria CI sem `ContactInboxBuilder` steal path |
 | Progresso | Polling enquanto `pending` **ou** `running` (5s); toast ao `completed` — "Completed" se sem falhas, "Completed with N failure(s)" se `stats.failed > 0`; link para inbox destino incluso |
 | Stats | `moved`, `merged`, `skipped`, `failed`, `total` — **por conversa** (sem inflar `failed` em CI vazio) |
 | Auth | Administrator nas duas inboxes |
-| Lock | `Inbox.lock` (ordem por id) no POST + `blocking_progress`; stale (>2h) → failed |
-| Job | `mark_failed!` em falha fatal **sem** re-raise (sem retry Sidekiq inútil) |
+| Lock | `Inbox.lock` no POST + `blocking_progress` + advisory lock PostgreSQL por migration durante o job |
+| Stale/heartbeat | Heartbeat antes de cada peer e em cada stat; status stale só expira se nenhum worker possuir o advisory lock |
+| Job | Segunda execução simultânea sai sem trabalho; falha fatal marca `failed` **sem** retry Sidekiq inútil |
+| Transação | Uma conversa por transaction; falha local faz rollback e continua; activity/unread só executam após commit |
 | Calls | Remount `inbox_id`; merge reparenta `conversation_id` + `inbox_id` |
 | Colisão `source_id` | Fail closed (não usa steal do ContactInboxBuilder) |
 | FKs | `source_inbox_id`/`target_inbox_id` cascade; `requested_by_id` nullify |
@@ -69,6 +71,8 @@ Inventário do que existe no codebase após o suporte a **WhatsApp-like A → B*
 | `custom/app/services/custom/inboxes/history_migration/contact_inbox_resolver.rb` | Resolve/cria `ContactInbox` no destino (anti-steal) |
 | `custom/app/services/custom/inboxes/history_migration/remounter.rb` | Caso sem conflito |
 | `custom/app/services/custom/inboxes/history_migration/conversation_merger.rb` | Caso com conflito + activity note |
+| `custom/app/services/custom/inboxes/history_migration/enterprise_data_merger.rb` | Preserva ConversationOutcome e registros Captain |
+| `custom/app/services/custom/inboxes/history_migration/execution_lock.rb` | Mutex PostgreSQL de sessão por migration |
 | `custom/app/services/custom/inboxes/history_migration_service.rb` | Orquestra batches + stats + cleanup CI órfão |
 | `custom/app/jobs/custom/inboxes/history_migration_job.rb` | Sidekiq `low` |
 
@@ -100,6 +104,7 @@ Inventário do que existe no codebase após o suporte a **WhatsApp-like A → B*
 
 | Arquivo |
 |---------|
+| `spec/custom/jobs/custom/inboxes/history_migration_job_spec.rb` |
 | `spec/custom/services/custom/inboxes/history_migration/compatibility_guard_spec.rb` |
 | `spec/custom/services/custom/inboxes/history_migration/remounter_spec.rb` |
 | `spec/custom/services/custom/inboxes/history_migration/conversation_merger_spec.rb` |
@@ -147,8 +152,10 @@ Códigos de erro comuns: `same_inbox`, `different_accounts`, `incompatible_chann
 
 - `ContactInbox.create!` (anti-steal; **não** usa o steal path do `ContactInboxBuilder`)
 - Destino sempre considera conversas resolved (não só `Conversations::Resolver`)
-- `Conversations::UnreadCounts::Refresher` — corrige unread Redis A/B
-- `Conversations::ActivityMessageJob` — nota de merge
+- `Conversations::UnreadCounts::Refresher` — corrige unread Redis A/B após commit
+- `Conversations::ActivityMessageJob` — nota de merge após commit
+- PostgreSQL session advisory locks — impedem duas execuções simultâneas da mesma migration
+- Models Enterprise/Captain — carregados condicionalmente e reparentados no merge
 - `Custom::Whatsapp::Evolution::GroupContactService.group_jid?` — grupos
 
 ---
@@ -163,4 +170,4 @@ Se `GET/POST …/move_history*` retornar 500/503:
 
 ---
 
-*Última atualização: 27/jul/2026 (revisão pós-deploy: ordem de merge, toast partial, normalização phone)*
+*Última atualização: 29/set/2026 (hardening de concorrência, transações, sessões API e dados Enterprise)*

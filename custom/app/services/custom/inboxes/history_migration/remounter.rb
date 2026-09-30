@@ -12,7 +12,7 @@ class Custom::Inboxes::HistoryMigration::Remounter
       remount_sla_events!
     end
 
-    refresh_unread_counts!
+    ActiveRecord.after_all_transactions_commit { refresh_unread_counts! }
     conversation
   end
 

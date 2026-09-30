@@ -1,8 +1,8 @@
 # Inbox History Migration — Árvore de decisão
 
-Comparação de abordagens para **mover o histórico completo** de uma caixa WhatsApp para outra no fork Chatwoot.
+Comparação de abordagens para **mover o histórico completo** entre caixas WhatsApp/API no fork Chatwoot.
 
-**Decisões fechadas:** 25/jul/2026.
+**Decisões fechadas:** 25/jul/2026; hardening revisado em 29/set/2026.
 
 ---
 
@@ -111,6 +111,12 @@ flowchart TD
 | 8 | Cleanup CI origem | `delete` se sem conversas (evita `destroy_async`) |
 | 9 | Falha fatal no job | `mark_failed!` sem re-raise Sidekiq |
 
+| 10 | Execução duplicada do mesmo job | Advisory lock PostgreSQL por `migration_id` |
+| 11 | Unidade transacional | Uma conversa por transaction; falha local continua nas demais |
+| 12 | Stale com worker vivo | Não expirar enquanto o advisory lock estiver ocupado |
+| 13 | Efeitos externos | Activity job e unread Redis somente após commit externo |
+| 14 | Merge Enterprise | Reparentar outcomes/Captain; manter um `AppliedSla` no container |
+| 15 | API→API com mesmo contato | Sessão é identificada pelo `source_id`; não colapsar sessões distintas |
 ---
 
 ## Rules do projeto aplicadas
@@ -123,4 +129,4 @@ flowchart TD
 
 ---
 
-*Última atualização: 27/jul/2026*
+*Última atualização: 29/set/2026*

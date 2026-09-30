@@ -36,6 +36,13 @@ Pós-MVP. Não bloqueia o uso atual.
 - Processamento de convs por contato em `order(id: :desc)`: conversa mais recente vira container (IHM-BF-2)
 - `derived_source_id` para WA usa `gsub(/\D/, '')` — normaliza qualquer char não-dígito (IHM-BF-3)
 - API → WA Evolution: grupos com `@g.us` JID em `contact.identifier` agora são migrados (antes falhavam com UUID source_id) (IHM-BF-4)
+- API→API preserva múltiplas sessões do mesmo contato por `source_id` (IHM-BF-5)
+- `find_each(order: :desc)` garante de fato o processamento newest-first (IHM-BF-6)
+- Advisory lock impede execução duplicada do mesmo job e protege stale ativo (IHM-BF-7)
+- Heartbeat por conversa/stat e unidade transacional por conversa (IHM-P2-8 / IHM-BF-8)
+- Merge preserva ConversationOutcome e registros Captain (IHM-BF-9)
+- Merge de SLA mantém um único `AppliedSla` mesmo com políticas diferentes (IHM-BF-10)
+- Activity job e refresh de unread são adiados até o commit externo (IHM-BF-11)
 
 ---
 
@@ -63,7 +70,7 @@ Pós-MVP. Não bloqueia o uso atual.
 | IHM-P2-6 | Archive cross-channel WA ↔ API | ✅ Remount com identity nativa no destino; outbound não garantido |
 | IHM-P2-4 | Seleção parcial (por data / status) | Expandir além de “caixa inteira” |
 | IHM-P2-5 | Sub-jobs por lote | Inboxes com dezenas de milhares de peers |
-| IHM-P2-8 | Heartbeat por conversa (não só por CI) | Peer único com muitas mensagens pode passar de 2h sem heartbeat |
+| IHM-P2-8 | Heartbeat por conversa (não só por CI) | ✅ Stats atualizam heartbeat; advisory lock impede falso stale durante unidade longa |
 | IHM-P2-7 | Archive para Telegram / Email / etc. | Ainda backlog (outros canais) |
 
 ---
@@ -86,4 +93,4 @@ Pós-MVP. Não bloqueia o uso atual.
 
 ---
 
-*Última atualização: 27/jul/2026 (IHM-BF-1..3: bug fixes pós-deploy)*
+*Última atualização: 29/set/2026 (IHM-BF-5..11: hardening de integridade e concorrência)*

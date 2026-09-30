@@ -315,7 +315,7 @@ module Custom::Api::V1::Accounts::InboxesController
   def move_history_status
     authorize @inbox, :update?
     migration = InboxHistoryMigration.where(source_inbox_id: @inbox.id).order(created_at: :desc).first
-    migration&.expire_if_stale!
+    Custom::Inboxes::HistoryMigration::CompatibilityGuard.expire_stale_migration!(migration) if migration
 
     payload = migration.present? ? migration_payload(migration.reload) : {}
     payload[:preview] = history_migration_preview
