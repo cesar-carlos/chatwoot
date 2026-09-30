@@ -2,7 +2,7 @@
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 
-**Estado do código:** integrado ao `origin/main` do fork `cesar-carlos/chatwoot` no commit `092c8eeaf7`, em 30/set/2026. **Produção:** ainda executa o commit anterior `61fc65923d`; requer deploy, configuração, invalidação de cache e validação nos aparelhos descritos em [implementação e publicação](./implementation-plan.md).
+**Estado do código:** integrado ao `origin/main` do fork `cesar-carlos/chatwoot` até o commit `4254116ffd`, em 30/set/2026. **Produção:** ainda executa o commit anterior `61fc65923d`; requer deploy, configuração, invalidação de cache e validação nos aparelhos descritos em [implementação e publicação](./implementation-plan.md).
 
 > A presença do código no `origin/main` não conclui o rollout. Enquanto o domínio público não entregar o manifesto dinâmico e os dois ícones, o navegador poderá oferecer apenas **Criar atalho** ou informar que o aplicativo não pode ser instalado.
 

@@ -47,17 +47,17 @@ Os specs existentes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opac
 |-------------|-----------------------|
 | ESLint direcionado | Passou com a configuração isolada do worktree |
 | Vitest direcionado | 19 testes passaram em quatro arquivos |
-| RSpec direcionado | Bloqueado na inicialização: PostgreSQL exige senha; nenhum exemplo foi coletado |
-| RuboCop direcionado | Passou no spec dos ícones e no verificador de release |
+| RSpec direcionado | 18 exemplos passaram em sete arquivos no candidato de release, com banco e Redis isolados |
+| RuboCop direcionado | 18 arquivos Ruby alterados, sem infrações |
 | `git diff --check` | Sem erros |
 | Área segura dos ícones | Asserção adicionada; ambos os PNGs confirmados por execução direta de MiniMagick |
 
-Antes do aceite, executar RSpec com um PostgreSQL de teste autenticado. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`.
+O build Vite de produção também passou no candidato de release após aplicar a correção de sintaxe de `ConversationCard.vue` já existente no checkout ativo. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`.
 
 ## Publicação no fork
 
-1. Integração Git concluída no `origin/main` de `cesar-carlos/chatwoot` pelo commit `092c8eeaf7`. Não criar PR nem push para `upstream`.
-2. Reconciliar o branch publicado com o `main` que roda em `/root/chatwoot`, preservando seus commits exclusivos e alterações locais. Não substituir o checkout em execução por `origin/main` diretamente.
+1. Integração Git concluída no `origin/main` de `cesar-carlos/chatwoot` até o commit `4254116ffd`. Não criar PR nem push para `upstream`.
+2. Os 12 commits da PWA já foram aplicados ao `main` de produção no worktree isolado `fix/pwa-production-release`; os specs e o build passaram. Antes de publicá-lo, decidir como preservar as 27 alterações locais do checkout ativo, inclusive a correção de sintaxe necessária ao build. Não substituir o checkout em execução por `origin/main` diretamente.
 3. Gerar uma imagem limpa do release reconciliado e executar `db:chatwoot_prepare` para criar `PWA_ICON_192_URL` e `PWA_ICON_URL` nas configurações.
 4. Em Super Admin → Settings → Custom Branding, definir:
    - `PWA_ICON_192_URL=/brand-assets/pwa-icon-se7e-192.png`

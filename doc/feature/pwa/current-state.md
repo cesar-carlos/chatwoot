@@ -1,6 +1,6 @@
 # PWA — estado atual
 
-Implementação integrada ao `origin/main` do fork no commit `092c8eeaf7`, em 30/set/2026. Esse é o estado do repositório, não uma confirmação de publicação em produção.
+Implementação integrada ao `origin/main` do fork até o commit `4254116ffd`, em 30/set/2026. Esse é o estado do repositório, não uma confirmação de publicação em produção.
 
 ## Arquitetura implementada
 
@@ -46,10 +46,11 @@ O web e o worker de produção rodam via PM2 a partir de `/root/chatwoot`. Em 30
 - ESLint direcionado e RuboCop dos arquivos alterados passaram em 30/set/2026.
 - Os 19 testes Vitest de Push, instalação, worker e preferências passaram com a configuração `custom/vitest.pwa.config.ts`, que resolve os setup files dentro do worktree.
 - O spec dos ícones agora afirma a área segura `maskable`. Uma verificação direta com MiniMagick confirmou dimensões, opacidade e conteúdo dentro da área segura nos dois PNGs.
-- RSpec foi executado, mas não coletou exemplos: o PostgreSQL local exige senha, ausente neste ambiente. O Ruby 3.4.4 está disponível via RVM; `rbenv` não está instalado.
+- No candidato de release reconciliado, 18 exemplos RSpec passaram em sete arquivos, usando `chatwoot_pwa_release_test` e Redis DB 14 isolados. O Ruby 3.4.4 está disponível via RVM; `rbenv` não está instalado.
+- RuboCop passou nos 18 arquivos Ruby alterados. O build Vite de produção passou após incorporar ao candidato a correção de sintaxe já presente como alteração local no checkout de produção.
 - O comando `bin/fork-pwa-smoke` detectou corretamente que o domínio ainda serve o commit `61fc65923d`.
 
-Ainda falta executar a suíte Ruby com um banco de teste autenticado e confirmar o release em aparelhos reais.
+Ainda falta decidir como preservar as demais alterações locais do checkout ativo, publicar o release reconciliado e confirmar o comportamento em aparelhos reais. O candidato isolado `fix/pwa-production-release` não foi publicado nem substituiu o código em execução.
 
 ## Critério de aceite
 
