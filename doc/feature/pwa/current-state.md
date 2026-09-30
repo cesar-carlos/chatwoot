@@ -1,6 +1,6 @@
 # PWA — estado atual
 
-Inventário final do branch `fix/pwa-mobile-push` em 30/set/2026.
+Inventário final integrado ao `origin/main` do fork no commit `c5c70d934b`, em 30/set/2026.
 
 ## Arquitetura implementada
 

@@ -15,9 +15,9 @@
 
 ## Pendente operacional
 
+- Integração no `origin/main` do fork, sem PR ou push para `upstream`.
 | Prioridade | Item | Critério |
 |------------|------|----------|
-| P0 | Publicar o `main` do fork | HTML e os dois manifestos refletem a nova versão |
 | P0 | Executar `db:chatwoot_prepare` | As duas configurações de ícone existem no Super Admin |
 | P0 | Configurar ícones Se7e | URLs públicas retornam PNG nos tamanhos declarados |
 | P0 | Invalidar caches antigos | `/manifest.json` e `/manifest.webmanifest` entregam o mesmo JSON dinâmico |

@@ -41,7 +41,7 @@ Os testes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opacidade/áre
 
 ## Publicação no fork
 
-1. Integrar o branch apenas ao `main` de `cesar-carlos/chatwoot` e publicar somente em `origin`. Não criar PR nem push para `upstream`.
+1. Integração Git concluída no `origin/main` de `cesar-carlos/chatwoot` pelo commit `c5c70d934b`. Não criar PR nem push para `upstream`.
 2. Gerar a imagem limpa e executar `db:chatwoot_prepare` para criar `PWA_ICON_192_URL` e `PWA_ICON_URL` nas configurações.
 3. Em Super Admin → Settings → Custom Branding, definir:
    - `PWA_ICON_192_URL=/brand-assets/pwa-icon-se7e-192.png`
