@@ -2,7 +2,11 @@
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 
-**Estado do código:** integrado ao `origin/main` do fork `cesar-carlos/chatwoot` no commit `c5c70d934b`, em 30/set/2026. **Produção:** ainda requer deploy, configuração e validação nos aparelhos descritas em [implementação e publicação](./implementation-plan.md).
+**Estado do código:** integrado ao `origin/main` do fork `cesar-carlos/chatwoot` no commit `092c8eeaf7`, em 30/set/2026. **Produção:** ainda executa o commit anterior `61fc65923d`; requer deploy, configuração, invalidação de cache e validação nos aparelhos descritos em [implementação e publicação](./implementation-plan.md).
+
+> A presença do código no `origin/main` não conclui o rollout. Enquanto o domínio público não entregar o manifesto dinâmico e os dois ícones, o navegador poderá oferecer apenas **Criar atalho** ou informar que o aplicativo não pode ser instalado.
+
+> Em 30/set/2026, o checkout que executa produção também diverge do `origin/main` e contém alterações locais. O release precisa preservar esse trabalho antes de trocar o código em execução.
 
 | Recurso | Implementação |
 |---------|---------------|
@@ -14,6 +18,18 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 | Web Push | Opt-in explícito por dispositivo, recuperação da inscrição e rotação VAPID |
 | Clique no Push | Reutiliza uma janela da mesma origem e navega para a conversa |
 | Pop-up | Canal separado, dependente do painel aberto e da conexão em tempo real |
+| Verificação do release | `bin/fork-pwa-smoke` confere versão, manifesto e ícones no domínio público |
+
+## Status do rollout
+
+| Etapa | Estado em 30/set/2026 |
+|-------|-----------------------|
+| Implementação no fork | Concluída e publicada no `origin/main` |
+| Documentação | Atualizada com o estado observado |
+| Deploy da versão PWA | Pendente |
+| Configuração dos ícones | Pendente em produção |
+| Validação Android/iOS | Pendente após o deploy |
+| Aceite de Push com app fechado | Pendente após o deploy |
 
 ## Documentos
 

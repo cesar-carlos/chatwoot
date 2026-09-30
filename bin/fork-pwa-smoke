@@ -1,0 +1,75 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# FORK: verify the public white-label PWA release after deployment
+require 'json'
+require 'net/http'
+require 'uri'
+
+USAGE = 'Usage: bin/fork-pwa-smoke HTTPS_URL GIT_SHA INSTALLATION_NAME BRAND_NAME ICON_192_PATH ICON_512_PATH'
+MASKABLE_PURPOSES = %w[any maskable].freeze
+abort USAGE unless ARGV.length == 6
+
+base_url, expected_sha, installation_name, brand_name, icon_192_path, icon_512_path = ARGV
+base_uri = URI.parse(base_url)
+abort 'The public URL must be an HTTPS origin' unless base_uri.is_a?(URI::HTTPS) && base_uri.host &&
+                                                      ['', '/'].include?(base_uri.path) && !base_uri.query && !base_uri.fragment
+abort 'GIT_SHA must contain 7 to 40 hexadecimal characters' unless expected_sha.match?(/\A[0-9a-f]{7,40}\z/i)
+
+def fetch(base_uri, path, media_type)
+  uri = base_uri + path
+  response = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 5, read_timeout: 10) do |http|
+    http.get(uri.request_uri)
+  end
+  raise "#{path}: HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
+  raise "#{path}: expected #{media_type}, got #{response['content-type']}" unless response['content-type'].to_s.split(';').first == media_type
+
+  response
+end
+
+begin
+  html = fetch(base_uri, '/app/login', 'text/html').body
+  release_sha = html[/"GIT_SHA":"([0-9a-f]{7,40})"/, 1]
+  raise "Dashboard GIT_SHA #{release_sha || '(missing)'} does not match #{expected_sha}" unless release_sha&.start_with?(expected_sha)
+  raise 'Dashboard HTML does not link /manifest.webmanifest' unless html.include?('<link rel="manifest" href="/manifest.webmanifest">')
+  raise 'Dashboard HTML is missing the Apple web app metadata' unless html.include?('<meta name="apple-mobile-web-app-capable" content="yes">')
+  raise 'Dashboard HTML is missing the theme color' unless html.include?('<meta name="theme-color" content="#2781F6">')
+
+  apple_icon_tag = %(<link rel="apple-touch-icon" sizes="192x192" href="#{icon_192_path}">)
+  raise 'Dashboard HTML is missing the configured Apple icon' unless html.include?(apple_icon_tag)
+
+  canonical = fetch(base_uri, '/manifest.webmanifest', 'application/manifest+json')
+  legacy = fetch(base_uri, '/manifest.json', 'application/manifest+json')
+  manifest = JSON.parse(canonical.body)
+
+  raise 'Manifest aliases return different content' unless manifest == JSON.parse(legacy.body)
+
+  cache_control = canonical['cache-control'].to_s
+  raise 'Manifest cache is not public for five minutes' unless cache_control.match?(/\bpublic\b/) && cache_control.match?(/\bmax-age=300\b/)
+
+  expected_fields = {
+    'id' => '/', 'name' => installation_name, 'short_name' => brand_name,
+    'start_url' => '/', 'scope' => '/', 'display' => 'standalone',
+    'prefer_related_applications' => false
+  }
+  expected_fields.each do |key, value|
+    raise "Manifest #{key} does not match #{value.inspect}" unless manifest[key] == value
+  end
+
+  { 192 => icon_192_path, 512 => icon_512_path }.each do |size, path|
+    icon = manifest.fetch('icons').find { |item| item['sizes'] == "#{size}x#{size}" }
+    valid_icon = icon && icon['src'] == path && icon['type'] == 'image/png' &&
+                 MASKABLE_PURPOSES.all? { |purpose| icon['purpose'].to_s.split.include?(purpose) }
+    raise "Missing #{size}x#{size} maskable PNG icon at #{path}" unless valid_icon
+
+    image = fetch(base_uri, path, 'image/png').body
+    valid_png = image.start_with?("\x89PNG\r\n\x1A\n".b) && image.byteslice(12, 4) == 'IHDR' &&
+                image.byteslice(16, 8).unpack('N2') == [size, size]
+    raise "#{path}: invalid PNG dimensions" unless valid_png
+  end
+
+  puts "PWA release verified: #{base_uri.host} at #{release_sha}"
+rescue StandardError => e
+  warn "PWA release check failed: #{e.message}"
+  exit 1
+end
