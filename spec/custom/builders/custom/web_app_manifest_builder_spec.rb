@@ -66,6 +66,7 @@ RSpec.describe Custom::WebAppManifestBuilder do
         expect(image.type).to eq('PNG')
         expect(image.dimensions).to eq([expected_size, expected_size])
         expect(image['%[opaque]']).to eq('true')
+        expect(content_outside_safe_circle).to be(false)
       end
     end
   end

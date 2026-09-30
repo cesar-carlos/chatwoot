@@ -35,3 +35,16 @@ O worker é registrado com `updateViaCache: "none"`. Ele não implementa cache o
 ## Extensão do fork
 
 Lógica específica vive em `custom/`. Controllers e serviços Ruby usam `prepend_mod_with`; arquivos upstream mantêm apenas hooks/imports mínimos com `FORK:`. Essa organização reduz conflitos ao rebasear o fork sobre novas versões do Chatwoot.
+
+## Separação entre integração e disponibilidade
+
+O fluxo de conclusão possui três estados independentes:
+
+```mermaid
+flowchart LR
+  A[Código no origin/main] --> B[Deploy e configuração]
+  B --> C[Validação em aparelhos]
+  C --> D[Funcionalidade homologada]
+```
+
+Um commit integrado não altera o domínio até que uma nova imagem seja publicada. Da mesma forma, respostas HTTP corretas não comprovam a entrega final do Push: o aceite exige testes reais em Android e iOS com o aplicativo suspenso ou fechado.
