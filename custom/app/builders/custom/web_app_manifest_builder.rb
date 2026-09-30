@@ -1,10 +1,11 @@
 class Custom::WebAppManifestBuilder
   DEFAULT_NAME = 'Chatwoot'.freeze
+  DEFAULT_ICON_192_URL = '/android-icon-192x192.png'.freeze
   DEFAULT_ICON_URL = '/favicon-512x512.png'.freeze
   THEME_COLOR = '#2781F6'.freeze
 
   def perform
-    config = GlobalConfig.get('INSTALLATION_NAME', 'BRAND_NAME', 'PWA_ICON_URL')
+    config = GlobalConfig.get('INSTALLATION_NAME', 'BRAND_NAME', 'PWA_ICON_192_URL', 'PWA_ICON_URL')
     installation_name = config['INSTALLATION_NAME'].presence || DEFAULT_NAME
 
     {
@@ -16,7 +17,10 @@ class Custom::WebAppManifestBuilder
       display: 'standalone',
       background_color: THEME_COLOR,
       theme_color: THEME_COLOR,
-      icons: [{ src: config['PWA_ICON_URL'].presence || DEFAULT_ICON_URL, sizes: '512x512', type: 'image/png', purpose: 'any' }]
+      icons: [
+        { src: config['PWA_ICON_192_URL'].presence || DEFAULT_ICON_192_URL, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: config['PWA_ICON_URL'].presence || DEFAULT_ICON_URL, sizes: '512x512', type: 'image/png', purpose: 'any' }
+      ]
     }
   end
 end
