@@ -15,7 +15,9 @@ import { setColorTheme } from './helper/themeHelper';
 import { isOnOnboardingView } from 'v3/helpers/RouteHelper';
 import { useAccount } from 'dashboard/composables/useAccount';
 import { useFontSize } from 'dashboard/composables/useFontSize';
-import { ensurePushSubscription } from './helper/pushHelper';
+// FORK: white-label PWA installation and browser push lifecycle
+import { ensurePushSubscription } from 'customDashboard/helper/pushHelper';
+import { initializePwaInstallation } from 'customDashboard/composables/usePwaInstallation';
 import ReconnectService from 'dashboard/helper/ReconnectService';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 
@@ -77,6 +79,7 @@ export default {
     },
   },
   mounted() {
+    initializePwaInstallation();
     this.initializeColorTheme();
     this.listenToThemeChanges();
     // If user locale is set, use it; otherwise use account locale

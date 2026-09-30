@@ -195,6 +195,15 @@
           "VOICE_CALL_INCOMING": "Uma chamada de voz recebida toca nesta caixa de entrada"
         },
         "BROWSER_PERMISSION": "Ativar notificações push neste dispositivo",
+        "PWA_INSTALL_TITLE": "Instalar o aplicativo neste dispositivo",
+        "PWA_INSTALL_ACTION": "Instalar",
+        "PWA_INSTALL_STATUS_INSTALLED": "O aplicativo está instalado e aberto no modo independente.",
+        "PWA_INSTALL_STATUS_AVAILABLE": "A instalação está disponível neste navegador.",
+        "PWA_INSTALL_STATUS_IOS_INSTRUCTIONS": "Abra o Chatwoot no Safari, toque em Compartilhar, escolha Adicionar à Tela de Início e abra pelo novo ícone.",
+        "PWA_INSTALL_STATUS_UNAVAILABLE": "O navegador ainda não ofereceu a instalação. Você também pode usar o menu de instalação de aplicativos.",
+        "PWA_INSTALL_STATUS_UNSUPPORTED": "Este navegador ou conexão não oferece suporte à instalação do aplicativo.",
+        "PWA_INSTALL_DISMISSED": "A instalação foi cancelada. Você pode tentar novamente pelo menu do navegador.",
+        "PWA_INSTALL_ERROR": "Não foi possível abrir a instalação do aplicativo.",
         "POPUP_PERMISSION_ERROR": "As notificações do navegador estão bloqueadas. Ative-as nas configurações do navegador para receber popups.",
         "POPUP_VOICE_NOTE": "Chamadas de voz recebidas já usam o popup próprio, por isso esta coluna não as inclui.",
         "IOS_PWA_HINT": "No iPhone ou iPad, abra o Chatwoot no Safari, adicione-o à Tela de Início e abra-o pelo novo ícone para ativar as notificações do sistema.",
@@ -210,6 +219,7 @@
         "PUSH_STATUS_UNSUBSCRIBED": "Este dispositivo não está inscrito.",
         "PUSH_STATUS_ERROR": "Não foi possível sincronizar a inscrição.",
         "PUSH_SUBSCRIPTION_ERROR": "Não foi possível atualizar as notificações push neste dispositivo. Verifique as permissões e tente novamente.",
+        "PUSH_STALE_CLEANUP_ERROR": "O push foi atualizado neste dispositivo, mas a inscrição anterior não pôde ser removida do servidor.",
         "PUSH_UNSUBSCRIBE_ERROR": "O push foi desativado neste navegador, mas a inscrição não pôde ser removida do servidor."
       },
       "API": {

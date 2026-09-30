@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const subscriptionApi = vi.hoisted(() => ({
-  create: vi.fn(),
-  destroyBrowserSubscription: vi.fn(),
-}));
+const subscriptionApi = vi.hoisted(() => ({ create: vi.fn() }));
+const destroyBrowserSubscription = vi.hoisted(() => vi.fn());
 
-vi.mock('../../api/notificationSubscription', () => ({
+vi.mock('dashboard/api/notificationSubscription', () => ({
   default: subscriptionApi,
 }));
 
-vi.mock('../../api/auth', () => ({
+vi.mock('customDashboard/api/notificationSubscription', () => ({
+  destroyBrowserSubscription,
+}));
+
+vi.mock('dashboard/api/auth', () => ({
   default: { hasAuthCookie: () => true },
 }));
 
@@ -18,7 +20,7 @@ import {
   getPushEnvironment,
   requestAndSubscribe,
   unsubscribePush,
-} from '../pushHelper';
+} from 'customDashboard/helper/pushHelper';
 
 const applicationServerKey = new Uint8Array([1, 2, 3]);
 
@@ -30,7 +32,7 @@ const buildSubscription = (overrides = {}) => ({
   ...overrides,
 });
 
-describe('pushHelper', () => {
+describe('custom browser push helper', () => {
   let pushManager;
   let subscription;
 
@@ -44,7 +46,7 @@ describe('pushHelper', () => {
     vi.clearAllMocks();
     localStorage.clear();
     subscriptionApi.create.mockResolvedValue({});
-    subscriptionApi.destroyBrowserSubscription.mockResolvedValue({});
+    destroyBrowserSubscription.mockResolvedValue({});
     window.chatwootConfig = { vapidPublicKey: applicationServerKey };
     window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     Object.defineProperty(window, 'isSecureContext', {
@@ -93,7 +95,7 @@ describe('pushHelper', () => {
     });
   });
 
-  it('does not subscribe when permission was granted only for open-panel alerts', async () => {
+  it('does not subscribe from a permission granted only for open-panel alerts', async () => {
     const result = await ensurePushSubscription();
 
     expect(pushManager.subscribe).not.toHaveBeenCalled();
@@ -101,8 +103,9 @@ describe('pushHelper', () => {
     expect(result.status).toBe('unsubscribed');
   });
 
-  it('recreates a missing granted subscription and synchronizes it', async () => {
+  it('recreates and synchronizes a missing opted-in subscription', async () => {
     localStorage.setItem('chatwoot_push_enabled', 'true');
+
     const result = await ensurePushSubscription();
 
     expect(pushManager.subscribe).toHaveBeenCalledWith({
@@ -120,7 +123,7 @@ describe('pushHelper', () => {
     expect(result.status).toBe('subscribed');
   });
 
-  it('requests permission as a Promise only when explicitly called', async () => {
+  it('requests permission only during explicit opt-in', async () => {
     global.Notification.permission = 'default';
     global.Notification.requestPermission.mockResolvedValue('granted');
 
@@ -141,29 +144,43 @@ describe('pushHelper', () => {
 
     const result = await ensurePushSubscription();
 
-    expect(subscriptionApi.destroyBrowserSubscription).toHaveBeenCalledWith(
+    expect(destroyBrowserSubscription).toHaveBeenCalledWith(
       staleSubscription.endpoint
     );
-    expect(staleSubscription.unsubscribe).toHaveBeenCalled();
-    expect(pushManager.subscribe).toHaveBeenCalled();
+    expect(staleSubscription.unsubscribe).toHaveBeenCalledOnce();
+    expect(pushManager.subscribe).toHaveBeenCalledOnce();
     expect(result.status).toBe('subscribed');
+  });
+
+  it('continues VAPID rotation when remote stale cleanup fails', async () => {
+    const staleSubscription = buildSubscription({
+      options: {
+        applicationServerKey: new Uint8Array([9, 9, 9]).buffer,
+      },
+    });
+    const cleanupError = new Error('backend unavailable');
+    pushManager.getSubscription.mockResolvedValue(staleSubscription);
+    destroyBrowserSubscription.mockRejectedValue(cleanupError);
+
+    const result = await ensurePushSubscription();
+
+    expect(staleSubscription.unsubscribe).toHaveBeenCalledOnce();
+    expect(pushManager.subscribe).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ status: 'subscribed', cleanupError });
   });
 
   it('removes the local subscription even when backend removal fails', async () => {
     pushManager.getSubscription.mockResolvedValue(subscription);
     const serverError = new Error('backend unavailable');
-    subscriptionApi.destroyBrowserSubscription.mockRejectedValue(serverError);
+    destroyBrowserSubscription.mockRejectedValue(serverError);
 
     const result = await unsubscribePush();
 
-    expect(subscription.unsubscribe).toHaveBeenCalled();
-    expect(result).toMatchObject({
-      status: 'unsubscribed',
-      serverError,
-    });
+    expect(subscription.unsubscribe).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({ status: 'unsubscribed', serverError });
   });
 
-  it('does not recreate a subscription after an explicit opt-out', async () => {
+  it('does not recreate a subscription after explicit opt-out', async () => {
     pushManager.getSubscription
       .mockResolvedValueOnce(subscription)
       .mockResolvedValue(null);
@@ -175,5 +192,35 @@ describe('pushHelper', () => {
     expect(pushManager.subscribe).not.toHaveBeenCalled();
     expect(subscriptionApi.create).not.toHaveBeenCalled();
     expect(result.status).toBe('unsubscribed');
+  });
+
+  it('registers the service worker without using an HTTP cache', async () => {
+    localStorage.setItem('chatwoot_push_enabled', 'true');
+
+    await ensurePushSubscription();
+
+    expect(navigator.serviceWorker.register).toHaveBeenCalledWith('/sw.js', {
+      updateViaCache: 'none',
+    });
+  });
+
+  it('serializes simultaneous subscription operations', async () => {
+    localStorage.setItem('chatwoot_push_enabled', 'true');
+    let releaseSubscription;
+    pushManager.subscribe.mockReturnValue(
+      new Promise(resolve => {
+        releaseSubscription = () => resolve(subscription);
+      })
+    );
+
+    const first = ensurePushSubscription();
+    const second = ensurePushSubscription();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(navigator.serviceWorker.register).toHaveBeenCalledTimes(1);
+    releaseSubscription();
+    await Promise.all([first, second]);
+    expect(navigator.serviceWorker.register).toHaveBeenCalledTimes(2);
   });
 });
