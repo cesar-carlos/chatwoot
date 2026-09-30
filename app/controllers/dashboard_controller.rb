@@ -13,6 +13,9 @@ class DashboardController < ActionController::Base
     BRAND_NAME
     PRIVACY_URL
     DISPLAY_MANIFEST
+    # FORK: white-label PWA metadata remains available when the stock manifest is hidden
+    PWA_ICON_192_URL
+    PWA_ICON_URL
     CREATE_NEW_ACCOUNT_FROM_DASHBOARD
     CHATWOOT_INBOX_TOKEN
     API_CHANNEL_NAME

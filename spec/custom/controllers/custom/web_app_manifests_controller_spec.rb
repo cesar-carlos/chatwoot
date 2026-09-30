@@ -4,7 +4,7 @@ RSpec.describe 'White-label web app manifest', type: :request do
   let(:manifest) do
     {
       id: '/', name: 'Se7e Sistemas Webchat', short_name: 'Se7e Sistemas', start_url: '/', scope: '/', display: 'standalone',
-      background_color: '#2781F6', theme_color: '#2781F6', icons: []
+      prefer_related_applications: false, background_color: '#2781F6', theme_color: '#2781F6', icons: []
     }
   end
   let(:builder) { instance_double(Custom::WebAppManifestBuilder, perform: manifest) }

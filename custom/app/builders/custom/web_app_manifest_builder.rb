@@ -15,11 +15,12 @@ class Custom::WebAppManifestBuilder
       start_url: '/',
       scope: '/',
       display: 'standalone',
+      prefer_related_applications: false,
       background_color: THEME_COLOR,
       theme_color: THEME_COLOR,
       icons: [
-        { src: config['PWA_ICON_192_URL'].presence || DEFAULT_ICON_192_URL, sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: config['PWA_ICON_URL'].presence || DEFAULT_ICON_URL, sizes: '512x512', type: 'image/png', purpose: 'any' }
+        { src: config['PWA_ICON_192_URL'].presence || DEFAULT_ICON_192_URL, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
+        { src: config['PWA_ICON_URL'].presence || DEFAULT_ICON_URL, sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
       ]
     }
   end
