@@ -1,19 +1,13 @@
 <script>
 import { mapGetters } from 'vuex';
 import { useAlert } from 'dashboard/composables';
-import { useBranding } from 'shared/composables/useBranding';
 import TableHeaderCell from 'dashboard/components/widgets/TableHeaderCell.vue';
 import CheckBox from 'v3/components/Form/CheckBox.vue';
-import {
-  ensurePushSubscription,
-  getPushEnvironment,
-  requestAndSubscribe,
-  unsubscribePush,
-} from 'dashboard/helper/pushHelper.js';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
-import ToggleSwitch from 'dashboard/components-next/switch/Switch.vue';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import { NOTIFICATION_TYPES } from './constants';
+// FORK: white-label PWA installation and per-device browser push
+import PwaDeviceSettings from 'customDashboard/components/pwa/PwaDeviceSettings.vue';
 // FORK: in-app popup notification preferences
 import {
   popupFlagsForSettings,
@@ -25,15 +19,9 @@ import {
 export default {
   components: {
     TableHeaderCell,
-    ToggleSwitch,
     CheckBox,
     NextButton,
-  },
-  setup() {
-    const { replaceInstallationName } = useBranding();
-    return {
-      replaceInstallationName,
-    };
+    PwaDeviceSettings,
   },
   data() {
     return {
@@ -41,9 +29,7 @@ export default {
       selectedPushFlags: [],
       selectedPopupFlags: [],
       enableAudioAlerts: false,
-      hasEnabledPushPermissions: false,
       notificationTypes: NOTIFICATION_TYPES,
-      pushStatus: getPushEnvironment().status,
       browserNotificationPermission:
         typeof Notification === 'undefined'
           ? 'unsupported'
@@ -58,27 +44,6 @@ export default {
       uiSettings: 'getUISettings',
       isFeatureEnabledonAccount: 'accounts/isFeatureEnabledonAccount',
     }),
-    isPushToggleDisabled() {
-      return ['unsupported', 'requires_install'].includes(this.pushStatus);
-    },
-    pushStatusMessage() {
-      const statusKeys = {
-        unsupported: 'PUSH_STATUS_UNSUPPORTED',
-        requires_install: 'PUSH_STATUS_REQUIRES_INSTALL',
-        default: 'PUSH_STATUS_DEFAULT',
-        denied: 'PUSH_STATUS_DENIED',
-        subscribed: 'PUSH_STATUS_SUBSCRIBED',
-        unsubscribed: 'PUSH_STATUS_UNSUBSCRIBED',
-        error: 'PUSH_STATUS_ERROR',
-      };
-      const key = statusKeys[this.pushStatus] || statusKeys.error;
-      return this.replaceInstallationName(
-        this.$t(`PROFILE_SETTINGS.FORM.NOTIFICATIONS.${key}`)
-      );
-    },
-    showIosPwaHint() {
-      return this.pushStatus === 'requires_install';
-    },
     showOpenPanelPermissionAction() {
       return this.browserNotificationPermission === 'default';
     },
@@ -122,7 +87,6 @@ export default {
     },
   },
   mounted() {
-    this.refreshPushSubscription();
     this.$store.dispatch('userNotificationSettings/get');
   },
   methods: {
@@ -142,50 +106,6 @@ export default {
         popup: this.selectedPopupFlags,
       }[type];
       return (selectedFlags || []).includes(`${type}_${flagType}`);
-    },
-    async refreshPushSubscription() {
-      const environment = getPushEnvironment();
-      this.pushStatus = environment.status;
-      this.hasEnabledPushPermissions = false;
-
-      if (!environment.supported || environment.permission !== 'granted') {
-        return;
-      }
-
-      try {
-        const result = await ensurePushSubscription();
-        this.pushStatus = result.status;
-        this.hasEnabledPushPermissions = result.status === 'subscribed';
-      } catch (error) {
-        this.pushStatus = 'error';
-      }
-    },
-    async onRequestPermissions() {
-      const value = this.hasEnabledPushPermissions;
-      const previousValue = !value;
-
-      try {
-        const result = value
-          ? await requestAndSubscribe()
-          : await unsubscribePush();
-        this.pushStatus = result.status;
-        this.browserNotificationPermission = result.permission;
-        this.hasEnabledPushPermissions = result.status === 'subscribed';
-
-        if (result.serverError) {
-          useAlert(
-            this.$t(
-              'PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_UNSUBSCRIBE_ERROR'
-            )
-          );
-        }
-      } catch (error) {
-        this.pushStatus = 'error';
-        this.hasEnabledPushPermissions = previousValue;
-        useAlert(
-          this.$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_SUBSCRIPTION_ERROR')
-        );
-      }
     },
     async updateNotificationSettings(previousEmailFlags, previousPushFlags) {
       try {
@@ -293,16 +213,9 @@ export default {
 
 <template>
   <div id="profile-settings-notifications" class="flex flex-col gap-6">
-    <p
-      v-if="showIosPwaHint"
-      class="rounded-lg border border-n-amber-6 bg-n-amber-2 px-4 py-3 text-sm text-n-amber-12"
-    >
-      {{
-        replaceInstallationName(
-          $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.IOS_PWA_HINT')
-        )
-      }}
-    </p>
+    <PwaDeviceSettings
+      @permission-change="browserNotificationPermission = $event"
+    />
     <p
       class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-4 py-3 text-sm text-n-slate-11"
     >
@@ -487,31 +400,6 @@ export default {
           }}</span>
         </div>
       </div>
-    </div>
-
-    <div
-      class="flex items-center justify-between w-full gap-2 p-4 border border-solid border-n-weak rounded-xl"
-    >
-      <div class="flex flex-row items-center gap-2">
-        <fluent-icon
-          icon="alert"
-          class="flex-shrink-0 text-n-slate-12"
-          size="18"
-        />
-        <div class="flex flex-col gap-1">
-          <span class="text-body-main text-n-slate-12">
-            {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.BROWSER_PERMISSION') }}
-          </span>
-          <span class="text-body-small text-n-slate-11">
-            {{ pushStatusMessage }}
-          </span>
-        </div>
-      </div>
-      <ToggleSwitch
-        v-model="hasEnabledPushPermissions"
-        :disabled="isPushToggleDisabled"
-        @change="onRequestPermissions"
-      />
     </div>
   </div>
 </template>

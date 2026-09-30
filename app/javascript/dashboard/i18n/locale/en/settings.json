@@ -195,6 +195,15 @@
           "VOICE_CALL_INCOMING": "An incoming voice call rings for this inbox"
         },
         "BROWSER_PERMISSION": "Enable push notifications on this device",
+        "PWA_INSTALL_TITLE": "Install the app on this device",
+        "PWA_INSTALL_ACTION": "Install",
+        "PWA_INSTALL_STATUS_INSTALLED": "The app is installed and running in standalone mode.",
+        "PWA_INSTALL_STATUS_AVAILABLE": "Installation is available in this browser.",
+        "PWA_INSTALL_STATUS_IOS_INSTRUCTIONS": "Open Chatwoot in Safari, tap Share, choose Add to Home Screen, then open it from the new icon.",
+        "PWA_INSTALL_STATUS_UNAVAILABLE": "The browser is not offering installation yet. You can also use its app installation menu.",
+        "PWA_INSTALL_STATUS_UNSUPPORTED": "This browser or connection does not support app installation.",
+        "PWA_INSTALL_DISMISSED": "Installation was cancelled. You can try again from the browser menu.",
+        "PWA_INSTALL_ERROR": "The app installation prompt could not be opened.",
         "POPUP_PERMISSION_ERROR": "Browser notifications are blocked. Enable them in your browser settings to receive popups.",
         "POPUP_VOICE_NOTE": "Incoming voice calls already use their own popup, so this column does not include them.",
         "IOS_PWA_HINT": "On iPhone or iPad, open Chatwoot in Safari, add it to the Home Screen, then open it from the new icon to enable system notifications.",
@@ -210,6 +219,7 @@
         "PUSH_STATUS_UNSUBSCRIBED": "This device is not subscribed.",
         "PUSH_STATUS_ERROR": "The subscription could not be synchronized.",
         "PUSH_SUBSCRIPTION_ERROR": "Could not update push notifications on this device. Check browser permissions and try again.",
+        "PUSH_STALE_CLEANUP_ERROR": "Push was updated on this device, but the previous server subscription could not be removed.",
         "PUSH_UNSUBSCRIBE_ERROR": "Push was disabled in this browser, but the server subscription could not be removed."
       },
       "API": {
