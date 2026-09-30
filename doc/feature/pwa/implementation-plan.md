@@ -52,12 +52,12 @@ Os specs existentes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opac
 | `git diff --check` | Sem erros |
 | Área segura dos ícones | Asserção adicionada; ambos os PNGs confirmados por execução direta de MiniMagick |
 
-O build Vite de produção também passou no candidato de release após aplicar a correção de sintaxe de `ConversationCard.vue` já existente no checkout ativo. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`.
+O build Vite de produção passou no candidato unificado com as 27 alterações locais. ESLint passou em todos os JS/Vue alterados e RuboCop nos 22 arquivos Ruby alterados. A migration de normalização de papéis foi aplicada somente ao banco de testes isolado; o schema versionado manteve a função `FORK:` do índice. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`.
 
 ## Publicação no fork
 
-1. Integração Git concluída no `origin/main` de `cesar-carlos/chatwoot` até o commit `4254116ffd`. Não criar PR nem push para `upstream`.
-2. Os 12 commits da PWA já foram aplicados ao `main` de produção no worktree isolado `fix/pwa-production-release`; os specs e o build passaram. Antes de publicá-lo, decidir como preservar as 27 alterações locais do checkout ativo, inclusive a correção de sintaxe necessária ao build. Não substituir o checkout em execução por `origin/main` diretamente.
+1. Integração Git concluída no `origin/main` de `cesar-carlos/chatwoot` com o histórico 4.18, PWA e alterações locais. Não criar PR nem push para `upstream`.
+2. Os commits da PWA e as 27 alterações locais já foram incorporados ao histórico 4.18 no worktree isolado `fix/pwa-production-release`; os specs e o build passaram. Publicar a partir desse release unificado, sem substituir o checkout em execução por um branch PWA antigo.
 3. Gerar uma imagem limpa do release reconciliado e executar `db:chatwoot_prepare` para criar `PWA_ICON_192_URL` e `PWA_ICON_URL` nas configurações.
 4. Em Super Admin → Settings → Custom Branding, definir:
    - `PWA_ICON_192_URL=/brand-assets/pwa-icon-se7e-192.png`

@@ -16,14 +16,14 @@
 - Vitest isolado por worktree com 19 testes PWA/Push passando; ESLint e RuboCop direcionados passando.
 - Verificador público `bin/fork-pwa-smoke` para release, manifesto e ícones.
 - Candidato isolado com 18 exemplos RSpec, 19 Vitest, RuboCop direcionado e build Vite de produção aprovados.
-- Integração no `origin/main` do fork, sem PR ou push para `upstream`, até o commit `4254116ffd`.
+- Integração do histórico 4.18, PWA e alterações locais no `origin/main` do fork, sem PR ou push para `upstream`.
 
 ## Pendente operacional e de validação
 
 | Prioridade | Item | Critério |
 |------------|------|----------|
-| P0 | Publicar o commit `4254116ffd` ou posterior | O `GIT_SHA` do dashboard corresponde ao release novo |
-| P0 | Concluir reconciliação e publicar | Os commits da PWA já foram aplicados ao `main` de produção em worktree isolado; preservar as 27 alterações locais do checkout ativo antes de trocar o release |
+| P0 | Publicar o release unificado ou posterior | O `GIT_SHA` do dashboard corresponde ao release novo |
+| P0 | Publicar o release unificado | Histórico 4.18, PWA e 27 alterações locais preservados; trocar web e worker juntos após preparar configurações e assets |
 | P0 | Executar `db:chatwoot_prepare` | As duas configurações de ícone existem no Super Admin |
 | P0 | Configurar ícones Se7e | URLs públicas retornam PNG nos tamanhos declarados |
 | P0 | Invalidar caches antigos | `/manifest.json` e `/manifest.webmanifest` entregam o mesmo JSON dinâmico |
