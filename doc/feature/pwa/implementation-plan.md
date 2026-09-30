@@ -52,12 +52,12 @@ Os specs existentes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opac
 | `git diff --check` | Sem erros |
 | Área segura dos ícones | Asserção adicionada; ambos os PNGs confirmados por execução direta de MiniMagick |
 
-O build Vite de produção passou no candidato unificado com as 27 alterações locais. ESLint passou em todos os JS/Vue alterados e RuboCop nos 22 arquivos Ruby alterados. A migration de normalização de papéis foi aplicada somente ao banco de testes isolado; o schema versionado manteve a função `FORK:` do índice. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`.
+O build Vite de produção passou no candidato unificado com as 27 alterações locais. ESLint passou em todos os JS/Vue alterados e RuboCop nos 22 arquivos Ruby alterados. Antes da publicação, as migrations foram ensaiadas em uma cópia isolada do banco; no deploy, as nove migrations pendentes foram aplicadas em produção. O schema versionado manteve a função `FORK:` do índice. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`.
 
 ## Publicação no fork
 
 1. Integração Git concluída no `origin/main` de `cesar-carlos/chatwoot` com o histórico 4.18, PWA e alterações locais. Não criar PR nem push para `upstream`.
-2. Os commits da PWA e as 27 alterações locais já foram incorporados ao histórico 4.18 no worktree isolado `fix/pwa-production-release`; os specs e o build passaram. Publicar a partir desse release unificado, sem substituir o checkout em execução por um branch PWA antigo.
+2. Os commits da PWA e as 27 alterações locais foram incorporados ao histórico 4.18. O deploy de 30/set/2026 usou um worktree isolado no commit `6e30bc8c97`, sem substituir o checkout principal antigo.
 3. Gerar uma imagem limpa do release reconciliado e executar `db:chatwoot_prepare` para criar `PWA_ICON_192_URL` e `PWA_ICON_URL` nas configurações.
 4. Em Super Admin → Settings → Custom Branding, definir:
    - `PWA_ICON_192_URL=/brand-assets/pwa-icon-se7e-192.png`
@@ -86,7 +86,15 @@ bin/fork-pwa-smoke https://chat.se7esistemassinop.com.br \
   /brand-assets/pwa-icon-se7e-512.png
 ```
 
-O comando retorna erro se a versão, o HTML, os dois manifestos, o cache, a identidade white-label ou as dimensões e o tipo dos PNGs públicos divergirem. Em 30/set/2026, ele falha no `GIT_SHA` porque o domínio ainda serve `61fc65923d`. Execute-o como etapa obrigatória após cada deploy da PWA.
+O comando retorna erro se a versão, o HTML, os dois manifestos, o cache, a identidade white-label ou as dimensões e o tipo dos PNGs públicos divergirem. Ele passou no domínio público em 30/set/2026 com `GIT_SHA=6e30bc8c97f18bd559cf38c998b4f40b5ca49354`. Execute-o como etapa obrigatória após cada deploy da PWA.
+
+### Publicação de 30/set/2026
+
+- Assets de produção compilados e nove migrations aplicadas após ensaio em banco-clone; dois backups anteriores à migração foram preservados.
+- `PWA_ICON_192_URL` e `PWA_ICON_URL` configurados com os PNGs Se7e; `DISPLAY_MANIFEST=false` e as chaves VAPID foram preservados.
+- Web e worker reiniciados pelo PM2 no mesmo worktree de release; o estado do PM2 foi salvo para reboot.
+- Login, manifestos, service worker e ícones responderam pelo domínio público; o verificador automático da PWA passou.
+- Não foi feita homologação em aparelho nem confirmação de exibição de Push com a PWA fechada. Caches de clientes e atalhos antigos podem exigir atualização ou reinstalação.
 
 ## Validação manual obrigatória
 
@@ -101,4 +109,4 @@ Atalhos antigos podem precisar ser apagados e instalados novamente.
 
 ## Condição para encerrar o rollout
 
-Marcar a PWA como pronta somente quando a validação HTTP, a suíte automatizada e os cenários manuais estiverem concluídos. Em 30/set/2026, o código estava integrado, mas o deploy e a homologação permaneciam pendentes.
+Marcar a PWA como pronta somente quando a validação HTTP, a suíte automatizada e os cenários manuais estiverem concluídos. Em 30/set/2026, código e deploy estavam concluídos; a homologação em Android/iOS e a entrega final de Push permaneciam pendentes.

@@ -2,11 +2,9 @@
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 
-**Estado do código:** histórico 4.18 de produção, PWA e alterações locais reconciliados no `main` do fork em 30/set/2026; build de produção e testes direcionados aprovados. **Produção:** ainda executa o checkout anterior `61fc65923d`; requer deploy, configuração, invalidação de cache e validação nos aparelhos descritos em [implementação e publicação](./implementation-plan.md).
+**Estado do código:** histórico 4.18, PWA e alterações locais integrados ao `main` do fork. **Produção:** o domínio público executa o release `6e30bc8c97` desde 30/set/2026; build, migrações, configuração dos ícones e verificação HTTP foram concluídos. A instalação e a entrega de Push com o app fechado ainda precisam ser homologadas em aparelhos reais, conforme [implementação e publicação](./implementation-plan.md).
 
-> A presença do código no `origin/main` não conclui o rollout. Enquanto o domínio público não entregar o manifesto dinâmico e os dois ícones, o navegador poderá oferecer apenas **Criar atalho** ou informar que o aplicativo não pode ser instalado.
-
-> O checkout que executa produção continua na versão anterior. As alterações locais foram preservadas no histórico do release unificado; a troca do código em execução ainda exige uma publicação controlada.
+> O manifesto e os ícones agora são entregues pelo domínio público, mas isso não comprova a experiência em todos os celulares. A homologação exige instalar a PWA e testar uma notificação real com o aplicativo fechado.
 
 | Recurso | Implementação |
 |---------|---------------|
@@ -26,10 +24,10 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 |-------|-----------------------|
 | Implementação no fork | Concluída e publicada no `origin/main` |
 | Documentação | Atualizada com o estado observado |
-| Deploy da versão PWA | Pendente |
-| Configuração dos ícones | Pendente em produção |
-| Validação Android/iOS | Pendente após o deploy |
-| Aceite de Push com app fechado | Pendente após o deploy |
+| Deploy da versão PWA | Concluído no release `6e30bc8c97` |
+| Configuração dos ícones | Concluída e verificada pelo domínio público |
+| Validação Android/iOS | Pendente em aparelhos reais |
+| Aceite de Push com app fechado | Pendente em aparelhos reais |
 
 ## Documentos
 

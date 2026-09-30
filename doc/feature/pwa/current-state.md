@@ -1,6 +1,6 @@
 # PWA — estado atual
 
-Implementação integrada ao histórico 4.18 do `main` do fork em 30/set/2026. Esse é o estado do repositório, não uma confirmação de publicação em produção.
+Implementação integrada ao `main` do fork e publicada no domínio de produção em 30/set/2026. A entrega HTTP está verificada; a instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
 
 ## Arquitetura implementada
 
@@ -27,19 +27,21 @@ O arquivo estático `public/manifest.json` foi removido. Não há cache offline,
 
 ## Estado da produção observado
 
-Em 30/set/2026, `chat.se7esistemassinop.com.br` ainda informava `GIT_SHA=61fc65923d` e apresentava o estado abaixo:
+Antes do deploy em 30/set/2026, `chat.se7esistemassinop.com.br` ainda informava `GIT_SHA=61fc65923d`, sem manifesto dinâmico e sem os ícones Se7e. Após o deploy, a verificação pública retornou:
 
 | Verificação | Resultado observado |
 |-------------|---------------------|
-| `/manifest.webmanifest` | `404` |
-| `/manifest.json` | `200 application/json`, conteúdo estático com nome Chatwoot e ícones somente até 192×192 |
-| Link `rel="manifest"` no HTML | Ausente |
-| `/brand-assets/pwa-icon-se7e-192.png` | `404` |
-| `/brand-assets/pwa-icon-se7e-512.png` | `404` |
+| Release do dashboard | `GIT_SHA=6e30bc8c97f18bd559cf38c998b4f40b5ca49354` |
+| `/manifest.webmanifest` | `200 application/manifest+json`, cache público de cinco minutos |
+| `/manifest.json` | `200 application/manifest+json`, alias do manifesto dinâmico |
+| Link `rel="manifest"` no HTML | Presente mesmo com `DISPLAY_MANIFEST=false` |
+| `/brand-assets/pwa-icon-se7e-192.png` | `200 image/png` |
+| `/brand-assets/pwa-icon-se7e-512.png` | `200 image/png` |
+| `/sw.js` | `200 text/javascript` |
 
-Esse estado explica o aviso **Não é possível instalar o app**. A correção só se torna efetiva após publicar uma imagem limpa do commit `092c8eeaf7` ou posterior, executar a preparação das configurações e invalidar os caches.
+O teste `bin/fork-pwa-smoke` passou para o release `6e30bc8c97`. O manifesto público inclui identidade white-label e os dois ícones declarados. Isso remove a falha HTTP que impedia a instalação, mas não substitui o teste de instalação no navegador.
 
-O web e o worker de produção rodam via PM2 a partir de `/root/chatwoot`. Em 30/set/2026, o `main` desse checkout tinha 480 commits exclusivos, o branch PWA tinha 292 commits exclusivos em relação a ele, e havia 27 caminhos alterados ou não rastreados. As 27 alterações foram preservadas no snapshot `71d44ab165` e incorporadas ao release 4.18 junto com os commits da PWA. O histórico remoto 4.17 foi ligado ao release sem substituir arquivos da base 4.18 por versões antigas.
+Web e worker rodam via PM2 no worktree isolado do release `6e30bc8c97`, com configuração persistida para reboot. `db:chatwoot_prepare` aplicou nove migrações pendentes; uma verificação posterior não encontrou migrações restantes. `PWA_ICON_192_URL` e `PWA_ICON_URL` apontam para os PNGs Se7e, `DISPLAY_MANIFEST=false` foi mantido e as chaves VAPID não foram alteradas. Dois backups do banco anteriores à migração foram preservados. O checkout principal `/root/chatwoot` continua antigo e com arquivos locais, mas não é o diretório em execução.
 
 ## Validação do código
 
@@ -48,10 +50,10 @@ O web e o worker de produção rodam via PM2 a partir de `/root/chatwoot`. Em 30
 - O spec dos ícones agora afirma a área segura `maskable`. Uma verificação direta com MiniMagick confirmou dimensões, opacidade e conteúdo dentro da área segura nos dois PNGs.
 - No candidato de release reconciliado, 18 exemplos RSpec passaram em sete arquivos, usando `chatwoot_pwa_release_test` e Redis DB 14 isolados. O Ruby 3.4.4 está disponível via RVM; `rbenv` não está instalado.
 - RuboCop passou nos 22 arquivos Ruby alterados, e ESLint passou nos JS/Vue alterados. O build Vite de produção passou após incorporar todas as alterações locais, incluindo a correção de sintaxe de `ConversationCard.vue`.
-- O comando `bin/fork-pwa-smoke` detectou corretamente que o domínio ainda serve o commit `61fc65923d`.
+- O comando `bin/fork-pwa-smoke` passou no domínio público após o deploy do commit `6e30bc8c97`.
 
-O release unificado está preparado em `fix/pwa-production-release`; o checkout em execução não foi substituído. Ainda faltam a publicação controlada, a configuração em produção e a confirmação em aparelhos reais.
+O release unificado está em execução. Falta confirmar em aparelhos reais a instalação standalone, o Push com a PWA fechada, o clique na conversa e a reconexão ao retomar.
 
 ## Critério de aceite
 
-O domínio público deve entregar ambos os manifestos com os dois ícones. O Chrome Android deve oferecer **Instalar** e abrir o painel sem barras do navegador. No iOS/iPadOS 16.4+, a instalação pela Tela de Início deve abrir em standalone. Uma mensagem elegível deve gerar Push com a PWA fechada, e o clique deve reutilizar a PWA aberta ou criar uma janela na conversa correta. Em 30/set/2026, esses critérios ainda não estavam homologados em produção.
+O domínio público já entrega ambos os manifestos com os dois ícones. O Chrome Android deve oferecer **Instalar** e abrir o painel sem barras do navegador. No iOS/iPadOS 16.4+, a instalação pela Tela de Início deve abrir em standalone. Uma mensagem elegível deve gerar Push com a PWA fechada, e o clique deve reutilizar a PWA aberta ou criar uma janela na conversa correta. Em 30/set/2026, os critérios de aparelho e entrega final de Push ainda não estavam homologados.
