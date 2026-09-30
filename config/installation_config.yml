@@ -56,6 +56,11 @@
   description: 'Display default Chatwoot metadata like favicons and upgrade warnings'
   type: boolean
 # FORK: White-label PWA icon independent of Chatwoot metadata
+- name: PWA_ICON_192_URL
+  value: '/android-icon-192x192.png'
+  display_title: 'PWA 192px Icon URL'
+  description: 'A same-origin URL for the square 192x192 PNG used when installing the dashboard as an app'
+  type: text
 - name: PWA_ICON_URL
   value: '/favicon-512x512.png'
   display_title: 'PWA Icon URL'
