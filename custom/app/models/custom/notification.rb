@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 module Custom::Notification
+  def notification_action_labels
+    locale = user.ui_settings['locale'].presence || account.locale
+    locale = account.locale unless I18n.available_locales.map(&:to_s).include?(locale.to_s)
+    I18n.with_locale(locale) { { open: I18n.t('notification_actions.open'), read: I18n.t('notification_actions.read') } }
+  end
+
+  def push_event_data
+    super.merge(user_id: user_id, action_labels: notification_action_labels)
+  end
+
   def push_message_title
     return voice_call_incoming_title if voice_call_incoming?
 

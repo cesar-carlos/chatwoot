@@ -9,10 +9,24 @@ module Custom::Notification::PushNotificationService
 
   private
 
+  def user_subscribed_to_notification?
+    eligible = Custom::Notification::DeliveryAccess.allowed?(notification) &&
+               notification_settings.find_by(account_id: notification.account_id)&.public_send("push_#{notification.notification_type}?")
+    unless eligible
+      Rails.logger.info("Push discarded user_id=#{user.id} account_id=#{notification.account_id} notification_id=#{notification.id} result=discarded")
+    end
+
+    eligible || false
+  end
+
   def push_message
     super.merge(
       body: notification.push_message_body,
-      icon: GlobalConfigService.load('PWA_ICON_URL', '/favicon-512x512.png')
+      icon: GlobalConfigService.load('PWA_ICON_URL', '/favicon-512x512.png'),
+      user_id: user.id,
+      account_id: notification.account_id,
+      notification_id: notification.id,
+      action_labels: notification.notification_action_labels
     )
   end
 
@@ -41,8 +55,7 @@ module Custom::Notification::PushNotificationService
     when Errno::ECONNRESET, Net::OpenTimeout, Net::ReadTimeout, Socket::ResolutionError
       Rails.logger.error("WebPush operation error #{context}")
     else
-      ChatwootExceptionTracker.new(error, account: notification.account).capture_exception
-      true
+      Rails.logger.error("WebPush failed #{context}")
     end
   end
 
@@ -55,7 +68,7 @@ module Custom::Notification::PushNotificationService
   end
 
   def push_log_context(subscription, error = nil)
-    context = "user_id=#{user.id} subscription_id=#{subscription.id} type=#{subscription.subscription_type}"
+    context = "user_id=#{user.id} subscription_id=#{subscription.id} type=#{subscription.subscription_type} result=#{error ? 'failed' : 'accepted'}"
     error ? "#{context} error_class=#{error.class.name}" : context
   end
 end

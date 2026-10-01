@@ -1,0 +1,4 @@
+pt_BR:
+  notification_actions:
+    open: Abrir conversa
+    read: Marcar como lida

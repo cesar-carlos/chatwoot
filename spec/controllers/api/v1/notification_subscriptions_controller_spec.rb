@@ -14,17 +14,18 @@ RSpec.describe 'Notifications Subscriptions API', type: :request do
 
     context 'when it is an authenticated user' do
       let(:agent) { create(:user, account: account, role: :agent) }
+      # FORK: browser recipients must have valid Web Push encryption material.
+      let(:browser_attributes) do
+        key = OpenSSL::PKey::EC.generate('prime256v1').public_key.to_octet_string(:uncompressed)
+        { endpoint: 'https://push.example.test/device', p256dh: Base64.strict_encode64(key), auth: Base64.strict_encode64('a' * 16) }
+      end
 
       it 'creates a notification subscriptions' do
         post '/api/v1/notification_subscriptions',
              params: {
                notification_subscription: {
                  subscription_type: 'browser_push',
-                 'subscription_attributes': {
-                   endpoint: 'test',
-                   p256dh: 'test',
-                   auth: 'test'
-                 }
+                 subscription_attributes: browser_attributes
                }
              },
              headers: agent.create_new_auth_token,
@@ -33,20 +34,16 @@ RSpec.describe 'Notifications Subscriptions API', type: :request do
         expect(response).to have_http_status(:success)
         json_response = response.parsed_body
         expect(json_response['subscription_type']).to eq('browser_push')
-        expect(json_response['subscription_attributes']['auth']).to eq('test')
+        expect(json_response['subscription_attributes']['auth']).to eq(browser_attributes[:auth])
       end
 
       it 'returns existing notification subscription if subscription exists' do
-        subscription = create(:notification_subscription, user: agent)
+        subscription = create(:notification_subscription, user: agent, identifier: browser_attributes[:endpoint])
         post '/api/v1/notification_subscriptions',
              params: {
                notification_subscription: {
                  subscription_type: 'browser_push',
-                 'subscription_attributes': {
-                   endpoint: 'test',
-                   p256dh: 'test',
-                   auth: 'test'
-                 }
+                 subscription_attributes: browser_attributes
                }
              },
              headers: agent.create_new_auth_token,
@@ -58,16 +55,12 @@ RSpec.describe 'Notifications Subscriptions API', type: :request do
       end
 
       it 'move notification subscription to user if its of another user' do
-        subscription = create(:notification_subscription, user: create(:user))
+        subscription = create(:notification_subscription, user: create(:user), identifier: browser_attributes[:endpoint])
         post '/api/v1/notification_subscriptions',
              params: {
                notification_subscription: {
                  subscription_type: 'browser_push',
-                 'subscription_attributes': {
-                   endpoint: 'test',
-                   p256dh: 'test',
-                   auth: 'test'
-                 }
+                 subscription_attributes: browser_attributes
                }
              },
              headers: agent.create_new_auth_token,

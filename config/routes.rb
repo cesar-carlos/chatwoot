@@ -2,6 +2,8 @@ Rails.application.routes.draw do
   # FORK: White-label PWA manifest with legacy URL compatibility
   get '/manifest.webmanifest', to: 'custom/web_app_manifests#show'
   get '/manifest.json', to: 'custom/web_app_manifests#show'
+  # FORK: classic service worker imports the notification overlay without an asset build
+  get '/notification-worker.js', to: 'custom/notification_workers#show'
 
   # AUTH STARTS
   mount_devise_token_auth_for 'User', at: 'auth', controllers: {
@@ -426,6 +428,8 @@ Rails.application.routes.draw do
             end
           end
           resource :notification_settings, only: [:show, :update]
+          # FORK: authenticated single-notification action, scoped to the current recipient
+          post 'notification_actions/:notification_id/read', to: '/custom/api/v1/accounts/notification_actions#read'
 
           resources :teams do
             resources :team_members, only: [:index, :create] do
@@ -578,7 +582,10 @@ Rails.application.routes.draw do
         end
       end
 
-      resource :notification_subscriptions, only: [:create, :destroy]
+      resource :notification_subscriptions, only: [:create, :destroy] do
+        # FORK: self-service browser push diagnostics
+        post :test
+      end
 
       namespace :widget do
         resource :direct_uploads, only: [:create]

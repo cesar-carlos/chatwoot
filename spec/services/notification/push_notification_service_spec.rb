@@ -7,6 +7,10 @@ describe Notification::PushNotificationService do
   let(:fcm_double) { instance_double(FCM) }
   let(:fcm_service_double) { instance_double(Notification::FcmService, fcm_client: fcm_double) }
 
+  before do
+    create(:inbox_member, user: user, inbox: notification.conversation.inbox)
+  end
+
   describe '#perform' do
     context 'when the push server returns success' do
       before do
@@ -30,13 +34,16 @@ describe Notification::PushNotificationService do
             expect(message).to include(
               title: notification.push_message_title,
               body: notification.push_message_body,
-              icon: '/pwa-icon.png'
+              icon: '/pwa-icon.png',
+              account_id: notification.account_id,
+              user_id: notification.user_id,
+              notification_id: notification.id
             )
             expect(payload).to include(ttl: 1.day.to_i, urgency: 'high')
           end
           expect(Notification::FcmService).not_to have_received(:new)
           expect(Rails.logger).to have_received(:info)
-            .with("Browser push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push")
+            .with("Browser push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push result=accepted")
         end
       end
 
@@ -49,7 +56,7 @@ describe Notification::PushNotificationService do
           expect(fcm_double).to have_received(:send_v1)
           expect(WebPush).not_to have_received(:payload_send)
           expect(Rails.logger).to have_received(:info)
-            .with("FCM push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=fcm")
+            .with("FCM push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=fcm result=accepted")
         end
       end
     end
