@@ -1,6 +1,6 @@
 # Popup visual — Estado atual
 
-Inventário do que existe no codebase após a revisão de 01/out/2026.
+Inventário do candidato `fix/notification-delivery-hardening`, em 01/out/2026. Estas correções não foram integradas nem implantadas nesta etapa. O release anteriormente publicado é distinto deste candidato.
 
 ---
 
@@ -13,8 +13,10 @@ Inventário do que existe no codebase após a revisão de 01/out/2026.
 | Persistência | `ui_settings.popup_notification_flags_by_account[accountId]`, via action estrita com rollback; controles ficam bloqueados durante o salvamento para impedir gravações concorrentes |
 | Lista antiga | `popup_notification_flags` (flat) só é lida se o mapa por conta ainda não existe |
 | Corpo | Texto da mensagem; o prefixo `"Nome: "` sai quando o título já é o contato |
-| Janela em foco | Aviso abre se conta ou conversa da URL forem diferentes |
-| Conversa lida | `conversation.read` fecha todos os avisos daquela `account_id + display_id`, inclusive o aviso móvel se a criação ainda não terminou |
+| Janela em foco | Compara parâmetros normalizados do router; cobre todas as rotas de conversa e não confunde o ID de uma visão personalizada com uma conversa |
+| Leitura individual | `notification.updated` com `read_at` fecha somente `account_id + notification_id`, inclusive criação pendente |
+| Leitura em lote | `notifications.read` é enviado somente ao destinatário, com `user_id`, conta, conversa opcional e `through_notification_id`; banco, store e fechamento respeitam o mesmo limite |
+| Leitura pelo contato | `conversation.read` não fecha a notificação do agente |
 | Chamada de voz | Célula com “—”; CTA explícito concede a permissão usada pelo Wavoip |
 | Permissão | Primeiro checkbox ou CTA pede `Notification.requestPermission()` |
 | Permissão negada | Checkbox não grava; `useAlert` com `POPUP_PERMISSION_ERROR` |
@@ -26,6 +28,10 @@ Inventário do que existe no codebase após a revisão de 01/out/2026.
 | Agrupamento | `tag` `<notification_type>_<display_id>_<notification_id>` corresponde ao Push do mesmo evento |
 | Mobile com painel vivo | Se `new Notification` falhar, `showNotification` do service worker tenta mostrar o aviso; falhas geram alerta traduzido uma vez por sessão |
 | Clique | Desktop foca a janela; service worker prefere janela da mesma conta, reutiliza cliente adequado ou abre nova janela |
+| Falha no clique | Cliente desaparecido, navegação rejeitada ou foco rejeitado levam à abertura de nova janela na mesma origem |
+| Preferências | Bloqueadas até o carregamento bem-sucedido, com erro/retry, proteção de troca de conta e rollback |
+| Diagnóstico do dispositivo | CTA só aparece com endpoint confirmado; limite de três testes por minuto por usuário |
+| Ações | Quando a plataforma oferece ações, Pop-up usa aviso persistente também no desktop. Backend idempotente e autorizado; o worker não faz chamadas autenticadas nem guarda credenciais |
 | Tipos | Os mesmos da tabela, exceto `voice_call_incoming` |
 
 ---
@@ -41,6 +47,10 @@ Inventário do que existe no codebase após a revisão de 01/out/2026.
 | Nova coluna no banco | Preferência é dado de UI, não canal de entrega do servidor |
 | Toast dentro da página | Só o aviso nativo do sistema operacional; em primeiro plano, o SO decide como apresentá-lo |
 | Garantia de exibição pelo aparelho | A API confirma a tentativa; o sistema operacional controla a apresentação. É necessário validar em aparelhos reais |
+| Resposta e silenciamento | Fora do escopo; as únicas ações são abrir e marcar como lida |
+| Intenção expirada | O nonce do clique é consumido uma vez, dura até 60 segundos e não sobrevive ao reinício do worker. Se expirar, a UI orienta a operação manual, sem escrever automaticamente |
+
+Validação e critérios ainda pendentes em [validation-report.md](./validation-report.md).
 
 ---
 

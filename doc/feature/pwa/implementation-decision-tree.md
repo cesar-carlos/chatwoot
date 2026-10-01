@@ -34,9 +34,19 @@ Quando o prompt não chega, o painel verifica se o manifesto e os PNGs 192/512 s
 
 O opt-in é persistido localmente para não transformar uma permissão já concedida em nova inscrição contra a escolha do usuário. No carregamento, uma inscrição optada é recriada se sumiu e sincronizada com o backend. Se a chave VAPID mudou, a inscrição antiga é removida remotamente quando possível, cancelada localmente e recriada. Operações são serializadas para impedir cliques concorrentes.
 
-Ao sair da conta, o cliente tenta cancelar a inscrição remota e local antes de invalidar a sessão, sem registrar um worker novo. A chamada remota tem timeout de dez segundos; falhas de limpeza são registradas sem endpoint e não impedem o logout. Na volta ao primeiro plano, o painel revalida permissão e inscrição, emite o novo estado para as preferências e não executa polling durante a suspensão.
+Ao iniciar logout, o cliente bloqueia novas sincronizações, invalida a geração da sessão e aborta requests pendentes. A limpeza não espera a fila: tenta remoção local e remota, sem registrar worker novo, com limite total de dez segundos. Sync também tem timeout e cancelamento; verificações de geração impedem efeitos tardios, inclusive após outra sessão começar. Falhas são sanitizadas e não impedem o encerramento. Na retomada, o painel revalida permissão/inscrição, sem polling durante a suspensão.
 
 O worker é registrado com `updateViaCache: "none"`. Ele não implementa cache offline. No clique, URLs externas ou inválidas são substituídas pela raiz da própria origem; somente uma janela do painel (`/app`) da mesma origem é reutilizada e navegada antes de abrir outra.
+
+O registro correto precisa estar ativo antes de `subscribe()`; `navigator.serviceWorker.ready` de outro escopo não é suficiente. Navegação/foco rejeitados ou cliente desaparecido levam à abertura de nova janela. `/sw.js` importa o código Custom de `/notification-worker.js`.
+
+## Segurança e ações no candidato
+
+Revalidar acesso/preferências no job evita expor conteúdo após revogação. Validar browser Push antes do builder evita dados inválidos e transferências parciais. APIs de diagnóstico e leitura herdam autenticação/MFA; teste só envia ao próprio endpoint browser e não cria notificação real.
+
+O worker não recebe credenciais nem chama APIs autenticadas. “Marcar como lida” produz nonce de uso único, válido por até 60 segundos; o frontend espera a sessão, consome a intenção e confere o destinatário. Sem login ou após expiração/reinício do worker, não há escrita automática. Essa ação abre a lista, evitando ler outras notificações via last-seen da conversa. “Abrir conversa” e o clique comum continuam indo até a conversa.
+
+Esta revisão está em branch separada, ainda não publicada. Ver [evidências e homologação](../popup-notifications/validation-report.md).
 
 ## Extensão do fork
 

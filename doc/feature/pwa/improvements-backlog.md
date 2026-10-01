@@ -1,5 +1,18 @@
 # PWA — pendências e melhorias
 
+## Candidato `fix/notification-delivery-hardening` (não publicado)
+
+- Revalidação de acesso/preferências no envio; preferências ausentes descartam sem retry.
+- Inscrição browser validada com HTTPS/P-256/auth, preservando FCM e registros existentes.
+- Ativação do worker correto, timeout, cancelamento de sync e logout sem bloqueio por fila.
+- Respostas antigas não reativam inscrição nem alteram estado após logout/troca de sessão.
+- Preferências por conta, erro/retry, rollback e estado **Verificando**.
+- Leitura correta individual/em lote, fechamento de criação pendente e recuperação de cliques.
+- Teste neste dispositivo e ações abrir/marcar como lida, com autorização e intenção descartável.
+- Worker em `custom/`, com endpoint público revalidável; sem mudança de manifesto, VAPID ou schema.
+
+Falta autorizar integração/publicação e comprovar critérios em aparelhos: [validation-report.md](../popup-notifications/validation-report.md). Os itens históricos abaixo se referem a releases anteriores.
+
 ## Concluído no código
 
 - Manifesto white-label dinâmico nas duas URLs e independente de `DISPLAY_MANIFEST`.

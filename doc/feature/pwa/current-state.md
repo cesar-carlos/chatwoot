@@ -1,5 +1,19 @@
 # PWA — estado atual
 
+## Candidato de segurança e entrega, ainda não publicado
+
+O branch `fix/notification-delivery-hardening` foi criado de `origin/main` (`c379641299`). Não houve merge, push, migration ou reinício da produção nesta etapa. Evidências e aceite pendente: [validation-report.md](../popup-notifications/validation-report.md).
+
+- Push revalida vínculo/conta ativos, políticas de notificação/conversa e preferência do evento antes de compor conteúdo; preferências ausentes encerram o envio normalmente.
+- Cadastro browser valida endpoint HTTPS e chaves, aceitando Base64/Base64URL; dados inválidos não transferem nem criam inscrições. FCM continua compatível.
+- O helper espera o registro correto ficar ativo (dez segundos), preserva `updateViaCache: 'none'` e pede permissão apenas durante interação explícita.
+- Sync tem timeout/cancelamento; o logout invalida operações antigas, aborta requests, tenta remoção local em paralelo à remota e limita a limpeza total a dez segundos.
+- Preferências são consultadas por conta, com erro/retry e gravação bloqueada até sucesso; inscrição mostra **Verificando**, sem falso opt-out inicial.
+- Teste autenticado do próprio dispositivo, com limite por usuário, e ações abrir/marcar como lida com proteção de destinatário.
+- `/sw.js` importa `/notification-worker.js`, servido pelo controller público Custom com `Cache-Control: no-cache`. Invalidar e verificar ambos no próximo deploy.
+
+## Histórico do release em produção
+
 O release `05361df464` está em produção desde 01/out/2026, com os ícones Icon Kitchen configurados, o metadado genérico de instalação e a recuperação dos avatares. A instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
 
 ## Arquitetura implementada
@@ -66,7 +80,7 @@ Na verificação final do release `05361df464`, havia 8.138 avatares e nenhum ar
 
 Na publicação de 01/out/2026, 29 RSpec de PWA/Push/Pop-up, 40 RSpec de workflow/permissões/histórico e 67 testes Vitest direcionados passaram em banco/Redis de teste isolados. O build de produção, RuboCop do hook corrigido, `git diff --check` e o verificador HTTP atualizado passaram. Uma falha detectada nos RSpec do builder de Pop-up foi corrigida no commit `60ee71940d` antes do deploy.
 
-O release novo está em execução. A homologação final em aparelhos reais continua pendente.
+O release histórico `05361df464` permanece em execução; o candidato `fix/notification-delivery-hardening` não foi publicado. A homologação final em aparelhos reais continua pendente.
 
 ## Critério de aceite
 

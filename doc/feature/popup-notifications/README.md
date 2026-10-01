@@ -2,7 +2,7 @@
 
 Aviso visual do sistema quando chega um evento de notificação e o agente não está com aquela conversa aberta. No desktop usa `new Notification`; no celular, se o construtor falhar, usa `ServiceWorkerRegistration.showNotification`.
 
-**Estado:** implementado e revisado · 01/out/2026
+**Estado:** correções de entrega em `fix/notification-delivery-hardening`, ainda não integradas nem publicadas · 01/out/2026. Evidências e aceite em [validation-report.md](./validation-report.md).
 
 | Área | Status |
 |------|--------|
@@ -39,11 +39,13 @@ Aviso visual do sistema quando chega um evento de notificação e o agente não 
 | Quando mostrar | Janela oculta, ou visível numa conversa diferente |
 | Persistência | `users.ui_settings.popup_notification_flags_by_account`, por conta, com rollback em erro |
 | Padrão | Array vazio por conta — o agente marca o que quer |
-| Janela visível | Mostra se conta ou conversa forem diferentes; omite somente a rota exata |
+| Janela visível | Usa conta e conversa normalizadas pelo router, incluindo inbox, equipe, etiqueta, visão personalizada, menções, participantes, não atendidas e inbox de notificações |
 | Corpo | Texto da mensagem, sem repetir o nome que já está no título |
-| Backend | Sem novo endpoint, migration ou flag em `notification_settings`; o overlay do `NotificationBuilder` considera a preferência Pop-up para criar `conversation_creation` |
+| Backend | Sem migration; APIs autenticadas de teste por dispositivo e leitura individual, além de leitura em lote com limite de ID; preferências Pop-up continuam em `ui_settings` |
 | Voz | Sem checkbox; CTA explícito concede a permissão usada pelo popup Wavoip |
 | Clique | Desktop foca a janela; o service worker prefere cliente da mesma conta e navega para a conversa |
+| Leitura | `notification.updated` com `read_at` fecha só o ID correspondente; `notifications.read` fecha apenas IDs até o limite do lote. Leitura pelo contato não fecha avisos do agente |
+| Ações | “Abrir conversa” e “Marcar como lida” em avisos persistentes reais, quando a plataforma permite; sem suporte, o clique comum abre a conversa |
 | i18n | Textos explicativos em **en + pt_BR**; rótulo “Pop-up notification” fixo |
 | Fork | Helper em `custom/` + `// FORK:` em `actionCable.js` e `NotificationPreferences.vue` |
 
@@ -70,3 +72,5 @@ As preferências de Pop-up e de Push são independentes. A entrega visual també
 ---
 
 *Última atualização: 01/out/2026*
+
+O seletor mostra **Verificando** durante a consulta do dispositivo. Preferências só podem ser alteradas após carregamento bem-sucedido da conta; erros oferecem **Tentar novamente**. O teste neste dispositivo confirma aceitação pelo provedor, nunca exibição pelo aparelho. Consulte também [PWA](../pwa/README.md).

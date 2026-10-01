@@ -12,7 +12,7 @@ Itens fora da entrega, revisados em 01/out/2026.
 - Flags por conta em `ui_settings.popup_notification_flags_by_account`
 - Corpo sem repetir o nome do contato
 - Popup com a janela em foco quando a conversa aberta é outra
-- Fecha o aviso em `conversation.read`
+- Fecha o ID lido em `notification.updated`; `conversation.read` não fecha avisos do agente
 - Nota na linha de chamada de voz
 - Chaves, tags e detecção da conversa visível isoladas por conta
 - Persistência estrita com rollback da seleção quando a API falha
@@ -20,9 +20,20 @@ Itens fora da entrega, revisados em 01/out/2026.
 - Opt-in Web Push independente e persistido por dispositivo
 - Specs do helper
 - Criação do evento de nova conversa quando somente Pop-up está marcado
-- Fechamento de todos os avisos da conversa, inclusive criação pendente no mobile
+- Fechamento limitado por conta/destinatário/ID, inclusive criação pendente na página e no worker; leitura em lote preserva avisos novos
 - Falha de exibição visível uma vez por sessão e preferência por janela da mesma conta no clique
 - Bloqueio de salvamentos concorrentes de preferências
+
+## Entregue no candidato, não publicado
+
+- Revalidação de acesso/preferências antes do Push e validação das chaves browser na API.
+- Ativação do registro correto, cancelamento de requests, timeouts e invalidação da sessão no logout.
+- Consulta por conta com erro/retry, respostas antigas descartadas e estado **Verificando** no dispositivo.
+- Rotas normalizadas e correção do evento de leitura, inclusive múltiplas abas e limite de lote.
+- Diagnóstico restrito ao próprio dispositivo e ações abrir/marcar como lida, sem credenciais no worker.
+- Regressões permanentes e [relatório de validação](./validation-report.md).
+
+Integração/publicação e homologação desktop/Android/iOS permanecem pendentes. Não tratar aceitação pelo provedor como confirmação do banner. Resposta direta, silenciamento, cache offline e polling continuam fora do escopo.
 
 ---
 

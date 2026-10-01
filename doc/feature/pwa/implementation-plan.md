@@ -9,12 +9,15 @@
 | `custom/app/javascript/dashboard/composables/usePwaInstallation.js` | Eventos e estados de instalação |
 | `custom/app/javascript/dashboard/components/pwa/PwaDeviceSettings.vue` | Interface de instalação e Push por dispositivo |
 | `custom/app/javascript/dashboard/helper/pushHelper.js` | Ambiente, opt-in, sincronização, VAPID, remoção e concorrência |
+| `custom/app/javascript/dashboard/helper/serviceWorker.js` | Ativação do registro correto com timeout de dez segundos |
+| `custom/app/javascript/dashboard/helper/pushSession.js` | Geração da sessão, cancelamento e proteção contra respostas tardias |
 | `custom/app/javascript/dashboard/helper/pushResume.js` | Revalidação do Push na retomada e atualização da interface |
 | `custom/app/javascript/dashboard/helper/pushLogout.js` | Limpeza da inscrição do dispositivo antes do logout |
 | `custom/app/controllers/custom/api/v1/notification_subscriptions_controller.rb` | Exclusão autenticada por endpoint ou `push_token` |
 | `custom/app/services/custom/notification/push_notification_service.rb` | Payload, TTL, urgência, remoção expirada e logs sem PII |
 | `custom/app/services/custom/notification/push_test_service.rb` | Diagnóstico com o mesmo formato do Push real |
-| `public/sw.js` | Exibição e clique seguro da notificação |
+| `public/sw.js` | Hook mínimo para importar o worker Custom |
+| `custom/app/javascript/dashboard/helper/notificationWorker.js` | Exibição, ações, criação pendente e recuperação do clique |
 | `custom/vitest.pwa.config.ts` | Setup de testes PWA isolado no worktree |
 | `bin/fork-pwa-smoke` | Verificação HTTP do release, manifesto e bytes dos seis ícones públicos |
 | `ecosystem.config.cjs` | Validação de storage persistente antes de iniciar web e worker no host |
@@ -29,6 +32,26 @@ convert -size 512x512 xc:'#006B98' \( public/brand-assets/pwa-se7e-v2-512.png -r
 ```
 
 Os pontos upstream foram limitados aos hooks/imports necessários no controller da API, serviços, layout, bootstrap do dashboard e preferências.
+
+## Revisão de entrega do candidato
+
+As correções de `fix/notification-delivery-hardening` são separadas dos releases já publicados. Não há migration prevista, nem alteração de VAPID, manifesto ou ícones.
+
+Antes do envio, `Custom::Notification::DeliveryAccess` revalida vínculo com conta ativa, `NotificationPolicy#access?` e `ConversationPolicy#show?`. Preferência ausente/desativada descarta o envio, sem compor corpo/título. A API valida HTTPS absoluto sem credenciais e chaves: ponto P-256 não comprimido/on-curve de 65 bytes e segredo de 16 bytes; Base64 e Base64URL permanecem aceitos. Dados inválidos recebem `422` antes do builder, sem gravação/transferência parcial. Cadastro e exclusão FCM permanecem compatíveis.
+
+`pushSession.js` invalida a geração ao iniciar logout e cancela requisições HTTP. Cada etapa assíncrona confere a sessão antes de inscrição, sync, opt-in e publicação de estado. A limpeza do logout não fica na fila: tenta unsubscribe local mesmo se a exclusão remota falhar e limita o total a dez segundos. O registro correto deve estar ativo antes de `subscribe()`, também com limite de dez segundos. Não se usa apenas uma corrida de Promises sem cancelamento.
+
+O payload real mantém título/corpo/ícone/tag/URL, TTL de 24 horas e urgência alta e adiciona IDs de usuário, conta e notificação e rótulos das ações. Diagnósticos não têm ações de leitura. Clique recupera navegação/foco rejeitados ou cliente desaparecido abrindo nova janela na mesma origem. Eventos de leitura e ações: [Pop-up](../popup-notifications/implementation-plan.md).
+
+### Publicação futura, somente quando autorizada
+
+1. Integrar o candidato aprovado apenas no fork, conferir diff/inventário e gerar novo build de produção. Esta etapa não foi executada na entrega do branch.
+2. Preparar release isolado, preservar `.env`, ícones, `DISPLAY_MANIFEST=false`, VAPID e `storage` compartilhado. Validar PM2 antes de iniciar.
+3. Reiniciar web/workers e invalidar HTML, manifestos, `/sw.js`, `/notification-worker.js` e ícones no proxy/CDN.
+4. Verificar GIT_SHA, manifestos, ícones, import do worker e `200 application/javascript` no overlay. Conferir atualização/ativação no aparelho.
+5. Executar mensagem real e diagnóstico; homologar instalação, tela bloqueada, clique, ações, múltiplas abas e logout. Manter release anterior para rollback.
+
+Monitorar jobs, `result=accepted/failed/discarded`, inscrições expiradas, falhas/timeouts e APIs de ações. Logs não contêm e-mail, conteúdo, tokens ou endpoint completo. Evidências e comandos: [validation-report.md](../popup-notifications/validation-report.md).
 
 ## Validação automatizada
 

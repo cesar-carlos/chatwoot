@@ -1,6 +1,6 @@
 # Popup visual — Plano de implementação (as-built)
 
-Documento **as-built**, revisado em 01/out/2026. Decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
+Documento **as-built do candidato** `fix/notification-delivery-hardening`, revisado em 01/out/2026. Integração e deploy dependem de autorização posterior. Decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
 
 ---
 
@@ -48,7 +48,7 @@ popup_notification_flags_by_account: {
 
 - o tipo não está na lista da **conta da notificação**, ou é `voice_call_incoming`
 - `Notification` não existe ou a permissão não é `granted`
-- a janela está visível e a URL já é `/accounts/<account_id>/conversations/<display_id>` dessa conversa
+- a página está visível e os parâmetros normalizados do router indicam a mesma conta e conversa, em qualquer rota suportada
 
 O corpo passa por `popupMessageBody`: se começa com `"Nome: "`, esse prefixo sai.
 
@@ -60,11 +60,11 @@ Título, corpo e ícone vêm do payload do cabo:
 
 ### 3. Exibição e clique
 
-No desktop, `new Notification` cria o aviso. Se esse construtor falhar, como ocorre na maioria dos navegadores móveis, a página registra ou reutiliza `/sw.js` e chama `registration.showNotification`. Isso não cria uma inscrição Web Push.
+No desktop sem ações, `new Notification` cria o aviso. Quando a plataforma oferece ações ou esse construtor falha, como ocorre na maioria dos navegadores móveis, a página registra ou reutiliza `/sw.js`, aguarda sua ativação e chama `registration.showNotification`. Isso não cria uma inscrição Web Push.
 
 No desktop, o clique faz `window.focus()`, fecha o aviso e chama `router.push` para a conversa. O router é importado só no clique. No aviso do service worker, o handler `notificationclick` fecha o aviso, prefere uma janela do painel da mesma conta e navega até a conversa; se houver apenas uma janela do painel, pode reutilizá-la mesmo em outra conta, ou abre nova janela quando não houver cliente adequado. A tag corresponde à do Web Push do mesmo evento: `<notification_type>_<display_id>_<notification_id>`.
 
-O cliente acompanha todos os avisos da mesma conversa. Ao receber `conversation.read`, fecha cada um; se um aviso do service worker ainda estiver sendo criado, fecha assim que a criação terminar. Falha na criação chega ao Action Cable e mostra um único alerta traduzido por sessão, sem repetir um toast para cada mensagem.
+O cliente acompanha avisos por conta e ID da notificação. `notification.updated` com `read_at` fecha só aquele ID. `notifications.read` fecha os IDs até `through_notification_id`, filtrando destinatário e conversa quando informados. `conversation.read` representa leitura pelo contato e não participa do fechamento. Placeholders da página e mensagens ao worker garantem o fechamento após uma criação pendente, sem apagar avisos posteriores. Falhas assíncronas de exibição são sanitizadas e geram feedback traduzido.
 
 ### 4. Permissão na UI
 
@@ -85,7 +85,11 @@ A permissão comum de notificações não ativa Web Push. A inscrição Push tem
 | `app/javascript/dashboard/store/modules/auth.js` | Action estrita para persistir preferências com rollback na UI |
 | `app/javascript/dashboard/i18n/locale/en/settings.json` | Textos explicativos e erros |
 | `app/javascript/dashboard/i18n/locale/pt_BR/settings.json` | Mesmas chaves |
-| `public/sw.js` | Clique com preferência por cliente da mesma conta |
+| `public/sw.js` | Entrada mínima com `importScripts('/notification-worker.js')` |
+| `custom/app/javascript/dashboard/helper/notificationWorker.js` | Payload, ações, intenção descartável, clique com fallback e criação pendente |
+| `custom/app/javascript/dashboard/helper/notificationActions.js` | Aguarda sessão, consome intenção, verifica destinatário e chama leitura individual |
+| `custom/app/javascript/dashboard/store/notificationReadActions.js` | Aplica leitura confirmada com limite de ID, sem marcação ampla otimista |
+| `custom/app/services/custom/notification/bulk_read_service.rb` | Limite comum para atualização SQL e evento direcionado ao usuário |
 
 O Pop-up depende de `notification.created` via Action Cable e não da inscrição Web Push. Para `conversation_creation`, o builder consulta a preferência Pop-up além das flags de e-mail/Push ao decidir criar o evento. No mobile, o service worker apenas exibe e trata o clique do aviso iniciado pela página; com a PWA suspensa ou fechada, o recebimento depende do Web Push separado.
 
@@ -101,7 +105,15 @@ O Pop-up depende de `notification.created` via Action Cable e não da inscriçã
 6. Simular erro ao salvar as preferências e confirmar que a seleção anterior é restaurada.
 7. Na PWA móvel instalada, manter o painel aberto em outra conversa e confirmar que o aviso é exibido via service worker e abre a conversa correta.
 8. Marcar somente Pop-up para nova conversa, deixar e-mail e Push desmarcados e confirmar a criação do aviso.
-9. Gerar dois avisos para a mesma conversa e marcar como lida; ambos devem fechar. Repetir enquanto a criação do aviso móvel ainda está pendente.
+9. Gerar dois avisos para a mesma conversa e marcar um ID como lido; só aquele deve fechar. Na leitura em lote, fechar apenas IDs até o limite informado. Inserir uma notificação durante a leitura e confirmar que permanece não lida. Repetir com criação móvel pendente e em múltiplas abas.
 10. Simular falha do service worker e confirmar um alerta de falha, sem repetição por mensagem; testar múltiplas janelas em contas distintas e verificar a preferência pela conta de destino.
 
 Com o painel visível, esperar o Pop-up quando outra conversa estiver aberta, mas não quando a mesma conversa da mesma conta já estiver em exibição. Não esperar Pop-up com a PWA suspensa; esse cenário é atendido exclusivamente por Web Push. A apresentação do aviso em primeiro plano depende do sistema operacional.
+
+## APIs e ações
+
+`POST /api/v1/notification_subscriptions/test` aceita o endpoint browser do próprio usuário, usa texto de diagnóstico definido pelo servidor e não cria `Notification`. Retorna `422` para entrada inválida, `404` para inscrição indisponível, `429` para limite excedido e `502` para entrega não aceita. O limite é de três tentativas por usuário em cada janela de minuto do servidor, com Redis.
+
+`POST /api/v1/accounts/:account_id/notification_actions/:notification_id/read` busca somente notificações do usuário/conta e revalida `NotificationPolicy#access?` e `ConversationPolicy#show?`. A leitura é idempotente. O worker encaminha uma intenção sem credenciais; o frontend aguarda a sessão e valida o destinatário. Sem sessão, exige login e descarta a operação automática. “Marcar como lida” abre `/app/accounts/:id/inbox-view`, não a conversa, para não atualizar last-seen e ler outros avisos acidentalmente.
+
+Evidências automatizadas, limites e checklist de aparelhos: [validation-report.md](./validation-report.md).
