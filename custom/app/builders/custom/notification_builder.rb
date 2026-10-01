@@ -22,5 +22,3 @@ module Custom::NotificationBuilder
     super
   end
 end
-
-NotificationBuilder.prepend_mod_with('NotificationBuilder')

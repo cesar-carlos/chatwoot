@@ -52,3 +52,6 @@ class NotificationBuilder
     ).show?
   end
 end
+
+# FORK: enable Custom notification eligibility for popup-only conversation creation
+NotificationBuilder.prepend_mod_with('NotificationBuilder')
