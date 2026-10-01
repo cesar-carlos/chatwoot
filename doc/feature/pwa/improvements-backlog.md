@@ -3,7 +3,7 @@
 ## Concluído no código
 
 - Manifesto white-label dinâmico nas duas URLs e independente de `DISPLAY_MANIFEST`.
-- Ícones Se7e antigos 192×192 e 512×512 configuráveis e `any maskable`, ainda publicados em produção.
+- Ícones Se7e antigos 192×192 e 512×512 configuráveis e `any maskable`, preservados para compatibilidade; a produção usa os ícones Icon Kitchen separados.
 - Metadados Android/Apple e modo standalone.
 - Botão de instalação Chromium e instruções específicas para iOS/iPadOS.
 - Opt-in Push explícito por dispositivo, preservação de opt-out, serialização e rotação VAPID.
@@ -33,6 +33,8 @@
 - Integrado ao `main`, publicado no release `60ee71940d` e configurado em produção; ainda é necessário validar visualmente os ícones em aparelhos Android.
 
 ## Pendente operacional e de validação
+
+A correção de 01/out/2026 restaurou o storage compartilhado, preservou 251 uploads novos e validou os 8.137 avatares cadastrados no diagnóstico. O release `05361df464` inclui o metadado genérico de instalação, a validação de persistência no PM2 e a inclusão da configuração PM2 no inventário `FORK:`. O aviso `Banner not shown` é esperado no fluxo pelo botão **Instalar**.
 
 | Prioridade | Item | Critério |
 |------------|------|----------|

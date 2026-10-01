@@ -1,6 +1,6 @@
 # PWA — estado atual
 
-O release `60ee71940d` está em produção desde 01/out/2026, com os ícones Icon Kitchen configurados. A instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
+O release `05361df464` está em produção desde 01/out/2026, com os ícones Icon Kitchen configurados, o metadado genérico de instalação e a recuperação dos avatares. A instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
 
 ## Arquitetura implementada
 
@@ -11,7 +11,7 @@ O release `60ee71940d` está em produção desde 01/out/2026, com os ícones Ico
 | Identidade | `id`, `start_url` e `scope` em `/`; `name` de `INSTALLATION_NAME`; `short_name` de `BRAND_NAME` |
 | Instalação | `display: standalone`, `prefer_related_applications: false`, tema `#2781F6` |
 | Ícones publicados | `PWA_ICON_192_URL` e `PWA_ICON_URL` para `any`; `PWA_ICON_192_MASKABLE_URL` e `PWA_ICON_MASKABLE_URL` para `maskable`; `PWA_APPLE_TOUCH_ICON_URL` e `PWA_FAVICON_URL` para HTML |
-| HTML | Manifesto, `theme-color`, Apple Touch 180×180, favicon e metadados Apple independem de `DISPLAY_MANIFEST` |
+| HTML | Manifesto, `theme-color`, Apple Touch 180×180, favicon e metadados `mobile-web-app-capable`/Apple independem de `DISPLAY_MANIFEST` |
 | Interface | Componente Vue customizado apresenta disponível, instalado, instruções iOS, indisponível, incompatível e erros verificáveis de manifesto/ícone |
 | Push | Helper customizado controla opt-in local, inscrição, remoção, concorrência, troca da chave VAPID, logout e sincronização ao retomar a página |
 | Backend | Controllers e serviços estendidos por `prepend_mod_with`; o core contém apenas hooks/imports marcados com `FORK:` |
@@ -45,7 +45,15 @@ Antes do deploy em 30/set/2026, `chat.se7esistemassinop.com.br` ainda informava 
 
 No release atual, o verificador `bin/fork-pwa-smoke` passou com as quatro entradas do manifesto e os seis assets versionados, incluindo comparação dos bytes públicos com o release local. Respostas HTTP corretas não substituem o teste de instalação no navegador.
 
-Web e worker rodam via PM2 no worktree isolado do release `60ee71940d`, com configuração salva para reboot. O novo `db:chatwoot_prepare` não encontrou migrações pendentes e criou as quatro configurações adicionais de ícones. As seis URLs Icon Kitchen foram configuradas; `DISPLAY_MANIFEST=false` e as chaves VAPID foram preservados. O backup `chatwoot_production_pre_eb93455e4a_20261001.dump` foi validado antes da mudança; o release anterior `6e30bc8c97` permanece disponível para rollback.
+Web e worker rodam via PM2 no worktree isolado do release `05361df464`, com configuração salva para reboot. Na publicação anterior, `db:chatwoot_prepare` não encontrou migrações pendentes e criou as quatro configurações adicionais de ícones. As seis URLs Icon Kitchen foram configuradas; `DISPLAY_MANIFEST=false` e as chaves VAPID foram preservados. O backup `chatwoot_production_pre_eb93455e4a_20261001.dump` foi validado antes da mudança; os releases anteriores permanecem disponíveis para rollback.
+
+### Recuperação dos uploads em 01/out/2026
+
+O release `60ee71940d` havia sido iniciado sem o vínculo de `storage` com `/root/chatwoot/storage`. Dos 8.137 avatares cadastrados no diagnóstico, 8.128 estavam no diretório compartilhado e nove somente no release novo. A pasta nova também recebia outros uploads, totalizando 251 arquivos na pausa dos serviços. Todos foram copiados sem sobrescrever arquivos antigos, com comparação SHA-256, e o diretório original foi preservado em `.codex/backups/storage_60ee71940d_before_shared_20261001`.
+
+Após restabelecer o vínculo compartilhado, os 8.137 avatares estavam acessíveis no storage ativo e as quatro fotos informadas no incidente retornaram HTTP 200. O hotfix acrescentou uma validação na configuração PM2: o release precisa apontar para o storage persistente antes de iniciar. O caminho padrão neste host é `/root/chatwoot/storage`; pode ser definido por `CHATWOOT_SHARED_STORAGE_PATH` ao carregar a configuração PM2.
+
+Na verificação final do release `05361df464`, havia 8.138 avatares e nenhum arquivo ausente no storage ativo. As quatro fotos antigas e uma foto recente retornaram HTTP 200. O smoke público, os dois exemplos RSpec de HTML, os sete testes Vitest de instalação e os lints direcionados passaram; a validação PM2 foi exercitada com um caminho compartilhado e outro isolado.
 
 ## Validação do código
 

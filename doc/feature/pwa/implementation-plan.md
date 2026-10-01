@@ -17,6 +17,7 @@
 | `public/sw.js` | Exibição e clique seguro da notificação |
 | `custom/vitest.pwa.config.ts` | Setup de testes PWA isolado no worktree |
 | `bin/fork-pwa-smoke` | Verificação HTTP do release, manifesto e bytes dos seis ícones públicos |
+| `ecosystem.config.cjs` | Validação de storage persistente antes de iniciar web e worker no host |
 
 A revisão Icon Kitchen acrescenta quatro PNGs de manifesto (192/512 regulares e maskable), Apple Touch 180×180 e favicon ICO em URLs versionadas. Os maskables foram derivados dos ícones regulares, reduzidos a 80% sobre o fundo azul, e o teste exige que nenhum pixel claro essencial ultrapasse a área segura. O arquivo `/apple-touch-icon.png`, anteriormente vazio, passa a conter o ícone Apple. As novas configurações são opcionais para preservar instalações existentes, mas as seis devem ser preenchidas para ativar a identidade Se7e v2.
 
@@ -70,7 +71,7 @@ Antes da publicação Icon Kitchen, 16 exemplos RSpec de manifesto/HTML/branding
 ## Publicação no fork
 
 1. A PWA e a revisão Icon Kitchen foram integradas ao `origin/main` de `cesar-carlos/chatwoot`. O release anterior `6e30bc8c97` continua disponível para rollback. Não criar PR nem push para `upstream`.
-2. O release atual `60ee71940d` foi preparado em um worktree isolado, sem substituir o checkout principal ou o release anterior.
+2. O release atual `05361df464` foi preparado em um worktree isolado, sem substituir o checkout principal ou o release anterior. Vincular o storage persistente antes de executar tarefas Rails ou iniciar os processos, conforme a seção abaixo.
 3. O build de produção passou; um backup do banco foi validado antes de executar `db:chatwoot_prepare`. Não havia migrações pendentes; a tarefa criou as quatro configurações adicionais.
 4. Em Super Admin → Settings → Custom Branding, definir:
    - `PWA_ICON_192_URL=/brand-assets/pwa-se7e-v2-192.png`
@@ -85,7 +86,7 @@ Antes da publicação Icon Kitchen, 16 exemplos RSpec de manifesto/HTML/branding
 7. Verificar pelo domínio público:
 
    ```bash
-   curl -fsS https://DOMINIO/app/login | rg 'manifest|apple-mobile-web-app|theme-color'
+   curl -fsS https://DOMINIO/app/login | rg 'manifest|mobile-web-app|theme-color'
    curl -fsS https://DOMINIO/manifest.webmanifest | jq '{id,name,short_name,display,prefer_related_applications,icons}'
    curl -fsS https://DOMINIO/manifest.json | jq '{id,name,icons}'
    curl -I https://DOMINIO/brand-assets/pwa-se7e-v2-192.png
@@ -95,6 +96,21 @@ Antes da publicação Icon Kitchen, 16 exemplos RSpec de manifesto/HTML/branding
    curl -I https://DOMINIO/brand-assets/pwa-se7e-v2-apple-touch-180.png
    curl -I https://DOMINIO/brand-assets/pwa-se7e-v2-favicon.ico
    ```
+
+### Uploads persistentes em releases do host
+
+Este servidor usa `ACTIVE_STORAGE_SERVICE=local`. Cada release deve usar o mesmo diretório persistente `/root/chatwoot/storage`; a configuração PM2 rejeita um release com storage isolado. `CHATWOOT_SHARED_STORAGE_PATH` permite declarar outro diretório persistente ao carregar a configuração PM2.
+
+Em um worktree de release novo, sem diretório `storage` existente, preparar o vínculo antes de executar tarefas Rails:
+
+```bash
+ln -s /root/chatwoot/storage storage
+node -e "require('./ecosystem.config.cjs')"
+```
+
+Se já houver uploads no release, não remover nem substituir a pasta diretamente. Pausar web e worker, verificar colisões, copiar somente arquivos ausentes para o storage compartilhado, comparar os bytes, mover a pasta original para um backup e então criar o vínculo. Reiniciar ambos os processos e salvar o estado do PM2. Usar o mesmo storage também no rollback.
+
+Além do smoke da PWA, testar pelo domínio público um avatar anterior ao deploy e um upload recente. O manifesto e os ícones podem funcionar mesmo quando os uploads dos contatos retornam 404.
 
 ### Verificação automática do release
 
@@ -111,7 +127,16 @@ bin/fork-pwa-smoke https://chat.se7esistemassinop.com.br \
   /brand-assets/pwa-se7e-v2-favicon.ico
 ```
 
-O comando retorna erro se a versão, o HTML, os dois manifestos, o cache, a identidade white-label, o formato/dimensões ou os bytes dos seis assets públicos divergirem do release local. Ele passou no domínio público em 01/out/2026 com `GIT_SHA=60ee71940d6d1803cf1bb4e0e88f688fa8d3773a`. Execute-o após cada deploy da PWA.
+O comando retorna erro se a versão, o HTML, os dois manifestos, o cache, a identidade white-label, o formato/dimensões ou os bytes dos seis assets públicos divergirem do release local. O HTML deve incluir tanto `mobile-web-app-capable` quanto `apple-mobile-web-app-capable`. Ele passou após o hotfix em 01/out/2026 com `GIT_SHA=05361df464372e27ccc3634687162cf179f0f38c`. Execute-o após cada deploy da PWA.
+
+### Hotfix de uploads e metadados em 01/out/2026
+
+- Storage compartilhado restaurado após preservar 251 arquivos novos, sem colisões ou diferenças SHA-256; a pasta original permanece em `.codex/backups/storage_60ee71940d_before_shared_20261001`.
+- Os 8.137 avatares do diagnóstico voltaram a estar acessíveis; as quatro fotos do incidente retornaram HTTP 200.
+- Release `05361df464` acrescenta o metadado genérico solicitado pelo Chromium e a validação de storage na configuração PM2. `bin/fork-inventory` passa a incluir essa configuração.
+- O código frontend e os ícones não mudaram neste hotfix; os assets já compilados do release anterior foram reutilizados. Não houve nova migração ou alteração de VAPID.
+- No release final, 8.138 avatares estavam acessíveis, com HTTP 200 em quatro fotos antigas e uma recente. Dois RSpec de HTML, sete Vitest de instalação, lint direcionado, smoke público e validação dos dois estados do storage passaram.
+- O aviso de banner suprimido por `preventDefault()` permanece esperado: a instalação é apresentada após o clique em **Instalar**.
 
 ### Publicação de 01/out/2026
 

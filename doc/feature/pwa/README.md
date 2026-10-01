@@ -2,7 +2,7 @@
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 
-**Estado em 01/out/2026:** o release `60ee71940d` está em produção, com os seis ícones Icon Kitchen configurados e verificados pelo domínio público. A instalação e a entrega de Push com o app fechado ainda precisam ser homologadas em aparelhos reais, conforme [implementação e publicação](./implementation-plan.md).
+**Estado em 01/out/2026:** o release `05361df464` está em produção, com os seis ícones Icon Kitchen configurados, metadados Android/Apple e armazenamento de uploads compartilhado entre releases. Os avatares foram recuperados e verificados pelo domínio público. A instalação e a entrega de Push com o app fechado ainda precisam ser homologadas em aparelhos reais, conforme [implementação e publicação](./implementation-plan.md).
 
 > O manifesto e os ícones agora são entregues pelo domínio público, mas isso não comprova a experiência em todos os celulares. A homologação exige instalar a PWA e testar uma notificação real com o aplicativo fechado.
 
@@ -26,6 +26,7 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 | Revisão Icon Kitchen | Publicada no release `60ee71940d` |
 | Deploy da versão PWA anterior | Preservado no release `6e30bc8c97` para rollback |
 | Configuração dos novos ícones | Seis URLs configuradas e conferidas pelo verificador público |
+| Correção dos avatares e metadados | Publicada no release `05361df464`; uploads preservados e quatro fotos verificadas com HTTP 200 |
 | Validação Android/iOS | Pendente em aparelhos reais |
 | Aceite de Push com app fechado | Pendente em aparelhos reais |
 
@@ -45,3 +46,5 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 O sucesso do diagnóstico significa que o serviço Push aceitou a mensagem. A exibição final ainda depende do sistema operacional, das permissões e das políticas de energia do aparelho.
 
 Sem `beforeinstallprompt`, a interface verifica se o manifesto e os PNGs 192/512 respondem corretamente. Mesmo quando respondem, a ausência do evento não revela a causa exata da decisão do Chrome; valide pelo aparelho e pelas ferramentas de instalação do navegador.
+
+O aviso `Banner not shown: beforeinstallpromptevent.preventDefault() called` é esperado: o convite fica disponível pelo botão **Instalar**, que chama `prompt()` após o clique. Erros 404 em `/rails/active_storage/disk/` devem ser investigados como falhas na entrega dos uploads; não são avisos de instalação da PWA.
