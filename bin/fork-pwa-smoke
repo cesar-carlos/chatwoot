@@ -3,14 +3,15 @@
 
 # FORK: verify the public white-label PWA release after deployment
 require 'json'
+require 'digest'
 require 'net/http'
 require 'uri'
 
-USAGE = 'Usage: bin/fork-pwa-smoke HTTPS_URL GIT_SHA INSTALLATION_NAME BRAND_NAME ICON_192_PATH ICON_512_PATH'
-MASKABLE_PURPOSES = %w[any maskable].freeze
-abort USAGE unless ARGV.length == 6
+USAGE = 'Usage: bin/fork-pwa-smoke HTTPS_URL GIT_SHA INSTALLATION_NAME BRAND_NAME ICON_192 ICON_512 MASKABLE_192 MASKABLE_512 APPLE_180 FAVICON'
+abort USAGE unless ARGV.length == 10
 
-base_url, expected_sha, installation_name, brand_name, icon_192_path, icon_512_path = ARGV
+base_url, expected_sha, installation_name, brand_name, icon_192_path, icon_512_path,
+  maskable_192_path, maskable_512_path, apple_icon_path, favicon_path = ARGV
 base_uri = URI.parse(base_url)
 abort 'The public URL must be an HTTPS origin' unless base_uri.is_a?(URI::HTTPS) && base_uri.host &&
                                                       ['', '/'].include?(base_uri.path) && !base_uri.query && !base_uri.fragment
@@ -22,9 +23,19 @@ def fetch(base_uri, path, media_type)
     http.get(uri.request_uri)
   end
   raise "#{path}: HTTP #{response.code}" unless response.is_a?(Net::HTTPSuccess)
-  raise "#{path}: expected #{media_type}, got #{response['content-type']}" unless response['content-type'].to_s.split(';').first == media_type
+
+  actual_type = response['content-type'].to_s.split(';').first
+  raise "#{path}: expected #{Array(media_type).join(' or ')}, got #{actual_type}" unless Array(media_type).include?(actual_type)
 
   response
+end
+
+def verify_packaged_asset(path, body)
+  raise "Invalid asset path #{path}" unless path.match?(%r{\A/brand-assets/[a-z0-9-]+\.(?:png|ico)\z})
+
+  local_path = File.expand_path("../public#{path}", __dir__)
+  raise "#{path}: missing from this release" unless File.file?(local_path)
+  raise "#{path}: published bytes differ from this release" unless Digest::SHA256.file(local_path).hexdigest == Digest::SHA256.hexdigest(body)
 end
 
 begin
@@ -35,8 +46,11 @@ begin
   raise 'Dashboard HTML is missing the Apple web app metadata' unless html.include?('<meta name="apple-mobile-web-app-capable" content="yes">')
   raise 'Dashboard HTML is missing the theme color' unless html.include?('<meta name="theme-color" content="#2781F6">')
 
-  apple_icon_tag = %(<link rel="apple-touch-icon" sizes="192x192" href="#{icon_192_path}">)
+  apple_icon_tag = %(<link rel="apple-touch-icon" sizes="180x180" href="#{apple_icon_path}">)
   raise 'Dashboard HTML is missing the configured Apple icon' unless html.include?(apple_icon_tag)
+
+  favicon_tag = %(<link rel="icon" sizes="any" href="#{favicon_path}">)
+  raise 'Dashboard HTML is missing the configured favicon' unless html.include?(favicon_tag)
 
   canonical = fetch(base_uri, '/manifest.webmanifest', 'application/manifest+json')
   legacy = fetch(base_uri, '/manifest.json', 'application/manifest+json')
@@ -56,17 +70,29 @@ begin
     raise "Manifest #{key} does not match #{value.inspect}" unless manifest[key] == value
   end
 
-  { 192 => icon_192_path, 512 => icon_512_path }.each do |size, path|
-    icon = manifest.fetch('icons').find { |item| item['sizes'] == "#{size}x#{size}" }
-    valid_icon = icon && icon['src'] == path && icon['type'] == 'image/png' &&
-                 MASKABLE_PURPOSES.all? { |purpose| icon['purpose'].to_s.split.include?(purpose) }
-    raise "Missing #{size}x#{size} maskable PNG icon at #{path}" unless valid_icon
+  [[192, icon_192_path, 'any'], [512, icon_512_path, 'any'],
+   [192, maskable_192_path, 'maskable'], [512, maskable_512_path, 'maskable']].each do |size, path, purpose|
+    icon = manifest.fetch('icons').find { |item| item['sizes'] == "#{size}x#{size}" && item['purpose'] == purpose }
+    valid_icon = icon && icon['src'] == path && icon['type'] == 'image/png'
+    raise "Missing #{size}x#{size} #{purpose} PNG icon at #{path}" unless valid_icon
 
     image = fetch(base_uri, path, 'image/png').body
     valid_png = image.start_with?("\x89PNG\r\n\x1A\n".b) && image.byteslice(12, 4) == 'IHDR' &&
                 image.byteslice(16, 8).unpack('N2') == [size, size]
     raise "#{path}: invalid PNG dimensions" unless valid_png
+
+    verify_packaged_asset(path, image)
   end
+
+  apple_image = fetch(base_uri, apple_icon_path, 'image/png').body
+  valid_apple_png = apple_image.start_with?("\x89PNG\r\n\x1A\n".b) && apple_image.byteslice(16, 8).unpack('N2') == [180, 180]
+  raise "#{apple_icon_path}: invalid Apple icon dimensions" unless valid_apple_png
+
+  verify_packaged_asset(apple_icon_path, apple_image)
+  favicon = fetch(base_uri, favicon_path, ['image/x-icon', 'image/vnd.microsoft.icon']).body
+  raise "#{favicon_path}: invalid favicon" unless favicon.start_with?("\x00\x00\x01\x00".b)
+
+  verify_packaged_asset(favicon_path, favicon)
 
   puts "PWA release verified: #{base_uri.host} at #{release_sha}"
 rescue StandardError => e

@@ -93,6 +93,29 @@ describe('PWA service worker', () => {
     expect(clientsApi.openWindow).not.toHaveBeenCalled();
   });
 
+  it('does not navigate an unrelated same-origin page', async () => {
+    const portalClient = {
+      url: 'https://chat.example.test/hc/portal',
+      navigate: vi.fn(),
+      focus: vi.fn(),
+    };
+    clientsApi.matchAll.mockResolvedValue([portalClient]);
+    const notification = {
+      data: { url: '/app/accounts/1/conversations/22' },
+      close: vi.fn(),
+    };
+    const event = { notification, waitUntil: vi.fn() };
+
+    listeners.notificationclick(event);
+    await event.waitUntil.mock.calls[0][0];
+
+    expect(portalClient.navigate).not.toHaveBeenCalled();
+    expect(portalClient.focus).not.toHaveBeenCalled();
+    expect(clientsApi.openWindow).toHaveBeenCalledWith(
+      'https://chat.example.test/app/accounts/1/conversations/22'
+    );
+  });
+
   it('never opens an external notification URL', async () => {
     const notification = {
       data: { url: 'https://malicious.example/phishing' },

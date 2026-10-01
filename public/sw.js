@@ -33,9 +33,13 @@ const safeTargetUrl = rawUrl => {
   }
 };
 
-const belongsToCurrentOrigin = client => {
+const isDashboardClient = client => {
   try {
-    return new URL(client.url).origin === self.location.origin;
+    const url = new URL(client.url);
+    return (
+      url.origin === self.location.origin &&
+      (url.pathname === '/app' || url.pathname.startsWith('/app/'))
+    );
   } catch (error) {
     return false;
   }
@@ -52,13 +56,13 @@ self.addEventListener('notificationclick', event => {
         type: 'window',
         includeUncontrolled: true,
       });
-      const sameOriginClient = windowClients.find(belongsToCurrentOrigin);
+      const dashboardClient = windowClients.find(isDashboardClient);
 
-      if (sameOriginClient) {
-        if ('navigate' in sameOriginClient) {
-          await sameOriginClient.navigate(targetUrl);
+      if (dashboardClient) {
+        if ('navigate' in dashboardClient) {
+          await dashboardClient.navigate(targetUrl);
         }
-        return sameOriginClient.focus();
+        return dashboardClient.focus();
       }
 
       return clients.openWindow(targetUrl);

@@ -33,9 +33,9 @@
     <% end %>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="<%= @global_config['INSTALLATION_NAME'] %>">
-    <link rel="apple-touch-icon" sizes="192x192" href="<%= @global_config['PWA_ICON_192_URL'] %>">
+    <link rel="apple-touch-icon" sizes="<%= @global_config['PWA_APPLE_TOUCH_ICON_URL'].present? ? '180x180' : '192x192' %>" href="<%= @global_config['PWA_APPLE_TOUCH_ICON_URL'].presence || @global_config['PWA_ICON_192_URL'] %>">
     <link rel="manifest" href="/manifest.webmanifest">
-    <link rel="icon" type="image/png" sizes="512x512" href="<%= @global_config['LOGO_THUMBNAIL'] %>">
+    <link rel="icon" sizes="any" href="<%= @global_config['PWA_FAVICON_URL'].presence || @global_config['LOGO_THUMBNAIL'] %>">
     <%= csrf_meta_tags %>
     <script>
       window.chatwootConfig = {

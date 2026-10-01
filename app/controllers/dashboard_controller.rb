@@ -16,6 +16,8 @@ class DashboardController < ActionController::Base
     # FORK: white-label PWA metadata remains available when the stock manifest is hidden
     PWA_ICON_192_URL
     PWA_ICON_URL
+    PWA_APPLE_TOUCH_ICON_URL
+    PWA_FAVICON_URL
     CREATE_NEW_ACCOUNT_FROM_DASHBOARD
     CHATWOOT_INBOX_TOKEN
     API_CHANNEL_NAME

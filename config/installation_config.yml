@@ -66,6 +66,27 @@
   display_title: 'PWA Icon URL'
   description: 'A same-origin URL for the square 512x512 PNG used when installing the dashboard as an app'
   type: text
+# FORK: optional dedicated icons keep regular and adaptive PWA artwork distinct
+- name: PWA_ICON_192_MASKABLE_URL
+  value:
+  display_title: 'PWA 192px Maskable Icon URL'
+  description: 'Optional same-origin URL for an opaque 192x192 PNG with essential artwork inside the central 80 percent safe circle'
+  type: text
+- name: PWA_ICON_MASKABLE_URL
+  value:
+  display_title: 'PWA 512px Maskable Icon URL'
+  description: 'Optional same-origin URL for an opaque 512x512 PNG with essential artwork inside the central 80 percent safe circle'
+  type: text
+- name: PWA_APPLE_TOUCH_ICON_URL
+  value:
+  display_title: 'PWA Apple Touch Icon URL'
+  description: 'Optional same-origin URL for a square 180x180 PNG used when adding the app to the iPhone or iPad Home Screen'
+  type: text
+- name: PWA_FAVICON_URL
+  value:
+  display_title: 'PWA Favicon URL'
+  description: 'Optional same-origin URL for the dashboard browser-tab icon, such as a multi-size ICO file'
+  type: text
 # ------- End of Branding Related Config ------- #
 
 # ------- Signup & Account Related Config ------- #

@@ -1,6 +1,6 @@
 # PWA — estado atual
 
-Implementação integrada ao `main` do fork e publicada no domínio de produção em 30/set/2026. A entrega HTTP está verificada; a instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
+A implementação anterior foi publicada no domínio de produção em 30/set/2026. A revisão dos ícones Icon Kitchen está no branch local `fix/pwa-icons-review`, não no `main` nem em produção. A instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
 
 ## Arquitetura implementada
 
@@ -10,14 +10,16 @@ Implementação integrada ao `main` do fork e publicada no domínio de produçã
 | URLs | `/manifest.webmanifest` é canônica; `/manifest.json` entrega o mesmo conteúdo por compatibilidade |
 | Identidade | `id`, `start_url` e `scope` em `/`; `name` de `INSTALLATION_NAME`; `short_name` de `BRAND_NAME` |
 | Instalação | `display: standalone`, `prefer_related_applications: false`, tema `#2781F6` |
-| Ícones | `PWA_ICON_192_URL` e `PWA_ICON_URL`; PNGs Se7e empacotados em 192×192 e 512×512, opacos e destinados a `any maskable` |
-| HTML | Manifesto, `theme-color`, `apple-touch-icon` e metadados Apple independem de `DISPLAY_MANIFEST` |
+| Ícones no candidato | `PWA_ICON_192_URL` e `PWA_ICON_URL` para `any`; `PWA_ICON_192_MASKABLE_URL` e `PWA_ICON_MASKABLE_URL` para `maskable`; `PWA_APPLE_TOUCH_ICON_URL` e `PWA_FAVICON_URL` para HTML |
+| HTML | Manifesto, `theme-color`, Apple Touch 180×180, favicon e metadados Apple independem de `DISPLAY_MANIFEST` |
 | Interface | Componente Vue customizado apresenta disponível, instalado, instruções iOS, indisponível e incompatível |
 | Push | Helper customizado controla opt-in local, inscrição, remoção, concorrência e troca da chave VAPID |
 | Backend | Controllers e serviços estendidos por `prepend_mod_with`; o core contém apenas hooks/imports marcados com `FORK:` |
-| Worker | Valida payload, mostra título/corpo/ícone/tag e aceita somente navegação para a mesma origem |
+| Worker | Valida payload, mostra título/corpo/ícone/tag e reutiliza apenas janela do painel na mesma origem |
 
 O arquivo estático `public/manifest.json` foi removido. Não há cache offline, polling em segundo plano nem tentativa de manter o WebSocket ativo durante a suspensão.
+
+Os seis novos assets ficam em `/brand-assets/pwa-se7e-v2-*`, sem sobrescrever as URLs antigas que podem estar em cache por cerca de um ano. O arquivo legado `public/apple-touch-icon.png`, antes vazio, também foi preenchido. As URLs novas só aparecerão no manifesto e no HTML após configurar os seis valores no Super Admin; instalações que deixarem as novas opções vazias mantêm o formato anterior do manifesto.
 
 ## Comportamento por plataforma
 
@@ -39,7 +41,7 @@ Antes do deploy em 30/set/2026, `chat.se7esistemassinop.com.br` ainda informava 
 | `/brand-assets/pwa-icon-se7e-512.png` | `200 image/png` |
 | `/sw.js` | `200 text/javascript` |
 
-O teste `bin/fork-pwa-smoke` passou para o release `6e30bc8c97`. O manifesto público inclui identidade white-label e os dois ícones declarados. Isso remove a falha HTTP que impedia a instalação, mas não substitui o teste de instalação no navegador.
+O verificador antigo passou para o release `6e30bc8c97`. O manifesto público inclui identidade white-label e os dois ícones antigos. O verificador atualizado exige quatro entradas no manifesto e seis assets versionados; ele só deve ser executado após o novo deploy e a configuração. Respostas HTTP corretas não substituem o teste de instalação no navegador.
 
 Web e worker rodam via PM2 no worktree isolado do release `6e30bc8c97`, com configuração persistida para reboot. `db:chatwoot_prepare` aplicou nove migrações pendentes; uma verificação posterior não encontrou migrações restantes. `PWA_ICON_192_URL` e `PWA_ICON_URL` apontam para os PNGs Se7e, `DISPLAY_MANIFEST=false` foi mantido e as chaves VAPID não foram alteradas. Dois backups do banco anteriores à migração foram preservados. O checkout principal `/root/chatwoot` continua antigo e com arquivos locais, mas não é o diretório em execução.
 
@@ -47,13 +49,15 @@ Web e worker rodam via PM2 no worktree isolado do release `6e30bc8c97`, com conf
 
 - ESLint direcionado e RuboCop dos arquivos alterados passaram em 30/set/2026.
 - Os 19 testes Vitest de Push, instalação, worker e preferências passaram com a configuração `custom/vitest.pwa.config.ts`, que resolve os setup files dentro do worktree.
-- O spec dos ícones agora afirma a área segura `maskable`. Uma verificação direta com MiniMagick confirmou dimensões, opacidade e conteúdo dentro da área segura nos dois PNGs.
+- A revisão Icon Kitchen valida dimensões e opacidade de cinco PNGs e a integridade do ICO. Nos dois maskables fornecidos, aproximadamente 3,5% dos pixels claros ficam fora do círculo central de 40% da largura do quadro; essa pequena borda pode ser recortada por launchers adaptativos, mas o símbolo central permanece visível.
 - No candidato de release reconciliado, 18 exemplos RSpec passaram em sete arquivos, usando `chatwoot_pwa_release_test` e Redis DB 14 isolados. O Ruby 3.4.4 está disponível via RVM; `rbenv` não está instalado.
 - RuboCop passou nos 22 arquivos Ruby alterados, e ESLint passou nos JS/Vue alterados. O build Vite de produção passou após incorporar todas as alterações locais, incluindo a correção de sintaxe de `ConversationCard.vue`.
 - O comando `bin/fork-pwa-smoke` passou no domínio público após o deploy do commit `6e30bc8c97`.
 
-O release unificado está em execução. Falta confirmar em aparelhos reais a instalação standalone, o Push com a PWA fechada, o clique na conversa e a reconexão ao retomar.
+Na revisão Icon Kitchen local, os specs direcionados de manifesto/HTML/branding passaram, assim como 20 testes Vitest de PWA/Push, ESLint e RuboCop direcionados, `git diff --check` e o build Vite de produção. O verificador HTTP atualizado ainda não pode passar no domínio público, porque a revisão não foi publicada nem configurada.
+
+O release anterior permanece em execução. O candidato de novos ícones precisa ser integrado, publicado e configurado antes da homologação final em aparelhos reais.
 
 ## Critério de aceite
 
-O domínio público já entrega ambos os manifestos com os dois ícones. O Chrome Android deve oferecer **Instalar** e abrir o painel sem barras do navegador. No iOS/iPadOS 16.4+, a instalação pela Tela de Início deve abrir em standalone. Uma mensagem elegível deve gerar Push com a PWA fechada, e o clique deve reutilizar a PWA aberta ou criar uma janela na conversa correta. Em 30/set/2026, os critérios de aparelho e entrega final de Push ainda não estavam homologados.
+O domínio público ainda entrega ambos os manifestos com os dois ícones anteriores. Após o novo deploy, verificar as quatro entradas e os seis assets; o Chrome Android deve oferecer **Instalar** e abrir o painel sem barras do navegador. No iOS/iPadOS 16.4+, a instalação pela Tela de Início deve abrir em standalone. Uma mensagem elegível deve gerar Push com a PWA fechada, e o clique deve reutilizar a PWA aberta ou criar uma janela na conversa correta. Os critérios de aparelho e entrega final de Push ainda não foram homologados.
