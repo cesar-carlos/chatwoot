@@ -1,6 +1,9 @@
 import types from '../../mutation-types';
+// FORK: bounded recipient read receipts preserve newer notices
+import { notificationReadMutations } from 'customDashboard/store/notificationReadActions';
 
 export const mutations = {
+  ...notificationReadMutations,
   [types.SET_NOTIFICATIONS_UI_FLAG]($state, data) {
     $state.uiFlags = {
       ...$state.uiFlags,

@@ -59,26 +59,31 @@ describe('#actions', () => {
   });
 
   describe('#read', () => {
+    // FORK: apply only the server-confirmed, ID-bounded read receipt.
     it('sends correct actions if API is success', async () => {
-      axios.post.mockResolvedValue({});
+      const data = {
+        account_id: 1,
+        through_notification_id: 7,
+        read_at: 'now',
+      };
+      const dispatch = vi.fn();
+      axios.post.mockResolvedValue({ data });
       await actions.read(
-        { commit },
+        { commit, dispatch },
         { id: 1, unreadCount: 2, primaryActorId: 1 }
       );
       expect(commit.mock.calls).toEqual([
         [types.SET_NOTIFICATIONS_UI_FLAG, { isUpdating: true }],
-        [types.SET_NOTIFICATIONS_UNREAD_COUNT, 1],
-        [types.READ_NOTIFICATION, { id: 1, read_at: expect.any(Date) }],
         [types.SET_NOTIFICATIONS_UI_FLAG, { isUpdating: false }],
       ]);
+      expect(dispatch).toHaveBeenCalledWith('applyReadReceipt', data);
     });
     it('sends correct actions if API is error', async () => {
       axios.post.mockRejectedValue({ message: 'Incorrect header' });
       await expect(actions.read({ commit })).rejects.toThrow(Error);
-      await actions.read(
-        { commit },
-        { id: 1, unreadCount: 2, primaryActorId: 1 }
-      );
+      await expect(
+        actions.read({ commit }, { id: 1, unreadCount: 2, primaryActorId: 1 })
+      ).rejects.toEqual({ message: 'Incorrect header' });
       expect(commit.mock.calls).toEqual([
         [types.SET_NOTIFICATIONS_UI_FLAG, { isUpdating: true }],
         [types.SET_NOTIFICATIONS_UI_FLAG, { isUpdating: false }],
@@ -148,18 +153,25 @@ describe('#actions', () => {
   });
   describe('#readAll', () => {
     it('sends correct actions if API is success', async () => {
-      axios.post.mockResolvedValue({ data: 1 });
-      await actions.readAll({ commit });
+      const data = {
+        account_id: 1,
+        through_notification_id: 7,
+        read_at: 'now',
+      };
+      const dispatch = vi.fn();
+      axios.post.mockResolvedValue({ data });
+      await actions.readAll({ commit, dispatch });
       expect(commit.mock.calls).toEqual([
         [types.SET_NOTIFICATIONS_UI_FLAG, { isUpdating: true }],
-        [types.SET_NOTIFICATIONS_UNREAD_COUNT, 0],
-        [types.UPDATE_ALL_NOTIFICATIONS],
         [types.SET_NOTIFICATIONS_UI_FLAG, { isUpdating: false }],
       ]);
+      expect(dispatch).toHaveBeenCalledWith('applyReadReceipt', data);
     });
     it('sends correct actions if API is error', async () => {
       axios.post.mockRejectedValue({ message: 'Incorrect header' });
-      await expect(actions.readAll({ commit })).rejects.toThrow(Error);
+      await expect(actions.readAll({ commit })).rejects.toEqual({
+        message: 'Incorrect header',
+      });
     });
   });
   describe('#addNotification', () => {

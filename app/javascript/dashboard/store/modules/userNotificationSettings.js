@@ -1,5 +1,7 @@
 import * as types from '../mutation-types';
 import UserNotificationSettings from '../../api/userNotificationSettings';
+// FORK: account-scoped loading and guarded preference persistence
+import { notificationSettingsActions } from 'customDashboard/store/notificationSettingsActions';
 
 const state = {
   record: {},
@@ -57,6 +59,7 @@ export const actions = {
       throw error;
     }
   },
+  ...notificationSettingsActions,
 };
 
 export const mutations = {

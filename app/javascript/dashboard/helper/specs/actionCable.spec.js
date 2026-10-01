@@ -3,11 +3,16 @@ import ActionCableConnector from '../actionCable';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { emitter } from 'shared/helpers/mitt';
-import { showPopupNotification } from 'customDashboard/composables/usePopupNotifications';
+import {
+  showPopupNotification,
+  closePopupNotification,
+  closeReadPopupNotifications,
+} from 'customDashboard/composables/usePopupNotifications';
 
 vi.mock('customDashboard/composables/usePopupNotifications', () => ({
   showPopupNotification: vi.fn(),
   closePopupNotification: vi.fn(),
+  closeReadPopupNotifications: vi.fn(),
 }));
 
 vi.mock('shared/helpers/mitt', () => ({
@@ -52,6 +57,34 @@ describe('ActionCableConnector - Copilot Tests', () => {
   });
 
   describe('notification popup delivery', () => {
+    it('does not dismiss an agent notice when the contact reads the conversation', () => {
+      actionCable.onConversationRead({
+        account_id: 1,
+        id: 42,
+        contact_last_seen_at: Date.now(),
+      });
+      expect(closePopupNotification).not.toHaveBeenCalled();
+    });
+
+    it('dismisses only the recipient notification carrying a read receipt', () => {
+      store.$store.getters.getCurrentUser = {
+        accounts: [{ id: 1, permissions: ['inbox_view_manage'] }],
+      };
+      actionCable.onNotificationUpdated({
+        notification: { account_id: 1, id: 9, read_at: '2026-10-01' },
+      });
+      expect(closePopupNotification).toHaveBeenCalledWith(1, 9);
+    });
+
+    it('forwards bounded bulk read receipts', () => {
+      const receipt = { account_id: 1, through_notification_id: 12 };
+      actionCable.onNotificationsRead(receipt);
+      expect(closeReadPopupNotifications).toHaveBeenCalledWith(receipt);
+      expect(mockDispatch).toHaveBeenCalledWith(
+        'notifications/applyReadReceipt',
+        receipt
+      );
+    });
     it('checks inbox permission for the event account', () => {
       store.$store.getters.getCurrentUser = {
         accounts: [

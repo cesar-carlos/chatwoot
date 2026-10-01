@@ -1,5 +1,7 @@
 import types from '../../mutation-types';
 import NotificationsAPI from '../../../api/notifications';
+// FORK: apply successful read receipts only through their server-side ID cutoff
+import { notificationReadActions } from 'customDashboard/store/notificationReadActions';
 
 export const actions = {
   index: async ({ commit }, { page = 1, status, type, sortOrder } = {}) => {
@@ -150,4 +152,5 @@ export const actions = {
   updateNotificationFilters: ({ commit }, filters) => {
     commit(types.UPDATE_NOTIFICATION_FILTERS, filters);
   },
+  ...notificationReadActions,
 };

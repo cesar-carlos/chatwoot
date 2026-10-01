@@ -24,6 +24,7 @@ import { onEvolutionGoConnectionClosed } from 'customDashboard/lib/evolution_go/
 // FORK: visual popup notifications for connected dashboard sessions
 import {
   closePopupNotification,
+  closeReadPopupNotifications,
   showPopupNotification,
 } from 'customDashboard/composables/usePopupNotifications';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
@@ -76,6 +77,7 @@ class ActionCableConnector extends BaseActionCableConnector {
       'notification.created': this.onNotificationCreated,
       'notification.deleted': this.onNotificationDeleted,
       'notification.updated': this.onNotificationUpdated,
+      'notifications.read': this.onNotificationsRead, // FORK: user-targeted bounded bulk reads
       'conversation.read': this.onConversationRead,
       'conversation.updated': this.onConversationUpdated,
       'conversation.unread_count_changed':
@@ -218,8 +220,7 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onConversationRead = data => {
     this.app.$store.dispatch('updateConversation', data);
-    // FORK: dismiss the visual popup once this conversation is read
-    closePopupNotification(data?.account_id, data?.id);
+    // FORK: contact reads do not dismiss the agent's notification
   };
 
   // eslint-disable-next-line class-methods-use-this
@@ -446,6 +447,18 @@ class ActionCableConnector extends BaseActionCableConnector {
     // FORK: custom role inbox view permission
     if (!this.canAccessInboxView(data)) return;
     this.app.$store.dispatch('notifications/updateNotification', data);
+    // FORK: only the recipient's read receipt dismisses this specific notice
+    if (data.notification?.read_at)
+      closePopupNotification(
+        data.notification.account_id,
+        data.notification.id
+      );
+  };
+
+  // FORK: contact conversation.read is not an agent read receipt
+  onNotificationsRead = data => {
+    closeReadPopupNotifications(data);
+    this.app.$store.dispatch('notifications/applyReadReceipt', data);
   };
 
   // FORK: custom role inbox view permission

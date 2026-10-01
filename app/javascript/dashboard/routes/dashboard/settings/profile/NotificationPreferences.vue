@@ -8,6 +8,8 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import { NOTIFICATION_TYPES } from './constants';
 // FORK: white-label PWA installation and per-device browser push
 import PwaDeviceSettings from 'customDashboard/components/pwa/PwaDeviceSettings.vue';
+// FORK: loading guards live in the overlay, including stale-account protection
+import { loadNotificationPreferences } from 'customDashboard/helper/notificationPreferences';
 // FORK: in-app popup notification preferences
 import {
   popupFlagsForSettings,
@@ -30,6 +32,10 @@ export default {
       selectedPopupFlags: [],
       notificationSettingsUpdating: false,
       popupSettingsUpdating: false,
+      // FORK: do not persist incomplete or failed preference loads
+      preferencesLoadedAccount: null,
+      preferencesLoadError: false,
+      preferencesLoadId: 0,
       popupNotificationLabel: 'Pop-up notification',
       enableAudioAlerts: false,
       notificationTypes: NOTIFICATION_TYPES,
@@ -40,6 +46,9 @@ export default {
     };
   },
   computed: {
+    preferencesReady() {
+      return this.preferencesLoadedAccount === String(this.accountId);
+    },
     ...mapGetters({
       accountId: 'getCurrentAccountId',
       emailFlags: 'userNotificationSettings/getSelectedEmailFlags',
@@ -73,10 +82,10 @@ export default {
   },
   watch: {
     emailFlags(value) {
-      this.selectedEmailFlags = value;
+      this.selectedEmailFlags = value || [];
     },
     pushFlags(value) {
-      this.selectedPushFlags = value;
+      this.selectedPushFlags = value || [];
     },
     // FORK: popup flags live in ui_settings, scoped to the active account
     uiSettings: {
@@ -87,12 +96,17 @@ export default {
     },
     accountId() {
       this.syncPopupFlags();
+      this.loadPreferences();
     },
   },
   mounted() {
-    this.$store.dispatch('userNotificationSettings/get');
+    this.loadPreferences();
   },
   methods: {
+    // FORK: ignore stale responses after an account switch and expose retry
+    loadPreferences() {
+      return loadNotificationPreferences(this);
+    },
     syncPopupFlags() {
       this.selectedPopupFlags = popupFlagsForSettings(
         this.uiSettings,
@@ -117,15 +131,19 @@ export default {
       return (selectedFlags || []).includes(`${type}_${flagType}`);
     },
     async updateNotificationSettings(previousEmailFlags, previousPushFlags) {
+      const accountId = this.accountId;
       try {
         await this.$store.dispatch('userNotificationSettings/update', {
           selectedEmailFlags: this.selectedEmailFlags,
           selectedPushFlags: this.selectedPushFlags,
+          accountId,
         });
         useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
       } catch (error) {
-        this.selectedEmailFlags = previousEmailFlags;
-        this.selectedPushFlags = previousPushFlags;
+        if (String(accountId) === String(this.accountId)) {
+          this.selectedEmailFlags = previousEmailFlags;
+          this.selectedPushFlags = previousPushFlags;
+        }
         useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_ERROR'));
       } finally {
         this.notificationSettingsUpdating = false;
@@ -141,7 +159,7 @@ export default {
       }
     },
     async handleEmailInput(id) {
-      if (this.notificationSettingsUpdating) return;
+      if (!this.preferencesReady || this.notificationSettingsUpdating) return;
       this.notificationSettingsUpdating = true;
       const previousEmailFlags = [...this.selectedEmailFlags];
       const previousPushFlags = [...this.selectedPushFlags];
@@ -152,7 +170,7 @@ export default {
       );
     },
     async handlePushInput(id) {
-      if (this.notificationSettingsUpdating) return;
+      if (!this.preferencesReady || this.notificationSettingsUpdating) return;
       this.notificationSettingsUpdating = true;
       const previousEmailFlags = [...this.selectedEmailFlags];
       const previousPushFlags = [...this.selectedPushFlags];
@@ -194,7 +212,8 @@ export default {
     },
     // FORK: persist popup flags in ui_settings and request Notification permission
     async handlePopupInput(id) {
-      if (this.popupSettingsUpdating) return;
+      if (!this.preferencesReady || this.popupSettingsUpdating) return;
+      const accountId = this.accountId;
       this.popupSettingsUpdating = true;
       try {
         const isEnabling = !this.selectedPopupFlags.includes(id);
@@ -202,19 +221,21 @@ export default {
           const permission = await this.requestOpenPanelPermission();
           if (permission !== 'granted') return;
         }
+        if (String(accountId) !== String(this.accountId)) return;
         const previousPopupFlags = [...this.selectedPopupFlags];
         this.selectedPopupFlags = this.toggleInput(this.selectedPopupFlags, id);
         try {
           await this.$store.dispatch('updateUISettingsStrict', {
             uiSettings: withPopupFlagsForAccount(
               this.uiSettings,
-              this.accountId,
+              accountId,
               this.selectedPopupFlags
             ),
           });
           useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
         } catch (error) {
-          this.selectedPopupFlags = previousPopupFlags;
+          if (String(accountId) === String(this.accountId))
+            this.selectedPopupFlags = previousPopupFlags;
           useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_ERROR'));
         }
       } finally {
@@ -237,6 +258,24 @@ export default {
     <PwaDeviceSettings
       @permission-change="browserNotificationPermission = $event"
     />
+    <!-- FORK: a failed load must never look like empty saved preferences -->
+    <div
+      v-if="!preferencesReady"
+      role="status"
+      class="flex items-center gap-3 text-sm text-n-slate-11"
+    >
+      {{
+        $t(
+          `PROFILE_SETTINGS.FORM.NOTIFICATIONS.${preferencesLoadError ? 'PREFERENCES_LOAD_ERROR' : 'PREFERENCES_LOADING'}`
+        )
+      }}
+      <NextButton
+        v-if="preferencesLoadError"
+        sm
+        :label="$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.RETRY')"
+        @click="loadPreferences"
+      />
+    </div>
     <p
       class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-4 py-3 text-sm text-n-slate-11"
     >
@@ -332,8 +371,8 @@ export default {
               :is-checked="checkFlagStatus(type, notification.value)"
               :disabled="
                 type === 'popup'
-                  ? popupSettingsUpdating
-                  : notificationSettingsUpdating
+                  ? !preferencesReady || popupSettingsUpdating
+                  : !preferencesReady || notificationSettingsUpdating
               "
               class="disabled:cursor-wait disabled:opacity-50"
               :aria-label="`${$t(notification.label)} — ${notificationChannelLabel(type)}`"
@@ -370,7 +409,7 @@ export default {
             :id="`email_${notification.value}`"
             :value="`email_${notification.value}`"
             :is-checked="checkFlagStatus('email', notification.value)"
-            :disabled="notificationSettingsUpdating"
+            :disabled="!preferencesReady || notificationSettingsUpdating"
             class="disabled:cursor-wait disabled:opacity-50"
             @update="handleEmailInput"
           />
@@ -399,7 +438,7 @@ export default {
             :id="`push_${notification.value}`"
             :value="`push_${notification.value}`"
             :is-checked="checkFlagStatus('push', notification.value)"
-            :disabled="notificationSettingsUpdating"
+            :disabled="!preferencesReady || notificationSettingsUpdating"
             class="disabled:cursor-wait disabled:opacity-50"
             @update="handlePushInput"
           />
@@ -432,7 +471,7 @@ export default {
             :id="`popup_${notification.value}`"
             :value="`popup_${notification.value}`"
             :is-checked="checkFlagStatus('popup', notification.value)"
-            :disabled="popupSettingsUpdating"
+            :disabled="!preferencesReady || popupSettingsUpdating"
             class="disabled:cursor-wait disabled:opacity-50"
             @update="handlePopupInput"
           />

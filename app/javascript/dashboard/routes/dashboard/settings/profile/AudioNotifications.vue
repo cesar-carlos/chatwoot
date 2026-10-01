@@ -4,9 +4,7 @@ import { useUISettings } from 'dashboard/composables/useUISettings';
 import AudioAlertTone from './AudioAlertTone.vue';
 import AudioAlertEvent from './AudioAlertEvent.vue';
 import AudioAlertCondition from './AudioAlertCondition.vue';
-import { computed, onMounted, ref, watch } from 'vue';
-import { useStore } from 'dashboard/composables/store';
-const store = useStore();
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import camelcaseKeys from 'camelcase-keys';
 import { initializeAudioAlerts } from 'dashboard/helper/scriptHelpers';
@@ -63,9 +61,7 @@ const handleAudioConfigChange = value => {
   useAlert(t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
 };
 
-onMounted(() => {
-  store.dispatch('userNotificationSettings/get');
-});
+// FORK: audio settings use ui_settings; do not invalidate the notification preferences load.
 
 const handAudioAlertChange = value => {
   audioAlert.value = value;
