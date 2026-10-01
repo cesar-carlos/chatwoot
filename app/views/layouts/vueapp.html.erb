@@ -31,6 +31,8 @@
       <link class="favicon" rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
       <link class="favicon" rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <% end %>
+    <%# FORK: include Chromium metadata alongside Apple standalone support %>
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="<%= @global_config['INSTALLATION_NAME'] %>">
     <link rel="apple-touch-icon" sizes="<%= @global_config['PWA_APPLE_TOUCH_ICON_URL'].present? ? '180x180' : '192x192' %>" href="<%= @global_config['PWA_APPLE_TOUCH_ICON_URL'].presence || @global_config['PWA_ICON_192_URL'] %>">

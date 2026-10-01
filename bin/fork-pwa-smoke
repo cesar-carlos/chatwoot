@@ -43,6 +43,7 @@ begin
   release_sha = html[/"GIT_SHA":"([0-9a-f]{7,40})"/, 1]
   raise "Dashboard GIT_SHA #{release_sha || '(missing)'} does not match #{expected_sha}" unless release_sha&.start_with?(expected_sha)
   raise 'Dashboard HTML does not link /manifest.webmanifest' unless html.include?('<link rel="manifest" href="/manifest.webmanifest">')
+  raise 'Dashboard HTML is missing the mobile web app metadata' unless html.include?('<meta name="mobile-web-app-capable" content="yes">')
   raise 'Dashboard HTML is missing the Apple web app metadata' unless html.include?('<meta name="apple-mobile-web-app-capable" content="yes">')
   raise 'Dashboard HTML is missing the theme color' unless html.include?('<meta name="theme-color" content="#2781F6">')
 

@@ -16,7 +16,7 @@ mkdir -p doc
 
 # FORK: search source files of every format, including ERB, YAML and workflow definitions.
 set +e
-markers="$(rg -n --no-heading 'FORK:' app enterprise lib config custom db bin .github Gemfile Rakefile package.json)"
+markers="$(rg -n --no-heading 'FORK:' app enterprise lib config custom db bin .github Gemfile Rakefile package.json ecosystem.config.cjs)"
 search_status=$?
 set -e
 (( search_status <= 1 )) || die 'ripgrep failed while collecting markers'

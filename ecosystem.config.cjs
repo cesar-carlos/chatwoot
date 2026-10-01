@@ -1,6 +1,18 @@
 const path = require('path');
+const fs = require('fs');
 
 const appDir = __dirname;
+// FORK: every host release must use persistent uploads before starting PM2.
+const sharedStorageDir =
+  process.env.CHATWOOT_SHARED_STORAGE_PATH || '/root/chatwoot/storage';
+if (
+  fs.realpathSync(path.join(appDir, 'storage')) !==
+  fs.realpathSync(sharedStorageDir)
+) {
+  throw new Error(
+    `Release storage must point to ${sharedStorageDir} before deploying`
+  );
+}
 const rvmPath = '/usr/share/rvm/scripts/rvm';
 // FORK: production is PM2 on the host, not Docker. Pin the Node bin so a
 // non-interactive `bash -lc` does not keep an older nvm version from the dump.
