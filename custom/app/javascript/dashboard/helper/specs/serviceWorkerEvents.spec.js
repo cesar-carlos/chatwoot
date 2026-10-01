@@ -93,6 +93,65 @@ describe('PWA service worker', () => {
     expect(clientsApi.openWindow).not.toHaveBeenCalled();
   });
 
+  it('prefers the dashboard window for the notification account', async () => {
+    const otherAccountClient = {
+      url: 'https://chat.example.test/app/accounts/1/conversations/11',
+      navigate: vi.fn().mockResolvedValue(),
+      focus: vi.fn().mockResolvedValue(),
+    };
+    const targetAccountClient = {
+      url: 'https://chat.example.test/app/accounts/2/conversations/12',
+      navigate: vi.fn().mockResolvedValue(),
+      focus: vi.fn().mockResolvedValue(),
+    };
+    clientsApi.matchAll.mockResolvedValue([
+      otherAccountClient,
+      targetAccountClient,
+    ]);
+    const event = {
+      notification: {
+        data: { url: '/app/accounts/2/conversations/22' },
+        close: vi.fn(),
+      },
+      waitUntil: vi.fn(),
+    };
+
+    listeners.notificationclick(event);
+    await event.waitUntil.mock.calls[0][0];
+
+    expect(targetAccountClient.navigate).toHaveBeenCalledWith(
+      'https://chat.example.test/app/accounts/2/conversations/22'
+    );
+    expect(targetAccountClient.focus).toHaveBeenCalledOnce();
+    expect(otherAccountClient.navigate).not.toHaveBeenCalled();
+  });
+
+  it('opens a new window instead of replacing another account when several are open', async () => {
+    const clientsForOtherAccounts = [1, 3].map(accountId => ({
+      url: `https://chat.example.test/app/accounts/${accountId}/conversations/11`,
+      navigate: vi.fn(),
+      focus: vi.fn(),
+    }));
+    clientsApi.matchAll.mockResolvedValue(clientsForOtherAccounts);
+    const event = {
+      notification: {
+        data: { url: '/app/accounts/2/conversations/22' },
+        close: vi.fn(),
+      },
+      waitUntil: vi.fn(),
+    };
+
+    listeners.notificationclick(event);
+    await event.waitUntil.mock.calls[0][0];
+
+    expect(clientsApi.openWindow).toHaveBeenCalledWith(
+      'https://chat.example.test/app/accounts/2/conversations/22'
+    );
+    clientsForOtherAccounts.forEach(client => {
+      expect(client.navigate).not.toHaveBeenCalled();
+    });
+  });
+
   it('does not navigate an unrelated same-origin page', async () => {
     const portalClient = {
       url: 'https://chat.example.test/hc/portal',

@@ -2,7 +2,7 @@
 
 Comparação de abordagens para o aviso visual quando chega mensagem, no estilo do WhatsApp Web.
 
-**Decisões revisadas:** 28/set/2026.
+**Decisões revisadas:** 01/out/2026.
 
 ---
 
@@ -13,7 +13,7 @@ Comparação de abordagens para o aviso visual quando chega mensagem, no estilo 
 ```mermaid
 flowchart TD
   Q[Aviso visual de mensagem]
-  A["A: Notification da pagina em notification.created"]
+  A["A: Aviso do navegador iniciado por notification.created"]
   B["B: Terceira bitmask em notification_settings"]
   C["C: Reusar a coluna Notificacao / Web Push"]
   D["D: Toast Vue dentro da pagina"]
@@ -33,9 +33,9 @@ flowchart TD
 
 ## Opções avaliadas
 
-### A — `new Notification` no `notification.created` (escolhida)
+### A — Aviso nativo no `notification.created` (escolhida)
 
-**Ideia:** O websocket já entrega o evento por usuário. O cliente mostra o aviso do sistema se o tipo estiver em `ui_settings` e a janela estiver oculta.
+**Ideia:** O websocket já entrega o evento por usuário. O cliente mostra o aviso do sistema se o tipo estiver em `ui_settings` e aquela conversa não estiver visível. Usa `new Notification` no desktop e `registration.showNotification` como fallback no mobile.
 
 | Prós | Contras |
 |------|---------|
@@ -80,4 +80,6 @@ Descartada. `ui_settings` já sincroniza entre aparelhos pela API de perfil.
 | Popup com a janela em foco | Mostra se a conversa aberta for outra | A URL `/accounts/<account_id>/conversations/<display_id>` identifica conta e conversa; o mesmo `display_id` pode existir em contas diferentes |
 | `voice_call_incoming` | Sem checkbox próprio | Wavoip usa a permissão comum de notificações; uma ação explícita na tela permite concedê-la sem ativar Web Push |
 | Permissão | Pedir ao marcar Popup ou pela ação explícita de alertas com painel aberto | O toggle Push registra a subscription Web Push e mantém opt-in próprio por dispositivo |
-| Tag | Por `account_id` e `display_id` | Rajadas da mesma conversa se substituem sem colidir entre contas |
+| Tag | Por tipo, `display_id` e `notification_id` | Corresponde à tag do Web Push do mesmo evento e evita colisões entre avisos distintos |
+| Nova conversa somente Pop-up | O `NotificationBuilder` lê a preferência da conta antes de dispensar `conversation_creation` | Sem esse ajuste, não há `notification.created` quando e-mail e Push estão desligados |
+| Conta do evento | Validar permissão de inbox para `account_id` da notificação | A conta atualmente aberta pode ser diferente da conta do evento |

@@ -97,25 +97,97 @@ const navigateToConversation = (accountId, conversationId) => {
   });
 };
 
-export const closePopupNotification = (accountId, conversationId) => {
-  if (conversationId == null) return;
-  const key = popupKey(accountId, conversationId);
-  const notification = openPopups.get(key);
-  if (!notification) return;
-  openPopups.delete(key);
-  notification.close();
-};
-
 const rememberPopup = (accountId, conversationId, nativeNotification) => {
   if (conversationId == null) return;
   const key = popupKey(accountId, conversationId);
-  openPopups.set(key, nativeNotification);
-  nativeNotification.onclose = () => {
-    if (openPopups.get(key) === nativeNotification) openPopups.delete(key);
-  };
+  const notifications = openPopups.get(key) || new Set();
+  notifications.add(nativeNotification);
+  openPopups.set(key, notifications);
+  if ('onclose' in nativeNotification) {
+    nativeNotification.onclose = () => {
+      notifications.delete(nativeNotification);
+      if (!notifications.size && openPopups.get(key) === notifications) {
+        openPopups.delete(key);
+      }
+    };
+  }
 };
 
-export const showPopupNotification = (payload, store) => {
+const forgetPopup = (accountId, conversationId, notification) => {
+  const key = popupKey(accountId, conversationId);
+  const notifications = openPopups.get(key);
+  if (!notifications) return;
+  notifications.delete(notification);
+  if (!notifications.size) openPopups.delete(key);
+};
+
+const showPersistentPopup = async ({
+  accountId,
+  conversationId,
+  title,
+  body,
+  icon,
+  tag,
+}) => {
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service worker is unavailable for popup notifications');
+  }
+
+  let activeRegistration;
+  let dismissed = false;
+  const persistentPopup = {
+    close: async () => {
+      dismissed = true;
+      if (!activeRegistration) return;
+      try {
+        const notifications = await activeRegistration.getNotifications({
+          tag,
+        });
+        notifications.forEach(notification => notification.close());
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error('Could not close popup notification', error);
+      }
+    },
+  };
+  rememberPopup(accountId, conversationId, persistentPopup);
+
+  try {
+    const registration =
+      (await navigator.serviceWorker.getRegistration('/sw.js')) ||
+      (await navigator.serviceWorker.register('/sw.js', {
+        updateViaCache: 'none',
+      }));
+    activeRegistration = registration.active
+      ? registration
+      : await navigator.serviceWorker.ready;
+    if (dismissed) return;
+    const url = conversationId
+      ? frontendURL(conversationUrl({ accountId, id: conversationId }))
+      : '/app';
+    await activeRegistration.showNotification(title, {
+      body,
+      icon,
+      tag,
+      data: { url },
+    });
+    if (dismissed) await persistentPopup.close();
+  } catch (error) {
+    forgetPopup(accountId, conversationId, persistentPopup);
+    throw error;
+  }
+};
+
+export const closePopupNotification = (accountId, conversationId) => {
+  if (conversationId == null) return;
+  const key = popupKey(accountId, conversationId);
+  const notifications = openPopups.get(key);
+  if (!notifications) return;
+  openPopups.delete(key);
+  notifications.forEach(notification => notification.close());
+};
+
+export const showPopupNotification = async (payload, store) => {
   const notification = payload?.notification || payload;
   if (!notification?.notification_type) return;
   const accountId =
@@ -139,23 +211,32 @@ export const showPopupNotification = (payload, store) => {
   const title = senderName || notification.notification_type;
   const body = popupMessageBody(notification.push_message_body, senderName);
 
-  const nativeNotification = new Notification(title, {
-    tag: `chatwoot-popup-${accountId}-${conversationId || notification.id}`,
-    body,
-    icon,
-  });
-  rememberPopup(
-    accountId,
-    conversationId || notification.id,
-    nativeNotification
-  );
+  const tag = `${notification.notification_type}_${conversationId}_${notification.id}`;
+  try {
+    const nativeNotification = new Notification(title, { tag, body, icon });
+    rememberPopup(
+      accountId,
+      conversationId || notification.id,
+      nativeNotification
+    );
 
-  nativeNotification.onclick = event => {
-    event?.preventDefault?.();
-    window.focus();
-    nativeNotification.close();
-    navigateToConversation(accountId, conversationId);
-  };
+    nativeNotification.onclick = event => {
+      event?.preventDefault?.();
+      window.focus();
+      nativeNotification.close();
+      navigateToConversation(accountId, conversationId);
+    };
+  } catch (error) {
+    // Mobile browsers commonly reject the page Notification constructor.
+    await showPersistentPopup({
+      accountId,
+      conversationId,
+      title,
+      body,
+      icon,
+      tag,
+    });
+  }
 };
 
 export function usePopupNotifications() {

@@ -28,6 +28,9 @@ export default {
       selectedEmailFlags: [],
       selectedPushFlags: [],
       selectedPopupFlags: [],
+      notificationSettingsUpdating: false,
+      popupSettingsUpdating: false,
+      popupNotificationLabel: 'Pop-up notification',
       enableAudioAlerts: false,
       notificationTypes: NOTIFICATION_TYPES,
       browserNotificationPermission:
@@ -99,6 +102,12 @@ export default {
     canSelectPopup(notification) {
       return supportsPopupNotificationType(notification.value);
     },
+    notificationChannelLabel(type) {
+      if (type === 'popup') return this.popupNotificationLabel;
+      return this.$t(
+        `PROFILE_SETTINGS.FORM.NOTIFICATIONS.${type.toUpperCase()}`
+      );
+    },
     checkFlagStatus(type, flagType) {
       const selectedFlags = {
         email: this.selectedEmailFlags,
@@ -118,6 +127,8 @@ export default {
         this.selectedEmailFlags = previousEmailFlags;
         this.selectedPushFlags = previousPushFlags;
         useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_ERROR'));
+      } finally {
+        this.notificationSettingsUpdating = false;
       }
     },
     handleInput(type, id) {
@@ -130,6 +141,8 @@ export default {
       }
     },
     async handleEmailInput(id) {
+      if (this.notificationSettingsUpdating) return;
+      this.notificationSettingsUpdating = true;
       const previousEmailFlags = [...this.selectedEmailFlags];
       const previousPushFlags = [...this.selectedPushFlags];
       this.selectedEmailFlags = this.toggleInput(this.selectedEmailFlags, id);
@@ -139,6 +152,8 @@ export default {
       );
     },
     async handlePushInput(id) {
+      if (this.notificationSettingsUpdating) return;
+      this.notificationSettingsUpdating = true;
       const previousEmailFlags = [...this.selectedEmailFlags];
       const previousPushFlags = [...this.selectedPushFlags];
       this.selectedPushFlags = this.toggleInput(this.selectedPushFlags, id);
@@ -179,25 +194,31 @@ export default {
     },
     // FORK: persist popup flags in ui_settings and request Notification permission
     async handlePopupInput(id) {
-      const isEnabling = !this.selectedPopupFlags.includes(id);
-      if (isEnabling) {
-        const permission = await this.requestOpenPanelPermission();
-        if (permission !== 'granted') return;
-      }
-      const previousPopupFlags = [...this.selectedPopupFlags];
-      this.selectedPopupFlags = this.toggleInput(this.selectedPopupFlags, id);
+      if (this.popupSettingsUpdating) return;
+      this.popupSettingsUpdating = true;
       try {
-        await this.$store.dispatch('updateUISettingsStrict', {
-          uiSettings: withPopupFlagsForAccount(
-            this.uiSettings,
-            this.accountId,
-            this.selectedPopupFlags
-          ),
-        });
-        useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
-      } catch (error) {
-        this.selectedPopupFlags = previousPopupFlags;
-        useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_ERROR'));
+        const isEnabling = !this.selectedPopupFlags.includes(id);
+        if (isEnabling) {
+          const permission = await this.requestOpenPanelPermission();
+          if (permission !== 'granted') return;
+        }
+        const previousPopupFlags = [...this.selectedPopupFlags];
+        this.selectedPopupFlags = this.toggleInput(this.selectedPopupFlags, id);
+        try {
+          await this.$store.dispatch('updateUISettingsStrict', {
+            uiSettings: withPopupFlagsForAccount(
+              this.uiSettings,
+              this.accountId,
+              this.selectedPopupFlags
+            ),
+          });
+          useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_SUCCESS'));
+        } catch (error) {
+          this.selectedPopupFlags = previousPopupFlags;
+          useAlert(this.$t('PROFILE_SETTINGS.FORM.API.UPDATE_ERROR'));
+        }
+      } finally {
+        this.popupSettingsUpdating = false;
       }
     },
     toggleInput(selected, current) {
@@ -241,13 +262,13 @@ export default {
       />
     </div>
     <!-- Layout for desktop devices -->
-    <div class="hidden sm:block">
+    <div class="hidden overflow-x-auto sm:block">
       <div
-        class="grid content-center h-12 grid-cols-12 gap-4 py-0 rounded-t-xl"
+        class="grid min-h-16 min-w-[42rem] grid-cols-12 items-center gap-4 rounded-t-xl"
       >
         <TableHeaderCell
           :span="6"
-          label="`${$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPE_TITLE')}`"
+          :label="$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPE_TITLE')"
         >
           <span class="text-heading-3 normal-case text-n-slate-12">
             {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPE_TITLE') }}
@@ -255,33 +276,34 @@ export default {
         </TableHeaderCell>
         <TableHeaderCell
           :span="2"
-          label="`${$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.EMAIL')}`"
+          :label="$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.EMAIL')"
+          class="min-w-0 justify-center text-center"
         >
-          <span class="text-heading-3 normal-case text-n-slate-12">
+          <span class="text-heading-3 normal-case text-center text-n-slate-12">
             {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.EMAIL') }}
           </span>
         </TableHeaderCell>
         <TableHeaderCell
           :span="2"
-          label="`${$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH')}`"
+          :label="$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH')"
+          class="min-w-0 justify-center text-center"
         >
-          <div class="flex items-center justify-between gap-1">
-            <span
-              class="text-heading-3 normal-case text-n-slate-12 whitespace-nowrap"
-            >
-              {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH') }}
-            </span>
-          </div>
+          <span
+            class="text-heading-3 break-words text-center normal-case leading-5 text-n-slate-12"
+          >
+            {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH') }}
+          </span>
         </TableHeaderCell>
         <!-- FORK: popup visual alerts column -->
         <TableHeaderCell
           :span="2"
-          label="`${$t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP')}`"
+          :label="popupNotificationLabel"
+          class="min-w-0 justify-center text-center"
         >
           <span
-            class="text-heading-3 normal-case text-n-slate-12 whitespace-nowrap"
+            class="text-heading-3 break-words text-center normal-case leading-5 text-n-slate-12"
           >
-            {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP') }}
+            {{ popupNotificationLabel }}
           </span>
         </TableHeaderCell>
       </div>
@@ -290,7 +312,7 @@ export default {
         :key="index"
       >
         <div
-          class="grid items-center content-center h-12 grid-cols-12 gap-4 py-0 rounded-t-xl"
+          class="grid min-h-12 min-w-[42rem] grid-cols-12 items-center gap-4 rounded-t-xl py-2"
         >
           <div
             class="flex flex-row items-start gap-2 col-span-6 px-0 py-2 text-sm tracking-[0.5] rtl:text-right"
@@ -302,12 +324,19 @@ export default {
           <div
             v-for="type in ['email', 'push', 'popup']"
             :key="type"
-            class="flex items-start col-span-2 gap-2 px-0 text-sm tracking-[0.5] text-left rtl:text-right"
+            class="flex items-center justify-center col-span-2 min-w-0 px-0 text-sm"
           >
             <CheckBox
               v-if="type !== 'popup' || canSelectPopup(notification)"
               :value="`${type}_${notification.value}`"
               :is-checked="checkFlagStatus(type, notification.value)"
+              :disabled="
+                type === 'popup'
+                  ? popupSettingsUpdating
+                  : notificationSettingsUpdating
+              "
+              class="disabled:cursor-wait disabled:opacity-50"
+              :aria-label="`${$t(notification.label)} — ${notificationChannelLabel(type)}`"
               @update="id => handleInput(type, id)"
             />
             <span
@@ -341,11 +370,16 @@ export default {
             :id="`email_${notification.value}`"
             :value="`email_${notification.value}`"
             :is-checked="checkFlagStatus('email', notification.value)"
+            :disabled="notificationSettingsUpdating"
+            class="disabled:cursor-wait disabled:opacity-50"
             @update="handleEmailInput"
           />
-          <span class="text-body-main text-n-slate-12">{{
-            $t(notification.label)
-          }}</span>
+          <label
+            :for="`email_${notification.value}`"
+            class="text-body-main text-n-slate-12"
+          >
+            <span>{{ $t(notification.label) }}</span>
+          </label>
         </div>
       </div>
 
@@ -365,11 +399,16 @@ export default {
             :id="`push_${notification.value}`"
             :value="`push_${notification.value}`"
             :is-checked="checkFlagStatus('push', notification.value)"
+            :disabled="notificationSettingsUpdating"
+            class="disabled:cursor-wait disabled:opacity-50"
             @update="handlePushInput"
           />
-          <span class="text-body-main text-n-slate-12">{{
-            $t(notification.label)
-          }}</span>
+          <label
+            :for="`push_${notification.value}`"
+            class="text-body-main text-n-slate-12"
+          >
+            <span>{{ $t(notification.label) }}</span>
+          </label>
         </div>
       </div>
 
@@ -379,7 +418,7 @@ export default {
       </p>
       <div class="flex items-center justify-start gap-2">
         <span class="text-heading-3 text-n-slate-12">
-          {{ $t('PROFILE_SETTINGS.FORM.POPUP_NOTIFICATIONS_SECTION.TITLE') }}
+          {{ popupNotificationLabel }}
         </span>
       </div>
 
@@ -393,11 +432,16 @@ export default {
             :id="`popup_${notification.value}`"
             :value="`popup_${notification.value}`"
             :is-checked="checkFlagStatus('popup', notification.value)"
+            :disabled="popupSettingsUpdating"
+            class="disabled:cursor-wait disabled:opacity-50"
             @update="handlePopupInput"
           />
-          <span class="text-body-main text-n-slate-12">{{
-            $t(notification.label)
-          }}</span>
+          <label
+            :for="`popup_${notification.value}`"
+            class="text-body-main text-n-slate-12"
+          >
+            <span>{{ $t(notification.label) }}</span>
+          </label>
         </div>
       </div>
     </div>

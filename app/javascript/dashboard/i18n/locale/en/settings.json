@@ -182,7 +182,6 @@
         "TYPE_TITLE": "Notification type",
         "EMAIL": "Email",
         "PUSH": "System notification",
-        "POPUP": "Open-panel alert",
         "TYPES": {
           "CONVERSATION_CREATED": "A new conversation is created",
           "CONVERSATION_ASSIGNED": "A conversation is assigned to you",
@@ -206,17 +205,18 @@
         "PWA_INSTALL_STATUS_UNSUPPORTED": "This browser or connection does not support app installation.",
         "PWA_INSTALL_DISMISSED": "Installation was cancelled. You can try again from the browser menu.",
         "PWA_INSTALL_ERROR": "The app installation prompt could not be opened.",
-        "POPUP_PERMISSION_ERROR": "Browser notifications are blocked. Enable them in your browser settings to receive popups.",
+        "POPUP_PERMISSION_ERROR": "Visual alerts could not be enabled. Check notification permission in your browser or app settings.",
+        "POPUP_DELIVERY_ERROR": "A pop-up notification could not be shown on this device. Check browser notification settings and reload the dashboard.",
         "POPUP_VOICE_NOTE": "Incoming voice calls already use their own popup, so this column does not include them.",
         "IOS_PWA_HINT": "On iPhone or iPad, open Chatwoot in Safari, add it to the Home Screen, then open it from the new icon to enable system notifications.",
-        "DELIVERY_MODES_HINT": "System notifications work in the background and when the dashboard is closed. Open-panel alerts require an active page and real-time connection.",
+        "DELIVERY_MODES_HINT": "Push works with the dashboard closed when this device is subscribed and permitted. Pop-up alerts require the dashboard to remain open and connected.",
         "OPEN_PANEL_PERMISSION_HINT": "Enable browser permission for open-panel alerts and incoming call popups without enabling system push.",
         "OPEN_PANEL_PERMISSION_ACTION": "Enable open-panel alerts",
         "OPEN_PANEL_PERMISSION_SUCCESS": "Open-panel alerts are enabled on this device.",
         "PUSH_STATUS_UNSUPPORTED": "System notifications are not supported in this browser or the server is not configured.",
         "PUSH_STATUS_REQUIRES_INSTALL": "Install and open the Home Screen app to enable system notifications.",
         "PUSH_STATUS_DEFAULT": "Permission has not been requested on this device.",
-        "PUSH_STATUS_DENIED": "Permission is blocked in the browser or system settings.",
+        "PUSH_STATUS_DENIED": "Permission is blocked. Allow notifications for this site or app in your browser and system settings, then return to the dashboard.",
         "PUSH_STATUS_SUBSCRIBED": "This device is subscribed.",
         "PUSH_STATUS_UNSUBSCRIBED": "This device is not subscribed.",
         "PUSH_STATUS_ERROR": "The subscription could not be synchronized.",
@@ -241,9 +241,6 @@
         "SLA_MISSED_FIRST_RESPONSE": "Send push notifications when a conversation misses first response SLA",
         "SLA_MISSED_NEXT_RESPONSE": "Send push notifications when a conversation misses next response SLA",
         "SLA_MISSED_RESOLUTION": "Send push notifications when a conversation misses resolution SLA"
-      },
-      "POPUP_NOTIFICATIONS_SECTION": {
-        "TITLE": "Open-panel alerts"
       },
       "PROFILE_IMAGE": {
         "LABEL": "Profile Image"

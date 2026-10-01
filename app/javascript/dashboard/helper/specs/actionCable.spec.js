@@ -3,6 +3,12 @@ import ActionCableConnector from '../actionCable';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import { emitter } from 'shared/helpers/mitt';
+import { showPopupNotification } from 'customDashboard/composables/usePopupNotifications';
+
+vi.mock('customDashboard/composables/usePopupNotifications', () => ({
+  showPopupNotification: vi.fn(),
+  closePopupNotification: vi.fn(),
+}));
 
 vi.mock('shared/helpers/mitt', () => ({
   emitter: {
@@ -30,6 +36,7 @@ describe('ActionCableConnector - Copilot Tests', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    showPopupNotification.mockResolvedValue();
     mockDispatch = vi.fn();
     store = {
       $store: {
@@ -42,6 +49,66 @@ describe('ActionCableConnector - Copilot Tests', () => {
     };
 
     actionCable = ActionCableConnector.init(store.$store, 'test-token');
+  });
+
+  describe('notification popup delivery', () => {
+    it('checks inbox permission for the event account', () => {
+      store.$store.getters.getCurrentUser = {
+        accounts: [
+          { id: 1, permissions: [] },
+          { id: 2, permissions: ['inbox_view_manage'] },
+        ],
+      };
+      const data = { notification: { account_id: 2 } };
+
+      actionCable.onNotificationCreated(data);
+
+      expect(mockDispatch).toHaveBeenCalledWith(
+        'notifications/addNotification',
+        data
+      );
+      expect(showPopupNotification).toHaveBeenCalledWith(data, store.$store);
+    });
+
+    it('does not deliver a notification without access to its account', () => {
+      store.$store.getters.getCurrentUser = {
+        accounts: [
+          { id: 1, permissions: ['inbox_view_manage'] },
+          { id: 2, permissions: [] },
+        ],
+      };
+
+      actionCable.onNotificationCreated({ notification: { account_id: 2 } });
+
+      expect(mockDispatch).not.toHaveBeenCalledWith(
+        'notifications/addNotification',
+        expect.anything()
+      );
+      expect(showPopupNotification).not.toHaveBeenCalled();
+    });
+
+    it('reports popup delivery failure only once per session', async () => {
+      store.$store.getters.getCurrentUser = {
+        accounts: [{ id: 1, permissions: ['inbox_view_manage'] }],
+      };
+      actionCable.app.$i18n = { global: { t: key => key } };
+      showPopupNotification.mockRejectedValue(new Error('Display failed'));
+
+      actionCable.onNotificationCreated({ notification: { account_id: 1 } });
+      actionCable.onNotificationCreated({ notification: { account_id: 1 } });
+
+      await vi.waitFor(() =>
+        expect(emitter.emit).toHaveBeenCalledWith(
+          'newToastMessage',
+          expect.objectContaining({
+            message: 'PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_DELIVERY_ERROR',
+          })
+        )
+      );
+      expect(
+        emitter.emit.mock.calls.filter(([event]) => event === 'newToastMessage')
+      ).toHaveLength(1);
+    });
   });
 
   afterEach(() => {

@@ -45,6 +45,16 @@ const isDashboardClient = client => {
   }
 };
 
+const dashboardAccountId = rawUrl => {
+  try {
+    return new URL(rawUrl).pathname.match(
+      /^\/app\/accounts\/([^/]+)(?:\/|$)/
+    )?.[1];
+  } catch (error) {
+    return null;
+  }
+};
+
 self.addEventListener('notificationclick', event => {
   const { notification } = event;
   notification.close();
@@ -56,7 +66,19 @@ self.addEventListener('notificationclick', event => {
         type: 'window',
         includeUncontrolled: true,
       });
-      const dashboardClient = windowClients.find(isDashboardClient);
+      const dashboardClients = windowClients.filter(isDashboardClient);
+      const targetAccountId = dashboardAccountId(targetUrl);
+      let dashboardClient = dashboardClients.find(
+        client => dashboardAccountId(client.url) === targetAccountId
+      );
+      if (!dashboardClient && dashboardClients.length === 1) {
+        [dashboardClient] = dashboardClients;
+      }
+      if (!dashboardClient) {
+        dashboardClient = dashboardClients.find(
+          client => new URL(client.url).pathname === '/app'
+        );
+      }
 
       if (dashboardClient) {
         if ('navigate' in dashboardClient) {

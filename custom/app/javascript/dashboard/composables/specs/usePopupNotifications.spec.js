@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const routerPush = vi.fn();
 
@@ -61,6 +61,10 @@ describe('usePopupNotifications', () => {
       get: () => 'hidden',
     });
     window.history.pushState({}, '', '/app/accounts/1/conversations/7');
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('strips the sender prefix from the popup body', () => {
@@ -157,7 +161,7 @@ describe('usePopupNotifications', () => {
     );
 
     expect(global.Notification).toHaveBeenCalledWith('Maria', {
-      tag: 'chatwoot-popup-1-42',
+      tag: 'assigned_conversation_new_message_42_9',
       body: 'oi',
       icon: '/avatar.png',
     });
@@ -195,9 +199,115 @@ describe('usePopupNotifications', () => {
     window.focus = originalFocus;
   });
 
-  it('closes the open popup when the conversation is read', () => {
+  it('uses the service worker when the mobile Notification constructor is unavailable', async () => {
+    const close = vi.fn();
+    const registration = {
+      showNotification: vi.fn().mockResolvedValue(),
+      getNotifications: vi.fn().mockResolvedValue([{ close }]),
+    };
+    const getRegistration = vi.fn().mockResolvedValue(null);
+    const register = vi.fn().mockResolvedValue(registration);
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serviceWorker: {
+        getRegistration,
+        register,
+        ready: Promise.resolve(registration),
+      },
+    });
+    global.Notification.mockImplementation(() => {
+      throw new TypeError('Notification constructor is unavailable');
+    });
+    global.Notification.permission = 'granted';
+
+    await showPopupNotification(
+      messageNotification(),
+      storeFor({ 1: ['popup_assigned_conversation_new_message'] })
+    );
+
+    expect(register).toHaveBeenCalledWith('/sw.js', {
+      updateViaCache: 'none',
+    });
+    expect(registration.showNotification).toHaveBeenCalledWith('Maria', {
+      body: 'oi',
+      icon: '/avatar.png',
+      tag: 'assigned_conversation_new_message_42_9',
+      data: { url: '/app/accounts/1/conversations/42' },
+    });
+
+    closePopupNotification(1, 42);
+    await vi.waitFor(() => expect(close).toHaveBeenCalledOnce());
+  });
+
+  it('reports mobile service worker failures to the caller', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serviceWorker: {
+        getRegistration: vi.fn().mockResolvedValue(null),
+        register: vi.fn().mockRejectedValue(new Error('Registration failed')),
+      },
+    });
+    global.Notification.mockImplementation(() => {
+      throw new TypeError('Notification constructor is unavailable');
+    });
+    global.Notification.permission = 'granted';
+
+    await expect(
+      showPopupNotification(
+        messageNotification(),
+        storeFor({ 1: ['popup_assigned_conversation_new_message'] })
+      )
+    ).rejects.toThrow('Registration failed');
+  });
+
+  it('closes a mobile popup when the conversation is read before display completes', async () => {
+    let finishDisplay;
+    const close = vi.fn();
+    const registration = {
+      active: true,
+      showNotification: vi.fn(
+        () =>
+          new Promise(resolve => {
+            finishDisplay = resolve;
+          })
+      ),
+      getNotifications: vi.fn().mockResolvedValue([{ close }]),
+    };
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serviceWorker: {
+        getRegistration: vi.fn().mockResolvedValue(registration),
+      },
+    });
+    global.Notification.mockImplementation(() => {
+      throw new TypeError('Notification constructor is unavailable');
+    });
+    global.Notification.permission = 'granted';
+
+    const display = showPopupNotification(
+      messageNotification(),
+      storeFor({ 1: ['popup_assigned_conversation_new_message'] })
+    );
+    await vi.waitFor(() =>
+      expect(registration.showNotification).toHaveBeenCalledOnce()
+    );
+    closePopupNotification(1, 42);
+    finishDisplay();
+    await display;
+
+    expect(registration.getNotifications).toHaveBeenCalledWith({
+      tag: 'assigned_conversation_new_message_42_9',
+    });
+    expect(close).toHaveBeenCalled();
+  });
+
+  it('closes every open popup for a conversation when it is read', () => {
     showPopupNotification(
       messageNotification(),
+      storeFor({ 1: ['popup_assigned_conversation_new_message'] })
+    );
+    showPopupNotification(
+      messageNotification({ id: 10 }),
       storeFor({ 1: ['popup_assigned_conversation_new_message'] })
     );
 
@@ -205,6 +315,6 @@ describe('usePopupNotifications', () => {
     expect(closeMock).not.toHaveBeenCalled();
     closePopupNotification(1, 42);
 
-    expect(closeMock).toHaveBeenCalled();
+    expect(closeMock).toHaveBeenCalledTimes(2);
   });
 });

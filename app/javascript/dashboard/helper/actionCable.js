@@ -21,7 +21,7 @@ import { isWavoipOutboundCablePayload } from 'customDashboard/lib/wavoip/wavoipO
 // FORK: Evolution disconnect alert
 import { onEvolutionConnectionClosed } from 'customDashboard/lib/evolution/evolutionCableRegistry';
 import { onEvolutionGoConnectionClosed } from 'customDashboard/lib/evolution_go/evolutionGoCableRegistry';
-// FORK: in-app popup notifications when the dashboard window is not focused
+// FORK: visual popup notifications for connected dashboard sessions
 import {
   closePopupNotification,
   showPopupNotification,
@@ -55,6 +55,7 @@ class ActionCableConnector extends BaseActionCableConnector {
     this.mentionUnreadCountsFetchTimer = null;
     this.mentionUnreadCountsRetryTimer = null;
     this.filteredUnreadCountsRetryTimer = null;
+    this.popupDeliveryErrorShown = false; // FORK: avoid repeating popup delivery errors
     this.events = {
       'monitor.updated': this.onMonitorUpdated,
       'message.created': this.onMessageCreated,
@@ -423,28 +424,37 @@ class ActionCableConnector extends BaseActionCableConnector {
 
   onNotificationCreated = data => {
     // FORK: custom role inbox view permission
-    if (!this.canAccessInboxView()) return;
+    if (!this.canAccessInboxView(data)) return;
     this.app.$store.dispatch('notifications/addNotification', data);
-    // FORK: in-app popup when the dashboard window is not focused
-    showPopupNotification(data, this.app.$store);
+    // FORK: visual popup while the dashboard session is connected
+    showPopupNotification(data, this.app.$store).catch(() => {
+      if (this.popupDeliveryErrorShown) return;
+      this.popupDeliveryErrorShown = true;
+      const key = 'PROFILE_SETTINGS.FORM.NOTIFICATIONS.POPUP_DELIVERY_ERROR';
+      const t = this.app.$i18n?.global?.t || this.app.$i18n?.t;
+      useAlert(t ? t(key) : key);
+    });
   };
 
   onNotificationDeleted = data => {
     // FORK: custom role inbox view permission
-    if (!this.canAccessInboxView()) return;
+    if (!this.canAccessInboxView(data)) return;
     this.app.$store.dispatch('notifications/deleteNotification', data);
   };
 
   onNotificationUpdated = data => {
     // FORK: custom role inbox view permission
-    if (!this.canAccessInboxView()) return;
+    if (!this.canAccessInboxView(data)) return;
     this.app.$store.dispatch('notifications/updateNotification', data);
   };
 
   // FORK: custom role inbox view permission
-  canAccessInboxView = () => {
+  canAccessInboxView = data => {
     const user = this.app.$store.getters.getCurrentUser;
-    const accountId = this.app.$store.getters.getCurrentAccountId;
+    const accountId =
+      data?.notification?.account_id ||
+      data?.account_id ||
+      this.app.$store.getters.getCurrentAccountId;
     return hasInboxViewPermission(getUserPermissions(user, accountId));
   };
 
