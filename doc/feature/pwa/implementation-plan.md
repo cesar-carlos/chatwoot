@@ -45,7 +45,7 @@ O payload real mantém título/corpo/ícone/tag/URL, TTL de 24 horas e urgência
 
 ### Publicação futura, somente quando autorizada
 
-1. A integração à `main` local foi concluída por fast-forward, com diff/inventário conferidos. Publicar apenas no fork e gerar novo build de produção quando autorizados; essas etapas continuam pendentes.
+1. A integração à `main` foi concluída por fast-forward, com diff/inventário conferidos, e o código foi publicado somente no fork. Gerar novo build de produção quando autorizado; essa etapa continua pendente.
 2. Preparar release isolado, preservar `.env`, ícones, `DISPLAY_MANIFEST=false`, VAPID e `storage` compartilhado. Validar PM2 antes de iniciar.
 3. Reiniciar web/workers e invalidar HTML, manifestos, `/sw.js`, `/notification-worker.js` e ícones no proxy/CDN.
 4. Verificar GIT_SHA, manifestos, ícones, import do worker e `200 application/javascript` no overlay. Conferir atualização/ativação no aparelho.

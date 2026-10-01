@@ -4,7 +4,7 @@ Data: 01/out/2026. Branch: `fix/notification-delivery-hardening`, criado de `ori
 
 ## Escopo e estado
 
-As correções, diagnóstico por dispositivo, ações e documentação foram implementados no worktree isolado. Em etapa posterior autorizada, os cinco commits até `1b955ad73d` foram incorporados à `main` local por fast-forward em 01/out/2026, sem conflitos ou alteração do código testado. Não houve push, build de produção, migration, reinício ou deploy. O release publicado anteriormente não contém estas correções.
+As correções, diagnóstico por dispositivo, ações e documentação foram implementados no worktree isolado. Em etapa posterior autorizada, os cinco commits até `1b955ad73d` foram incorporados à `main` local por fast-forward em 01/out/2026, sem conflitos ou alteração do código testado. Os seis commits até `f80a9248cb`, incluindo o registro da integração, foram publicados por push normal somente em `origin/main` do fork `cesar-carlos/chatwoot`; o SHA remoto foi conferido. Não houve build de produção, migration, reinício ou deploy. O release de produção não contém estas correções.
 
 Não foram alterados ícones, manifesto, chaves VAPID, preferências armazenadas ou estruturas do banco. Cadastro/exclusão FCM continuam disponíveis. Não há resposta direta, silenciamento, cache offline, polling ou tentativa de manter o socket ativo durante suspensão.
 
@@ -75,6 +75,6 @@ Nenhum teste automatizado confirma a apresentação do banner pelo sistema opera
 - [ ] Logout encerra a sessão mesmo com Push/servidor indisponível.
 - [ ] Retomar a PWA reconecta o painel e sincroniza mensagens; diagnóstico não é apresentado como prova de banner.
 
-A integração local está concluída. Após autorização de publicação, gerar build JS/Vue novo em release isolado, validar storage compartilhado e PM2 antes de iniciar, preservar branding/VAPID, reiniciar web/workers e conferir versão, endpoints e atualização do worker. Não usar o diretório de assets do release atual como saída do build. Manter o release anterior para rollback e monitorar IDs/resultados/classes de erro sem conteúdo, tokens ou endpoint completo.
+A integração e publicação no GitHub do fork estão concluídas. Após autorização de build/deploy, gerar build JS/Vue novo em release isolado, validar storage compartilhado e PM2 antes de iniciar, preservar branding/VAPID, reiniciar web/workers e conferir versão, endpoints e atualização do worker. Não usar o diretório de assets do release atual como saída do build. Manter o release anterior para rollback e monitorar IDs/resultados/classes de erro sem conteúdo, tokens ou endpoint completo.
 
 Veja também [estado do Pop-up](./current-state.md), [plano do Pop-up](./implementation-plan.md), [estado da PWA](../pwa/current-state.md) e [plano da PWA](../pwa/implementation-plan.md).

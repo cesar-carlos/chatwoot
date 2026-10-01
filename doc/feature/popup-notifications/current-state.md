@@ -1,6 +1,6 @@
 # Popup visual — Estado atual
 
-Inventário das correções de `fix/notification-delivery-hardening`, integradas à `main` local em 01/out/2026 por fast-forward, sem conflitos. Ainda não foram publicadas nem implantadas. O release anteriormente publicado é distinto deste código.
+Inventário das correções de `fix/notification-delivery-hardening`, integradas à `main` em 01/out/2026 por fast-forward, sem conflitos, e publicadas no fork `cesar-carlos/chatwoot`. Ainda não foram implantadas. O release de produção é distinto deste código.
 
 ---
 

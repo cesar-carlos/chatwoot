@@ -1,6 +1,6 @@
 # PWA e Web Push do painel
 
-**Integração local em 01/out/2026:** as correções de `fix/notification-delivery-hardening` estão na `main` local e acrescentam autorização no envio, inscrições validadas, logout limitado/cancelável, estado **Verificando**, teste neste dispositivo e ações abrir/marcar como lida. Essa revisão ainda não foi publicada nem implantada. Evidências e critérios de aceite em [validation-report.md](../popup-notifications/validation-report.md); o histórico de produção abaixo descreve o release anterior.
+**Publicação no fork em 01/out/2026:** as correções de `fix/notification-delivery-hardening` estão na `main` local e em `origin/main` de `cesar-carlos/chatwoot` e acrescentam autorização no envio, inscrições validadas, logout limitado/cancelável, estado **Verificando**, teste neste dispositivo e ações abrir/marcar como lida. Essa revisão ainda não foi implantada. Evidências e critérios de aceite em [validation-report.md](../popup-notifications/validation-report.md); o histórico de produção abaixo descreve o release anterior.
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 

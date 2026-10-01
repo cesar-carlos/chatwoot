@@ -46,7 +46,7 @@ Revalidar acesso/preferências no job evita expor conteúdo após revogação. V
 
 O worker não recebe credenciais nem chama APIs autenticadas. “Marcar como lida” produz nonce de uso único, válido por até 60 segundos; o frontend espera a sessão, consome a intenção e confere o destinatário. Sem login ou após expiração/reinício do worker, não há escrita automática. Essa ação abre a lista, evitando ler outras notificações via last-seen da conversa. “Abrir conversa” e o clique comum continuam indo até a conversa.
 
-Esta revisão foi integrada à `main` local, mas ainda não foi publicada nem implantada. Ver [evidências e homologação](../popup-notifications/validation-report.md).
+Esta revisão foi integrada à `main` e publicada no GitHub do fork, mas ainda não foi implantada. Ver [evidências e homologação](../popup-notifications/validation-report.md).
 
 ## Extensão do fork
 

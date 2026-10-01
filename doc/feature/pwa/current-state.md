@@ -1,8 +1,8 @@
 # PWA — estado atual
 
-## Candidato de segurança e entrega, ainda não publicado
+## Correções de segurança e entrega publicadas no fork, não implantadas
 
-O branch `fix/notification-delivery-hardening` foi criado de `origin/main` (`c379641299`) e integrado à `main` local por fast-forward em 01/out/2026, sem conflitos. Não houve push, build de produção, migration ou reinício dos serviços nesta etapa. Evidências e aceite pendente: [validation-report.md](../popup-notifications/validation-report.md).
+O branch `fix/notification-delivery-hardening` foi criado de `origin/main` (`c379641299`), integrado à `main` por fast-forward em 01/out/2026, sem conflitos, e publicado por push normal somente no fork `cesar-carlos/chatwoot`. Não houve build de produção, migration ou reinício dos serviços nesta etapa. Evidências e aceite pendente: [validation-report.md](../popup-notifications/validation-report.md).
 
 - Push revalida vínculo/conta ativos, políticas de notificação/conversa e preferência do evento antes de compor conteúdo; preferências ausentes encerram o envio normalmente.
 - Cadastro browser valida endpoint HTTPS e chaves, aceitando Base64/Base64URL; dados inválidos não transferem nem criam inscrições. FCM continua compatível.
@@ -80,7 +80,7 @@ Na verificação final do release `05361df464`, havia 8.138 avatares e nenhum ar
 
 Na publicação de 01/out/2026, 29 RSpec de PWA/Push/Pop-up, 40 RSpec de workflow/permissões/histórico e 67 testes Vitest direcionados passaram em banco/Redis de teste isolados. O build de produção, RuboCop do hook corrigido, `git diff --check` e o verificador HTTP atualizado passaram. Uma falha detectada nos RSpec do builder de Pop-up foi corrigida no commit `60ee71940d` antes do deploy.
 
-O release histórico `05361df464` permanece em execução; o candidato `fix/notification-delivery-hardening` não foi publicado. A homologação final em aparelhos reais continua pendente.
+O release histórico `05361df464` permanece em execução; as correções de `fix/notification-delivery-hardening` foram publicadas no GitHub do fork, mas não implantadas. A homologação final em aparelhos reais continua pendente.
 
 ## Critério de aceite
 

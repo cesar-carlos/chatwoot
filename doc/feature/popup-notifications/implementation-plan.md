@@ -1,6 +1,6 @@
 # Popup visual — Plano de implementação (as-built)
 
-Documento **as-built das correções** de `fix/notification-delivery-hardening`, integradas à `main` local em 01/out/2026. Publicação e deploy dependem de autorização posterior. Decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
+Documento **as-built das correções** de `fix/notification-delivery-hardening`, integradas à `main` e publicadas no fork em 01/out/2026. Build de produção e deploy dependem de autorização posterior. Decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
 
 ---
 
