@@ -4,7 +4,7 @@ Data: 01/out/2026. Branch: `fix/notification-delivery-hardening`, criado de `ori
 
 ## Escopo e estado
 
-As correções, diagnóstico por dispositivo, ações e documentação foram implementados no worktree isolado. Em etapa posterior autorizada, os cinco commits até `1b955ad73d` foram incorporados à `main` local por fast-forward em 01/out/2026, sem conflitos ou alteração do código testado. Os seis commits até `f80a9248cb`, incluindo o registro da integração, foram publicados por push normal somente em `origin/main` do fork `cesar-carlos/chatwoot`; o SHA remoto foi conferido. Não houve build de produção, migration, reinício ou deploy. O release de produção não contém estas correções.
+As correções, diagnóstico por dispositivo, ações e documentação foram implementados no worktree isolado. Em etapa posterior autorizada, os cinco commits até `1b955ad73d` foram incorporados à `main` local por fast-forward em 01/out/2026, sem conflitos ou alteração do código testado. A publicação ocorreu somente em `origin/main` do fork `cesar-carlos/chatwoot`, com SHA remoto conferido. Após nova autorização, o build da `main` em `f58ca95d4d76a6d182bd78e61d3a91fe10db8914` foi implantado em produção, com reinício de web/worker e smoke público concluído. Não houve migration nem troca de ícones/VAPID.
 
 Não foram alterados ícones, manifesto, chaves VAPID, preferências armazenadas ou estruturas do banco. Cadastro/exclusão FCM continuam disponíveis. Não há resposta direta, silenciamento, cache offline, polling ou tentativa de manter o socket ativo durante suspensão.
 
@@ -60,6 +60,20 @@ Configuração do frontend: `pnpm exec vitest run --config custom/vitest.pwa.con
 - A ação **Marcar como lida** abre a lista `inbox-view`, não a conversa, para não disparar a leitura automática de outros avisos.
 - A intenção de leitura tem nonce em memória, consumo único e duração máxima de 60 segundos. Reinício do worker ou expiração exigem operação manual; não há credenciais no worker nem marcação automática após login.
 
+## Implantação em produção — 01/out/2026
+
+- Release isolado: `/root/chatwoot/.codex/releases/f58ca95d4d`, com `.env` e `storage` vinculados aos caminhos persistentes do host. A configuração PM2 validou o storage antes do início.
+- `RAILS_ENV=production bundle exec rails assets:precompile` concluiu SDK, assets Rails e dashboard. Node 24.21.0 e Ruby 3.4.4 via RVM; lockfiles não alterados. Assets antigos com hash foram preservados, sem sobrescrever os novos, para abas abertas durante a troca.
+- `chatwoot-web` e `chatwoot-worker` foram reiniciados exclusivamente no novo release. Ambos estavam online, com zero reinícios inesperados; `pm2 save` persistiu o novo diretório para reboot.
+- O domínio público confirmou GIT_SHA completo. `bin/fork-pwa-smoke` passou para login, dois manifestos e os seis ícones, incluindo dimensões e comparação dos bytes publicados.
+- `/sw.js` e `/notification-worker.js` retornaram HTTP 200 com bytes iguais aos arquivos do release. Ambos usam `Cache-Control: no-cache`; o overlay retorna `application/javascript`. O HTML continua com revalidação e o manifesto mantém cache público de cinco minutos.
+- O vhost Nginx recebeu somente uma regra exata para `/sw.js` com `expires -1`, removendo o cache de um ano da entrada. Configuração testada antes/depois e reload concluído. Não houve alteração em outros vhosts; avisos preexistentes de MIME/protocolo não impediram o teste.
+- Os dois endpoints POST novos retornaram 401 sem autenticação; nenhum diagnóstico real ou marcação de notificação foi disparado no smoke.
+- Antes e depois: 8.162 avatares de contatos, zero arquivos ausentes; amostras antiga/recente retornaram HTTP 200. O fingerprint conjunto de branding/ícones/DISPLAY_MANIFEST/VAPID permaneceu idêntico; `DISPLAY_MANIFEST=false` e nenhuma migration pendente.
+- O chunk de dashboard do release anterior continuou retornando HTTP 200. Foram preservados o release `05361df464` e os backups de Nginx/estado PM2 em `.codex/backups/notification-deploy-f58ca95d4d/`, com o dump protegido contra leitura por outros usuários.
+
+Para rollback, validar o storage do release anterior e reiniciar somente os dois apps Chatwoot a partir de seu `ecosystem.config.cjs`, conferir SHA/HTTP e salvar PM2. Recriar esses registros ao trocar diretórios, para não manter `pm_cwd` antigo com args apontando a outro release. Não restaurar globalmente o dump do PM2 se isso puder alterar outros serviços. A regra de revalidação do worker pode ser mantida.
+
 ## Homologação ainda pendente
 
 Nenhum teste automatizado confirma a apresentação do banner pelo sistema operacional. Antes de declarar a funcionalidade homologada:
@@ -75,6 +89,6 @@ Nenhum teste automatizado confirma a apresentação do banner pelo sistema opera
 - [ ] Logout encerra a sessão mesmo com Push/servidor indisponível.
 - [ ] Retomar a PWA reconecta o painel e sincroniza mensagens; diagnóstico não é apresentado como prova de banner.
 
-A integração e publicação no GitHub do fork estão concluídas. Após autorização de build/deploy, gerar build JS/Vue novo em release isolado, validar storage compartilhado e PM2 antes de iniciar, preservar branding/VAPID, reiniciar web/workers e conferir versão, endpoints e atualização do worker. Não usar o diretório de assets do release atual como saída do build. Manter o release anterior para rollback e monitorar IDs/resultados/classes de erro sem conteúdo, tokens ou endpoint completo.
+A integração, publicação do código no GitHub e implantação estão concluídas. Em atualizações futuras, repetir o build isolado e as validações, sem usar os assets do release ativo como saída. A homologação em aparelhos continua obrigatória; monitorar IDs/resultados/classes de erro sem conteúdo, tokens ou endpoint completo.
 
 Veja também [estado do Pop-up](./current-state.md), [plano do Pop-up](./implementation-plan.md), [estado da PWA](../pwa/current-state.md) e [plano da PWA](../pwa/implementation-plan.md).

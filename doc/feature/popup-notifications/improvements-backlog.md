@@ -24,7 +24,7 @@ Itens fora da entrega, revisados em 01/out/2026.
 - Falha de exibição visível uma vez por sessão e preferência por janela da mesma conta no clique
 - Bloqueio de salvamentos concorrentes de preferências
 
-## Integrado e publicado no fork, não implantado
+## Integrado, publicado no fork e implantado
 
 - Revalidação de acesso/preferências antes do Push e validação das chaves browser na API.
 - Ativação do registro correto, cancelamento de requests, timeouts e invalidação da sessão no logout.
@@ -33,7 +33,7 @@ Itens fora da entrega, revisados em 01/out/2026.
 - Diagnóstico restrito ao próprio dispositivo e ações abrir/marcar como lida, sem credenciais no worker.
 - Regressões permanentes e [relatório de validação](./validation-report.md).
 
-Integração à `main` e publicação no fork concluídas. Build/deploy e homologação desktop/Android/iOS permanecem pendentes. Não tratar aceitação pelo provedor como confirmação do banner. Resposta direta, silenciamento, cache offline e polling continuam fora do escopo.
+Integração, publicação no fork e build/deploy concluídos no release `f58ca95d4d`. Homologação desktop/Android/iOS permanece pendente. Não tratar aceitação pelo provedor como confirmação do banner. Resposta direta, silenciamento, cache offline e polling continuam fora do escopo.
 
 ---
 

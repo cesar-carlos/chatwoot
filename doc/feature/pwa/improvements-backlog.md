@@ -1,6 +1,6 @@
 # PWA — pendências e melhorias
 
-## Correções de `fix/notification-delivery-hardening` publicadas no fork (não implantadas)
+## Correções de `fix/notification-delivery-hardening` em produção
 
 - Revalidação de acesso/preferências no envio; preferências ausentes descartam sem retry.
 - Inscrição browser validada com HTTPS/P-256/auth, preservando FCM e registros existentes.
@@ -11,7 +11,7 @@
 - Teste neste dispositivo e ações abrir/marcar como lida, com autorização e intenção descartável.
 - Worker em `custom/`, com endpoint público revalidável; sem mudança de manifesto, VAPID ou schema.
 
-A integração à `main` e publicação no GitHub do fork estão concluídas. Falta autorizar build/deploy e comprovar critérios em aparelhos: [validation-report.md](../popup-notifications/validation-report.md). Os itens históricos abaixo se referem a releases anteriores.
+A integração, publicação no GitHub e build/deploy do release `f58ca95d4d` estão concluídos. Falta comprovar critérios em aparelhos: [validation-report.md](../popup-notifications/validation-report.md). Os itens históricos abaixo se referem a releases anteriores.
 
 ## Concluído no código
 

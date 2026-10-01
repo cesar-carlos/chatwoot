@@ -43,9 +43,9 @@ Antes do envio, `Custom::Notification::DeliveryAccess` revalida vínculo com con
 
 O payload real mantém título/corpo/ícone/tag/URL, TTL de 24 horas e urgência alta e adiciona IDs de usuário, conta e notificação e rótulos das ações. Diagnósticos não têm ações de leitura. Clique recupera navegação/foco rejeitados ou cliente desaparecido abrindo nova janela na mesma origem. Eventos de leitura e ações: [Pop-up](../popup-notifications/implementation-plan.md).
 
-### Publicação futura, somente quando autorizada
+### Publicação autorizada e procedimento de atualização
 
-1. A integração à `main` foi concluída por fast-forward, com diff/inventário conferidos, e o código foi publicado somente no fork. Gerar novo build de produção quando autorizado; essa etapa continua pendente.
+1. Integração, publicação no fork e build/deploy foram concluídos no release `f58ca95d4d`. Para atualizações futuras, repetir o procedimento isolado abaixo após autorização. Evidências do deploy: [validation-report.md](../popup-notifications/validation-report.md).
 2. Preparar release isolado, preservar `.env`, ícones, `DISPLAY_MANIFEST=false`, VAPID e `storage` compartilhado. Validar PM2 antes de iniciar.
 3. Reiniciar web/workers e invalidar HTML, manifestos, `/sw.js`, `/notification-worker.js` e ícones no proxy/CDN.
 4. Verificar GIT_SHA, manifestos, ícones, import do worker e `200 application/javascript` no overlay. Conferir atualização/ativação no aparelho.
@@ -94,7 +94,7 @@ Antes da publicação Icon Kitchen, 16 exemplos RSpec de manifesto/HTML/branding
 ## Publicação no fork
 
 1. A PWA e a revisão Icon Kitchen foram integradas ao `origin/main` de `cesar-carlos/chatwoot`. O release anterior `6e30bc8c97` continua disponível para rollback. Não criar PR nem push para `upstream`.
-2. O release atual `05361df464` foi preparado em um worktree isolado, sem substituir o checkout principal ou o release anterior. Vincular o storage persistente antes de executar tarefas Rails ou iniciar os processos, conforme a seção abaixo.
+2. O release anterior `05361df464` foi preparado em um worktree isolado, sem substituir o checkout principal ou o release anterior. Vincular o storage persistente antes de executar tarefas Rails ou iniciar os processos, conforme a seção abaixo.
 3. O build de produção passou; um backup do banco foi validado antes de executar `db:chatwoot_prepare`. Não havia migrações pendentes; a tarefa criou as quatro configurações adicionais.
 4. Em Super Admin → Settings → Custom Branding, definir:
    - `PWA_ICON_192_URL=/brand-assets/pwa-se7e-v2-192.png`

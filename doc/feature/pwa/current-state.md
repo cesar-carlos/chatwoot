@@ -1,8 +1,8 @@
 # PWA — estado atual
 
-## Correções de segurança e entrega publicadas no fork, não implantadas
+## Correções de segurança e entrega em produção
 
-O branch `fix/notification-delivery-hardening` foi criado de `origin/main` (`c379641299`), integrado à `main` por fast-forward em 01/out/2026, sem conflitos, e publicado por push normal somente no fork `cesar-carlos/chatwoot`. Não houve build de produção, migration ou reinício dos serviços nesta etapa. Evidências e aceite pendente: [validation-report.md](../popup-notifications/validation-report.md).
+As correções de `fix/notification-delivery-hardening` foram integradas à `main`, publicadas somente no fork e implantadas no release `f58ca95d4d` em 01/out/2026. SDK, assets Rails e dashboard foram compilados em release isolado; web/worker foram reiniciados na mesma versão e o PM2 foi salvo. O smoke público e a comparação da configuração/avatares passaram. Não houve migration. Evidências e homologação pendente: [validation-report.md](../popup-notifications/validation-report.md).
 
 - Push revalida vínculo/conta ativos, políticas de notificação/conversa e preferência do evento antes de compor conteúdo; preferências ausentes encerram o envio normalmente.
 - Cadastro browser valida endpoint HTTPS e chaves, aceitando Base64/Base64URL; dados inválidos não transferem nem criam inscrições. FCM continua compatível.
@@ -14,7 +14,7 @@ O branch `fix/notification-delivery-hardening` foi criado de `origin/main` (`c37
 
 ## Histórico do release em produção
 
-O release `05361df464` está em produção desde 01/out/2026, com os ícones Icon Kitchen configurados, o metadado genérico de instalação e a recuperação dos avatares. A instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
+O release `05361df464` foi publicado em 01/out/2026 com os ícones Icon Kitchen, metadados e recuperação dos avatares. Foi substituído por `f58ca95d4d` e permanece disponível para rollback. As seções históricas abaixo descrevem verificações anteriores; a instalação e o Push com app fechado ainda precisam de validação em aparelhos reais.
 
 ## Arquitetura implementada
 
@@ -59,7 +59,7 @@ Antes do deploy em 30/set/2026, `chat.se7esistemassinop.com.br` ainda informava 
 
 No release atual, o verificador `bin/fork-pwa-smoke` passou com as quatro entradas do manifesto e os seis assets versionados, incluindo comparação dos bytes públicos com o release local. Respostas HTTP corretas não substituem o teste de instalação no navegador.
 
-Web e worker rodam via PM2 no worktree isolado do release `05361df464`, com configuração salva para reboot. Na publicação anterior, `db:chatwoot_prepare` não encontrou migrações pendentes e criou as quatro configurações adicionais de ícones. As seis URLs Icon Kitchen foram configuradas; `DISPLAY_MANIFEST=false` e as chaves VAPID foram preservados. O backup `chatwoot_production_pre_eb93455e4a_20261001.dump` foi validado antes da mudança; os releases anteriores permanecem disponíveis para rollback.
+Na publicação anterior, web e worker foram iniciados via PM2 no release `05361df464`, com configuração salva para reboot. `db:chatwoot_prepare` não encontrou migrações pendentes e criou as quatro configurações adicionais de ícones. As seis URLs Icon Kitchen foram configuradas; `DISPLAY_MANIFEST=false` e as chaves VAPID foram preservados. O backup `chatwoot_production_pre_eb93455e4a_20261001.dump` foi validado antes daquela mudança; os releases anteriores permanecem disponíveis para rollback.
 
 ### Recuperação dos uploads em 01/out/2026
 
@@ -80,7 +80,7 @@ Na verificação final do release `05361df464`, havia 8.138 avatares e nenhum ar
 
 Na publicação de 01/out/2026, 29 RSpec de PWA/Push/Pop-up, 40 RSpec de workflow/permissões/histórico e 67 testes Vitest direcionados passaram em banco/Redis de teste isolados. O build de produção, RuboCop do hook corrigido, `git diff --check` e o verificador HTTP atualizado passaram. Uma falha detectada nos RSpec do builder de Pop-up foi corrigida no commit `60ee71940d` antes do deploy.
 
-O release histórico `05361df464` permanece em execução; as correções de `fix/notification-delivery-hardening` foram publicadas no GitHub do fork, mas não implantadas. A homologação final em aparelhos reais continua pendente.
+O release `f58ca95d4d` está em execução e o anterior `05361df464` foi preservado para rollback. A homologação final em aparelhos reais continua pendente.
 
 ## Critério de aceite
 

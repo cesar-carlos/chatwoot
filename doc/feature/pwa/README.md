@@ -1,10 +1,10 @@
 # PWA e Web Push do painel
 
-**Publicação no fork em 01/out/2026:** as correções de `fix/notification-delivery-hardening` estão na `main` local e em `origin/main` de `cesar-carlos/chatwoot` e acrescentam autorização no envio, inscrições validadas, logout limitado/cancelável, estado **Verificando**, teste neste dispositivo e ações abrir/marcar como lida. Essa revisão ainda não foi implantada. Evidências e critérios de aceite em [validation-report.md](../popup-notifications/validation-report.md); o histórico de produção abaixo descreve o release anterior.
+**Produção em 01/out/2026:** o release `f58ca95d4d`, compilado da `main` do fork, está em execução em web/worker. Inclui autorização no envio, inscrições validadas, logout limitado/cancelável, estado **Verificando**, teste neste dispositivo e ações abrir/marcar como lida. Build e smoke público passaram; homologação em aparelhos continua pendente. Evidências em [validation-report.md](../popup-notifications/validation-report.md).
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 
-**Estado em 01/out/2026:** o release `05361df464` está em produção, com os seis ícones Icon Kitchen configurados, metadados Android/Apple e armazenamento de uploads compartilhado entre releases. Os avatares foram recuperados e verificados pelo domínio público. A instalação e a entrega de Push com o app fechado ainda precisam ser homologadas em aparelhos reais, conforme [implementação e publicação](./implementation-plan.md).
+**Branding e uploads:** o release atual preserva os seis ícones Icon Kitchen, metadados Android/Apple e storage compartilhado. Após a troca, os 8.162 avatares estavam presentes e amostras antiga/recente retornaram HTTP 200. `05361df464` foi preservado para rollback. A instalação e entrega de Push com o app fechado ainda precisam ser homologadas em aparelhos reais, conforme [implementação e publicação](./implementation-plan.md).
 
 > O manifesto e os ícones agora são entregues pelo domínio público, mas isso não comprova a experiência em todos os celulares. A homologação exige instalar a PWA e testar uma notificação real com o aplicativo fechado.
 
