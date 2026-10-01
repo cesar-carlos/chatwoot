@@ -5,12 +5,12 @@ alwaysApply: false
 
 # Pull Request Format
 
-Use when opening or drafting a PR for this repository.
+Use when opening or drafting a PR **to the fork's `main`**. Never open a fork-work PR against the original `chatwoot/chatwoot` repository.
 
 ## Structure
 
 1. **Summary** — short, user-facing paragraph describing the product change
-2. **Closes** — links to GitHub issues, Linear tickets, etc.
+2. **Closes** (when applicable) — links to GitHub issues, Linear tickets, etc.
 3. **How to test** (features) — product/UX steps a reviewer can follow
 4. **How to reproduce** (bugfixes) — steps that showed the bug before the fix
 5. **What changed** (optional) — brief implementation highlights for reviewers

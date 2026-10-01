@@ -5,16 +5,16 @@ alwaysApply: false
 
 # Cursor Rules Index
 
-Rules live in `.cursor/rules/`. `alwaysApply: true` → every session; `globs` → when matching files are in context.
+Use these detailed rules together with the cross-agent [AGENTS.md](../../AGENTS.md). Cursor loads `alwaysApply: true` rules in every session and `globs` rules when matching files are in context. Other agents should read the applicable rules explicitly. Keep both structures aligned when rules change.
 
 ## Always applied (4)
 
 | Rule | Scope |
 |------|-------|
-| `chatwoot-core.mdc` | MVP approach, naming, errors, commits, i18n (EN + fork pt_BR), branding |
-| `chatwoot-dev-commands.mdc` | Setup, run, seed, lint, test, worktrees |
+| `chatwoot-core.mdc` | Scope, risk-based tests, naming, errors, commits, i18n (EN + fork pt_BR), branding |
+| `chatwoot-dev-commands.mdc` | Setup, run, seed, lint, test, worktrees, hooks |
 | `architecture.mdc` | Layers, access-control surfaces, anti-patterns, composition |
-| `fork-workflow.mdc` | Branches, `custom/`, Enterprise-via-Custom, `spec/custom`, FORK markers |
+| `fork-workflow.mdc` | Branches, safe upstream sync, `custom/`, Enterprise-via-Custom, specs, hooks, FORK markers |
 
 ## File-scoped (3)
 
@@ -22,7 +22,7 @@ Rules live in `.cursor/rules/`. `alwaysApply: true` → every session; `globs` �
 |------|-------|
 | `ruby-conventions.mdc` | `**/*.rb` |
 | `vue-frontend.mdc` | `**/*.{vue,js,ts}` (incl. async membership gates) |
-| `enterprise-edition.mdc` | `{app,enterprise,lib,config}/**/*.{rb,yml}` (fork extensions → `custom/`) |
+| `enterprise-edition.mdc` | `{app,custom,enterprise,lib,config}/**/*.{rb,yml}` (fork extensions → `custom/`) |
 
 ## On demand (1)
 
@@ -32,4 +32,4 @@ Rules live in `.cursor/rules/`. `alwaysApply: true` → every session; `globs` �
 
 ## Entry points
 
-`AGENTS.md`, `CLAUDE.md`, `.windsurf/rules/chatwoot.md` — short indexes only; **edit rules here**.
+`AGENTS.md` is the complementary cross-agent entry point; `CLAUDE.md` and `.windsurf/rules/chatwoot.md` link to it and this directory. Edit implementation details here and maintain the links and shared workflow in `AGENTS.md`.

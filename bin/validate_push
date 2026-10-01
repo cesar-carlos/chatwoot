@@ -1,13 +1,42 @@
 #!/bin/sh
+set -eu
 
-# script prevents pushing to develop and master by mistake
-
-branch="$(git rev-parse --abbrev-ref HEAD)"
-
-if [ "$branch" = "master" ]; then
-  echo "You can't push directly to master branch"
+die() {
+  echo "validate_push: $*" >&2
   exit 1
-elif [ "$branch" = "develop" ]; then
-  echo "You can't push directly to develop branch"
-  exit 1
-fi
+}
+
+[ "$#" -eq 2 ] || die 'expected remote name and URL from the pre-push hook'
+[ "$1" = origin ] || die 'pushes are allowed only to origin (the fork)'
+
+case "$2" in
+  https://github.com/cesar-carlos/chatwoot|https://github.com/cesar-carlos/chatwoot.git|\
+  git@github.com:cesar-carlos/chatwoot|git@github.com:cesar-carlos/chatwoot.git|\
+  ssh://git@github.com/cesar-carlos/chatwoot|ssh://git@github.com/cesar-carlos/chatwoot.git) ;;
+  *) die 'origin does not point to the expected GitHub fork' ;;
+esac
+
+zero_sha=0000000000000000000000000000000000000000
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/develop)
+      [ "$local_sha" != "$zero_sha" ] || die 'deleting develop is not allowed'
+      upstream_sha="$(git rev-parse --verify refs/remotes/upstream/develop)" || die 'fetch upstream/develop first'
+      [ "$local_sha" = "$upstream_sha" ] || die 'develop must exactly mirror upstream/develop'
+      if [ "$remote_sha" != "$zero_sha" ]; then
+        git merge-base --is-ancestor "$remote_sha" "$local_sha" || die 'develop push is not a fast-forward'
+      fi
+      ;;
+    refs/heads/main)
+      [ "$local_sha" != "$zero_sha" ] || die 'deleting main is not allowed'
+      [ "$local_ref" != refs/heads/develop ] || die 'do not push develop into main directly'
+      if [ "$remote_sha" != "$zero_sha" ]; then
+        git merge-base --is-ancestor "$remote_sha" "$local_sha" || die 'main push is not a fast-forward'
+      fi
+      ;;
+    refs/heads/master)
+      die 'pushes to master are not allowed'
+      ;;
+  esac
+done

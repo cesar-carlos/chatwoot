@@ -7,11 +7,12 @@ alwaysApply: true
 
 ## Approach
 
-- MVP focus: least code change, happy-path only
-- Ship the happy path first; add guards only when production proves they need them
+- Prefer the smallest production-ready change; cover the expected path and realistic failure modes
+- Avoid speculative guards, fallbacks or retries; add them when a caller can hit the case or production evidence warrants them
 - Prefer minimal, readable code over clever abstractions — extract when a pattern repeats, not preemptively
+- Avoid one-use private helpers and checks whose results do not change behavior
 - Break complex tasks into small, testable units; iterate after confirmation
-- Avoid writing specs unless explicitly asked
+- Match tests to change risk: focused regression tests for bug fixes and contracts, required Custom overlay coverage per `fork-workflow.mdc`; avoid redundant tests for docs-only changes
 - Pick one approach — no duplicate versions of the same logic
 
 ## Structure & naming
@@ -25,11 +26,11 @@ alwaysApply: true
 
 - Comments explain non-obvious intent or trade-offs — write in English
 - Remove dead code, commented-out code, empty `rescue`/`catch` blocks, unused exports
-- Never generate standalone docs (README, changelogs, wiki) unless explicitly requested
+- Do not create unrelated standalone docs; update affected feature or operational documentation when requested or when it would otherwise become inaccurate
 
 ## Errors
 
-- Handle failures explicitly — use `lib/custom_exceptions/`; do not swallow errors
+- Handle failures explicitly; use existing project exceptions (`lib/custom_exceptions/`) where applicable and do not swallow errors
 
 ## Commits
 
@@ -38,9 +39,10 @@ alwaysApply: true
 
 ## Translations
 
-- Required: English (`en`) — other community locales are not maintained here
-- Fork: `pt_BR` is allowed for fork product strings (dashboard/widget JSON and matching backend copy when needed)
-- Do not update other locales
+- Required for source strings: English (`en`)
+- Fork-specific user-facing strings may also update `pt_BR` (dashboard/widget JSON and matching backend copy when needed)
+- Do not manually update other community locales; Crowdin-generated syncs are a separate exception
+- Preserve product/brand names and machine-readable identifiers; keep protected terms in the Crowdin glossary
 - Backend → `config/locales/en.yml` (and `pt_BR` only when the fork string is user-facing there)
 - Dashboard → `app/javascript/dashboard/i18n/locale/en/*.json` (+ `pt_BR` for fork strings)
 - Widget / survey → `app/javascript/{widget,survey}/i18n/locale/en.json`

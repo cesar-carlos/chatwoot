@@ -1,6 +1,6 @@
 ---
 description: Enterprise Edition overlay; fork extensions stay in custom/
-globs: "{app,enterprise,lib,config}/**/*.{rb,yml}"
+globs: "{app,custom,enterprise,lib,config}/**/*.{rb,yml}"
 alwaysApply: false
 ---
 
@@ -8,7 +8,7 @@ alwaysApply: false
 
 Overlay under `enterprise/` extends OSS via `prepend_mod_with` / `include_mod_with`. Fork features (non-SaaS) → `custom/` per `fork-workflow.mdc`.
 
-Before editing: `rg -n "FooService|ControllerName|ModelName" app enterprise`
+Before editing: `rg -n "FooService|ControllerName|ModelName" app enterprise custom`
 
 ## Checklist
 
@@ -17,6 +17,7 @@ Before editing: `rg -n "FooService|ControllerName|ModelName" app enterprise`
 - This fork’s extensions of Enterprise behavior → `custom/` (see `fork-workflow.mdc`); do not dilute `enterprise/` with stubs only for the fork
 - New endpoints/services/models → check Enterprise override or extension point
 - No plan-specific behavior hardcoded in OSS — use config or feature flags
-- Mirror renames/moves in `enterprise/`; specs in `spec/enterprise/`
+- Keep request/response contracts stable across OSS and Enterprise; mirror shared renames/moves in `enterprise/`
+- Add `spec/enterprise/` coverage when Enterprise behavior changes; fork overlays also require `spec/custom/` coverage
 
 Reference: https://chatwoot.help/hc/handbook/articles/developing-enterprise-edition-features-38
