@@ -20,7 +20,7 @@
 - Deploy do release `6e30bc8c97` em 30/set/2026, com assets compilados, nove migrations aplicadas, ícones configurados e web/worker ativos no PM2.
 - Verificação HTTP do login, manifestos, service worker e ícones concluída; `bin/fork-pwa-smoke` passou no domínio público.
 
-## Revisão Icon Kitchen em branch local
+## Revisão Icon Kitchen publicada em 01/out/2026
 
 - Novos PNGs versionados 192/512 para `any` e `maskable`, Apple Touch 180×180 e favicon ICO, provenientes do pacote Icon Kitchen fornecido para Se7e.
 - Configurações distintas para cada uso, mantendo compatibilidade quando os campos opcionais não estão preenchidos.
@@ -30,13 +30,12 @@
 - Diagnóstico de manifesto/ícones inacessíveis separado da ausência do prompt do navegador.
 - Limpeza do Push no logout e revalidação de permissão/inscrição ao voltar ao primeiro plano.
 - Candidato validado localmente com 16 exemplos RSpec, 29 testes Vitest, lint direcionado e build Vite de produção.
-- Ainda não integrado ao `main`, não publicado e não configurado em produção; validar visualmente os ícones em aparelhos Android.
+- Integrado ao `main`, publicado no release `60ee71940d` e configurado em produção; ainda é necessário validar visualmente os ícones em aparelhos Android.
 
 ## Pendente operacional e de validação
 
 | Prioridade | Item | Critério |
 |------------|------|----------|
-| P0 | Publicar revisão Icon Kitchen | Integrar, gerar build limpo, configurar seis URLs, reiniciar serviços e passar no verificador atualizado |
 | P0 | Validar Android e iOS | Instalação standalone, mensagem real e Push com app fechado funcionam |
 | P0 | Validar clique e retomada | Clique abre a conversa certa; app suspenso reconecta e sincroniza ao voltar |
 | P1 | Orientar reinstalação de atalhos antigos | Clientes com manifesto ou ícone antigos removem o atalho e instalam novamente |

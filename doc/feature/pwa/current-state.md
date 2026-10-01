@@ -1,6 +1,6 @@
 # PWA — estado atual
 
-A implementação anterior foi publicada no domínio de produção em 30/set/2026. A revisão dos ícones Icon Kitchen está no branch local `fix/pwa-icons-review`, não no `main` nem em produção. A instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
+O release `60ee71940d` está em produção desde 01/out/2026, com os ícones Icon Kitchen configurados. A instalação e o Push com o aplicativo fechado ainda precisam de validação em aparelhos reais.
 
 ## Arquitetura implementada
 
@@ -10,7 +10,7 @@ A implementação anterior foi publicada no domínio de produção em 30/set/202
 | URLs | `/manifest.webmanifest` é canônica; `/manifest.json` entrega o mesmo conteúdo por compatibilidade |
 | Identidade | `id`, `start_url` e `scope` em `/`; `name` de `INSTALLATION_NAME`; `short_name` de `BRAND_NAME` |
 | Instalação | `display: standalone`, `prefer_related_applications: false`, tema `#2781F6` |
-| Ícones no candidato | `PWA_ICON_192_URL` e `PWA_ICON_URL` para `any`; `PWA_ICON_192_MASKABLE_URL` e `PWA_ICON_MASKABLE_URL` para `maskable`; `PWA_APPLE_TOUCH_ICON_URL` e `PWA_FAVICON_URL` para HTML |
+| Ícones publicados | `PWA_ICON_192_URL` e `PWA_ICON_URL` para `any`; `PWA_ICON_192_MASKABLE_URL` e `PWA_ICON_MASKABLE_URL` para `maskable`; `PWA_APPLE_TOUCH_ICON_URL` e `PWA_FAVICON_URL` para HTML |
 | HTML | Manifesto, `theme-color`, Apple Touch 180×180, favicon e metadados Apple independem de `DISPLAY_MANIFEST` |
 | Interface | Componente Vue customizado apresenta disponível, instalado, instruções iOS, indisponível, incompatível e erros verificáveis de manifesto/ícone |
 | Push | Helper customizado controla opt-in local, inscrição, remoção, concorrência, troca da chave VAPID, logout e sincronização ao retomar a página |
@@ -43,9 +43,9 @@ Antes do deploy em 30/set/2026, `chat.se7esistemassinop.com.br` ainda informava 
 | `/brand-assets/pwa-icon-se7e-512.png` | `200 image/png` |
 | `/sw.js` | `200 text/javascript` |
 
-O verificador antigo passou para o release `6e30bc8c97`. O manifesto público inclui identidade white-label e os dois ícones antigos. O verificador atualizado exige quatro entradas no manifesto e seis assets versionados; ele só deve ser executado após o novo deploy e a configuração. Respostas HTTP corretas não substituem o teste de instalação no navegador.
+No release atual, o verificador `bin/fork-pwa-smoke` passou com as quatro entradas do manifesto e os seis assets versionados, incluindo comparação dos bytes públicos com o release local. Respostas HTTP corretas não substituem o teste de instalação no navegador.
 
-Web e worker rodam via PM2 no worktree isolado do release `6e30bc8c97`, com configuração persistida para reboot. `db:chatwoot_prepare` aplicou nove migrações pendentes; uma verificação posterior não encontrou migrações restantes. `PWA_ICON_192_URL` e `PWA_ICON_URL` apontam para os PNGs Se7e, `DISPLAY_MANIFEST=false` foi mantido e as chaves VAPID não foram alteradas. Dois backups do banco anteriores à migração foram preservados. O checkout principal `/root/chatwoot` continua antigo e com arquivos locais, mas não é o diretório em execução.
+Web e worker rodam via PM2 no worktree isolado do release `60ee71940d`, com configuração salva para reboot. O novo `db:chatwoot_prepare` não encontrou migrações pendentes e criou as quatro configurações adicionais de ícones. As seis URLs Icon Kitchen foram configuradas; `DISPLAY_MANIFEST=false` e as chaves VAPID foram preservados. O backup `chatwoot_production_pre_eb93455e4a_20261001.dump` foi validado antes da mudança; o release anterior `6e30bc8c97` permanece disponível para rollback.
 
 ## Validação do código
 
@@ -56,10 +56,10 @@ Web e worker rodam via PM2 no worktree isolado do release `6e30bc8c97`, com conf
 - RuboCop passou nos 22 arquivos Ruby alterados, e ESLint passou nos JS/Vue alterados. O build Vite de produção passou após incorporar todas as alterações locais, incluindo a correção de sintaxe de `ConversationCard.vue`.
 - O comando `bin/fork-pwa-smoke` passou no domínio público após o deploy do commit `6e30bc8c97`.
 
-Na revisão Icon Kitchen local atual, 16 exemplos RSpec de manifesto/HTML/branding/ícones e 29 testes Vitest de PWA/Push passaram. ESLint e RuboCop direcionados, `git diff --check`, inventário `FORK:` e build Vite de produção também passaram. O verificador HTTP atualizado ainda não pode passar no domínio público, porque a revisão não foi publicada nem configurada.
+Na publicação de 01/out/2026, 29 RSpec de PWA/Push/Pop-up, 40 RSpec de workflow/permissões/histórico e 67 testes Vitest direcionados passaram em banco/Redis de teste isolados. O build de produção, RuboCop do hook corrigido, `git diff --check` e o verificador HTTP atualizado passaram. Uma falha detectada nos RSpec do builder de Pop-up foi corrigida no commit `60ee71940d` antes do deploy.
 
-O release anterior permanece em execução. O candidato de novos ícones precisa ser integrado, publicado e configurado antes da homologação final em aparelhos reais.
+O release novo está em execução. A homologação final em aparelhos reais continua pendente.
 
 ## Critério de aceite
 
-O domínio público ainda entrega ambos os manifestos com os dois ícones anteriores. Após o novo deploy, verificar as quatro entradas e os seis assets; o Chrome Android deve oferecer **Instalar** e abrir o painel sem barras do navegador. No iOS/iPadOS 16.4+, a instalação pela Tela de Início deve abrir em standalone. Uma mensagem elegível deve gerar Push com a PWA fechada, e o clique deve reutilizar a PWA aberta ou criar uma janela na conversa correta. Os critérios de aparelho e entrega final de Push ainda não foram homologados.
+O domínio público entrega ambos os manifestos com quatro entradas de ícone e os seis assets versionados. O Chrome Android deve oferecer **Instalar** e abrir o painel sem barras do navegador. No iOS/iPadOS 16.4+, a instalação pela Tela de Início deve abrir em standalone. Uma mensagem elegível deve gerar Push com a PWA fechada, e o clique deve reutilizar a PWA aberta ou criar uma janela na conversa correta. Os critérios de aparelho e entrega final de Push ainda não foram homologados.

@@ -2,7 +2,7 @@
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.
 
-**Estado do código:** a PWA original está no `main` do fork; a revisão dos ícones Icon Kitchen está no branch local `fix/pwa-icons-review`, ainda não integrado nem publicado. **Produção:** o domínio público continua no release `6e30bc8c97` de 30/set/2026, com os ícones antigos. A instalação e a entrega de Push com o app fechado ainda precisam ser homologadas em aparelhos reais, conforme [implementação e publicação](./implementation-plan.md).
+**Estado em 01/out/2026:** o release `60ee71940d` está em produção, com os seis ícones Icon Kitchen configurados e verificados pelo domínio público. A instalação e a entrega de Push com o app fechado ainda precisam ser homologadas em aparelhos reais, conforme [implementação e publicação](./implementation-plan.md).
 
 > O manifesto e os ícones agora são entregues pelo domínio público, mas isso não comprova a experiência em todos os celulares. A homologação exige instalar a PWA e testar uma notificação real com o aplicativo fechado.
 
@@ -11,7 +11,7 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 | Manifesto white-label | `/manifest.webmanifest`, com `/manifest.json` como alias dinâmico |
 | Instalação | Link e metadados PWA presentes mesmo com `DISPLAY_MANIFEST=false` |
 | Identidade | `INSTALLATION_NAME`, `BRAND_NAME`, `id: "/"` e modo `standalone` |
-| Ícones no candidato | PNGs Se7e distintos para `any` e `maskable` em 192×192 e 512×512, com símbolo adaptativo na área segura; Apple Touch 180×180 e favicon ICO versionados |
+| Ícones publicados | PNGs Se7e distintos para `any` e `maskable` em 192×192 e 512×512, com símbolo adaptativo na área segura; Apple Touch 180×180 e favicon ICO versionados |
 | Instalação guiada | `beforeinstallprompt` no Chromium, instruções Safari no iOS/iPadOS e diagnóstico de manifesto/ícones inacessíveis |
 | Web Push | Opt-in explícito por dispositivo, recuperação da inscrição, rotação VAPID, limpeza no logout e revalidação ao voltar ao app |
 | Clique no Push | Reutiliza uma janela do painel da mesma origem e navega para a conversa |
@@ -23,9 +23,9 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 | Etapa | Estado em 1º/out/2026 |
 |-------|-----------------------|
 | PWA original no fork | Publicada no `origin/main` |
-| Revisão Icon Kitchen | Em validação no branch local; ainda não publicada |
-| Deploy da versão PWA anterior | Concluído no release `6e30bc8c97` |
-| Configuração dos novos ícones | Pendente após o próximo deploy |
+| Revisão Icon Kitchen | Publicada no release `60ee71940d` |
+| Deploy da versão PWA anterior | Preservado no release `6e30bc8c97` para rollback |
+| Configuração dos novos ícones | Seis URLs configuradas e conferidas pelo verificador público |
 | Validação Android/iOS | Pendente em aparelhos reais |
 | Aceite de Push com app fechado | Pendente em aparelhos reais |
 

@@ -65,13 +65,13 @@ Os specs existentes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opac
 
 O build Vite de produção passou no candidato anterior com as 27 alterações locais. ESLint passou nos JS/Vue alterados e RuboCop nos 22 arquivos Ruby alterados. Antes daquela publicação, as migrations foram ensaiadas em uma cópia isolada do banco; no deploy, as nove migrations pendentes foram aplicadas em produção. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`. Esses resultados não validam automaticamente a revisão Icon Kitchen.
 
-Na revisão Icon Kitchen local atual, 16 exemplos RSpec de manifesto/HTML/branding/ícones e 29 testes Vitest de PWA/Push passaram. ESLint e RuboCop direcionados, `git diff --check`, `bin/fork-inventory` e o build Vite de produção também passaram. O próximo release ainda requer verificação HTTP e teste em aparelhos após publicação.
+Antes da publicação Icon Kitchen, 16 exemplos RSpec de manifesto/HTML/branding/ícones e 29 testes Vitest de PWA/Push passaram. ESLint e RuboCop direcionados, `git diff --check`, `bin/fork-inventory` e o build Vite de produção também passaram. A verificação HTTP após o deploy está registrada abaixo; os testes em aparelhos continuam pendentes.
 
 ## Publicação no fork
 
-1. A PWA anterior foi integrada ao `origin/main` de `cesar-carlos/chatwoot` com o histórico 4.18 e publicada em 30/set/2026 no commit `6e30bc8c97`. A revisão Icon Kitchen ainda não foi integrada. Não criar PR nem push para `upstream`.
-2. O deploy anterior usou um worktree isolado, sem substituir o checkout principal antigo. Fazer a nova integração e publicação também por worktree isolado.
-3. Para a revisão Icon Kitchen, integrar o branch validado ao `main` do fork, gerar uma imagem limpa do novo release e executar `db:chatwoot_prepare` para criar as quatro configurações adicionais. Não alterar a produção antes da imagem e do banco estarem na mesma versão.
+1. A PWA e a revisão Icon Kitchen foram integradas ao `origin/main` de `cesar-carlos/chatwoot`. O release anterior `6e30bc8c97` continua disponível para rollback. Não criar PR nem push para `upstream`.
+2. O release atual `60ee71940d` foi preparado em um worktree isolado, sem substituir o checkout principal ou o release anterior.
+3. O build de produção passou; um backup do banco foi validado antes de executar `db:chatwoot_prepare`. Não havia migrações pendentes; a tarefa criou as quatro configurações adicionais.
 4. Em Super Admin → Settings → Custom Branding, definir:
    - `PWA_ICON_192_URL=/brand-assets/pwa-se7e-v2-192.png`
    - `PWA_ICON_URL=/brand-assets/pwa-se7e-v2-512.png`
@@ -111,7 +111,15 @@ bin/fork-pwa-smoke https://chat.se7esistemassinop.com.br \
   /brand-assets/pwa-se7e-v2-favicon.ico
 ```
 
-O comando retorna erro se a versão, o HTML, os dois manifestos, o cache, a identidade white-label, o formato/dimensões ou os bytes dos seis assets públicos divergirem do release local. A versão anterior do verificador passou no domínio público em 30/set/2026 com `GIT_SHA=6e30bc8c97f18bd559cf38c998b4f40b5ca49354`; a versão atual só poderá passar após o novo deploy. Execute-a como etapa obrigatória após cada deploy da PWA.
+O comando retorna erro se a versão, o HTML, os dois manifestos, o cache, a identidade white-label, o formato/dimensões ou os bytes dos seis assets públicos divergirem do release local. Ele passou no domínio público em 01/out/2026 com `GIT_SHA=60ee71940d6d1803cf1bb4e0e88f688fa8d3773a`. Execute-o após cada deploy da PWA.
+
+### Publicação de 01/out/2026
+
+- Release `60ee71940d` em web e Sidekiq via PM2, com estado salvo para reboot; o release `6e30bc8c97` e o dump anterior permanecem disponíveis para rollback.
+- `db:chatwoot_prepare` criou as quatro configurações Icon Kitchen; não havia migrações pendentes. As seis URLs foram configuradas, mantendo `DISPLAY_MANIFEST=false` e as chaves VAPID existentes.
+- Build de produção, 67 Vitest e 69 RSpec direcionados passaram. Os RSpec detectaram um hook ausente no builder de Pop-up; a correção entrou no release antes da troca de processos.
+- Login público, manifestos, service worker e os seis assets corresponderam ao release; `bin/fork-pwa-smoke` passou.
+- Instalação e Push real com a PWA fechada ainda não foram homologados em Android/iOS. O sucesso HTTP ou dos testes automatizados não comprova a apresentação da notificação pelo aparelho.
 
 ### Publicação de 30/set/2026
 
@@ -137,4 +145,4 @@ Atalhos antigos podem precisar ser apagados e instalados novamente. No Chrome An
 
 ## Condição para encerrar o rollout
 
-Marcar a PWA como pronta somente quando a validação HTTP, a suíte automatizada e os cenários manuais estiverem concluídos. Em 1º/out/2026, a revisão dos ícones ainda não está integrada ou publicada; a homologação em Android/iOS e a entrega final de Push também permanecem pendentes.
+Marcar a PWA como pronta somente quando a validação HTTP, a suíte automatizada e os cenários manuais estiverem concluídos. Em 01/out/2026, o código e os ícones estão publicados, mas a homologação em Android/iOS e a confirmação de Push real com a PWA fechada permanecem pendentes.
