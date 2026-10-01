@@ -8,10 +8,12 @@ alwaysApply: false
 
 - RuboCop (150 char max line length)
 - Compact `module/class` definitions — `class Foo::Bar`, not nested `module Foo; class Bar`
-- Models: validate presence/uniqueness, add indexes
-- Controllers: strong params
+- Models: validate presence/uniqueness and add appropriate indexes
+- Database foreign keys: prefer associations/callbacks unless a constraint is needed; assess delete behavior and production migration/locking risk first
+- Controllers: strong params, authorization and request-boundary validation (`422` for malformed input)
 
 ## Specs
 
 - Prefer `with_modified_env` over stubbing `ENV`
 - Parallel/reloading envs: compare `error.class.name`, not constant class equality
+- Prefer `let` and direct per-example setup over one-use helper methods

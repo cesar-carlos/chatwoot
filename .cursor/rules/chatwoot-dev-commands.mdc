@@ -8,9 +8,9 @@ alwaysApply: true
 ## Setup
 
 ```bash
+eval "$(rbenv init -)"   # before bundle/rspec/rubocop/rails
+rbenv install "$(cat .ruby-version)"  # if needed
 bundle install && pnpm install
-eval "$(rbenv init -)"   # required before any bundle/rspec command
-rbenv install $(cat .ruby-version)  # if needed
 ```
 
 ## Run
@@ -29,8 +29,8 @@ rbenv install $(cat .ruby-version)  # if needed
 
 ## Lint
 
-- JS/Vue: `pnpm eslint` / `pnpm eslint:fix`
-- Ruby: `bundle exec rubocop -a`
+- JS/Vue: `pnpm eslint` or `pnpm eslint path/to/changed-file.js`
+- Ruby: `bundle exec rubocop path/to/changed-file.rb` (use `-a` only when auto-correction is intended)
 
 ## Test
 
@@ -40,7 +40,14 @@ rbenv install $(cat .ruby-version)  # if needed
 
 ## Worktree (Codex)
 
-- One git worktree + branch per task
+- Fetch `origin`, then create one git worktree + branch per task from `origin/main`; do not assume local `main` is current
 - Local setup under `.codex/` with `Procfile.worktree`
 - `.codex/environments/environment.toml` generates per-worktree DB name, Rails port, Vite port, and Redis DB index to avoid collisions
 - Separate Overmind socket/title per worktree
+
+## Git hooks
+
+- `pnpm install` runs the Husky `prepare` script and installs `.husky/` as the hooks path
+- `.husky/pre-commit` invokes `.githooks/pre-commit` to forbid commits on `develop`
+- `.husky/pre-push` invokes `bin/validate_push` to restrict the destination remote and protected branches
+- Do not set `core.hooksPath` to `.githooks`: that would bypass the pre-push hook. Restore hooks with `pnpm exec husky install` if needed

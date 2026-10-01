@@ -13,6 +13,9 @@ alwaysApply: false
 - PropTypes for props; ESLint (Airbnb + Vue 3 recommended)
 - No bare strings in templates — use i18n (`useI18n`); locale paths in `chatwoot-core.mdc`
 - Business logic in composables or store actions — thin components for presentation
+- Prefer shared design-system utilities, composables and request-cancellation helpers over local alternatives
+- Use typography utilities, logical Tailwind spacing (`ms`, `me`, `start`, `end`) and `rem` for arbitrary dimensions; preserve native numeric chart/SVG values
+- Name repeated or domain-specific strings, thresholds, colors and durations
 
 ## Async permission / membership context
 

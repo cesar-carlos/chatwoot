@@ -6,42 +6,66 @@ die() {
   exit 1
 }
 
-require_clean_tree() {
-  if ! git diff-index --quiet HEAD --; then
-    die "working tree has uncommitted changes; commit or stash before syncing"
+require_remote_url() {
+  local remote_name="$1" expected_owner="$2" fetch_url push_url url
+  fetch_url="$(git remote get-url "$remote_name")" || die "missing git remote '$remote_name'"
+  push_url="$fetch_url"
+  if [[ "$remote_name" == origin ]]; then
+    push_url="$(git remote get-url --push "$remote_name")" || die "missing push URL for '$remote_name'"
   fi
-}
 
-require_remote() {
-  git remote get-url "$1" >/dev/null 2>&1 || die "missing git remote '$1'"
+  for url in "$fetch_url" "$push_url"; do
+    case "$url" in
+      "https://github.com/$expected_owner/chatwoot"|"https://github.com/$expected_owner/chatwoot.git"|\
+      "git@github.com:$expected_owner/chatwoot"|"git@github.com:$expected_owner/chatwoot.git"|\
+      "ssh://git@github.com/$expected_owner/chatwoot"|"ssh://git@github.com/$expected_owner/chatwoot.git") ;;
+      *) die "'$remote_name' does not point to the expected GitHub repository" ;;
+    esac
+  done
 }
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
-require_clean_tree
-require_remote upstream
-require_remote origin
+# FORK: prepare upstream integration in a separate worktree; never reset or rebase published branches here.
+[[ -z "$(git status --porcelain --untracked-files=all)" ]] || die 'current worktree has uncommitted or untracked files'
+require_remote_url origin cesar-carlos
+require_remote_url upstream chatwoot
 
-START_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-trap 'git checkout "$START_BRANCH" 2>/dev/null || true' EXIT
+git fetch origin main develop
+git fetch upstream develop
 
-echo "==> Fetching upstream"
-git fetch upstream || die "failed to fetch upstream"
+git merge-base --is-ancestor origin/develop upstream/develop || die 'origin/develop diverged from upstream/develop; review manually'
+if git show-ref --verify --quiet refs/heads/develop; then
+  git merge-base --is-ancestor develop upstream/develop || die 'local develop has commits outside upstream/develop; review manually'
+fi
+if git worktree list --porcelain | grep -Fx 'branch refs/heads/develop' >/dev/null; then
+  die 'develop is checked out in another worktree; release it before syncing'
+fi
 
-echo "==> Resetting develop to upstream/develop"
-git checkout develop || die "failed to checkout develop"
-git reset --hard upstream/develop || die "failed to reset develop to upstream/develop"
+upstream_sha="$(git rev-parse --short=12 upstream/develop)"
+sync_branch="sync/upstream-develop-$upstream_sha"
+sync_worktree="$ROOT/.codex/worktrees/sync-upstream-develop-$upstream_sha"
 
-echo "==> Pushing origin/develop (force-with-lease)"
-git push origin develop --force-with-lease || die "failed to push origin/develop"
+if ! git merge-base --is-ancestor upstream/develop origin/main; then
+  git show-ref --verify --quiet "refs/heads/$sync_branch" && die "review branch $sync_branch already exists"
+  [[ ! -e "$sync_worktree" ]] || die "review worktree $sync_worktree already exists"
+fi
 
-echo "==> Rebasing main onto develop"
-git checkout main || die "failed to checkout main"
-git rebase develop || die "rebase failed; resolve conflicts, then run: git rebase --continue"
+echo '==> Fast-forwarding the fork mirror (origin/develop)'
+git push origin refs/remotes/upstream/develop:refs/heads/develop
+git branch -f develop upstream/develop
 
-echo "==> FORK marker inventory"
-"$ROOT/bin/fork-inventory"
+if git merge-base --is-ancestor upstream/develop origin/main; then
+  echo 'Upstream develop is already integrated into origin/main; no review branch needed.'
+  exit 0
+fi
 
-echo "==> Sync complete. Review doc/fork-divergences.txt and push main when ready:"
-echo "    git push origin main"
+mkdir -p "$ROOT/.codex/worktrees"
+git worktree add -b "$sync_branch" "$sync_worktree" origin/main
+
+echo "Review upstream integration in $sync_worktree ($sync_branch):"
+echo "  git -C '$sync_worktree' merge --no-ff upstream/develop"
+echo "  git -C '$sync_worktree' status --short"
+echo "  git -C '$sync_worktree' diff origin/main --check"
+echo 'Resolve conflicts, run relevant tests and bin/fork-inventory, then integrate only into the fork main.'

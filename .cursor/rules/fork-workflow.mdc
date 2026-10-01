@@ -12,31 +12,29 @@ Fork of [chatwoot/chatwoot](https://github.com/chatwoot/chatwoot).
 | Branch | GitHub default | Purpose |
 |--------|----------------|---------|
 | **`main`** | **Yes** | All fork-specific work — commits, PRs, deploys, feature branches |
-| `develop` | No | Read-only mirror of `upstream/develop` — sync only, **never** fork commits |
+| `develop` | No | Mirror of `upstream/develop` — sync only, **never** fork commits |
 
 - **`main`** is the repository default branch on GitHub (`origin/HEAD` → `origin/main`).
-- **`develop`** exists only to stay aligned with the upstream fork; do not branch from it for fork features, open PRs into it, or push custom changes.
+- **`origin/develop`** exists only to mirror `upstream/develop`; do not branch from it for fork features, open PRs into it, or push custom changes. A local `develop` may lag until the next safe sync.
 - Upstream README still describes upstream git-flow (`develop` base) — **ignore that for this fork**; follow this rule instead.
+- **Never push to `upstream` or open a PR against the original project.** Verify `origin` points to `cesar-carlos/chatwoot` before publication.
 
 ```bash
-# Correct: fork work
-git checkout main
-git checkout -b feat/my-feature   # branch from main
-# PR target: main
-
-# Wrong: never commit or PR to develop
-git checkout develop   # sync/mirror only via bin/fork-sync-upstream
+# Fork work starts at the current remote main, not an assumed-current local main.
+git fetch origin main
+git worktree add -b feat/my-feature .codex/worktrees/my-feature origin/main
+# Integrate or open a PR only against the fork's main.
 ```
 
 ## Sync & automation
 
-```bash
-bin/fork-sync-upstream   # reset develop, push, rebase main, run inventory
-bin/fork-inventory       # FORK: markers → doc/fork-divergences.txt
-git config core.hooksPath .githooks   # blocks FORK: commits on develop
-```
+Run `bin/fork-sync-upstream` from a clean worktree when upstream changes need integration. It verifies the fork/original remotes, fetches both, fast-forwards the `develop` mirror only when histories permit, and creates a review worktree/branch from the latest `origin/main`. It **does not reset or rebase `main`**. If histories diverge, stop for manual review; never force-push the published `main`.
 
-Manual sync: `git fetch upstream` → reset `develop` → `git rebase develop` on `main`.
+In the review worktree, merge `upstream/develop`, resolve conflicts, run relevant tests and `bin/fork-inventory`, then integrate only into the fork's `main`. Do not use `git reset --hard` or an automatic rebase on a published branch to resolve sync conflicts. Preserve unrelated dirty worktrees.
+
+`bin/fork-inventory` records sorted `FORK:` locations in `doc/fork-divergences.txt` without a changing timestamp. This generated file is Git-ignored: save a copy before merging, rerun the script afterward, and compare the two files with `diff -u`. Review marker identities and behavior, not just the count.
+
+Git hooks use **Husky**: `pnpm install` (or `pnpm exec husky install`) activates `.husky/pre-commit` and `.husky/pre-push`. The pre-commit hook blocks commits on `develop`; the pre-push hook checks destination remote/ref, permits only the fork `origin`, and accepts `develop` only as an exact fast-forward mirror of `upstream/develop`. Do **not** set `core.hooksPath` to `.githooks`, which disables the pre-push hook. Hooks are defense in depth; keep GitHub branch protection enabled.
 
 ## Change priority (best → worst merge safety)
 
@@ -71,7 +69,7 @@ When upstream has no hook, add the smallest FORK entry point (one route, one sch
 
 ## Specs for overlays
 
-- New file under `custom/app/...` → mirror spec under `spec/custom/...` in the **same PR**.
+- New behavior under `custom/app/...` → mirror focused coverage under `spec/custom/...` in the **same change**.
 - Specs in `spec/enterprise/` may exercise the full stack; they do **not** replace Custom overlay coverage.
 
 ## FORK markers & upstream edits
@@ -89,13 +87,13 @@ end
 - Avoid high-churn files: `routes.rb`, `Gemfile`, `package.json`, large finders/callbacks, shared initializers
 - Frontend: new composables/components; one `// FORK:` import/call in upstream when unavoidable
 
-Discover: `rg "FORK:" app enterprise lib config custom app/javascript`
+Discover: `bin/fork-inventory` (searches source and configuration formats, including ERB/YAML and workflows).
 
 ## Merge & conflicts
 
-Before merge: `rg "FORK:" > /tmp/fork-markers.txt` for inventory. Optional dry-run: `git merge-tree $(git merge-base HEAD develop) HEAD develop`.
+Before integration: save/review `doc/fork-divergences.txt` and the upstream diff. Optional read-only dry-run: `git merge-tree $(git merge-base HEAD upstream/develop) HEAD upstream/develop`.
 
-On conflict: default to upstream for unmarked lines; preserve all `FORK:` blocks; compare marker count after merge.
+On conflict: inspect both sides, preserve intended fork behavior and all `FORK:` blocks, and compare marker identities and behavior after resolution. An equal marker count alone does not prove a safe merge.
 
 ## Anti-patterns
 

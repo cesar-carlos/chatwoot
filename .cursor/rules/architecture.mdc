@@ -22,7 +22,11 @@ Pragmatic Rails layering — not a pure DDD split:
 
 **Transport** — controllers: strong params → authorize → service → JSON; Vue: presentation only, logic in composables or store actions.
 
+Validate API type, shape and value at the request boundary. Reuse existing errors so invalid input returns `422`, not a model exception or Sentry event. Do not coerce malformed official-client values; fix the client. Enforce eligibility at the earliest shared entry point rather than repeating guards downstream.
+
 **Boundaries** — depend on provider base classes (e.g. `Whatsapp::Providers::BaseService`); new use cases → `app/services/`.
+
+Prefer existing dependencies for auth, signing, parsing and API plumbing. For required internal configuration, fail visibly on missing values instead of silently skipping behavior.
 
 ## Access control surfaces
 
