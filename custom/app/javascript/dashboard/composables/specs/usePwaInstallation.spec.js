@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const isPwaStandalone = vi.hoisted(() => vi.fn(() => false));
 
@@ -36,6 +36,8 @@ describe('usePwaInstallation', () => {
     document.head.innerHTML =
       '<link rel="manifest" href="/manifest.webmanifest">';
   });
+
+  afterEach(() => vi.unstubAllGlobals());
 
   it('captures beforeinstallprompt and opens it only from promptInstall', async () => {
     const { usePwaInstallation } = await import(
@@ -89,5 +91,75 @@ describe('usePwaInstallation', () => {
     );
 
     expect(usePwaInstallation().status.value).toBe('installed');
+  });
+
+  it('distinguishes an invalid manifest from a browser that has not offered installation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const { usePwaInstallation } = await import(
+      'customDashboard/composables/usePwaInstallation'
+    );
+    const { status, checkInstallability } = usePwaInstallation();
+
+    await checkInstallability();
+
+    expect(status.value).toBe('manifest_error');
+  });
+
+  it('reports an inaccessible installation icon', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            name: 'Se7e',
+            start_url: '/',
+            display: 'standalone',
+            icons: [
+              { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+              { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+            ],
+          }),
+        })
+        .mockResolvedValue({ ok: false, headers: { get: () => 'image/png' } })
+    );
+    const { usePwaInstallation } = await import(
+      'customDashboard/composables/usePwaInstallation'
+    );
+    const { status, checkInstallability } = usePwaInstallation();
+
+    await checkInstallability();
+
+    expect(status.value).toBe('icon_error');
+  });
+
+  it('keeps the browser-prompt status when manifest and icons are reachable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            name: 'Se7e',
+            start_url: '/',
+            display: 'standalone',
+            icons: [
+              { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+              { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+            ],
+          }),
+        })
+        .mockResolvedValue({ ok: true, headers: { get: () => 'image/png' } })
+    );
+    const { usePwaInstallation } = await import(
+      'customDashboard/composables/usePwaInstallation'
+    );
+    const { status, checkInstallability } = usePwaInstallation();
+
+    await checkInstallability();
+
+    expect(status.value).toBe('unavailable');
   });
 });

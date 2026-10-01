@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import { useBranding } from 'shared/composables/useBranding';
@@ -12,12 +12,17 @@ import {
   unsubscribePush,
 } from 'customDashboard/helper/pushHelper';
 import { usePwaInstallation } from 'customDashboard/composables/usePwaInstallation';
+import { BROWSER_PUSH_SYNC_EVENT } from 'customDashboard/helper/pushResume';
 
 const emit = defineEmits(['permissionChange']);
 
 const { t } = useI18n();
 const { replaceInstallationName } = useBranding();
-const { status: installStatus, promptInstall } = usePwaInstallation();
+const {
+  status: installStatus,
+  promptInstall,
+  checkInstallability,
+} = usePwaInstallation();
 
 const pushStatus = ref(getPushEnvironment().status);
 const pushEnabled = ref(false);
@@ -58,6 +63,16 @@ const reportPartialCleanup = result => {
   }
   if (result.serverError) {
     useAlert(t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_UNSUBSCRIBE_ERROR'));
+  }
+};
+
+const handlePushSync = event => {
+  const { status, permission, cleanupError } = event.detail;
+  pushStatus.value = status;
+  pushEnabled.value = status === 'subscribed';
+  emit('permissionChange', permission);
+  if (cleanupError) {
+    useAlert(t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_STALE_CLEANUP_ERROR'));
   }
 };
 
@@ -114,7 +129,14 @@ const install = async () => {
   }
 };
 
-onMounted(refreshPushSubscription);
+onMounted(() => {
+  window.addEventListener(BROWSER_PUSH_SYNC_EVENT, handlePushSync);
+  checkInstallability();
+  refreshPushSubscription();
+});
+onUnmounted(() => {
+  window.removeEventListener(BROWSER_PUSH_SYNC_EVENT, handlePushSync);
+});
 </script>
 
 <template>

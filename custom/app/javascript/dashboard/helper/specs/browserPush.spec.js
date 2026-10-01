@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const subscriptionApi = vi.hoisted(() => ({ create: vi.fn() }));
 const destroyBrowserSubscription = vi.hoisted(() => vi.fn());
+const authCookie = vi.hoisted(() => vi.fn(() => 'authenticated'));
 
 vi.mock('dashboard/api/notificationSubscription', () => ({
   default: subscriptionApi,
@@ -11,8 +12,8 @@ vi.mock('customDashboard/api/notificationSubscription', () => ({
   destroyBrowserSubscription,
 }));
 
-vi.mock('dashboard/api/auth', () => ({
-  default: { hasAuthCookie: () => true },
+vi.mock('js-cookie', () => ({
+  default: { get: authCookie },
 }));
 
 import {
@@ -44,6 +45,7 @@ describe('custom browser push helper', () => {
     };
 
     vi.clearAllMocks();
+    authCookie.mockReturnValue('authenticated');
     localStorage.clear();
     subscriptionApi.create.mockResolvedValue({});
     destroyBrowserSubscription.mockResolvedValue({});
@@ -73,6 +75,7 @@ describe('custom browser push helper', () => {
       configurable: true,
       value: {
         register: vi.fn().mockResolvedValue({ pushManager }),
+        getRegistration: vi.fn().mockResolvedValue({ pushManager }),
       },
     });
     global.PushManager = class PushManager {};
@@ -178,6 +181,7 @@ describe('custom browser push helper', () => {
 
     expect(subscription.unsubscribe).toHaveBeenCalledOnce();
     expect(result).toMatchObject({ status: 'unsubscribed', serverError });
+    expect(navigator.serviceWorker.register).not.toHaveBeenCalled();
   });
 
   it('does not recreate a subscription after explicit opt-out', async () => {

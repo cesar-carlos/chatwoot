@@ -201,6 +201,8 @@
         "PWA_INSTALL_STATUS_AVAILABLE": "A instalação está disponível neste navegador.",
         "PWA_INSTALL_STATUS_IOS_INSTRUCTIONS": "Abra o Chatwoot no Safari, toque em Compartilhar, escolha Adicionar à Tela de Início e abra pelo novo ícone.",
         "PWA_INSTALL_STATUS_UNAVAILABLE": "O navegador ainda não ofereceu a instalação. Você também pode usar o menu de instalação de aplicativos.",
+        "PWA_INSTALL_STATUS_MANIFEST_ERROR": "O manifesto do aplicativo está indisponível ou incompleto. Contate o administrador.",
+        "PWA_INSTALL_STATUS_ICON_ERROR": "Os ícones de instalação estão indisponíveis. Contate o administrador.",
         "PWA_INSTALL_STATUS_UNSUPPORTED": "Este navegador ou conexão não oferece suporte à instalação do aplicativo.",
         "PWA_INSTALL_DISMISSED": "A instalação foi cancelada. Você pode tentar novamente pelo menu do navegador.",
         "PWA_INSTALL_ERROR": "Não foi possível abrir a instalação do aplicativo.",

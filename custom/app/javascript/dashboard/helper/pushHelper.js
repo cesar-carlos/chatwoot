@@ -1,5 +1,5 @@
 import NotificationSubscriptions from 'dashboard/api/notificationSubscription';
-import auth from 'dashboard/api/auth';
+import Cookies from 'js-cookie';
 import { destroyBrowserSubscription } from 'customDashboard/api/notificationSubscription';
 
 export const PUSH_STATUS = {
@@ -93,7 +93,7 @@ export const getPushSubscriptionPayload = subscription => ({
 });
 
 export const sendRegistrationToServer = async subscription => {
-  if (!auth.hasAuthCookie()) {
+  if (!Cookies.get('cw_d_session_info')) {
     throw new Error(
       'Cannot synchronize a push subscription without authentication'
     );
@@ -202,10 +202,13 @@ export const requestAndSubscribe = () =>
 
 const unsubscribePushOperation = async () => {
   const environment = getPushEnvironment();
-  if (!environment.supported) return environment;
+  if (!('serviceWorker' in navigator)) {
+    localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
+    return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
+  }
 
-  const registration = await registerServiceWorker();
-  const subscription = await registration.pushManager.getSubscription();
+  const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+  const subscription = await registration?.pushManager.getSubscription();
   if (!subscription) {
     localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };

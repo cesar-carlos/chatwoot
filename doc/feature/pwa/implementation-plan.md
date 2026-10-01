@@ -9,6 +9,8 @@
 | `custom/app/javascript/dashboard/composables/usePwaInstallation.js` | Eventos e estados de instalação |
 | `custom/app/javascript/dashboard/components/pwa/PwaDeviceSettings.vue` | Interface de instalação e Push por dispositivo |
 | `custom/app/javascript/dashboard/helper/pushHelper.js` | Ambiente, opt-in, sincronização, VAPID, remoção e concorrência |
+| `custom/app/javascript/dashboard/helper/pushResume.js` | Revalidação do Push na retomada e atualização da interface |
+| `custom/app/javascript/dashboard/helper/pushLogout.js` | Limpeza da inscrição do dispositivo antes do logout |
 | `custom/app/controllers/custom/api/v1/notification_subscriptions_controller.rb` | Exclusão autenticada por endpoint ou `push_token` |
 | `custom/app/services/custom/notification/push_notification_service.rb` | Payload, TTL, urgência, remoção expirada e logs sem PII |
 | `custom/app/services/custom/notification/push_test_service.rb` | Diagnóstico com o mesmo formato do Push real |
@@ -16,7 +18,14 @@
 | `custom/vitest.pwa.config.ts` | Setup de testes PWA isolado no worktree |
 | `bin/fork-pwa-smoke` | Verificação HTTP do release, manifesto e bytes dos seis ícones públicos |
 
-A revisão Icon Kitchen acrescenta quatro PNGs de manifesto (192/512 regulares e maskable), Apple Touch 180×180 e favicon ICO em URLs versionadas. O arquivo `/apple-touch-icon.png`, anteriormente vazio, passa a conter o ícone Apple. As novas configurações são opcionais para preservar instalações existentes, mas as seis devem ser preenchidas para ativar a identidade Se7e v2.
+A revisão Icon Kitchen acrescenta quatro PNGs de manifesto (192/512 regulares e maskable), Apple Touch 180×180 e favicon ICO em URLs versionadas. Os maskables foram derivados dos ícones regulares, reduzidos a 80% sobre o fundo azul, e o teste exige que nenhum pixel claro essencial ultrapasse a área segura. O arquivo `/apple-touch-icon.png`, anteriormente vazio, passa a conter o ícone Apple. As novas configurações são opcionais para preservar instalações existentes, mas as seis devem ser preenchidas para ativar a identidade Se7e v2.
+
+Para reproduzir somente os maskables a partir dos PNGs regulares fornecidos, no diretório raiz do projeto, com ImageMagick:
+
+```bash
+convert -size 192x192 xc:'#006B98' \( public/brand-assets/pwa-se7e-v2-192.png -resize 80% \) -gravity center -composite public/brand-assets/pwa-se7e-v2-192-maskable.png
+convert -size 512x512 xc:'#006B98' \( public/brand-assets/pwa-se7e-v2-512.png -resize 80% \) -gravity center -composite public/brand-assets/pwa-se7e-v2-512-maskable.png
+```
 
 Os pontos upstream foram limitados aos hooks/imports necessários no controller da API, serviços, layout, bootstrap do dashboard e preferências.
 
@@ -41,7 +50,7 @@ git diff --check
 bin/fork-inventory
 ```
 
-Os specs existentes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opacidade dos PNGs, exclusão browser/FCM e parâmetros 422, payload/TTL/urgência, expiração, opt-in/opt-out, VAPID, falhas parciais, concorrência, instalação guiada e segurança do worker.
+Os specs existentes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opacidade/área segura dos PNGs, exclusão browser/FCM e parâmetros 422, payload/TTL/urgência, expiração, opt-in/opt-out, VAPID, falhas parciais, concorrência, diagnóstico de instalação, limpeza no logout, retomada da PWA e segurança do worker.
 
 ### Histórico da revisão publicada em 30/set/2026
 
@@ -56,7 +65,7 @@ Os specs existentes cobrem manifesto e `DISPLAY_MANIFEST=false`, dimensões/opac
 
 O build Vite de produção passou no candidato anterior com as 27 alterações locais. ESLint passou nos JS/Vue alterados e RuboCop nos 22 arquivos Ruby alterados. Antes daquela publicação, as migrations foram ensaiadas em uma cópia isolada do banco; no deploy, as nove migrations pendentes foram aplicadas em produção. O ambiente dispõe de Ruby 3.4.4 via RVM, mas não de `rbenv`. Esses resultados não validam automaticamente a revisão Icon Kitchen.
 
-Na revisão Icon Kitchen local, os specs direcionados de manifesto/HTML/branding, 20 testes Vitest de PWA/Push, ESLint e RuboCop direcionados, `git diff --check` e o build Vite de produção passaram. O próximo release ainda requer verificação HTTP e teste em aparelhos após publicação.
+Na revisão Icon Kitchen local atual, 16 exemplos RSpec de manifesto/HTML/branding/ícones e 29 testes Vitest de PWA/Push passaram. ESLint e RuboCop direcionados, `git diff --check`, `bin/fork-inventory` e o build Vite de produção também passaram. O próximo release ainda requer verificação HTTP e teste em aparelhos após publicação.
 
 ## Publicação no fork
 
@@ -120,6 +129,9 @@ O comando retorna erro se a versão, o HTML, os dois manifestos, o cache, a iden
 - Desktop, diagnóstico do Super Admin e notificação real de mensagem.
 - Clique focando a PWA existente e abrindo a conversa correta.
 - Suspender e retomar, confirmando reconexão do Action Cable e sincronização das mensagens.
+- Alterar a permissão Push no sistema enquanto a PWA está suspensa e confirmar que a tela atualiza ao voltar.
+- Sair da conta com Push ativo e confirmar que o dispositivo não recebe mais notificações do usuário anterior.
+- Testar o Chrome Android com manifesto e ícones válidos, mas sem `beforeinstallprompt`, verificando a mensagem de indisponibilidade sem falso diagnóstico de erro.
 
 Atalhos antigos podem precisar ser apagados e instalados novamente. No Chrome Android, confirmar também que o site não está instalado, que houve interação com a origem e que o navegador ofereceu `beforeinstallprompt`; a ausência do botão interno isoladamente não comprova que o manifesto está inválido.
 

@@ -3,6 +3,8 @@
 import Cookies from 'js-cookie';
 import endPoints from './endPoints';
 import { clearCookiesOnLogout } from '../store/utils/api';
+// FORK: remove this device's browser push subscription before ending its session
+import { logoutWithPushCleanup } from 'customDashboard/helper/pushLogout';
 
 export default {
   validityCheck() {
@@ -13,19 +15,8 @@ export default {
     return axios.get(endPoints('profileUpdate').url);
   },
   logout() {
-    const urlData = endPoints('logout');
-    const fetchPromise = new Promise((resolve, reject) => {
-      axios
-        .delete(urlData.url)
-        .then(async response => {
-          await clearCookiesOnLogout();
-          resolve(response);
-        })
-        .catch(error => {
-          reject(error);
-        });
-    });
-    return fetchPromise;
+    // FORK: keep browser push cleanup outside the upstream auth client
+    return logoutWithPushCleanup(endPoints('logout').url, clearCookiesOnLogout);
   },
   hasAuthCookie() {
     return !!Cookies.get('cw_d_session_info');

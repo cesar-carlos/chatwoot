@@ -201,6 +201,8 @@
         "PWA_INSTALL_STATUS_AVAILABLE": "Installation is available in this browser.",
         "PWA_INSTALL_STATUS_IOS_INSTRUCTIONS": "Open Chatwoot in Safari, tap Share, choose Add to Home Screen, then open it from the new icon.",
         "PWA_INSTALL_STATUS_UNAVAILABLE": "The browser is not offering installation yet. You can also use its app installation menu.",
+        "PWA_INSTALL_STATUS_MANIFEST_ERROR": "The app manifest is unavailable or incomplete. Contact your administrator.",
+        "PWA_INSTALL_STATUS_ICON_ERROR": "The installation icons are unavailable. Contact your administrator.",
         "PWA_INSTALL_STATUS_UNSUPPORTED": "This browser or connection does not support app installation.",
         "PWA_INSTALL_DISMISSED": "Installation was cancelled. You can try again from the browser menu.",
         "PWA_INSTALL_ERROR": "The app installation prompt could not be opened.",

@@ -66,21 +66,24 @@ RSpec.describe Custom::WebAppManifestBuilder do
       end
     end
 
-    it 'keeps almost all of the maskable logo inside the minimum safe circle' do
-      image = MiniMagick::Image.open(Rails.public_path.join('brand-assets/pwa-se7e-v2-512-maskable.png'))
-      center = (image.width - 1) / 2.0
-      light_pixels = 0
-      outside_pixels = 0
-      image.get_pixels.each_with_index do |row, y|
-        row.each_with_index do |pixel, x|
-          next unless pixel.first(3).all? { |channel| channel > 180 }
+    [192, 512].each do |size|
+      it "keeps the #{size}px maskable logo inside the minimum safe circle" do
+        image = MiniMagick::Image.open(Rails.public_path.join("brand-assets/pwa-se7e-v2-#{size}-maskable.png"))
+        center = (image.width - 1) / 2.0
+        light_pixels = 0
+        outside_pixels = 0
+        image.get_pixels.each_with_index do |row, y|
+          row.each_with_index do |pixel, x|
+            next unless pixel.first(3).all? { |channel| channel > 180 }
 
-          light_pixels += 1
-          outside_pixels += 1 if Math.hypot(x - center, y - center) > image.width * 0.4
+            light_pixels += 1
+            outside_pixels += 1 if Math.hypot(x - center, y - center) > image.width * 0.4
+          end
         end
-      end
 
-      expect(outside_pixels.to_f / light_pixels).to be < 0.04
+        expect(light_pixels).to be_positive
+        expect(outside_pixels).to be_zero
+      end
     end
 
     it 'packages a non-empty multi-size favicon' do

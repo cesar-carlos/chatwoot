@@ -26,7 +26,11 @@
 - Configurações distintas para cada uso, mantendo compatibilidade quando os campos opcionais não estão preenchidos.
 - Substituição do Apple Touch raiz que estava vazio; clique do Push passa a priorizar somente uma janela do painel.
 - Verificador de release atualizado para comparar as respostas públicas com os bytes dos seis arquivos do release.
-- Ainda não integrado ao `main`, não publicado e não configurado em produção. Os maskables fornecidos têm uma pequena borda clara fora do círculo central de segurança; validar visualmente em aparelhos Android.
+- Maskables recompostos com o símbolo claro integralmente dentro da área segura; teste pixel a pixel nos tamanhos 192 e 512.
+- Diagnóstico de manifesto/ícones inacessíveis separado da ausência do prompt do navegador.
+- Limpeza do Push no logout e revalidação de permissão/inscrição ao voltar ao primeiro plano.
+- Candidato validado localmente com 16 exemplos RSpec, 29 testes Vitest, lint direcionado e build Vite de produção.
+- Ainda não integrado ao `main`, não publicado e não configurado em produção; validar visualmente os ícones em aparelhos Android.
 
 ## Pendente operacional e de validação
 

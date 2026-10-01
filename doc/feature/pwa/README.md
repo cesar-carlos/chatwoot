@@ -11,9 +11,9 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 | Manifesto white-label | `/manifest.webmanifest`, com `/manifest.json` como alias dinâmico |
 | Instalação | Link e metadados PWA presentes mesmo com `DISPLAY_MANIFEST=false` |
 | Identidade | `INSTALLATION_NAME`, `BRAND_NAME`, `id: "/"` e modo `standalone` |
-| Ícones no candidato | PNGs Se7e distintos para `any` e `maskable` em 192×192 e 512×512; Apple Touch 180×180 e favicon ICO versionados |
-| Instalação guiada | `beforeinstallprompt` no Chromium e instruções Safari no iOS/iPadOS |
-| Web Push | Opt-in explícito por dispositivo, recuperação da inscrição e rotação VAPID |
+| Ícones no candidato | PNGs Se7e distintos para `any` e `maskable` em 192×192 e 512×512, com símbolo adaptativo na área segura; Apple Touch 180×180 e favicon ICO versionados |
+| Instalação guiada | `beforeinstallprompt` no Chromium, instruções Safari no iOS/iPadOS e diagnóstico de manifesto/ícones inacessíveis |
+| Web Push | Opt-in explícito por dispositivo, recuperação da inscrição, rotação VAPID, limpeza no logout e revalidação ao voltar ao app |
 | Clique no Push | Reutiliza uma janela do painel da mesma origem e navega para a conversa |
 | Pop-up | Canal separado, dependente do painel aberto e da conexão em tempo real |
 | Verificação do release | `bin/fork-pwa-smoke` confere versão, manifesto e bytes dos seis ícones no domínio público |
@@ -43,3 +43,5 @@ O painel pode ser instalado como PWA white-label e receber notificações do sis
 - Push: chaves VAPID válidas, permissão concedida por interação do usuário e inscrição ativa para aquele navegador.
 
 O sucesso do diagnóstico significa que o serviço Push aceitou a mensagem. A exibição final ainda depende do sistema operacional, das permissões e das políticas de energia do aparelho.
+
+Sem `beforeinstallprompt`, a interface verifica se o manifesto e os PNGs 192/512 respondem corretamente. Mesmo quando respondem, a ausência do evento não revela a causa exata da decisão do Chrome; valide pelo aparelho e pelas ferramentas de instalação do navegador.

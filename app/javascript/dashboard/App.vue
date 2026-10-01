@@ -17,7 +17,11 @@ import { isOnOnboardingView } from 'v3/helpers/RouteHelper';
 import { useAccount } from 'dashboard/composables/useAccount';
 import { useFontSize } from 'dashboard/composables/useFontSize';
 // FORK: white-label PWA installation and browser push lifecycle
-import { ensurePushSubscription } from 'customDashboard/helper/pushHelper';
+import {
+  startBrowserPushResumeSync,
+  stopBrowserPushResumeSync,
+  syncBrowserPush,
+} from 'customDashboard/helper/pushResume';
 import { initializePwaInstallation } from 'customDashboard/composables/usePwaInstallation';
 import ReconnectService from 'dashboard/helper/ReconnectService';
 import { useUISettings } from 'dashboard/composables/useUISettings';
@@ -82,6 +86,8 @@ export default {
   },
   mounted() {
     initializePwaInstallation();
+    // FORK: refresh browser push when a suspended mobile PWA becomes visible again
+    startBrowserPushResumeSync();
     this.initializeColorTheme();
     this.listenToThemeChanges();
     // If user locale is set, use it; otherwise use account locale
@@ -90,6 +96,7 @@ export default {
     );
   },
   unmounted() {
+    stopBrowserPushResumeSync();
     if (this.reconnectService) {
       this.reconnectService.disconnect();
     }
@@ -124,10 +131,7 @@ export default {
       window.reconnectService = this.reconnectService;
 
       // FORK: restore granted browser push subscriptions after mobile suspension
-      ensurePushSubscription().catch(error => {
-        // eslint-disable-next-line no-console
-        console.error('Push subscription synchronization failed:', error);
-      });
+      syncBrowserPush();
     },
   },
 };
