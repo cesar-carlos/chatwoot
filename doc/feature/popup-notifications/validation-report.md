@@ -4,7 +4,7 @@ Data: 01/out/2026. Branch: `fix/notification-delivery-hardening`, criado de `ori
 
 ## Escopo e estado
 
-As correções, diagnóstico por dispositivo, ações e documentação foram implementados no worktree isolado. Esta entrega não inclui merge, push, build de produção, migration, reinício ou deploy. O release publicado anteriormente não contém este candidato.
+As correções, diagnóstico por dispositivo, ações e documentação foram implementados no worktree isolado. Em etapa posterior autorizada, os cinco commits até `1b955ad73d` foram incorporados à `main` local por fast-forward em 01/out/2026, sem conflitos ou alteração do código testado. Não houve push, build de produção, migration, reinício ou deploy. O release publicado anteriormente não contém estas correções.
 
 Não foram alterados ícones, manifesto, chaves VAPID, preferências armazenadas ou estruturas do banco. Cadastro/exclusão FCM continuam disponíveis. Não há resposta direta, silenciamento, cache offline, polling ou tentativa de manter o socket ativo durante suspensão.
 
@@ -18,7 +18,7 @@ Não foram alterados ícones, manifesto, chaves VAPID, preferências armazenadas
 | RuboCop | 18 arquivos Ruby alterados, sem infrações |
 | `git diff --check` | Sem erros de whitespace |
 | `bash -n bin/fork-inventory` | Sintaxe válida |
-| Inventário `FORK:` | 641 marcadores na base; 657 no candidato. Comparação por conteúdo revisada, desconsiderando mudanças de linha |
+| Inventário `FORK:` | 638 marcadores na `main` antes do merge; 657 após a integração. O inventário final coincide integralmente com o do candidato validado |
 
 O inventário passou a incluir `public/sw.js`, que contém somente o import do worker Custom. O inventário gerado é um artefato ignorado pelo Git, não um arquivo para publicação.
 
@@ -75,6 +75,6 @@ Nenhum teste automatizado confirma a apresentação do banner pelo sistema opera
 - [ ] Logout encerra a sessão mesmo com Push/servidor indisponível.
 - [ ] Retomar a PWA reconecta o painel e sincroniza mensagens; diagnóstico não é apresentado como prova de banner.
 
-Após autorização de integração/publicação, gerar build JS/Vue novo em release isolado, validar storage compartilhado e PM2 antes de iniciar, preservar branding/VAPID, reiniciar web/workers e conferir versão, endpoints e atualização do worker. Não usar o diretório de assets do release atual como saída do build. Manter o release anterior para rollback e monitorar IDs/resultados/classes de erro sem conteúdo, tokens ou endpoint completo.
+A integração local está concluída. Após autorização de publicação, gerar build JS/Vue novo em release isolado, validar storage compartilhado e PM2 antes de iniciar, preservar branding/VAPID, reiniciar web/workers e conferir versão, endpoints e atualização do worker. Não usar o diretório de assets do release atual como saída do build. Manter o release anterior para rollback e monitorar IDs/resultados/classes de erro sem conteúdo, tokens ou endpoint completo.
 
 Veja também [estado do Pop-up](./current-state.md), [plano do Pop-up](./implementation-plan.md), [estado da PWA](../pwa/current-state.md) e [plano da PWA](../pwa/implementation-plan.md).

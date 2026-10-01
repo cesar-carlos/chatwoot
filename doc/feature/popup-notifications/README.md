@@ -1,8 +1,8 @@
 # Popup visual — Documentação
 
-Aviso visual do sistema quando chega um evento de notificação e o agente não está com aquela conversa aberta. No desktop usa `new Notification`; no celular, se o construtor falhar, usa `ServiceWorkerRegistration.showNotification`.
+Aviso visual do sistema quando chega um evento de notificação e o agente não está com aquela conversa aberta. Usa `ServiceWorkerRegistration.showNotification` quando há suporte a ações ou o construtor nativo falha; nos demais desktops usa `new Notification`.
 
-**Estado:** correções de entrega em `fix/notification-delivery-hardening`, ainda não integradas nem publicadas · 01/out/2026. Evidências e aceite em [validation-report.md](./validation-report.md).
+**Estado:** correções de `fix/notification-delivery-hardening` integradas à `main` local, ainda não publicadas nem implantadas · 01/out/2026. Evidências e aceite em [validation-report.md](./validation-report.md).
 
 | Área | Status |
 |------|--------|

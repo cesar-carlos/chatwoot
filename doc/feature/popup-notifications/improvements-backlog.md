@@ -33,7 +33,7 @@ Itens fora da entrega, revisados em 01/out/2026.
 - Diagnóstico restrito ao próprio dispositivo e ações abrir/marcar como lida, sem credenciais no worker.
 - Regressões permanentes e [relatório de validação](./validation-report.md).
 
-Integração/publicação e homologação desktop/Android/iOS permanecem pendentes. Não tratar aceitação pelo provedor como confirmação do banner. Resposta direta, silenciamento, cache offline e polling continuam fora do escopo.
+Integração à `main` local concluída. Publicação e homologação desktop/Android/iOS permanecem pendentes. Não tratar aceitação pelo provedor como confirmação do banner. Resposta direta, silenciamento, cache offline e polling continuam fora do escopo.
 
 ---
 

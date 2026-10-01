@@ -1,6 +1,6 @@
 # Popup visual — Estado atual
 
-Inventário do candidato `fix/notification-delivery-hardening`, em 01/out/2026. Estas correções não foram integradas nem implantadas nesta etapa. O release anteriormente publicado é distinto deste candidato.
+Inventário das correções de `fix/notification-delivery-hardening`, integradas à `main` local em 01/out/2026 por fast-forward, sem conflitos. Ainda não foram publicadas nem implantadas. O release anteriormente publicado é distinto deste código.
 
 ---
 

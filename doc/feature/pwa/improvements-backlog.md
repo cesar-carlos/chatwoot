@@ -11,7 +11,7 @@
 - Teste neste dispositivo e ações abrir/marcar como lida, com autorização e intenção descartável.
 - Worker em `custom/`, com endpoint público revalidável; sem mudança de manifesto, VAPID ou schema.
 
-Falta autorizar integração/publicação e comprovar critérios em aparelhos: [validation-report.md](../popup-notifications/validation-report.md). Os itens históricos abaixo se referem a releases anteriores.
+A integração à `main` local está concluída. Falta autorizar publicação/deploy e comprovar critérios em aparelhos: [validation-report.md](../popup-notifications/validation-report.md). Os itens históricos abaixo se referem a releases anteriores.
 
 ## Concluído no código
 

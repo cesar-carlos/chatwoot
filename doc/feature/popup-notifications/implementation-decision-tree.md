@@ -89,4 +89,4 @@ Descartada. `ui_settings` já sincroniza entre aparelhos pela API de perfil.
 | Intenção da ação | Nonce de uso único no worker, sem credenciais | Não transformar uma URL arbitrária em uma chamada de escrita; sessão e políticas continuam obrigatórias |
 | Marcar como lida | Abrir a lista, não a conversa | A abertura da conversa atualiza last-seen e poderia marcar outras notificações |
 
-As ações em notificações persistentes dependem do suporte de [`Notification.maxActions`](https://developer.mozilla.org/en-US/docs/Web/API/Notification/maxActions_static). A ausência de suporte mantém o clique comum. Resposta direta e silenciamento não fazem parte desta entrega. O candidato ainda precisa de integração, publicação e [homologação](./validation-report.md).
+As ações em notificações persistentes dependem do suporte de [`Notification.maxActions`](https://developer.mozilla.org/en-US/docs/Web/API/Notification/maxActions_static). A ausência de suporte mantém o clique comum. Resposta direta e silenciamento não fazem parte desta entrega. A integração à `main` local foi concluída; publicação e [homologação](./validation-report.md) continuam pendentes.

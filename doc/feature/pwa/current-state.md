@@ -2,7 +2,7 @@
 
 ## Candidato de segurança e entrega, ainda não publicado
 
-O branch `fix/notification-delivery-hardening` foi criado de `origin/main` (`c379641299`). Não houve merge, push, migration ou reinício da produção nesta etapa. Evidências e aceite pendente: [validation-report.md](../popup-notifications/validation-report.md).
+O branch `fix/notification-delivery-hardening` foi criado de `origin/main` (`c379641299`) e integrado à `main` local por fast-forward em 01/out/2026, sem conflitos. Não houve push, build de produção, migration ou reinício dos serviços nesta etapa. Evidências e aceite pendente: [validation-report.md](../popup-notifications/validation-report.md).
 
 - Push revalida vínculo/conta ativos, políticas de notificação/conversa e preferência do evento antes de compor conteúdo; preferências ausentes encerram o envio normalmente.
 - Cadastro browser valida endpoint HTTPS e chaves, aceitando Base64/Base64URL; dados inválidos não transferem nem criam inscrições. FCM continua compatível.
