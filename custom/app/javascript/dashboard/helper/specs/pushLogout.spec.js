@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const unsubscribePush = vi.hoisted(() => vi.fn());
 const clearCookiesOnLogout = vi.hoisted(() => vi.fn());
 
-vi.mock('customDashboard/helper/pushHelper', () => ({ unsubscribePush }));
+vi.mock('customDashboard/helper/pushHelper', () => ({
+  cleanupPushOnLogout: unsubscribePush,
+}));
 vi.mock('dashboard/store/utils/api', () => ({ clearCookiesOnLogout }));
 
 import Auth from 'dashboard/api/auth';

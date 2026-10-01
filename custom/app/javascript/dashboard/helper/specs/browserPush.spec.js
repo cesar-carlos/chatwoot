@@ -10,6 +10,7 @@ vi.mock('dashboard/api/notificationSubscription', () => ({
 
 vi.mock('customDashboard/api/notificationSubscription', () => ({
   destroyBrowserSubscription,
+  synchronizeBrowserSubscription: subscriptionApi.create,
 }));
 
 vi.mock('js-cookie', () => ({
@@ -74,7 +75,9 @@ describe('custom browser push helper', () => {
     Object.defineProperty(navigator, 'serviceWorker', {
       configurable: true,
       value: {
-        register: vi.fn().mockResolvedValue({ pushManager }),
+        register: vi
+          .fn()
+          .mockResolvedValue({ active: { state: 'activated' }, pushManager }),
         getRegistration: vi.fn().mockResolvedValue({ pushManager }),
       },
     });
@@ -148,7 +151,11 @@ describe('custom browser push helper', () => {
     const result = await ensurePushSubscription();
 
     expect(destroyBrowserSubscription).toHaveBeenCalledWith(
-      staleSubscription.endpoint
+      staleSubscription.endpoint,
+      expect.objectContaining({
+        timeout: 10000,
+        signal: expect.any(AbortSignal),
+      })
     );
     expect(staleSubscription.unsubscribe).toHaveBeenCalledOnce();
     expect(pushManager.subscribe).toHaveBeenCalledOnce();
@@ -219,8 +226,7 @@ describe('custom browser push helper', () => {
 
     const first = ensurePushSubscription();
     const second = ensurePushSubscription();
-    await Promise.resolve();
-    await Promise.resolve();
+    await vi.waitFor(() => expect(releaseSubscription).toBeTypeOf('function'));
 
     expect(navigator.serviceWorker.register).toHaveBeenCalledTimes(1);
     releaseSubscription();

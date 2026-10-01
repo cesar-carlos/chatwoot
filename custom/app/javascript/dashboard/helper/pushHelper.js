@@ -1,6 +1,16 @@
-import NotificationSubscriptions from 'dashboard/api/notificationSubscription';
 import Cookies from 'js-cookie';
-import { destroyBrowserSubscription } from 'customDashboard/api/notificationSubscription';
+import {
+  destroyBrowserSubscription,
+  synchronizeBrowserSubscription,
+} from 'customDashboard/api/notificationSubscription';
+import {
+  assertPushSession,
+  pushSession,
+  beginPushLogout,
+  pushRequest,
+  PUSH_OPERATION_TIMEOUT_MS,
+} from './pushSession';
+import { waitForActiveWorker } from './serviceWorker';
 
 export const PUSH_STATUS = {
   UNSUPPORTED: 'unsupported',
@@ -15,7 +25,12 @@ const PUSH_ENABLED_STORAGE_KEY = 'chatwoot_push_enabled';
 let pendingOperation = Promise.resolve();
 
 const enqueueOperation = operation => {
-  const result = pendingOperation.then(operation, operation);
+  const session = pushSession();
+  const run = () => {
+    assertPushSession(session);
+    return operation(session);
+  };
+  const result = pendingOperation.then(run, run);
   pendingOperation = result.catch(() => {});
   return result;
 };
@@ -54,8 +69,10 @@ export const getPushEnvironment = () => {
   };
 };
 
-const registerServiceWorker = () =>
-  navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+const registerServiceWorker = async () =>
+  waitForActiveWorker(
+    await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+  );
 
 const currentApplicationServerKey = () => {
   const key = window.chatwootConfig.vapidPublicKey;
@@ -92,14 +109,18 @@ export const getPushSubscriptionPayload = subscription => ({
   },
 });
 
-export const sendRegistrationToServer = async subscription => {
+export const sendRegistrationToServer = async (
+  subscription,
+  session = pushSession()
+) => {
+  assertPushSession(session);
   if (!Cookies.get('cw_d_session_info')) {
     throw new Error(
       'Cannot synchronize a push subscription without authentication'
     );
   }
 
-  return NotificationSubscriptions.create(
+  return synchronizeBrowserSubscription(
     getPushSubscriptionPayload(subscription)
   );
 };
@@ -113,21 +134,26 @@ const subscribe = registration =>
 const synchronizePushSubscription = async (
   environment,
   serviceWorkerRegistration,
-  currentSubscription
+  currentSubscription,
+  session
 ) => {
   const registration =
     serviceWorkerRegistration || (await registerServiceWorker());
   let subscription =
     currentSubscription ?? (await registration.pushManager.getSubscription());
   let cleanupError;
+  assertPushSession(session);
 
   if (subscription && !subscriptionUsesCurrentKey(subscription)) {
     try {
-      await destroyBrowserSubscription(subscription.endpoint);
+      await pushRequest(options =>
+        destroyBrowserSubscription(subscription.endpoint, options)
+      );
     } catch (error) {
       cleanupError = error;
     }
 
+    assertPushSession(session);
     const removed = await subscription.unsubscribe();
     if (!removed) {
       throw new Error('The browser did not remove the stale push subscription');
@@ -135,8 +161,18 @@ const synchronizePushSubscription = async (
     subscription = null;
   }
 
-  if (!subscription) subscription = await subscribe(registration);
-  await sendRegistrationToServer(subscription);
+  assertPushSession(session);
+  if (!subscription) {
+    subscription = await subscribe(registration);
+    try {
+      assertPushSession(session);
+    } catch (error) {
+      await subscription.unsubscribe();
+      throw error;
+    }
+  }
+  await sendRegistrationToServer(subscription, session);
+  assertPushSession(session);
 
   return {
     ...environment,
@@ -146,7 +182,7 @@ const synchronizePushSubscription = async (
   };
 };
 
-const ensurePushSubscriptionOperation = async () => {
+const ensurePushSubscriptionOperation = async session => {
   const environment = getPushEnvironment();
   if (!environment.supported || environment.permission !== 'granted') {
     return environment;
@@ -159,6 +195,7 @@ const ensurePushSubscriptionOperation = async () => {
 
   const registration = await registerServiceWorker();
   const subscription = await registration.pushManager.getSubscription();
+  assertPushSession(session);
   if (pushPreference === null && !subscription) {
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
   }
@@ -166,8 +203,10 @@ const ensurePushSubscriptionOperation = async () => {
   const result = await synchronizePushSubscription(
     environment,
     registration,
-    subscription
+    subscription,
+    session
   );
+  assertPushSession(session);
   localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'true');
   return result;
 };
@@ -175,32 +214,49 @@ const ensurePushSubscriptionOperation = async () => {
 export const ensurePushSubscription = () =>
   enqueueOperation(ensurePushSubscriptionOperation);
 
-const requestAndSubscribeOperation = async () => {
-  const environment = getPushEnvironment();
+const requestAndSubscribeOperation = async (
+  session,
+  environment,
+  permissionRequest
+) => {
   if (!environment.supported) return environment;
 
-  const permission =
-    environment.permission === PUSH_STATUS.DEFAULT
-      ? await Notification.requestPermission()
-      : environment.permission;
+  const permission = await permissionRequest;
 
   if (permission !== 'granted') {
     return { ...environment, status: permission, permission };
   }
 
-  const result = await synchronizePushSubscription({
-    ...environment,
-    status: permission,
-    permission,
-  });
+  assertPushSession(session);
+  const result = await synchronizePushSubscription(
+    {
+      ...environment,
+      status: permission,
+      permission,
+    },
+    null,
+    null,
+    session
+  );
+  assertPushSession(session);
   localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'true');
   return result;
 };
 
-export const requestAndSubscribe = () =>
-  enqueueOperation(requestAndSubscribeOperation);
+export const requestAndSubscribe = () => {
+  pushSession();
+  const environment = getPushEnvironment();
+  // Start the permission prompt during the click, not after a queued sync.
+  const permission =
+    environment.supported && environment.permission === PUSH_STATUS.DEFAULT
+      ? Notification.requestPermission()
+      : Promise.resolve(environment.permission);
+  return enqueueOperation(session =>
+    requestAndSubscribeOperation(session, environment, permission)
+  );
+};
 
-const unsubscribePushOperation = async () => {
+const unsubscribePushOperation = async session => {
   const environment = getPushEnvironment();
   if (!('serviceWorker' in navigator)) {
     localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
@@ -209,6 +265,7 @@ const unsubscribePushOperation = async () => {
 
   const registration = await navigator.serviceWorker.getRegistration('/sw.js');
   const subscription = await registration?.pushManager.getSubscription();
+  assertPushSession(session);
   if (!subscription) {
     localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
@@ -216,16 +273,19 @@ const unsubscribePushOperation = async () => {
 
   let serverError;
   try {
-    await destroyBrowserSubscription(subscription.endpoint);
+    await pushRequest(options =>
+      destroyBrowserSubscription(subscription.endpoint, options)
+    );
   } catch (error) {
     serverError = error;
   }
 
+  assertPushSession(session);
   const removedLocally = await subscription.unsubscribe();
   if (!removedLocally) {
     throw new Error('The browser did not remove the push subscription');
   }
-
+  assertPushSession(session);
   localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
   return {
     ...environment,
@@ -235,3 +295,44 @@ const unsubscribePushOperation = async () => {
 };
 
 export const unsubscribePush = () => enqueueOperation(unsubscribePushOperation);
+
+// Logout bypasses the synchronization queue and cancels its network requests.
+export const cleanupPushOnLogout = async () => {
+  beginPushLogout();
+  pendingOperation = Promise.resolve();
+  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
+  const controller = new AbortController();
+  let timeout;
+  const cleanup = (async () => {
+    if (!('serviceWorker' in navigator)) return {};
+    const registration =
+      await navigator.serviceWorker.getRegistration('/sw.js');
+    if (controller.signal.aborted) return {};
+    const subscription = await registration?.pushManager.getSubscription();
+    if (!subscription || controller.signal.aborted) return {};
+    // Attempt local cancellation even if remote deletion never completes.
+    const results = await Promise.allSettled([
+      subscription.unsubscribe(),
+      destroyBrowserSubscription(subscription.endpoint, {
+        signal: controller.signal,
+      }),
+    ]);
+    return {
+      serverError: results.find(result => result.status === 'rejected'),
+    };
+  })();
+  try {
+    return await Promise.race([
+      cleanup,
+      new Promise((resolve, reject) => {
+        timeout = setTimeout(() => {
+          controller.abort();
+          reject(new Error('Push logout cleanup timed out'));
+        }, PUSH_OPERATION_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+    controller.abort();
+  }
+};

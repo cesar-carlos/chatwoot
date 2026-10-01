@@ -16,6 +16,10 @@ import {
   stopBrowserPushResumeSync,
   syncBrowserPush,
 } from 'customDashboard/helper/pushResume';
+import {
+  beginPushLogout,
+  startPushSession,
+} from 'customDashboard/helper/pushSession';
 
 describe('browser push resume synchronization', () => {
   beforeEach(() => {
@@ -47,6 +51,7 @@ describe('browser push resume synchronization', () => {
       status: 'subscribed',
       permission: 'granted',
       cleanupError: false,
+      endpoint: undefined,
     });
   });
 
@@ -83,5 +88,25 @@ describe('browser push resume synchronization', () => {
       'Push subscription synchronization failed'
     );
     logger.mockRestore();
+  });
+
+  it('ignores old sync results even after a new session begins', async () => {
+    startPushSession();
+    let finish;
+    ensurePushSubscription.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+    );
+    const listener = vi.fn();
+    window.addEventListener(BROWSER_PUSH_SYNC_EVENT, listener);
+    const pending = syncBrowserPush();
+    beginPushLogout();
+    startPushSession();
+    finish({ status: 'subscribed', permission: 'granted' });
+    await pending;
+    expect(listener).not.toHaveBeenCalled();
+    window.removeEventListener(BROWSER_PUSH_SYNC_EVENT, listener);
   });
 });
