@@ -23,6 +23,8 @@ import {
   syncBrowserPush,
 } from 'customDashboard/helper/pushResume';
 import { initializePwaInstallation } from 'customDashboard/composables/usePwaInstallation';
+// FORK: recipient-validated notification actions and normalized route detection
+import { startNotificationActions } from 'customDashboard/helper/notificationActions';
 import ReconnectService from 'dashboard/helper/ReconnectService';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 
@@ -85,6 +87,11 @@ export default {
     },
   },
   mounted() {
+    this.stopNotificationActions = startNotificationActions(
+      this.router,
+      this.store,
+      key => this.$t(key)
+    );
     initializePwaInstallation();
     // FORK: refresh browser push when a suspended mobile PWA becomes visible again
     startBrowserPushResumeSync();
@@ -96,6 +103,7 @@ export default {
     );
   },
   unmounted() {
+    this.stopNotificationActions?.();
     stopBrowserPushResumeSync();
     if (this.reconnectService) {
       this.reconnectService.disconnect();

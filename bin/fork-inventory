@@ -14,9 +14,9 @@ command -v rg >/dev/null 2>&1 || die 'ripgrep (rg) is required but not installed
 cd "$ROOT"
 mkdir -p doc
 
-# FORK: search source files of every format, including ERB, YAML and workflow definitions.
+# FORK: search source files of every format, including ERB, YAML, workflows and the public worker entrypoint.
 set +e
-markers="$(rg -n --no-heading 'FORK:' app enterprise lib config custom db bin .github Gemfile Rakefile package.json ecosystem.config.cjs)"
+markers="$(rg -n --no-heading 'FORK:' app enterprise lib config custom db bin .github Gemfile Rakefile package.json ecosystem.config.cjs public/sw.js)"
 search_status=$?
 set -e
 (( search_status <= 1 )) || die 'ripgrep failed while collecting markers'

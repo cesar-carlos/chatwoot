@@ -13,6 +13,12 @@ import {
 } from 'customDashboard/helper/pushHelper';
 import { usePwaInstallation } from 'customDashboard/composables/usePwaInstallation';
 import { BROWSER_PUSH_SYNC_EVENT } from 'customDashboard/helper/pushResume';
+import {
+  isPushSessionActive,
+  isCurrentPushSession,
+  pushSession,
+} from 'customDashboard/helper/pushSession';
+import { testBrowserSubscription } from 'customDashboard/api/notificationSubscription';
 
 const emit = defineEmits(['permissionChange']);
 
@@ -24,9 +30,18 @@ const {
   checkInstallability,
 } = usePwaInstallation();
 
-const pushStatus = ref(getPushEnvironment().status);
+const initialPushEnvironment = getPushEnvironment();
+const pushStatus = ref(
+  initialPushEnvironment.supported &&
+    initialPushEnvironment.permission === 'granted'
+    ? 'checking'
+    : initialPushEnvironment.status
+);
 const pushEnabled = ref(false);
 const pushUpdating = ref(false);
+const subscriptionEndpoint = ref(null);
+const testing = ref(false);
+let mounted = true;
 const installUpdating = ref(false);
 
 const brandedText = key => replaceInstallationName(t(key));
@@ -40,6 +55,7 @@ const pushStatusMessage = computed(() => {
     subscribed: 'PUSH_STATUS_SUBSCRIBED',
     unsubscribed: 'PUSH_STATUS_UNSUBSCRIBED',
     error: 'PUSH_STATUS_ERROR',
+    checking: 'PUSH_STATUS_CHECKING',
   };
   const key = statusKeys[pushStatus.value] || statusKeys.error;
   return brandedText(`PROFILE_SETTINGS.FORM.NOTIFICATIONS.${key}`);
@@ -53,8 +69,11 @@ const installStatusMessage = computed(() =>
 
 const pushToggleDisabled = computed(
   () =>
+    testing.value ||
     pushUpdating.value ||
-    ['unsupported', 'requires_install', 'denied'].includes(pushStatus.value)
+    ['unsupported', 'requires_install', 'denied', 'checking'].includes(
+      pushStatus.value
+    )
 );
 
 const reportPartialCleanup = result => {
@@ -67,9 +86,11 @@ const reportPartialCleanup = result => {
 };
 
 const handlePushSync = event => {
+  if (pushUpdating.value || !isPushSessionActive()) return;
   const { status, permission, cleanupError } = event.detail;
   pushStatus.value = status;
   pushEnabled.value = status === 'subscribed';
+  subscriptionEndpoint.value = event.detail.endpoint || null;
   emit('permissionChange', permission);
   if (cleanupError) {
     useAlert(t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_STALE_CLEANUP_ERROR'));
@@ -77,24 +98,33 @@ const handlePushSync = event => {
 };
 
 const refreshPushSubscription = async () => {
+  if (!isPushSessionActive()) return;
+  const session = pushSession();
   const environment = getPushEnvironment();
-  pushStatus.value = environment.status;
-  pushEnabled.value = false;
+  pushStatus.value =
+    environment.supported && environment.permission === 'granted'
+      ? 'checking'
+      : environment.status;
   emit('permissionChange', environment.permission);
 
   if (!environment.supported || environment.permission !== 'granted') return;
 
   try {
     const result = await ensurePushSubscription();
+    if (!mounted || !isCurrentPushSession(session)) return;
     pushStatus.value = result.status;
     pushEnabled.value = result.status === 'subscribed';
+    subscriptionEndpoint.value = result.subscription?.endpoint || null;
     reportPartialCleanup(result);
   } catch (error) {
+    if (!mounted || !isCurrentPushSession(session)) return;
     pushStatus.value = 'error';
   }
 };
 
 const updatePushSubscription = async () => {
+  if (pushUpdating.value || !isPushSessionActive()) return;
+  const session = pushSession();
   const previousValue = !pushEnabled.value;
   pushUpdating.value = true;
 
@@ -102,16 +132,36 @@ const updatePushSubscription = async () => {
     const result = pushEnabled.value
       ? await requestAndSubscribe()
       : await unsubscribePush();
+    if (!mounted || !isCurrentPushSession(session)) return;
     pushStatus.value = result.status;
     pushEnabled.value = result.status === 'subscribed';
+    subscriptionEndpoint.value = result.subscription?.endpoint || null;
     emit('permissionChange', result.permission);
     reportPartialCleanup(result);
   } catch (error) {
+    if (!mounted || !isCurrentPushSession(session)) return;
     pushStatus.value = 'error';
     pushEnabled.value = previousValue;
     useAlert(t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_SUBSCRIPTION_ERROR'));
   } finally {
-    pushUpdating.value = false;
+    if (mounted && isCurrentPushSession(session)) pushUpdating.value = false;
+  }
+};
+
+const testPush = async () => {
+  if (testing.value || !subscriptionEndpoint.value || !isPushSessionActive())
+    return;
+  const session = pushSession();
+  testing.value = true;
+  try {
+    await testBrowserSubscription(subscriptionEndpoint.value);
+    if (mounted && isCurrentPushSession(session))
+      useAlert(t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_TEST_ACCEPTED'));
+  } catch (error) {
+    if (mounted && isCurrentPushSession(session))
+      useAlert(t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_TEST_ERROR'));
+  } finally {
+    if (mounted && isCurrentPushSession(session)) testing.value = false;
   }
 };
 
@@ -135,6 +185,7 @@ onMounted(() => {
   refreshPushSubscription();
 });
 onUnmounted(() => {
+  mounted = false;
   window.removeEventListener(BROWSER_PUSH_SYNC_EVENT, handlePushSync);
 });
 </script>
@@ -186,5 +237,14 @@ onUnmounted(() => {
         @change="updatePushSubscription"
       />
     </div>
+    <Button
+      v-if="pushStatus === 'subscribed' && subscriptionEndpoint"
+      sm
+      faded
+      :label="t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_TEST_ACTION')"
+      :disabled="testing || pushUpdating"
+      :is-loading="testing"
+      @click="testPush"
+    />
   </div>
 </template>
