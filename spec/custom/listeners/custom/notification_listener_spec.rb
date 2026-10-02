@@ -15,6 +15,8 @@ RSpec.describe NotificationListener do
   end
 
   def dispatch(method, changes = {})
+    attributes = conversation.reload.additional_attributes.deep_dup
+    changes = { 'additional_attributes' => [nil, attributes] }.merge(changes)
     event = Events::Base.new("#{method}.changed", Time.current, conversation: conversation, changed_attributes: changes)
     listener.public_send(method, event)
   end
@@ -148,5 +150,60 @@ RSpec.describe NotificationListener do
     clear_enqueued_jobs
     perform_enqueued_jobs(only: EventDispatcherJob) { conversation.update!(assignee: nil) }
     expect(notifications.count).to eq(1)
+  end
+
+  it 'creates only one notice when the same event job is processed twice' do
+    conversation.update!(team: nil)
+    clear_enqueued_jobs
+    conversation.update!(team: team)
+    job = enqueued_jobs.find { |entry| entry[:job] == EventDispatcherJob && entry[:args].first == 'team.changed' }
+    args = ActiveJob::Arguments.deserialize(job.fetch(:args))
+    2.times { EventDispatcherJob.perform_now(*args) }
+    expect(notifications.count).to eq(1)
+  end
+
+  it 'preserves the team name at assignment even when it is renamed before the job runs' do
+    original_name = conversation.team.name
+    team.update!(name: 'Renamed before dispatch')
+    dispatch(:team_changed)
+    expect(notifications.last.push_message_title).to include(original_name)
+    expect(notifications.last.meta['assignment_team_name']).to eq(original_name)
+  end
+
+  it 'ignores an old event after the team cycles A to B to A, but permits the latest transition' do
+    original_attributes = conversation.additional_attributes.deep_dup
+    other_team = create(:team, account: account, allow_auto_assign: false)
+    conversation.update!(team: other_team)
+    conversation.update!(team: team)
+    dispatch(:team_changed, 'team_id' => [nil, team.id], 'additional_attributes' => [nil, original_attributes])
+    expect(notifications).to be_empty
+    dispatch(:team_changed, 'team_id' => [other_team.id, team.id])
+    expect(notifications.count).to eq(1)
+  end
+
+  it 'does not reinterpret pre-upgrade events without a transition identity as new assignments' do
+    event = Events::Base.new('team.changed', Time.current, conversation: conversation, changed_attributes: { 'team_id' => [nil, team.id] })
+    listener.team_changed(event)
+    expect(notifications).to be_empty
+  end
+
+  it 'resumes a partially failed fanout without duplicating already committed recipients' do
+    other_user = create(:user, account: account)
+    team.members << other_user
+    other_user.notification_settings.find_by!(account: account).update!(selected_push_flags: ['push_team_conversation_assignment'])
+    failed_once = false
+    allow(NotificationBuilder).to receive(:new).and_wrap_original do |method, *args|
+      builder = method.call(*args)
+      if args.first[:user] == other_user && !failed_once
+        failed_once = true
+        allow(builder).to receive(:perform).and_raise('partial fanout failure')
+      end
+      builder
+    end
+    expect { dispatch(:team_changed) }.to raise_error('partial fanout failure')
+    expect(notifications.count).to eq(1)
+    dispatch(:team_changed)
+    expect(notifications.count).to eq(1)
+    expect(other_user.notifications.team_conversation_assignment.count).to eq(1)
   end
 end

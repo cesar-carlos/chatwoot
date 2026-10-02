@@ -71,4 +71,14 @@ RSpec.describe Custom::Notification::TeamAssignmentEligibility do
     end.not_to raise_error
     expect(WebPush).not_to have_received(:payload_send)
   end
+
+  it 'discards stale delivery after the team returns to its original ID' do
+    notification
+    other_team = create(:team, account: account, allow_auto_assign: false)
+    conversation.update!(team: other_team)
+    conversation.update!(team: team)
+    push
+    expect { email }.not_to have_enqueued_job(ActionMailer::MailDeliveryJob)
+    expect(WebPush).not_to have_received(:payload_send)
+  end
 end

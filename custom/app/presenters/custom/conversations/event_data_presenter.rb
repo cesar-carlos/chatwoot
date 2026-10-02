@@ -2,7 +2,8 @@
 
 module Custom::Conversations::EventDataPresenter
   def push_data
-    super.merge(last_non_activity_message: last_non_activity_message_event_data)
+    super.merge(last_non_activity_message: last_non_activity_message_event_data,
+                additional_attributes: public_additional_attributes)
   end
 
   private

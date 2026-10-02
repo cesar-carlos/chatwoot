@@ -37,3 +37,6 @@ class BaseListener
     changed_attributes.map { |k, v| { k => { previous_value: v[0], current_value: v[1] } } }
   end
 end
+
+# FORK: omit internal notification state from externally serialized conversation changes
+BaseListener.prepend_mod_with('BaseListener')

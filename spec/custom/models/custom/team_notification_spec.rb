@@ -42,4 +42,13 @@ RSpec.describe Notification do
     expect(notification.push_message_body).to include(message.content)
     expect(notification.push_event_data[:push_message_body]).to eq(notification.push_message_body)
   end
+
+  it 'keeps the original team name after a rename or transfer instead of rewriting history' do
+    original_name = team.name
+    notification
+    team.update!(name: 'Renamed team')
+    conversation.update!(team: create(:team, account: account, name: 'Other team', allow_auto_assign: false))
+    expect(notification.reload.push_message_title).to include(original_name)
+    expect(notification.push_message_title).not_to include('Renamed team', 'Other team')
+  end
 end

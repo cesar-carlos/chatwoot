@@ -18,7 +18,7 @@ module Custom::Notification
   def push_message_title
     if team_conversation_assignment?
       return I18n.t('notifications.notification_title.team_conversation_assignment',
-                    display_id: conversation.display_id, team_name: conversation.team&.name, locale: recipient_locale)
+                    display_id: conversation.display_id, team_name: assignment_team_name, locale: recipient_locale)
     end
     return voice_call_incoming_title if voice_call_incoming?
 
@@ -32,6 +32,10 @@ module Custom::Notification
     super
   end
 
+  def assignment_team_name
+    (meta || {}).fetch('assignment_team_name') { conversation.team&.name }
+  end
+
   private
 
   def recipient_locale
@@ -40,7 +44,12 @@ module Custom::Notification
   end
 
   def capture_assignment_team
-    self.meta = (meta || {}).merge('assignment_team_id' => conversation.team_id) if team_conversation_assignment?
+    return unless team_conversation_assignment?
+
+    state = Custom::Notification::TeamAssignmentTransition.state(conversation)
+    self.meta = (meta || {}).merge('assignment_team_id' => conversation.team_id,
+                                   'assignment_team_name' => state.fetch('team_name') { conversation.team&.name },
+                                   'assignment_revision' => state['revision'])
   end
 
   def voice_call_incoming?

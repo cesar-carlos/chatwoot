@@ -4,6 +4,12 @@ require 'rails_helper'
 
 RSpec.describe Conversations::EventDataPresenter do
   describe '#push_data' do
+    it 'does not expose the internal notification transition ledger in conversation or webhook payloads' do
+      conversation = create(:conversation, additional_attributes: { 'conversation_language' => 'pt' })
+      expect(conversation.push_event_data[:additional_attributes]).to eq('conversation_language' => 'pt')
+      expect(conversation.webhook_data[:additional_attributes]).to eq('conversation_language' => 'pt')
+    end
+
     it 'includes last_non_activity_message for websocket payloads' do
       conversation = create(:conversation)
       create(

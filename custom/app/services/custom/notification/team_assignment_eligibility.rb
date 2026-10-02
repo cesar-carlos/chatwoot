@@ -2,6 +2,10 @@ class Custom::Notification::TeamAssignmentEligibility
   def self.allowed_notification?(notification)
     return true unless notification.team_conversation_assignment?
 
+    revision = notification.meta&.fetch('assignment_revision', nil)
+    current_revision = Custom::Notification::TeamAssignmentTransition.state(notification.conversation)['revision']
+    return false if revision.present? && revision != current_revision
+
     allowed?(notification.conversation, notification.user, notification.meta&.fetch('assignment_team_id', nil))
   end
 

@@ -24,14 +24,19 @@ module Custom::NotificationListener
 
   def notify_unassigned_team(event)
     conversation, account = extract_conversation_and_account(event)
+    revision = Custom::Notification::TeamAssignmentTransition.event_revision(event)
+    return if revision.blank?
+
     conversation.reload
     return if conversation.team.nil?
 
     conversation.team.members.find_each do |member|
-      NotificationBuilder.new(
-        notification_type: 'team_conversation_assignment',
-        user: member, account: account, primary_actor: conversation
-      ).perform
+      Custom::Notification::TeamAssignmentTransition.deliver(conversation: conversation, user: member, revision: revision) do
+        NotificationBuilder.new(
+          notification_type: 'team_conversation_assignment',
+          user: member, account: account, primary_actor: conversation
+        ).perform
+      end
     end
   end
 end

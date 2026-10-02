@@ -1,6 +1,6 @@
 json.meta do
   json.labels @conversation.cached_label_list_array
-  json.additional_attributes @conversation.additional_attributes
+  json.additional_attributes @conversation.public_additional_attributes # FORK: keep the delivery ledger server-side
   json.contact @conversation.contact.push_event_data
   json.assignee @conversation.assignee.push_event_data if @conversation.assignee.present?
   json.agent_last_seen_at @conversation.agent_last_seen_at

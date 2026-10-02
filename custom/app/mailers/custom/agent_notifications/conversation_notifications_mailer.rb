@@ -13,7 +13,7 @@ module Custom::AgentNotifications::ConversationNotificationsMailer
     @conversation = conversation
     @action_url = app_account_conversation_url(account_id: conversation.account_id, id: conversation.display_id)
     @assignment_title = I18n.t('notifications.notification_title.team_conversation_assignment',
-                               display_id: conversation.display_id, team_name: conversation.team&.name)
+                               display_id: conversation.display_id, team_name: notification.assignment_team_name)
     mail(to: agent.email, subject: @assignment_title) { |format| format.html { render } }
   end
 
