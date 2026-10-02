@@ -1,5 +1,9 @@
 # Popup visual — Plano de implementação (as-built)
 
+## Integração local concluída — 02/out/2026
+
+Todos os candidatos abaixo, até `063ee874a1`, incorporados à `main` local por fast-forward, sem conflitos. A validação foi repetida em worktree isolado; nenhuma outra branch do fork ficou pendente. GitHub, novo build, deploy e homologação real ainda são etapas separadas. [Evidências](./validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão do candidato assistido
 
 Implementado em `fix/pwa-assisted-diagnostics-review`: invalidar apresentação ao fechar diagnóstico, ignorar respostas tardias, exibir atividade correta, explicar motivos específicos de ambiente indisponível e orientar seleção de eventos quando a inscrição não tem eventos Push na conta. Não alterados os contratos de leitura, autorização, entrega e Pop-up.

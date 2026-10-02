@@ -1,5 +1,7 @@
 # PWA — decisões de implementação
 
+**Integração de 02/out/2026:** as decisões dos candidatos abaixo estão implementadas na `main` local até `063ee874a1`, sem publicação/build/deploy. Menções a branches candidatas são histórico. Homologação em aparelhos permanece pendente; [evidências](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
+
 ## Decisões da revisão assistida
 
 - Consulta de instalação pendente → **Verificando**, sem consumir o prompt. Dez segundos sem conclusão → abortar requests, informar timeout e oferecer retry somente por clique.

@@ -1,5 +1,9 @@
 # PWA — implementação, testes e publicação
 
+## Integração local concluída — 02/out/2026
+
+Os candidatos abaixo, até `063ee874a1`, foram incorporados à `main` local por fast-forward após validação isolada, sem conflitos. A auditoria não encontrou outra branch local ou remota do fork com commits pendentes. Publicação no GitHub, build/deploy e homologação real são etapas separadas, ainda pendentes. [Relatório](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão final do candidato assistido
 
 Entrega local em `fix/pwa-assisted-diagnostics-review`, criada de `origin/main` atualizado e acrescida por fast-forward do candidato mobile. Mantém as alterações anteriores e não altera main ou produção.

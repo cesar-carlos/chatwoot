@@ -1,5 +1,7 @@
 # Popup visual — Árvore de decisão
 
+**Integração de 02/out/2026:** os candidatos abaixo, até `063ee874a1`, estão na `main` local, preservando as decisões de canais, autorização e preferências. Branches mencionadas são histórico. Sem GitHub/build/deploy nesta etapa; [validação e pendências](./validation-report.md#integração-na-main-local--02out2026).
+
 ## Ajustes da revisão assistida
 
 - Fechar diagnóstico → invalidar sua apresentação; resposta tardia não o reabre. Não promete cancelar entrega já solicitada.

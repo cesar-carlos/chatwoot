@@ -1,5 +1,23 @@
 # Pop-up e Web Push — validação do candidato
 
+## Integração na main local — 02/out/2026
+
+Após `git fetch origin`, o worktree `fix/integrate-pwa-assisted-main` foi criado de `origin/main` (`f58ca95d4d`), avançado à main local anterior (`3645eed87f`) e ao candidato final (`063ee874a1`). Ambos os merges foram fast-forward, sem conflitos ou alteração do código testado. A main recebe essa integração e o registro documental.
+
+As três branches pendentes eram `feat/guided-push-permission`, `feat/mobile-pwa-install-diagnostics` e `fix/pwa-assisted-diagnostics-review`; a última contém as outras duas. Todas as demais referências locais e remotas `origin/*` já estavam contidas na main. Nenhuma branch foi apagada ou publicada; worktrees existentes estavam limpos e foram preservados.
+
+| Verificação da integração | Resultado |
+|--------------------------|-----------|
+| Vitest, comando da seção mobile abaixo | 282 testes em 27 arquivos, zero falhas |
+| ESLint dos JS/Vue entre `3645eed87f` e o candidato | 33 arquivos, sem erros ou avisos |
+| `git diff --check` da integração | Sem erros |
+| Inventário `FORK:` | 657 → 666; nove hooks novos, nenhuma identidade anterior removida |
+| Ruby, banco e Redis | Sem alterações ou execução |
+| GitHub, build e deploy | Não realizados nesta etapa |
+| Homologação em aparelhos/acessibilidade | Continua pendente |
+
+Dependências foram instaladas offline com lockfile congelado no worktree isolado; nenhuma dependência foi alterada. A comparação do inventário normalizou somente números de linha. Auditoria final por ancestralidade verifica todas as branches locais e remotas do fork contra a main; mirrors e backups já contidos não exigem nova integração. A produção documentada abaixo não foi alterada.
+
 ## Revisão do candidato — 02/out/2026
 
 Branch `fix/pwa-assisted-diagnostics-review`, criada após fetch de `origin/main` em `f58ca95d4d` e acrescida por fast-forward do candidato mobile `6ea66dedfc`. **Sem merge na main, GitHub, build ou deploy.** Nenhuma alteração Ruby, banco/Redis, serviço ou permissão de produção.

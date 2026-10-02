@@ -1,5 +1,9 @@
 # PWA e Web Push do painel
 
+## Integração na main local — 02/out/2026
+
+Ativação guiada, instalação mobile/teste assistido e revisão final (`063ee874a1`) incorporados à `main` local por fast-forward, sem conflitos. As seções de candidatos abaixo registram o histórico anterior à integração. GitHub, build e deploy permanecem pendentes; homologação em aparelhos reais também. [Validação e auditoria de branches](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão do candidato — 02/out/2026
 
 `fix/pwa-assisted-diagnostics-review` incorpora o candidato mobile abaixo e corrige resultados tardios do diagnóstico, consulta de instalação sem limite e mensagens de progresso. Manifesto/ícones têm cancelamento após dez segundos e botão **Verificar novamente**, sem repetição automática. Falhas de conexão não são apresentadas como configuração inválida.

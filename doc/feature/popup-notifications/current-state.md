@@ -1,5 +1,9 @@
 # Popup visual — Estado atual
 
+## Estado após integração local — 02/out/2026
+
+Os candidatos abaixo estão incorporados à `main` local, incluindo `063ee874a1`. Não há mudança de canais ou regras de Pop-up durante a integração. Menções a candidatos não publicados são histórico; GitHub, build/deploy e homologação em aparelhos ainda não foram concluídos. [Validação](./validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão do diagnóstico assistido
 
 Candidato mais recente: `fix/pwa-assisted-diagnostics-review`, ainda local. Fechamento do diálogo invalida resultados pendentes; respostas tardias não reabrem a interface, inclusive durante nova investigação. Um envio já iniciado pode ser entregue mesmo após fechar.

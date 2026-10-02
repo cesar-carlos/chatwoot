@@ -1,5 +1,9 @@
 # Popup visual — Documentação
 
+## Integração na main local — 02/out/2026
+
+Os candidatos guiados/mobile e a revisão assistida, até `063ee874a1`, foram incorporados à `main` local sem conflitos. As seções abaixo preservam o histórico. GitHub, build e deploy não foram realizados nesta etapa; homologação de aparelhos/acessibilidade continua pendente. [Evidências e auditoria](./validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão assistida do candidato
 
 `fix/pwa-assisted-diagnostics-review` incorpora a instalação mobile/ativação guiada e corrige a reabertura do diagnóstico após fechamento. Progresso e motivos de ambiente indisponível são específicos. Inscrição sem eventos Push selecionados recebe orientação após consulta bem-sucedida da conta, sem alterar flags.

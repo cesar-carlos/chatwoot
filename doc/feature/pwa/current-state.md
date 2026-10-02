@@ -1,5 +1,9 @@
 # PWA — estado atual
 
+## Estado após integração local — 02/out/2026
+
+As implementações guiadas, mobile e a revisão assistida abaixo foram incorporadas à `main` local, incluindo `063ee874a1`. As descrições de candidatos são histórico; não representam publicação. GitHub, novo build, deploy e homologação em aparelhos continuam pendentes. [Evidências da integração](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão do candidato assistido
 
 Estado mais recente: `fix/pwa-assisted-diagnostics-review`, incorporando `feat/mobile-pwa-install-diagnostics`. Não integrado/publicado/implantado; os candidatos anteriores abaixo permanecem como histórico.

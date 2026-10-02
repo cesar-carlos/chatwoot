@@ -1,5 +1,9 @@
 # PWA — pendências e melhorias
 
+## Pendências após integração local — 02/out/2026
+
+Todos os candidatos abaixo, até `063ee874a1`, foram incorporados à `main` local; não há outra branch do fork pendente. Permanecem publicação no GitHub, novo build/deploy autorizado e homologação real de instalação, notificações e acessibilidade. As seções de candidatos são histórico da entrega. [Validação](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão assistida — concluída no código
 
 `fix/pwa-assisted-diagnostics-review` incorpora os candidatos anteriores. Corrigidos: diálogo reaberto por resposta tardia, validação de instalação sem timeout/retry, progresso genérico e motivos de falta de suporte. Acrescentado aviso de inscrição sem eventos Push, sem seleção automática e sem confundir consulta incompleta com lista vazia.

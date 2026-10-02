@@ -1,5 +1,9 @@
 # Popup visual — Improvements backlog
 
+## Pendências após integração local — 02/out/2026
+
+Os candidatos abaixo, até `063ee874a1`, estão incorporados à `main` local. Nenhuma outra branch local/remota do fork requer merge. Continuam pendentes GitHub, build/deploy autorizado e homologação de dispositivos/acessibilidade. As seções anteriores são histórico; [evidências](./validation-report.md#integração-na-main-local--02out2026).
+
 ## Revisão assistida — correções implementadas
 
 No candidato local `fix/pwa-assisted-diagnostics-review`, resultados tardios não reabrem diagnóstico fechado; a UI distingue atividades e motivos de ambiente indisponível. Um aviso de zero eventos Push depende da inscrição confirmada e das preferências carregadas, sem alteração automática. Instalação tem validação cancelável e retry explícito. Regras de **Pop-up notification** preservadas.
