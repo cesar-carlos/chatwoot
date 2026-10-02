@@ -25,6 +25,8 @@ import {
 import { initializePwaInstallation } from 'customDashboard/composables/usePwaInstallation';
 // FORK: one-time, user-initiated push permission guidance in the installed PWA
 import PwaPushInvitation from 'customDashboard/components/pwa/PwaPushInvitation.vue';
+// FORK: shared mobile installation guidance, independent of push permission
+import PwaMobileInstallPromotion from 'customDashboard/components/pwa/PwaMobileInstallPromotion.vue';
 // FORK: recipient-validated notification actions and normalized route detection
 import { startNotificationActions } from 'customDashboard/helper/notificationActions';
 import ReconnectService from 'dashboard/helper/ReconnectService';
@@ -45,6 +47,8 @@ export default {
     LowBackupCodesBanner,
     // FORK: keep the invitation implementation in the Custom overlay
     PwaPushInvitation,
+    // FORK: implementation and per-user dismissal live in Custom
+    PwaMobileInstallPromotion,
   },
   setup() {
     const router = useRouter();
@@ -163,6 +167,15 @@ export default {
       <PendingEmailVerificationBanner v-if="hideOnOnboardingView" />
       <PaymentPendingBanner v-if="hideOnOnboardingView" />
       <LowBackupCodesBanner v-if="hideOnOnboardingView" />
+      <!-- FORK: promote installation only outside standalone/onboarding -->
+      <PwaMobileInstallPromotion
+        :key="currentUser?.id"
+        :user="currentUser"
+        :account-id="currentAccountId"
+        :ready="
+          hideOnOnboardingView && Boolean(getAccount(currentAccountId)?.id)
+        "
+      />
       <!-- FORK: never request native permission automatically on app launch -->
       <PwaPushInvitation
         :key="currentUser?.id"

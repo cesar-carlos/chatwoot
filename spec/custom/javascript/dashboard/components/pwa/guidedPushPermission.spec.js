@@ -30,6 +30,8 @@ vi.mock('customDashboard/api/notificationSubscription', () => ({
 vi.mock('customDashboard/composables/usePwaInstallation', async () => {
   const { ref } = await import('vue');
   return {
+    getInstallationPlatform: () => 'DESKTOP',
+    isEmbeddedBrowser: () => false,
     usePwaInstallation: () => ({
       status: ref('installed'),
       promptInstall: vi.fn(),
