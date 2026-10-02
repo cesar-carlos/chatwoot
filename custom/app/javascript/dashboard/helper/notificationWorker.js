@@ -2,6 +2,12 @@
 /* globals clients */
 const pendingIntents = new Map();
 const NOTIFICATION_INTENT_TTL_MS = 60000;
+// Content-free fallback: malformed messages must not become silent pushes on iOS.
+const FALLBACK_NOTIFICATION = {
+  title: 'New notification',
+  body: 'Open the app to view your notifications.',
+  url: '/app',
+};
 const pendingNotifications = new Map();
 const noticeKey = data => `${data.account_id}:${data.notification_id}`;
 const positiveId = value =>
@@ -35,9 +41,13 @@ self.addEventListener('push', event => {
   try {
     data = event.data?.json();
   } catch (error) {
-    return;
+    data = null;
   }
-  if (!data || typeof data.title !== 'string' || !data.title.trim()) return;
+  if (!data || typeof data.title !== 'string' || !data.title.trim()) {
+    data = FALLBACK_NOTIFICATION;
+    // eslint-disable-next-line no-console
+    console.warn('Push notification fallback result=invalid_payload');
+  }
   const actions = realNotification(data)
     ? [
         {
@@ -55,7 +65,7 @@ self.addEventListener('push', event => {
   event.waitUntil(
     (async () => {
       try {
-        await self.registration.showNotification(data.title, {
+        const options = {
           body: typeof data.body === 'string' ? data.body : undefined,
           icon: typeof data.icon === 'string' ? data.icon : undefined,
           tag: typeof data.tag === 'string' ? data.tag : undefined,
@@ -69,7 +79,21 @@ self.addEventListener('push', event => {
               /\/conversations\/(\d+)(?:\/|$)/
             )?.[1],
           },
-        });
+        };
+        try {
+          await self.registration.showNotification(data.title, options);
+        } catch (error) {
+          // Remove optional fields and actions if the normal display failed.
+          // eslint-disable-next-line no-console
+          console.warn('Push notification fallback result=display_failed');
+          await self.registration.showNotification(
+            FALLBACK_NOTIFICATION.title,
+            {
+              body: FALLBACK_NOTIFICATION.body,
+              data: { url: safeTargetUrl(FALLBACK_NOTIFICATION.url) },
+            }
+          );
+        }
         if (pending.dismissed) {
           const notifications = await self.registration.getNotifications({
             tag: data.tag,

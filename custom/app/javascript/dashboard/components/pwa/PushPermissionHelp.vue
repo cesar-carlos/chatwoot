@@ -23,6 +23,7 @@ const instruction = computed(() =>
       {{ t(`${prefix}PUSH_HELP_SITE`, { site }) }}
     </p>
     <p class="m-0">{{ instruction }}</p>
+    <p class="m-0">{{ t(`${prefix}PUSH_BANNER_HELP_${platform}`) }}</p>
     <p class="m-0">{{ t(`${prefix}PUSH_HELP_SYSTEM`) }}</p>
     <Button
       :label="t(`${prefix}PUSH_RECHECK_ACTION`)"

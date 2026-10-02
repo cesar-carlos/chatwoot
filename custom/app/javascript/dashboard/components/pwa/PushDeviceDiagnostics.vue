@@ -31,10 +31,14 @@ const test = async () => {
   const value = await props.device.test();
   if (currentRevision === revision) display(value);
 };
-const inspect = async (recoverPermission = false) => {
+const inspect = async (recoverPermission = false, missingBanner = false) => {
   const currentRevision = revision;
   const value = await props.device.inspect({ recoverPermission });
-  if (mounted && currentRevision === revision && value) result.value = value;
+  if (mounted && currentRevision === revision && value)
+    result.value = {
+      ...value,
+      kind: missingBanner && value.kind === 'ready' ? 'banner' : value.kind,
+    };
 };
 const activate = async () => {
   const currentRevision = revision;
@@ -74,6 +78,12 @@ onUnmounted(() => {
       </p>
       <div v-if="kind === 'accepted'" class="flex flex-wrap gap-2">
         <Button
+          ghost
+          :label="t(`${prefix}PUSH_NO_BANNER_ACTION`)"
+          :disabled="busy"
+          @click="inspect(false, true)"
+        />
+        <Button
           :label="t(`${prefix}PUSH_RECEIVED_ACTION`)"
           :disabled="busy"
           @click="dialog.close()"
@@ -86,7 +96,7 @@ onUnmounted(() => {
         />
       </div>
       <PushPermissionHelp
-        v-if="['denied', 'ready'].includes(kind)"
+        v-if="['denied', 'ready', 'banner'].includes(kind)"
         :busy="busy"
         @recheck="inspect(true)"
       />
@@ -111,9 +121,14 @@ onUnmounted(() => {
       />
       <Button
         v-if="
-          ['ready', 'invalid', 'delivery', 'connection', 'timeout'].includes(
-            kind
-          )
+          [
+            'ready',
+            'banner',
+            'invalid',
+            'delivery',
+            'connection',
+            'timeout',
+          ].includes(kind)
         "
         :label="t(`${prefix}PUSH_TEST_ACTION`)"
         :disabled="busy"

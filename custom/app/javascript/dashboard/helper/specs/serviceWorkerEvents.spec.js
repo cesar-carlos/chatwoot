@@ -28,7 +28,7 @@ describe('PWA service worker', () => {
     await import('../notificationWorker.js');
   });
 
-  it('ignores an invalid push payload', () => {
+  it('shows a content-free fallback for an invalid push payload', async () => {
     const event = {
       data: {
         json: () => {
@@ -40,8 +40,15 @@ describe('PWA service worker', () => {
 
     listeners.push(event);
 
-    expect(event.waitUntil).not.toHaveBeenCalled();
-    expect(workerGlobal.registration.showNotification).not.toHaveBeenCalled();
+    await event.waitUntil.mock.calls[0][0];
+    expect(workerGlobal.registration.showNotification).toHaveBeenCalledWith(
+      'New notification',
+      expect.objectContaining({
+        body: 'Open the app to view your notifications.',
+        actions: [],
+        data: expect.objectContaining({ url: 'https://chat.example.test/app' }),
+      })
+    );
   });
 
   it('shows all notification fields from a valid payload', async () => {

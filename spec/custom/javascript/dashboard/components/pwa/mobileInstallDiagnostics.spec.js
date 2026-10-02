@@ -15,6 +15,9 @@ vi.mock('shared/composables/useBranding', () => ({
 }));
 vi.mock('dashboard/composables', () => ({ useAlert: api.alert }));
 vi.mock('js-cookie', () => ({ default: { get: api.cookie } }));
+vi.mock('customDashboard/helper/pushPermissionHelp', () => ({
+  getPushPermissionHelpPlatform: api.platform,
+}));
 vi.mock('customDashboard/composables/usePwaInstallation', async () => {
   const { ref: state } = await import('vue');
   const status = state('unavailable');
@@ -184,6 +187,57 @@ describe('shared installation and assisted diagnostics UI', () => {
     await flushPromises();
     await action(wrapper, 'PUSH_RECEIVED_ACTION').trigger('click');
     expect(wrapper.get('dialog').attributes('open')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('guides missing banners without another send or a native permission request', async () => {
+    const current = device();
+    const wrapper = mount(PushDeviceDiagnostics, {
+      ...options,
+      props: { device: current },
+    });
+    await wrapper.vm.test();
+    await flushPromises();
+    await action(wrapper, 'PUSH_NO_BANNER_ACTION').trigger('click');
+    await flushPromises();
+    expect(current.inspect).toHaveBeenCalledWith({ recoverPermission: false });
+    expect(current.test).toHaveBeenCalledOnce();
+    expect(current.activate).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('PUSH_DIAGNOSTIC_BANNER');
+    expect(wrapper.text()).toContain('PUSH_BANNER_HELP_ANDROID');
+    wrapper.unmount();
+  });
+
+  it('shows a revoked permission instead of misclassifying it as a banner setting', async () => {
+    const current = device();
+    current.inspect.mockResolvedValue({ kind: 'denied' });
+    const wrapper = mount(PushDeviceDiagnostics, {
+      ...options,
+      props: { device: current },
+    });
+    await wrapper.vm.test();
+    await flushPromises();
+    await action(wrapper, 'PUSH_NO_BANNER_ACTION').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('PUSH_DIAGNOSTIC_DENIED');
+    expect(wrapper.text()).not.toContain('PUSH_DIAGNOSTIC_BANNER');
+    expect(current.test).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it('shows iOS Home Screen and system banner guidance in the same diagnostic', async () => {
+    api.platform.mockReturnValue('IOS');
+    const current = device();
+    const wrapper = mount(PushDeviceDiagnostics, {
+      ...options,
+      props: { device: current },
+    });
+    await wrapper.vm.test();
+    await action(wrapper, 'PUSH_NO_BANNER_ACTION').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('PUSH_BANNER_HELP_IOS');
+    expect(wrapper.text()).not.toContain('PUSH_BANNER_HELP_ANDROID');
+    expect(current.activate).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 
