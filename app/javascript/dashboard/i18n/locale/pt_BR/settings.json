@@ -185,6 +185,7 @@
         "TYPES": {
           "CONVERSATION_CREATED": "Uma nova conversa foi criada",
           "CONVERSATION_ASSIGNED": "Uma conversa foi atribuída a você",
+          "TEAM_CONVERSATION_ASSIGNMENT": "Uma conversa foi atribuída ao seu time e está sem agente atribuído",
           "CONVERSATION_MENTION": "Você foi mencionado em uma conversa",
           "ASSIGNED_CONVERSATION_NEW_MESSAGE": "Uma nova mensagem foi criada e atribuída",
           "PARTICIPATING_CONVERSATION_NEW_MESSAGE": "Uma nova mensagem foi criada em uma conversa que você participa",

@@ -21,6 +21,7 @@
       "CONVERSATION_MENTION": "Você foi mencionado em uma conversa",
       "CONVERSATION_CREATION": "Nova conversa criada",
       "CONVERSATION_ASSIGNMENT": "Uma conversa foi atribuída a você",
+      "TEAM_CONVERSATION_ASSIGNMENT": "Uma conversa foi atribuída ao seu time e está sem agente atribuído",
       "ASSIGNED_CONVERSATION_NEW_MESSAGE": "Nova mensagem em uma conversa atribuída",
       "PARTICIPATING_CONVERSATION_NEW_MESSAGE": "Nova mensagem em uma conversa na qual você participa",
       "SLA_MISSED_FIRST_RESPONSE": "Primeira resposta da meta de SLA perdida na conversa",
@@ -30,6 +31,7 @@
     "TYPES_NEXT": {
       "CONVERSATION_MENTION": "Mencionado",
       "CONVERSATION_ASSIGNMENT": "Atribuídas a você",
+      "TEAM_CONVERSATION_ASSIGNMENT": "Atribuída ao seu time, sem agente",
       "CONVERSATION_CREATION": "Nova conversa",
       "SLA_MISSED_FIRST_RESPONSE": "Quebra SLA",
       "SLA_MISSED_NEXT_RESPONSE": "Quebra SLA",

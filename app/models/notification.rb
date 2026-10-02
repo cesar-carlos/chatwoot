@@ -45,7 +45,9 @@ class Notification < ApplicationRecord
     sla_missed_next_response: 7,
     sla_missed_resolution: 8,
     # FORK: Wavoip inbound voice call notifications
-    voice_call_incoming: 9
+    voice_call_incoming: 9,
+    # FORK: independent notification for an unassigned conversation in the user's team
+    team_conversation_assignment: 10
   }.freeze
 
   enum notification_type: NOTIFICATION_TYPES

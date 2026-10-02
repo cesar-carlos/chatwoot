@@ -54,3 +54,6 @@ class NotificationListener < BaseListener
     Messages::NewMessageNotificationService.new(message: message).perform
   end
 end
+
+# FORK: notify authorized team members about unassigned team conversations
+NotificationListener.prepend_mod_with('NotificationListener')

@@ -1,4 +1,9 @@
+// FORK: icon for the fork's unassigned-team assignment notification
+import { TEAM_NOTIFICATION_ICONS } from 'customDashboard/helper/teamNotificationPreferences';
+
 export const NOTIFICATION_TYPES_MAPPING = {
+  // FORK: preserve notification inbox rendering for the custom event
+  ...TEAM_NOTIFICATION_ICONS,
   CONVERSATION_MENTION: ['i-lucide-at-sign', 'text-n-blue-11'],
   CONVERSATION_ASSIGNMENT: ['i-lucide-chevrons-right', 'text-n-blue-11'],
   CONVERSATION_CREATION: ['i-lucide-mail-plus', 'text-n-blue-11'],

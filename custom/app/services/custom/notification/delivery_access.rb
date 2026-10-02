@@ -7,6 +7,7 @@ class Custom::Notification::DeliveryAccess
     return false unless conversation
 
     conversation.reload
+    return false unless Custom::Notification::TeamAssignmentEligibility.allowed_notification?(notification)
 
     context = { user: notification.user, account: notification.account, account_user: account_user }
     NotificationPolicy.new(context, Notification).access? &&

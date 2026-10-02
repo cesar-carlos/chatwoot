@@ -76,6 +76,20 @@ describe('usePopupNotifications', () => {
     expect(popupMessageBody('sem prefixo', 'Maria')).toBe('sem prefixo');
   });
 
+  it('shows the team assignment title and keeps the sender in the message body', async () => {
+    await showPopupNotification(
+      messageNotification({
+        notification_type: 'team_conversation_assignment',
+        notification_title: 'Conversation assigned to Support with no agent',
+      }),
+      storeFor({ 1: ['popup_team_conversation_assignment'] })
+    );
+    expect(Notification).toHaveBeenCalledWith(
+      'Conversation assigned to Support with no agent',
+      expect.objectContaining({ body: 'Maria: oi' })
+    );
+  });
+
   it('reads flags for the active account and keeps other accounts', () => {
     const settings = withPopupFlagsForAccount(
       {

@@ -302,8 +302,14 @@ export const showPopupNotification = async (payload, store) => {
     conversationFromNotification(notification);
   if (isViewingConversation(accountId, conversationId)) return;
 
-  const title = senderName || notification.notification_type;
-  const body = popupMessageBody(notification.push_message_body, senderName);
+  const title =
+    notification.notification_title ||
+    senderName ||
+    notification.notification_type;
+  const body = popupMessageBody(
+    notification.push_message_body,
+    title === senderName ? senderName : null
+  );
 
   const tag = `${notification.notification_type}_${conversationId}_${notification.id}`;
   const userId =

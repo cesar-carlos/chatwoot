@@ -30,3 +30,6 @@ class Notification::EmailNotificationService
     false
   end
 end
+
+# FORK: revalidate team notification eligibility and preferences before email delivery
+Notification::EmailNotificationService.prepend_mod_with('Notification::EmailNotificationService')

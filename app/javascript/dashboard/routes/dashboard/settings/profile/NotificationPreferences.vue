@@ -6,6 +6,8 @@ import CheckBox from 'v3/components/Form/CheckBox.vue';
 import { FEATURE_FLAGS } from 'dashboard/featureFlags';
 import NextButton from 'dashboard/components-next/button/Button.vue';
 import { NOTIFICATION_TYPES } from './constants';
+// FORK: independent delivery preferences for unassigned team conversations
+import { withTeamNotificationType } from 'customDashboard/helper/teamNotificationPreferences';
 // FORK: white-label PWA installation and per-device browser push
 import PwaDeviceSettings from 'customDashboard/components/pwa/PwaDeviceSettings.vue';
 // FORK: loading guards live in the overlay, including stale-account protection
@@ -38,7 +40,8 @@ export default {
       preferencesLoadId: 0,
       popupNotificationLabel: 'Pop-up notification',
       enableAudioAlerts: false,
-      notificationTypes: NOTIFICATION_TYPES,
+      // FORK: append the team event without changing upstream notification types
+      notificationTypes: withTeamNotificationType(NOTIFICATION_TYPES),
       browserNotificationPermission:
         typeof Notification === 'undefined'
           ? 'unsupported'

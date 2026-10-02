@@ -273,6 +273,8 @@ pt_BR:
     notification_title:
       conversation_creation: 'A conversa (#%{display_id}) foi criada em %{inbox_name}'
       conversation_assignment: 'Uma conversa (#%{display_id}) foi atribuída a você'
+      # FORK: unassigned team conversation notification title
+      team_conversation_assignment: 'A conversa (#%{display_id}) foi atribuída ao seu time %{team_name} e está sem agente atribuído'
       assigned_conversation_new_message: 'Uma nova mensagem foi criada na conversa (#%{display_id})'
       conversation_mention: 'Você foi mencionado em uma conversa (#%{display_id})'
       sla_missed_first_response: 'Meta de SLA de Primeira Resposta não alcançada para a conversa (#%{display_id})'
