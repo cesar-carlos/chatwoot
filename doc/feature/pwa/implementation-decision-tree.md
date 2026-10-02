@@ -1,5 +1,14 @@
 # PWA — decisões de implementação
 
+## Confiabilidade de entrega e banner — 02/out/2026
+
+- Inscrição recusada por autenticação → preservar e diagnosticar; inválida/expirada → remover. Logs usam provedor/HTTP/motivo de uma lista permitida, sem corpo arbitrário.
+- Texto longo → reduzir somente título/corpo para caber no JSON de 3.900 bytes; preservar UTF-8, destino e destinatário. Metadados excessivos falham explicitamente.
+- Payload inválido ou falha da apresentação normal → aviso genérico mínimo; falha final continua erro. Não usar Push silencioso nem repetir indefinidamente.
+- Som/aviso sem banner → orientação do sistema após conferência fresca; bloqueio encontrado → ajuda correspondente. Nenhum reenvio ou pedido nativo automático.
+
+Estas decisões estão no candidato `fix/mobile-notification-reliability`. A urgência Web Push não é a importância de uma categoria Android. A PWA não pode obrigar banners sobre outros aplicativos, alterar Banners/Foco do iOS ou garantir apresentação. [Arquitetura](./current-state.md#correções-mobile-e-banners--02out2026).
+
 **Integração de 02/out/2026:** as decisões dos candidatos abaixo estão implementadas na `main` local até `063ee874a1`, sem publicação/build/deploy. Menções a branches candidatas são histórico. Homologação em aparelhos permanece pendente; [evidências](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
 
 ## Decisões da revisão assistida

@@ -1,5 +1,13 @@
 # PWA — implementação, testes e publicação
 
+## Incremento de confiabilidade mobile — 02/out/2026
+
+Implementado no candidato `fix/mobile-notification-reliability`: payload limitado, tratamento de autenticação/expiração, logs sanitizados, recuperação do worker e orientação de banners. Usa somente extensões existentes e arquivos `custom/`, além de en/pt_BR e ajuste do spec de envio. [Plano detalhado](../popup-notifications/implementation-plan.md#incremento-mobile-e-banners--02out2026), [evidências](../popup-notifications/validation-report.md#correções-mobile-e-banners--02out2026).
+
+Publicação posterior exige integração do candidato, novo build de dashboard/Rails e restart web/workers na mesma versão. Invalidar/verificar HTML, `/sw.js` e `/notification-worker.js`, confirmar atualização do worker instalado e manter storage compartilhado/release anterior. Não há migration. Preservar VAPID, ícones e `DISPLAY_MANIFEST=false`.
+
+Homologar Android com tela desbloqueada/bloqueada e categorias diferentes, iPhone pelo ícone instalado, Banners/Foco/Resumo Agendado, mensagens reais e diagnósticos, app fechado e clique/ações. Registrar o comportamento informado no aparelho, sem inferir banner dos logs de aceitação.
+
 ## Integração local concluída — 02/out/2026
 
 Os candidatos abaixo, até `063ee874a1`, foram incorporados à `main` local por fast-forward após validação isolada, sem conflitos. A auditoria não encontrou outra branch local ou remota do fork com commits pendentes. Publicação no GitHub, build/deploy e homologação real são etapas separadas, ainda pendentes. [Relatório](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).

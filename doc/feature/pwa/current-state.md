@@ -1,5 +1,15 @@
 # PWA — estado atual
 
+## Correções mobile e banners — 02/out/2026
+
+Incremento em `fix/mobile-notification-reliability` sobre `origin/main` `69554d4a89`. Serviços real e diagnóstico usam o mesmo JSON limitado a 3.900 bytes, com título até 120 caracteres e resumo UTF-8 do corpo; URL, identidade, tag e ações são preservados. Falha de autenticação não exclui inscrição; inválidas/expiradas são removidas. Logs registram provedor classificado, HTTP/motivo permitido e IDs sem segredos/conteúdo.
+
+O worker apresenta aviso genérico se o payload é inválido ou tenta uma apresentação mínima se a normal falha. Isso reduz o risco de Push silencioso: WebKit exige apresentação visível e pode revogar a inscrição quando o worker não a produz. Ainda pode falhar com a permissão/SO indisponível, e não garante um banner flutuante. [WebKit](https://webkit.org/blog/16535/meet-declarative-web-push/).
+
+O teste agora distingue relato de **Recebi**, **Não recebi** e **Recebi som ou aviso, mas não apareceu banner**. A terceira opção revalida estado sem enviar e mostra orientações de categoria Android ou Banners/Foco/Resumo Agendado iOS. Resultado tardio segue ignorado após fechamento/desmontagem. A orientação lembra que aba do navegador e PWA podem ter permissões/inscrições diferentes; não altera preferências automaticamente.
+
+Manifestos, ícones, chaves VAPID, opt-out, FCM e conexão em tempo real não mudam. A revisão pública confirmou HTTP 200 dos dois manifestos e scripts; `/sw.js` e `/notification-worker.js` tinham `no-cache`. Produção observada `f58ca95d4d`; main anterior já publicada `69554d4a89`; candidato atual não implantado. [Testes e limitações](../popup-notifications/validation-report.md#correções-mobile-e-banners--02out2026).
+
 ## Regra de time sem agente — candidato de 02/out/2026
 
 `fix/team-notification-hardening` incorpora e revisa `feat/team-unassigned-notifications`: evento **Uma conversa foi atribuída ao seu time e está sem agente atribuído**, com seleção Push independente por conta e desmarcada por padrão. Reutiliza inscrição, worker, TTL, urgência e ações existentes; não muda instalação, manifesto, ícones ou VAPID. O Push usa título localizado com o nome original do time/conversa e resumo da mensagem.

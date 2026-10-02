@@ -1,5 +1,18 @@
 # Popup visual — Estado atual
 
+## Correções mobile e banners — 02/out/2026
+
+Implementadas no candidato `fix/mobile-notification-reliability`:
+
+- `Custom::Notification::BrowserPushPayload`: título até 120 caracteres, JSON final até 3.900 bytes, considerando escapes e caracteres multibyte. Só título/corpo são resumidos; URL, IDs, tag e ações são preservados. A margem cobre cabeçalho, padding e autenticação aes128gcm. Metadados/configuração maiores que o orçamento falham explicitamente sem truncar a URL.
+- `PushNotificationService` e `PushTestService` reutilizam esse orçamento. Autenticação `WebPush::Unauthorized` preserva inscrição; `InvalidSubscription`/`ExpiredSubscription` removem inscrições inválidas/expiradas, inclusive durante teste. Não há reenvio automático.
+- `BrowserPushLogContext` registra IDs, provedor classificado, resultado, classe do erro, HTTP e motivo Apple de uma lista permitida. Não registra endpoint, token, e-mail, mensagem ou corpo arbitrário da resposta. Logs de notificação real incluem conta/notificação; FCM mantém seu contrato.
+- `notificationWorker`: payload sem JSON/título válido recebe aviso genérico sem conteúdo, identidade ou ações. Falha ao exibir o aviso normal tenta uma única apresentação mínima; falha também nessa apresentação rejeita a operação. Não existe garantia de banner ou recuperação de permissão negada pelo SO.
+- `PushDeviceDiagnostics`: terceiro resultado informado pelo usuário, **Recebi som ou aviso, mas não apareceu banner**. Revalida permissão/inscrição sem novo envio; impedimento encontrado recebe a ajuda correspondente. Somente estado `ready` vira `banner`. Fechamento/desmontagem continuam invalidando respostas tardias.
+- `PushPermissionHelp`: categorias/flutuação Android, Tela de Início e Banners/Foco/Resumo Agendado iOS e ajustes de banners Chrome/Edge/desktop. Somente en/pt_BR alterados.
+
+Som/tela bloqueada sem banner no Android não confirma bug de envio. No iPhone, verificar iOS/iPadOS 16.4+, abertura pelo ícone instalado, permissão e eventos Push por conta. Inscrição em `web.push.apple.com` também pode ser Safari macOS; não identifica por si só um iPhone. A revisão não comprovou a causa do relato individual. [Evidências](./validation-report.md#correções-mobile-e-banners--02out2026).
+
 ## Regra de time sem agente — candidato de 02/out/2026
 
 Implementação de `fix/team-notification-hardening` (`5dc0fb450b`), incluindo `feat/team-unassigned-notifications` (`f3e91283ff`), incorporada por fast-forward à main local em 02/out/2026. O worktree de integração foi criado de `origin/main` atualizado e preservou a main anterior `b4334fdc0f`. Não houve publicação, build ou deploy; produção permanece inalterada. [Auditoria da integração](./validation-report.md#integração-das-notificações-por-time--02out2026).

@@ -1,5 +1,13 @@
 # PWA — pendências e melhorias
 
+## Confiabilidade mobile — 02/out/2026
+
+Corrigidos no candidato `fix/mobile-notification-reliability`: exclusão indevida por autenticação, payload longo, descarte silencioso de Push inválido, diagnóstico de banner ausente e logs de provedor sem segredos. [Validação](../popup-notifications/validation-report.md#correções-mobile-e-banners--02out2026).
+
+Faltam integração/publicação deste candidato, build/deploy e homologação real Android/iOS. A main anterior `69554d4a89` já foi publicada; produção observada continua `f58ca95d4d`, sem a ativação guiada recente. Confirmar inscrição/preferências dentro da PWA do iPhone reclamante e testar com tela bloqueada antes de declarar o relato reproduzido.
+
+Não planejar flags JS de prioridade como garantia de banner: categorias Android, Banners e Foco do iOS pertencem ao sistema. As seções abaixo preservam o histórico dos candidatos anteriores.
+
 ## Pendências após integração local — 02/out/2026
 
 Todos os candidatos abaixo, até `063ee874a1`, foram incorporados à `main` local; não há outra branch do fork pendente. Permanecem publicação no GitHub, novo build/deploy autorizado e homologação real de instalação, notificações e acessibilidade. As seções de candidatos são histórico da entrega. [Validação](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).

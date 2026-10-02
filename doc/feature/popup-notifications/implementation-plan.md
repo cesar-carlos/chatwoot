@@ -1,5 +1,16 @@
 # Popup visual — Plano de implementação (as-built)
 
+## Incremento mobile e banners — 02/out/2026
+
+Implementado em `fix/mobile-notification-reliability`, a partir de `origin/main` `69554d4a89`:
+
+1. Payload e logs compartilhados em `custom/app/services/custom/notification/browser_push_{payload,log_context}.rb`; extensões existentes dos serviços real/diagnóstico preservam inscrições após falha de autenticação e removem apenas inválidas/expiradas.
+2. Aviso genérico no worker para payload inválido e uma tentativa mínima após falha de exibição normal. A recuperação não inclui conteúdo privado, ações ou escrita autenticada.
+3. Resultado **Recebi som ou aviso, mas não apareceu banner** no diagnóstico, com conferência fresca sem reenvio automático. Orientação por plataforma em `PushPermissionHelp`, en/pt_BR.
+4. Specs Custom para orçamento/encriptação UTF-8, HTTP 403 versus expiração, logs sanitizados, recuperação do worker e diagnóstico; teste upstream de envio acompanha o contexto ampliado.
+
+Não há migration, endpoint novo ou mudança de preferência, VAPID, manifesto, Action Cable ou FCM. [Evidências](./validation-report.md#correções-mobile-e-banners--02out2026). Integração, publicação e produção são posteriores à entrega deste candidato.
+
 ## Incremento: time sem agente — candidato de 02/out/2026
 
 Revisão final de `fix/team-notification-hardening`, incluindo o candidato anterior e incorporada à main local por fast-forward em 02/out/2026:

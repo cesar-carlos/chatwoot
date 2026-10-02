@@ -1,5 +1,14 @@
 # Popup visual — Árvore de decisão
 
+## Recuperação e apresentação mobile — 02/out/2026
+
+- Provedor recusa por autenticação (`401/403`) → preservar inscrição, registrar HTTP/motivo permitido e diagnosticar VAPID; não reenviar automaticamente. Inscrição inválida/expirada (`404/410`) → remover cadastro, inclusive no teste.
+- Conteúdo cabe em JSON de 3.900 bytes → manter. Excede → resumir título/corpo por tamanho final, preservando Unicode, URL e IDs. Metadados ainda excedem sem corpo → falha explícita de configuração.
+- Push recebido sem JSON/título válido → aviso genérico sem conteúdo/ações. Exibição normal rejeitada → uma apresentação mínima; também rejeitada → falha da operação, sem loop nem afirmação de exibição.
+- Usuário informa som/tela bloqueada sem banner → conferir permissão/inscrição; somente se válidas mostrar orientação de categoria/banner do SO. Permissão revogada durante a investigação → ajuda de permissão.
+
+O app não consulta universalmente a importância de categorias Android ou Banners/Foco do iOS. `urgency: high` é urgência de entrega, não controle do banner. A coluna **Pop-up notification** usa a apresentação nativa do SO e depende do painel conectado. [Estado](./current-state.md#correções-mobile-e-banners--02out2026).
+
 **Integração de 02/out/2026:** os candidatos abaixo, até `063ee874a1`, estão na `main` local, preservando as decisões de canais, autorização e preferências. Branches mencionadas são histórico. Sem GitHub/build/deploy nesta etapa; [validação e pendências](./validation-report.md#integração-na-main-local--02out2026).
 
 ## Ajustes da revisão assistida

@@ -1,5 +1,49 @@
 # Pop-up e Web Push — validação do candidato
 
+## Correções mobile e banners — 02/out/2026
+
+Candidato `fix/mobile-notification-reliability`, criado de `origin/main` atualizado (`69554d4a89`) em worktree isolado. Não integrado/publicado/implantado nesta etapa. A main anterior já foi publicada no fork; as seções anteriores que registram publicação pendente são histórico do momento da integração.
+
+### Evidências da revisão e limites do relato
+
+- Produção verificada por HTML público e diretórios dos processos: `GIT_SHA=f58ca95d4d76a6d182bd78e61d3a91fe10db8914`, web/worker no mesmo release. Dois manifestos e dois scripts públicos retornaram HTTP 200; scripts com `Cache-Control: no-cache`, manifestos com cache público de cinco minutos. Manifesto standalone com ícones 192/512 any/maskable.
+- Som e aviso na tela bloqueada Android foram informados pelo usuário. Não houve observação própria do aparelho/banners. Categorias de apresentação podem impedir o banner flutuante mesmo com som; [Android](https://developer.android.com/develop/ui/compose/notifications/channels). Urgência alta de entrega não altera esses ajustes.
+- Consulta de revisão em transação READ ONLY mostrou quatro inscrições Apple de dois usuários. Apenas um habilitou novas mensagens atribuídas e nenhum habilitou mensagens de conversas de que participa. Inscrição Apple também pode ser macOS; os agregados não identificam o iPhone reclamante nem comprovam o motivo da falha.
+- Reprodução isolada anterior: HTTP 403 Apple `BadJwtToken` excluía inscrição. A biblioteca mapeia 401/403 para `WebPush::Unauthorized`; a correção preserva cadastro e registra erro sanitizado. [Apple](https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers).
+- Reprodução isolada anterior: URL longa sem espaços gerava JSON de 5.120 bytes e `ArgumentError: encrypted payload is too big` antes da rede. A regressão verifica orçamento final e encriptação real local, sem enviar Push.
+- Worker antigo descartava payload inválido sem apresentação. WebKit pode revogar inscrição se Push recebido não gera aviso visível; [referência](https://webkit.org/blog/16535/meet-declarative-web-push/). Recuperação genérica implementada, mas falha do SO também na apresentação mínima continua falha; não é confirmação de banner.
+
+### Verificações automatizadas do candidato
+
+| Verificação | Resultado |
+|-------------|-----------|
+| RSpec dirigido | 35 exemplos em sete arquivos, zero falhas |
+| Vitest dirigido | 145 testes em nove arquivos, zero falhas |
+| RuboCop | Nove arquivos Ruby/spec, sem infrações |
+| ESLint | Seis arquivos JS/Vue/spec, sem erros ou avisos |
+| Traduções | JSON en/pt_BR válidos, sete novas chaves em cada idioma |
+| Whitespace e fork | `git diff --check` sem erros; inventário integral idêntico, 684 marcadores |
+| Produção, e-mail e envio Push real | Não alterados/executados nesta implementação |
+| Aparelhos e acessibilidade assistiva | Homologação pendente; não inferida da automação |
+
+RSpec usou exclusivamente `RAILS_ENV=test`, banco `chatwoot_mobile_notification_fixes_test` e Redis temporário `127.0.0.1:16481`, sem persistência. Banco de teste mantido para repetição; Redis encerrado ao finalizar. Antes de Ruby/Bundler foi tentado `eval "$(rbenv init -)"`; rbenv ausente, usada Ruby 3.4.4 correspondente ao projeto. Dependências frontend locais reutilizadas sem mudanças de lockfile; configuração de validação temporária para acesso ao diretório compartilhado das dependências. Avisos de enums/Rack/Browserslist são preexistentes; warning do worker inválido é intencional e não contém conteúdo.
+
+Arquivos RSpec:
+
+```text
+spec/custom/services/custom/notification/browser_push_payload_spec.rb
+spec/custom/services/custom/notification/browser_push_log_context_spec.rb
+spec/custom/services/custom/notification/push_notification_service_spec.rb
+spec/custom/services/notification/push_test_service_spec.rb
+spec/services/notification/push_notification_service_spec.rb
+spec/custom/controllers/custom/api/v1/notification_subscriptions_controller_spec.rb
+spec/custom/services/custom/notification/delivery_access_spec.rb
+```
+
+Vitest cobre worker/recuperação, inscrição Push, ambiente/permissões, Pop-up, diagnóstico mobile e convite guiado. As novas regressões verificam conteúdo genérico sem ações/destinatário em payload inválido, uma única recuperação de exibição, erro final sem loop, logs sem dados privados, banner relatado sem reenvio/ativação automática, permissão revogada e ajuda iOS/Android.
+
+Homologação exigida após publicação: Android/PWA com som/tela bloqueada e banner ligado/desligado; iOS/iPadOS 16.4+ pelo ícone instalado, permissão, eventos, Banners/Foco/Resumo Agendado; mensagem real com app fechado, teste diagnóstico, clique/ações/leitura, leitor de tela, teclado e rolagem mobile. Instalação/permissão/eventos do iPhone reclamante ainda precisam ser confirmados. Corrigir bugs não equivale a confirmar a causa desse relato.
+
 ## Integração das notificações por time — 02/out/2026
 
 Após `git fetch origin`, somente `feat/team-unassigned-notifications` (`f3e91283ff`) e `fix/team-notification-hardening` (`5dc0fb450b`) estavam fora da main local. A segunda contém a primeira. O worktree `fix/integrate-team-notifications-main` foi criado de `origin/main` atualizado e avançado por fast-forward à main anterior `b4334fdc0f` e ao candidato `5dc0fb450b`, sem conflitos. A main recebe a integração e este registro documental; branches e worktrees antigos foram preservados.

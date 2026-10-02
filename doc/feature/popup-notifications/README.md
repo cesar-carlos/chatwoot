@@ -1,5 +1,13 @@
 # Popup visual — Documentação
 
+## Correções mobile e apresentação de banners — 02/out/2026
+
+Candidato `fix/mobile-notification-reliability`, baseado no `origin/main` atualizado (`69554d4a89`). Preserva inscrição em erros de autenticação do provedor, limita o JSON Web Push a 3.900 bytes e acrescenta recuperação visível no worker. O teste oferece **Recebi som ou aviso, mas não apareceu banner**, com instruções específicas para Android, iOS e desktop. [Arquitetura](./current-state.md#correções-mobile-e-banners--02out2026), [validação](./validation-report.md#correções-mobile-e-banners--02out2026).
+
+Som/tela bloqueada e banner flutuante são apresentações distintas do sistema operacional. **Pop-up notification** também usa a Notifications API; não é um banner HTML sobre outros aplicativos. O app não pode habilitar categorias Android, Banners do iOS ou ignorar Foco/Não Perturbe. A entrega não é garantida pela aceitação do provedor.
+
+A main `69554d4a89` já foi publicada no fork. Na revisão, a produção ainda executava `f58ca95d4d`, sem os fluxos guiados mais recentes. Este candidato exige integração e novo build/deploy antes de aparecer no domínio; homologação em aparelhos continua necessária. As seções seguintes preservam os estados históricos das entregas anteriores.
+
 ## Nova regra de time — candidato de 02/out/2026
 
 Implementada inicialmente em `feat/team-unassigned-notifications` e revisada em `fix/team-notification-hardening`, **incorporada à main local em 02/out/2026**, sem publicação, build ou deploy: **Uma conversa foi atribuída ao seu time e está sem agente atribuído**. A linha tem opções independentes de e-mail, Notificação do sistema e **Pop-up notification**, inicialmente desmarcadas; as preferências existentes são preservadas.

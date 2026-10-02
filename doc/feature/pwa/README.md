@@ -1,5 +1,13 @@
 # PWA e Web Push do painel
 
+## Confiabilidade mobile e banners — 02/out/2026
+
+O candidato `fix/mobile-notification-reliability` corrige remoção de inscrição por erro de autenticação e falhas de payload longo, acrescenta aviso genérico de recuperação no worker e diagnóstico **Recebi som ou aviso, mas não apareceu banner**. [Arquitetura](./current-state.md#correções-mobile-e-banners--02out2026), [validação](../popup-notifications/validation-report.md#correções-mobile-e-banners--02out2026).
+
+O Android pode receber com som/tela bloqueada e ocultar o banner flutuante; a ajuda orienta a categoria correspondente. No iPhone, usar iOS/iPadOS 16.4+, abrir pelo ícone da Tela de Início, autorizar e selecionar eventos Push. Banners, Foco e Resumo Agendado também afetam a apresentação. O app não controla esses ajustes do sistema.
+
+`69554d4a89` foi publicado na main do fork; na revisão, produção ainda executava `f58ca95d4d`. As melhorias guiadas integradas e este novo candidato só estarão disponíveis após build/deploy. Aceitação pelo provedor e testes automatizados não comprovam apresentação nos aparelhos; o relato individual do iPhone continua sem causa comprovada.
+
 ## Nova regra de time — revisão local de 02/out/2026
 
 `fix/team-notification-hardening` acrescenta a regra de conversa atribuída ao time sem agente, com inscrição e preferências atuais preservadas. Proteções de autorização, reprocessamento e eventos atrasados estão no backend; não alteram o worker, manifesto ou instalação. A explicação da linha existe em desktop e mobile. Incorporada à main local em 02/out/2026, sem GitHub/build/deploy nem homologação em aparelhos. Ver [estado atual](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026), [validação](../popup-notifications/validation-report.md#revisão-de-segurança-e-idempotência--02out2026) e [integração](../popup-notifications/validation-report.md#integração-das-notificações-por-time--02out2026).

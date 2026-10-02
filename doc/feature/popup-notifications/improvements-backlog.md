@@ -1,5 +1,13 @@
 # Popup visual — Improvements backlog
 
+## Correções mobile implementadas — 02/out/2026
+
+No candidato `fix/mobile-notification-reliability`: preservar inscrição em falha de autenticação, orçamento de bytes para envio/teste, logs por provedor/HTTP/motivo sanitizado, recuperação visível do worker e diagnóstico específico de som/aviso sem banner. [Validação](./validation-report.md#correções-mobile-e-banners--02out2026).
+
+Pendências de aceite: Android com categoria flutuante ligada/desligada, iPhone instalado com permissão/Banners/Foco diferentes, mensagem real e teste com app fechado, leituras e ações existentes. A ausência de banner não pode ser resolvida ativando uma opção no servidor. Confirmar o aparelho, versão, abertura pelo ícone e eventos do usuário reclamante antes de atribuir causa ao relato.
+
+A main anterior (`69554d4a89`) já está no GitHub; produção observada permanece `f58ca95d4d`. O candidato atual aguarda integração/publicação/build/deploy próprios. Registros de entregas anteriores abaixo são históricos.
+
 ## Revisão da regra de time — 02/out/2026
 
 Implementados em `fix/team-notification-hardening` e incorporados à main local: autorização do sino/contadores e leituras, criação idempotente sob concorrência/reprocessamento, identidade para eventos atrasados, nome original do time e explicação da regra em desktop/mobile. Novas regressões cobrem esses contratos. A integração contém também `feat/team-unassigned-notifications`; nenhuma outra branch local ou do fork ficou pendente na auditoria de 02/out/2026.
