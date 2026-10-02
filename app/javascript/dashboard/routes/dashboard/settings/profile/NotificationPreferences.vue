@@ -8,6 +8,8 @@ import NextButton from 'dashboard/components-next/button/Button.vue';
 import { NOTIFICATION_TYPES } from './constants';
 // FORK: independent delivery preferences for unassigned team conversations
 import { withTeamNotificationType } from 'customDashboard/helper/teamNotificationPreferences';
+// FORK: explain event triggers consistently across desktop and mobile preferences
+import NotificationEventDescription from 'customDashboard/components/notifications/NotificationEventDescription.vue';
 // FORK: white-label PWA installation and per-device browser push
 import PwaDeviceSettings from 'customDashboard/components/pwa/PwaDeviceSettings.vue';
 // FORK: loading guards live in the overlay, including stale-account protection
@@ -26,6 +28,7 @@ export default {
     CheckBox,
     NextButton,
     PwaDeviceSettings,
+    NotificationEventDescription, // FORK: event-specific help from the overlay
   },
   data() {
     return {
@@ -369,6 +372,10 @@ export default {
           >
             <span class="text-body-main text-n-slate-12">
               {{ $t(notification.label) }}
+              <!-- FORK: team assignment is not a per-message notification -->
+              <NotificationEventDescription
+                :description="notification.description"
+              />
             </span>
           </div>
           <div
@@ -429,6 +436,10 @@ export default {
             class="text-body-main text-n-slate-12"
           >
             <span>{{ $t(notification.label) }}</span>
+            <!-- FORK: shared event explanation on mobile -->
+            <NotificationEventDescription
+              :description="notification.description"
+            />
           </label>
         </div>
       </div>
@@ -458,6 +469,10 @@ export default {
             class="text-body-main text-n-slate-12"
           >
             <span>{{ $t(notification.label) }}</span>
+            <!-- FORK: shared event explanation on mobile -->
+            <NotificationEventDescription
+              :description="notification.description"
+            />
           </label>
         </div>
       </div>
@@ -491,6 +506,10 @@ export default {
             class="text-body-main text-n-slate-12"
           >
             <span>{{ $t(notification.label) }}</span>
+            <!-- FORK: shared event explanation on mobile -->
+            <NotificationEventDescription
+              :description="notification.description"
+            />
           </label>
         </div>
       </div>

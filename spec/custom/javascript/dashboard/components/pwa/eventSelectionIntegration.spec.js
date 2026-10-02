@@ -2,6 +2,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { createStore } from 'vuex';
 import { describe, expect, it, vi } from 'vitest';
 import NotificationPreferences from 'dashboard/routes/dashboard/settings/profile/NotificationPreferences.vue';
+import NotificationEventDescription from 'customDashboard/components/notifications/NotificationEventDescription.vue';
 
 const deviceStub = {
   name: 'PwaDeviceSettings',
@@ -47,6 +48,20 @@ const render = request => {
 };
 
 describe('per-account event selection passed to the device', () => {
+  it('includes the team event explanation in the desktop row and each mobile channel', async () => {
+    const { wrapper } = render(vi.fn().mockResolvedValue([]));
+    await flushPromises();
+    const descriptions = wrapper
+      .findAllComponents(NotificationEventDescription)
+      .filter(component => component.props('description'));
+    expect(descriptions).toHaveLength(4);
+    descriptions.forEach(component => {
+      expect(component.props('description')).toBe(
+        'PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPES.TEAM_CONVERSATION_ASSIGNMENT_DESCRIPTION'
+      );
+    });
+    wrapper.unmount();
+  });
   it('does not present unloaded preferences as an empty saved selection', async () => {
     let finish;
     const request = vi.fn(

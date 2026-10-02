@@ -18,6 +18,8 @@ describe('team assignment notification preferences', () => {
       value: TEAM_ASSIGNMENT_TYPE,
       label:
         'PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPES.TEAM_CONVERSATION_ASSIGNMENT',
+      description:
+        'PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPES.TEAM_CONVERSATION_ASSIGNMENT_DESCRIPTION',
     });
     expect(NOTIFICATION_TYPES).not.toContainEqual(types[2]);
     expect(NotificationPreferences.data().notificationTypes).toEqual(types);

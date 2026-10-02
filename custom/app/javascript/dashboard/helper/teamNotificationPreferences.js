@@ -9,6 +9,8 @@ export const withTeamNotificationType = types => {
     label:
       'PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPES.TEAM_CONVERSATION_ASSIGNMENT',
     value: TEAM_ASSIGNMENT_TYPE,
+    description:
+      'PROFILE_SETTINGS.FORM.NOTIFICATIONS.TYPES.TEAM_CONVERSATION_ASSIGNMENT_DESCRIPTION',
   });
   return next;
 };
