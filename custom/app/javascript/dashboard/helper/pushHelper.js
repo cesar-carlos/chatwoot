@@ -22,6 +22,8 @@ export const PUSH_STATUS = {
 };
 
 const PUSH_ENABLED_STORAGE_KEY = 'chatwoot_push_enabled';
+export const isPushOptedOut = () =>
+  localStorage.getItem(PUSH_ENABLED_STORAGE_KEY) === 'false';
 let pendingOperation = Promise.resolve();
 
 const enqueueOperation = operation => {
@@ -182,7 +184,7 @@ const synchronizePushSubscription = async (
   };
 };
 
-const ensurePushSubscriptionOperation = async session => {
+const ensurePushSubscriptionOperation = async (session, recoverPermission) => {
   const environment = getPushEnvironment();
   if (!environment.supported || environment.permission !== 'granted') {
     return environment;
@@ -196,7 +198,7 @@ const ensurePushSubscriptionOperation = async session => {
   const registration = await registerServiceWorker();
   const subscription = await registration.pushManager.getSubscription();
   assertPushSession(session);
-  if (pushPreference === null && !subscription) {
+  if (pushPreference === null && !subscription && !recoverPermission) {
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
   }
 
@@ -211,8 +213,10 @@ const ensurePushSubscriptionOperation = async session => {
   return result;
 };
 
-export const ensurePushSubscription = () =>
-  enqueueOperation(ensurePushSubscriptionOperation);
+export const ensurePushSubscription = ({ recoverPermission = false } = {}) =>
+  enqueueOperation(session =>
+    ensurePushSubscriptionOperation(session, recoverPermission)
+  );
 
 const requestAndSubscribeOperation = async (
   session,

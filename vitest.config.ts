@@ -15,6 +15,8 @@ export default defineConfig({
     include: [
       'app/**/*.{test,spec}.?(c|m)[jt]s?(x)',
       'custom/app/javascript/**/*.{test,spec}.?(c|m)[jt]s?(x)',
+      // FORK: include required Custom overlay frontend regression specs
+      'spec/custom/javascript/**/*.{test,spec}.?(c|m)[jt]s?(x)',
     ],
     coverage: {
       reporter: ['lcov', 'text'],

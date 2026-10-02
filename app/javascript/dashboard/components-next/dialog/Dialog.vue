@@ -122,8 +122,10 @@ defineExpose({ open, close });
 
 <template>
   <TeleportWithDirection to="body">
+    <!-- FORK: provide an accessible name for notification guidance dialogs -->
     <dialog
       ref="dialogRef"
+      :aria-label="title || undefined"
       class="w-full transition-all duration-300 ease-in-out shadow-xl rounded-xl max-h-[90vh] overflow-hidden"
       :class="[
         maxWidthClass,

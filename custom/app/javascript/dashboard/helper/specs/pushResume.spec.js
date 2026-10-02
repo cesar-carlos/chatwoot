@@ -72,6 +72,37 @@ describe('browser push resume synchronization', () => {
     expect(ensurePushSubscription).not.toHaveBeenCalled();
   });
 
+  it('coalesces focus and visibility events and recovers a blocked permission', async () => {
+    let finish;
+    ensurePushSubscription.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+    );
+    getPushEnvironment.mockReturnValue({ permission: 'denied' });
+    startBrowserPushResumeSync();
+    getPushEnvironment.mockReturnValue({ permission: 'granted' });
+    window.dispatchEvent(new Event('focus'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(ensurePushSubscription).toHaveBeenCalledOnce();
+    expect(ensurePushSubscription).toHaveBeenCalledWith({
+      recoverPermission: true,
+    });
+    finish({ status: 'subscribed', permission: 'granted' });
+    await syncBrowserPush();
+  });
+
+  it('does not automatically opt in when Pop-up permission is granted', async () => {
+    getPushEnvironment.mockReturnValue({ permission: 'default' });
+    startBrowserPushResumeSync();
+    getPushEnvironment.mockReturnValue({ permission: 'granted' });
+    await syncBrowserPush();
+    expect(ensurePushSubscription).toHaveBeenCalledWith({
+      recoverPermission: false,
+    });
+  });
+
   it('publishes an error state without exposing endpoint details', async () => {
     const listener = vi.fn();
     const logger = vi.spyOn(console, 'error').mockImplementation(() => {});

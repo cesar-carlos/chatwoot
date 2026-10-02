@@ -42,6 +42,8 @@ const render = () =>
     global: {
       stubs: {
         FluentIcon: true,
+        TeleportWithDirection: { template: '<div><slot /></div>' },
+        OnClickOutside: { template: '<div><slot /></div>' },
         ToggleSwitch: {
           props: ['disabled', 'modelValue'],
           emits: ['change', 'update:modelValue'],
@@ -78,9 +80,7 @@ describe('PWA device diagnostics UI', () => {
     );
     const wrapper = render();
     expect(wrapper.text()).toContain('PUSH_STATUS_CHECKING');
-    expect(
-      wrapper.get('[data-test="toggle"]').attributes('disabled')
-    ).toBeDefined();
+    expect(wrapper.find('[data-test="toggle"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('PUSH_TEST_ACTION');
     finish(subscribed);
     await flushPromises();

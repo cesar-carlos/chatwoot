@@ -129,6 +129,20 @@ describe('custom browser push helper', () => {
     expect(result.status).toBe('subscribed');
   });
 
+  it('recovers a newly allowed permission only when requested by the Push flow', async () => {
+    const result = await ensurePushSubscription({ recoverPermission: true });
+    expect(pushManager.subscribe).toHaveBeenCalledOnce();
+    expect(result.status).toBe('subscribed');
+    expect(Notification.requestPermission).not.toHaveBeenCalled();
+  });
+
+  it('permission recovery never overrides device opt-out', async () => {
+    localStorage.setItem('chatwoot_push_enabled', 'false');
+    const result = await ensurePushSubscription({ recoverPermission: true });
+    expect(pushManager.subscribe).not.toHaveBeenCalled();
+    expect(result.status).toBe('unsubscribed');
+  });
+
   it('requests permission only during explicit opt-in', async () => {
     global.Notification.permission = 'default';
     global.Notification.requestPermission.mockResolvedValue('granted');

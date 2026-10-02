@@ -23,6 +23,8 @@ import {
   syncBrowserPush,
 } from 'customDashboard/helper/pushResume';
 import { initializePwaInstallation } from 'customDashboard/composables/usePwaInstallation';
+// FORK: one-time, user-initiated push permission guidance in the installed PWA
+import PwaPushInvitation from 'customDashboard/components/pwa/PwaPushInvitation.vue';
 // FORK: recipient-validated notification actions and normalized route detection
 import { startNotificationActions } from 'customDashboard/helper/notificationActions';
 import ReconnectService from 'dashboard/helper/ReconnectService';
@@ -41,6 +43,8 @@ export default {
     WootSnackbarBox,
     PendingEmailVerificationBanner,
     LowBackupCodesBanner,
+    // FORK: keep the invitation implementation in the Custom overlay
+    PwaPushInvitation,
   },
   setup() {
     const router = useRouter();
@@ -159,6 +163,15 @@ export default {
       <PendingEmailVerificationBanner v-if="hideOnOnboardingView" />
       <PaymentPendingBanner v-if="hideOnOnboardingView" />
       <LowBackupCodesBanner v-if="hideOnOnboardingView" />
+      <!-- FORK: never request native permission automatically on app launch -->
+      <PwaPushInvitation
+        :key="currentUser?.id"
+        :user="currentUser"
+        :account-id="currentAccountId"
+        :ready="
+          hideOnOnboardingView && Boolean(getAccount(currentAccountId)?.id)
+        "
+      />
     </template>
     <router-view v-slot="{ Component }">
       <transition name="fade" mode="out-in">
