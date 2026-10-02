@@ -1,5 +1,11 @@
 # Popup visual — Documentação
 
+## Revisão assistida do candidato
+
+`fix/pwa-assisted-diagnostics-review` incorpora a instalação mobile/ativação guiada e corrige a reabertura do diagnóstico após fechamento. Progresso e motivos de ambiente indisponível são específicos. Inscrição sem eventos Push selecionados recebe orientação após consulta bem-sucedida da conta, sem alterar flags.
+
+**Pop-up notification** permanece separado e inalterado. Sem merge/publicação/build/deploy nesta etapa; homologação em aparelhos continua pendente. [Arquitetura PWA](../pwa/current-state.md) e [validação](./validation-report.md#revisão-do-candidato--02out2026). Os candidatos abaixo são histórico incorporado.
+
 ## Novo candidato: instalação mobile e teste assistido
 
 `feat/mobile-pwa-install-diagnostics` incorpora a ativação guiada anterior e melhora o diagnóstico por dispositivo, **sem merge/publicação/deploy**. Produção permanece no release documentado abaixo.

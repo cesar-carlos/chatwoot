@@ -1,5 +1,34 @@
 # Pop-up e Web Push — validação do candidato
 
+## Revisão do candidato — 02/out/2026
+
+Branch `fix/pwa-assisted-diagnostics-review`, criada após fetch de `origin/main` em `f58ca95d4d` e acrescida por fast-forward do candidato mobile `6ea66dedfc`. **Sem merge na main, GitHub, build ou deploy.** Nenhuma alteração Ruby, banco/Redis, serviço ou permissão de produção.
+
+| Verificação deste incremento | Resultado |
+|-----------------------------|-----------|
+| Vitest direcionado, comando completo abaixo | 282 testes em 27 arquivos, zero falhas |
+| ESLint direcionado | 14 arquivos JS/Vue, sem erros ou avisos |
+| JSON en/pt_BR | 13 novas chaves nos dois idiomas |
+| `git diff --check` | Sem erros |
+| Inventário `FORK:` | 664 → 666; dois hooks nas preferências, sem remoção de identidades anteriores |
+| Ruby/RSpec/RuboCop | Não se aplicam: nenhuma alteração Ruby |
+| Aparelhos e acessibilidade reais | Não homologados nesta etapa |
+
+O comando Vitest é o mesmo da seção mobile abaixo; ESLint usa `pnpm exec eslint --no-eslintrc --config .eslintrc.js <14 arquivos JS/Vue alterados>`. Dependências/lockfile não foram alterados. A primeira execução terminou com os testes aprovados, mas falha de escrita de cache por sandbox; a repetição com permissão para os artefatos do worktree confirmou conclusão sem erro.
+
+Novas regressões: fechamento durante teste pendente e desmontagem; atividades compartilhadas de consulta/ativação/envio/desativação; motivos de ambiente indisponível sem envio; abort real em dez segundos de manifesto e downloads paralelos; conexão/HTTP 5xx versus JSON/ícone inválido; retry explícito sem consumir o evento nativo. Aviso de eventos cobre carga incompleta/falha, conta diferente, inscrição desligada e salvamento, inclusive montagem do componente legado com store Vuex.
+
+### Homologação ainda necessária
+
+- Chrome/Edge desktop, Chrome Android/PWA e iOS/iPadOS 16.4+: instalar, permitir/desbloquear, testar e receber mensagem elegível com app fechado/tela bloqueada.
+- Fechar diagnóstico com teste pendente: não reabrir após resposta. A entrega solicitada ainda pode ocorrer; **Não recebi** não deve reenviar automaticamente.
+- Interromper/restabelecer conexão: consulta libera após timeout, mensagem distingue rede/configuração e retry restaura disponibilidade sem prompts automáticos.
+- Conta sem eventos Push: aviso somente após carga; link abre a seleção. Troca de conta, falha de consulta e salvamento não podem gerar aviso falso; nenhuma flag é selecionada automaticamente.
+- Verificar HTTPS/APIs/configuração em ambiente de teste, sem alterar produção; conferir mensagens e ausência de falso pedido de desbloqueio.
+- Teclado, Escape, foco do diálogo/link, leitor de tela, contraste e rolagem em viewport pequeno.
+
+Os testes automatizados validam estado/lógica, não banner do sistema ou acessibilidade real. Aceitação pelo provedor e confirmação do usuário continuam conceitos distintos.
+
 ## Instalação mobile e teste assistido — 02/out/2026
 
 Branch `feat/mobile-pwa-install-diagnostics`, criada de `origin/main` atualizado em `f58ca95d4d` e acrescida por fast-forward do candidato `feat/guided-push-permission` até `e05e1b4daa`. Inclui o commit local de documentação `3645eed87f`. **Sem merge na main, publicação no GitHub, build de produção ou deploy.** A produção e o histórico abaixo não foram alterados.

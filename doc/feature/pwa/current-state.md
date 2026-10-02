@@ -1,5 +1,17 @@
 # PWA — estado atual
 
+## Revisão do candidato assistido
+
+Estado mais recente: `fix/pwa-assisted-diagnostics-review`, incorporando `feat/mobile-pwa-install-diagnostics`. Não integrado/publicado/implantado; os candidatos anteriores abaixo permanecem como histórico.
+
+- `usePwaInstallation` compartilha consulta e estado **Verificando**. Um `AbortController` limita a operação inteira de manifesto e ícones a dez segundos, cancela downloads restantes e libera a trava. JSON/campos inválidos e ícones ausentes continuam erros de configuração; rede/HTTP 5xx e timeout têm mensagens próprias. **Verificar novamente** exige clique, preserva o evento de instalação disponível e não cria polling.
+- `PushDeviceDiagnostics` invalida a apresentação pendente ao fechar o diálogo. Resultado tardio não o reabre nem substitui uma investigação encerrada; desmontagem continua protegida. Fechar não cancela um teste já aceito pelo provedor, que ainda pode chegar ao aparelho.
+- `usePushDevice` compartilha a atividade **Verificando / Ativando / Testando / Desativando** entre superfícies. `getPushEnvironment` mantém o contrato `unsupported`, acrescentando `reason` para contexto inseguro, APIs ausentes ou VAPID não configurado.
+- `PwaDeviceSettings` recebe somente disponibilidade das preferências e flags Push atuais. Aviso de zero eventos exige inscrição confirmada, consulta da conta bem-sucedida e nenhuma gravação em andamento. O link leva à seção de eventos, com destino acessível por teclado; não altera seleções.
+- Dois hooks upstream `FORK:` passam esses dados e identificam o destino. Sem mudança Ruby, API, banco, payload, VAPID, ícones ou regras de Pop-up.
+
+Automação e homologação pendente: [relatório](../popup-notifications/validation-report.md#revisão-do-candidato--02out2026).
+
 ## Incremento mobile e diagnóstico assistido
 
 Estado de código: `feat/mobile-pwa-install-diagnostics`, incluindo a ativação guiada anterior; não está na produção.

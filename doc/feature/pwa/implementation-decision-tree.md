@@ -1,5 +1,16 @@
 # PWA — decisões de implementação
 
+## Decisões da revisão assistida
+
+- Consulta de instalação pendente → **Verificando**, sem consumir o prompt. Dez segundos sem conclusão → abortar requests, informar timeout e oferecer retry somente por clique.
+- JSON/campos/ícone inválidos → configuração; rede/HTTP 5xx → conexão. Ambos impedem instalação direta até consulta válida, sem concluir que o navegador é incompatível.
+- Diagnóstico fechado → invalidar a apresentação anterior. O envio já iniciado pode chegar, mas sua resposta não reabre o diálogo.
+- Dispositivo inscrito + preferências carregadas + zero eventos Push + nenhuma gravação → orientação e link para seleção; nunca ativar eventos por conta própria.
+- HTTPS inseguro / APIs ausentes / VAPID ausente → motivos distintos dentro do contrato de ambiente indisponível. Não são permissões negadas pelo usuário.
+- Verificação, ativação, teste e desativação compartilham trava, mas exibem a atividade correta. Sem alteração das decisões de canais, sessão ou opt-out.
+
+Estado e limites: [current-state.md](./current-state.md).
+
 ## Decisões do incremento mobile/diagnóstico
 
 - Navegador mobile autenticado → promoção inline; standalone ou `appinstalled` → ocultar. Dispensa persistida → não reapresentar automaticamente, sem esconder as preferências.

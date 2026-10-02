@@ -1,5 +1,14 @@
 # Popup visual — Árvore de decisão
 
+## Ajustes da revisão assistida
+
+- Fechar diagnóstico → invalidar sua apresentação; resposta tardia não o reabre. Não promete cancelar entrega já solicitada.
+- Testar → **Verificando** durante inscrição/worker, **Testando** somente no envio. Ativar e desativar mantêm atividades próprias.
+- Ambiente indisponível → explicar HTTPS, APIs ou configuração ausente; não orientar desbloqueio de permissão quando essa não é a causa.
+- Inscrição confirmada sem eventos Push → orientar seleção apenas após consulta bem-sucedida da conta e fora de gravação. Pop-up, Push e e-mail continuam independentes.
+
+Esses ajustes pertencem a `fix/pwa-assisted-diagnostics-review`, sem integração/publicação/deploy. Ver [validação](./validation-report.md#revisão-do-candidato--02out2026).
+
 ## Decisão no teste assistido
 
 O novo candidato `feat/mobile-pwa-install-diagnostics` mantém os canais separados e não muda regras de eventos.

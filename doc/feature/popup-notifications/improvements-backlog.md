@@ -1,5 +1,11 @@
 # Popup visual — Improvements backlog
 
+## Revisão assistida — correções implementadas
+
+No candidato local `fix/pwa-assisted-diagnostics-review`, resultados tardios não reabrem diagnóstico fechado; a UI distingue atividades e motivos de ambiente indisponível. Um aviso de zero eventos Push depende da inscrição confirmada e das preferências carregadas, sem alteração automática. Instalação tem validação cancelável e retry explícito. Regras de **Pop-up notification** preservadas.
+
+Pendente: homologar aparelhos, acessibilidade e entrega real; merge/publicação/build/deploy dependem de autorização. Evidências e cenários: [validation-report.md](./validation-report.md#revisão-do-candidato--02out2026).
+
 ## Instalação mobile e teste assistido — candidato concluído no código
 
 `feat/mobile-pwa-install-diagnostics` incorpora a ativação guiada e acrescenta verificação fresca, ajuda contextual, recuperação explícita e confirmação **Recebi/Não recebi**. Transporte/provedor/sessão não são confundidos com bloqueio de permissão. As regras e preferências de **Pop-up notification** não mudaram.

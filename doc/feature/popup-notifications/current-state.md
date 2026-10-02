@@ -1,5 +1,13 @@
 # Popup visual — Estado atual
 
+## Revisão do diagnóstico assistido
+
+Candidato mais recente: `fix/pwa-assisted-diagnostics-review`, ainda local. Fechamento do diálogo invalida resultados pendentes; respostas tardias não reabrem a interface, inclusive durante nova investigação. Um envio já iniciado pode ser entregue mesmo após fechar.
+
+Verificação/ativação/teste/desativação têm progresso compartilhado e correto. Contexto inseguro, falta de APIs e configuração VAPID ausente são motivos distintos, não permissão bloqueada. O aviso de nenhum evento Push selecionado só aparece para inscrição confirmada e preferências da conta carregadas com sucesso, fora de gravação; oferece link, sem alterar flags.
+
+Sem mudanças nos eventos, autorização, fechamento de avisos, API, payload ou preferências de Pop-up. Consulta de instalação cancelável e evidências: [PWA](../pwa/current-state.md) e [relatório](./validation-report.md#revisão-do-candidato--02out2026).
+
 ## Diagnóstico assistido no candidato mobile
 
 Em `feat/mobile-pwa-install-diagnostics`, o botão do próprio dispositivo passa por uma verificação fresca antes do envio. Endpoint anteriormente exibido não é tomado como inscrição atual. Permissão negada/default, opt-out, iOS fora da PWA e falta de suporte impedem o teste e oferecem ajuda adequada, sem prompt automático.

@@ -1,5 +1,13 @@
 # PWA e Web Push do painel
 
+## Revisão do candidato — 02/out/2026
+
+`fix/pwa-assisted-diagnostics-review` incorpora o candidato mobile abaixo e corrige resultados tardios do diagnóstico, consulta de instalação sem limite e mensagens de progresso. Manifesto/ícones têm cancelamento após dez segundos e botão **Verificar novamente**, sem repetição automática. Falhas de conexão não são apresentadas como configuração inválida.
+
+As preferências distinguem HTTPS indisponível, navegador sem suporte e configuração Push ausente. Quando o dispositivo está inscrito, mas a conta não tem eventos Push selecionados, aparece uma orientação para escolhê-los; somente após carregamento bem-sucedido, sem marcar eventos automaticamente.
+
+**Branch local, sem merge, GitHub, build ou deploy.** Testes automatizados não substituem a homologação em aparelhos e acessibilidade. Detalhes: [estado atual](./current-state.md) e [evidências](../popup-notifications/validation-report.md#revisão-do-candidato--02out2026). As seções anteriores abaixo são histórico incorporado.
+
 ## Instalação mobile e teste assistido — candidato de 02/out/2026
 
 A branch `feat/mobile-pwa-install-diagnostics` incorpora o candidato `feat/guided-push-permission`. **Não foi integrada à main, publicada, compilada ou implantada.** As seções anteriores sobre candidatos são histórico incorporado; o release de produção permanece `f58ca95d4d`.

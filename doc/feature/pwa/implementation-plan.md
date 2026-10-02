@@ -1,5 +1,15 @@
 # PWA — implementação, testes e publicação
 
+## Revisão final do candidato assistido
+
+Entrega local em `fix/pwa-assisted-diagnostics-review`, criada de `origin/main` atualizado e acrescida por fast-forward do candidato mobile. Mantém as alterações anteriores e não altera main ou produção.
+
+Implementados: cancelamento real de manifesto/ícones após dez segundos, consulta compartilhada com progresso e retry explícito; proteção de diagnóstico após fechamento/desmontagem; atividade Push compartilhada; motivos específicos de ambiente indisponível; aviso de inscrição sem eventos, condicionado à consulta da conta e com link acessível. Componentes e lógica permanecem em `custom/`; preferências upstream recebem apenas dois hooks mínimos.
+
+Novas regressões ficam em `spec/custom/javascript/dashboard`: validação de instalação, ambiente Push, orientação do dispositivo e integração das flags por conta, além dos specs ampliados de diagnóstico/composable. [Comandos e resultados](../popup-notifications/validation-report.md#revisão-do-candidato--02out2026).
+
+Ainda necessário: homologar fechamento com teste pendente, conexão interrompida/restabelecida, conta sem eventos, troca de conta, teclado/foco/leitor de tela e instalação/Push real em desktop, Android e iOS/iPadOS. Merge, publicação, build e deploy exigem autorização separada; não há migration prevista.
+
 ## Incremento de instalação mobile e teste assistido
 
 Branch de entrega: `feat/mobile-pwa-install-diagnostics`, criada de `origin/main` após fetch e acrescida por fast-forward de `feat/guided-push-permission`. Merge, publicação e deploy não fazem parte desta entrega.

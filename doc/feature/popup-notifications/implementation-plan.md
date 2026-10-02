@@ -1,5 +1,13 @@
 # Popup visual — Plano de implementação (as-built)
 
+## Revisão do candidato assistido
+
+Implementado em `fix/pwa-assisted-diagnostics-review`: invalidar apresentação ao fechar diagnóstico, ignorar respostas tardias, exibir atividade correta, explicar motivos específicos de ambiente indisponível e orientar seleção de eventos quando a inscrição não tem eventos Push na conta. Não alterados os contratos de leitura, autorização, entrega e Pop-up.
+
+Regressões incluem teste pendente após fechamento/desmontagem, operação compartilhada, motivos sem envio, aviso após carga bem-sucedida e integração com troca de conta/salvamento. Consulta de instalação ganha cancelamento/timeout e retry explícito no mesmo candidato. [Evidências](./validation-report.md#revisão-do-candidato--02out2026).
+
+Entrega local, sem main/GitHub/build/deploy. Homologação em aparelhos e acessibilidade continuam necessárias; o servidor não comprova exibição pelo sistema operacional.
+
 ## Incremento de diagnóstico e instalação
 
 Implementado no candidato `feat/mobile-pwa-install-diagnostics`, incluindo `feat/guided-push-permission`. Sem merge, GitHub, build ou deploy.

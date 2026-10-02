@@ -1,5 +1,11 @@
 # PWA — pendências e melhorias
 
+## Revisão assistida — concluída no código
+
+`fix/pwa-assisted-diagnostics-review` incorpora os candidatos anteriores. Corrigidos: diálogo reaberto por resposta tardia, validação de instalação sem timeout/retry, progresso genérico e motivos de falta de suporte. Acrescentado aviso de inscrição sem eventos Push, sem seleção automática e sem confundir consulta incompleta com lista vazia.
+
+Pendências de aceite: homologação real em Chrome/Edge, Android/PWA e iOS/iPadOS, acessibilidade e confirmação de instalação/Push com app fechado. Incluir fechamento durante teste, conexão interrompida/restabelecida e seleção por conta. Merge/GitHub/build/deploy continuam fora desta entrega. [Evidências](../popup-notifications/validation-report.md#revisão-do-candidato--02out2026).
+
 ## Incremento mobile — implementado, não publicado
 
 Implementados em `feat/mobile-pwa-install-diagnostics`: promoção mobile por usuário, ajuda compartilhada Android/iOS/desktop, cópia de endereço em navegadores integrados, trava/consumo único do prompt, diagnóstico com permissão/inscrição atualizadas, recuperação explícita, confirmação **Recebi/Não recebi** e classificação de erros. A ativação guiada anterior está incorporada.
