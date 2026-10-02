@@ -1,5 +1,18 @@
 # PWA — estado atual
 
+## Incremento mobile e diagnóstico assistido
+
+Estado de código: `feat/mobile-pwa-install-diagnostics`, incluindo a ativação guiada anterior; não está na produção.
+
+- `PwaMobileInstallPromotion` exige autenticação, conta carregada/ativa, Android/iOS e ausência de standalone/instalação confirmada. Onboarding não mostra o cartão.
+- `usePwaInstallPromotion` mantém a dispensa em `chatwoot:install-promotion:v1:<user_id>`, separada de convite Push e opt-out. Armazenamento indisponível suprime a promoção; as preferências continuam acessíveis.
+- `PwaInstallationCard`/`PwaInstallationHelp` são compartilhados pelo painel e preferências. Ajuda usa três passos, branding e cópia apenas do endereço da origem, sem parâmetros privados.
+- `usePwaInstallation` compartilha trava e consulta do manifesto/ícones. Consome o prompt antes de aguardar, preserva eventos novos e bloqueia instalação direta diante de erro verificável. `appinstalled` e modo standalone ocultam a promoção; ausência do evento não identifica instalação.
+- `usePushDevice.test` e `inspect` compartilham trava com ativação/recuperação. Conferem ambiente, permissão e opt-out antes e após esperas, sincronizam pelo helper existente e usam o endpoint recém-confirmado. Sessão encerrada, identidade alterada e desmontagem invalidam resultados.
+- `PushDeviceDiagnostics` apresenta aceitação, confirmação do usuário e ajuda contextual no mesmo diálogo. A investigação após **Não recebi** não envia novo teste.
+- `pushDiagnostic` classifica HTTP 401/403, 404, 422, 429, 502, rede e timeout sem atribuir falhas de transporte à permissão. O timeout de ativação do worker mantém a mensagem existente e recebe código interno frontend.
+- Não há mudança Ruby, endpoint, payload, VAPID, preferências de eventos, ícones ou banco. Push continua separado de **Pop-up notification**.
+
 ## Novo candidato: convite e ajuda de permissão
 
 A branch `feat/guided-push-permission` contém um convite inicial e a nova interface por dispositivo; **não estão no release de produção**.

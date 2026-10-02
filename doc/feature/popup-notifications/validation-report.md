@@ -1,5 +1,51 @@
 # Pop-up e Web Push — validação do candidato
 
+## Instalação mobile e teste assistido — 02/out/2026
+
+Branch `feat/mobile-pwa-install-diagnostics`, criada de `origin/main` atualizado em `f58ca95d4d` e acrescida por fast-forward do candidato `feat/guided-push-permission` até `e05e1b4daa`. Inclui o commit local de documentação `3645eed87f`. **Sem merge na main, publicação no GitHub, build de produção ou deploy.** A produção e o histórico abaixo não foram alterados.
+
+| Verificação deste incremento | Resultado |
+|-----------------------------|-----------|
+| Vitest direcionado, incluindo stores/API legados | 243 testes em 23 arquivos, zero falhas |
+| ESLint direcionado | 17 arquivos JS/Vue alterados, sem erros ou avisos |
+| JSON en/pt_BR | 36 novas chaves presentes nos dois idiomas |
+| `git diff --check` | Sem erros |
+| Inventário `FORK:` | 661 → 664; três hooks de App.vue, nenhuma identidade anterior removida |
+| Ruby/RSpec/RuboCop | Não se aplicam: nenhuma alteração Ruby |
+
+Comando completo usado no worktree:
+
+```bash
+pnpm exec vitest run --config custom/vitest.pwa.config.ts \
+  spec/custom/javascript/dashboard \
+  custom/app/javascript/dashboard/components/pwa/specs \
+  custom/app/javascript/dashboard/helper/specs \
+  custom/app/javascript/dashboard/composables/specs/usePopupNotifications.spec.js \
+  custom/app/javascript/dashboard/composables/specs/usePwaInstallation.spec.js \
+  app/javascript/dashboard/store/modules/specs/notifications \
+  app/javascript/dashboard/api/specs/notifications.spec.js \
+  --poolOptions.threads.singleThread --no-coverage
+```
+
+ESLint: `pnpm exec eslint --no-eslintrc --config .eslintrc.js <17 arquivos JS/Vue alterados>`. O inventário foi comparado normalizando somente os números de linha. Dependências vieram do cache, sem mudança de lockfile; nenhum banco, Redis, serviço ou permissão de produção foi usado/modificado.
+
+As novas regressões em `spec/custom/javascript/dashboard` cobrem Android com/sem evento, iOS, navegadores integrados, cópia de endereço, desktop/standalone, conta carregada, dispensa por usuário e armazenamento indisponível. Também cobrem consumo único e falha do prompt, preservação de evento novo, validação compartilhada e bloqueio por manifesto/ícones inválidos.
+
+O diagnóstico cobre permissão revogada após carregar/aguardar, endpoint alterado, inscrição ausente, recuperação explícita e opt-out preservado; nenhum teste é enviado nos impedimentos locais. Inclui aceitação estrita, Recebi/Não recebi, ajuda adequada, códigos HTTP, timeout, concorrência, logout e desmontagem. A última superfície consegue concluir a consulta quando a primeira é desmontada.
+
+Durante a ampliação da suíte, o spec Custom de Pop-up deixava a URL da conta ativa no ambiente compartilhado, fazendo nove asserções legadas da API falharem somente no conjunto. A API isolada passou; o spec agora restaura a URL após cada teste. A suíte completa acima passou após essa correção de isolamento, sem alterar o contrato da API.
+
+Diálogos têm nome acessível, região de atualização e rolagem limitada pelo design system. Testes simulam APIs nativas e não comprovam foco real, leitor de tela, contraste visual, instalação ou exibição do aviso. A base Browserslist desatualizada gerou aviso já existente, sem falhas nem atualização de dependências.
+
+### Homologação obrigatória pendente
+
+- Chrome/Edge desktop: instalar pelas preferências, permitir/desbloquear, testar, confirmar Recebi/Não recebi e conferir falhas de sessão/limite.
+- Android/Chrome/PWA: cartão inicial, prompt nativo/manual, Agora não persistido, navegador integrado, cópia do endereço e Push com app fechado/tela bloqueada.
+- iOS/iPadOS 16.4+: ajuda Safari/Tela de Início, Abrir como App quando disponível, ausência do cartão em standalone, autorização após clique e Push com app fechado.
+- Todos: teclado/Escape, foco e retorno de foco, leitor de tela, contraste e rolagem em tela pequena. Conferir que Pop-up continua independente e eventos não são selecionados automaticamente.
+
+Aceitação pelo serviço, inscrição e permissão válidas não demonstram apresentação pelo sistema nem detectam universalmente Foco/Não Perturbe. Merge/GitHub/build/deploy continuam sujeitos a autorização separada. Instruções de instalação conferidas em [web.dev](https://web.dev/articles/customize-install) e [Apple](https://support.apple.com/pt-br/guide/iphone/iphea86e5236/ios).
+
 ## Ativação guiada — candidato de 02/out/2026
 
 Branch `feat/guided-push-permission`, criada de `origin/main` em `f58ca95d4d` após fetch e acrescida do commit local de documentação `3645eed87f`. Este incremento **não foi integrado à main, publicado, compilado para produção ou implantado**. O histórico de produção abaixo permanece válido.

@@ -1,5 +1,22 @@
 # Popup visual — Árvore de decisão
 
+## Decisão no teste assistido
+
+O novo candidato `feat/mobile-pwa-install-diagnostics` mantém os canais separados e não muda regras de eventos.
+
+| Situação verificada no clique | Ação |
+|------------------------------|------|
+| Permissão negada | Ajuda de desbloqueio dentro do app; nenhum teste |
+| Permissão pendente | CTA de autorização; só o clique solicita permissão |
+| iOS fora da PWA | Ajuda de instalação pela Tela de Início |
+| Opt-out local | Ativação explícita, nunca reativação automática |
+| Ambiente incompatível | Explicar limitação, não atribuir bloqueio ao usuário |
+| Inscrição confirmada e permissão concedida | Enviar usando o endpoint recém-confirmado |
+| Serviço aceitou | Perguntar Recebi/Não recebi; não afirmar banner exibido |
+| Não recebi, itens locais válidos | Orientar sistema/Foco/Não Perturbe; não reenviar nem afirmar bloqueio detectado |
+
+Erros de sessão, limite e envio têm mensagens distintas; detalhes e evidências no [relatório](./validation-report.md#instalação-mobile-e-teste-assistido--02out2026).
+
 ## Decisão adicional: permissão não é inscrição
 
 No candidato `feat/guided-push-permission`, o convite inicial é exclusivo da PWA instalada; a autorização explícita continua disponível no navegador comum pelas preferências. O pedido nativo ocorre por clique e a permissão negada recebe orientação manual.

@@ -1,5 +1,13 @@
 # Popup visual — Estado atual
 
+## Diagnóstico assistido no candidato mobile
+
+Em `feat/mobile-pwa-install-diagnostics`, o botão do próprio dispositivo passa por uma verificação fresca antes do envio. Endpoint anteriormente exibido não é tomado como inscrição atual. Permissão negada/default, opt-out, iOS fora da PWA e falta de suporte impedem o teste e oferecem ajuda adequada, sem prompt automático.
+
+`usePushDevice` serializa consulta, recuperação, ativação e teste entre superfícies e invalida operações por sessão/desmontagem. `PushDeviceDiagnostics` pergunta sobre exibição somente com `accepted: true`; **Não recebi** verifica novamente e não reenvia. 404/429/401/403/422/502/rede/timeout permanecem distintos de permissão bloqueada.
+
+A API e o limite de três testes/minuto são os existentes. Nenhuma alteração no protocolo, payload real, eventos Pop-up, flags por conta ou preferências foi feita. O candidato anterior está incorporado; ambos continuam fora de produção. Detalhes: [PWA](../pwa/current-state.md).
+
 ## Autorização guiada no candidato de 02/out/2026
 
 O novo fluxo de permissão está isolado em `feat/guided-push-permission`. Ele reutiliza a Notifications API, mas mantém a inscrição Web Push separada dos avisos iniciados pelo painel. Os eventos e a persistência de Pop-up permanecem inalterados.

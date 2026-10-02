@@ -1,5 +1,15 @@
 # Popup visual — Plano de implementação (as-built)
 
+## Incremento de diagnóstico e instalação
+
+Implementado no candidato `feat/mobile-pwa-install-diagnostics`, incluindo `feat/guided-push-permission`. Sem merge, GitHub, build ou deploy.
+
+Fluxo: clique → ambiente/permissão/opt-out atuais → ativação do worker e sync pelo helper existente → endpoint confirmado → teste. Obstáculos verificáveis abrem ajuda no mesmo diálogo, sem enviar. Solicitação nativa permanece exclusivamente no CTA **Permitir notificações**. Aceitação exige campo booleano verdadeiro; confirmação visual vem somente do usuário.
+
+**Não recebi** reexecuta conferências, sem envio automático. 404 oferece sync explícito; teste posterior exige outro clique. 429 pede aguardar; 401/403 orientam sessão/acesso; falhas de cadastro/provedor/transporte são classificadas sem prometer desbloqueio do sistema.
+
+As regressões e a matriz de homologação estão no [relatório](./validation-report.md#instalação-mobile-e-teste-assistido--02out2026). Não há alteração Ruby ou dos contratos Pop-up/Web Push. Instalação e dispensa local: [plano PWA](../pwa/implementation-plan.md).
+
 ## Incremento de autorização — candidato separado
 
 Convite inicial da PWA, ajuda de desbloqueio e CTAs das preferências foram implementados em `feat/guided-push-permission`, sem publicação/deploy. Reutilizam a lógica Web Push existente; não substituem o composable de Pop-up.

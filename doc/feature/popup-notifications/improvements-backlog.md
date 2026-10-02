@@ -1,5 +1,11 @@
 # Popup visual — Improvements backlog
 
+## Instalação mobile e teste assistido — candidato concluído no código
+
+`feat/mobile-pwa-install-diagnostics` incorpora a ativação guiada e acrescenta verificação fresca, ajuda contextual, recuperação explícita e confirmação **Recebi/Não recebi**. Transporte/provedor/sessão não são confundidos com bloqueio de permissão. As regras e preferências de **Pop-up notification** não mudaram.
+
+Faltam homologação em aparelhos e acessibilidade real, além das etapas autorizadas separadamente de merge/publicação/build/deploy. Não há tentativa de abrir ajustes internos, detectar universalmente Foco ou comprovar banner via resposta da API. Ver [validação](./validation-report.md#instalação-mobile-e-teste-assistido--02out2026).
+
 ## Novo candidato de experiência de permissão
 
 Implementados em `feat/guided-push-permission`: convite inicial único na PWA, botões explícitos e ajuda de desbloqueio. As preferências de Pop-up continuam independentes; nenhuma migração ou ativação indiscriminada de eventos foi feita.

@@ -1,5 +1,11 @@
 # PWA — pendências e melhorias
 
+## Incremento mobile — implementado, não publicado
+
+Implementados em `feat/mobile-pwa-install-diagnostics`: promoção mobile por usuário, ajuda compartilhada Android/iOS/desktop, cópia de endereço em navegadores integrados, trava/consumo único do prompt, diagnóstico com permissão/inscrição atualizadas, recuperação explícita, confirmação **Recebi/Não recebi** e classificação de erros. A ativação guiada anterior está incorporada.
+
+Pendências obrigatórias: instalar em Android e iOS reais, confirmar dispensa/reabertura, autorizar/desbloquear, testar com app fechado, verificar teclado/foco/leitor de tela e telas pequenas. Automação não valida banner do sistema. Merge/GitHub/build/deploy continuam separados e dependem de autorização. [Evidências](../popup-notifications/validation-report.md#instalação-mobile-e-teste-assistido--02out2026).
+
 ## Ativação guiada — implementada no candidato
 
 Convite único na PWA, CTAs de permissão/ativação, ajuda por plataforma, verificação após desbloqueio e estado compartilhado estão implementados em `feat/guided-push-permission`, **não publicados**.

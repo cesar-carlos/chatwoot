@@ -1,5 +1,13 @@
 # Popup visual — Documentação
 
+## Novo candidato: instalação mobile e teste assistido
+
+`feat/mobile-pwa-install-diagnostics` incorpora a ativação guiada anterior e melhora o diagnóstico por dispositivo, **sem merge/publicação/deploy**. Produção permanece no release documentado abaixo.
+
+O teste verifica permissão e inscrição atuais; bloqueio abre instruções dentro do aplicativo. Após aceitação, **Recebi/Não recebi** distingue o resultado informado pelo usuário da aceitação pelo serviço. **Não recebi** não envia outro teste. Permissões do sistema e Foco/Não Perturbe não são universalmente consultáveis.
+
+A instalação mobile é compartilhada com as preferências. **Pop-up notification** mantém seus eventos, preferências e dependência do painel aberto; instalar ou permitir Push não seleciona eventos automaticamente. Ver [PWA](../pwa/current-state.md) e [validação](./validation-report.md#instalação-mobile-e-teste-assistido--02out2026).
+
 ## Novo candidato: autorização facilitada
 
 A branch `feat/guided-push-permission` acrescenta convite único na primeira abertura da PWA e botões de permitir/ativar/ajuda nas preferências. **Ainda não foi integrada nem implantada**. Fluxo e limites: [PWA](../pwa/README.md).

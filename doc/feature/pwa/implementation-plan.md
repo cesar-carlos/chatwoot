@@ -1,5 +1,17 @@
 # PWA — implementação, testes e publicação
 
+## Incremento de instalação mobile e teste assistido
+
+Branch de entrega: `feat/mobile-pwa-install-diagnostics`, criada de `origin/main` após fetch e acrescida por fast-forward de `feat/guided-push-permission`. Merge, publicação e deploy não fazem parte desta entrega.
+
+Novos componentes/composable/helper ficam em `custom/app/javascript/dashboard`: `PwaMobileInstallPromotion`, `PwaInstallationCard`, `PwaInstallationHelp`, `PushDeviceDiagnostics`, `usePwaInstallPromotion` e `pushDiagnostic`. O único hook de dashboard novo é import/registro/montagem em `App.vue`, marcado `FORK:`. `usePushDevice` e `usePwaInstallation` concentram as operações; `PwaDeviceSettings` passa a reutilizar os componentes.
+
+Na instalação, prompt nativo exige evento capturado e clique; cada evento é consumido uma vez. Ajuda manual não promete instalação automática. Erros de manifesto/ícones impedem o CTA direto. Dispensa por usuário permanece independente do opt-out.
+
+No teste, negar permissão, iOS fora da PWA, opt-out ou inscrição não confirmada impede envio. Recuperação/ativação só se tornam teste após novo clique explícito. A resposta deve conter `accepted: true`; códigos HTTP têm mensagens próprias e não provocam retries nem novos prompts.
+
+Executar Vitest/ESLint direcionados e inventário; evidências e comando completo no [relatório](../popup-notifications/validation-report.md#instalação-mobile-e-teste-assistido--02out2026). Homologar teclado/foco/leitor de tela, rolagem mobile, instalação real, desbloqueio e Push com app fechado em Chrome/Edge, Android e iOS/iPadOS. Futuro build/deploy precisa de autorização e release isolado com storage compartilhado.
+
 ## Ativação guiada no candidato
 
 Implementação isolada em `feat/guided-push-permission`, baseada em `origin/main` atualizado e preservando o commit local de documentação do deploy. Sem merge/publicação/deploy nesta etapa.

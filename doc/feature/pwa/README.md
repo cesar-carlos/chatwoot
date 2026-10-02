@@ -1,5 +1,15 @@
 # PWA e Web Push do painel
 
+## Instalação mobile e teste assistido — candidato de 02/out/2026
+
+A branch `feat/mobile-pwa-install-diagnostics` incorpora o candidato `feat/guided-push-permission`. **Não foi integrada à main, publicada, compilada ou implantada.** As seções anteriores sobre candidatos são histórico incorporado; o release de produção permanece `f58ca95d4d`.
+
+O painel autenticado no Android/iOS oferece um cartão de instalação, com dispensa local por usuário. Android usa o prompt disponível; sem ele, oferece instruções. iOS usa Safari → Compartilhar → Adicionar à Tela de Início, incluindo **Abrir como App** quando disponível. Navegadores integrados conhecidos oferecem cópia do endereço. A ausência do evento não prova instalação ou incompatibilidade. A mesma ajuda permanece nas preferências desktop.
+
+O teste revalida permissão, opt-out e inscrição antes de enviar. Bloqueio abre ajuda dentro do aplicativo, não ajustes nativos. Aceitação pelo provedor pergunta **Recebi / Não recebi**; a segunda opção confere novamente os itens locais, sem reenviar automaticamente. Nenhuma verificação universal detecta Foco/Não Perturbe ou comprova a exibição do banner.
+
+Arquitetura e limites: [estado atual](./current-state.md). Evidências e homologação pendente: [validação](../popup-notifications/validation-report.md#instalação-mobile-e-teste-assistido--02out2026).
+
 ## Ativação guiada — candidato de 02/out/2026
 
 Implementada na branch `feat/guided-push-permission`, ainda **sem integração, publicação, build ou deploy**. O estado de produção descrito abaixo permanece o release `f58ca95d4d`.

@@ -1,5 +1,17 @@
 # PWA — decisões de implementação
 
+## Decisões do incremento mobile/diagnóstico
+
+- Navegador mobile autenticado → promoção inline; standalone ou `appinstalled` → ocultar. Dispensa persistida → não reapresentar automaticamente, sem esconder as preferências.
+- Evento de instalação disponível e sem erro verificável → prompt após clique. Sem evento → instruções; não inferir instalado/incompatível. Navegador integrado conhecido → copiar endereço e orientar Chrome/Safari.
+- Testar → leitura fresca de ambiente/permissão/opt-out → inscrição ativa confirmada pelo helper → envio usando esse endpoint.
+- Negada → ajuda; pendente → CTA que pede permissão; iOS fora da PWA → instalação; opt-out → ativação explícita; incompatível → limitação, não bloqueio.
+- Aceito → perguntar ao usuário. **Não recebi** → conferir novamente sem envio; itens válidos → instruções de sistema/Foco, sem afirmar bloqueio detectado.
+- 404 → recuperação explícita e outro clique para testar; 429 → aguardar; 401/403 → sessão/autorização; 422/502/rede/timeout → cadastro/envio/conexão.
+- Resultados existem apenas no frontend; não há telemetria de confirmação de banner, credenciais no worker ou endpoints novos.
+
+Instruções conferidas em [Chrome/web.dev](https://web.dev/articles/customize-install) e [Apple](https://support.apple.com/pt-br/guide/iphone/iphea86e5236/ios).
+
 ## Convite de permissão — decisão de 02/out/2026
 
 - Convite próprio automático somente na primeira abertura autenticada da PWA; solicitação nativa exclusivamente após clique.
