@@ -1,5 +1,11 @@
 # PWA — estado atual
 
+## Regra de time sem agente — candidato de 02/out/2026
+
+`feat/team-unassigned-notifications` acrescenta o evento **Uma conversa foi atribuída ao seu time e está sem agente atribuído**, com seleção Push independente por conta e desmarcada por padrão. Reutiliza inscrição, worker, TTL, urgência e ações existentes; não muda instalação, manifesto, ícones ou VAPID. O Push usa título localizado com time/conversa e resumo da mensagem.
+
+Atribuir a um time não é o mesmo que atribuir a um agente. Só membros autorizados recebem, com conversa aberta e sem agente/bot. O envio pendente é revalidado e descartado quando essa condição deixa de existir. Pop-up continua exigindo painel aberto/conectado; Push exige dispositivo inscrito e autorizado. [Semântica e arquivos](../popup-notifications/current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](../popup-notifications/validation-report.md#regra-de-time-sem-agente--02out2026). Branch local, ainda sem merge/publicação/build/deploy.
+
 ## Estado após integração local — 02/out/2026
 
 As implementações guiadas, mobile e a revisão assistida abaixo foram incorporadas à `main` local, incluindo `063ee874a1`. As descrições de candidatos são histórico; não representam publicação. GitHub, novo build, deploy e homologação em aparelhos continuam pendentes. [Evidências da integração](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).

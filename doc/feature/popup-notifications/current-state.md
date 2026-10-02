@@ -1,5 +1,18 @@
 # Popup visual — Estado atual
 
+## Regra de time sem agente — candidato de 02/out/2026
+
+Branch local `feat/team-unassigned-notifications`, derivada de `origin/main` atualizado e avançada à `main` local `b4334fdc0f` para preservar a ativação guiada já integrada. Este incremento ainda não está na main nem na produção.
+
+- Identificador: `team_conversation_assignment`, enum aditivo `10`; flags `email_team_conversation_assignment`, `push_team_conversation_assignment` e `popup_team_conversation_assignment`. Nenhuma migration: e-mail/Push usam as colunas de bits existentes, Pop-up continua em `ui_settings` por conta. Nenhuma seleção automática ou alteração retroativa.
+- Disparo: `team.changed`; também `assignee.changed` quando uma atribuição de agente/bot é removida, mantendo o time. Se ambos mudarem juntos, somente `team.changed` cria o aviso. Uma conversa criada já no time também usa o callback de atribuição existente. Atualizações comuns e novas mensagens não repetem esse evento.
+- Elegibilidade: conversa **aberta**, time presente, sem agente individual, bot legado ou assignee de IA; membro do time na mesma conta ativa, vínculo com a conta, acesso às notificações e `ConversationPolicy#show?`. Contato bloqueado continua excluído pelo builder. Administradores/inbox members fora do time não são destinatários.
+- Preferência: precisa selecionar ao menos um canal. Pop-up sozinho cria a notificação, sem enfileirar Push/e-mail. Falta de preferência significa desativado. Push continua exigindo inscrição e permissão no dispositivo; Pop-up exige painel conectado e omite a conversa já visível.
+- Segurança de entrega: `meta.assignment_team_id` registra o time original. Push e e-mail revalidam vínculo, políticas, time, ausência de agente e preferência no processamento; o mailer revalida também na renderização do envio assíncrono. Mudança de time, saída do membro, atribuição de agente/bot ou fechamento da conversa invalida a entrega pendente. Evento de time atrasado com destino diferente do time atual é ignorado.
+- Conteúdo: título com conversa e time; corpo Push/Pop-up com resumo da última mensagem recebida (ou enviada, se não houver recebida). Pop-up recebe `notification_title` opcional para explicar o evento e conserva o nome do contato no corpo; payloads anteriores mantêm o comportamento. Título Push/Pop-up segue o idioma válido do usuário, com fallback para o da conta. E-mail segue o locale da conta, contém link à conversa e rodapé de preferências; lista do sino tem rótulo e ícone de time em en/pt_BR.
+
+Não há aviso retroativo de conversas já aguardando, polling ou tentativa de manter o WebSocket em segundo plano. Avisos já entregues não são revogados automaticamente se a atribuição mudar. Histórico/sino continuam com o fluxo de leitura existente; esta regra não amplia permissões. Limitações de apresentação do sistema permanecem. [Evidências e aceite manual](./validation-report.md#regra-de-time-sem-agente--02out2026).
+
 ## Estado após integração local — 02/out/2026
 
 Os candidatos abaixo estão incorporados à `main` local, incluindo `063ee874a1`. Não há mudança de canais ou regras de Pop-up durante a integração. Menções a candidatos não publicados são histórico; GitHub, build/deploy e homologação em aparelhos ainda não foram concluídos. [Validação](./validation-report.md#integração-na-main-local--02out2026).

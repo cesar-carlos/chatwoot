@@ -1,5 +1,16 @@
 # Popup visual — Plano de implementação (as-built)
 
+## Incremento: time sem agente — candidato de 02/out/2026
+
+- `custom/app/listeners/custom/notification_listener.rb`: usa os eventos de atribuição existentes; não altera Action Cable nem adiciona scheduler.
+- `custom/app/services/custom/notification/team_assignment_eligibility.rb`, `notification_builder.rb` e `delivery_access.rb`: concentram elegibilidade, opt-in por canal e revalidação do time original.
+- `custom/app/models/custom/notification.rb`: captura `assignment_team_id`, título localizado e corpo; enum aditivo e flags derivadas no OSS.
+- `custom/app/services/custom/notification/email_notification_service.rb`, mailer/template Custom: habilitam o novo canal e revalidam o envio assíncrono.
+- `custom/app/javascript/dashboard/helper/teamNotificationPreferences.js`: insere a linha após a atribuição individual e fornece ícone do sino. `usePopupNotifications` aceita o título opcional sem alterar payloads anteriores.
+- Hooks upstream mínimos `FORK:`: enum, listener, serviço de e-mail, composição das preferências e ícone. Textos somente en/pt_BR. Specs correspondentes em `spec/custom`; regressão de Pop-up existente ampliada.
+
+Entrega em `feat/team-unassigned-notifications`, sem integração/publicação/deploy. Será necessário build frontend e reinício coordenado de web/workers após autorização; não há migration, nova configuração nem alteração de chaves VAPID. [Semântica](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](./validation-report.md#regra-de-time-sem-agente--02out2026).
+
 ## Integração local concluída — 02/out/2026
 
 Todos os candidatos abaixo, até `063ee874a1`, incorporados à `main` local por fast-forward, sem conflitos. A validação foi repetida em worktree isolado; nenhuma outra branch do fork ficou pendente. GitHub, novo build, deploy e homologação real ainda são etapas separadas. [Evidências](./validation-report.md#integração-na-main-local--02out2026).

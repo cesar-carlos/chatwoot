@@ -1,5 +1,11 @@
 # Popup visual — Documentação
 
+## Nova regra de time — candidato de 02/out/2026
+
+Implementada em `feat/team-unassigned-notifications`, ainda **sem merge, publicação, build ou deploy**: **Uma conversa foi atribuída ao seu time e está sem agente atribuído**. A linha tem opções independentes de e-mail, Notificação do sistema e **Pop-up notification**, inicialmente desmarcadas; as preferências existentes são preservadas.
+
+O evento é `team_conversation_assignment`. Notifica membros autorizados do time quando uma conversa aberta é atribuída a ele sem agente/bot, ou quando o agente é retirado e a conversa permanece no time. Não é uma regra de todas as mensagens recebidas. Detalhes e exclusões: [estado atual](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026). [Validação](./validation-report.md#regra-de-time-sem-agente--02out2026).
+
 ## Integração na main local — 02/out/2026
 
 Os candidatos guiados/mobile e a revisão assistida, até `063ee874a1`, foram incorporados à `main` local sem conflitos. As seções abaixo preservam o histórico. GitHub, build e deploy não foram realizados nesta etapa; homologação de aparelhos/acessibilidade continua pendente. [Evidências e auditoria](./validation-report.md#integração-na-main-local--02out2026).

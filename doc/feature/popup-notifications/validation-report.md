@@ -1,5 +1,66 @@
 # Pop-up e Web Push — validação do candidato
 
+## Regra de time sem agente — 02/out/2026
+
+Candidato `feat/team-unassigned-notifications`, criado após `git fetch origin main` e avançado por fast-forward à main local `b4334fdc0f`. Nenhuma alteração na main, GitHub ou produção nesta etapa. Testes usam exclusivamente `RAILS_ENV=test`, banco dedicado `chatwoot_team_notifications_test` e Redis temporário em `127.0.0.1:16479`, sem reutilizar o serviço de produção.
+
+Cobertura nova: gatilho real de atribuição ao time/remoção de agente, seleção independente, Pop-up-only, conta/time errado, vínculo removido, políticas customizadas, agente/bots, estado/contato bloqueado, simultaneidade de eventos, evento atrasado, captura do time original, título localizado, flags aditivas, API por conta, payload Push e revalidação de e-mail na renderização. Dois fixtures antigos de `ConversationPolicy` usavam a associação removida `assignee_agent_bot`; foram atualizados para `ai_assignee`, sem mudar as políticas.
+
+| Verificação do incremento | Resultado |
+|---------------------------|-----------|
+| RSpec dirigido, OSS/Enterprise/Custom | 128 exemplos, zero falhas; 34 exemplos novos em `spec/custom` |
+| Vitest dirigido | 285 testes em 28 arquivos, zero falhas |
+| RuboCop | 16 arquivos Ruby, sem infrações |
+| ESLint | 6 arquivos JS/Vue, sem erros ou avisos |
+| Traduções | Quatro JSON válidos; cópia backend en/pt_BR exercitada nos specs |
+| `git diff --check` | Sem erros |
+| Inventário `FORK:` | 666 → 675; nove hooks/marcadores novos, nenhuma identidade anterior removida |
+| Main/GitHub/build/deploy | Não realizados neste incremento |
+| Aparelhos/layout/acessibilidade reais | Aceite manual pendente |
+
+Dependências instaladas offline com lockfile congelado, sem alterar versões. Os avisos Rails de enums legados e Browserslist desatualizado não são falhas da nova regra. O Redis temporário foi encerrado após os testes; o banco dedicado de teste permanece disponível para repetir a validação.
+
+### Comandos dirigidos
+
+Antes de Ruby/Bundler foi tentado `eval "$(rbenv init -)"`. `rbenv` não está instalado neste servidor; foi usada a versão já disponível Ruby **3.4.4**, correspondente a `.ruby-version`, com o bundle existente. Mailer está em modo de teste, sem envio externo.
+
+```bash
+bundle exec rspec \
+  spec/custom/listeners/custom/notification_listener_spec.rb \
+  spec/custom/models/custom/team_notification_spec.rb \
+  spec/custom/services/custom/notification/team_assignment_eligibility_spec.rb \
+  spec/custom/mailers/custom/agent_notifications/conversation_notifications_mailer_spec.rb \
+  spec/custom/controllers/custom/api/v1/accounts/team_notification_settings_spec.rb \
+  spec/custom/builders/custom/notification_builder_spec.rb \
+  spec/custom/services/custom/notification/delivery_access_spec.rb \
+  spec/listeners/notification_listener_spec.rb spec/models/notification_spec.rb \
+  spec/mailers/agent_notifications/conversation_notifications_mailer_spec.rb \
+  spec/controllers/api/v1/accounts/notification_settings_controller_spec.rb \
+  spec/services/notification/push_notification_service_spec.rb \
+  spec/custom/policies/custom/conversation_policy_spec.rb \
+  spec/enterprise/policies/conversation_policy_spec.rb
+
+pnpm exec vitest run --config custom/vitest.pwa.config.ts \
+  spec/custom/javascript/dashboard \
+  custom/app/javascript/dashboard/components/pwa/specs \
+  custom/app/javascript/dashboard/helper/specs \
+  custom/app/javascript/dashboard/composables/specs/usePopupNotifications.spec.js \
+  custom/app/javascript/dashboard/composables/specs/usePwaInstallation.spec.js \
+  app/javascript/dashboard/store/modules/specs/notifications \
+  app/javascript/dashboard/api/specs/notifications.spec.js \
+  --poolOptions.threads.singleThread --no-coverage
+```
+
+RuboCop usa `--config .rubocop.yml` e somente os Ruby alterados; ESLint usa `--no-eslintrc --config .eslintrc.js` e somente JS/Vue alterados. `git diff --check` e inventário também são obrigatórios. Comandos Ruby acima pressupõem credenciais de **teste**, `POSTGRES_DATABASE=chatwoot_team_notifications_test`, `REDIS_URL=redis://127.0.0.1:16479/0` e `SMTP_ADDRESS=test.invalid`; não usar `.env` de produção como ambiente de execução.
+
+### Aceite manual pendente
+
+- Em desktop/mobile, selecionar somente a nova linha em cada canal e atribuir conversa aberta a time com autoatribuição desabilitada: membros autorizados recebem; não membros não recebem.
+- Atribuir agente, bot ou time diferente antes do processamento: não entregar o aviso obsoleto. Remover agente mantendo time: gerar um novo aviso. Mudança simultânea de time/remoção de agente: um só aviso por membro.
+- Conferir rótulo/ícone no sino, texto longo sem quebra do layout mobile, título com time e corpo com contato; abrir/marcar como lida continuam no fluxo existente.
+- Push em Android/PWA e iOS instalado com app fechado; Pop-up somente com painel conectado e conversa diferente. Teste automatizado/provedor não comprova exibição real no aparelho.
+- Para publicação futura: merge e build autorizados separadamente, web/workers na mesma versão. Nenhuma migration ou alteração de configuração/chaves requerida.
+
 ## Integração na main local — 02/out/2026
 
 Após `git fetch origin`, o worktree `fix/integrate-pwa-assisted-main` foi criado de `origin/main` (`f58ca95d4d`), avançado à main local anterior (`3645eed87f`) e ao candidato final (`063ee874a1`). Ambos os merges foram fast-forward, sem conflitos ou alteração do código testado. A main recebe essa integração e o registro documental.
