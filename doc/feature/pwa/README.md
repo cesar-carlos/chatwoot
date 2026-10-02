@@ -1,5 +1,13 @@
 # PWA e Web Push do painel
 
+## Ativação guiada — candidato de 02/out/2026
+
+Implementada na branch `feat/guided-push-permission`, ainda **sem integração, publicação, build ou deploy**. O estado de produção descrito abaixo permanece o release `f58ca95d4d`.
+
+Na primeira abertura autenticada da PWA, um convite oferece **Permitir notificações**, **Ativar neste dispositivo** ou **Como liberar notificações**, conforme a permissão real. **Agora não**, Escape e fechamento externo não alteram preferências nem criam inscrição. O convite aparece uma única vez por usuário neste navegador/PWA; opt-out explícito e inscrição ativa o suprimem.
+
+As preferências também oferecem botões grandes de ativação, ajuda por plataforma e **Já liberei, verificar novamente**. O pedido do navegador só abre após clique. Permissão negada exige liberação nas configurações; o aplicativo não consegue contorná-la. Após ativar, os eventos continuam sendo escolhidos separadamente. Evidências e pendências: [validação](../popup-notifications/validation-report.md#ativação-guiada--candidato-de-02out2026).
+
 **Produção em 01/out/2026:** o release `f58ca95d4d`, compilado da `main` do fork, está em execução em web/worker. Inclui autorização no envio, inscrições validadas, logout limitado/cancelável, estado **Verificando**, teste neste dispositivo e ações abrir/marcar como lida. Build e smoke público passaram; homologação em aparelhos continua pendente. Evidências em [validation-report.md](../popup-notifications/validation-report.md).
 
 O painel pode ser instalado como PWA white-label e receber notificações do sistema com a página suspensa ou fechada. A implementação não tenta manter o Action Cable ativo em segundo plano: celulares podem suspender o WebSocket, e o painel reconecta e sincroniza ao voltar.

@@ -1,5 +1,41 @@
 # Pop-up e Web Push — validação do candidato
 
+## Ativação guiada — candidato de 02/out/2026
+
+Branch `feat/guided-push-permission`, criada de `origin/main` em `f58ca95d4d` após fetch e acrescida do commit local de documentação `3645eed87f`. Este incremento **não foi integrado à main, publicado, compilado para produção ou implantado**. O histórico de produção abaixo permanece válido.
+
+A cobertura acrescentada em `spec/custom/javascript/dashboard` exercita convite único por usuário, conta ativa/carregada, exclusão do navegador comum, opt-out, armazenamento indisponível, espera de outros diálogos, fechamento nativo/externo, permissão negada, CTA explícito, recuperação, ações concorrentes e resultados tardios após logout/desmontagem. A suíte existente continua cobrindo worker, VAPID, limpeza, ações e separação de Pop-up.
+
+| Verificação do incremento | Resultado |
+|--------------------------|-----------|
+| Vitest direcionado | 130 testes em 16 arquivos, sem falhas |
+| ESLint direcionado | 18 arquivos JS/Vue/TS, sem erros |
+| JSON en/pt_BR | 18 chaves do fluxo disponíveis nos dois idiomas |
+| `git diff --check` | Sem erros |
+| Inventário `FORK:` | 657 → 661; quatro hooks acrescentados, nenhuma identidade existente removida |
+
+Comando de regressão no worktree:
+
+```bash
+pnpm exec vitest run --config custom/vitest.pwa.config.ts \
+  spec/custom/javascript/dashboard \
+  custom/app/javascript/dashboard/components/pwa/specs \
+  custom/app/javascript/dashboard/helper/specs \
+  custom/app/javascript/dashboard/composables/specs/usePopupNotifications.spec.js \
+  custom/app/javascript/dashboard/composables/specs/usePwaInstallation.spec.js \
+  --poolOptions.threads.singleThread --no-coverage
+```
+
+ESLint usa `--no-eslintrc --config .eslintrc.js` para não herdar outra instalação de plugins do diretório pai. A configuração PWA existente mantém os arquivos de setup no worktree. Dependências foram instaladas do cache, sem mudança de lockfile. Nenhum banco, Redis, serviço ou permissão de usuário de produção foi modificado.
+
+Não há alterações Ruby: RSpec/RuboCop não se aplicam a este incremento exclusivamente frontend. Testes automatizados usam Notifications API, transporte e fechamento nativo simulados; **não comprovam** o prompt real, foco de teclado, leitor de tela, layout visual ou apresentação do banner pelo sistema.
+
+Pendências de homologação: Chrome/Edge desktop, Android/PWA e iOS/iPadOS 16.4+, cobrindo primeira abertura, Agora não e reabertura, desbloqueio manual, escolha dos eventos e Push com app fechado. Merge/GitHub/build/deploy exigem autorização separada.
+
+Referências para instruções de permissão: [Chrome](https://support.google.com/chrome/answer/3220216?hl=pt-BR), [Edge](https://support.microsoft.com/en-us/edge/manage-website-notifications-in-microsoft-edge), [iOS](https://support.apple.com/pt-br/120681) e [WebKit: interação direta na PWA](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/).
+
+## Histórico: candidato anterior em produção
+
 Data: 01/out/2026. Branch: `fix/notification-delivery-hardening`, criado de `origin/main` no commit `c3796412992f3996bea5b7735be7e5ee4c5c3fa1`.
 
 ## Escopo e estado

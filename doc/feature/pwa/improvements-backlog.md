@@ -1,5 +1,11 @@
 # PWA — pendências e melhorias
 
+## Ativação guiada — implementada no candidato
+
+Convite único na PWA, CTAs de permissão/ativação, ajuda por plataforma, verificação após desbloqueio e estado compartilhado estão implementados em `feat/guided-push-permission`, **não publicados**.
+
+Pendências: homologar Chrome/Edge desktop, Android/PWA e iOS/iPadOS; verificar foco/teclado/leitor de tela, layout mobile, ausência de convite repetido e Push real com app fechado. Merge, GitHub, build e deploy dependem de autorização. Ver [validação](../popup-notifications/validation-report.md#ativação-guiada--candidato-de-02out2026).
+
 ## Correções de `fix/notification-delivery-hardening` em produção
 
 - Revalidação de acesso/preferências no envio; preferências ausentes descartam sem retry.

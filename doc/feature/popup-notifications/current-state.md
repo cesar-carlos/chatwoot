@@ -1,5 +1,11 @@
 # Popup visual — Estado atual
 
+## Autorização guiada no candidato de 02/out/2026
+
+O novo fluxo de permissão está isolado em `feat/guided-push-permission`. Ele reutiliza a Notifications API, mas mantém a inscrição Web Push separada dos avisos iniciados pelo painel. Os eventos e a persistência de Pop-up permanecem inalterados.
+
+As preferências recebem estado de permissão atualizado após ativação ou retorno ao aplicativo. O convite não marca eventos, não muda opt-out e não tenta solicitar novamente uma permissão negada. Detalhes: [arquitetura PWA](../pwa/current-state.md).
+
 Inventário das correções de `fix/notification-delivery-hardening`, integradas à `main`, publicadas no fork e implantadas no release `f58ca95d4d` em 01/out/2026. Web e worker estão na mesma versão; o smoke público passou. A homologação da apresentação dos avisos em aparelhos continua pendente.
 
 ---

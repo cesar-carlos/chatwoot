@@ -1,5 +1,11 @@
 # Popup visual — Improvements backlog
 
+## Novo candidato de experiência de permissão
+
+Implementados em `feat/guided-push-permission`: convite inicial único na PWA, botões explícitos e ajuda de desbloqueio. As preferências de Pop-up continuam independentes; nenhuma migração ou ativação indiscriminada de eventos foi feita.
+
+Ainda pendentes: homologação de permissão/apresentação em aparelhos, acessibilidade e publicação autorizada do candidato. Detalhes: [PWA](../pwa/improvements-backlog.md).
+
 Itens fora da entrega, revisados em 01/out/2026.
 
 ---

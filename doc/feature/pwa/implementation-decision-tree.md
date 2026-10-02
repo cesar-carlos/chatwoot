@@ -1,5 +1,14 @@
 # PWA — decisões de implementação
 
+## Convite de permissão — decisão de 02/out/2026
+
+- Convite próprio automático somente na primeira abertura autenticada da PWA; solicitação nativa exclusivamente após clique.
+- Sem repetição automática após **Agora não**. Registro local versionado por usuário, sem dados secretos; armazenamento indisponível suprime o convite para evitar insistência.
+- Inscrito ou opt-out explícito: sem convite. Bloqueado: instruções, nunca promessa de desbloqueio pelo aplicativo.
+- Permissão e inscrição do dispositivo não substituem preferências dos eventos por conta.
+- Retorno ao app reavalia o estado; permissão concedida exclusivamente para Pop-up não cria Push.
+- Entrega desta etapa: branch candidata, sem merge/deploy. Ver [estado atual](./current-state.md).
+
 ## Separação de responsabilidades
 
 ```mermaid

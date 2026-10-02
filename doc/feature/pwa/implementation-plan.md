@@ -1,5 +1,15 @@
 # PWA — implementação, testes e publicação
 
+## Ativação guiada no candidato
+
+Implementação isolada em `feat/guided-push-permission`, baseada em `origin/main` atualizado e preservando o commit local de documentação do deploy. Sem merge/publicação/deploy nesta etapa.
+
+O componente `PwaPushInvitation.vue`, a ajuda `PushPermissionHelp.vue` e os composables `usePushDevice.js`/`usePwaPushInvitation.js` ficam em `custom/`. O dashboard recebe apenas import, registro e montagem marcados `FORK:`. O diálogo do design system recebe nome acessível pelo título; Vitest inclui os specs frontend de `spec/custom/javascript`.
+
+Validar convite único, opt-out, permissão pendente/negada/concedida, concorrência, fechamento, sessão encerrada, recuperação por foco e escolha explícita dos eventos. Não solicitar autorização nativa no carregamento. Cenários em aparelhos, teclado/leitor de tela e layout real continuam necessários.
+
+A futura publicação exige autorização separada, novo build de JS/Vue e release isolado com storage compartilhado. Nenhuma migration ou troca de VAPID está prevista. Evidências: [relatório](../popup-notifications/validation-report.md#ativação-guiada--candidato-de-02out2026).
+
 ## Código implementado
 
 | Caminho | Responsabilidade |

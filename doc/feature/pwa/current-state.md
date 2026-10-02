@@ -1,5 +1,16 @@
 # PWA — estado atual
 
+## Novo candidato: convite e ajuda de permissão
+
+A branch `feat/guided-push-permission` contém um convite inicial e a nova interface por dispositivo; **não estão no release de produção**.
+
+- `usePushDevice` compartilha ações, bloqueio de concorrência e publicação do estado entre convite/preferências, reutilizando os helpers existentes e seus controles de sessão.
+- `usePwaPushInvitation` exige modo standalone, autenticação, conta ativa e suporte; aguarda onboarding, consulta da inscrição e outros diálogos.
+- `chatwoot:push-invitation:v1:<user_id>` guarda somente a apresentação local. Não é sincronizado ao servidor, não contém credenciais e não altera `chatwoot_push_enabled`. Limpar o armazenamento pode reapresentar o convite.
+- Permissão bloqueada apresenta ajuda Chrome/Edge, Android, iOS/PWA ou genérica. O retorno por foco/visibilidade e a verificação explícita reavaliam a permissão sem polling.
+- Recuperação de bloqueado → concedido pode concluir a inscrição, mas respeita opt-out. Conceder permissão apenas para Pop-up não cria inscrição Push.
+- Não há novos endpoints, migration, alteração de VAPID, ícones ou protocolo.
+
 ## Correções de segurança e entrega em produção
 
 As correções de `fix/notification-delivery-hardening` foram integradas à `main`, publicadas somente no fork e implantadas no release `f58ca95d4d` em 01/out/2026. SDK, assets Rails e dashboard foram compilados em release isolado; web/worker foram reiniciados na mesma versão e o PM2 foi salvo. O smoke público e a comparação da configuração/avatares passaram. Não houve migration. Evidências e homologação pendente: [validation-report.md](../popup-notifications/validation-report.md).

@@ -1,5 +1,11 @@
 # Popup visual — Documentação
 
+## Novo candidato: autorização facilitada
+
+A branch `feat/guided-push-permission` acrescenta convite único na primeira abertura da PWA e botões de permitir/ativar/ajuda nas preferências. **Ainda não foi integrada nem implantada**. Fluxo e limites: [PWA](../pwa/README.md).
+
+O convite ativa a inscrição Push somente por consentimento explícito. Não altera flags de Pop-up, Push ou e-mail. Conceder permissão pelo CTA de alertas locais continua sem inscrever automaticamente o dispositivo em Push.
+
 Aviso visual do sistema quando chega um evento de notificação e o agente não está com aquela conversa aberta. Usa `ServiceWorkerRegistration.showNotification` quando há suporte a ações ou o construtor nativo falha; nos demais desktops usa `new Notification`.
 
 **Estado:** correções integradas à `main`, publicadas no fork e implantadas no release `f58ca95d4d` · 01/out/2026. Web/worker e smoke público validados; homologação em aparelhos ainda pendente. Evidências em [validation-report.md](./validation-report.md).

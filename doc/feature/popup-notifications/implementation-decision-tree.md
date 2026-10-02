@@ -1,5 +1,11 @@
 # Popup visual — Árvore de decisão
 
+## Decisão adicional: permissão não é inscrição
+
+No candidato `feat/guided-push-permission`, o convite inicial é exclusivo da PWA instalada; a autorização explícita continua disponível no navegador comum pelas preferências. O pedido nativo ocorre por clique e a permissão negada recebe orientação manual.
+
+Permitir alertas do painel não inscreve o dispositivo em Push. O opt-in do dispositivo e os eventos por conta continuam independentes. Sem mudanças no evento que dispara Pop-up nem na leitura/fechamento dos avisos.
+
 Comparação de abordagens para o aviso visual quando chega mensagem, no estilo do WhatsApp Web.
 
 **Decisões revisadas:** 01/out/2026.

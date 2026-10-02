@@ -1,5 +1,11 @@
 # Popup visual — Plano de implementação (as-built)
 
+## Incremento de autorização — candidato separado
+
+Convite inicial da PWA, ajuda de desbloqueio e CTAs das preferências foram implementados em `feat/guided-push-permission`, sem publicação/deploy. Reutilizam a lógica Web Push existente; não substituem o composable de Pop-up.
+
+As regressões cobrem especificamente que default → granted pela autorização de Pop-up **não** gera inscrição automática, enquanto a recuperação de permissão bloqueada no fluxo Push respeita opt-out. Ver [plano PWA](../pwa/implementation-plan.md) e [evidências](./validation-report.md#ativação-guiada--candidato-de-02out2026).
+
 Documento **as-built das correções** de `fix/notification-delivery-hardening`, integradas à `main`, publicadas no fork e implantadas no release `f58ca95d4d` em 01/out/2026. Build/smoke concluídos; homologação em aparelhos pendente. Decisões em [implementation-decision-tree.md](./implementation-decision-tree.md).
 
 ---
