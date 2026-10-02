@@ -2,7 +2,9 @@
 
 ## Nova regra de time — candidato de 02/out/2026
 
-Implementada em `feat/team-unassigned-notifications`, ainda **sem merge, publicação, build ou deploy**: **Uma conversa foi atribuída ao seu time e está sem agente atribuído**. A linha tem opções independentes de e-mail, Notificação do sistema e **Pop-up notification**, inicialmente desmarcadas; as preferências existentes são preservadas.
+Implementada inicialmente em `feat/team-unassigned-notifications` e revisada em `fix/team-notification-hardening`, ainda **sem merge, publicação, build ou deploy**: **Uma conversa foi atribuída ao seu time e está sem agente atribuído**. A linha tem opções independentes de e-mail, Notificação do sistema e **Pop-up notification**, inicialmente desmarcadas; as preferências existentes são preservadas.
+
+A revisão protege o histórico/sino e os contadores após perda de acesso, evita avisos duplicados por reprocessamento/concorrência e descarta eventos antigos mesmo na sequência time A → B → A. O nome do time é preservado desde a atribuição e a interface explica que esta regra não avisa a cada mensagem. Homologação em aparelhos reais continua pendente; [validação da revisão](./validation-report.md#revisão-de-segurança-e-idempotência--02out2026).
 
 O evento é `team_conversation_assignment`. Notifica membros autorizados do time quando uma conversa aberta é atribuída a ele sem agente/bot, ou quando o agente é retirado e a conversa permanece no time. Não é uma regra de todas as mensagens recebidas. Detalhes e exclusões: [estado atual](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026). [Validação](./validation-report.md#regra-de-time-sem-agente--02out2026).
 

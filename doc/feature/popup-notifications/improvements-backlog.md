@@ -1,5 +1,11 @@
 # Popup visual — Improvements backlog
 
+## Revisão da regra de time — 02/out/2026
+
+Implementados no candidato local `fix/team-notification-hardening`: autorização do sino/contadores e leituras, criação idempotente sob concorrência/reprocessamento, identidade para eventos atrasados, nome original do time e explicação da regra em desktop/mobile. Novas regressões cobrem esses contratos. O candidato contém `feat/team-unassigned-notifications`; ambos ainda estão fora da main local.
+
+Pendente: homologação desktop/Android/iOS, teclado/leitor de tela/layout, integração, publicação, build e deploy autorizados. Avisar na simples reabertura é opção de produto ainda **não aprovada nem implementada**. [Evidências](./validation-report.md#revisão-de-segurança-e-idempotência--02out2026). As declarações anteriores de “nenhuma branch pendente” são histórico da integração anterior, não destes candidatos.
+
 ## Pendências após integração local — 02/out/2026
 
 Os candidatos abaixo, até `063ee874a1`, estão incorporados à `main` local. Nenhuma outra branch local/remota do fork requer merge. Continuam pendentes GitHub, build/deploy autorizado e homologação de dispositivos/acessibilidade. As seções anteriores são histórico; [evidências](./validation-report.md#integração-na-main-local--02out2026).

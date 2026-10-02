@@ -2,6 +2,17 @@
 
 ## Incremento: time sem agente — candidato de 02/out/2026
 
+Revisão final em `fix/team-notification-hardening`, incorporando o candidato anterior sem alterar a main:
+
+- `custom/app/services/custom/notification/team_assignment_transition.rb` e callback Custom da conversa: revisão por atribuição, snapshot do nome e ledger limitado à transição atual; bloqueio PostgreSQL e persistência atômica com a notificação. Não usa TTL de Redis nem migração para deduplicação.
+- `team_assignment_eligibility.rb`: revalida também a revisão antes de Push/e-mail; listener exige a identidade do evento para impedir reinterpretação de eventos atrasados.
+- `accessible_scope.rb` e finder/controller/listener Custom: autorização em SQL para lista/contadores, leitura em lote, operações individuais e conteúdo dos eventos de notificação. Matriz de papéis comparada com `ConversationPolicy` em regressões.
+- Modelo/presenter Custom e um hook `FORK:` na API de mensagens: mantêm o ledger fora dos payloads públicos e impedem sobrescrita por atualizações comuns de atributos.
+- `NotificationEventDescription.vue`, `<script setup>`/Tailwind: explicação reutilizada nos canais desktop/mobile, sem converter o componente legado; somente en/pt_BR.
+- Regressões: dois workers reais com conexões PostgreSQL distintas, rollback, retry parcial, histórico apagado, A → B → A, renomeação antes do job, revogação de acesso, contadores e os quatro locais da explicação na interface.
+
+Não ampliar o gatilho para reabertura de conversa neste incremento. Aceite em aparelhos permanece separado da validação automatizada.
+
 - `custom/app/listeners/custom/notification_listener.rb`: usa os eventos de atribuição existentes; não altera Action Cable nem adiciona scheduler.
 - `custom/app/services/custom/notification/team_assignment_eligibility.rb`, `notification_builder.rb` e `delivery_access.rb`: concentram elegibilidade, opt-in por canal e revalidação do time original.
 - `custom/app/models/custom/notification.rb`: captura `assignment_team_id`, título localizado e corpo; enum aditivo e flags derivadas no OSS.
@@ -9,7 +20,7 @@
 - `custom/app/javascript/dashboard/helper/teamNotificationPreferences.js`: insere a linha após a atribuição individual e fornece ícone do sino. `usePopupNotifications` aceita o título opcional sem alterar payloads anteriores.
 - Hooks upstream mínimos `FORK:`: enum, listener, serviço de e-mail, composição das preferências e ícone. Textos somente en/pt_BR. Specs correspondentes em `spec/custom`; regressão de Pop-up existente ampliada.
 
-Entrega em `feat/team-unassigned-notifications`, sem integração/publicação/deploy. Será necessário build frontend e reinício coordenado de web/workers após autorização; não há migration, nova configuração nem alteração de chaves VAPID. [Semântica](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](./validation-report.md#regra-de-time-sem-agente--02out2026).
+Entrega atual em `fix/team-notification-hardening`, sem integração/publicação/deploy. Será necessário build frontend e atualização coordenada de todas as instâncias web/workers após autorização; callbacks e consumidores de eventos devem usar a mesma versão. Não há migration, nova configuração nem alteração de chaves VAPID. [Semântica](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](./validation-report.md#revisão-de-segurança-e-idempotência--02out2026).
 
 ## Integração local concluída — 02/out/2026
 

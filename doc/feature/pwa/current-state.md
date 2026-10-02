@@ -2,9 +2,9 @@
 
 ## Regra de time sem agente — candidato de 02/out/2026
 
-`feat/team-unassigned-notifications` acrescenta o evento **Uma conversa foi atribuída ao seu time e está sem agente atribuído**, com seleção Push independente por conta e desmarcada por padrão. Reutiliza inscrição, worker, TTL, urgência e ações existentes; não muda instalação, manifesto, ícones ou VAPID. O Push usa título localizado com time/conversa e resumo da mensagem.
+`fix/team-notification-hardening` incorpora e revisa `feat/team-unassigned-notifications`: evento **Uma conversa foi atribuída ao seu time e está sem agente atribuído**, com seleção Push independente por conta e desmarcada por padrão. Reutiliza inscrição, worker, TTL, urgência e ações existentes; não muda instalação, manifesto, ícones ou VAPID. O Push usa título localizado com o nome original do time/conversa e resumo da mensagem.
 
-Atribuir a um time não é o mesmo que atribuir a um agente. Só membros autorizados recebem, com conversa aberta e sem agente/bot. O envio pendente é revalidado e descartado quando essa condição deixa de existir. Pop-up continua exigindo painel aberto/conectado; Push exige dispositivo inscrito e autorizado. [Semântica e arquivos](../popup-notifications/current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](../popup-notifications/validation-report.md#regra-de-time-sem-agente--02out2026). Branch local, ainda sem merge/publicação/build/deploy.
+Atribuir a um time não é o mesmo que atribuir a um agente. Só membros autorizados recebem, com conversa aberta e sem agente/bot. O envio pendente é revalidado por estado e revisão exata da atribuição; jobs repetidos/concorrentes não criam outro aviso. Sino e contadores também revalidam acesso. A interface explica que a regra não notifica cada nova mensagem nem a simples reabertura. Pop-up continua exigindo painel aberto/conectado; Push exige dispositivo inscrito e autorizado. [Semântica e arquivos](../popup-notifications/current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](../popup-notifications/validation-report.md#revisão-de-segurança-e-idempotência--02out2026). Branch local, ainda sem merge/publicação/build/deploy; homologação real pendente.
 
 ## Estado após integração local — 02/out/2026
 

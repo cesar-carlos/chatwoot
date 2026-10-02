@@ -1,5 +1,61 @@
 # Pop-up e Web Push — validação do candidato
 
+## Revisão de segurança e idempotência — 02/out/2026
+
+Candidato `fix/team-notification-hardening`, criado de `origin/main` recém-consultado e avançado por fast-forward a `feat/team-unassigned-notifications` (`f3e91283ff`). A main local continua `b4334fdc0f`; produção, GitHub, build e serviços não foram alterados. Esta seção substitui as evidências do candidato inicial para os contratos revisados, sem apagar o histórico abaixo.
+
+- Autorização em SQL antes da paginação, compartilhada por histórico, contadores, operações individuais, leituras em lote e conteúdo dos eventos. Regressões com perda de time/conta, conta suspensa, papéis customizados e comparação com `ConversationPolicy`, sem eliminar histórico ainda autorizado.
+- Identidade por transição, preservada no evento e na notificação: dois workers PostgreSQL simultâneos, job repetido, retry parcialmente concluído, rollback e aviso apagado pela limpeza não duplicam a criação. Eventos antigos na sequência A → B → A são descartados. Não é uma garantia de entrega exatamente uma vez pelo provedor Push.
+- Nome do time preservado desde a atribuição, inclusive quando renomeado antes do job. Estado interno protegido contra escrita do cliente e omitido nos payloads, mudanças de webhook e API de mensagens; evento assíncrono original não é mutado pela sanitização.
+- Explicação da regra nas preferências desktop e nos três canais mobile; traduções en/pt_BR, sem seleção automática de eventos ou mudança de inscrição Push.
+
+| Verificação da revisão | Resultado |
+|-----------------------|-----------|
+| RSpec amplo dirigido | 228 exemplos, zero falhas; OSS, Enterprise, Custom, webhooks, finder e GET de mensagens |
+| Revalidação da matriz de acesso | 28 exemplos, zero falhas; inclui administrador com papel customizado, adicionado após a execução ampla |
+| Vitest | 289 testes em 29 arquivos, zero falhas; inclui montagem das quatro superfícies de ajuda |
+| RuboCop | 28 arquivos Ruby/Jbuilder, sem infrações |
+| ESLint | Seis arquivos JS/Vue, sem erros ou avisos |
+| Traduções e whitespace | JSON en/pt_BR válidos; `git diff --check` sem erros |
+| Inventário de marcadores | 675 → 684; nove novas identidades, nenhuma anterior removida |
+| Homologação em dispositivos/acessibilidade | Pendente; não inferida dos testes automatizados |
+| Main/GitHub/build/deploy | Não executados neste incremento |
+
+O RSpec foi executado exclusivamente com `RAILS_ENV=test`, banco novo `chatwoot_team_notification_hardening_test` e Redis temporário em `127.0.0.1:16479`. O teste de concorrência usa conexões distintas e remove suas próprias notificações antes da exclusão assíncrona dos proprietários. Um fixture órfão dessa limpeza foi removido apenas do banco dedicado, sem acesso aos dados de produção. Banco de teste mantido para repetição; Redis temporário encerrado ao concluir a validação. Não houve migração de produção nem envio real de e-mail/Push.
+
+Antes de Ruby/Bundler foi tentado `eval "$(rbenv init -)"`; `rbenv` não está instalado. Foi usada a Ruby 3.4.4 já disponível, correspondente à versão do projeto. Dependências frontend instaladas offline com lockfile congelado. Avisos de enums Rails/Browserslist são preexistentes.
+
+### Escopo dos testes e falha preexistente
+
+Além dos 14 arquivos da validação inicial abaixo, foram executados:
+
+```text
+spec/custom/services/custom/notification/accessible_scope_spec.rb
+spec/custom/services/custom/notification/team_assignment_transition_spec.rb
+spec/custom/services/custom/notification/team_assignment_concurrency_spec.rb
+spec/custom/controllers/custom/api/v1/accounts/notification_history_access_spec.rb
+spec/custom/services/custom/notification/bulk_read_service_spec.rb
+spec/custom/listeners/custom/action_cable_listener_spec.rb
+spec/custom/listeners/custom/base_listener_spec.rb
+spec/custom/presenters/conversations/event_data_presenter_spec.rb
+spec/controllers/api/v1/accounts/notifications_controller_spec.rb
+spec/controllers/api/v1/accounts/conversations/messages_controller_spec.rb:185
+spec/finders/notification_finder_spec.rb
+spec/listeners/webhook_listener_spec.rb
+```
+
+O fixture de `NotificationFinder` agora usa administrador para testar ordenação/filtros com acesso real; agentes sem membership não devem enxergar essas conversas. Os novos specs Custom cobrem as restrições, em vez de enfraquecer a autorização para satisfazer o fixture antigo.
+
+A execução exploratória do arquivo inteiro `messages_controller_spec.rb` encontrou uma expectativa de apagar `bcc_emails` ao excluir mensagem (linha 233). O mesmo exemplo falha no candidato anterior `f3e91283ff`: o overlay de exclusão já preserva `content_attributes`. Esse comportamento não pertence à regra de time e não foi alterado; a suíte final cobre o GET afetado e a regressão Custom da resposta pública. Não declarar a suíte completa do projeto validada.
+
+### Aceite manual e publicação pendentes
+
+- Desktop, Android/PWA e iOS instalado: preferências longas, foco/teclado/leitor de tela e entrega de notificação real com o app fechado; Pop-up apenas com painel conectado e conversa diferente.
+- Trocar time A → B → A rapidamente, retirar/recolocar agente e repetir processamento: somente a transição atual gera o aviso, uma criação por membro.
+- Renomear time antes do job e depois da entrega: título preserva o nome original. Perder acesso e atualizar sino: lista e contadores não exibem a conversa; histórico volta apenas se o acesso for restabelecido.
+- Reabrir sem mudança de time/agente: não gerar aviso adicional. Esse gatilho opcional não foi aprovado.
+- Integração/publicação/deploy exigem autorização separada. Novo build frontend e mesma versão em todas as instâncias web/workers; sem migration, alteração VAPID ou nova configuração. Não reinterpretar eventos legados sem revisão como atribuições novas.
+
 ## Regra de time sem agente — 02/out/2026
 
 Candidato `feat/team-unassigned-notifications`, criado após `git fetch origin main` e avançado por fast-forward à main local `b4334fdc0f`. Nenhuma alteração na main, GitHub ou produção nesta etapa. Testes usam exclusivamente `RAILS_ENV=test`, banco dedicado `chatwoot_team_notifications_test` e Redis temporário em `127.0.0.1:16479`, sem reutilizar o serviço de produção.

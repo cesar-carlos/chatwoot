@@ -1,5 +1,9 @@
 # PWA e Web Push do painel
 
+## Nova regra de time — revisão local de 02/out/2026
+
+`fix/team-notification-hardening` acrescenta a regra de conversa atribuída ao time sem agente, com inscrição e preferências atuais preservadas. Proteções de autorização, reprocessamento e eventos atrasados estão no backend; não alteram o worker, manifesto ou instalação. A explicação da linha existe em desktop e mobile. Ainda fora da main/GitHub/produção e sem homologação em aparelhos. Ver [estado atual](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](../popup-notifications/validation-report.md#revisão-de-segurança-e-idempotência--02out2026).
+
 ## Integração na main local — 02/out/2026
 
 Ativação guiada, instalação mobile/teste assistido e revisão final (`063ee874a1`) incorporados à `main` local por fast-forward, sem conflitos. As seções de candidatos abaixo registram o histórico anterior à integração. GitHub, build e deploy permanecem pendentes; homologação em aparelhos reais também. [Validação e auditoria de branches](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
