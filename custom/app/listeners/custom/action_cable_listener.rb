@@ -19,6 +19,18 @@ module Custom::ActionCableListener
     CONVERSATION_MENTIONED
   ].freeze
 
+  def notification_created(event)
+    return unless notification_visible?(event.data[:notification])
+
+    super
+  end
+
+  def notification_updated(event)
+    return unless notification_visible?(event.data[:notification])
+
+    super
+  end
+
   private
 
   def broadcast(account, tokens, event_name, data)
@@ -59,5 +71,9 @@ module Custom::ActionCableListener
   def contact_only_tokens(account, tokens)
     account_user_tokens = account.users.where(pubsub_token: tokens).pluck(:pubsub_token)
     tokens - account_user_tokens
+  end
+
+  def notification_visible?(notification)
+    Custom::Notification::AccessibleScope.for(user: notification.user, account: notification.account).exists?(notification.id)
   end
 end

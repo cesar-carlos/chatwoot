@@ -1,6 +1,6 @@
 class Custom::Notification::BulkReadService
   def self.perform(user:, account:, conversation: nil)
-    scope = user.notifications.where(account_id: account.id, read_at: nil)
+    scope = Custom::Notification::AccessibleScope.for(user: user, account: account).where(read_at: nil)
     scope = scope.where(primary_actor: conversation) if conversation
     cutoff = scope.maximum(:id)
     return unless cutoff

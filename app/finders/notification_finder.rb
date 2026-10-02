@@ -60,3 +60,6 @@ class NotificationFinder
     params[:sort_order] || :desc
   end
 end
+
+# FORK: align notification history and counters with conversation authorization
+NotificationFinder.prepend_mod_with('NotificationFinder')

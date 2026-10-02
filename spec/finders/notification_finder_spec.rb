@@ -2,7 +2,7 @@ require 'rails_helper'
 
 RSpec.describe NotificationFinder do
   let!(:account) { create(:account) }
-  let!(:user) { create(:user, account: account) }
+  let!(:user) { create(:user, account: account, role: :administrator) }
   let(:notification_finder) { described_class.new(user, account, params) }
 
   before do

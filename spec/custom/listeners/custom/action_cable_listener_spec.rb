@@ -52,4 +52,14 @@ RSpec.describe ActionCableListener do
       payload
     )
   end
+
+  it 'does not broadcast notification content after conversation access is revoked' do
+    notification = create(:notification, user: allowed_agent, account: account, primary_actor: conversation)
+    conversation.inbox.inbox_members.where(user: allowed_agent).destroy_all
+    clear_enqueued_jobs
+    event = Events::Base.new('notification.created', Time.current, notification: notification)
+    expect(ActionCableBroadcastJob).not_to receive(:perform_later)
+    listener.notification_created(event)
+    listener.notification_updated(event)
+  end
 end

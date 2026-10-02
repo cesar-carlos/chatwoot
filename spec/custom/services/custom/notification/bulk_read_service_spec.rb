@@ -6,11 +6,14 @@ RSpec.describe Custom::Notification::BulkReadService do
   let(:conversation) { create(:conversation, account: account) }
   let!(:notification) { create(:notification, user: user, account: account, primary_actor: conversation) }
 
+  before { create(:inbox_member, user: user, inbox: conversation.inbox) }
+
   it 'bounds the database update and broadcasts only to the recipient' do
     later = nil
-    scope = user.notifications.where(account_id: account.id, read_at: nil).where(primary_actor: conversation)
-    allow(user.notifications).to receive(:where).and_call_original
-    allow(user.notifications).to receive(:where).with(account_id: account.id, read_at: nil).and_return(scope)
+    scope = Custom::Notification::AccessibleScope.for(user: user, account: account).where(read_at: nil).where(primary_actor: conversation)
+    allow(scope).to receive(:where).and_call_original
+    allow(Custom::Notification::AccessibleScope).to receive(:for).with(user: user, account: account).and_return(scope)
+    allow(scope).to receive(:where).with(read_at: nil).and_return(scope)
     allow(scope).to receive(:where).with(primary_actor: conversation).and_return(scope)
     allow(scope).to receive(:where).with(id: ..notification.id).and_call_original
     allow(scope).to receive(:maximum).with(:id).and_wrap_original do |method, *args|
