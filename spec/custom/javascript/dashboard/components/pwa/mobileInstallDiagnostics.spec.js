@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   cookie: vi.fn(),
   install: vi.fn(),
   alert: vi.fn(),
+  checkInstallation: vi.fn(),
 }));
 vi.mock('vue-i18n', () => ({ useI18n: () => ({ t: key => key }) }));
 vi.mock('shared/composables/useBranding', () => ({
@@ -25,7 +26,7 @@ vi.mock('customDashboard/composables/usePwaInstallation', async () => {
       status,
       busy: state(false),
       promptInstall: api.install,
-      checkInstallability: vi.fn(),
+      checkInstallability: api.checkInstallation,
     }),
   };
 });
@@ -61,6 +62,7 @@ const renderPromotion = () =>
   });
 const device = () => ({
   disabled: ref(false),
+  activity: ref(null),
   test: vi.fn().mockResolvedValue({ kind: 'accepted' }),
   inspect: vi.fn().mockResolvedValue({ kind: 'ready' }),
   activate: vi.fn().mockResolvedValue({ status: 'subscribed' }),
@@ -73,6 +75,7 @@ describe('shared installation and assisted diagnostics UI', () => {
     api.embedded.mockReturnValue(false);
     api.cookie.mockReturnValue('authenticated');
     api.install.mockResolvedValue({ outcome: 'dismissed' });
+    api.checkInstallation.mockResolvedValue();
     startPushSession();
     status.value = 'unavailable';
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
@@ -196,6 +199,9 @@ describe('shared installation and assisted diagnostics UI', () => {
     'delivery',
     'connection',
     'timeout',
+    'insecure_context',
+    'unsupported_browser',
+    'missing_configuration',
   ])('opens appropriate guidance for %s without another test', async kind => {
     const current = device();
     current.test.mockResolvedValue({ kind });
@@ -245,6 +251,70 @@ describe('shared installation and assisted diagnostics UI', () => {
     await action(wrapper, 'PUSH_RECOVER_ACTION').trigger('click');
     expect(current.inspect).toHaveBeenCalledWith({ recoverPermission: true });
     expect(current.test).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
+  it('does not reopen a diagnostic closed while a second test was pending', async () => {
+    const current = device();
+    const wrapper = mount(PushDeviceDiagnostics, {
+      ...options,
+      props: { device: current },
+    });
+    await wrapper.vm.test();
+    await flushPromises();
+    await action(wrapper, 'PUSH_NOT_RECEIVED_ACTION').trigger('click');
+    await flushPromises();
+    let finish;
+    current.test.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+    );
+    await action(wrapper, 'PUSH_TEST_ACTION').trigger('click');
+    wrapper.get('dialog').element.close();
+    finish({ kind: 'accepted' });
+    await flushPromises();
+    expect(wrapper.get('dialog').attributes('open')).toBeUndefined();
+    expect(wrapper.text()).not.toContain('PUSH_DIAGNOSTIC_ACCEPTED');
+    await wrapper.vm.test();
+    await flushPromises();
+    expect(wrapper.get('dialog').attributes('open')).toBeDefined();
+    wrapper.unmount();
+  });
+
+  it('ignores a late initial test after unmount', async () => {
+    const current = device();
+    let finish;
+    current.test.mockImplementation(
+      () =>
+        new Promise(resolve => {
+          finish = resolve;
+        })
+    );
+    const wrapper = mount(PushDeviceDiagnostics, {
+      ...options,
+      props: { device: current },
+    });
+    const pending = wrapper.vm.test();
+    wrapper.unmount();
+    finish({ kind: 'accepted' });
+    await pending;
+    expect(api.alert).not.toHaveBeenCalled();
+  });
+
+  it('offers an explicit installation recheck and blocks duplicate checks while checking', async () => {
+    status.value = 'connection_timeout';
+    const wrapper = mount(PwaInstallationCard, options);
+    expect(api.checkInstallation).toHaveBeenCalledOnce();
+    expect(wrapper.text()).toContain('PWA_INSTALL_STATUS_CONNECTION_TIMEOUT');
+    await action(wrapper, 'PWA_RECHECK_ACTION').trigger('click');
+    expect(api.checkInstallation).toHaveBeenCalledTimes(2);
+    status.value = 'checking';
+    await flushPromises();
+    expect(
+      action(wrapper, 'PWA_RECHECK_ACTION').attributes('disabled')
+    ).toBeDefined();
     wrapper.unmount();
   });
 });

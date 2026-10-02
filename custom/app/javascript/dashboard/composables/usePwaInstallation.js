@@ -6,8 +6,10 @@ const installed = ref(false);
 const manifestStatus = ref(null);
 const busy = ref(false);
 const standalone = ref(false);
-let checking;
+const checking = ref(false);
+let pendingValidation;
 let initialized = false;
+export const PWA_VALIDATION_TIMEOUT_MS = 10000;
 
 const isIosDevice = () =>
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -53,64 +55,93 @@ export const usePwaInstallation = () => {
     const manifestLink = document.querySelector('link[rel="manifest"]');
     if (!window.isSecureContext || !manifestLink) return;
 
-    let manifest;
+    const controller = new AbortController();
+    const timeout = setTimeout(
+      () => controller.abort(),
+      PWA_VALIDATION_TIMEOUT_MS
+    );
     try {
-      const response = await fetch(manifestLink.href);
-      if (!response.ok) throw new Error('Manifest unavailable');
-      manifest = await response.json();
+      const response = await fetch(manifestLink.href, {
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        manifestStatus.value =
+          response.status >= 500 ? 'connection_error' : 'manifest_error';
+        return;
+      }
+      let manifest;
+      try {
+        manifest = await response.json();
+      } catch (error) {
+        if (controller.signal.aborted)
+          manifestStatus.value = 'connection_timeout';
+        else
+          manifestStatus.value =
+            error instanceof SyntaxError
+              ? 'manifest_error'
+              : 'connection_error';
+        return;
+      }
       if (
+        !manifest ||
         !(manifest.name || manifest.short_name) ||
         !manifest.start_url ||
         !['standalone', 'fullscreen', 'minimal-ui'].includes(manifest.display)
       ) {
-        throw new Error('Manifest missing installability fields');
+        manifestStatus.value = 'manifest_error';
+        return;
       }
-    } catch (error) {
-      manifestStatus.value = 'manifest_error';
-      return;
-    }
 
-    let iconUrls;
-    try {
-      iconUrls = [192, 512].map(size => {
-        const icon = manifest.icons?.find(
-          item =>
-            item.type === 'image/png' &&
-            item.sizes?.split(/\s+/).includes(`${size}x${size}`)
-        );
-        return icon && new URL(icon.src, manifestLink.href);
-      });
+      let iconUrls;
+      try {
+        iconUrls = [192, 512].map(size => {
+          const icon = manifest.icons?.find(
+            item =>
+              item.type === 'image/png' &&
+              item.sizes?.split(/\s+/).includes(`${size}x${size}`)
+          );
+          return icon && new URL(icon.src, manifestLink.href);
+        });
+      } catch (error) {
+        manifestStatus.value = 'icon_error';
+        return;
+      }
+      if (iconUrls.some(url => !url || url.origin !== window.location.origin)) {
+        manifestStatus.value = 'icon_error';
+        return;
+      }
+      const responses = await Promise.all(
+        iconUrls.map(url => fetch(url.href, { signal: controller.signal }))
+      );
+      if (responses.some(icon => icon.status >= 500))
+        manifestStatus.value = 'connection_error';
+      else
+        manifestStatus.value = responses.every(
+          icon =>
+            icon.ok && icon.headers.get('content-type')?.startsWith('image/png')
+        )
+          ? 'valid'
+          : 'icon_error';
     } catch (error) {
-      manifestStatus.value = 'icon_error';
-      return;
-    }
-
-    if (iconUrls.some(url => !url || url.origin !== window.location.origin)) {
-      manifestStatus.value = 'icon_error';
-      return;
-    }
-
-    try {
-      const responses = await Promise.all(iconUrls.map(url => fetch(url.href)));
-      manifestStatus.value = responses.every(
-        response =>
-          response.ok &&
-          response.headers.get('content-type')?.startsWith('image/png')
-      )
-        ? 'valid'
-        : 'icon_error';
-    } catch (error) {
-      manifestStatus.value = 'icon_error';
+      manifestStatus.value = controller.signal.aborted
+        ? 'connection_timeout'
+        : 'connection_error';
+    } finally {
+      clearTimeout(timeout);
+      // Stop any remaining icon download after a parallel fetch fails.
+      controller.abort();
     }
   };
 
   const checkInstallability = () => {
-    if (!checking) {
-      checking = validateManifest().finally(() => {
-        checking = null;
+    if (!pendingValidation) {
+      checking.value = true;
+      pendingValidation = validateManifest().finally(() => {
+        pendingValidation = null;
+        checking.value = false;
       });
     }
-    return checking;
+    return pendingValidation;
   };
 
   const status = computed(() => {
@@ -118,7 +149,15 @@ export const usePwaInstallation = () => {
 
     const hasManifest = Boolean(document.querySelector('link[rel="manifest"]'));
     if (!window.isSecureContext || !hasManifest) return 'unsupported';
-    if (['manifest_error', 'icon_error'].includes(manifestStatus.value))
+    if (checking.value) return 'checking';
+    if (
+      [
+        'manifest_error',
+        'icon_error',
+        'connection_error',
+        'connection_timeout',
+      ].includes(manifestStatus.value)
+    )
       return manifestStatus.value;
     if (isEmbeddedBrowser()) return 'embedded_instructions';
     if (installPrompt.value) return 'available';

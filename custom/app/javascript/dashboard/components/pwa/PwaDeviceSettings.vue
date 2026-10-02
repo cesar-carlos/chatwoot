@@ -10,6 +10,10 @@ import PwaInstallationCard from './PwaInstallationCard.vue';
 import PushDeviceDiagnostics from './PushDeviceDiagnostics.vue';
 import { usePushDevice } from 'customDashboard/composables/usePushDevice';
 
+const props = defineProps({
+  pushPreferencesReady: { type: Boolean, default: false },
+  selectedPushFlags: { type: Array, default: () => [] },
+});
 const emit = defineEmits(['permissionChange']);
 const { t } = useI18n();
 const { replaceInstallationName } = useBranding();
@@ -18,6 +22,8 @@ const device = usePushDevice();
 const {
   status,
   permission,
+  reason,
+  activity,
   subscribed,
   endpoint,
   busy,
@@ -31,8 +37,14 @@ const diagnosticDialog = ref(null);
 const brandedText = key => replaceInstallationName(t(key));
 const pushStatusMessage = computed(() =>
   brandedText(
-    `${prefix}PUSH_STATUS_${busy.value && !subscribed.value ? 'ACTIVATING' : status.value.toUpperCase()}`
+    `${prefix}PUSH_STATUS_${(activity.value || reason.value || status.value).toUpperCase()}`
   )
+);
+const noPushEvents = computed(
+  () =>
+    subscribed.value &&
+    props.pushPreferencesReady &&
+    props.selectedPushFlags.length === 0
 );
 const activationLabel = computed(() => {
   if (status.value === 'error') return t(`${prefix}RETRY`);
@@ -91,6 +103,19 @@ watch(permission, value => emit('permissionChange', value), {
       <p v-if="subscribed" class="m-0 text-body-small text-n-slate-11">
         {{ t(`${prefix}PUSH_ACTIVATED_HINT`) }}
       </p>
+      <div
+        v-if="noPushEvents"
+        class="flex flex-col gap-2 rounded-lg border border-n-weak p-3 text-body-small text-n-slate-11"
+        role="status"
+      >
+        <p class="m-0">{{ t(`${prefix}PUSH_NO_EVENTS_HINT`) }}</p>
+        <a
+          href="#profile-settings-notification-events"
+          class="text-n-blue-11 underline focus-visible:outline focus-visible:outline-2"
+        >
+          {{ t(`${prefix}PUSH_CHOOSE_EVENTS_ACTION`) }}
+        </a>
+      </div>
       <Button
         v-if="subscribed && endpoint"
         sm

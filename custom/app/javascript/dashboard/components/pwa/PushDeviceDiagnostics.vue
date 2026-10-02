@@ -12,22 +12,35 @@ const prefix = 'PROFILE_SETTINGS.FORM.NOTIFICATIONS.';
 const dialog = ref(null);
 const result = ref(null);
 let mounted = true;
+let revision = 0;
 const busy = computed(() => props.device.disabled.value);
+const activity = computed(() => props.device.activity.value);
 const kind = computed(() => result.value?.kind);
 const display = value => {
   if (!mounted || !value) return;
   result.value = value;
   dialog.value.open();
 };
-const test = async () => display(await props.device.test());
+const close = () => {
+  revision += 1;
+  result.value = null;
+};
+const test = async () => {
+  if (busy.value) return;
+  const currentRevision = revision;
+  const value = await props.device.test();
+  if (currentRevision === revision) display(value);
+};
 const inspect = async (recoverPermission = false) => {
+  const currentRevision = revision;
   const value = await props.device.inspect({ recoverPermission });
-  if (mounted && value) result.value = value;
+  if (mounted && currentRevision === revision && value) result.value = value;
 };
 const activate = async () => {
+  const currentRevision = revision;
   // Invoke without awaiting anything first: preserve the native permission gesture.
   const value = await props.device.activate();
-  if (mounted && value)
+  if (mounted && currentRevision === revision && value)
     result.value = {
       kind: value.status === 'subscribed' ? 'ready' : value.status,
     };
@@ -46,8 +59,16 @@ onUnmounted(() => {
     :title="t(`${prefix}PUSH_TEST_ACTION`)"
     :show-confirm-button="false"
     :cancel-button-label="t(`${prefix}PUSH_DONE_ACTION`)"
+    @close="close"
   >
     <div v-if="result" class="flex flex-col gap-3" aria-live="polite">
+      <p
+        v-if="busy && activity"
+        class="m-0 text-body-small text-n-slate-11"
+        role="status"
+      >
+        {{ t(`${prefix}PUSH_STATUS_${activity.toUpperCase()}`) }}
+      </p>
       <p class="m-0 text-body-small text-n-slate-11">
         {{ t(`${prefix}PUSH_DIAGNOSTIC_${kind.toUpperCase()}`) }}
       </p>

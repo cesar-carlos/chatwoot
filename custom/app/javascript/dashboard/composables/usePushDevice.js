@@ -22,6 +22,7 @@ import { classifyPushDiagnosticError } from 'customDashboard/helper/pushDiagnost
 
 // One action lock for every surface; a click must not open a second prompt.
 const busy = ref(false);
+const activity = ref(null);
 let activeOperation;
 const translationPrefix = 'PROFILE_SETTINGS.FORM.NOTIFICATIONS.';
 
@@ -29,6 +30,7 @@ export const usePushDevice = () => {
   const { t } = useI18n();
   const environment = getPushEnvironment();
   const permission = ref(environment.permission);
+  const reason = ref(environment.reason || null);
   const status = ref(
     environment.supported && permission.value === 'granted'
       ? 'checking'
@@ -45,6 +47,7 @@ export const usePushDevice = () => {
   const applyState = result => {
     status.value = result.status;
     permission.value = result.permission;
+    reason.value = result.reason || null;
     endpoint.value = result.subscription?.endpoint || result.endpoint || null;
   };
   const reportCleanup = result => {
@@ -58,13 +61,15 @@ export const usePushDevice = () => {
   const runAction = async (
     operation,
     errorKey,
-    preserveSubscription = false
+    preserveSubscription = false,
+    activityName = 'activating'
   ) => {
     if (!live() || busy.value) return null;
     const session = pushSession();
     const token = { session };
     activeOperation = token;
     busy.value = true;
+    activity.value = activityName;
     try {
       // Invoke immediately: requestPermission must stay inside the click.
       const result = await operation(session);
@@ -92,6 +97,7 @@ export const usePushDevice = () => {
     } finally {
       if (activeOperation === token) {
         busy.value = false;
+        activity.value = null;
         activeOperation = null;
       }
     }
@@ -100,7 +106,7 @@ export const usePushDevice = () => {
   const activate = () =>
     runAction(requestAndSubscribe, 'PUSH_SUBSCRIPTION_ERROR');
   const deactivate = () =>
-    runAction(unsubscribePush, 'PUSH_SUBSCRIPTION_ERROR', true);
+    runAction(unsubscribePush, 'PUSH_SUBSCRIPTION_ERROR', true, 'deactivating');
   const refresh = ({ recoverPermission = false } = {}) => {
     if (!live() || busy.value) return Promise.resolve(null);
     const current = getPushEnvironment();
@@ -111,18 +117,23 @@ export const usePushDevice = () => {
       applyState(current);
       return Promise.resolve(current);
     }
-    return runAction(() => {
-      applyState(current);
-      status.value = 'checking';
-      return ensurePushSubscription({ recoverPermission: recover });
-    }, 'PUSH_SUBSCRIPTION_ERROR');
+    return runAction(
+      () => {
+        applyState(current);
+        status.value = 'checking';
+        return ensurePushSubscription({ recoverPermission: recover });
+      },
+      'PUSH_SUBSCRIPTION_ERROR',
+      false,
+      'checking'
+    );
   };
 
   const preflight = async (session, recoverPermission) => {
     let current = getPushEnvironment();
     applyState(current);
     if (!current.supported || current.permission !== 'granted')
-      return { kind: current.status };
+      return { kind: current.reason || current.status };
     if (isPushOptedOut()) {
       status.value = 'unsubscribed';
       return { kind: 'opt_out' };
@@ -134,7 +145,7 @@ export const usePushDevice = () => {
     current = getPushEnvironment();
     if (!current.supported || current.permission !== 'granted') {
       applyState(current);
-      return { kind: current.status };
+      return { kind: current.reason || current.status };
     }
     if (isPushOptedOut()) {
       applyState({ ...current, status: 'unsubscribed' });
@@ -149,30 +160,42 @@ export const usePushDevice = () => {
     };
   };
   const inspect = ({ recoverPermission = false } = {}) =>
-    runAction(session => preflight(session, recoverPermission), null);
+    runAction(
+      session => preflight(session, recoverPermission),
+      null,
+      false,
+      'checking'
+    );
   const test = () =>
-    runAction(async session => {
-      const checked = await preflight(session, false);
-      if (checked?.kind !== 'ready') return checked;
-      const response = await testBrowserSubscription(checked.endpoint);
-      if (!mounted || !isCurrentPushSession(session)) return null;
-      const current = getPushEnvironment();
-      if (!current.supported || current.permission !== 'granted') {
-        applyState(current);
-        return { kind: current.status };
-      }
-      if (isPushOptedOut()) {
-        applyState({ ...current, status: 'unsubscribed' });
-        return { kind: 'opt_out' };
-      }
-      return response.data?.accepted === true
-        ? { kind: 'accepted' }
-        : { kind: 'delivery' };
-    }, null);
+    runAction(
+      async session => {
+        const checked = await preflight(session, false);
+        if (checked?.kind !== 'ready') return checked;
+        activity.value = 'testing';
+        const response = await testBrowserSubscription(checked.endpoint);
+        if (!mounted || !isCurrentPushSession(session)) return null;
+        const current = getPushEnvironment();
+        if (!current.supported || current.permission !== 'granted') {
+          applyState(current);
+          return { kind: current.reason || current.status };
+        }
+        if (isPushOptedOut()) {
+          applyState({ ...current, status: 'unsubscribed' });
+          return { kind: 'opt_out' };
+        }
+        return response.data?.accepted === true
+          ? { kind: 'accepted' }
+          : { kind: 'delivery' };
+      },
+      null,
+      false,
+      'checking'
+    );
 
   onMounted(() => {
     if (activeOperation && !isCurrentPushSession(activeOperation.session)) {
       busy.value = false;
+      activity.value = null;
       activeOperation = null;
     }
     window.addEventListener(BROWSER_PUSH_SYNC_EVENT, receiveState);
@@ -189,6 +212,8 @@ export const usePushDevice = () => {
   return {
     status,
     permission,
+    reason,
+    activity,
     endpoint,
     subscribed,
     busy,

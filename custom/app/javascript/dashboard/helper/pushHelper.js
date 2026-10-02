@@ -49,6 +49,15 @@ export const getPushEnvironment = () => {
   const permission =
     'Notification' in window ? Notification.permission : PUSH_STATUS.DEFAULT;
 
+  if (!window.isSecureContext) {
+    return {
+      supported: false,
+      status: PUSH_STATUS.UNSUPPORTED,
+      permission,
+      reason: 'insecure_context',
+    };
+  }
+
   if (isIosDevice() && !isPwaStandalone()) {
     return {
       supported: false,
@@ -57,16 +66,31 @@ export const getPushEnvironment = () => {
     };
   }
 
-  const supported =
-    window.isSecureContext &&
+  const browserSupported =
     'serviceWorker' in navigator &&
     'PushManager' in window &&
-    'Notification' in window &&
-    Boolean(window.chatwootConfig?.vapidPublicKey);
+    'Notification' in window;
+
+  if (!browserSupported) {
+    return {
+      supported: false,
+      status: PUSH_STATUS.UNSUPPORTED,
+      permission,
+      reason: 'unsupported_browser',
+    };
+  }
+  if (!window.chatwootConfig?.vapidPublicKey) {
+    return {
+      supported: false,
+      status: PUSH_STATUS.UNSUPPORTED,
+      permission,
+      reason: 'missing_configuration',
+    };
+  }
 
   return {
-    supported,
-    status: supported ? permission : PUSH_STATUS.UNSUPPORTED,
+    supported: true,
+    status: permission,
     permission,
   };
 };

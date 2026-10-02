@@ -464,4 +464,85 @@ describe('shared Push device state', () => {
     expect(second.vm.disabled).toBe(false);
     second.unmount();
   });
+
+  it.each(['insecure_context', 'unsupported_browser', 'missing_configuration'])(
+    'returns a specific unsupported reason without sending (%s)',
+    async reason => {
+      const wrapper = render();
+      api.environment.mockReturnValue({
+        supported: false,
+        permission: 'granted',
+        status: 'unsupported',
+        reason,
+      });
+      expect(await wrapper.vm.test()).toEqual({ kind: reason });
+      expect(wrapper.vm.reason).toBe(reason);
+      expect(api.test).not.toHaveBeenCalled();
+      expect(api.activate).not.toHaveBeenCalled();
+      wrapper.unmount();
+    }
+  );
+
+  it('distinguishes worker checking from test delivery and clears progress afterward', async () => {
+    const wrapper = render();
+    api.environment.mockReturnValue({
+      supported: true,
+      permission: 'granted',
+      status: 'granted',
+    });
+    let finishCheck;
+    let finishDelivery;
+    api.ensure.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishCheck = resolve;
+        })
+    );
+    api.test.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishDelivery = resolve;
+        })
+    );
+    const pending = wrapper.vm.test();
+    expect(wrapper.vm.activity).toBe('checking');
+    finishCheck(subscribed);
+    await flushPromises();
+    expect(wrapper.vm.activity).toBe('testing');
+    finishDelivery({ data: { accepted: true } });
+    await pending;
+    expect(wrapper.vm.activity).toBeNull();
+    expect(wrapper.vm.busy).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('uses explicit activation and deactivation progress, including shared surfaces', async () => {
+    const first = render();
+    const second = render();
+    let finishActivation;
+    api.activate.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishActivation = resolve;
+        })
+    );
+    const activating = first.vm.activate();
+    expect(second.vm.activity).toBe('activating');
+    finishActivation(subscribed);
+    await activating;
+    let finishRemoval;
+    api.deactivate.mockImplementationOnce(
+      () =>
+        new Promise(resolve => {
+          finishRemoval = resolve;
+        })
+    );
+    const removing = second.vm.deactivate();
+    expect(first.vm.activity).toBe('deactivating');
+    finishRemoval({ status: 'unsubscribed', permission: 'granted' });
+    await removing;
+    expect(first.vm.activity).toBeNull();
+    first.unmount();
+    second.unmount();
+  });
 });

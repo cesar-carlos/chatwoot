@@ -16,6 +16,14 @@ const prefix = 'PROFILE_SETTINGS.FORM.NOTIFICATIONS.';
 const { status, busy, promptInstall, checkInstallability } =
   usePwaInstallation();
 const helpDialog = ref(null);
+const validationFailed = computed(() =>
+  [
+    'manifest_error',
+    'icon_error',
+    'connection_error',
+    'connection_timeout',
+  ].includes(status.value)
+);
 let mounted = true;
 const message = computed(() =>
   replaceInstallationName(
@@ -62,11 +70,20 @@ onUnmounted(() => {
         @click="install"
       />
       <Button
-        v-else-if="status !== 'installed'"
+        v-else-if="!['installed', 'checking'].includes(status)"
         sm
         :label="t(`${prefix}PWA_HOW_INSTALL_ACTION`)"
         :disabled="busy"
         @click="helpDialog.open()"
+      />
+      <Button
+        v-if="validationFailed || status === 'checking'"
+        sm
+        ghost
+        :label="t(`${prefix}PWA_RECHECK_ACTION`)"
+        :disabled="busy || status === 'checking'"
+        :is-loading="status === 'checking'"
+        @click="checkInstallability"
       />
       <Button
         v-if="promotion"
@@ -86,12 +103,19 @@ onUnmounted(() => {
       :cancel-button-label="t(`${prefix}PUSH_DONE_ACTION`)"
     >
       <p
-        v-if="['manifest_error', 'icon_error', 'unsupported'].includes(status)"
+        v-if="validationFailed || ['unsupported', 'checking'].includes(status)"
         class="text-body-small text-n-slate-11"
       >
         {{ message }}
       </p>
       <PwaInstallationHelp v-else />
+      <Button
+        v-if="validationFailed || status === 'checking'"
+        :label="t(`${prefix}PWA_RECHECK_ACTION`)"
+        :disabled="busy || status === 'checking'"
+        :is-loading="status === 'checking'"
+        @click="checkInstallability"
+      />
       <Button
         v-if="promotion"
         class="mt-3"

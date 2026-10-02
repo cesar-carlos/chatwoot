@@ -20,6 +20,7 @@ export const publishBrowserPushState = result => {
       detail: {
         status: result.status,
         permission: result.permission,
+        reason: result.reason,
         cleanupError: Boolean(result.cleanupError),
         endpoint: result.subscription?.endpoint,
       },

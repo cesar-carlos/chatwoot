@@ -255,7 +255,12 @@ export default {
 
 <template>
   <div id="profile-settings-notifications" class="flex flex-col gap-6">
+    <!-- FORK: device readiness and event selection remain separate per account -->
     <PwaDeviceSettings
+      :push-preferences-ready="
+        preferencesReady && !notificationSettingsUpdating
+      "
+      :selected-push-flags="selectedPushFlags"
       @permission-change="browserNotificationPermission = $event"
     />
     <!-- FORK: a failed load must never look like empty saved preferences -->
@@ -276,7 +281,10 @@ export default {
         @click="loadPreferences"
       />
     </div>
+    <!-- FORK: keyboard-accessible destination for the device's event-selection link -->
     <p
+      id="profile-settings-notification-events"
+      tabindex="-1"
       class="rounded-lg border border-n-slate-6 bg-n-solid-2 px-4 py-3 text-sm text-n-slate-11"
     >
       {{ $t('PROFILE_SETTINGS.FORM.NOTIFICATIONS.DELIVERY_MODES_HINT') }}
