@@ -43,7 +43,8 @@ describe Notification::PushNotificationService do
           end
           expect(Notification::FcmService).not_to have_received(:new)
           expect(Rails.logger).to have_received(:info)
-            .with("Browser push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push result=accepted")
+            .with(include("Browser push accepted user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push",
+                          'result=accepted', "account_id=#{notification.account_id}", "notification_id=#{notification.id}"))
         end
       end
 
@@ -65,7 +66,7 @@ describe Notification::PushNotificationService do
   context 'when the push server returns error' do
     it 'sends webpush notifications for webpush subscription' do
       with_modified_env VAPID_PUBLIC_KEY: 'test' do
-        mock_response = instance_double(Net::HTTPResponse, body: 'Subscription is invalid')
+        mock_response = instance_double(Net::HTTPResponse, code: '404', body: 'Subscription is invalid')
         mock_host = 'fcm.googleapis.com'
 
         allow(WebPush).to receive(:payload_send).and_raise(WebPush::InvalidSubscription.new(mock_response, mock_host))

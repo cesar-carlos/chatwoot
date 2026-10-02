@@ -48,4 +48,29 @@ RSpec.describe Notification::PushTestService do
       message: 'Accepted by push service; device display is not confirmed'
     )
   end
+
+  it 'limits the diagnostic content using the same byte budget as real notifications' do
+    described_class.new(user: user, subscription_ids: [subscription.id], title: 'Test', body: '😀' * 5000).perform
+    expect(WebPush).to have_received(:payload_send) do |payload|
+      expect(payload[:message].bytesize).to be <= Custom::Notification::BrowserPushPayload::MAX_JSON_BYTES
+      expect(JSON.parse(payload[:message])['body']).to end_with('…')
+    end
+  end
+
+  it 'preserves authentication failures and returns a sanitized delivery error' do
+    response = instance_double(Net::HTTPResponse, code: '403', body: { reason: 'BadJwtToken', token: 'private-token' }.to_json)
+    allow(WebPush).to receive(:payload_send).and_raise(WebPush::Unauthorized.new(response, 'web.push.apple.com'))
+    result = described_class.new(user: user, subscription_ids: [subscription.id]).perform.first
+    expect(subscription.reload).to be_persisted
+    expect(result).to include(status: :failure, message: 'Push service did not accept the test notification')
+    expect(result[:message]).not_to include('private-token')
+  end
+
+  it 'removes expired subscriptions detected by a diagnostic' do
+    response = instance_double(Net::HTTPResponse, code: '410', body: '{}')
+    allow(WebPush).to receive(:payload_send).and_raise(WebPush::ExpiredSubscription.new(response, 'web.push.apple.com'))
+    result = described_class.new(user: user, subscription_ids: [subscription.id]).perform.first
+    expect(result[:status]).to eq(:failure)
+    expect { subscription.reload }.to raise_error(ActiveRecord::RecordNotFound)
+  end
 end

@@ -31,7 +31,8 @@ module Custom::Notification::PushNotificationService
   end
 
   def browser_push_payload(subscription)
-    super.merge(**WEB_PUSH_OPTIONS)
+    payload = super
+    payload.merge(message: Custom::Notification::BrowserPushPayload.generate(JSON.parse(payload[:message])), **WEB_PUSH_OPTIONS)
   end
 
   def send_browser_push(subscription)
@@ -47,9 +48,11 @@ module Custom::Notification::PushNotificationService
     context = push_log_context(subscription, error)
 
     case error
-    when WebPush::ExpiredSubscription, WebPush::InvalidSubscription, WebPush::Unauthorized
+    when WebPush::ExpiredSubscription, WebPush::InvalidSubscription
       Rails.logger.info("WebPush subscription expired #{context}")
       subscription.destroy!
+    when WebPush::Unauthorized
+      Rails.logger.error("WebPush authentication failed #{context}")
     when WebPush::TooManyRequests
       Rails.logger.warn("WebPush rate limited #{context}")
     when Errno::ECONNRESET, Net::OpenTimeout, Net::ReadTimeout, Socket::ResolutionError
@@ -68,6 +71,11 @@ module Custom::Notification::PushNotificationService
   end
 
   def push_log_context(subscription, error = nil)
+    if subscription.browser_push?
+      return Custom::Notification::BrowserPushLogContext.build(user_id: user.id, subscription: subscription, error: error) +
+             " account_id=#{notification.account_id} notification_id=#{notification.id}"
+    end
+
     context = "user_id=#{user.id} subscription_id=#{subscription.id} type=#{subscription.subscription_type} result=#{error ? 'failed' : 'accepted'}"
     error ? "#{context} error_class=#{error.class.name}" : context
   end

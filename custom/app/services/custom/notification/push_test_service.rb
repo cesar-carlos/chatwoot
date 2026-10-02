@@ -5,12 +5,13 @@ module Custom::Notification::PushTestService
     return result(subscription, 'browser_push', :skipped, 'VAPID keys not configured') unless VapidService.public_key
 
     WebPush.payload_send(**browser_push_payload(subscription))
-    Rails.logger.info("Browser push test accepted user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push result=accepted")
+    Rails.logger.info("Browser push test accepted #{Custom::Notification::BrowserPushLogContext.build(user_id: user.id, subscription: subscription)}")
     result(subscription, 'browser_push', :success, 'Accepted by push service; device display is not confirmed')
   rescue StandardError => e
     Rails.logger.warn(
-      "Browser push test failed user_id=#{user.id} subscription_id=#{subscription.id} type=browser_push result=failed error_class=#{e.class.name}"
+      "Browser push test failed #{Custom::Notification::BrowserPushLogContext.build(user_id: user.id, subscription: subscription, error: e)}"
     )
+    subscription.destroy! if e.is_a?(WebPush::ExpiredSubscription) || e.is_a?(WebPush::InvalidSubscription)
     result(subscription, 'browser_push', :failure, 'Push service did not accept the test notification')
   end
 
@@ -22,7 +23,7 @@ module Custom::Notification::PushTestService
     )
 
     payload.merge(
-      message: JSON.generate(message),
+      message: Custom::Notification::BrowserPushPayload.generate(message),
       **Custom::Notification::PushNotificationService::WEB_PUSH_OPTIONS
     )
   end
