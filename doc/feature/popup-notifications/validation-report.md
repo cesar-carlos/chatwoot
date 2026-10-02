@@ -1,5 +1,21 @@
 # Pop-up e Web Push — validação do candidato
 
+## Integração das notificações por time — 02/out/2026
+
+Após `git fetch origin`, somente `feat/team-unassigned-notifications` (`f3e91283ff`) e `fix/team-notification-hardening` (`5dc0fb450b`) estavam fora da main local. A segunda contém a primeira. O worktree `fix/integrate-team-notifications-main` foi criado de `origin/main` atualizado e avançado por fast-forward à main anterior `b4334fdc0f` e ao candidato `5dc0fb450b`, sem conflitos. A main recebe a integração e este registro documental; branches e worktrees antigos foram preservados.
+
+| Verificação da integração | Resultado |
+|--------------------------|-----------|
+| Implementação integrada | Árvore idêntica ao candidato validado; somente documentação de status alterada nesta etapa |
+| Testes/lint | Evidências do candidato abaixo preservadas: 228 exemplos Ruby, revalidação de 28, 289 testes frontend e lint dirigido sem infrações; não reexecutados nesta integração sem mudança de código |
+| `git diff --check` | Sem erros |
+| Inventário `FORK:` | 666 → 684; 18 novas identidades no conjunto da regra/revisão, nenhuma anterior removida |
+| Auditoria de branches | Todas as referências locais e `origin/*` contidas na main após a integração; nenhuma pendência adicional |
+| GitHub/build/deploy/serviços | Não realizados ou alterados nesta etapa |
+| Homologação em aparelhos | Continua pendente |
+
+As menções a branch fora da main nas seções de validação abaixo descrevem o momento dos testes, não o estado após esta integração. A falha preexistente de exclusão de mensagens continua registrada, sem alteração fora do escopo. Nenhuma migration ou operação em banco/Redis foi necessária para integrar.
+
 ## Revisão de segurança e idempotência — 02/out/2026
 
 Candidato `fix/team-notification-hardening`, criado de `origin/main` recém-consultado e avançado por fast-forward a `feat/team-unassigned-notifications` (`f3e91283ff`). A main local continua `b4334fdc0f`; produção, GitHub, build e serviços não foram alterados. Esta seção substitui as evidências do candidato inicial para os contratos revisados, sem apagar o histórico abaixo.

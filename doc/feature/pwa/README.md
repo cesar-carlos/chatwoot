@@ -2,7 +2,7 @@
 
 ## Nova regra de time — revisão local de 02/out/2026
 
-`fix/team-notification-hardening` acrescenta a regra de conversa atribuída ao time sem agente, com inscrição e preferências atuais preservadas. Proteções de autorização, reprocessamento e eventos atrasados estão no backend; não alteram o worker, manifesto ou instalação. A explicação da linha existe em desktop e mobile. Ainda fora da main/GitHub/produção e sem homologação em aparelhos. Ver [estado atual](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](../popup-notifications/validation-report.md#revisão-de-segurança-e-idempotência--02out2026).
+`fix/team-notification-hardening` acrescenta a regra de conversa atribuída ao time sem agente, com inscrição e preferências atuais preservadas. Proteções de autorização, reprocessamento e eventos atrasados estão no backend; não alteram o worker, manifesto ou instalação. A explicação da linha existe em desktop e mobile. Incorporada à main local em 02/out/2026, sem GitHub/build/deploy nem homologação em aparelhos. Ver [estado atual](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026), [validação](../popup-notifications/validation-report.md#revisão-de-segurança-e-idempotência--02out2026) e [integração](../popup-notifications/validation-report.md#integração-das-notificações-por-time--02out2026).
 
 ## Integração na main local — 02/out/2026
 

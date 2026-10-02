@@ -2,9 +2,9 @@
 
 ## Revisão da regra de time — 02/out/2026
 
-Implementados no candidato local `fix/team-notification-hardening`: autorização do sino/contadores e leituras, criação idempotente sob concorrência/reprocessamento, identidade para eventos atrasados, nome original do time e explicação da regra em desktop/mobile. Novas regressões cobrem esses contratos. O candidato contém `feat/team-unassigned-notifications`; ambos ainda estão fora da main local.
+Implementados em `fix/team-notification-hardening` e incorporados à main local: autorização do sino/contadores e leituras, criação idempotente sob concorrência/reprocessamento, identidade para eventos atrasados, nome original do time e explicação da regra em desktop/mobile. Novas regressões cobrem esses contratos. A integração contém também `feat/team-unassigned-notifications`; nenhuma outra branch local ou do fork ficou pendente na auditoria de 02/out/2026.
 
-Pendente: homologação desktop/Android/iOS, teclado/leitor de tela/layout, integração, publicação, build e deploy autorizados. Avisar na simples reabertura é opção de produto ainda **não aprovada nem implementada**. [Evidências](./validation-report.md#revisão-de-segurança-e-idempotência--02out2026). As declarações anteriores de “nenhuma branch pendente” são histórico da integração anterior, não destes candidatos.
+Pendente: homologação desktop/Android/iOS, teclado/leitor de tela/layout, publicação, build e deploy autorizados. Avisar na simples reabertura é opção de produto ainda **não aprovada nem implementada**. [Evidências](./validation-report.md#revisão-de-segurança-e-idempotência--02out2026) e [auditoria da integração](./validation-report.md#integração-das-notificações-por-time--02out2026). As seções anteriores de candidatos abaixo são histórico.
 
 ## Pendências após integração local — 02/out/2026
 

@@ -2,7 +2,7 @@
 
 ## Regra de time sem agente — candidato de 02/out/2026
 
-Branch atual `fix/team-notification-hardening`, criada de `origin/main` recém-consultado e avançada por fast-forward ao candidato `feat/team-unassigned-notifications` (`f3e91283ff`), que já contém a `main` local `b4334fdc0f`. Este incremento ainda não está na main nem na produção.
+Implementação de `fix/team-notification-hardening` (`5dc0fb450b`), incluindo `feat/team-unassigned-notifications` (`f3e91283ff`), incorporada por fast-forward à main local em 02/out/2026. O worktree de integração foi criado de `origin/main` atualizado e preservou a main anterior `b4334fdc0f`. Não houve publicação, build ou deploy; produção permanece inalterada. [Auditoria da integração](./validation-report.md#integração-das-notificações-por-time--02out2026).
 
 - Identificador: `team_conversation_assignment`, enum aditivo `10`; flags `email_team_conversation_assignment`, `push_team_conversation_assignment` e `popup_team_conversation_assignment`. Nenhuma migration: e-mail/Push usam as colunas de bits existentes, Pop-up continua em `ui_settings` por conta. Nenhuma seleção automática ou alteração retroativa.
 - Disparo: `team.changed`; também `assignee.changed` quando uma atribuição de agente/bot é removida, mantendo o time. Se ambos mudarem juntos, somente `team.changed` cria o aviso. Uma conversa criada já no time também usa o callback de atribuição existente. Atualizações comuns e novas mensagens não repetem esse evento.

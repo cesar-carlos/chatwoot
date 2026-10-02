@@ -2,7 +2,7 @@
 
 ## Incremento: time sem agente — candidato de 02/out/2026
 
-Revisão final em `fix/team-notification-hardening`, incorporando o candidato anterior sem alterar a main:
+Revisão final de `fix/team-notification-hardening`, incluindo o candidato anterior e incorporada à main local por fast-forward em 02/out/2026:
 
 - `custom/app/services/custom/notification/team_assignment_transition.rb` e callback Custom da conversa: revisão por atribuição, snapshot do nome e ledger limitado à transição atual; bloqueio PostgreSQL e persistência atômica com a notificação. Não usa TTL de Redis nem migração para deduplicação.
 - `team_assignment_eligibility.rb`: revalida também a revisão antes de Push/e-mail; listener exige a identidade do evento para impedir reinterpretação de eventos atrasados.
@@ -20,7 +20,7 @@ Não ampliar o gatilho para reabertura de conversa neste incremento. Aceite em a
 - `custom/app/javascript/dashboard/helper/teamNotificationPreferences.js`: insere a linha após a atribuição individual e fornece ícone do sino. `usePopupNotifications` aceita o título opcional sem alterar payloads anteriores.
 - Hooks upstream mínimos `FORK:`: enum, listener, serviço de e-mail, composição das preferências e ícone. Textos somente en/pt_BR. Specs correspondentes em `spec/custom`; regressão de Pop-up existente ampliada.
 
-Entrega atual em `fix/team-notification-hardening`, sem integração/publicação/deploy. Será necessário build frontend e atualização coordenada de todas as instâncias web/workers após autorização; callbacks e consumidores de eventos devem usar a mesma versão. Não há migration, nova configuração nem alteração de chaves VAPID. [Semântica](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026) e [validação](./validation-report.md#revisão-de-segurança-e-idempotência--02out2026).
+Entrega atual incorporada à main local, sem publicação/build/deploy. Será necessário build frontend e atualização coordenada de todas as instâncias web/workers após autorização; callbacks e consumidores de eventos devem usar a mesma versão. Não há migration, nova configuração nem alteração de chaves VAPID. [Semântica](./current-state.md#regra-de-time-sem-agente--candidato-de-02out2026), [validação](./validation-report.md#revisão-de-segurança-e-idempotência--02out2026) e [integração](./validation-report.md#integração-das-notificações-por-time--02out2026).
 
 ## Integração local concluída — 02/out/2026
 
