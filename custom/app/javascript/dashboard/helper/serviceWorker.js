@@ -31,7 +31,12 @@ export const waitForActiveWorker = registration => {
         });
     };
     timeout = setTimeout(
-      () => finish(new Error('Service worker activation timed out')),
+      () =>
+        finish(
+          Object.assign(new Error('Service worker activation timed out'), {
+            code: 'PUSH_WORKER_TIMEOUT',
+          })
+        ),
       PUSH_OPERATION_TIMEOUT_MS
     );
     registration.addEventListener?.('updatefound', check);

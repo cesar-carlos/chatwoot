@@ -18,6 +18,7 @@ vi.mock('customDashboard/helper/pushHelper', () => ({
     permission: 'granted',
     status: 'granted',
   }),
+  isPushOptedOut: () => false,
   ensurePushSubscription: api.ensure,
   requestAndSubscribe: api.subscribe,
   unsubscribePush: api.unsubscribe,
@@ -28,6 +29,8 @@ vi.mock('customDashboard/api/notificationSubscription', () => ({
 vi.mock('customDashboard/composables/usePwaInstallation', async () => {
   const { ref } = await import('vue');
   return {
+    getInstallationPlatform: () => 'DESKTOP',
+    isEmbeddedBrowser: () => false,
     usePwaInstallation: () => ({
       status: ref('installed'),
       checkInstallability: vi.fn(),
@@ -68,7 +71,13 @@ describe('PWA device diagnostics UI', () => {
     vi.clearAllMocks();
     startPushSession();
     api.ensure.mockResolvedValue(subscribed);
-    api.test.mockResolvedValue({});
+    api.test.mockResolvedValue({ data: { accepted: true } });
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+      configurable: true,
+      value() {
+        this.setAttribute('open', '');
+      },
+    });
   });
   it('shows checking and disables editing until the subscription is confirmed', async () => {
     let finish;
@@ -81,7 +90,11 @@ describe('PWA device diagnostics UI', () => {
     const wrapper = render();
     expect(wrapper.text()).toContain('PUSH_STATUS_CHECKING');
     expect(wrapper.find('[data-test="toggle"]').exists()).toBe(false);
-    expect(wrapper.text()).not.toContain('PUSH_TEST_ACTION');
+    expect(
+      wrapper
+        .findAll('button')
+        .some(button => button.text().includes('PUSH_TEST_ACTION'))
+    ).toBe(false);
     finish(subscribed);
     await flushPromises();
     expect(wrapper.text()).toContain('PUSH_TEST_ACTION');
@@ -103,11 +116,9 @@ describe('PWA device diagnostics UI', () => {
     await button.trigger('click');
     await button.trigger('click');
     expect(api.test).toHaveBeenCalledOnce();
-    finish({});
+    finish({ data: { accepted: true } });
     await flushPromises();
-    expect(api.alert).toHaveBeenCalledWith(
-      'PROFILE_SETTINGS.FORM.NOTIFICATIONS.PUSH_TEST_ACCEPTED'
-    );
+    expect(wrapper.text()).toContain('PUSH_DIAGNOSTIC_ACCEPTED');
     wrapper.unmount();
   });
 });

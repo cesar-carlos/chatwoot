@@ -47,8 +47,10 @@ const messageNotification = (overrides = {}) => ({
 
 describe('usePopupNotifications', () => {
   let closeMock;
+  let previousUrl;
 
   beforeEach(() => {
+    previousUrl = window.location.href;
     closeMock = vi.fn();
     routerPush.mockReset();
     global.Notification = vi.fn(function NotificationMock() {
@@ -66,6 +68,7 @@ describe('usePopupNotifications', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    window.history.replaceState({}, '', previousUrl);
   });
 
   it('strips the sender prefix from the popup body', () => {

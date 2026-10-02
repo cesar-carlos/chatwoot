@@ -1,9 +1,10 @@
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useAlert } from 'dashboard/composables';
 import {
   ensurePushSubscription,
   getPushEnvironment,
+  isPushOptedOut,
   requestAndSubscribe,
   unsubscribePush,
 } from 'customDashboard/helper/pushHelper';
@@ -17,6 +18,7 @@ import {
   pushSession,
 } from 'customDashboard/helper/pushSession';
 import { testBrowserSubscription } from 'customDashboard/api/notificationSubscription';
+import { classifyPushDiagnosticError } from 'customDashboard/helper/pushDiagnostic';
 
 // One action lock for every surface; a click must not open a second prompt.
 const busy = ref(false);
@@ -34,7 +36,9 @@ export const usePushDevice = () => {
   );
   const endpoint = ref(null);
   let mounted = true;
-  let refreshing;
+  const instanceSession = isPushSessionActive() ? pushSession() : null;
+  const live = () =>
+    mounted && instanceSession && isCurrentPushSession(instanceSession);
   const subscribed = computed(() => status.value === 'subscribed');
   const disabled = computed(() => busy.value || status.value === 'checking');
   const alert = key => useAlert(t(`${translationPrefix}${key}`));
@@ -48,37 +52,7 @@ export const usePushDevice = () => {
     if (result.serverError) alert('PUSH_UNSUBSCRIBE_ERROR');
   };
   const receiveState = event => {
-    if (isPushSessionActive()) applyState(event.detail);
-  };
-
-  const refresh = async ({ recoverPermission = false } = {}) => {
-    if (!isPushSessionActive() || busy.value) return null;
-    if (refreshing) return refreshing;
-    const session = pushSession();
-    const current = getPushEnvironment();
-    const recover =
-      recoverPermission ||
-      (permission.value === 'denied' && current.permission === 'granted');
-    applyState(current);
-    if (!current.supported || current.permission !== 'granted') return current;
-    status.value = 'checking';
-    refreshing = ensurePushSubscription({ recoverPermission: recover });
-    try {
-      const result = await refreshing;
-      if (!mounted || !isCurrentPushSession(session)) return null;
-      applyState(result);
-      publishBrowserPushState(result);
-      reportCleanup(result);
-      return result;
-    } catch (error) {
-      if (mounted && isCurrentPushSession(session)) {
-        status.value = 'error';
-        alert('PUSH_SUBSCRIPTION_ERROR');
-      }
-    } finally {
-      refreshing = null;
-    }
-    return null;
+    if (live()) applyState(event.detail);
   };
 
   const runAction = async (
@@ -86,14 +60,14 @@ export const usePushDevice = () => {
     errorKey,
     preserveSubscription = false
   ) => {
-    if (disabled.value || !isPushSessionActive()) return null;
+    if (!live() || busy.value) return null;
     const session = pushSession();
     const token = { session };
     activeOperation = token;
     busy.value = true;
     try {
       // Invoke immediately: requestPermission must stay inside the click.
-      const result = await operation();
+      const result = await operation(session);
       if (!mounted || !isCurrentPushSession(session)) return null;
       if (result?.status) {
         applyState(result);
@@ -103,6 +77,10 @@ export const usePushDevice = () => {
       return result;
     } catch (error) {
       if (mounted && isCurrentPushSession(session)) {
+        if (!errorKey) {
+          if (status.value === 'checking') status.value = 'error';
+          return classifyPushDiagnosticError(error);
+        }
         if (errorKey === 'PUSH_SUBSCRIPTION_ERROR' && !preserveSubscription) {
           const current = getPushEnvironment();
           permission.value = current.permission;
@@ -123,15 +101,74 @@ export const usePushDevice = () => {
     runAction(requestAndSubscribe, 'PUSH_SUBSCRIPTION_ERROR');
   const deactivate = () =>
     runAction(unsubscribePush, 'PUSH_SUBSCRIPTION_ERROR', true);
-  const test = () => {
-    if (!subscribed.value || !endpoint.value) return null;
-    return runAction(async () => {
-      await testBrowserSubscription(endpoint.value);
-      return { accepted: true };
-    }, 'PUSH_TEST_ERROR').then(result => {
-      if (result?.accepted && mounted) alert('PUSH_TEST_ACCEPTED');
-    });
+  const refresh = ({ recoverPermission = false } = {}) => {
+    if (!live() || busy.value) return Promise.resolve(null);
+    const current = getPushEnvironment();
+    const recover =
+      recoverPermission ||
+      (permission.value === 'denied' && current.permission === 'granted');
+    if (!current.supported || current.permission !== 'granted') {
+      applyState(current);
+      return Promise.resolve(current);
+    }
+    return runAction(() => {
+      applyState(current);
+      status.value = 'checking';
+      return ensurePushSubscription({ recoverPermission: recover });
+    }, 'PUSH_SUBSCRIPTION_ERROR');
   };
+
+  const preflight = async (session, recoverPermission) => {
+    let current = getPushEnvironment();
+    applyState(current);
+    if (!current.supported || current.permission !== 'granted')
+      return { kind: current.status };
+    if (isPushOptedOut()) {
+      status.value = 'unsubscribed';
+      return { kind: 'opt_out' };
+    }
+    status.value = 'checking';
+    const result = await ensurePushSubscription({ recoverPermission });
+    if (!mounted || !isCurrentPushSession(session)) return null;
+    // Permission or opt-out may change while the worker/server was awaited.
+    current = getPushEnvironment();
+    if (!current.supported || current.permission !== 'granted') {
+      applyState(current);
+      return { kind: current.status };
+    }
+    if (isPushOptedOut()) {
+      applyState({ ...current, status: 'unsubscribed' });
+      return { kind: 'opt_out' };
+    }
+    applyState(result);
+    publishBrowserPushState(result);
+    reportCleanup(result);
+    return {
+      kind: subscribed.value && endpoint.value ? 'ready' : 'missing',
+      endpoint: endpoint.value,
+    };
+  };
+  const inspect = ({ recoverPermission = false } = {}) =>
+    runAction(session => preflight(session, recoverPermission), null);
+  const test = () =>
+    runAction(async session => {
+      const checked = await preflight(session, false);
+      if (checked?.kind !== 'ready') return checked;
+      const response = await testBrowserSubscription(checked.endpoint);
+      if (!mounted || !isCurrentPushSession(session)) return null;
+      const current = getPushEnvironment();
+      if (!current.supported || current.permission !== 'granted') {
+        applyState(current);
+        return { kind: current.status };
+      }
+      if (isPushOptedOut()) {
+        applyState({ ...current, status: 'unsubscribed' });
+        return { kind: 'opt_out' };
+      }
+      return response.data?.accepted === true
+        ? { kind: 'accepted' }
+        : { kind: 'delivery' };
+    }, null);
 
   onMounted(() => {
     if (activeOperation && !isCurrentPushSession(activeOperation.session)) {
@@ -140,6 +177,10 @@ export const usePushDevice = () => {
     }
     window.addEventListener(BROWSER_PUSH_SYNC_EVENT, receiveState);
     refresh();
+  });
+  watch(busy, value => {
+    // Another surface may have unmounted before publishing its initial check.
+    if (!value && status.value === 'checking' && live()) refresh();
   });
   onUnmounted(() => {
     mounted = false;
@@ -156,5 +197,6 @@ export const usePushDevice = () => {
     activate,
     deactivate,
     test,
+    inspect,
   };
 };
