@@ -4,6 +4,7 @@ vi.mock('js-cookie', () => ({ default: { get: authCookie } }));
 import {
   cleanupPushOnLogout,
   ensurePushSubscription,
+  pushPreferenceStorageKey,
   requestAndSubscribe,
 } from '../pushHelper';
 import { startPushSession } from '../pushSession';
@@ -16,7 +17,7 @@ describe('notification session lifecycle', () => {
   let api;
   beforeEach(() => {
     startPushSession();
-    authCookie.mockReturnValue('session');
+    authCookie.mockReturnValue(JSON.stringify({ uid: 'agent@example.com' }));
     localStorage.clear();
     subscription = {
       endpoint: 'https://push.example.test/current',
@@ -133,11 +134,14 @@ describe('notification session lifecycle', () => {
   it.each(['true', 'false'])(
     'keeps the %s push preference across logout instead of recording an opt-out',
     async preference => {
+      const currentKey = pushPreferenceStorageKey('agent@example.com');
       localStorage.setItem('chatwoot_push_enabled', preference);
+      localStorage.setItem(currentKey, preference);
 
       await cleanupPushOnLogout();
 
       expect(localStorage.getItem('chatwoot_push_enabled')).toBe(preference);
+      expect(localStorage.getItem(currentKey)).toBe(preference);
     }
   );
 

@@ -21,9 +21,45 @@ export const PUSH_STATUS = {
   UNSUBSCRIBED: 'unsubscribed',
 };
 
-const PUSH_ENABLED_STORAGE_KEY = 'chatwoot_push_enabled';
-export const isPushOptedOut = () =>
-  localStorage.getItem(PUSH_ENABLED_STORAGE_KEY) === 'false';
+export const LEGACY_PUSH_ENABLED_KEY = 'chatwoot_push_enabled';
+export const PUSH_VAPID_STORAGE_KEY = 'chatwoot:push-vapid:v1';
+
+export const pushPreferenceStorageKey = uid =>
+  `chatwoot:push-enabled:v1:${uid}`;
+
+// The session cookie already exposes uid to this origin. Keep it only in
+// this device's localStorage and never send it to logs or the server.
+export const currentPushUid = () => {
+  const raw = Cookies.get('cw_d_session_info');
+  if (!raw) return null;
+  try {
+    const uid = JSON.parse(raw)?.uid;
+    return typeof uid === 'string' && uid !== '' ? uid : null;
+  } catch {
+    return null;
+  }
+};
+
+export const readPushPreference = () => {
+  const uid = currentPushUid();
+  if (uid) {
+    const preference = localStorage.getItem(pushPreferenceStorageKey(uid));
+    if (preference !== null) return preference;
+  }
+  // A legacy "false" mixed logout with an explicit opt-out, so only an old
+  // opt-in still applies. A missing uid is treated as no preference.
+  return localStorage.getItem(LEGACY_PUSH_ENABLED_KEY) === 'true'
+    ? 'true'
+    : null;
+};
+
+const writePushPreference = value => {
+  const uid = currentPushUid();
+  if (!uid) return;
+  localStorage.setItem(pushPreferenceStorageKey(uid), value);
+};
+
+export const isPushOptedOut = () => readPushPreference() === 'false';
 let pendingOperation = Promise.resolve();
 
 const enqueueOperation = operation => {
@@ -109,9 +145,29 @@ const currentApplicationServerKey = () => {
   return Uint8Array.from(atob(base64), character => character.charCodeAt(0));
 };
 
+const generateKeys = value =>
+  btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+const publicKeyToken = key => {
+  if (typeof key === 'string' && key !== '') return key;
+  if (ArrayBuffer.isView(key)) return generateKeys(key);
+  return null;
+};
+
+const rememberSubscribedVapidKey = () => {
+  const token = publicKeyToken(window.chatwootConfig?.vapidPublicKey);
+  if (token) localStorage.setItem(PUSH_VAPID_STORAGE_KEY, token);
+};
+
 const subscriptionUsesCurrentKey = subscription => {
   const subscriptionKey = subscription.options?.applicationServerKey;
-  if (!subscriptionKey) return false;
+  if (!subscriptionKey) {
+    const stored = localStorage.getItem(PUSH_VAPID_STORAGE_KEY);
+    if (!stored) return true;
+    return stored === publicKeyToken(window.chatwootConfig?.vapidPublicKey);
+  }
 
   const actual = new Uint8Array(subscriptionKey);
   const expected = currentApplicationServerKey();
@@ -120,11 +176,6 @@ const subscriptionUsesCurrentKey = subscription => {
     actual.every((value, index) => value === expected[index])
   );
 };
-
-const generateKeys = value =>
-  btoa(String.fromCharCode.apply(null, new Uint8Array(value)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_');
 
 export const getPushSubscriptionPayload = subscription => ({
   subscription_type: 'browser_push',
@@ -197,6 +248,7 @@ const synchronizePushSubscription = async (
       throw error;
     }
   }
+  rememberSubscribedVapidKey();
   await sendRegistrationToServer(subscription, session);
   assertPushSession(session);
 
@@ -214,7 +266,7 @@ const ensurePushSubscriptionOperation = async (session, recoverPermission) => {
     return environment;
   }
 
-  const pushPreference = localStorage.getItem(PUSH_ENABLED_STORAGE_KEY);
+  const pushPreference = readPushPreference();
   if (pushPreference === 'false') {
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
   }
@@ -233,7 +285,7 @@ const ensurePushSubscriptionOperation = async (session, recoverPermission) => {
     session
   );
   assertPushSession(session);
-  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'true');
+  writePushPreference('true');
   return result;
 };
 
@@ -267,7 +319,7 @@ const requestAndSubscribeOperation = async (
     session
   );
   assertPushSession(session);
-  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'true');
+  writePushPreference('true');
   return result;
 };
 
@@ -287,7 +339,7 @@ export const requestAndSubscribe = () => {
 const unsubscribePushOperation = async session => {
   const environment = getPushEnvironment();
   if (!('serviceWorker' in navigator)) {
-    localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
+    writePushPreference('false');
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
   }
 
@@ -295,7 +347,7 @@ const unsubscribePushOperation = async session => {
   const subscription = await registration?.pushManager.getSubscription();
   assertPushSession(session);
   if (!subscription) {
-    localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
+    writePushPreference('false');
     return { ...environment, status: PUSH_STATUS.UNSUBSCRIBED };
   }
 
@@ -314,7 +366,7 @@ const unsubscribePushOperation = async session => {
     throw new Error('The browser did not remove the push subscription');
   }
   assertPushSession(session);
-  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
+  writePushPreference('false');
   return {
     ...environment,
     status: PUSH_STATUS.UNSUBSCRIBED,

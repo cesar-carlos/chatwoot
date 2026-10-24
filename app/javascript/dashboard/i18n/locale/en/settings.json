@@ -261,6 +261,7 @@
         "PUSH_STATUS_ACTIVATING": "Activating notifications…",
         "PUSH_INVITATION_TITLE": "Receive new message alerts",
         "PUSH_INVITATION_DESCRIPTION": "Receive notifications even when the app is closed, according to your preferences.",
+        "PUSH_RECOVERY_DESCRIPTION": "Notifications on this device were turned off when you signed out. Activate them again on this device.",
         "PUSH_LATER_ACTION": "Not now",
         "PUSH_DONE_ACTION": "Done",
         "PUSH_CHOOSE_EVENTS_ACTION": "Choose which alerts to receive",

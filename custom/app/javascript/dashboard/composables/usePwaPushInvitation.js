@@ -1,8 +1,11 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import {
+  LEGACY_PUSH_ENABLED_KEY,
+  currentPushUid,
   getPushEnvironment,
   isPwaStandalone,
   isPushOptedOut,
+  pushPreferenceStorageKey,
 } from 'customDashboard/helper/pushHelper';
 import {
   isPushSessionActive,
@@ -12,8 +15,22 @@ import {
 export const pushInvitationKey = userId =>
   `chatwoot:push-invitation:v1:${userId}`;
 
+export const pushRecoveryKey = userId => `chatwoot:push-recovery:v1:${userId}`;
+
+const shouldOfferRecovery = (userId, status) => {
+  if (status !== 'unsubscribed') return false;
+  if (getPushEnvironment().permission !== 'granted') return false;
+  if (localStorage.getItem(LEGACY_PUSH_ENABLED_KEY) !== 'false') return false;
+  const uid = currentPushUid();
+  if (uid && localStorage.getItem(pushPreferenceStorageKey(uid)) !== null) {
+    return false;
+  }
+  return !localStorage.getItem(pushRecoveryKey(userId));
+};
+
 export const usePwaPushInvitation = (props, status) => {
   const open = ref(false);
+  const recovery = ref(false);
   let observer;
   let mounted = false;
   let storageUnavailable = false;
@@ -35,6 +52,22 @@ export const usePwaPushInvitation = (props, status) => {
       return;
     if (!['default', 'denied', 'unsubscribed'].includes(status.value)) return;
     try {
+      if (shouldOfferRecovery(props.user.id, status.value)) {
+        if (document.querySelector('dialog[open]')) {
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['open'],
+          });
+          return;
+        }
+        localStorage.setItem(pushRecoveryKey(props.user.id), 'shown');
+        observer.disconnect();
+        recovery.value = true;
+        open.value = true;
+        return;
+      }
       if (isPushOptedOut()) return;
       const key = pushInvitationKey(props.user.id);
       if (localStorage.getItem(key)) return;
@@ -50,6 +83,7 @@ export const usePwaPushInvitation = (props, status) => {
       // Persist before opening so refreshes and other tabs do not repeat it.
       localStorage.setItem(key, 'shown');
       observer.disconnect();
+      recovery.value = false;
       open.value = true;
     } catch (error) {
       storageUnavailable = true;
@@ -69,6 +103,7 @@ export const usePwaPushInvitation = (props, status) => {
     ],
     () => {
       open.value = false;
+      recovery.value = false;
       observer?.disconnect();
       evaluate();
     }
@@ -79,9 +114,16 @@ export const usePwaPushInvitation = (props, status) => {
     observer?.disconnect();
   };
   const handleStorage = event => {
+    const uid = currentPushUid();
+    const preferenceKey = uid ? pushPreferenceStorageKey(uid) : null;
+    const preferenceDisabled =
+      preferenceKey &&
+      event.key === preferenceKey &&
+      event.newValue === 'false';
     if (
       event.key === pushInvitationKey(props.user?.id) ||
-      (event.key === 'chatwoot_push_enabled' && event.newValue === 'false')
+      event.key === pushRecoveryKey(props.user?.id) ||
+      preferenceDisabled
     )
       close();
   };
@@ -96,5 +138,5 @@ export const usePwaPushInvitation = (props, status) => {
     observer?.disconnect();
     window.removeEventListener('storage', handleStorage);
   });
-  return { open, close };
+  return { open, recovery, close };
 };

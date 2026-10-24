@@ -5,16 +5,23 @@ const environment = vi.hoisted(() => vi.fn());
 const standalone = vi.hoisted(() => vi.fn());
 const cookie = vi.hoisted(() => vi.fn());
 vi.mock('js-cookie', () => ({ default: { get: cookie } }));
-vi.mock('customDashboard/helper/pushHelper', () => ({
-  getPushEnvironment: environment,
-  isPwaStandalone: standalone,
-  isPushOptedOut: () =>
-    localStorage.getItem('chatwoot_push_enabled') === 'false',
-}));
+vi.mock('customDashboard/helper/pushHelper', async () => {
+  const actual = await vi.importActual('customDashboard/helper/pushHelper');
+  return {
+    ...actual,
+    getPushEnvironment: environment,
+    isPwaStandalone: standalone,
+  };
+});
 import {
   pushInvitationKey,
+  pushRecoveryKey,
   usePwaPushInvitation,
 } from 'customDashboard/composables/usePwaPushInvitation';
+import {
+  LEGACY_PUSH_ENABLED_KEY,
+  pushPreferenceStorageKey,
+} from 'customDashboard/helper/pushHelper';
 import { startPushSession } from 'customDashboard/helper/pushSession';
 
 const render = (overrides = {}, initialStatus = 'default') => {
@@ -38,7 +45,7 @@ describe('one-time PWA Push invitation', () => {
   beforeEach(() => {
     localStorage.clear();
     document.body.innerHTML = '';
-    cookie.mockReturnValue('authenticated');
+    cookie.mockReturnValue(JSON.stringify({ uid: 'agent@example.com' }));
     startPushSession();
     standalone.mockReturnValue(true);
     environment.mockReturnValue({ supported: true });
@@ -88,10 +95,136 @@ describe('one-time PWA Push invitation', () => {
   });
 
   it('preserves an explicit opt-out', () => {
-    localStorage.setItem('chatwoot_push_enabled', 'false');
+    localStorage.setItem(
+      pushPreferenceStorageKey('agent@example.com'),
+      'false'
+    );
     const { wrapper } = render();
     expect(wrapper.vm.open).toBe(false);
     expect(localStorage.getItem(pushInvitationKey(7))).toBeNull();
+    wrapper.unmount();
+  });
+
+  it('offers recovery once when a legacy opt-out left notifications granted but unsubscribed', () => {
+    localStorage.setItem(LEGACY_PUSH_ENABLED_KEY, 'false');
+    environment.mockReturnValue({ supported: true, permission: 'granted' });
+    const { wrapper } = render({}, 'unsubscribed');
+    expect(wrapper.vm.open).toBe(true);
+    expect(wrapper.vm.recovery).toBe(true);
+    expect(localStorage.getItem(pushRecoveryKey(7))).toBe('shown');
+    expect(localStorage.getItem(pushInvitationKey(7))).toBeNull();
+    expect(
+      localStorage.getItem(pushPreferenceStorageKey('agent@example.com'))
+    ).toBeNull();
+    wrapper.vm.close();
+    expect(
+      localStorage.getItem(pushPreferenceStorageKey('agent@example.com'))
+    ).toBeNull();
+    wrapper.unmount();
+
+    const again = render({}, 'unsubscribed');
+    expect(again.wrapper.vm.recovery).toBe(false);
+    expect(localStorage.getItem(pushRecoveryKey(7))).toBe('shown');
+    again.wrapper.unmount();
+  });
+
+  it.each([
+    [
+      'regular browser',
+      () => standalone.mockReturnValue(false),
+      'unsubscribed',
+    ],
+    [
+      'permission not granted',
+      () => {
+        environment.mockReturnValue({ supported: true, permission: 'default' });
+      },
+      'default',
+    ],
+    [
+      'already subscribed',
+      () => {
+        environment.mockReturnValue({ supported: true, permission: 'granted' });
+      },
+      'subscribed',
+    ],
+    [
+      'legacy flag absent',
+      () => {
+        localStorage.removeItem(LEGACY_PUSH_ENABLED_KEY);
+        environment.mockReturnValue({ supported: true, permission: 'granted' });
+      },
+      'unsubscribed',
+    ],
+    [
+      'current preference present',
+      () => {
+        localStorage.setItem(
+          pushPreferenceStorageKey('agent@example.com'),
+          'true'
+        );
+        environment.mockReturnValue({ supported: true, permission: 'granted' });
+      },
+      'unsubscribed',
+    ],
+    [
+      'recovery already shown',
+      () => {
+        localStorage.setItem(pushRecoveryKey(7), 'shown');
+        environment.mockReturnValue({ supported: true, permission: 'granted' });
+      },
+      'unsubscribed',
+    ],
+  ])('does not offer recovery for %s', (_label, arrange, status) => {
+    localStorage.setItem(LEGACY_PUSH_ENABLED_KEY, 'false');
+    environment.mockReturnValue({ supported: true, permission: 'granted' });
+    arrange();
+    const { wrapper } = render({}, status);
+    expect(wrapper.vm.recovery).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('does not offer recovery after an explicit opt-out on the current user', () => {
+    localStorage.setItem(LEGACY_PUSH_ENABLED_KEY, 'false');
+    localStorage.setItem(
+      pushPreferenceStorageKey('agent@example.com'),
+      'false'
+    );
+    environment.mockReturnValue({ supported: true, permission: 'granted' });
+    const { wrapper } = render({}, 'unsubscribed');
+    expect(wrapper.vm.open).toBe(false);
+    expect(wrapper.vm.recovery).toBe(false);
+    expect(localStorage.getItem(pushRecoveryKey(7))).toBeNull();
+    wrapper.unmount();
+  });
+
+  it('still invites when only the legacy false flag remains and permission was never granted', () => {
+    localStorage.setItem(LEGACY_PUSH_ENABLED_KEY, 'false');
+    const { wrapper } = render({}, 'default');
+    expect(wrapper.vm.open).toBe(true);
+    expect(wrapper.vm.recovery).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('closes when this user disables push in another tab', async () => {
+    const { wrapper } = render();
+    expect(wrapper.vm.open).toBe(true);
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: LEGACY_PUSH_ENABLED_KEY,
+        newValue: 'false',
+      })
+    );
+    await nextTick();
+    expect(wrapper.vm.open).toBe(true);
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key: pushPreferenceStorageKey('agent@example.com'),
+        newValue: 'false',
+      })
+    );
+    await nextTick();
+    expect(wrapper.vm.open).toBe(false);
     wrapper.unmount();
   });
 
@@ -100,7 +233,7 @@ describe('one-time PWA Push invitation', () => {
     let mounted = render();
     expect(mounted.wrapper.vm.open).toBe(false);
     mounted.wrapper.unmount();
-    cookie.mockReturnValue('authenticated');
+    cookie.mockReturnValue(JSON.stringify({ uid: 'agent@example.com' }));
     environment.mockReturnValue({ supported: false });
     mounted = render();
     expect(mounted.wrapper.vm.open).toBe(false);

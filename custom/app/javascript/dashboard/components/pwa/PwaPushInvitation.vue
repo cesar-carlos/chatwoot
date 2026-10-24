@@ -24,7 +24,7 @@ const context = reactive({
   accountId: computed(() => props.accountId),
   ready: computed(() => props.ready),
 });
-const { open, close } = usePwaPushInvitation(context, status);
+const { open, recovery, close } = usePwaPushInvitation(context, status);
 const dialog = ref(null);
 const showHelp = ref(false);
 const primaryLabel = computed(() => {
@@ -64,6 +64,9 @@ watch(open, value => {
     @close="close"
   >
     <div class="flex flex-col gap-3" aria-live="polite">
+      <p v-if="recovery" class="m-0 text-body-small text-n-slate-11">
+        {{ t(`${prefix}PUSH_RECOVERY_DESCRIPTION`) }}
+      </p>
       <p v-if="status === 'denied'" class="m-0 text-body-small text-n-slate-11">
         {{ t(`${prefix}PUSH_STATUS_DENIED`) }}
       </p>

@@ -18,13 +18,19 @@ vi.mock('js-cookie', () => ({
 }));
 
 import {
+  PUSH_VAPID_STORAGE_KEY,
   ensurePushSubscription,
   getPushEnvironment,
+  pushPreferenceStorageKey,
   requestAndSubscribe,
   unsubscribePush,
 } from 'customDashboard/helper/pushHelper';
 
 const applicationServerKey = new Uint8Array([1, 2, 3]);
+const pushUser = 'agent@example.com';
+const otherPushUser = 'other@example.com';
+const preferenceKey = pushPreferenceStorageKey(pushUser);
+const sessionFor = uid => JSON.stringify({ uid });
 
 const buildSubscription = (overrides = {}) => ({
   endpoint: 'https://push.example.test/device',
@@ -46,7 +52,7 @@ describe('custom browser push helper', () => {
     };
 
     vi.clearAllMocks();
-    authCookie.mockReturnValue('authenticated');
+    authCookie.mockReturnValue(sessionFor(pushUser));
     localStorage.clear();
     subscriptionApi.create.mockResolvedValue({});
     destroyBrowserSubscription.mockResolvedValue({});
@@ -137,10 +143,38 @@ describe('custom browser push helper', () => {
   });
 
   it('permission recovery never overrides device opt-out', async () => {
-    localStorage.setItem('chatwoot_push_enabled', 'false');
+    localStorage.setItem(preferenceKey, 'false');
     const result = await ensurePushSubscription({ recoverPermission: true });
     expect(pushManager.subscribe).not.toHaveBeenCalled();
     expect(result.status).toBe('unsubscribed');
+  });
+
+  it('ignores a legacy false flag that logout used to record', async () => {
+    localStorage.setItem('chatwoot_push_enabled', 'false');
+    const result = await ensurePushSubscription({ recoverPermission: true });
+    expect(pushManager.subscribe).toHaveBeenCalledOnce();
+    expect(result.status).toBe('subscribed');
+    expect(localStorage.getItem('chatwoot_push_enabled')).toBe('false');
+    expect(localStorage.getItem(preferenceKey)).toBe('true');
+  });
+
+  it('does not let one user opt-out disable push for the next user', async () => {
+    pushManager.getSubscription.mockResolvedValue(subscription);
+    await unsubscribePush();
+    expect(localStorage.getItem(preferenceKey)).toBe('false');
+    expect(
+      localStorage.getItem(pushPreferenceStorageKey(otherPushUser))
+    ).toBeNull();
+
+    authCookie.mockReturnValue(sessionFor(otherPushUser));
+    pushManager.getSubscription.mockResolvedValue(null);
+    pushManager.subscribe.mockClear();
+    const result = await ensurePushSubscription({ recoverPermission: true });
+    expect(result.status).toBe('subscribed');
+    expect(localStorage.getItem(preferenceKey)).toBe('false');
+    expect(localStorage.getItem(pushPreferenceStorageKey(otherPushUser))).toBe(
+      'true'
+    );
   });
 
   it('requests permission only during explicit opt-in', async () => {
@@ -213,10 +247,36 @@ describe('custom browser push helper', () => {
     await unsubscribePush();
     const result = await ensurePushSubscription();
 
-    expect(localStorage.getItem('chatwoot_push_enabled')).toBe('false');
+    expect(localStorage.getItem(preferenceKey)).toBe('false');
+    expect(localStorage.getItem('chatwoot_push_enabled')).toBeNull();
     expect(pushManager.subscribe).not.toHaveBeenCalled();
     expect(subscriptionApi.create).not.toHaveBeenCalled();
     expect(result.status).toBe('unsubscribed');
+  });
+
+  it('keeps a subscription when the browser hides the application server key', async () => {
+    const hiddenKey = buildSubscription({ options: {} });
+    pushManager.getSubscription.mockResolvedValue(hiddenKey);
+    localStorage.setItem(preferenceKey, 'true');
+
+    await ensurePushSubscription();
+
+    expect(hiddenKey.unsubscribe).not.toHaveBeenCalled();
+    expect(pushManager.subscribe).not.toHaveBeenCalled();
+    expect(localStorage.getItem(PUSH_VAPID_STORAGE_KEY)).toBe('AQID');
+  });
+
+  it('recreates a hidden-key subscription when the stored VAPID key changed', async () => {
+    const hiddenKey = buildSubscription({ options: {} });
+    pushManager.getSubscription.mockResolvedValue(hiddenKey);
+    localStorage.setItem(preferenceKey, 'true');
+    localStorage.setItem(PUSH_VAPID_STORAGE_KEY, 'old-key');
+
+    await ensurePushSubscription();
+
+    expect(hiddenKey.unsubscribe).toHaveBeenCalledOnce();
+    expect(pushManager.subscribe).toHaveBeenCalledOnce();
+    expect(localStorage.getItem(PUSH_VAPID_STORAGE_KEY)).toBe('AQID');
   });
 
   it('registers the service worker without using an HTTP cache', async () => {

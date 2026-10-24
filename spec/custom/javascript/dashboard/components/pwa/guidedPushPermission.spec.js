@@ -15,15 +15,17 @@ vi.mock('shared/composables/useBranding', () => ({
 }));
 vi.mock('dashboard/composables', () => ({ useAlert: api.alert }));
 vi.mock('js-cookie', () => ({ default: { get: api.cookie } }));
-vi.mock('customDashboard/helper/pushHelper', () => ({
-  getPushEnvironment: api.environment,
-  isPwaStandalone: () => true,
-  isPushOptedOut: () =>
-    localStorage.getItem('chatwoot_push_enabled') === 'false',
-  ensurePushSubscription: api.ensure,
-  requestAndSubscribe: api.activate,
-  unsubscribePush: vi.fn(),
-}));
+vi.mock('customDashboard/helper/pushHelper', async () => {
+  const actual = await vi.importActual('customDashboard/helper/pushHelper');
+  return {
+    ...actual,
+    getPushEnvironment: api.environment,
+    isPwaStandalone: () => true,
+    ensurePushSubscription: api.ensure,
+    requestAndSubscribe: api.activate,
+    unsubscribePush: vi.fn(),
+  };
+});
 vi.mock('customDashboard/api/notificationSubscription', () => ({
   testBrowserSubscription: vi.fn(),
 }));
@@ -83,7 +85,7 @@ describe('guided notification permission UI', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     localStorage.clear();
-    api.cookie.mockReturnValue('authenticated');
+    api.cookie.mockReturnValue(JSON.stringify({ uid: 'agent@example.com' }));
     startPushSession();
     api.environment.mockReturnValue({
       supported: true,
@@ -135,6 +137,9 @@ describe('guided notification permission UI', () => {
     expect(wrapper.get('dialog').attributes('open')).toBeUndefined();
     expect(localStorage.getItem(pushInvitationKey(7))).toBe('shown');
     expect(localStorage.getItem('chatwoot_push_enabled')).toBeNull();
+    expect(
+      localStorage.getItem('chatwoot:push-enabled:v1:agent@example.com')
+    ).toBeNull();
     expect(api.activate).not.toHaveBeenCalled();
     wrapper.unmount();
   });
@@ -186,6 +191,29 @@ describe('guided notification permission UI', () => {
     await flushPromises();
     expect(api.ensure).toHaveBeenCalledWith({ recoverPermission: true });
     expect(wrapper.text()).toContain('PUSH_CHOOSE_EVENTS_ACTION');
+    wrapper.unmount();
+  });
+
+  it('explains the one-time recovery invitation without changing preferences', async () => {
+    api.environment.mockReturnValue({
+      supported: true,
+      permission: 'granted',
+      status: 'granted',
+    });
+    api.ensure.mockResolvedValue({
+      status: 'unsubscribed',
+      permission: 'granted',
+    });
+    localStorage.setItem('chatwoot_push_enabled', 'false');
+    const wrapper = render();
+    await flushPromises();
+    expect(wrapper.text()).toContain('PUSH_RECOVERY_DESCRIPTION');
+    expect(localStorage.getItem('chatwoot:push-recovery:v1:7')).toBe('shown');
+    await action(wrapper, 'PUSH_LATER_ACTION').trigger('click');
+    await flushPromises();
+    expect(
+      localStorage.getItem('chatwoot:push-enabled:v1:agent@example.com')
+    ).toBeNull();
     wrapper.unmount();
   });
 

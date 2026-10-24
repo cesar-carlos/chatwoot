@@ -261,6 +261,7 @@
         "PUSH_STATUS_ACTIVATING": "Ativando notificações…",
         "PUSH_INVITATION_TITLE": "Receba avisos de novas mensagens",
         "PUSH_INVITATION_DESCRIPTION": "Receba notificações mesmo quando o aplicativo estiver fechado, conforme suas preferências.",
+        "PUSH_RECOVERY_DESCRIPTION": "As notificações deste dispositivo foram desligadas ao sair da conta. Ative-as novamente neste dispositivo.",
         "PUSH_LATER_ACTION": "Agora não",
         "PUSH_DONE_ACTION": "Concluir",
         "PUSH_CHOOSE_EVENTS_ACTION": "Escolher quais avisos receber",
