@@ -1,5 +1,7 @@
 # Popup visual — Árvore de decisão
 
+> **Estado em 24/out/2026.** Todas as entregas descritas abaixo (confiabilidade mobile, regra de time, ativação guiada, instalação mobile e diagnóstico assistido) estão integradas na `main` e publicadas em `origin/main`. Seções chamadas "candidato", "sem merge/publicação" ou "não integrada" registram o histórico da época e não refletem o estado atual. Para o estado de publicação e as pendências, ver o [README da PWA](../pwa/README.md#estado). Evidências por entrega: [relatório de validação](./validation-report.md).
+
 ## Recuperação e apresentação mobile — 02/out/2026
 
 - Provedor recusa por autenticação (`401/403`) → preservar inscrição, registrar HTTP/motivo permitido e diagnosticar VAPID; não reenviar automaticamente. Inscrição inválida/expirada (`404/410`) → remover cadastro, inclusive no teste.

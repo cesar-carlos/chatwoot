@@ -1,5 +1,7 @@
 # Popup visual — Estado atual
 
+> **Estado em 24/out/2026.** Todas as entregas descritas abaixo (confiabilidade mobile, regra de time, ativação guiada, instalação mobile e diagnóstico assistido) estão integradas na `main` e publicadas em `origin/main`. Seções chamadas "candidato", "sem merge/publicação" ou "não integrada" registram o histórico da época e não refletem o estado atual. Para o estado de publicação e as pendências, ver o [README da PWA](../pwa/README.md#estado). Evidências por entrega: [relatório de validação](./validation-report.md).
+
 ## Correções mobile e banners — 02/out/2026
 
 Implementadas no candidato `fix/mobile-notification-reliability`:

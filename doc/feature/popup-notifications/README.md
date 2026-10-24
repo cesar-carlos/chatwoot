@@ -1,5 +1,7 @@
 # Popup visual — Documentação
 
+> **Estado em 24/out/2026.** Todas as entregas descritas abaixo (confiabilidade mobile, regra de time, ativação guiada, instalação mobile e diagnóstico assistido) estão integradas na `main` e publicadas em `origin/main`. Seções chamadas "candidato", "sem merge/publicação" ou "não integrada" registram o histórico da época e não refletem o estado atual. Para o estado de publicação e as pendências, ver o [README da PWA](../pwa/README.md#estado). Evidências por entrega: [relatório de validação](./validation-report.md).
+
 ## Correções mobile e apresentação de banners — 02/out/2026
 
 Candidato `fix/mobile-notification-reliability`, baseado no `origin/main` atualizado (`69554d4a89`). Preserva inscrição em erros de autenticação do provedor, limita o JSON Web Push a 3.900 bytes e acrescenta recuperação visível no worker. O teste oferece **Recebi som ou aviso, mas não apareceu banner**, com instruções específicas para Android, iOS e desktop. [Arquitetura](./current-state.md#correções-mobile-e-banners--02out2026), [validação](./validation-report.md#correções-mobile-e-banners--02out2026).
@@ -38,7 +40,7 @@ A instalação mobile é compartilhada com as preferências. **Pop-up notificati
 
 ## Novo candidato: autorização facilitada
 
-A branch `feat/guided-push-permission` acrescenta convite único na primeira abertura da PWA e botões de permitir/ativar/ajuda nas preferências. **Ainda não foi integrada nem implantada**. Fluxo e limites: [PWA](../pwa/README.md).
+A branch `feat/guided-push-permission` acrescenta convite único na primeira abertura da PWA e botões de permitir/ativar/ajuda nas preferências. Integrada na `main` (ver o estado no topo). Fluxo e limites: [PWA](../pwa/README.md).
 
 O convite ativa a inscrição Push somente por consentimento explícito. Não altera flags de Pop-up, Push ou e-mail. Conceder permissão pelo CTA de alertas locais continua sem inscrever automaticamente o dispositivo em Push.
 

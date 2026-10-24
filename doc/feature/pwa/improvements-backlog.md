@@ -1,95 +1,31 @@
 # PWA — pendências e melhorias
 
-## Confiabilidade mobile — 02/out/2026
+## Pendências operacionais e de validação
 
-Corrigidos no candidato `fix/mobile-notification-reliability`: exclusão indevida por autenticação, payload longo, descarte silencioso de Push inválido, diagnóstico de banner ausente e logs de provedor sem segredos. [Validação](../popup-notifications/validation-report.md#correções-mobile-e-banners--02out2026).
-
-Faltam integração/publicação deste candidato, build/deploy e homologação real Android/iOS. A main anterior `69554d4a89` já foi publicada; produção observada continua `f58ca95d4d`, sem a ativação guiada recente. Confirmar inscrição/preferências dentro da PWA do iPhone reclamante e testar com tela bloqueada antes de declarar o relato reproduzido.
-
-Não planejar flags JS de prioridade como garantia de banner: categorias Android, Banners e Foco do iOS pertencem ao sistema. As seções abaixo preservam o histórico dos candidatos anteriores.
-
-## Pendências após integração local — 02/out/2026
-
-Todos os candidatos abaixo, até `063ee874a1`, foram incorporados à `main` local; não há outra branch do fork pendente. Permanecem publicação no GitHub, novo build/deploy autorizado e homologação real de instalação, notificações e acessibilidade. As seções de candidatos são histórico da entrega. [Validação](../popup-notifications/validation-report.md#integração-na-main-local--02out2026).
-
-## Revisão assistida — concluída no código
-
-`fix/pwa-assisted-diagnostics-review` incorpora os candidatos anteriores. Corrigidos: diálogo reaberto por resposta tardia, validação de instalação sem timeout/retry, progresso genérico e motivos de falta de suporte. Acrescentado aviso de inscrição sem eventos Push, sem seleção automática e sem confundir consulta incompleta com lista vazia.
-
-Pendências de aceite: homologação real em Chrome/Edge, Android/PWA e iOS/iPadOS, acessibilidade e confirmação de instalação/Push com app fechado. Incluir fechamento durante teste, conexão interrompida/restabelecida e seleção por conta. Merge/GitHub/build/deploy continuam fora desta entrega. [Evidências](../popup-notifications/validation-report.md#revisão-do-candidato--02out2026).
-
-## Incremento mobile — implementado, não publicado
-
-Implementados em `feat/mobile-pwa-install-diagnostics`: promoção mobile por usuário, ajuda compartilhada Android/iOS/desktop, cópia de endereço em navegadores integrados, trava/consumo único do prompt, diagnóstico com permissão/inscrição atualizadas, recuperação explícita, confirmação **Recebi/Não recebi** e classificação de erros. A ativação guiada anterior está incorporada.
-
-Pendências obrigatórias: instalar em Android e iOS reais, confirmar dispensa/reabertura, autorizar/desbloquear, testar com app fechado, verificar teclado/foco/leitor de tela e telas pequenas. Automação não valida banner do sistema. Merge/GitHub/build/deploy continuam separados e dependem de autorização. [Evidências](../popup-notifications/validation-report.md#instalação-mobile-e-teste-assistido--02out2026).
-
-## Ativação guiada — implementada no candidato
-
-Convite único na PWA, CTAs de permissão/ativação, ajuda por plataforma, verificação após desbloqueio e estado compartilhado estão implementados em `feat/guided-push-permission`, **não publicados**.
-
-Pendências: homologar Chrome/Edge desktop, Android/PWA e iOS/iPadOS; verificar foco/teclado/leitor de tela, layout mobile, ausência de convite repetido e Push real com app fechado. Merge, GitHub, build e deploy dependem de autorização. Ver [validação](../popup-notifications/validation-report.md#ativação-guiada--candidato-de-02out2026).
-
-## Correções de `fix/notification-delivery-hardening` em produção
-
-- Revalidação de acesso/preferências no envio; preferências ausentes descartam sem retry.
-- Inscrição browser validada com HTTPS/P-256/auth, preservando FCM e registros existentes.
-- Ativação do worker correto, timeout, cancelamento de sync e logout sem bloqueio por fila.
-- Respostas antigas não reativam inscrição nem alteram estado após logout/troca de sessão.
-- Preferências por conta, erro/retry, rollback e estado **Verificando**.
-- Leitura correta individual/em lote, fechamento de criação pendente e recuperação de cliques.
-- Teste neste dispositivo e ações abrir/marcar como lida, com autorização e intenção descartável.
-- Worker em `custom/`, com endpoint público revalidável; sem mudança de manifesto, VAPID ou schema.
-
-A integração, publicação no GitHub e build/deploy do release `f58ca95d4d` estão concluídos. Falta comprovar critérios em aparelhos: [validation-report.md](../popup-notifications/validation-report.md). Os itens históricos abaixo se referem a releases anteriores.
-
-## Concluído no código
-
-- Manifesto white-label dinâmico nas duas URLs e independente de `DISPLAY_MANIFEST`.
-- Ícones Se7e antigos 192×192 e 512×512 configuráveis e `any maskable`, preservados para compatibilidade; a produção usa os ícones Icon Kitchen separados.
-- Metadados Android/Apple e modo standalone.
-- Botão de instalação Chromium e instruções específicas para iOS/iPadOS.
-- Opt-in Push explícito por dispositivo, preservação de opt-out, serialização e rotação VAPID.
-- Exclusão autenticada de browser Push sem quebrar FCM.
-- Payload real e de diagnóstico com corpo, ícone, tag, URL, TTL de 24 horas e urgência alta.
-- Worker com payload defensivo, reutilização de janela e proteção de mesma origem.
-- Separação visual e funcional entre Push e Pop-up.
-- Specs dos fluxos críticos e documentação de rollout.
-- Asserção da área segura dos ícones antigos, conferida também diretamente com MiniMagick.
-- Vitest isolado por worktree com 19 testes PWA/Push passando; ESLint e RuboCop direcionados passando.
-- Verificador público `bin/fork-pwa-smoke` para release, manifesto e ícones.
-- Candidato isolado com 18 exemplos RSpec, 19 Vitest, RuboCop direcionado e build Vite de produção aprovados.
-- Integração do histórico 4.18, PWA e alterações locais no `origin/main` do fork, sem PR ou push para `upstream`.
-- Deploy do release `6e30bc8c97` em 30/set/2026, com assets compilados, nove migrations aplicadas, ícones configurados e web/worker ativos no PM2.
-- Verificação HTTP do login, manifestos, service worker e ícones concluída; `bin/fork-pwa-smoke` passou no domínio público.
-
-## Revisão Icon Kitchen publicada em 01/out/2026
-
-- Novos PNGs versionados 192/512 para `any` e `maskable`, Apple Touch 180×180 e favicon ICO, provenientes do pacote Icon Kitchen fornecido para Se7e.
-- Configurações distintas para cada uso, mantendo compatibilidade quando os campos opcionais não estão preenchidos.
-- Substituição do Apple Touch raiz que estava vazio; clique do Push passa a priorizar somente uma janela do painel.
-- Verificador de release atualizado para comparar as respostas públicas com os bytes dos seis arquivos do release.
-- Maskables recompostos com o símbolo claro integralmente dentro da área segura; teste pixel a pixel nos tamanhos 192 e 512.
-- Diagnóstico de manifesto/ícones inacessíveis separado da ausência do prompt do navegador.
-- Limpeza do Push no logout e revalidação de permissão/inscrição ao voltar ao primeiro plano.
-- Candidato validado localmente com 16 exemplos RSpec, 29 testes Vitest, lint direcionado e build Vite de produção.
-- Integrado ao `main`, publicado no release `60ee71940d` e configurado em produção; ainda é necessário validar visualmente os ícones em aparelhos Android.
-
-## Pendente operacional e de validação
-
-A correção de 01/out/2026 restaurou o storage compartilhado, preservou 251 uploads novos e validou os 8.137 avatares cadastrados no diagnóstico. O release `05361df464` inclui o metadado genérico de instalação, a validação de persistência no PM2 e a inclusão da configuração PM2 no inventário `FORK:`. O aviso `Banner not shown` é esperado no fluxo pelo botão **Instalar**.
+Todo o código está na `main` e em `origin/main`. O que falta é confirmar a publicação e homologar em aparelhos.
 
 | Prioridade | Item | Critério |
 |------------|------|----------|
-| P0 | Validar Android e iOS | Instalação standalone, mensagem real e Push com app fechado funcionam |
-| P0 | Validar clique e retomada | Clique abre a conversa certa; app suspenso reconecta e sincroniza ao voltar |
-| P1 | Orientar reinstalação de atalhos antigos | Clientes com manifesto ou ícone antigos removem o atalho e instalam novamente |
-| P1 | Monitorar entrega | Jobs, inscrições expiradas e diagnósticos não mostram regressão |
+| P0 | Confirmar o release em execução | `bin/fork-pwa-smoke` passa com o SHA esperado. Último release documentado: `f58ca95d4d` (01/out/2026), anterior à ativação guiada, à instalação mobile, à regra de time, à recuperação mobile e ao merge do upstream 4.19.1 |
+| P0 | Publicar a `main` atual, com autorização | Build de SDK/Rails/dashboard, release isolado, storage compartilhado, restart web/workers, invalidação de `/sw.js` e `/notification-worker.js`, smoke público com a nova verificação do worker. Sem migration prevista |
+| P0 | Validar Android e iOS | Instalação standalone, mensagem real e Push com app fechado; clique abre a conversa certa; ações funcionam |
+| P0 | Validar retomada | App suspenso reconecta o Action Cable e sincroniza ao voltar |
+| P0 | Homologar a reinstalação | Corrigido o logout que gravava opt-out (ver [plano](./implementation-plan.md#resultado-da-revisão-de-24out2026)); falta confirmar em aparelhos os cenários de reinstalação listados na homologação manual. **Usuários que já saíram uma vez com a versão anterior ficam com `chatwoot_push_enabled=false` salvo**: o valor não distingue logout de recusa, então mesmo após o deploy precisam ativar o dispositivo uma vez em Preferências → Notificações |
+| P1 | Reproduzir o relato do iPhone sem banner | Conferir inscrição e preferências **dentro da PWA instalada** (aba e PWA têm inscrições separadas), tela bloqueada, Banners/Foco/Resumo Agendado. Não declarar a causa sem reprodução |
+| P1 | Acessibilidade | Teclado, foco e leitor de tela em convite, cartão de instalação e diagnóstico; telas pequenas |
+| P1 | Orientar reinstalação de atalhos antigos | Clientes com manifesto ou ícone antigos removem o atalho e instalam de novo |
+| P1 | Monitorar entrega | Jobs, `result=accepted/failed/discarded`, inscrições expiradas e diagnósticos sem regressão |
 
-## Melhorias futuras, fora do escopo
+## Melhorias pequenas
 
-- Experiência offline, que exige projeto próprio de cache, autenticação e atualização.
-- Métrica de conversão do botão de instalação, caso haja necessidade de produto.
+- O aviso genérico do worker segue `navigator.language` do navegador (pt ou en), não o idioma escolhido no perfil do painel. Só aparece com payload inválido ou falha de apresentação; usar o idioma do perfil exigiria enviá-lo ao worker.
+- O limite de três testes por minuto usa janela fixa; na virada do minuto um usuário pode enviar até seis. Aceitável para um diagnóstico; revisar se houver abuso.
+- Branches locais do fork já integradas (`feat/guided-push-permission`, `feat/mobile-pwa-install-diagnostics`, `feat/team-unassigned-notifications` e outras) podem ser removidas depois de confirmar que `main` as contém; a remoção exige autorização.
+
+## Fora do escopo
+
+- Experiência offline: exige projeto próprio de cache, autenticação e atualização.
+- Métrica de conversão do botão de instalação, se houver necessidade de produto.
 - Diagnóstico de permissões por fabricante Android, se surgirem incidentes reproduzíveis.
 
-Não adicionar polling em segundo plano, Firebase para a PWA ou tentativa de manter o WebSocket vivo durante suspensão. Esses mecanismos não substituem Web Push e aumentam consumo de bateria e complexidade.
+Não adicionar polling em segundo plano, Firebase para a PWA ou tentativa de manter o WebSocket vivo durante a suspensão: não substituem o Web Push e aumentam consumo de bateria e complexidade. Também não planejar flags JS de prioridade como garantia de banner: categorias Android, Banners e Foco do iOS pertencem ao sistema.
