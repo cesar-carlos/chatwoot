@@ -26,6 +26,8 @@ RSpec.describe Llm::BaseAiService do
 
     it 'uses the installation model when feature context has no account override' do
       create(:installation_config, name: 'CAPTAIN_OPEN_AI_MODEL', value: 'gpt-5-mini')
+      # FORK: self-hosted enterprise enables captain_integration on new accounts
+      account.disable_features!('captain_integration')
 
       expect(described_class.new(feature: 'assistant', account: account).model).to eq('gpt-5-mini')
     end
@@ -39,6 +41,9 @@ RSpec.describe Llm::BaseAiService do
     end
 
     it 'uses the feature default when feature context has no account override or installation model' do
+      # FORK: self-hosted enterprise enables captain_integration on new accounts
+      account.disable_features!('captain_integration')
+
       expect(described_class.new(feature: 'assistant', account: account).model).to eq(Llm::Models.default_model_for('assistant'))
     end
   end

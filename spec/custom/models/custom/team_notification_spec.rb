@@ -11,7 +11,7 @@ RSpec.describe Notification do
 
   it 'appends the enum without renumbering existing notification flags' do
     expect(described_class.notification_types).to include('conversation_assignment' => 2, 'voice_call_incoming' => 9,
-                                                          'team_conversation_assignment' => 10)
+                                                          'team_conversation_assignment' => 10, 'voice_call_missed' => 11)
     settings = user.notification_settings.find_by!(account: account)
     expect(settings.all_push_flags).to include(:push_team_conversation_assignment)
     expect(settings.all_email_flags).to include(:email_team_conversation_assignment)

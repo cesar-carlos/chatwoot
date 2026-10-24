@@ -11,6 +11,12 @@ RSpec.describe Custom::Llm::ChatByok do
     expect(RubyLLM::Chat.ancestors).to include(described_class)
   end
 
+  it 'accepts the RubyLLM protocol keyword' do
+    chat = RubyLLM::Chat.new(model: Llm::Config::DEFAULT_MODEL, protocol: :responses)
+
+    expect(chat.instance_variable_get(:@protocol)).to eq(:responses)
+  end
+
   it 'injects the thread BYOK context when Chat.new has no explicit context' do
     create(:installation_config, name: 'CAPTAIN_OPEN_AI_API_KEY', value: 'system-key')
     _credential, context = Custom::Llm::AccountCredential.build_context(nil)

@@ -30,6 +30,12 @@ RSpec.describe TriggerScheduledItemsJob do
     described_class.perform_now
   end
 
+  # FORK: conversation workflow rules stay on this scheduler
+  it 'triggers Custom::ConversationWorkflow::SchedulerJob' do
+    expect(Custom::ConversationWorkflow::SchedulerJob).to receive(:perform_later).once
+    described_class.perform_now
+  end
+
   it 'does not trigger the hourly WhatsApp health scheduler' do
     expect(Channels::Whatsapp::HealthSyncSchedulerJob).not_to receive(:perform_later)
 
