@@ -1,5 +1,16 @@
 # Pop-up e Web Push — validação do candidato
 
+Cada linha aponta para a seção histórica abaixo. Os números antigos não foram reexecutados.
+
+| Release / candidato | Data | O que a seção registra |
+|---|---|---|
+| `fix/pwa-push-reinstall` | 24/out/2026 | Preferência por usuário, convite de recuperação, estado de entrega e limpeza. Números desta rodada ficam em [PWA — plano](../pwa/implementation-plan.md#resultado-desta-branch-24out2026) |
+| `f58ca95d4d` em produção | 01/out/2026 | [Implantação em produção](#implantação-em-produção--01out2026) |
+| Candidato mobile e banners | 02/out/2026 | [Correções mobile e banners](#correções-mobile-e-banners--02out2026) |
+| Notificações por time | 02/out/2026 | [Integração das notificações por time](#integração-das-notificações-por-time--02out2026) |
+| Instalação mobile e teste assistido | 02/out/2026 | [Instalação mobile e teste assistido](#instalação-mobile-e-teste-assistido--02out2026) |
+| Ativação guiada | 02/out/2026 | [Ativação guiada](#ativação-guiada--candidato-de-02out2026) |
+
 ## Correções mobile e banners — 02/out/2026
 
 Candidato `fix/mobile-notification-reliability`, criado de `origin/main` atualizado (`69554d4a89`) em worktree isolado. Não integrado/publicado/implantado nesta etapa. A main anterior já foi publicada no fork; as seções anteriores que registram publicação pendente são histórico do momento da integração.

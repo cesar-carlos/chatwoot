@@ -36,7 +36,7 @@ Push e Pop-up não são equivalentes. Push usa inscrição, serviço do navegado
 
 - **Opt-in local e serializado.** Não transformar permissão já concedida em inscrição contra a escolha do usuário; cliques concorrentes não podem produzir inscrições duplicadas.
 - **Registro correto antes de `subscribe()`**, com limite de dez segundos; `ready` de outro escopo não basta. Worker registrado com `updateViaCache: "none"`.
-- **Sessão como fonte de cancelamento.** Logout invalida a geração e aborta requests; cada etapa assíncrona confere a sessão. Não usar apenas uma corrida de Promises, e não deixar a limpeza esperar numa fila. Falhas são sanitizadas e não impedem o logout. **Logout não é opt-out:** só a ação explícita de desativar grava `chatwoot_push_enabled=false`; gravá-lo no logout deixava o dispositivo mudo (e sem convite) em qualquer login seguinte, inclusive depois de reinstalar o app.
+- **Sessão como fonte de cancelamento.** Logout invalida a geração e aborta requests; cada etapa assíncrona confere a sessão. Não usar apenas uma corrida de Promises, e não deixar a limpeza esperar numa fila. Falhas são sanitizadas e não impedem o logout. **Logout não é opt-out:** só desativar grava `false`, e só em `chatwoot:push-enabled:v1:<uid>`. O `false` antigo é ignorado, porque não distingue logout de recusa; o `true` antigo ainda vale como opt-in. A chave antiga não é apagada. Quem já ficou com o `false` antigo recebe um convite único de recuperação (`chatwoot:push-recovery:v1:<user_id>`) se a permissão segue concedida e o aparelho não está inscrito. **Agora não** não grava preferência. Se o navegador omite `applicationServerKey`, a inscrição só é recriada quando `chatwoot:push-vapid:v1` existe e difere da chave atual.
 - **Retomada sem polling.** Revalidar permissão e inscrição ao voltar ao primeiro plano.
 - **Convite próprio** só na primeira abertura autenticada da PWA instalada; solicitação nativa exclusivamente após clique; sem repetição após **Agora não**; armazenamento indisponível suprime o convite para não insistir. Inscrito ou opt-out → sem convite. Bloqueado → instruções, nunca promessa de desbloqueio. Retorno ao app reavalia o estado.
 - **Ambiente indisponível com motivo.** HTTPS inseguro, APIs ausentes e VAPID ausente são motivos distintos dentro do contrato `unsupported`; não são permissões negadas.
@@ -47,13 +47,14 @@ Push e Pop-up não são equivalentes. Push usa inscrição, serviço do navegado
 - Fluxo: leitura fresca de ambiente/permissão/opt-out → inscrição confirmada pelo helper → envio ao endpoint confirmado.
 - Negada → ajuda; pendente → CTA que pede permissão; iOS fora da PWA → instalação; opt-out → ativação explícita; incompatível → limitação, não bloqueio. Recuperação ou ativação só viram teste após novo clique.
 - Aceito → perguntar ao usuário. **Não recebi** → conferir novamente sem reenviar.
-- 404 → recuperação explícita e outro clique; 429 → aguardar; 401/403 → sessão/autorização; 422/502/rede/timeout → cadastro, envio ou conexão.
+- 404 → recuperação explícita e outro clique; 429 → aguardar (no máximo três testes em 60 segundos corridos, sem rajada extra na virada do minuto); 401/403 → sessão/autorização; 422/502/rede/timeout → cadastro, envio ou conexão.
 - Diálogo fechado → invalidar a apresentação anterior; o envio já iniciado pode chegar, mas sua resposta não reabre o diálogo.
 - Resultados existem só no frontend: sem telemetria de banner, sem credenciais no worker, sem endpoints novos além do `test`.
 
 ## Entrega e banner
 
-- Inscrição recusada por autenticação → preservar e diagnosticar; inválida ou expirada → remover. Logs só com provedor, HTTP e motivo de uma lista permitida.
+- Inscrição recusada por autenticação → preservar e diagnosticar; inválida ou expirada → remover, depois de gravar `expired`. Logs e `last_push_error` só com provedor, HTTP e motivo de uma lista permitida.
+- **Podar inscrição órfã aos 60 dias**, não antes: some quem não sincronizou e não recebeu envio aceito nesse prazo. Envio aceito recente preserva a linha mesmo com sincronização antiga. Não tocar FCM. O aparelho com preferência `true` se reinscreve sozinho.
 - Texto longo → reduzir apenas título e corpo para caber em 3.900 bytes, preservando UTF-8, destino e destinatário. Metadados excessivos falham explicitamente.
 - Payload inválido ou falha da apresentação normal → aviso genérico mínimo; falha final continua erro. Nada de Push silencioso nem repetição indefinida.
 - Som ou aviso sem banner → orientação do sistema após conferência fresca. Nenhum reenvio ou pedido nativo automático.

@@ -1,0 +1,31 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'shellwords'
+
+# FORK: public PWA check for the checkout that is about to be published.
+# Build, release swap and process restart stay manual and need authorization.
+
+abort 'Usage: bin/fork-pwa-verify HTTPS_URL' unless ARGV.length == 1
+
+root = File.expand_path('..', __dir__)
+sha = `git -C #{Shellwords.shellescape(root)} rev-parse HEAD`.strip
+abort 'Could not read HEAD' unless sha.match?(/\A[0-9a-f]{40}\z/)
+
+icons = %w[
+  /brand-assets/pwa-se7e-v2-192.png
+  /brand-assets/pwa-se7e-v2-512.png
+  /brand-assets/pwa-se7e-v2-192-maskable.png
+  /brand-assets/pwa-se7e-v2-512-maskable.png
+  /brand-assets/pwa-se7e-v2-apple-touch-180.png
+  /brand-assets/pwa-se7e-v2-favicon.ico
+]
+
+exec(
+  File.expand_path('fork-pwa-smoke', __dir__),
+  ARGV.fetch(0),
+  sha,
+  'Se7e Sistemas Webchat',
+  'Se7e Sistemas',
+  *icons
+)

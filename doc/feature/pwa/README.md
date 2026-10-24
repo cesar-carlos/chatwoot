@@ -8,7 +8,7 @@ Revisão de 24/out/2026. Os documentos descrevem o estado do código na `main`; 
 
 | Item | Estado |
 |------|--------|
-| Código | Tudo integrado e publicado em `origin/main` (`cesar-carlos/chatwoot`), incluindo o merge do upstream 4.19.1. Nenhuma branch local do fork tem commits pendentes |
+| Código | A `origin/main` tem o merge do upstream 4.19.1. A correção de reinstalação, a preferência por usuário, a recuperação, o estado de entrega e a limpeza de inscrições estão na branch `fix/pwa-push-reinstall`, ainda sem merge |
 | Produção | Último release **documentado**: `f58ca95d4d`, de 01/out/2026. Esta revisão não conseguiu confirmar o release em execução (o domínio público respondeu 403 ao host de desenvolvimento). Ativação guiada, instalação mobile, regra de time, recuperação mobile e o merge 4.19.1 só estão em produção se houve deploy posterior. Confirmar com `bin/fork-pwa-smoke` |
 | Homologação em aparelhos | **Pendente**: instalação Android/iOS e Push com app fechado |
 
@@ -23,11 +23,11 @@ Resposta HTTP correta e testes automatizados não comprovam instalação nem exi
 | Identidade | `INSTALLATION_NAME`, `BRAND_NAME`, `id: "/"` e `display: standalone` |
 | Ícones | Seis URLs configuráveis no Super Admin; PNGs Se7e v2 distintos para `any` e `maskable` (192/512), Apple Touch 180 e favicon ICO em `/brand-assets/` |
 | Instalação guiada | `beforeinstallprompt` no Chromium, instruções por plataforma, cartão de promoção mobile e diagnóstico de manifesto/ícones |
-| Web Push | Opt-in explícito por dispositivo, convite único na PWA, recuperação da inscrição, rotação VAPID, limpeza no logout e revalidação ao voltar ao app |
-| Teste neste dispositivo | Envia ao próprio endpoint, limitado a três por minuto, com confirmação **Recebi / Não recebi** |
+| Web Push | Opt-in por usuário, convite único na PWA, recuperação de quem ficou com o opt-out antigo, rotação VAPID, limpeza no logout sem gravar recusa e revalidação ao voltar ao app |
+| Teste neste dispositivo | Envia ao próprio endpoint, no máximo três a cada 60 segundos, com confirmação **Recebi / Não recebi** |
 | Clique e ações | Reutiliza uma janela do painel da mesma origem; **Abrir conversa** e **Marcar como lida** em plataformas com suporte |
 | Pop-up | Canal separado: depende do painel aberto e da conexão em tempo real |
-| Verificação do release | `bin/fork-pwa-smoke` confere versão, manifesto, service worker, worker de notificação e bytes dos seis ícones |
+| Verificação do release | `bin/fork-pwa-verify` chama `bin/fork-pwa-smoke` com o SHA de `HEAD` e os seis ícones v2 |
 
 ## Requisitos do aparelho
 
