@@ -71,6 +71,17 @@ begin
     raise "Manifest #{key} does not match #{value.inspect}" unless manifest[key] == value
   end
 
+  javascript_types = %w[text/javascript application/javascript]
+  service_worker = fetch(base_uri, '/sw.js', javascript_types).body
+  raise '/sw.js does not import /notification-worker.js' unless service_worker.include?("importScripts('/notification-worker.js')")
+  raise '/sw.js published bytes differ from this release' unless service_worker == File.binread(File.expand_path('../public/sw.js', __dir__))
+
+  worker = fetch(base_uri, '/notification-worker.js', javascript_types)
+  raise '/notification-worker.js must be revalidated on every request' unless worker['cache-control'].to_s.include?('no-cache')
+
+  worker_path = File.expand_path('../custom/app/javascript/dashboard/helper/notificationWorker.js', __dir__)
+  raise '/notification-worker.js published bytes differ from this release' unless worker.body == File.binread(worker_path)
+
   [[192, icon_192_path, 'any'], [512, icon_512_path, 'any'],
    [192, maskable_192_path, 'maskable'], [512, maskable_512_path, 'maskable']].each do |size, path, purpose|
     icon = manifest.fetch('icons').find { |item| item['sizes'] == "#{size}x#{size}" && item['purpose'] == purpose }
