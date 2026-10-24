@@ -9,7 +9,6 @@
 #  assignee_last_seen_at     :datetime
 #  cached_label_list         :text
 #  contact_last_seen_at      :datetime
-#  current_session_opened_at :datetime
 #  custom_attributes         :jsonb
 #  first_reply_created_at    :datetime
 #  identifier                :string
@@ -48,7 +47,6 @@
 #  index_conversations_on_contact_id                    (contact_id)
 #  index_conversations_on_contact_inbox_id              (contact_inbox_id)
 #  index_conversations_on_created_at                    (created_at)
-#  index_conversations_on_current_session_opened_at     (current_session_opened_at)
 #  index_conversations_on_first_reply_created_at        (first_reply_created_at)
 #  index_conversations_on_id_and_account_id             (account_id,id)
 #  index_conversations_on_identifier_and_account_id     (identifier,account_id)
