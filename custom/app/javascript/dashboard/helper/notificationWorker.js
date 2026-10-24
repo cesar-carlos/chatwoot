@@ -3,11 +3,23 @@
 const pendingIntents = new Map();
 const NOTIFICATION_INTENT_TTL_MS = 60000;
 // Content-free fallback: malformed messages must not become silent pushes on iOS.
-const FALLBACK_NOTIFICATION = {
-  title: 'New notification',
-  body: 'Open the app to view your notifications.',
-  url: '/app',
+// The worker has no i18n runtime, so the two supported locales live here.
+const FALLBACK_TEXT = {
+  en: {
+    title: 'New notification',
+    body: 'Open the app to view your notifications.',
+  },
+  pt: {
+    title: 'Nova notificação',
+    body: 'Abra o aplicativo para ver suas notificações.',
+  },
 };
+const fallbackNotification = () => ({
+  ...(/^pt\b/i.test(self.navigator?.language)
+    ? FALLBACK_TEXT.pt
+    : FALLBACK_TEXT.en),
+  url: '/app',
+});
 const pendingNotifications = new Map();
 const noticeKey = data => `${data.account_id}:${data.notification_id}`;
 const positiveId = value =>
@@ -44,7 +56,7 @@ self.addEventListener('push', event => {
     data = null;
   }
   if (!data || typeof data.title !== 'string' || !data.title.trim()) {
-    data = FALLBACK_NOTIFICATION;
+    data = fallbackNotification();
     // eslint-disable-next-line no-console
     console.warn('Push notification fallback result=invalid_payload');
   }
@@ -86,13 +98,11 @@ self.addEventListener('push', event => {
           // Remove optional fields and actions if the normal display failed.
           // eslint-disable-next-line no-console
           console.warn('Push notification fallback result=display_failed');
-          await self.registration.showNotification(
-            FALLBACK_NOTIFICATION.title,
-            {
-              body: FALLBACK_NOTIFICATION.body,
-              data: { url: safeTargetUrl(FALLBACK_NOTIFICATION.url) },
-            }
-          );
+          const fallback = fallbackNotification();
+          await self.registration.showNotification(fallback.title, {
+            body: fallback.body,
+            data: { url: safeTargetUrl(fallback.url) },
+          });
         }
         if (pending.dismissed) {
           const notifications = await self.registration.getNotifications({

@@ -58,6 +58,29 @@ describe('mobile push worker recovery', () => {
     }
   );
 
+  it.each([
+    ['pt-BR', 'Nova notificação'],
+    ['pt', 'Nova notificação'],
+    ['en-US', 'New notification'],
+    ['es', 'New notification'],
+  ])('localizes the generic fallback for %s', async (language, expected) => {
+    vi.resetModules();
+    vi.stubGlobal('self', {
+      navigator: { language },
+      Notification: { maxActions: 2 },
+      location: { origin: 'https://chat.example.test' },
+      registration: { showNotification: show },
+      addEventListener: (name, handler) => {
+        if (name === 'push') listener = handler;
+      },
+    });
+    await import('customDashboard/helper/notificationWorker');
+
+    await deliver(null);
+
+    expect(show.mock.calls[0][0]).toBe(expected);
+  });
+
   it('handles invalid JSON without logging its contents', async () => {
     await deliver(null, true);
     expect(show).toHaveBeenCalledOnce();
