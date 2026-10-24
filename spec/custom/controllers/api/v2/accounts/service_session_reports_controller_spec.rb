@@ -96,4 +96,21 @@ RSpec.describe 'Service Session Reports API', type: :request do
       end
     end
   end
+
+  describe 'GET /api/v2/accounts/:account_id/service_session_reports/open' do
+    it 'returns pagination metadata for an administrator' do
+      get "/api/v2/accounts/#{account.id}/service_session_reports/open",
+          headers: admin.create_new_auth_token,
+          as: :json
+
+      expect(response).to have_http_status(:success)
+      expect(response.parsed_body).to include(
+        'sessions' => [],
+        'page' => 1,
+        'per_page' => 25,
+        'total_count' => 0,
+        'total_pages' => 0
+      )
+    end
+  end
 end

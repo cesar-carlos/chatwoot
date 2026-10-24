@@ -272,6 +272,13 @@ const formatUnixTime = value =>
     ? new Date(value * 1000).toLocaleString()
     : t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE');
 
+const formatStatus = status => {
+  if (status === 'open') return t('SERVICE_SESSION_REPORTS.STATUS.OPEN');
+  if (status === 'pending') return t('SERVICE_SESSION_REPORTS.STATUS.PENDING');
+
+  return status || t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE');
+};
+
 const formatSessionDuration = row => formatSeconds(row.session_duration);
 
 const escapeCsvValue = value => {
@@ -306,7 +313,7 @@ const csvRowsForActiveTab = () => {
       csvNameForRow(row.contact),
       csvNameForRow(row.assignee),
       csvNameForRow(row.inbox),
-      csvValue(row.status),
+      formatStatus(row.status),
       csvValue(row.session_started_at),
     ]);
   }
@@ -499,11 +506,7 @@ const downloadReports = () => {
             <td class="p-3">{{ formatName(row.contact) }}</td>
             <td class="p-3">{{ formatName(row.assignee) }}</td>
             <td class="p-3">{{ formatName(row.inbox) }}</td>
-            <td class="p-3">
-              {{
-                row.status || $t('SERVICE_SESSION_REPORTS.COMMON.NOT_AVAILABLE')
-              }}
-            </td>
+            <td class="p-3">{{ formatStatus(row.status) }}</td>
             <td class="p-3">{{ formatUnixTime(row.session_started_at) }}</td>
           </tr>
         </tbody>

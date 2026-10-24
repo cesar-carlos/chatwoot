@@ -844,6 +844,10 @@
       "NOT_AVAILABLE": "N/A",
       "UNASSIGNED_TEAM": "Unassigned"
     },
+    "STATUS": {
+      "OPEN": "Open",
+      "PENDING": "Pending"
+    },
     "EMPTY_STATE": {
       "NO_DATA": "No data available for the selected filters"
     },

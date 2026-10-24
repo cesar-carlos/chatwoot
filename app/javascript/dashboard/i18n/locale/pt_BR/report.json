@@ -802,6 +802,10 @@
       "NOT_AVAILABLE": "N/D",
       "UNASSIGNED_TEAM": "Sem time"
     },
+    "STATUS": {
+      "OPEN": "Aberto",
+      "PENDING": "Pendente"
+    },
     "EMPTY_STATE": {
       "NO_DATA": "Não há dados para os filtros selecionados"
     },
