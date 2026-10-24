@@ -1,6 +1,9 @@
 import { ref, onUnmounted } from 'vue';
 import getUuid from 'widget/helpers/uuid';
 
+const JPEG_QUALITY = 0.92;
+const MAX_CAPTURE_EDGE = 1920;
+
 const VIDEO_CONSTRAINTS = {
   audio: false,
   video: {
@@ -8,6 +11,57 @@ const VIDEO_CONSTRAINTS = {
     width: { ideal: 1280 },
     height: { ideal: 720 },
   },
+};
+
+// The dialog mounts on the first click, one tick after the gesture. Safari
+// drops getUserMedia once that tick passes, so the click primes the request
+// and startStream adopts it.
+let primedStreamRequest = null;
+
+const stopMediaStream = mediaStream => {
+  mediaStream?.getTracks()?.forEach(track => track.stop());
+};
+
+export const releasePrimedWebcamStream = () => {
+  const request = primedStreamRequest;
+  primedStreamRequest = null;
+  if (!request) return;
+  request.then(stopMediaStream).catch(() => {});
+};
+
+export const primeWebcamStream = () => {
+  releasePrimedWebcamStream();
+
+  if (
+    typeof window === 'undefined' ||
+    !window.isSecureContext ||
+    !navigator.mediaDevices?.getUserMedia
+  ) {
+    primedStreamRequest = Promise.resolve(null);
+    return primedStreamRequest;
+  }
+
+  primedStreamRequest = navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
+  // Attach a catch so a rejection before startStream awaits it is not unhandled.
+  primedStreamRequest.catch(() => {});
+  return primedStreamRequest;
+};
+
+const takePrimedWebcamStream = () => {
+  const request = primedStreamRequest;
+  primedStreamRequest = null;
+  return request;
+};
+
+const fitWithinMaxEdge = (width, height) => {
+  const longest = Math.max(width, height);
+  if (longest <= MAX_CAPTURE_EDGE) return { width, height };
+
+  const scale = MAX_CAPTURE_EDGE / longest;
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+  };
 };
 
 /**
@@ -58,11 +112,22 @@ export const useWebcamCapture = () => {
   };
 
   const releaseOrphanStream = mediaStream => {
-    mediaStream?.getTracks()?.forEach(track => track.stop());
+    stopMediaStream(mediaStream);
+  };
+
+  const failCapture = () => {
+    error.value = 'GENERIC';
+    stopStream();
+    return null;
   };
 
   const startStream = async () => {
-    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+    const primed = takePrimedWebcamStream();
+
+    if (
+      !primed &&
+      (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia)
+    ) {
       error.value = 'GENERIC';
       return null;
     }
@@ -76,12 +141,19 @@ export const useWebcamCapture = () => {
     isVideoReady.value = false;
 
     try {
-      const mediaStream =
-        await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
+      const mediaStream = primed
+        ? await primed
+        : await navigator.mediaDevices.getUserMedia(VIDEO_CONSTRAINTS);
 
       // Dialog closed (or retake/reset) while the permission prompt was open.
       if (generation !== startGeneration) {
         releaseOrphanStream(mediaStream);
+        return null;
+      }
+
+      if (!mediaStream) {
+        error.value = 'GENERIC';
+        stopStream();
         return null;
       }
 
@@ -106,29 +178,35 @@ export const useWebcamCapture = () => {
   };
 
   const capturePhoto = async videoEl => {
-    if (!videoEl || !videoEl.videoWidth || !videoEl.videoHeight) {
-      error.value = 'GENERIC';
-      return null;
+    if (!videoEl?.videoWidth || !videoEl.videoHeight) {
+      return failCapture();
     }
 
+    const generation = startGeneration;
+    const { width, height } = fitWithinMaxEdge(
+      videoEl.videoWidth,
+      videoEl.videoHeight
+    );
     const canvas = document.createElement('canvas');
-    canvas.width = videoEl.videoWidth;
-    canvas.height = videoEl.videoHeight;
+    canvas.width = width;
+    canvas.height = height;
     const context = canvas.getContext('2d');
     if (!context) {
-      error.value = 'GENERIC';
-      return null;
+      return failCapture();
     }
 
-    context.drawImage(videoEl, 0, 0);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = 'high';
+    context.drawImage(videoEl, 0, 0, width, height);
 
     const blob = await new Promise(resolve => {
-      canvas.toBlob(resolve, 'image/jpeg', 0.92);
+      canvas.toBlob(resolve, 'image/jpeg', JPEG_QUALITY);
     });
 
+    if (generation !== startGeneration) return null;
+
     if (!blob) {
-      error.value = 'GENERIC';
-      return null;
+      return failCapture();
     }
 
     const file = new File([blob], `webcam-${getUuid()}.jpg`, {

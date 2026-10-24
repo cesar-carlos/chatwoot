@@ -1,40 +1,27 @@
-# Webcam Photo Capture — UI Design
+# Webcam Photo Capture — UI
 
-Especificação visual e de componentes, alinhada aos padrões do dashboard e ao FORK de Share Contact.
+Especificação alinhada ao código em `WebcamCapture/` e ao padrão do Share Contact.
 
 ---
 
 ## Princípios
 
-- **Tailwind only** — sem CSS custom, sem scoped CSS, sem inline styles
-- **Composition API** + `<script setup>`
-- **components-next** para primitivos (`Button`, `Dialog`)
-- **widgets/conversation/** para feature acoplada ao `ReplyBox`
-- **i18n** — nenhuma string bare no template
-- Ícones do **ReplyBottomPanel**: família **Phosphor** (`i-ph-*`)
+- Tailwind only
+- `<script setup>` nos componentes novos
+- `Dialog` e `NextButton` de `components-next`
+- Nenhuma string bare — chaves `CONVERSATION.WEBCAM_CAPTURE`
+- Ícone da toolbar: `i-ph-camera`
 
 ---
 
-## Referências visuais no projeto
-
-| Padrão | Arquivo | O que reutilizar |
-|--------|---------|------------------|
-| Botão na barra | `ReplyBottomPanel.vue` | `NextButton` `slate` `faded` `sm` + `v-tooltip.top-end` |
-| Share contact (FORK) | mesmo painel + `ShareContact/` | Prop `show*`, emit, Dialog no `ReplyBox` |
-| Modal | `components-next/dialog/Dialog.vue` | Shell, footer confirm/cancel |
-| Áudio → File | `AudioRecorder.vue` | Resultado vira `File` → `onFileUpload` |
-| Preview anexo | `AttachmentsPreview.vue` | Já mostra thumb da imagem anexada |
-
----
-
-## Arquitetura de componentes
+## Componentes
 
 ```mermaid
 flowchart TD
   RB[ReplyBox.vue]
   RBP[ReplyBottomPanel.vue]
   WCD[WebcamCaptureDialog.vue]
-  WCF[WebcamCaptureView.vue]
+  WCV[WebcamCaptureView.vue]
   D[Dialog.vue]
   C1[useWebcamAvailability]
   C2[useWebcamCapture]
@@ -43,28 +30,26 @@ flowchart TD
   RB --> WCD
   RB --> C1
   WCD --> D
-  WCD --> WCF
-  WCF --> C2
+  WCD --> WCV
+  WCD --> C2
 ```
 
-**Ownership:** `useWebcamAvailability` só no `ReplyBox.setup()`. BottomPanel recebe `showWebcamButton` pronto.
-
-### Arquivos novos (propostos)
+`useWebcamAvailability` só no `ReplyBox.setup()`. O dialog chama `useWebcamCapture`. O BottomPanel não detecta device.
 
 | Arquivo | Responsabilidade |
 |---------|------------------|
-| `dashboard/composables/useWebcamAvailability.js` | `hasWebcam`, refresh, `devicechange` |
-| `dashboard/composables/useWebcamCapture.js` | start/stop stream, capture frame → `File` |
-| `widgets/conversation/WebcamCapture/WebcamCaptureDialog.vue` | Dialog open/close, emite `capture(file)` |
-| `widgets/conversation/WebcamCapture/WebcamCaptureView.vue` | `<video>` + estados loading/error/preview |
+| `composables/useWebcamAvailability.js` | `hasWebcam`, `refreshDevices`, `devicechange` |
+| `composables/useWebcamCapture.js` | stream, capture, retake, erros, object URL |
+| `WebcamCapture/WebcamCaptureDialog.vue` | shell do `Dialog`, emite `capture` e `devicesGranted` |
+| `WebcamCapture/WebcamCaptureView.vue` | `<video>` / `<img>`, Capture, Retake, Retry |
 
-**Não criar** bubble novo — a foto vira attachment de imagem padrão.
+A foto anexada usa o preview de attachment que já existe. Não há bubble novo.
 
 ---
 
-## ReplyBottomPanel — botão
+## Toolbar
 
-Inserir **após** share contact (ou após paperclip se share contact oculto), **antes** do microfone:
+Depois do share contact, antes do microfone:
 
 ```vue
 <!-- FORK: webcam photo capture -->
@@ -79,83 +64,68 @@ Inserir **após** share contact (ou após paperclip se share contact oculto), **
 />
 ```
 
-### Props / emits
-
 | Nome | Tipo | Origem |
 |------|------|--------|
-| `showWebcamButton` | Boolean | `ReplyBox` (hasWebcam && eligible && !disabled && !recordingAudio) |
-| `openWebcamCapture` | emit | `ReplyBox` abre o dialog |
+| `showWebcamButton` | Boolean | `ReplyBox` |
+| `openWebcamCapture` | emit | abre o dialog |
 
 ---
 
-## Dialog — wireframe
+## Dialog
+
+`Dialog` `type="edit"` `width="lg"`. Título e descrição vêm do i18n. Confirm = Use photo, desabilitado sem arquivo. Cancel fecha e chama `reset()`.
 
 ```
 ┌─────────────────────────────────────────┐
-|  Take a photo                        ✕  |
-|  Capture an image from your webcam      |
-|                                         |
-|  ┌───────────────────────────────────┐  |
-|  |                                   |  |
-|  |         <video> preview           |  |
-|  |      or captured <img>            |  |
-|  |                                   |  |
-|  └───────────────────────────────────┘  |
-|                                         |
-|  [Retake]              [Use photo]      |
-|  (só após captura)     (confirm)        |
+│  Tirar uma foto                      ✕  │
+│  Capture uma imagem da webcam…          │
+│                                         │
+│  ┌───────────────────────────────────┐  │
+│  │         video / img / erro        │  │
+│  └───────────────────────────────────┘  │
+│                                         │
+│            [ Capturar | Tirar de novo ] │
+│                                         │
+│  [ Cancelar ]              [ Usar foto ]│
 └─────────────────────────────────────────┘
 ```
+
+Capture, Retake e Retry ficam no corpo, centralizados. Use photo e Cancel ficam no footer do `Dialog`.
 
 ### Estados da view
 
 | Estado | UI |
 |--------|----|
-| `idle` / starting | Skeleton ou spinner + “Starting camera…” |
-| `streaming` | `<video autoplay playsinline muted>` + botão principal “Capture” |
-| `captured` | `<img>` do frame + “Retake” + confirm do Dialog “Use photo” |
-| `error` | Mensagem i18n (permissão / sem device / genérico) + fechar |
+| `isStarting` sem stream, sem arquivo e sem erro | `Spinner` + “Iniciando câmera…” |
+| stream pronto | `<video autoplay playsinline muted>` + Capture |
+| vídeo ainda sem frame apresentado | Capture `disabled` |
+| arquivo capturado | `<img>` `object-cover` + Retake; confirm habilitado |
+| `error` sem arquivo | texto `text-n-ruby-11` + Retry |
+
+Área de mídia: `aspect-video`, `rounded-lg`, `bg-n-solid-3`, `object-contain`. Sem `scale-x-[-1]`. A faixa da caixa 16:9 mostra o fundo quando o sensor não é 16:9.
 
 ### Comportamento
 
-1. `open()` → `getUserMedia({ audio: false, video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } } })`
-2. Bind stream no `<video>`; Capture **disabled** até `loadedmetadata` / `videoWidth > 0`
-3. **Capture** (corpo) → `canvas.drawImage(video)` → `toBlob('image/jpeg', 0.92)` → `File` (`webcam-${uuid}.jpg`); se blob `null`, erro genérico
-4. Mostra preview estático; **parar tracks** ao capturar (apaga LED) — Retake reinicia stream
-5. **Use photo** (footer confirm) → emit `capture(file)` → `ReplyBox` → `onFileUpload({ name, type, size, file })`
-6. **Retake** (corpo) → limpa `capturedFile`, reinicia stream
-7. **Close / Cancel / unmount** → `stopStream()` sempre
-
-### Dialog API (espelhar ShareContact)
-
-```js
-const dialogRef = ref(null);
-const open = () => dialogRef.value?.open();
-defineExpose({ open });
-```
-
-| Ação | Onde |
-|------|------|
-| Cancel | Footer `Dialog` → close + stop stream |
-| Use photo | Footer confirm — `disableConfirmButton` até `capturedFile` |
-| Capture / Retake | Corpo `WebcamCaptureView` |
+1. `open()` → `reset()` → `dialog.open()` → `nextTick` → `getUserMedia`.
+2. Stream ok → emit `devicesGranted` (ReplyBox refresca `enumerateDevices`).
+3. Capture disabled até `loadeddata` e, se existir, `requestVideoFrameCallback`, com `videoWidth` e `videoHeight`.
+4. Capture → `drawImage` no frame inteiro, reduzido se alguma aresta passa de 1920 → `toBlob('image/jpeg', 0.92)` → `File`. Frame vazio, contexto nulo ou blob nulo viram `ERROR.GENERIC` e param o stream. Os botões do corpo são `type="button"` para não submeter o form do `Dialog`.
+5. Ao capturar, `stopStream()` (LED apaga). Retake limpa o preview e reabre o stream.
+6. Use photo → `emit('capture', file)` → `close()` → `@close` → `reset()`.
+7. Close, Cancel e unmount sempre `reset()` (tracks + `URL.revokeObjectURL`).
 
 ---
 
-## ReplyBox — wiring
+## ReplyBox
 
 ```js
-// FORK: webcam photo capture
 showWebcamButton() {
   if (this.isEditorDisabled || this.isRecordingAudio) return false;
   if (!this.hasWebcam) return false;
   return this.showFileUpload || this.isOnPrivateNote;
 },
-openWebcamCaptureDialog() {
-  this.$refs.webcamCaptureDialog?.open();
-},
 onWebcamPhotoCaptured(file) {
-  // mesmo shape do paste / audio
+  if (!file) return;
   this.onFileUpload({
     name: file.name,
     type: file.type,
@@ -165,84 +135,56 @@ onWebcamPhotoCaptured(file) {
 },
 ```
 
-Template:
-
 ```vue
-<!-- FORK: webcam photo capture -->
 <WebcamCaptureDialog
   ref="webcamCaptureDialog"
   @capture="onWebcamPhotoCaptured"
+  @devices-granted="refreshWebcamDevices"
 />
 ```
 
 ---
 
-## i18n (`en` + `pt_BR`)
+## i18n
 
-Arquivos:
+`en/conversation.json` e `pt_BR/conversation.json`, chave `CONVERSATION.WEBCAM_CAPTURE`.
 
-- `app/javascript/dashboard/i18n/locale/en/conversation.json`
-- `app/javascript/dashboard/i18n/locale/pt_BR/conversation.json`
-
-```json
-"WEBCAM_CAPTURE": {
-  "TOOLTIP": "Take a photo",
-  "MODAL": {
-    "TITLE": "Take a photo",
-    "DESCRIPTION": "Capture an image from your webcam to attach to this conversation.",
-    "STARTING": "Starting camera…",
-    "CAPTURE": "Capture",
-        "RETAKE": "Retake",
-        "RETRY": "Try again",
-        "CONFIRM": "Use photo",
-        "CANCEL": "Cancel"
-  },
-  "ERROR": {
-    "PERMISSION": "Camera permission was denied. Allow access in the browser settings and try again.",
-    "NOT_FOUND": "No camera was found on this device.",
-    "GENERIC": "Could not open the camera. Please try again."
-  }
-}
-```
-
-`pt_BR` (espelho):
-
-```json
-"WEBCAM_CAPTURE": {
-  "TOOLTIP": "Tirar uma foto",
-  "MODAL": {
-    "TITLE": "Tirar uma foto",
-    "DESCRIPTION": "Capture uma imagem da webcam para anexar a esta conversa.",
-    "STARTING": "Iniciando câmera…",
-    "CAPTURE": "Capturar",
-    "RETAKE": "Tirar de novo",
-    "CONFIRM": "Usar foto",
-    "CANCEL": "Cancelar"
-  },
-  "ERROR": {
-    "PERMISSION": "A permissão da câmera foi negada. Autorize no navegador e tente de novo.",
-    "NOT_FOUND": "Nenhuma câmera foi encontrada neste dispositivo.",
-    "GENERIC": "Não foi possível abrir a câmera. Tente de novo."
-  }
-}
-```
+| Chave | en | pt_BR |
+|-------|----|-------|
+| `TOOLTIP` | Take a photo | Tirar uma foto |
+| `MODAL.TITLE` | Take a photo | Tirar uma foto |
+| `MODAL.DESCRIPTION` | Capture an image from your webcam to attach to this conversation. | Capture uma imagem da webcam para anexar a esta conversa. |
+| `MODAL.STARTING` | Starting camera… | Iniciando câmera… |
+| `MODAL.CAPTURE` | Capture | Capturar |
+| `MODAL.RETAKE` | Retake | Tirar de novo |
+| `MODAL.RETRY` | Try again | Tentar de novo |
+| `MODAL.CONFIRM` | Use photo | Usar foto |
+| `MODAL.CANCEL` | Cancel | Cancelar |
+| `ERROR.PERMISSION` | Camera permission was denied… | A permissão da câmera foi negada… |
+| `ERROR.NOT_FOUND` | No camera was found on this device. | Nenhuma câmera foi encontrada neste dispositivo. |
+| `ERROR.GENERIC` | Could not open the camera… | Não foi possível abrir a câmera… |
 
 ---
 
-## Acessibilidade e UX
+## Acessibilidade
 
 - Tooltip no botão da toolbar
-- `playsinline` + `muted` no video (autoplay policies)
-- Não espelhar horizontalmente por default em webcam “documental”; se espelhar no preview, **não** espelhar o JPEG final (ou documentar a escolha — MVP: preview espelhado opcional, arquivo sem mirror)
-- Foco: ao abrir dialog, foco no botão Capture; ao capturar, no Confirm
-- Não bloquear o editor enquanto o dialog está fechado
+- `playsinline` e `muted` no `<video>`
+- `<img alt="">` no preview capturado (a ação seguinte tem label i18n)
+- O editor do ReplyBox continua utilizável com o dialog fechado
+
+Foco automático no Capture/Confirm não está implementado.
 
 ---
 
-## Fora do escopo visual (MVP)
+## Fora do escopo visual
 
-- Seletor de múltiplas câmeras
-- Filtros / crop / anotações
-- Flash / timer
+- Seletor de câmera
+- Espelho só no preview
+- Crop, filtros, flash, timer
 - Gravação de vídeo
-- Atalho de teclado dedicado
+- Atalho de teclado
+
+---
+
+*Última atualização: 24/out/2026 (tarde)*

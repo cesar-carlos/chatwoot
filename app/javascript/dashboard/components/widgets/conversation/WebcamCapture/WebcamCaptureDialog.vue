@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import Dialog from 'dashboard/components-next/dialog/Dialog.vue';
@@ -27,19 +27,19 @@ const {
 
 const disableConfirmButton = computed(() => !capturedFile.value);
 
-const startCamera = async () => {
-  const mediaStream = await startStream();
-  if (mediaStream) {
-    emit('devicesGranted');
-  }
+const startCamera = () => {
+  // Invoke startStream in this turn so getUserMedia keeps the click gesture.
+  const pending = startStream();
+  pending.then(mediaStream => {
+    if (mediaStream) emit('devicesGranted');
+  });
+  return pending;
 };
 
-const handleOpen = async () => {
+const handleOpen = () => {
   reset();
   dialogRef.value?.open();
-  // Wait for Dialog slot (v-if="isOpen") so <video> exists before binding.
-  await nextTick();
-  await startCamera();
+  startCamera();
 };
 
 const handleClose = () => {

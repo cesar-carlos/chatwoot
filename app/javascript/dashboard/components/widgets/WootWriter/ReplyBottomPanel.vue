@@ -108,6 +108,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    webcamPermissionDenied: {
+      type: Boolean,
+      default: false,
+    },
     conversationId: {
       type: Number,
       required: true,
@@ -330,7 +334,13 @@ export default {
       <!-- FORK: webcam photo capture -->
       <NextButton
         v-if="showWebcamButton"
-        v-tooltip.top-end="$t('CONVERSATION.WEBCAM_CAPTURE.TOOLTIP')"
+        v-tooltip.top-end="
+          $t(
+            webcamPermissionDenied
+              ? 'CONVERSATION.WEBCAM_CAPTURE.ERROR.PERMISSION'
+              : 'CONVERSATION.WEBCAM_CAPTURE.TOOLTIP'
+          )
+        "
         icon="i-ph-camera"
         slate
         faded

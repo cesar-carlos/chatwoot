@@ -6,6 +6,8 @@ import { ref, onMounted, onUnmounted } from 'vue';
  */
 export const useWebcamAvailability = () => {
   const hasWebcam = ref(false);
+  const isCameraDenied = ref(false);
+  let permissionStatus = null;
 
   const refreshDevices = async () => {
     if (
@@ -25,8 +27,28 @@ export const useWebcamAvailability = () => {
     }
   };
 
+  const refreshPermission = async () => {
+    if (typeof navigator === 'undefined' || !navigator.permissions?.query) {
+      isCameraDenied.value = false;
+      return;
+    }
+
+    try {
+      if (permissionStatus) permissionStatus.onchange = null;
+      permissionStatus = await navigator.permissions.query({ name: 'camera' });
+      isCameraDenied.value = permissionStatus.state === 'denied';
+      permissionStatus.onchange = () => {
+        isCameraDenied.value = permissionStatus.state === 'denied';
+      };
+    } catch {
+      // Firefox and Safari throw for camera. Keep the button usable.
+      isCameraDenied.value = false;
+    }
+  };
+
   onMounted(() => {
     refreshDevices();
+    refreshPermission();
     navigator.mediaDevices?.addEventListener?.('devicechange', refreshDevices);
   });
 
@@ -35,7 +57,8 @@ export const useWebcamAvailability = () => {
       'devicechange',
       refreshDevices
     );
+    if (permissionStatus) permissionStatus.onchange = null;
   });
 
-  return { hasWebcam, refreshDevices };
+  return { hasWebcam, isCameraDenied, refreshDevices };
 };

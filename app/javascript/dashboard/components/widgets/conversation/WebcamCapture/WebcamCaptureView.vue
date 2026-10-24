@@ -36,6 +36,42 @@ const emit = defineEmits(['capture', 'retake', 'retry', 'videoReady']);
 
 const { t } = useI18n();
 const videoEl = ref(null);
+let frameCallbackId = null;
+
+const cancelFrameCallback = () => {
+  const video = videoEl.value;
+  if (
+    video &&
+    frameCallbackId !== null &&
+    typeof video.cancelVideoFrameCallback === 'function'
+  ) {
+    video.cancelVideoFrameCallback(frameCallbackId);
+  }
+  frameCallbackId = null;
+};
+
+const emitFrameReady = () => {
+  const video = videoEl.value;
+  emit('videoReady', Boolean(video?.videoWidth && video?.videoHeight));
+};
+
+const onFramePresented = () => {
+  if (props.hasCapturedFile || props.error || !props.stream) return;
+
+  const video = videoEl.value;
+  if (!video?.videoWidth || !video.videoHeight) return;
+
+  cancelFrameCallback();
+  if (typeof video.requestVideoFrameCallback === 'function') {
+    frameCallbackId = video.requestVideoFrameCallback(() => {
+      frameCallbackId = null;
+      emitFrameReady();
+    });
+    return;
+  }
+
+  emitFrameReady();
+};
 
 const errorMessage = computed(() => {
   if (!props.error) return '';
@@ -51,7 +87,7 @@ const bindStream = async mediaStream => {
     try {
       await videoEl.value.play();
     } catch {
-      // Autoplay can fail until metadata; loadedmetadata handler covers ready state.
+      // Autoplay can fail until a frame exists; loadeddata covers the ready state.
     }
   }
 };
@@ -59,21 +95,18 @@ const bindStream = async mediaStream => {
 watch(
   () => props.stream,
   mediaStream => {
+    cancelFrameCallback();
     bindStream(mediaStream);
   },
   { immediate: true }
 );
 
 onBeforeUnmount(() => {
+  cancelFrameCallback();
   if (videoEl.value) {
     videoEl.value.srcObject = null;
   }
 });
-
-const onLoadedMetadata = () => {
-  const ready = Boolean(videoEl.value?.videoWidth);
-  emit('videoReady', ready);
-};
 
 const handleCapture = () => {
   emit('capture', videoEl.value);
@@ -106,7 +139,7 @@ const handleCapture = () => {
         v-else-if="hasCapturedFile && capturedPreviewUrl"
         :src="capturedPreviewUrl"
         alt=""
-        class="object-cover w-full h-full"
+        class="object-contain w-full h-full"
       />
 
       <video
@@ -115,14 +148,16 @@ const handleCapture = () => {
         autoplay
         playsinline
         muted
-        class="object-cover w-full h-full"
-        @loadedmetadata="onLoadedMetadata"
+        class="object-contain w-full h-full"
+        @loadeddata="onFramePresented"
+        @resize="onFramePresented"
       />
     </div>
 
     <div class="flex justify-center gap-2">
       <NextButton
         v-if="error && !hasCapturedFile"
+        type="button"
         :label="t('CONVERSATION.WEBCAM_CAPTURE.MODAL.RETRY')"
         color="blue"
         sm
@@ -131,6 +166,7 @@ const handleCapture = () => {
       />
       <NextButton
         v-else-if="!hasCapturedFile"
+        type="button"
         :label="t('CONVERSATION.WEBCAM_CAPTURE.MODAL.CAPTURE')"
         color="blue"
         sm
@@ -139,6 +175,7 @@ const handleCapture = () => {
       />
       <NextButton
         v-else
+        type="button"
         :label="t('CONVERSATION.WEBCAM_CAPTURE.MODAL.RETAKE')"
         slate
         faded

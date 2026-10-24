@@ -60,6 +60,10 @@ import { useMacroExecution } from 'dashboard/composables/useMacroExecution';
 import ConversationResolveAttributesModal from 'dashboard/components-next/ConversationWorkflow/ConversationResolveAttributesModal.vue';
 import { useKbd } from 'dashboard/composables/utils/useKbd';
 import { useWebcamAvailability } from 'dashboard/composables/useWebcamAvailability';
+import {
+  primeWebcamStream,
+  releasePrimedWebcamStream,
+} from 'dashboard/composables/useWebcamCapture';
 import { isFileTypeAllowedForChannel } from 'shared/helpers/FileHelper';
 import { isAIAssigneeType } from 'dashboard/helper/agentHelper';
 import { getLastMessage } from 'dashboard/helper/conversationHelper';
@@ -110,8 +114,11 @@ export default {
     const macroExecution = useMacroExecution();
     const shortcutKey = useKbd(['$mod', '+', 'enter']);
     // FORK: webcam photo capture
-    const { hasWebcam, refreshDevices: refreshWebcamDevices } =
-      useWebcamAvailability();
+    const {
+      hasWebcam,
+      isCameraDenied,
+      refreshDevices: refreshWebcamDevices,
+    } = useWebcamAvailability();
 
     // Options API state and methods live on the instance proxy
     const { proxy } = getCurrentInstance();
@@ -175,6 +182,7 @@ export default {
       shortcutKey,
       macroExecution,
       hasWebcam,
+      isCameraDenied,
       refreshWebcamDevices,
     };
   },
@@ -211,6 +219,8 @@ export default {
       hasRecordedAudio: false,
       copilotAcceptedMessages: {},
       isQuoteRemoved: false,
+      // FORK: webcam photo capture — mount the dialog on first open
+      webcamDialogMounted: false,
     };
   },
   computed: {
@@ -664,6 +674,9 @@ export default {
         this.switchDraftContext(conversationId, this.effectiveReplyMode);
         this.resetRecorderAndClearAttachments();
         this.isQuoteRemoved = false;
+        // FORK: webcam photo capture
+        this.$refs.webcamCaptureDialog?.close();
+        releasePrimedWebcamStream();
       }
     },
     message() {
@@ -721,6 +734,8 @@ export default {
     emitter.on(CMD_AI_ASSIST, this.executeCopilotAction);
   },
   unmounted() {
+    // FORK: webcam photo capture
+    releasePrimedWebcamStream();
     document.removeEventListener('paste', this.onPaste);
     emitter.off(BUS_EVENTS.TOGGLE_REPLY_TO_MESSAGE, this.onReplyToMessage);
     emitter.off(
@@ -949,7 +964,31 @@ export default {
     },
     // FORK: webcam photo capture
     openWebcamCaptureDialog() {
-      this.$refs.webcamCaptureDialog?.open();
+      if (this.isCameraDenied) {
+        useAlert(this.$t('CONVERSATION.WEBCAM_CAPTURE.ERROR.PERMISSION'));
+        return;
+      }
+
+      const conversationId = this.conversationIdByRoute;
+      const openDialog = () => {
+        if (
+          this.conversationIdByRoute !== conversationId ||
+          !this.$refs.webcamCaptureDialog
+        ) {
+          releasePrimedWebcamStream();
+          return;
+        }
+        this.$refs.webcamCaptureDialog.open();
+      };
+
+      if (!this.webcamDialogMounted) {
+        primeWebcamStream();
+        this.webcamDialogMounted = true;
+        this.$nextTick(openDialog);
+        return;
+      }
+
+      openDialog();
     },
     onWebcamPhotoCaptured(file) {
       if (!file) return;
@@ -1669,6 +1708,7 @@ export default {
         :enable-content-templates="showContentTemplates"
         :show-share-contact-button="showShareContactButton"
         :show-webcam-button="showWebcamButton"
+        :webcam-permission-denied="isCameraDenied"
         :inbox="inbox"
         :is-on-private-note="isOnPrivateNote"
         :is-recording-audio="isRecordingAudio"
@@ -1732,6 +1772,7 @@ export default {
 
     <!-- FORK: webcam photo capture -->
     <WebcamCaptureDialog
+      v-if="webcamDialogMounted"
       ref="webcamCaptureDialog"
       @capture="onWebcamPhotoCaptured"
       @devices-granted="refreshWebcamDevices"
