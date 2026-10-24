@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const authCookie = vi.hoisted(() => vi.fn(() => 'session'));
 vi.mock('js-cookie', () => ({ default: { get: authCookie } }));
-import { requestAndSubscribe, cleanupPushOnLogout } from '../pushHelper';
+import {
+  cleanupPushOnLogout,
+  ensurePushSubscription,
+  requestAndSubscribe,
+} from '../pushHelper';
 import { startPushSession } from '../pushSession';
 import { waitForActiveWorker } from '../serviceWorker';
 import { logoutWithPushCleanup } from '../pushLogout';
@@ -106,7 +110,7 @@ describe('notification session lifecycle', () => {
     expect(subscription.unsubscribe).toHaveBeenCalledOnce();
     expect(clear).toHaveBeenCalledOnce();
     expect((await sync).message).toBe('cancelled');
-    expect(localStorage.getItem('chatwoot_push_enabled')).toBe('false');
+    expect(localStorage.getItem('chatwoot_push_enabled')).toBeNull();
   });
 
   it('rejects an ignored cancellation response without persisting late opt-in', async () => {
@@ -122,8 +126,46 @@ describe('notification session lifecycle', () => {
     await cleanupPushOnLogout();
     resolve({});
     expect((await pending).message).toContain('expired session');
-    expect(localStorage.getItem('chatwoot_push_enabled')).toBe('false');
+    expect(localStorage.getItem('chatwoot_push_enabled')).toBeNull();
     expect(() => requestAndSubscribe()).toThrow('session is ending');
+  });
+
+  it.each(['true', 'false'])(
+    'keeps the %s push preference across logout instead of recording an opt-out',
+    async preference => {
+      localStorage.setItem('chatwoot_push_enabled', preference);
+
+      await cleanupPushOnLogout();
+
+      expect(localStorage.getItem('chatwoot_push_enabled')).toBe(preference);
+    }
+  );
+
+  it('subscribes the device again after logout and a new login', async () => {
+    await requestAndSubscribe();
+    await cleanupPushOnLogout();
+    // The browser subscription disappeared with logout or an uninstall.
+    registration.pushManager.getSubscription.mockResolvedValue(null);
+    registration.pushManager.subscribe.mockClear();
+    api.post.mockClear();
+    startPushSession();
+
+    await expect(ensurePushSubscription()).resolves.toMatchObject({
+      status: 'subscribed',
+    });
+    expect(registration.pushManager.subscribe).toHaveBeenCalledOnce();
+    expect(api.post).toHaveBeenCalledOnce();
+  });
+
+  it('does not subscribe a never-enabled device after logout and login', async () => {
+    await cleanupPushOnLogout();
+    registration.pushManager.getSubscription.mockResolvedValue(null);
+    startPushSession();
+
+    await expect(ensurePushSubscription()).resolves.toMatchObject({
+      status: 'unsubscribed',
+    });
+    expect(registration.pushManager.subscribe).not.toHaveBeenCalled();
   });
 
   it('limits total logout cleanup to ten seconds and attempts local cleanup first', async () => {

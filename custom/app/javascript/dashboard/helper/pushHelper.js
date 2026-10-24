@@ -328,7 +328,9 @@ export const unsubscribePush = () => enqueueOperation(unsubscribePushOperation);
 export const cleanupPushOnLogout = async () => {
   beginPushLogout();
   pendingOperation = Promise.resolve();
-  localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, 'false');
+  // Logout removes this device's subscription but must not record an opt-out:
+  // only an explicit "disable" does. Otherwise the next login (for example
+  // after reinstalling the app) would never resubscribe or show the invitation.
   const controller = new AbortController();
   let timeout;
   const cleanup = (async () => {
