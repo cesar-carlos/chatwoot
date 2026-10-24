@@ -4,7 +4,7 @@ class Webhooks::WavoipController < ActionController::API
   MAX_PAYLOAD_BYTES = 64.kilobytes
   ALLOWED_PAYLOAD_KEYS = %w[
     type action status direction phone caller receiver whatsapp_call_id id duration
-    id_session call_type record_status record_url peer
+    id_session call_type record_status record_url peer reason
   ].freeze
   ALLOWED_PEER_KEYS = %w[phone display_name].freeze
 

@@ -180,6 +180,7 @@ Bolha `voice_call`: via upsert + builders EE (`Voice::InboundCallBuilder` / `Voi
 | `duration_seconds` | Duração |
 | `session_id` / `call_type` | Meta Wavoip |
 | `record_url` / `record_status` | Gravação |
+| `reason` | Código curto de término (`Call.meta['wavoip_reason']`) |
 | `raw_type` | `CALL` / `RECORD` / `DEVICE` |
 
 ### 3.6 Status webhook → Chatwoot
@@ -196,6 +197,10 @@ O webhook usa vocabulário diferente do SDK. Rails: `StatusMapper`. Browser: `li
 | `HANDLED_REMOTELY` | `completed` (`end_reason: handled_remotely`) |
 
 `provider_call_id` = `whatsapp_call_id` (string).
+
+`reason` do webhook (código curto, por exemplo `peer:rx-timeout`) fica em `Call.meta['wavoip_reason']`. Não substitui `end_reason`. Texto livre é descartado.
+
+Um webhook de toque que não altera a linha ainda agenda `AutoNoAnswerRingJob`. A criação inbound já grava `ringing`; sem esse agendamento a linha não fecha quando o término não chega.
 
 ### 3.7 API REST
 

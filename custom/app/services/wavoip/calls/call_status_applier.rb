@@ -26,8 +26,8 @@ class Wavoip::Calls::CallStatusApplier # rubocop:disable Metrics/ClassLength -- 
       correct_direction_if_needed!(call)
       apply_locked!(call, mapped_status, broadcast: broadcast, deferred: deferred)
     end
-    # HANDLED_REMOTELY deferral returns a sentinel but still needs deferred work.
-    if applied == :handled_remotely_deferred
+    # Sentinels still need deferred work, but they are not a status change.
+    if applied == :handled_remotely_deferred || applied == :ring_safety_net
       run_deferred!(deferred) if broadcast
       return false
     end
@@ -86,7 +86,7 @@ class Wavoip::Calls::CallStatusApplier # rubocop:disable Metrics/ClassLength -- 
     end
 
     attrs = build_update_attrs(call, mapped_status)
-    return false if attrs.blank?
+    return arm_unchanged_ring!(call, mapped_status, broadcast, deferred) if attrs.blank?
 
     persist_status!(call, attrs)
     queue_broadcasts!(call, mapped_status, deferred) if broadcast
@@ -165,9 +165,19 @@ class Wavoip::Calls::CallStatusApplier # rubocop:disable Metrics/ClassLength -- 
   def status_meta(call, mapped_status)
     base_meta = (call.meta || {}).merge('wavoip_status' => event.external_status)
     base_meta['record_status'] = event.record_status if event.record_status.present?
+    base_meta['wavoip_reason'] = event.reason if event.reason.present?
     base_meta['ended_at'] ||= Time.zone.now.to_i if status_mapper.terminal?(mapped_status)
 
     base_meta
+  end
+
+  # Inbound CREATE already persists ringing, so the webhook often changes nothing.
+  # Arm the safety net anyway; otherwise the row rings forever.
+  def arm_unchanged_ring!(call, mapped_status, broadcast, deferred)
+    return false unless broadcast && call.ringing? && mapped_status == 'ringing'
+
+    deferred << -> { Wavoip::Calls::StaleCallTimeoutScheduler.new(call: call.reload).schedule }
+    :ring_safety_net
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- rank + terminal guards

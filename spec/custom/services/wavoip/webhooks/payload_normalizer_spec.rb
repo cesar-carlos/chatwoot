@@ -27,7 +27,25 @@ RSpec.describe Wavoip::Webhooks::PayloadNormalizer do
         expect(event.peer_name).to eq('Contato Teste')
         expect(event.call_type).to eq(:official)
         expect(event.raw_type).to eq('CALL')
+        expect(event.reason).to be_nil
       end
+    end
+
+    it 'keeps a short Wavoip reason code and drops free text' do
+      base = {
+        'type' => 'CALL',
+        'action' => 'UPDATE',
+        'whatsapp_call_id' => 'reason_001',
+        'status' => 'FAILED',
+        'direction' => 'OUTGOING',
+        'phone' => '+5511999999999'
+      }
+
+      kept = normalize(base.merge('reason' => 'peer:rx-timeout'))
+      dropped = normalize(base.merge('reason' => 'connection reset by peer'))
+
+      expect(kept.reason).to eq('peer:rx-timeout')
+      expect(dropped.reason).to be_nil
     end
 
     it 'maps OUTGOING direction from fixture' do

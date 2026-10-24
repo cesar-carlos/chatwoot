@@ -106,7 +106,9 @@ Autorização: `authorize @call.inbox, :show?`. Spec: `spec/custom/controllers/a
 |----------|---------------|
 | `accepted_by_agent_id` presente | `ClaimGuard.claimed?` — para ring/escalate/push |
 | `AutoNoAnswerRingJob` com claim | Não fecha; agenda `ClaimedRingGraceJob` (~45 min) |
+| Webhook de toque sem mudança de coluna | Ainda agenda `AutoNoAnswerRingJob` |
 | `HANDLED_REMOTELY` + claimed + ringing | Ignora (não mata SDK); agenda `HandledRemotelyStaleJob` (~2 min) |
+| `reason` no `CALL` | `Call.meta['wavoip_reason']`; `end_reason` continua o status mapeado |
 
 ---
 

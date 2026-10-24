@@ -33,6 +33,22 @@ RSpec.describe Webhooks::WavoipController, type: :request do
       expect(response).to have_http_status(:payload_too_large)
     end
 
+    it 'keeps a wavoip reason and strips unknown payload keys' do
+      expect do
+        post "/webhooks/wavoip/#{channel.webhook_key}",
+             params: payload.merge(reason: 'peer:rx-timeout', malicious_key: 'drop-me')
+      end.to have_enqueued_job(Wavoip::ProcessWebhookJob).with(
+        inbox.id,
+        satisfy do |enqueued|
+          enqueued.is_a?(Hash) &&
+            enqueued['reason'] == 'peer:rx-timeout' &&
+            !enqueued.key?('malicious_key')
+        end
+      )
+
+      expect(response).to have_http_status(:accepted)
+    end
+
     it 'strips unknown payload keys before enqueueing' do
       expect do
         post "/webhooks/wavoip/#{channel.webhook_key}",

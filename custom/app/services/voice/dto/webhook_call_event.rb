@@ -15,8 +15,14 @@ module Voice::Dto
     :call_type,
     :record_url,
     :record_status,
-    :raw_type
+    :raw_type,
+    :reason
   ) do
+    def initialize(**kwargs)
+      kwargs[:reason] = nil unless kwargs.key?(:reason)
+      super(**kwargs)
+    end
+
     def create? = action == :create
     def update? = action == :update
   end

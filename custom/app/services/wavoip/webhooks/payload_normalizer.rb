@@ -2,6 +2,9 @@
 
 class Wavoip::Webhooks::PayloadNormalizer
   PROVIDER = :wavoip
+  # Wavoip end reasons are short codes (`peer:rx-timeout`). Anything else is dropped
+  # so a forged webhook cannot store free text on the call.
+  REASON_PATTERN = /\A[A-Za-z0-9:_-]{1,64}\z/
 
   def initialize(payload, inbox_phone: nil)
     @payload = payload.to_h.with_indifferent_access
@@ -50,7 +53,8 @@ class Wavoip::Webhooks::PayloadNormalizer
       call_type: map_call_type(payload[:call_type]),
       record_url: nil,
       record_status: normalize_record_status(payload[:record_status]),
-      raw_type: 'CALL'
+      raw_type: 'CALL',
+      reason: normalize_reason(payload[:reason])
     }
   end
 
@@ -181,5 +185,13 @@ class Wavoip::Webhooks::PayloadNormalizer
     return if status.blank?
 
     status.upcase
+  end
+
+  def normalize_reason(value)
+    reason = value.to_s
+    return if reason.blank?
+    return unless REASON_PATTERN.match?(reason)
+
+    reason
   end
 end

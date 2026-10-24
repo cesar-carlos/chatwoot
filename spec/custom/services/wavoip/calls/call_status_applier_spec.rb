@@ -233,6 +233,44 @@ RSpec.describe Wavoip::Calls::CallStatusApplier do
     end.to have_enqueued_job(Wavoip::HandledRemotelyStaleJob).with(call.id)
   end
 
+  it 'stores the Wavoip reason code without replacing the mapped end reason' do
+    call = create_call(status: 'in_progress', started_at: 1.minute.ago)
+
+    applier_for(
+      build_event(external_status: 'FAILED', duration_seconds: 12, reason: 'peer:rx-timeout')
+    ).apply!(call, broadcast: true)
+
+    call.reload
+    aggregate_failures do
+      expect(call.status).to eq('failed')
+      expect(call.end_reason).to eq('failed')
+      expect(call.meta['wavoip_reason']).to eq('peer:rx-timeout')
+      expect(call.meta['wavoip_status']).to eq('FAILED')
+    end
+  end
+
+  it 'arms the ring safety net when a ringing webhook changes nothing' do
+    call = create_call(
+      direction: :incoming,
+      meta: { 'wavoip_status' => 'INCOMING_RING', 'initiated_at' => Time.zone.now.to_i }
+    )
+
+    expect do
+      result = applier_for(
+        build_event(
+          direction: :incoming,
+          external_status: 'INCOMING_RING',
+          from_phone: '+15550001111',
+          to_phone: channel.phone_number
+        )
+      ).apply!(call, broadcast: true)
+
+      expect(result).to be(false)
+      expect(call.reload.status).to eq('ringing')
+      expect(broadcaster).not_to have_received(:broadcast_incoming)
+    end.to have_enqueued_job(Wavoip::AutoNoAnswerRingJob).with(call.id)
+  end
+
   it 'corrects direction once while ringing and unclaimed' do
     call = create_call(direction: :outgoing, status: 'ringing')
 
