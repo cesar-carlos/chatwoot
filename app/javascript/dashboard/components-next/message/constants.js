@@ -111,4 +111,5 @@ export const VOICE_CALL_OUTBOUND_INIT_STATUS = {
 export const VOICE_CALL_END_REASON = {
   AGENT_REJECTED: 'agent_rejected',
   HANDLED_REMOTELY: 'handled_remotely',
+  OUTSIDE_WORKING_HOURS: 'outside_working_hours',
 };

@@ -3,12 +3,14 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useMapGetter } from 'dashboard/composables/store';
 import { useAccount } from 'dashboard/composables/useAccount';
+import { useTranslationPlan } from 'dashboard/composables/useTranslationPlan';
 import { FEATURE_FLAGS } from '../../../../featureFlags';
 import BaseSettingsHeader from '../components/BaseSettingsHeader.vue';
 import SettingsLayout from '../SettingsLayout.vue';
 import ConversationRequiredAttributes from 'dashboard/components-next/ConversationWorkflow/ConversationRequiredAttributes.vue';
 import AutoResolve from 'dashboard/routes/dashboard/settings/account/components/AutoResolve.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
+import Translation from 'dashboard/routes/dashboard/settings/account/components/Translation.vue';
 
 const router = useRouter();
 const { accountId, currentAccount } = useAccount();
@@ -28,6 +30,9 @@ const showAutoResolutionConfig = computed(() => {
     ) && !isWorkflowMigrated.value
   );
 });
+
+const { isAvailable, needsUpgrade } = useTranslationPlan();
+const showTranslation = computed(() => isAvailable.value || needsUpgrade.value);
 
 const showRequiredAttributes = computed(() => {
   return isFeatureEnabledonAccount.value(
@@ -81,6 +86,7 @@ const goToConversationRules = () => {
         </div>
 
         <AutoResolve v-if="showAutoResolutionConfig" />
+        <Translation v-if="showTranslation" />
         <ConversationRequiredAttributes :is-enabled="showRequiredAttributes" />
       </div>
     </template>

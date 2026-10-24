@@ -207,6 +207,12 @@ class Inboxes extends CacheEnabledApiClient {
   getMoveHistoryStatus(inboxId) {
     return axios.get(`${this.url}/${inboxId}/move_history_status`);
   }
+  setCallBusinessHours(inboxId, { enabled, message }) {
+    return axios.patch(`${this.url}/${inboxId}/call_business_hours`, {
+      business_hours_calls_enabled: enabled,
+      out_of_hours_call_message: message,
+    });
+  }
 }
 
 export default new Inboxes();

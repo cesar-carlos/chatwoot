@@ -2,10 +2,20 @@
 
 # FORK: run RubyLLM chats with account OpenAI hook key (BYOK) when available.
 module Custom::Llm::BaseAiService
-  def chat(model: @model, temperature: @temperature)
+  def chat(model: @model, temperature: @temperature, thinking: nil, feature: @llm_feature, **)
+    options = Captain::ResponsesConfig.options(model: model, temperature: temperature, feature: feature)
+    thinking ||= options[:thinking]
     context = @llm_ruby_context || account_ruby_llm_context
-    chat_obj = context ? context.chat(model: model) : RubyLLM.chat(model: model)
-    chat_obj.with_temperature(temperature)
+    llm_chat = if context
+                 # FORK: account OpenAI BYOK uses a keyed RubyLLM context
+                 context.chat(model: model, **options.slice(:protocol), **)
+               else
+                 RubyLLM.chat(model: model, **options.slice(:protocol), **)
+               end
+    llm_chat.with_thinking(**thinking) if thinking
+    return llm_chat if options[:temperature].nil? || (thinking && thinking[:effort] != :none)
+
+    llm_chat.with_temperature(options[:temperature])
   end
 
   def llm_credential

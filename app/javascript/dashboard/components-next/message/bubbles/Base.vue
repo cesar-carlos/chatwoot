@@ -4,6 +4,8 @@ import { computed, inject, ref } from 'vue';
 import MessageMeta from '../MessageMeta.vue';
 // FORK: Evolution Go/Node inbound delete highlight
 import Icon from 'next/icon/Icon.vue';
+import CaptainGenerationDetails from '../CaptainGenerationDetails.vue';
+import TranslationToggle from '../TranslationToggle.vue';
 
 import { useMessageContext } from '../provider.js';
 import { useI18n } from 'vue-i18n';
@@ -47,6 +49,8 @@ const {
   status,
   isPrivate,
   messageType, // FORK: group sender label (incoming only)
+  isCaptainMessage,
+  showingOriginal,
 } = useMessageContext();
 const { t } = useI18n();
 const store = useStore();
@@ -68,6 +72,17 @@ const { scrollToMessage: locateReplyMessage, isLocating } = inject(
   LocateConversationMessageKey,
   () => useScrollToConversationMessage({ conversationId }),
   true
+);
+
+const metaColorClass = computed(() => {
+  if (variant.value === MESSAGE_VARIANTS.PRIVATE) return 'text-n-amber-12/50';
+  // FORK: Evolution Go/Node inbound delete highlight
+  if (variant.value === MESSAGE_VARIANTS.DELETED) return 'text-n-ruby-11';
+  return 'text-n-slate-11';
+});
+
+const emailMetaClass = computed(() =>
+  variant.value === MESSAGE_VARIANTS.EMAIL ? 'px-3 pb-3' : ''
 );
 
 // FORK: Evolution Go/Node inbound delete highlight
@@ -341,19 +356,29 @@ const replyToPreview = computed(() => {
         }}</span>
       </div>
     </div>
-    <MessageMeta
-      v-if="shouldShowMeta"
-      :class="[
-        flexOrientationClass,
-        variant === MESSAGE_VARIANTS.EMAIL ? 'px-3 pb-3' : '',
-        // FORK: Evolution Go/Node inbound delete highlight (DELETED ruby meta)
-        variant === MESSAGE_VARIANTS.PRIVATE
-          ? 'text-n-amber-12/50'
-          : variant === MESSAGE_VARIANTS.DELETED
-            ? 'text-n-ruby-11'
-            : 'text-n-slate-11',
-      ]"
-      class="mt-2"
-    />
+    <template v-if="shouldShowMeta">
+      <CaptainGenerationDetails
+        v-if="isCaptainMessage"
+        :message-id="messageId"
+        class="mt-2"
+      >
+        <TranslationToggle
+          :icon="false"
+          :showing-original="showingOriginal"
+          @toggle="showingOriginal = !showingOriginal"
+        />
+        <template #meta>
+          <MessageMeta
+            class="shrink-0 whitespace-nowrap"
+            :class="[emailMetaClass, metaColorClass]"
+          />
+        </template>
+      </CaptainGenerationDetails>
+      <MessageMeta
+        v-else
+        :class="[flexOrientationClass, emailMetaClass, metaColorClass]"
+        class="mt-2"
+      />
+    </template>
   </div>
 </template>

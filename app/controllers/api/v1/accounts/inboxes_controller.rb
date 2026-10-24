@@ -43,7 +43,7 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   include Api::V1::Accounts::Concerns::InboxSecretManagement
 
   def index
-    @inboxes = policy_scope(Current.account.inboxes)
+    @inboxes = inbox_scope
                .includes(:channel, :portal, :working_hours, { avatar_attachment: :blob })
                .order_by_name
   end
@@ -117,6 +117,10 @@ class Api::V1::Accounts::InboxesController < Api::V1::Accounts::BaseController
   end
 
   private
+
+  def inbox_scope
+    policy_scope(Current.account.inboxes)
+  end
 
   def fetch_inbox
     @inbox = Current.account.inboxes.find(params[:id])

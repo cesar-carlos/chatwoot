@@ -14,12 +14,8 @@ class TriggerScheduledItemsJob < ApplicationJob
     # Job to reopen snoozed notifications
     Notification::ReopenSnoozedNotificationsJob.perform_later
 
-    # Job to auto-resolve conversations
-    Account::ConversationsResolutionSchedulerJob.perform_later
-
     # FORK: conversation workflow rules scheduler
     Custom::ConversationWorkflow::SchedulerJob.perform_later
-
     # Job to sync whatsapp templates
     Channels::Whatsapp::TemplatesSyncSchedulerJob.perform_later
 

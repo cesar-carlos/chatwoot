@@ -47,7 +47,9 @@ class Notification < ApplicationRecord
     # FORK: Wavoip inbound voice call notifications
     voice_call_incoming: 9,
     # FORK: independent notification for an unassigned conversation in the user's team
-    team_conversation_assignment: 10
+    team_conversation_assignment: 10,
+    # FORK: upstream assigned 9; this fork already stores incoming calls at 9 and team assignment at 10
+    voice_call_missed: 11
   }.freeze
 
   enum notification_type: NOTIFICATION_TYPES

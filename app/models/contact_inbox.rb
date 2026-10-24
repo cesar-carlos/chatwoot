@@ -51,6 +51,10 @@ class ContactInbox < ApplicationRecord
     }
   end
 
+  def anonymous_caller?
+    false
+  end
+
   def current_conversation
     conversations.last
   end

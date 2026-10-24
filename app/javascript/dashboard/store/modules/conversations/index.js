@@ -36,6 +36,7 @@ const state = {
   copilotAssistant: {},
   // FORK: in-conversation message search — IDs inserted via search jump (per conversation)
   searchInjectedByConversationId: {},
+  autoTranslating: {},
 };
 
 const getConversationById = _state => conversationId => {
@@ -379,6 +380,13 @@ export const mutations = {
         emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
       }
     }
+  },
+
+  [types.SET_AUTO_TRANSLATING](_state, { locale, messageIds, translating }) {
+    _state.autoTranslating[locale] ??= {};
+    messageIds.forEach(id => {
+      _state.autoTranslating[locale][id] = translating;
+    });
   },
 
   [types.ADD_CONVERSATION](_state, conversation) {

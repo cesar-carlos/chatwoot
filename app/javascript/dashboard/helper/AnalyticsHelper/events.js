@@ -13,6 +13,11 @@ export const CONVERSATION_EVENTS = Object.freeze({
   CHANGE_PRIORITY: 'Assigned priority to a conversation',
   INSERT_ARTICLE_LINK: 'Inserted article into reply via article search',
   SHARED_CONTACT: 'Shared a contact',
+  COLLAPSED_REPLY_BOX: 'Collapsed the reply box',
+  EXPANDED_REPLY_BOX: 'Expanded the reply box',
+  OPENED_PREVIOUS_CONVERSATION: 'Opened the previous conversation of a contact',
+  OPENED_NEXT_CONVERSATION: 'Opened the next conversation of a contact',
+  VIEWED_ALL_CONTACT_CONVERSATIONS: 'Viewed all conversations of a contact',
 });
 
 export const ACCOUNT_EVENTS = Object.freeze({
@@ -105,10 +110,6 @@ export const CAPTAIN_EVENTS = Object.freeze({
 
   // Follow-up events
   FOLLOW_UP_SENT: 'Captain: Follow-up sent',
-
-  // Label suggestions
-  LABEL_SUGGESTION_APPLIED: 'Captain: Label suggestion applied',
-  LABEL_SUGGESTION_DISMISSED: 'Captain: Label suggestion dismissed',
 
   // Conversation sidebar suggestions
   LABEL_SUGGESTIONS_REQUESTED: 'Captain: Label suggestions requested',
