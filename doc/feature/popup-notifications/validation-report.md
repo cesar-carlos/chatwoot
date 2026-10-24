@@ -4,7 +4,7 @@ Cada linha aponta para a seção histórica abaixo. Os números antigos não for
 
 | Release / candidato | Data | O que a seção registra |
 |---|---|---|
-| `fix/pwa-push-reinstall` | 24/out/2026 | Preferência por usuário, convite de recuperação, estado de entrega e limpeza. Números desta rodada ficam em [PWA — plano](../pwa/implementation-plan.md#resultado-desta-branch-24out2026) |
+| `origin/main` `f5ac1d6fd2` | 24/out/2026 | Preferência por usuário, convite de recuperação, estado de entrega e limpeza. Números desta rodada ficam em [PWA — plano](../pwa/implementation-plan.md#resultado-desta-branch-24out2026) |
 | `f58ca95d4d` em produção | 01/out/2026 | [Implantação em produção](#implantação-em-produção--01out2026) |
 | Candidato mobile e banners | 02/out/2026 | [Correções mobile e banners](#correções-mobile-e-banners--02out2026) |
 | Notificações por time | 02/out/2026 | [Integração das notificações por time](#integração-das-notificações-por-time--02out2026) |
