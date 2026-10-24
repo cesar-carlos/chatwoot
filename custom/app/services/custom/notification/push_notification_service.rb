@@ -40,11 +40,17 @@ module Custom::Notification::PushNotificationService
 
     WebPush.payload_send(**browser_push_payload(subscription))
     Rails.logger.info("Browser push accepted #{push_log_context(subscription)}")
+    Custom::Notification::PushDeliveryRecorder.record(subscription, status: 'accepted')
   rescue StandardError => e
     handle_browser_push_error(e, subscription)
   end
 
   def handle_browser_push_error(error, subscription)
+    Custom::Notification::PushDeliveryRecorder.record(
+      subscription,
+      status: expired_browser_push?(error) ? 'expired' : 'failed',
+      error: error
+    )
     context = push_log_context(subscription, error)
 
     case error
@@ -68,6 +74,10 @@ module Custom::Notification::PushNotificationService
     else
       Rails.logger.info("FCM push accepted #{push_log_context(subscription)}")
     end
+  end
+
+  def expired_browser_push?(error)
+    error.is_a?(WebPush::ExpiredSubscription) || error.is_a?(WebPush::InvalidSubscription)
   end
 
   def push_log_context(subscription, error = nil)

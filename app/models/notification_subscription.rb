@@ -4,9 +4,13 @@
 #
 #  id                      :bigint           not null, primary key
 #  identifier              :text
+#  last_push_error         :string
+#  last_push_status        :string
 #  subscription_attributes :jsonb            not null
 #  subscription_type       :integer          not null
 #  created_at              :datetime         not null
+#  last_push_at            :datetime
+#  last_synced_at          :datetime
 #  updated_at              :datetime         not null
 #  user_id                 :bigint           not null
 #

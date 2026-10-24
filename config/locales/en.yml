@@ -987,6 +987,9 @@ en:
           details: 'Device details'
           registered: 'Registered'
           last_updated: 'Last updated'
+          provider: 'Provider'
+          last_synced: 'Last device sync'
+          last_push: 'Last delivery'
       push_settings:
         heading: 'Push notification settings'
         description: 'Set per account, and checked once before any subscription is tried. With every type switched off the user receives no push on any device, however healthy the registrations below look.'
@@ -1053,6 +1056,10 @@ en:
         sla_missed_resolution: 'A conversation misses resolution SLA'
         voice_call_missed: 'A call the user was rung for is missed'
       push:
+        delivery_status:
+          accepted: 'Accepted'
+          failed: 'Failed'
+          expired: 'Expired'
         real_push_warning: 'This sends a real push to every selected device. Use only when diagnosing a reported issue.'
         title_label: 'Title'
         body_label: 'Body'

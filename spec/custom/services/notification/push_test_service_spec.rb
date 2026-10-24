@@ -47,6 +47,9 @@ RSpec.describe Notification::PushTestService do
       status: :success,
       message: 'Accepted by push service; device display is not confirmed'
     )
+    expect(subscription.reload.last_push_status).to eq('accepted')
+    expect(subscription.last_push_error).to be_nil
+    expect(subscription.updated_at).to be_within(1.second).of(subscription.created_at)
   end
 
   it 'limits the diagnostic content using the same byte budget as real notifications' do
@@ -62,6 +65,9 @@ RSpec.describe Notification::PushTestService do
     allow(WebPush).to receive(:payload_send).and_raise(WebPush::Unauthorized.new(response, 'web.push.apple.com'))
     result = described_class.new(user: user, subscription_ids: [subscription.id]).perform.first
     expect(subscription.reload).to be_persisted
+    expect(subscription.last_push_status).to eq('failed')
+    expect(subscription.last_push_error).to eq('error_class=WebPush::Unauthorized http_status=403 provider_reason=BadJwtToken')
+    expect(subscription.last_push_error).not_to include('private-token', subscription.identifier)
     expect(result).to include(status: :failure, message: 'Push service did not accept the test notification')
     expect(result[:message]).not_to include('private-token')
   end
@@ -69,6 +75,9 @@ RSpec.describe Notification::PushTestService do
   it 'removes expired subscriptions detected by a diagnostic' do
     response = instance_double(Net::HTTPResponse, code: '410', body: '{}')
     allow(WebPush).to receive(:payload_send).and_raise(WebPush::ExpiredSubscription.new(response, 'web.push.apple.com'))
+    expect(Custom::Notification::PushDeliveryRecorder).to receive(:record)
+      .with(subscription, status: 'expired', error: kind_of(WebPush::ExpiredSubscription))
+      .and_call_original
     result = described_class.new(user: user, subscription_ids: [subscription.id]).perform.first
     expect(result[:status]).to eq(:failure)
     expect { subscription.reload }.to raise_error(ActiveRecord::RecordNotFound)

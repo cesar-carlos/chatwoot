@@ -1,4 +1,7 @@
 module SuperAdmin::UserDiagnosticsHelper
+  # FORK: browser push provider, last sync and last delivery columns
+  include Custom::SuperAdmin::UserDiagnosticsHelper
+
   # Order used by the agent notification preferences screen. Differs from the enum order.
   # Labels: super_admin.user_diagnostics.push_types.
   PUSH_TYPE_ORDER = %i[

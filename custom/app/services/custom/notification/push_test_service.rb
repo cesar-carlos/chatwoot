@@ -6,12 +6,15 @@ module Custom::Notification::PushTestService
 
     WebPush.payload_send(**browser_push_payload(subscription))
     Rails.logger.info("Browser push test accepted #{Custom::Notification::BrowserPushLogContext.build(user_id: user.id, subscription: subscription)}")
+    Custom::Notification::PushDeliveryRecorder.record(subscription, status: 'accepted')
     result(subscription, 'browser_push', :success, 'Accepted by push service; device display is not confirmed')
   rescue StandardError => e
     Rails.logger.warn(
       "Browser push test failed #{Custom::Notification::BrowserPushLogContext.build(user_id: user.id, subscription: subscription, error: e)}"
     )
-    subscription.destroy! if e.is_a?(WebPush::ExpiredSubscription) || e.is_a?(WebPush::InvalidSubscription)
+    expired = e.is_a?(WebPush::ExpiredSubscription) || e.is_a?(WebPush::InvalidSubscription)
+    Custom::Notification::PushDeliveryRecorder.record(subscription, status: expired ? 'expired' : 'failed', error: e)
+    subscription.destroy! if expired
     result(subscription, 'browser_push', :failure, 'Push service did not accept the test notification')
   end
 

@@ -75,15 +75,20 @@ RSpec.describe 'Notification delivery API', type: :request do
     before do
       allow(VapidService).to receive(:public_key).and_return('test')
       allow(WebPush).to receive(:payload_send).and_return(true)
+      Redis::Alfred.delete("browser-push-test:#{user.id}")
     end
 
-    it 'sends only the authenticated user subscription and limits tests to three per minute' do
+    it 'sends only the authenticated user subscription and limits tests to three per 60 seconds' do
       create(:notification_subscription, :browser_push, user: user, identifier: endpoint, subscription_attributes: attributes)
-      freeze_time do
+      travel_to(Time.zone.parse('2026-10-24 12:00:50')) do
         3.times do
           post '/api/v1/notification_subscriptions/test', params: { endpoint: endpoint }, headers: headers, as: :json
           expect(response).to have_http_status(:ok)
         end
+        post '/api/v1/notification_subscriptions/test', params: { endpoint: endpoint }, headers: headers, as: :json
+        expect(response).to have_http_status(:too_many_requests)
+        # A new clock minute is not a new allowance. The 60 second window still holds.
+        travel 15.seconds
         post '/api/v1/notification_subscriptions/test', params: { endpoint: endpoint }, headers: headers, as: :json
         expect(response).to have_http_status(:too_many_requests)
       end

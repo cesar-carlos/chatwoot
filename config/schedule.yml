@@ -93,6 +93,12 @@ remove_orphan_conversations_job:
   class: 'Internal::RemoveOrphanConversationsJob'
   queue: housekeeping
 
+# FORK: drop browser push subscriptions with no recent sync and no accepted delivery
+prune_stale_browser_push_subscriptions_job:
+  cron: '15 3 * * *'
+  class: 'Custom::Notification::PruneStaleSubscriptionsJob'
+  queue: housekeeping
+
 # FORK: Wavoip stale webhook alert (daily 08:00 UTC)
 wavoip_webhook_stale_alert_job:
   cron: '0 8 * * *'

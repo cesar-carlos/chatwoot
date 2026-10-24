@@ -46,9 +46,9 @@ module Custom::Api::V1::NotificationSubscriptionsController
   private
 
   def push_test_allowed?
-    key = "browser-push-test:#{current_user.id}:#{Time.current.to_i / 60}"
+    key = "browser-push-test:#{current_user.id}"
     count = Redis::Alfred.incr(key)
-    Redis::Alfred.expire(key, 120) if count == 1
+    Redis::Alfred.expire(key, 60) if count == 1
     count <= 3
   end
 

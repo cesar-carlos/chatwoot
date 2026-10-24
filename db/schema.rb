@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_19_143116) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_24_120000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1634,6 +1634,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_19_143116) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.text "identifier"
+    t.datetime "last_synced_at"
+    t.datetime "last_push_at"
+    t.string "last_push_status"
+    t.string "last_push_error"
     t.index ["identifier"], name: "index_notification_subscriptions_on_identifier", unique: true
     t.index ["user_id"], name: "index_notification_subscriptions_on_user_id"
   end

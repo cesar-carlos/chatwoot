@@ -95,7 +95,8 @@
           <thead>
             <tr>
               <th><input type="checkbox" class="<%= ui(:checkbox) %>" aria-label="<%= t("super_admin.actions.select_all") %>" data-check-toggle></th>
-              <% %w[id type device token details registered last_updated].each do |column| %>
+              <% # FORK: provider, last device sync and last push delivery %>
+              <% %w[id type device token details registered last_updated provider last_synced last_push].each do |column| %>
                 <th><%= t("#{scope}.devices.columns.#{column}") %></th>
               <% end %>
             </tr>
@@ -128,6 +129,10 @@
                   <%= subscription.updated_at.strftime('%Y-%m-%d %H:%M') %>
                   <span class="text-xs text-n-slate-10">(<%= t("super_admin.record.time_ago", time: time_ago_in_words(subscription.updated_at)) %>)</span>
                 </td>
+                <%# FORK: provider, last device sync and last push delivery %>
+                <td class="whitespace-nowrap"><%= browser_push_provider(subscription) %></td>
+                <td class="whitespace-nowrap tabular-nums"><%= browser_push_synced_at(subscription) %></td>
+                <td class="text-xs"><%= browser_push_delivery(subscription) %></td>
               </tr>
             <% end %>
           </tbody>

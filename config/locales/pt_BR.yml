@@ -927,6 +927,9 @@ pt_BR:
           details: 'Detalhes do dispositivo'
           registered: 'Registrado'
           last_updated: 'Última atualização'
+          provider: 'Provedor'
+          last_synced: 'Última sincronização do dispositivo'
+          last_push: 'Último envio'
       push_settings:
         heading: 'Configurações de notificações push'
         description: 'Definidas por conta e verificadas uma vez antes de qualquer tentativa de envio para uma assinatura. Com todos os tipos desativados, o usuário não recebe notificações push em nenhum dispositivo, mesmo que os registros abaixo pareçam íntegros.'
@@ -993,6 +996,10 @@ pt_BR:
         sla_missed_resolution: 'Uma conversa perde o SLA de resolução'
         voice_call_missed: 'Uma chamada que tocou para o usuário foi perdida'
       push:
+        delivery_status:
+          accepted: 'Aceito'
+          failed: 'Falhou'
+          expired: 'Expirado'
         real_push_warning: 'Isso envia uma notificação push real para cada dispositivo selecionado. Use somente ao diagnosticar um problema relatado.'
         title_label: 'Título'
         body_label: 'Corpo'
