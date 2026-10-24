@@ -283,13 +283,36 @@ Doc: [send-a-media-message](https://docs.evolutionfoundation.com.br/evolution-go
 
 ### Outros send (Fase 3)
 
-| Path | Doc |
-|------|-----|
-| `POST /send/location` | [send-a-location-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-location-message) |
-| `POST /send/contact` | [send-a-contact-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-contact-message) |
-| `POST /send/link` | [send-a-link-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-link-message) |
-| `POST /send/sticker` | [send-a-sticker-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-sticker-message) |
-| `POST /send/poll` | [send-a-poll-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-poll-message) |
+| Path | Doc | Contrato no fork |
+|------|-----|------------------|
+| `POST /send/location` | [send-a-location-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-location-message) | anexo de localização |
+| `POST /send/contact` | [send-a-contact-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-contact-message) | cartão de contato |
+| `POST /send/link` | [send-a-link-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-link-message) | `content_type: article`, um POST por item (`url` = `link`). `text` e `quoted` só no primeiro |
+| `POST /send/sticker` | [send-a-sticker-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-sticker-message) | anexo webp |
+| `POST /send/poll` | [send-a-poll-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-poll-message) | não enviado; entrada vira texto |
+| `POST /send/carousel` | Swagger `CarouselStruct` | `content_type: cards` |
+| `POST /send/button` | Swagger `ButtonStruct` | `input_select` com até 3 itens sem descrição, só `reply` |
+| `POST /send/list` | Swagger `ListStruct` | `input_select` com descrição ou mais de 3 itens |
+
+Carrossel (Swagger, não `{ text, cards }`):
+
+```json
+{
+  "number": "5511999999999",
+  "body": "Ofertas",
+  "cards": [
+    {
+      "header": { "imageUrl": "https://example.com/a.png", "title": "Oferta" },
+      "body": { "text": "Só hoje" },
+      "buttons": [{ "type": "URL", "displayText": "Ver", "id": "https://example.com/oferta" }]
+    }
+  ]
+}
+```
+
+`postback` vira `REPLY` (`id` = `payload`). `link` vira `URL` (`id` = `uri`). Os dois no mesmo cartão não são enviados. `displayText` corta em 20. URL com extensão `mp4`, `webm` ou `mov` vai em `header.videoUrl`.
+
+No menu (`/send/button` e `/send/list`), `description` é o texto da mensagem e `title` é o rótulo curto do locale (`list_button_label`). O rodapé é `INSTALLATION_NAME`. Linha de lista sem descrição omite `description`.
 
 **QuotedMessage schema (todos sends):** `{ messageId, participant }` — diferente do Baileys `quoted.key`.
 

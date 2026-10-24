@@ -56,6 +56,14 @@ module Custom::Whatsapp::EvolutionGo::ProviderConfig
     normalize_credentials(DEFAULTS.merge(attrs.stringify_keys))
   end
 
+  # Absent keys follow DEFAULTS. The settings screen treats those defaults as on
+  # (`!== false`); Boolean.cast(nil) would turn them off.
+  def self.enabled?(config, key)
+    raw = (config || {}).stringify_keys[key.to_s]
+    raw = DEFAULTS[key.to_s] if raw.nil?
+    ActiveModel::Type::Boolean.new.cast(raw)
+  end
+
   def self.normalize_credentials(config)
     config = config.stringify_keys
     %w[global_api_key instance_token instance_name].each do |key|

@@ -59,6 +59,62 @@ describe('useEvolutionGoQrSession', () => {
     stopSession();
   });
 
+  it('does not replace a pairing code with a QR refresh when the expiry timer fires', async () => {
+    const store = createStore();
+    store.dispatch.mockResolvedValue({
+      connection_status: 'connecting',
+      pairing_code: 'ABCD1234',
+      qrcode_base64: 'data:image/png;base64,stale',
+    });
+
+    const { pairingCode, qrcodeBase64, startSession, stopSession } =
+      useEvolutionGoQrSession({
+        inboxId: 1,
+        store,
+      });
+
+    await startSession();
+    expect(pairingCode.value).toBe('ABCD-1234');
+    expect(qrcodeBase64.value).toBe('');
+
+    store.dispatch.mockClear();
+    vi.advanceTimersByTime(45_000);
+    await Promise.resolve();
+
+    expect(store.dispatch).not.toHaveBeenCalledWith(
+      'inboxes/evolutionGoReconnect',
+      1
+    );
+    expect(pairingCode.value).toBe('ABCD-1234');
+    stopSession();
+  });
+
+  it('cancels a pending QR refresh after a pairing code arrives', async () => {
+    const store = createStore();
+    const { applyPayload, pairingCode, startSession, stopSession } =
+      useEvolutionGoQrSession({
+        inboxId: 1,
+        store,
+      });
+
+    await startSession();
+    store.dispatch.mockClear();
+    applyPayload({
+      connection_status: 'connecting',
+      pairing_code: 'ABCD1234',
+    });
+    expect(pairingCode.value).toBe('ABCD-1234');
+
+    vi.advanceTimersByTime(45_000);
+    await Promise.resolve();
+
+    expect(store.dispatch).not.toHaveBeenCalledWith(
+      'inboxes/evolutionGoReconnect',
+      1
+    );
+    stopSession();
+  });
+
   it('clears pairing code when a new QR payload arrives', () => {
     const store = createStore();
     const { pairingCode, applyPayload, stopSession } = useEvolutionGoQrSession({

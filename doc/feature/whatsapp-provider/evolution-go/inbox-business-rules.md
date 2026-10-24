@@ -145,7 +145,7 @@ Doc create: [create-a-new-instance](https://docs.evolutionfoundation.com.br/evol
 | Campo | Default | Fase | Comportamento |
 |-------|---------|------|---------------|
 | `inbox.lock_to_single_conversation` | **`true`** | nativo | Resolved + inbound → reabre (via `Conversations::Resolver`) |
-| `merge_brazil_contacts` | `true` | 2 | Normaliza 9º dígito BR |
+| `merge_brazil_contacts` | `true` | 2 | Normaliza 9º dígito BR. Participante de grupo no Go usa `EvolutionGo::JidResolver`, então chave ausente continua ligada |
 
 **Não portado de Evolution Node:** `conversation_pending` — default/UI só no provider `evolution`; helpers de pending cycle checam `provider == 'evolution'`, não `evolution_go`. Settings Go não expõem o toggle.
 
@@ -161,7 +161,7 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 | `sign_msg` | `false` | 2 | Prefixo agente |
 | `sign_delimiter` | `\n` | 2 | — |
 | `convert_markdown_outbound` | `true` | 2 | CW → WA formatting |
-| `mark_read_on_reply` | `false` | 2 | → `POST /message/markread`; fallback: última não lida se sem reply target |
+| `mark_read_on_reply` | `false` | 2 | → `MarkReadJob` / `POST /message/markread` (fatias de 20); fallback: última não lida se sem reply target |
 | `send_random_delay` | via `delay` no send | 2 | Campo `delay` em SendText |
 | `sync_delete_to_whatsapp` | `false` | UX | Agente delete **outgoing** CW → sync WA **first** (`POST /message/delete`) → soft-delete local (opt-in, irreversível no WA); falha API → 422 sem alterar CW; JID via `ChatJid` |
 | `sync_edit_to_whatsapp` | `false` | UX | Opt-in: context menu Edit → `MessageContentEditService` → `POST /message/edit` (markdown/signature) — ADR §35 |
@@ -176,7 +176,7 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 | Campo | Default | Fase | Implementação |
 |-------|---------|------|---------------|
 | `ignore_from_me_echo` | `true` | 1 | Normalizer (configurável) |
-| `ignore_status` | `true` | 2 | `status@broadcast` |
+| `ignore_status` | `true` | 2 | `status@broadcast`. Chave ausente/`nil` também ignora |
 | `mark_inbound_deleted` | `true` | UX | Webhook revoke/delete → marca `deleted` no CW **mantendo o texto original** + destaque vermelho / aviso i18n (inclui `fromMe` / celular; `deleted_via_evolution_go_webhook`). Job sempre consome o envelope; soft-delete gated por esta flag |
 | `mark_inbound_edited` | `true` | UX | Webhook edit plaintext → atualiza CW (inclui `fromMe` / celular; skip noop / encrypted-only / orphan). Texto bare + `content_attributes.edited` + badge. Residual: Go sem `editedMessage` → CW não muda |
 | `convert_markdown_inbound` | `true` | UX | Normalizer + edit sync |
@@ -195,7 +195,7 @@ Implementar filtros inbound no job/normalizer — **não** existe DTO Chatwoot n
 |-------|-------|
 | URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}` |
 | Registro | `POST /instance/connect` body `webhookUrl` |
-| Subscribe | Lista canônica `ProviderConfig::WEBHOOK_EVENTS` (+ `GROUP` se `ignore_groups: false`) — ver [webhook-events.md](./webhook-events.md) |
+| Subscribe | Lista canônica `ProviderConfig::WEBHOOK_EVENTS` (+ `GROUP` se `ignore_groups: false`). Religar ignore remove `GROUP` e preserva extras — ver [webhook-events.md](./webhook-events.md) |
 | ActionCable | `evolution_go:connection:{inbox_id}` |
 | Integração CW nativa | **Não existe** — nada a desabilitar |
 
@@ -228,6 +228,10 @@ Ocultar: templates Meta, campanhas, embedded signup, health cloud, voz Meta.
 
 Mensagens históricas recebem `content_attributes.history_import: true`.
 
+O import de contatos não substitui `evolution_go_remote_jid` `@lid` por um JID de telefone da agenda, e não troca um nome editado pelo agente. `contacts_imported` conta só o contato que foi gravado.
+
+`import_messages` sem `import_contacts` ainda pede `POST /chat/history-sync`. A lista de chats vem de `GET /user/contacts` e dos JIDs já gravados no inbox. Um job que morre deixa `import_status: running` e solta o lock; o retry (ou o próximo connect) retoma enquanto o lock estiver livre. `completed` não dispara de novo.
+
 ---
 
 ## 10. Diagnóstico operacional
@@ -245,7 +249,7 @@ Mensagens históricas recebem `content_attributes.history_import: true`.
 |-----------------|---------------------|------|
 | Create instance | Wizard step 1 | 1 |
 | Connect + webhook events | Wizard step 2 (automático) | 1 |
-| QR / pairing code | Wizard step 3 | 1 |
+| QR / pairing code | Wizard step 3. Código de 8 caracteres não é substituído pelo poll, pelo webhook `QRCODE` nem pelo refresh de 45s. Reconnect limpa o código | 1 |
 | Instance list | Não portar (admin no painel Go) | — |
 | Advanced settings | Inbox settings | 2 |
 

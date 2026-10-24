@@ -54,7 +54,15 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
   end
 
   def server_ok
-    get('/server/ok', headers: {})
+    pinned_ip = pinned_server_ip!
+    get(
+      '/server/ok',
+      headers: {},
+      request_options: {
+        connection_adapter: Custom::Whatsapp::EvolutionGo::PinnedHttpAdapter,
+        pinned_ip: pinned_ip
+      }
+    )
   end
 
   def create_instance(name:, token: nil, proxy: nil)
@@ -178,6 +186,27 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
       body[api_key] = value unless value.nil?
     end
     post('/send/list', body, headers: instance_headers)
+  end
+
+  def send_carousel(number:, cards:, body: nil, footer: nil, **options)
+    payload = {
+      number: normalize_number(number),
+      cards: cards
+    }
+    payload[:body] = body if body.present?
+    payload[:footer] = footer if footer.present?
+    assign_delivery_options!(payload, options)
+    post('/send/carousel', payload, headers: instance_headers)
+  end
+
+  def send_link(number:, url:, title: nil, description: nil, text: nil, img_url: nil, **options)
+    payload = { number: normalize_number(number), url: url }
+    payload[:title] = title if title.present?
+    payload[:description] = description if description.present?
+    payload[:text] = text if text.present?
+    payload[:imgUrl] = img_url if img_url.present?
+    assign_delivery_options!(payload, options)
+    post('/send/link', payload, headers: instance_headers)
   end
 
   def mark_messages_read(number:, ids:)
@@ -327,8 +356,16 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     { 'apikey' => @instance_token, 'Content-Type' => 'application/json' }
   end
 
-  def get(path, headers:)
-    request(:get, path, nil, headers: headers)
+  def assign_delivery_options!(payload, options)
+    %i[quoted delay format_jid].each do |key|
+      api_key = key == :format_jid ? :formatJid : key
+      value = options[key]
+      payload[api_key] = value unless value.nil?
+    end
+  end
+
+  def get(path, headers:, request_options: nil)
+    request(:get, path, nil, headers: headers, request_options: request_options)
   end
 
   def post(path, body, headers:)
@@ -343,31 +380,37 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     request(:delete, path, nil, headers: headers)
   end
 
-  # rubocop:disable Metrics/CyclomaticComplexity -- HTTP retry / network rescue paths
-  def request(method, path, body, headers:, attempt: 0)
+  def request(method, path, body, headers:, attempt: 0, request_options: nil)
     options = {
       headers: headers,
       timeout: timeout_for(path),
       open_timeout: OPEN_TIMEOUT,
       follow_redirects: false
-    }
+    }.merge(request_options || {})
     options[:body] = body.to_json if body.present?
 
     response = HTTParty.public_send(method, "#{@base_url}#{path}", options)
-    return retry_request(method, path, body, headers, attempt) if !response.success? && attempt < MAX_RETRIES && retryable_failure?(response, path)
+    return retry_request(method, path, body, headers, attempt, request_options) if retry_response?(response, path, attempt)
 
     ensure_parseable_response!(response, method, path)
     response
   rescue *NETWORK_ERRORS => e
     # Honor NON_RETRYABLE_PATHS for network timeouts too (avatar CDN hangs).
-    return retry_request(method, path, body, headers, attempt) if attempt < MAX_RETRIES && NON_RETRYABLE_PATHS.exclude?(path)
+    return retry_request(method, path, body, headers, attempt, request_options) if retry_network?(path, attempt)
 
     raise Custom::Whatsapp::EvolutionGo::ApiError.new(
       "Evolution Go API request failed: #{method.to_s.upcase} #{path}",
       body: e.message
     )
   end
-  # rubocop:enable Metrics/CyclomaticComplexity
+
+  def retry_response?(response, path, attempt)
+    !response.success? && attempt < MAX_RETRIES && retryable_failure?(response, path)
+  end
+
+  def retry_network?(path, attempt)
+    attempt < MAX_RETRIES && !non_retryable_path?(path)
+  end
 
   def timeout_for(path)
     case path
@@ -377,15 +420,32 @@ class Custom::Whatsapp::EvolutionGo::ApiClient
     end
   end
 
-  def retry_request(method, path, body, headers, attempt)
+  def retry_request(method, path, body, headers, attempt, request_options = nil)
     sleep(RETRY_BACKOFF * (attempt + 1))
-    request(method, path, body, headers: headers, attempt: attempt + 1)
+    request(method, path, body, headers: headers, attempt: attempt + 1, request_options: request_options)
+  end
+
+  # Re-resolve immediately before the socket and dial that IP. The hostname
+  # stays on the request for Host and TLS.
+  def pinned_server_ip!
+    ips = Custom::Whatsapp::EvolutionGo::UrlSafetyGuard.destination_ips(@base_url)
+    if ips.blank? || ips.any? { |ip| Custom::Whatsapp::EvolutionGo::UrlSafetyGuard.blocked_ip?(ip) }
+      raise Custom::Whatsapp::EvolutionGo::ApiError, 'Evolution Go server unreachable'
+    end
+
+    ips.first
   end
 
   def retryable_failure?(response, path)
-    return false if NON_RETRYABLE_PATHS.include?(path)
+    return false if non_retryable_path?(path)
 
     RETRYABLE_STATUSES.cover?(response.code.to_i)
+  end
+
+  # Sends are not idempotent: a 5xx or timeout after Go accepted the message
+  # would deliver a second copy. The agent retries from the failed bubble.
+  def non_retryable_path?(path)
+    NON_RETRYABLE_PATHS.include?(path) || path.to_s.start_with?('/send/')
   end
 
   def ensure_parseable_response!(response, method, path)

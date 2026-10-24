@@ -2,8 +2,13 @@
 
 # rubocop:disable Metrics/ModuleLength, Metrics/MethodLength, Metrics/ParameterLists
 module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
-  INTERACTIVE_LIST_BUTTON_TEXT = 'Options'
-  INTERACTIVE_FOOTER_TEXT = 'Chatwoot'
+  LIST_BUTTON_TEXT_LIMIT = 20
+  LIST_SECTION_TITLE_LIMIT = 24
+  LIST_ROW_TITLE_LIMIT = 24
+  LIST_ROW_DESCRIPTION_LIMIT = 72
+  HEADER_TEXT_LIMIT = 60
+  FOOTER_TEXT_LIMIT = 60
+  REPLY_BUTTON_LABEL_LIMIT = 20
 
   private
 
@@ -174,35 +179,40 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     end
   end
 
-  def dispatch_input_select(phone_number, title, items, quoted, delay, message)
+  def dispatch_input_select(phone_number, body, items, quoted, delay, message)
     options = delivery_options(phone_number, message).merge(quoted: quoted, delay: delay)
-    if items.size <= 3
-      api_client.send_buttons(
-        number: phone_number,
-        title: title,
-        description: title,
-        footer: INTERACTIVE_FOOTER_TEXT,
-        buttons: build_reply_buttons(items),
-        **options
-      )
-    else
+    label = interactive_menu_label
+    if list_input_select?(items)
       api_client.send_list(
         number: phone_number,
-        title: title,
-        description: title,
-        footer_text: INTERACTIVE_FOOTER_TEXT,
-        button_text: INTERACTIVE_LIST_BUTTON_TEXT,
+        title: label.truncate(HEADER_TEXT_LIMIT),
+        description: body,
+        footer_text: interactive_footer_text,
+        button_text: label.truncate(LIST_BUTTON_TEXT_LIMIT),
         sections: [build_list_section(items)],
         **options
       )
+    else
+      api_client.send_buttons(
+        number: phone_number,
+        title: label.truncate(HEADER_TEXT_LIMIT),
+        description: body,
+        footer: interactive_footer_text,
+        buttons: build_reply_buttons(items),
+        **options
+      )
     end
+  end
+
+  def list_input_select?(items)
+    items.size > 3 || items.any? { |item| item.with_indifferent_access[:description].present? }
   end
 
   def build_reply_buttons(items)
     items.map.with_index(1) do |item, index|
       {
         type: 'reply',
-        displayText: item['title'].to_s.truncate(20),
+        displayText: item['title'].to_s.truncate(REPLY_BUTTON_LABEL_LIMIT),
         id: (item['value'].presence || index).to_s
       }
     end
@@ -210,15 +220,36 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
 
   def build_list_section(items)
     {
-      title: 'Options',
-      rows: items.map.with_index(1) do |item, index|
-        {
-          title: item['title'].to_s.truncate(24),
-          description: item['description'].to_s.truncate(72),
-          rowId: (item['value'].presence || index).to_s
-        }
-      end
+      title: interactive_menu_label.truncate(LIST_SECTION_TITLE_LIMIT),
+      rows: items.map.with_index(1) { |item, index| list_row(item, index) }
     }
+  end
+
+  def list_row(item, index)
+    row = item.with_indifferent_access
+    payload = {
+      title: row[:title].to_s.truncate(LIST_ROW_TITLE_LIMIT),
+      rowId: (row[:value].presence || index).to_s
+    }
+    description = row[:description].to_s.truncate(LIST_ROW_DESCRIPTION_LIMIT).presence
+    payload[:description] = description if description
+    payload
+  end
+
+  def interactive_menu_label
+    I18n.with_locale(whatsapp_channel.account.locale) do
+      I18n.t('conversations.messages.whatsapp.list_button_label')
+    end
+  end
+
+  def interactive_footer_text
+    GlobalConfigService.load('INSTALLATION_NAME', 'Chatwoot').to_s.truncate(FOOTER_TEXT_LIMIT)
+  end
+
+  def interactive_prompt
+    I18n.with_locale(whatsapp_channel.account.locale) do
+      I18n.t('conversations.messages.whatsapp.choose_option')
+    end
   end
 
   def send_attachment_message(phone_number, message)
@@ -253,6 +284,7 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
       return first_id
     end
 
+    remember_secondary_source_id!(response, message)
     return message_id if response.success?
 
     Rails.logger.warn(
@@ -366,6 +398,27 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
     value.sub(/\Adata:[^;]+;base64,/, '')
   end
 
+  def remember_secondary_source_id!(response, message)
+    source_id = extract_source_id(response.parsed_response)
+    return if source_id.blank? || message.blank? || message.inbox.blank?
+
+    begin
+      Custom::Whatsapp::EvolutionGo::MessageDedupLock.build(inbox: message.inbox, source_id: source_id).acquire!
+    rescue StandardError => e
+      Rails.logger.warn("[EVOLUTION_GO] secondary source lock failed source_id=#{source_id}: #{e.message}")
+    end
+    persist_secondary_source_id!(message, source_id)
+  end
+
+  def persist_secondary_source_id!(message, source_id)
+    key = Custom::Whatsapp::EvolutionGo::OutboundSourceClaim::SECONDARY_SOURCE_IDS_KEY
+    attrs = (message.content_attributes || {}).stringify_keys
+    ids = Array.wrap(attrs[key])
+    return if ids.include?(source_id)
+
+    message.update!(content_attributes: attrs.merge(key => (ids + [source_id]).uniq))
+  end
+
   def sign_msg?
     ActiveModel::Type::Boolean.new.cast(provider_config['sign_msg'])
   end
@@ -379,7 +432,7 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   end
 
   def convert_markdown_outbound?
-    ActiveModel::Type::Boolean.new.cast(provider_config['convert_markdown_outbound'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(provider_config, 'convert_markdown_outbound')
   end
 
   def mark_read_on_reply?
@@ -387,7 +440,7 @@ module Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
   end
 
   def notify_send_errors_private?
-    ActiveModel::Type::Boolean.new.cast(provider_config['notify_send_errors_private'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(provider_config, 'notify_send_errors_private')
   end
 
   def provider_config

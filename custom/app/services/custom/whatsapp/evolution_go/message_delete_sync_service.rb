@@ -23,9 +23,7 @@ class Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService
   private
 
   def mark_inbound_deleted_enabled?
-    ActiveModel::Type::Boolean.new.cast(
-      (channel.provider_config || {})['mark_inbound_deleted']
-    )
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(channel.provider_config, 'mark_inbound_deleted')
   end
 
   def extract_key

@@ -11,7 +11,7 @@ import { useRoute } from 'vue-router';
 import { LocalStorage } from 'shared/helpers/localStorage';
 import { ACCOUNT_EVENTS } from 'dashboard/helper/AnalyticsHelper/events';
 import { LOCAL_STORAGE_KEYS } from 'dashboard/constants/localStorage';
-import { getInboxIconByType } from 'dashboard/helper/inbox';
+import { getInboxIconByType, INBOX_TYPES } from 'dashboard/helper/inbox';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 import {
   MESSAGE_TYPES,
@@ -38,6 +38,8 @@ import InstagramStoryBubble from './bubbles/InstagramStory.vue';
 import EmailBubble from './bubbles/Email/Index.vue';
 import UnsupportedBubble from './bubbles/Unsupported.vue';
 import ContactBubble from './bubbles/Contact.vue';
+// FORK: Evolution Go cards and article preview
+import EvolutionGoStructuredMessage from 'customDashboard/components/evolution_go/EvolutionGoStructuredMessage.vue';
 import DyteBubble from './bubbles/Dyte.vue';
 import LocationBubble from './bubbles/Location.vue';
 import CSATBubble from './bubbles/CSAT.vue';
@@ -341,6 +343,17 @@ const shouldShowAvatar = computed(() => {
   return true;
 });
 
+// FORK: Evolution Go renders Chatwoot cards and articles in the agent timeline
+const isEvolutionGoStructuredMessage = computed(() => {
+  const record = inbox.value || {};
+  const channelType = record.channel_type || record.channelType;
+  return (
+    channelType === INBOX_TYPES.WHATSAPP &&
+    record.provider === 'evolution_go' &&
+    [CONTENT_TYPES.CARDS, CONTENT_TYPES.ARTICLE].includes(props.contentType)
+  );
+});
+
 const componentToRender = computed(() => {
   if (props.isEmailInbox && !props.private) {
     const emailInboxTypes = [MESSAGE_TYPES.INCOMING, MESSAGE_TYPES.OUTGOING];
@@ -359,6 +372,10 @@ const componentToRender = computed(() => {
     [CONTENT_TYPES.INPUT_SELECT, CONTENT_TYPES.FORM].includes(props.contentType)
   ) {
     return FormBubble;
+  }
+
+  if (isEvolutionGoStructuredMessage.value) {
+    return EvolutionGoStructuredMessage;
   }
 
   if (props.contentType === CONTENT_TYPES.VOICE_CALL) {

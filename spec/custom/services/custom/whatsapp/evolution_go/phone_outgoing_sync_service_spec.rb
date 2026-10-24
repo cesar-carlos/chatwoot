@@ -102,6 +102,76 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService do
     expect(message.content_attributes['evolution_go_remote_jid']).to eq('123456789012345@lid')
   end
 
+  it 'attaches the echo source_id to the in-flight agent message' do
+    contact = create(:contact, account: account, phone_number: '+556696971841')
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
+    conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+    agent_message = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      status: :sent,
+      source_id: nil,
+      content: '**Mensagem enviada pelo celular para peer LID**'
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_lid_alt.json').read)
+    payload['data']['Message']['conversation'] = '*Mensagem enviada pelo celular para peer LID*'
+
+    expect do
+      described_class.new(channel: channel, data: payload['data']).perform
+    end.not_to change(Message, :count)
+
+    agent_message.reload
+    expect(agent_message.source_id).to eq('3EB0PHONELID00001')
+    expect(agent_message.content_attributes['phone_sent']).not_to be(true)
+    expect(agent_message.content_attributes['evolution_go_remote_jid']).to eq('123456789012345@lid')
+  end
+
+  it 'skips an echo stored as a secondary source id on the agent message' do
+    contact = create(:contact, account: account, phone_number: '+556696971841')
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
+    conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+    create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      source_id: 'PRIMARY1',
+      content_attributes: { 'evolution_go_secondary_source_ids' => ['3EB0PHONELID00001'] }
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_lid_alt.json').read)
+
+    expect do
+      described_class.new(channel: channel, data: payload['data']).perform
+    end.not_to change(Message, :count)
+  end
+
+  it 'creates a phone message when no in-flight agent message matches the text' do
+    contact = create(:contact, account: account, phone_number: '+556696971841')
+    contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
+    conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+    agent_message = create(
+      :message,
+      account: account,
+      inbox: inbox,
+      conversation: conversation,
+      message_type: :outgoing,
+      status: :sent,
+      source_id: nil,
+      content: 'texto diferente do eco'
+    )
+    payload = JSON.parse(Rails.root.join('spec/fixtures/evolution_go/message_send_phone_lid_alt.json').read)
+
+    expect do
+      described_class.new(channel: channel, data: payload['data']).perform
+    end.to change(Message, :count).by(1)
+
+    expect(agent_message.reload.source_id).to be_nil
+  end
+
   it 'scopes the outgoing echo dedup lock to the inbox' do
     contact = create(:contact, account: account, phone_number: '+556696971841')
     contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')

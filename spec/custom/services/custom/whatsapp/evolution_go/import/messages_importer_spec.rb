@@ -60,4 +60,44 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::Import::MessagesImporter do
 
     importer.import_batch!
   end
+
+  it 'requests history from the provider contact list when Redis has no chats' do
+    Redis::Alfred.delete(format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_REMOTE_JIDS, channel_id: channel.id))
+    contacts = instance_double(
+      HTTParty::Response,
+      success?: true,
+      parsed_response: { 'data' => [{ 'Jid' => '5511888888888@s.whatsapp.net' }] }
+    )
+    allow(api_client).to receive(:user_contacts).and_return(contacts)
+    response = instance_double(HTTParty::Response, success?: true)
+    expect(api_client).to receive(:history_sync).with(
+      chat: '5511888888888@s.whatsapp.net',
+      count: 7
+    ).and_return(response)
+    allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:raise_unless_success!)
+
+    importer.import_batch!
+  end
+
+  it 'uses inbox chats when the provider contact list is unavailable' do
+    Redis::Alfred.delete(format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_REMOTE_JIDS, channel_id: channel.id))
+    allow(api_client).to receive(:user_contacts).and_return(instance_double(HTTParty::Response, success?: false))
+    contact = create(
+      :contact,
+      account: account,
+      additional_attributes: {
+        Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY =>
+          '149215000000000@lid'
+      }
+    )
+    create(:contact_inbox, contact: contact, inbox: channel.inbox, source_id: '149215000000000@lid')
+    response = instance_double(HTTParty::Response, success?: true)
+    expect(api_client).to receive(:history_sync).with(
+      chat: '149215000000000@lid',
+      count: 7
+    ).and_return(response)
+    allow(Custom::Whatsapp::EvolutionGo::ApiClient).to receive(:raise_unless_success!)
+
+    importer.import_batch!
+  end
 end

@@ -2,7 +2,7 @@
 
 **Escopo do fork:** integração Chatwoot ↔ Evolution Go (REST + webhooks).
 
-**Última revisão:** 27/ago/2026 (LID/PN §37 + dedup lock por inbox §38) · **Integração completa; E2E operador pendente**
+**Última revisão:** 24/out/2026 (pareamento, enriquecimento por JID, envio sem retry) · **Integração completa; E2E operador pendente**
 
 ---
 
@@ -51,7 +51,7 @@
 | QR deferred to modal (no sync fetch on create) | ✅ jul/2026 |
 | Read receipt batch processing | ✅ jul/2026 |
 | `GET evolution_go_connection`, `POST evolution_go_logout`, `POST evolution_go_server_check` | ✅ |
-| Fase 3 (poll / link outbound) | ⚠️ parcial |
+| Fase 3 (cards, article, input_select) | ✅ 24/out/2026 · menu sem texto duplicado, rótulo localizado, eco de link extra suprimido · enquete / Pix / call / copy / status continuam de fora |
 | Message reactions (inbound chip + outbound menu) | ✅ 16/jul/2026 · improvements (actor/timeout/Node) · 18/jul LID + menu UX |
 | 1:1 LID vs PN (inbound persist + LID-only) | ✅ 27/ago/2026 · ADR §37 |
 | Dedup lock por inbox (dois canais Go na mesma conta) | ✅ 27/ago/2026 · ADR §38 |
@@ -63,11 +63,13 @@
 
 ### Backend
 - `EvolutionGo::*` services (ApiClient, ConnectionService, SettingsSync, Media*, Import*)
-- `EvolutionGoService` + outbound (text, media, quote, mark read on reply/open)
-- `EvolutionGoNormalizer` (text + media + contact + reply context + button/list replies + richResponse/Meta AI + markdown inbound)
+- `EvolutionGoService` + outbound (text, media, quote, cards→carousel, article→link, input_select→button/list, mark read on reply/open)
+- `EvolutionGoNormalizer` (text + media + contact + reply context + button/list replies + list/buttons/carousel/poll como texto + richResponse/Meta AI + markdown inbound)
 - Presence: `TypingListener` → `PresenceSyncJob` → `POST /message/presence`
 - Contact enrichment on inbound via `IncomingMessageIdentifierHelper` + `ContactEnrichmentJob`
-- `READ_RECEIPT` no job prepend; `MarkReadService` ao abrir conversa
+- `READ_RECEIPT` no job prepend; `MarkReadService` ao abrir conversa enfileira `MarkReadJob` (até 100 IDs, fatias de 20)
+- Eco do agente: `OutboundSourceClaim` no send + `InflightAgentMessage` (janela 2 min) quando `ignore_from_me_echo: false`
+- Server check: `UrlSafetyGuard` falha fechado sem DNS e `PinnedHttpAdapter` fixa o IP aceito
 - Inbound delete/edit: `MessageDeleteSyncService`, `MessageEditSyncService` + extractors (`IsEdit`/`IsRevoke`, `typeName`, protocol key ID)
 - Encrypted edit envelope: job skip (`encrypted_edit`) — evita `[Unsupported message type]`; plaintext protocol atualiza CW
 - Inbound/outbound reactions: `MessageReactionSyncService`, `ReactSyncService`, `ApiClient#react` + context menu
@@ -93,6 +95,7 @@
 - `useEvolutionGoImportStatus.js` — polling 5s enquanto `import_status === 'running'`
 - `MessageContextMenu` — confirmação delete com aviso WhatsApp quando `sync_delete_to_whatsapp`
 - ActionCable + polling QR
+- Bolha só de leitura de `cards` e `article` no timeline quando o inbox é Evolution Go
 
 ### API Chatwoot (custom controllers)
 - Inbox: `GET evolution_go_connection`, `POST evolution_go_reconnect`, `POST evolution_go_logout`, `POST evolution_go_server_check` (collection)
@@ -143,5 +146,5 @@ Lista completa: [provider-config-mapping.md](./provider-config-mapping.md). Inbo
 
 1. **E2E** — [validation-checklist.md](./validation-checklist.md) com servidor Go real (sync webhook, pair, location, logout, grupos, typing presence, reply context, **edit plaintext vs `secretEncryptedMessage`**, revoke)
 2. **Proxy edit** — aguarda validação `advanced-settings` (UI hoje: banner create-only)
-3. **Fase 3 restante** — poll / link outbound (fora do MVP inbox)
+3. **Fora do inbox** — enquete, Pix, ligação, copiar código e status não têm content_type no Chatwoot
 4. **Edit/delete** — UI + anti-loop + plaintext protocol ✅ 17/jul; E2E com fixture real de produção; encrypted-only permanece skip residual ([#92](https://github.com/evolution-foundation/evolution-go/issues/92))

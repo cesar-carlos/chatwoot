@@ -46,16 +46,17 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
 
   def import_contacts_batch(contacts, offset, total_count)
     remote_jids = load_remote_jids
+    imported = 0
     contacts.each do |record|
       next unless record.is_a?(Hash)
 
       remote_jid = remote_jid_from_record(record)
       remote_jids << remote_jid if remote_jid.present?
-      import_contact_record(record, remote_jid)
+      imported += 1 if import_contact_record(record, remote_jid)
     end
 
     save_remote_jids!(remote_jids.uniq)
-    runtime.update_stats!(contacts_imported: contacts.size)
+    runtime.update_stats!(contacts_imported: imported) if imported.positive?
     next_offset = offset + contacts.size
     if next_offset >= total_count
       advance_to_messages_phase!
@@ -86,28 +87,70 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
   end
 
   def import_contact_record(record, remote_jid)
-    return if skip_remote_jid?(remote_jid)
+    return false if skip_remote_jid?(remote_jid)
 
     source_id = normalize_source_id(phone_from_contact_record(record))
-    return if source_id.blank?
+    return false if source_id.blank?
 
     contact = upsert_contact(record, remote_jid)
     link_contact_inbox(contact, source_id)
     enqueue_contact_enrichment(contact, remote_jid, push_name_from_record(record))
+    true
   end
 
   def upsert_contact(record, remote_jid)
     phone = phone_from_contact_record(record)
     contact = runtime.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
-    name = push_name_from_record(record).presence || contact.name || contact.phone_number
-    contact.name = name
-    lid = jid_resolver.lid_identifier_for(remote_jid)
-    contact.identifier = lid if lid.present?
-    contact.additional_attributes = (contact.additional_attributes || {}).merge(
-      Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY => remote_jid
-    )
+    additional = (contact.additional_attributes || {}).stringify_keys
+    apply_import_name!(contact, additional, push_name_from_record(record))
+    apply_import_addressing!(contact, additional, remote_jid)
+    contact.additional_attributes = additional
     contact.save!
     contact
+  end
+
+  # Same rule as contact enrichment: keep an agent-edited name. Push name fills a
+  # blank, a phone-number placeholder, or a name that is still the previous push name.
+  def apply_import_name!(contact, additional, push_name)
+    if push_name.present? && import_name_updatable?(contact, additional) && contact.name != push_name
+      contact.name = push_name
+      additional[Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_PUSH_NAME_KEY] = push_name
+    elsif contact.name.blank?
+      contact.name = contact.phone_number
+    end
+  end
+
+  def import_name_updatable?(contact, additional)
+    return true if contact.name.blank?
+    return true if contact_name_matches_phone?(contact)
+
+    last_push = additional[Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_PUSH_NAME_KEY].to_s
+    last_push.present? && contact.name == last_push
+  end
+
+  def contact_name_matches_phone?(contact)
+    phone_number = contact.phone_number.to_s
+    return false if phone_number.blank?
+
+    formatted = TelephoneNumber.parse(phone_number).international_number
+    contact.name == phone_number || contact.name == formatted
+  end
+
+  # A phone JID from the address book must not replace a stored @lid. Delivery uses that field.
+  def apply_import_addressing!(contact, additional, remote_jid)
+    key = Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY
+    additional[key] = Custom::Whatsapp::EvolutionGo::JidResolver.merge_addressing_jid(additional[key], remote_jid)
+
+    lid = jid_resolver.lid_identifier_for(remote_jid)
+    return if lid.blank? || !lid_available?(contact, lid)
+
+    contact.identifier = lid
+  end
+
+  def lid_available?(contact, lid)
+    scope = contact.account.contacts.where(identifier: lid)
+    scope = scope.where.not(id: contact.id) if contact.persisted?
+    !scope.exists?
   end
 
   def link_contact_inbox(contact, source_id)

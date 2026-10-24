@@ -26,9 +26,7 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
   private
 
   def mark_inbound_edited_enabled?
-    ActiveModel::Type::Boolean.new.cast(
-      (channel.provider_config || {})['mark_inbound_edited']
-    )
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(channel.provider_config, 'mark_inbound_edited')
   end
 
   def extract_edited_body(payload)
@@ -59,8 +57,6 @@ class Custom::Whatsapp::EvolutionGo::MessageEditSyncService
   end
 
   def convert_markdown_inbound?
-    ActiveModel::Type::Boolean.new.cast(
-      (channel.provider_config || {})['convert_markdown_inbound']
-    )
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(channel.provider_config, 'convert_markdown_inbound')
   end
 end

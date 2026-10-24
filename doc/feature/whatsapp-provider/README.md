@@ -2,14 +2,14 @@
 
 Documentação do fork para providers WhatsApp alternativos em `Channel::Whatsapp`.
 
-Hoje o repositório tem um provider alternativo **implementado** e outros **apenas documentados**:
+Dois providers alternativos estão no código. Z-API e NotificaMe não têm plano local:
 
 | Provider | Chave | Estado |
 |----------|-------|--------|
-| Evolution API (Node/Baileys) | `evolution` | ✅ código em `custom/` + specs |
-| Evolution Go (whatsmeow) | `evolution_go` | ✅ código em `custom/` + specs |
-| Z-API | `zapi` | ✅ [z-api/](./z-api/) |
-| NotificaMe / genéricos | — | 📄 comparação apenas |
+| Evolution API (Node/Baileys) | `evolution` | código em `custom/` + specs |
+| Evolution Go (whatsmeow) | `evolution_go` | código em `custom/` + specs |
+| Z-API | `zapi` | sem código; baixar a doc oficial na implementação |
+| NotificaMe / genéricos | — | comparação apenas |
 
 Status consolidado: [STATUS.md](./STATUS.md)
 
@@ -27,21 +27,18 @@ Status consolidado: [STATUS.md](./STATUS.md)
 
 ## Estado atual do código
 
-O fork já estendeu o fluxo padrão do Chatwoot para `evolution` sem alterar o caminho cloud:
+O fork estende o fluxo padrão do Chatwoot para `evolution` e `evolution_go` sem alterar o caminho cloud. Revisão: out/2026.
 
-- `app/models/channel/whatsapp.rb`: `PROVIDERS` inclui `evolution`
-- `custom/lib/messaging_provider/registry.rb`: registry de providers alternativos
-- `custom/app/models/custom/channel/whatsapp.rb`: dispatch por registry + sync/mascara de config
-- `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb`: roteamento e normalização de webhooks Evolution
-- `custom/app/services/custom/conversations/message_window_service.rb`: bypass da janela de 24h para `evolution`
-- `custom/app/services/custom/whatsapp/evolution/`: adapter REST, normalizer, provisionamento, sync e import
-- `custom/app/javascript/dashboard/routes/dashboard/settings/inbox/channels/Evolution.vue`: wizard do provider
+- `app/models/channel/whatsapp.rb`: `PROVIDERS` inclui `evolution` e `evolution_go`
+- `custom/config/initializers/messaging_provider_registry.rb`: os dois providers registrados
+- `custom/app/models/custom/channel/whatsapp.rb`: dispatch por registry, sync e máscara de config
+- `custom/app/controllers/webhooks/evolution_controller.rb` e `evolution_go_controller.rb`: receivers dedicados
+- `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` e `whatsapp_events_job_evolution_go.rb`: normalização antes do incoming flat
+- `custom/lib/messaging_provider/capabilities.rb` + `message_window_service.rb`: sessão livre para os dois gateways
+- `custom/app/services/custom/whatsapp/evolution/` e `evolution_go/`: adapters REST, normalizers, provisionamento e sync
+- Wizards: `Evolution.vue` e `EvolutionGo.vue`, ligados em `Whatsapp.vue`
 
-Resumo importante:
-
-- Só `evolution` está ligado ao código hoje.
-- `evolution_go` ainda **não** está em `PROVIDERS`, no registry ou nas rotas.
-- Voz continua sendo assunto separado em `doc/feature/whatsapp-voice/`.
+Voz continua em `doc/feature/whatsapp-voice/`. Z-API não entra em `PROVIDERS` nem no registry. O plano local foi removido por estar desatualizado; na implementação, partir de [developer.z-api.io](https://developer.z-api.io/).
 
 ## Estrutura da documentação
 
@@ -62,8 +59,8 @@ Resumo importante:
 
 | Pasta | Papel |
 |-------|-------|
-| [evolution-api/](./evolution-api/README.md) | Provider em produção no fork: contratos, operação, troubleshooting |
-| [evolution-go/](./evolution-go/README.md) | Provider planejado: decisões, contratos e plano antes do código |
+| [evolution-api/](./evolution-api/README.md) | Provider implementado: contratos, operação, troubleshooting |
+| [evolution-go/](./evolution-go/README.md) | Provider implementado: contratos, operação e lacunas de E2E |
 
 ## Relação com outras áreas
 

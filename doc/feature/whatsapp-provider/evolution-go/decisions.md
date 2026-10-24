@@ -106,6 +106,7 @@ Doc: [send-a-text-message](https://docs.evolutionfoundation.com.br/evolution-go/
 | **Campo primário** | `response.dig('data', 'Info', 'ID')` — struct whatsmeow PascalCase |
 | **Fallback** | `response.dig('data', 'messageId')` se presente |
 | **Não usar** | `key.id` (formato Baileys/Evolution API Node) |
+| **Claim** | `OutboundSourceClaim` grava o `source_id` e pega o lock por inbox **na resposta do send**, antes do eco `SEND_MESSAGE` |
 
 ---
 
@@ -115,6 +116,7 @@ Doc: [send-a-text-message](https://docs.evolutionfoundation.com.br/evolution-go/
 |---------|-------|
 | **Default** | `ignore_from_me_echo: true` — drop echo events |
 | **Opt-in** | When `false`, `SEND_MESSAGE` and `MESSAGE` with `fromMe: true` → `PhoneOutgoingSyncService` (outgoing, `phone_sent: true` + `external_echo: true` for native-app UI) |
+| **Corrida com o agente** | Se o eco chegar antes do claim, `InflightAgentMessage` adota a outgoing pendente (sem `source_id`, janela de 2 min, mesmo texto / markdown / assinatura) em vez de criar outra bolha |
 | **Contact** | `PeerContactInboxResolver` reuses existing conversations |
 
 ---
@@ -137,7 +139,7 @@ Reusar prepend da Fase 0 com capability `unlimited_session: true`.
 |---------|-------|
 | **Default** | `ignore_groups: true` (nil/ausente = ignorar — predicado `!= false` no job, normalizer, phone sync, subscribe, import) |
 | **Opt-in** | `ignore_groups: false`: conversa única por JID `@g.us`; nome via `POST /group/info`; participante em `evolution_go_participant_*` |
-| **Subscribe** | Categoria `GROUP` → eventos `GroupInfo` / `JoinedGroup` (`data.JID`); job aceita `GROUP` / `GROUP_INFO` / `JOINED_GROUP` |
+| **Subscribe** | Categoria `GROUP` → eventos `GroupInfo` / `JoinedGroup` (`data.JID`); job aceita `GROUP` / `GROUP_INFO` / `JOINED_GROUP`. `GROUP` entra em `MANAGED_EVENTS`: ao voltar `ignore_groups` para `true`, o sync **remove** `GROUP` e preserva eventos extras que o operador cadastrou |
 | **Metadata** | Inline `warm_cache_from_name!` (`JoinedGroup.GroupName.Name` / `GroupInfo.Name.Name`) + `schedule_metadata_fetch!` (Redis NX, 5 min). API warm força refresh de avatar |
 | **Naming** | Contato só sobrescreve com nome `*(GROUP)`; nunca seed com pushName do membro (fallback = prefixo do JID) |
 | **Automação** | `Custom::AutomationRuleListener` + `AutomationEventDispatcher` ignoram `source_id` `@g.us` |
@@ -193,7 +195,7 @@ Prepend deve expor `contact_sender_id` compatível com payload **já normalizado
 |-------|------------|
 | `global_api_key` | Write-only; GET masked |
 | `instance_token` | Write-only; GET masked |
-| `webhook_token` | Gerado no create; nunca expor em logs |
+| `webhook_token` | Gerado no create; nunca expor em logs. A URL do health inclui o token para o operador. `instance_info` e logs do diagnóstico removem token, apikey e password |
 | `proxy_password` | Write-only |
 
 ---
@@ -392,6 +394,7 @@ end
 | 18/jul/2026 | §36 addendum: avatar `/user/avatar` LID-first; timeout → cooldown 30m (`avatar_timeout_at`), não 6h |
 | 27/ago/2026 | §37: 1:1 LID vs PN — persistir addressing `@lid`; não dropar inbound LID-only; não inventar E.164 dos dígitos LID |
 | 27/ago/2026 | §38: `MessageDedupLock` Evolution Go por inbox — dois canais da mesma conta podem persistir a mesma ID WhatsApp |
+| 24/out/2026 | §6/§7/§28 claim + adoção de eco em voo; §9 prune de `GROUP`; §30 lotes de mark-read e merge só do delta; §31 pin de DNS no server check |
 
 ---
 
@@ -402,6 +405,7 @@ end
 | **Service** | `PhoneOutgoingSyncService` + `PeerContactInboxResolver` |
 | **Setting** | `ignore_from_me_echo` (default `true`) |
 | **Dedup** | `source_id` + `MessageDedupLock` **por inbox** (`inbox-{id}-{source_id}` — §38); release lock on early exit |
+| **Claim do agente** | `OutboundSourceClaim` no `process_response` (§6). Eco que chega antes disso: `InflightAgentMessage` (janela 2 min) |
 
 ---
 
@@ -421,9 +425,13 @@ end
 |---------|-------|
 | **Webhook enqueue** | `WhatsappEventsJob` on queue `:default` |
 | **`last_webhook_at`** | Debounced 30s via Redis `EVOLUTION_GO_WEBHOOK_TOUCH_DEBOUNCE` |
-| **Media / mark-read** | `MediaDownloadJob`, `MarkReadJob` on `:default`; `mark_read_on_reply` async |
+| **Media / mark-read** | `MediaDownloadJob`, `MarkReadJob` on `:default`. Reply e open enfileiram o job; o HTTP não corre no request da conversa. O controller tira `base64` do webhook antes do Sidekiq; o arquivo vem de `POST /message/downloadmedia`. Na 5ª falha o job grava `evolution_go_media_failed` |
+| **Lotes de leitura** | `READ_BATCH_SIZE` 20; no open, no máximo `MAX_UNREAD_IDS` 100. Lote com HTTP fora de 2xx interrompe os seguintes |
+| **Defaults ausentes** | `ProviderConfig.enabled?` usa o default do fork quando a chave é `nil`. Flags ligadas por padrão (`ignore_from_me_echo`, `ignore_status`, `mark_read_on_open`, `mark_inbound_deleted`, `mark_inbound_edited`, markdown, `notify_send_errors_private`, `send_templates_as_text`, `merge_brazil_contacts`) ficam ligadas. O `PUT advanced-settings` envia esse boolean |
+| **Dedup inbound** | Lock ocupado gera `LockAcquisitionError` (`WhatsappEventsJob` tenta de novo). Se o contato não foi criado, o lock é solto na hora. Contato bloqueado mantém o lock |
+| **Histórico** | `HistorySyncProcessor` só conta registro que gravou ou alterou mensagem. `LockAcquisitionError` sobe para o job repetir o webhook |
 | **ApiClient** | `RETRY_BACKOFF` 0.1s; `validate_provider_config` cache 60s |
-| **Runtime config** | `ProviderConfigMerger` atomic JSONB merge |
+| **Runtime config** | `ProviderConfigMerger` faz `jsonb \|\|` só com o **delta**. Connect/subscribe longos não regravam o snapshot (senão `last_webhook_at`, `import_status`, `connection_status` voltavam) |
 
 ---
 
@@ -434,6 +442,7 @@ end
 | **Module** | `Custom::Whatsapp::EvolutionGo::UrlSafetyGuard` |
 | **Blocks** | Link-local / cloud metadata (`169.254.0.0/16`, etc.) |
 | **Allows** | RFC1918, localhost (self-hosted setups) |
+| **DNS** | Host sem resolução **falha fechado**. `server_ok` usa `PinnedHttpAdapter` e conecta no IP que o guard acabou de aceitar |
 | **ApiClient** | `follow_redirects: false` on all requests |
 
 ---
@@ -532,10 +541,10 @@ end
 
 | Decisão | Valor |
 |---------|-------|
-| **Query `/user/info`** | Preferir `@lid` → JID store → **dígitos plain** (evitar `phone@s.whatsapp.net` BR com 9º dígito que devolve Users vazios) |
+| **Query `/user/info`** | Preferir `@lid` → JID store → **dígitos plain** (evitar `phone@s.whatsapp.net` BR com 9º dígito que devolve Users vazios). `user/check` falso no telefone não aborta quando a query já é um JID |
 | **Avatar** | Preferir `PictureURL` do `/user/info`; skip re-download se `PictureID` igual e avatar attached; `/user/avatar` ainda aceita URL ou base64 |
 | **Rate-limit** | 429 / `rate-overlimit` → short-circuit; **não** marcar `enriched_at` / cooldown avatar longo; `/user/info` e `/user/avatar` em `NON_RETRYABLE_PATHS` |
-| **Refresh bulk** | `ContactsRefreshService`: stagger `ENQUEUE_SPACING = 3s` + lock TTL dinâmico |
+| **Refresh bulk** | `ContactsRefreshService`: stagger `ENQUEUE_SPACING = 3s`. O lock guarda um token; o release job só apaga se o token ainda for o dele. O TTL acompanha o ritmo (teto 24h) |
 | **Import abort** | Toggles off mid-run → `Import::Runtime#abort_disabled_import!` → `import_status: idle` |
 
 **Addendum 18/jul/2026 — avatar LID + timeout:**
@@ -588,3 +597,31 @@ Dois inboxes Evolution Go na **mesma conta** (dois WhatsApp conectados conversan
 | **Deploy** | Reenviar mensagem de teste; lock antigo `alfred:MESSAGE_SOURCE_KEY::{id}` TTL 1 dia pode ser apagado no Redis |
 
 Dois canais **não** compartilham o lock. Duplicata no **mesmo** inbox continua bloqueada.
+
+---
+
+## 39. Pareamento, importação e claim de eco (24/out/2026)
+
+| Decisão | Valor |
+|---------|-------|
+| **Pairing vs QR** | `last_qr_code` com 8 caracteres (depois de tirar `\W`) é código de pareamento. O poll `include_qr` e o webhook `QRCODE` não substituem esse código. `pair!` zera `last_qr_base64`, e o payload de conexão omite a imagem enquanto o código está ativo. O modal não arma o refresh de QR de 45s com código na tela. **Reconnect** limpa o código e busca o QR |
+| **Import crash** | O lock Redis é o guard de concorrência. Status `running` com lock livre significa worker morto: o retry e o connect retomam. `running` com lock ocupado não enfileira outro job. `completed` não dispara de novo |
+| **Mensagens sem contatos** | `MessagesImporter` sem lista no Redis busca `GET /user/contacts` e os JIDs do inbox (`evolution_go_remote_jid`, identifier, grupo, `source_id`) e então chama `history-sync` |
+| **Claim do send** | `OutboundSourceClaim` grava `source_id` só depois de adquirir o lock do inbox. Lock ocupado pelo eco: não grava; o eco adota a mensagem do agente |
+
+---
+
+## 40. Cards, article e input_select (24/out/2026)
+
+O Chatwoot já tem os content types. A Evolution Go só entrega o formato do Swagger. Não há content_type novo nem compositor.
+
+| Decisão | Valor |
+|---------|-------|
+| **Cards** | `POST /send/carousel`. `media_url` em `header.imageUrl`, ou `header.videoUrl` se a URL termina em `mp4`, `webm` ou `mov`. `description` é `body.text`. `postback` → `REPLY`. `link` → `URL` com o link no campo `id`. `displayText` corta em 20, como o botão de resposta |
+| **Mistura no cartão** | Reply e CTA no mesmo cartão não renderizam no WhatsApp Web. A mensagem fica `failed` e nada é enviado |
+| **Article** | Um `POST /send/link` por item. Texto introdutório e citação só no primeiro. O primeiro sucesso fica no `source_id`; os seguintes em `evolution_go_secondary_source_ids`, para o eco `fromMe` não abrir outra bolha |
+| **Input select** | Até 3 itens sem `description` → botões `reply`. Com descrição, ou mais de 3, → lista. O corpo é o texto da mensagem. Título, botão da lista e seção usam `list_button_label` no locale da conta. Linha sem descrição não envia `description` |
+| **Rodapé** | `INSTALLATION_NAME`, cortado em 60. Sem texto da mensagem, o corpo cai em `choose_option` |
+| **Enquete, Pix, call, copy, status** | A API Go tem esses endpoints. O Chatwoot não tem content_type para eles, então não saem |
+| **Entrada** | Lista, botões, carrossel e enquete viram texto. Voto sem nome de opção não cria bolha |
+| **Dashboard** | Inbox Evolution Go mostra `cards` e `article` numa bolha só de leitura |

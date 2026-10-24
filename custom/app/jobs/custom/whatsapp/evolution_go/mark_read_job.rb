@@ -9,9 +9,16 @@ class Custom::Whatsapp::EvolutionGo::MarkReadJob < ApplicationJob
     channel = Channel::Whatsapp.find_by(id: channel_id, provider: 'evolution_go')
     return if channel.blank? || phone_number.blank? || source_ids.blank?
 
-    Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel).mark_messages_read(
-      number: phone_number, ids: Array.wrap(source_ids)
-    )
+    client = Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel)
+    Array.wrap(source_ids).each_slice(Custom::Whatsapp::EvolutionGo::MarkReadService::READ_BATCH_SIZE) do |batch|
+      response = client.mark_messages_read(number: phone_number, ids: batch)
+      next if response.success?
+
+      Rails.logger.warn(
+        "[EVOLUTION_GO] mark read failed channel=#{channel_id} status=#{response.code} count=#{batch.size}"
+      )
+      break
+    end
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION_GO] mark read on reply failed channel=#{channel_id}: #{e.message}"
   end

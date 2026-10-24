@@ -46,6 +46,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     update_runtime_config!(
       'connection_status' => 'connecting',
       'last_qr_code' => code,
+      'last_qr_base64' => nil,
       'webhook_subscribe' => events
     )
     { pairing_code: code }
@@ -89,7 +90,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     {
       connection_status: provider_config['connection_status'],
       phone_number: channel.phone_number,
-      qrcode_base64: provider_config['last_qr_base64'],
+      qrcode_base64: pairing_code_active? ? nil : provider_config['last_qr_base64'],
       qrcode_code: provider_config['last_qr_code']
     }
   end
@@ -131,6 +132,14 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
 
   def persist_provider_config!(attrs)
     Custom::Whatsapp::EvolutionGo::ProviderConfigMerger.merge!(channel, attrs.stringify_keys)
+  end
+
+  def pairing_code_active?
+    self.class.pairing_code?(provider_config['last_qr_code'])
+  end
+
+  def self.pairing_code?(value)
+    value.to_s.gsub(/\W/, '').length == 8
   end
 
   def connection_events
@@ -196,6 +205,9 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
   def fetch_qr_if_needed!(state_checked: nil)
     return unless provider_config['connection_status'].in?(%w[connecting close])
     return if provider_config['last_qr_base64'].present?
+    # Phone pairing stores an 8-character code and no image. The dashboard polls
+    # with include_qr, which would replace that code with a QR token.
+    return if pairing_code_active?
     return if state_checked == :failed
 
     provisioner.send(:fetch_qr_code!, raise_on_failure: false, max_attempts: 1)
@@ -232,6 +244,12 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     phone.to_s.start_with?('+55000')
   end
 
+  def import_lock_held?
+    ::Redis::Alfred.get(
+      format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_LOCK, channel_id: channel.id)
+    ).present?
+  end
+
   def update_phone_number!(phone)
     channel.update_columns(phone_number: phone, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
     channel.phone_number = phone
@@ -259,10 +277,16 @@ class Custom::Whatsapp::EvolutionGo::ConnectionService
     return unless import_on_connect_enabled?
     return unless history_import_enabled?
 
-    status = provider_config['import_status']
-    return if status.in?(%w[running completed])
+    return if import_resume_blocked?
 
     Custom::Whatsapp::EvolutionGo::ImportJob.perform_later(channel.id)
+  end
+
+  # A crashed run stays "running" after ensure releases the lock. Enqueue so the
+  # next perform can resume. A live worker still holds the lock — leave it alone.
+  def import_resume_blocked?
+    status = provider_config['import_status']
+    status == 'completed' || (status == 'running' && import_lock_held?)
   end
 
   def import_on_connect_enabled?

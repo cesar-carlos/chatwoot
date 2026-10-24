@@ -75,6 +75,10 @@ class Custom::Whatsapp::Evolution::GroupParticipantService
   end
 
   def jid_resolver
-    @jid_resolver ||= Custom::Whatsapp::Evolution::JidResolver.new(channel.provider_config || {})
+    @jid_resolver ||= if evolution_go_channel?
+                        Custom::Whatsapp::EvolutionGo::JidResolver.new(channel.provider_config || {})
+                      else
+                        Custom::Whatsapp::Evolution::JidResolver.new(channel.provider_config || {})
+                      end
   end
 end

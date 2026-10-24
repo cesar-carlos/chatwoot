@@ -17,6 +17,7 @@ class Custom::Whatsapp::EvolutionGo::Import::MessagesImporter
 
   def import_batch!
     remote_jids = load_remote_jids_from_redis
+    remote_jids = seed_remote_jids! if remote_jids.blank? && runtime.cursor[:message_jid_index].to_i.zero?
     if remote_jids.blank?
       runtime.mark_completed!
       return
@@ -52,13 +53,79 @@ class Custom::Whatsapp::EvolutionGo::Import::MessagesImporter
   end
 
   def load_remote_jids_from_redis
-    key = format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_REMOTE_JIDS, channel_id: runtime.channel.id)
-    stored = ::Redis::Alfred.get(key)
+    stored = ::Redis::Alfred.get(remote_jids_redis_key)
     return [] if stored.blank?
 
     JSON.parse(stored)
   rescue JSON::ParserError
     []
+  end
+
+  # Contacts phase normally fills this list. Messages-only import skips that
+  # phase, so build the chat list from the provider address book and chats
+  # already stored on the inbox before requesting history.
+  def seed_remote_jids!
+    jids = (remote_jids_from_provider + remote_jids_from_inbox).uniq.reject { |jid| skip_remote_jid?(jid) }
+    save_remote_jids!(jids) if jids.present?
+    jids
+  end
+
+  def remote_jids_from_provider
+    response = api_client.user_contacts
+    return [] unless response.success?
+
+    extract_contacts_records(response.parsed_response).filter_map do |record|
+      next unless record.is_a?(Hash)
+
+      remote_jid_from_record(record).presence
+    end
+  rescue Custom::Whatsapp::EvolutionGo::ApiError => e
+    Rails.logger.warn("[EVOLUTION_GO] history chat list failed channel=#{runtime.channel.id}: #{e.message}")
+    []
+  end
+
+  def remote_jids_from_inbox
+    jids = []
+    runtime.inbox.contact_inboxes.includes(:contact).find_each do |contact_inbox|
+      jid = history_jid_for(contact_inbox)
+      jids << jid if jid.present?
+    end
+    jids
+  end
+
+  def history_jid_for(contact_inbox)
+    stored_history_jid(contact_inbox).presence || phone_history_jid(contact_inbox)
+  end
+
+  def stored_history_jid(contact_inbox)
+    contact = contact_inbox.contact
+    attrs = (contact&.additional_attributes || {}).stringify_keys
+    [
+      attrs[Custom::Whatsapp::EvolutionGo::ContactEnrichmentService::EVOLUTION_GO_REMOTE_JID_KEY],
+      contact&.identifier,
+      attrs[Custom::Whatsapp::Evolution::GroupKeys::EVOLUTION_GROUP_JID_KEY],
+      contact_inbox.source_id
+    ].find { |value| value.to_s.include?('@') }&.to_s
+  end
+
+  def phone_history_jid(contact_inbox)
+    digits = history_phone_digits(contact_inbox)
+    return if digits.blank? || digits.start_with?('55000')
+
+    "#{digits}@s.whatsapp.net"
+  end
+
+  def history_phone_digits(contact_inbox)
+    contact_inbox.source_id.to_s.gsub(/\D/, '').presence ||
+      contact_inbox.contact&.phone_number.to_s.gsub(/\D/, '').presence
+  end
+
+  def save_remote_jids!(jids)
+    ::Redis::Alfred.set(remote_jids_redis_key, jids.to_json, ex: 7.days.to_i)
+  end
+
+  def remote_jids_redis_key
+    format(Redis::RedisKeys::EVOLUTION_GO_IMPORT_REMOTE_JIDS, channel_id: runtime.channel.id)
   end
 
   def advance_cursor!(jid_index, jid_count)

@@ -265,29 +265,56 @@ RSpec.describe Custom::Whatsapp::IncomingMessageEvolutionGo do
     end
   end
 
-  it 'skips inbound when the inbox-scoped dedup lock is already held' do
+  it 'raises when the inbox-scoped dedup lock is already held' do
     create(:contact_inbox, inbox: inbox, source_id: '5511999999999')
     lock = Custom::Whatsapp::EvolutionGo::MessageDedupLock.build(inbox: inbox, source_id: 'SCOPED-DUP-1')
     lock.acquire!
 
-    Whatsapp::IncomingMessageService.new(
-      inbox: inbox,
-      params: {
-        contacts: [{ profile: { name: 'Alice' }, wa_id: '5511999999999' }],
-        messages: [
-          {
-            from: '5511999999999',
-            id: 'SCOPED-DUP-1',
-            timestamp: Time.now.to_i.to_s,
-            type: 'text',
-            text: { body: 'dup' }
-          }
-        ]
-      }
-    ).perform
+    expect do
+      Whatsapp::IncomingMessageService.new(
+        inbox: inbox,
+        params: {
+          contacts: [{ profile: { name: 'Alice' }, wa_id: '5511999999999' }],
+          messages: [
+            {
+              from: '5511999999999',
+              id: 'SCOPED-DUP-1',
+              timestamp: Time.now.to_i.to_s,
+              type: 'text',
+              text: { body: 'dup' }
+            }
+          ]
+        }
+      ).perform
+    end.to raise_error(MutexApplicationJob::LockAcquisitionError)
 
     expect(inbox.messages.find_by(source_id: 'SCOPED-DUP-1')).to be_blank
   ensure
-    lock.release!
+    lock&.release!
+  end
+
+  it 'releases the dedup lock when the contact payload is missing' do
+    incomplete = {
+      messages: [
+        {
+          from: '5511888888888',
+          id: 'NO-CONTACT-1',
+          timestamp: Time.now.to_i.to_s,
+          type: 'text',
+          text: { body: 'later' }
+        }
+      ]
+    }
+    Whatsapp::IncomingMessageService.new(inbox: inbox, params: incomplete).perform
+    expect(inbox.messages.find_by(source_id: 'NO-CONTACT-1')).to be_blank
+
+    Whatsapp::IncomingMessageService.new(
+      inbox: inbox,
+      params: incomplete.merge(
+        contacts: [{ profile: { name: 'Bob' }, wa_id: '5511888888888' }]
+      )
+    ).perform
+
+    expect(inbox.messages.find_by(source_id: 'NO-CONTACT-1')).to be_present
   end
 end

@@ -7,6 +7,10 @@
 # Private (RFC1918) and loopback ranges are intentionally NOT blocked: self-hosted
 # Evolution Go instances commonly run on the same host, in the same Docker network,
 # or on the same LAN as Chatwoot, and rejecting those would break legitimate setups.
+#
+# Unresolved hosts fail closed. `server_ok` connects to the IP this guard just
+# accepted so a DNS change between the check and the socket cannot retarget the
+# request at a link-local address.
 class Custom::Whatsapp::EvolutionGo::UrlSafetyGuard
   ALLOWED_SCHEMES = %w[http https].freeze
   BLOCKED_RANGES = [
@@ -19,33 +23,50 @@ class Custom::Whatsapp::EvolutionGo::UrlSafetyGuard
     new(url).safe?
   end
 
+  def self.destination_ips(url)
+    new(url).destination_ips
+  end
+
+  def self.blocked_ip?(ip)
+    addr = IPAddr.new(ip)
+    BLOCKED_RANGES.any? { |range| range.include?(addr) }
+  rescue IPAddr::Error
+    true
+  end
+
+  def self.resolve_ips(host)
+    literal = ip_literal(host)
+    return [literal] if literal.present?
+
+    Resolv.getaddresses(host).compact_blank
+  rescue StandardError
+    []
+  end
+
+  def self.ip_literal(host)
+    token = host.to_s.delete_prefix('[').delete_suffix(']')
+    return if token.blank?
+
+    IPAddr.new(token).to_s
+  rescue IPAddr::Error
+    nil
+  end
+
   def initialize(url)
     @url = url.to_s
   end
 
   def safe?
-    uri = URI.parse(@url)
-    return false if uri.host.blank? || ALLOWED_SCHEMES.exclude?(uri.scheme)
-
-    resolved_ips(uri.host).none? { |ip| blocked_ip?(ip) }
+    ips = destination_ips
+    ips.present? && ips.none? { |ip| self.class.blocked_ip?(ip) }
   rescue URI::InvalidURIError
     false
   end
 
-  private
+  def destination_ips
+    uri = URI.parse(@url)
+    return [] if uri.host.blank? || ALLOWED_SCHEMES.exclude?(uri.scheme)
 
-  # Fails open on resolution errors: the actual API call will simply fail to
-  # connect, we only need to actively block known-bad literal targets here.
-  def resolved_ips(host)
-    Resolv.getaddresses(host)
-  rescue StandardError
-    []
-  end
-
-  def blocked_ip?(ip)
-    addr = IPAddr.new(ip)
-    BLOCKED_RANGES.any? { |range| range.include?(addr) }
-  rescue IPAddr::Error
-    false
+    self.class.resolve_ips(uri.host)
   end
 end

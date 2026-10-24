@@ -1,34 +1,40 @@
 # Arquitetura atual do WhatsApp no Chatwoot
 
-Como o Chatwoot abstrai (e onde não abstrai) providers WhatsApp hoje. Referências de código do fork em jun/2026.
+Como o Chatwoot abstrai (e onde não abstrai) providers WhatsApp hoje. Referências de código do fork revisadas em out/2026.
 
 **Status consolidado:** [STATUS.md](./STATUS.md)
 
 ---
 
-## Estado fork (jun/2026) — overlay `custom/`
+## Estado fork (out/2026) — overlay `custom/`
 
 | Mecanismo | Provider | Estado |
 |-----------|----------|--------|
-| `PROVIDERS` + `# FORK:` | `evolution` | ✅ |
-| `MessagingProvider::Registry` | `evolution` | ✅ |
-| Prepend `provider_service` | `evolution` | ✅ |
-| Prepend `WhatsappEventsJob` | `evolution` | ✅ |
-| Prepend `MessageWindowService` | `evolution` | ✅ bypass 24h |
+| `PROVIDERS` + `# FORK:` | `evolution`, `evolution_go` | ✅ |
+| `MessagingProvider::Registry` | `evolution`, `evolution_go` | ✅ |
+| Prepend `provider_service` | os dois gateways | ✅ falha se o registry não resolver |
+| Prepend `WhatsappEventsJob` | os dois gateways | ✅ normalizer antes do payload flat |
+| `MessageWindowService` | os dois gateways | ✅ `MessagingProvider::Capabilities.unlimited_session?` |
 | Webhook `/webhooks/evolution/:instance_name` | `evolution` | ✅ |
-| `evolution_go` | — | 📄 documentação apenas |
+| Webhook `/webhooks/evolution_go/:instance_name` | `evolution_go` | ✅ |
+| Z-API (`zapi`) | — | ❌ sem código; doc local removida |
 
-```29:33:app/models/channel/whatsapp.rb
-  # FORK: evolution — Baileys gateway via Evolution API (custom/)
-  PROVIDERS = %w[default whatsapp_cloud evolution].freeze
+```37:42:app/models/channel/whatsapp.rb
+  # FORK: gateway providers — evolution (Baileys/Node), evolution_go (whatsmeow/Go) (custom/)
+  PROVIDERS = %w[default whatsapp_cloud evolution evolution_go].freeze
+  before_validation :ensure_webhook_verify_token
+
   validates :provider, inclusion: { in: PROVIDERS }
 ```
 
-```14:18:custom/app/models/custom/channel/whatsapp.rb
+```39:49:custom/app/models/custom/channel/whatsapp.rb
   def provider_service
     service = MessagingProvider::Registry.resolve(provider, whatsapp_channel: self)
     return service if service
-    super
+    return super if provider.in?(%w[default whatsapp_cloud])
+
+    Rails.logger.error("[MESSAGING_PROVIDER] provider_service could not resolve registry entry for provider=#{provider} channel=#{id}")
+    raise "MessagingProvider::Registry has no service registered for '#{provider}' (channel #{id})"
   end
 ```
 
@@ -38,7 +44,7 @@ Como o Chatwoot abstrai (e onde não abstrai) providers WhatsApp hoje. Referênc
 
 Corpo original no model — `default` e `whatsapp_cloud`; gateways usam prepend acima.
 
-```66:71:app/models/channel/whatsapp.rb
+```76:82:app/models/channel/whatsapp.rb
   def provider_service
     if provider == 'whatsapp_cloud'
       Whatsapp::Providers::WhatsappCloudService.new(whatsapp_channel: self)
@@ -48,10 +54,12 @@ Corpo original no model — `default` e `whatsapp_cloud`; gateways usam prepend 
   end
 ```
 
-| Campo / método | `default` | `whatsapp_cloud` | `evolution` (fork) |
+O prepend em `custom/` intercepta `evolution` e `evolution_go` antes desse `else`.
+
+| Campo / método | `default` | `whatsapp_cloud` | `evolution` / `evolution_go` |
 |---|---|---|---|
-| `provider_config` | `api_key` | Meta IDs + tokens | `base_url`, `api_key`, `instance_name`, … |
-| Webhook | `/webhooks/whatsapp/:phone` | HMAC Meta | `/webhooks/evolution/:instance_name` |
+| `provider_config` | `api_key` | Meta IDs + tokens | `base_url` + credenciais da instância |
+| Webhook | `/webhooks/whatsapp/:phone` | HMAC Meta | rota dedicada por instância |
 | Chamadas | **false** | **true** (EE) | **false** |
 
 **Nota:** 360dialog é BSP **oficial**. Serve como referência de segundo provider no mesmo STI.
@@ -122,16 +130,20 @@ flowchart TB
 - **Controller:** `Webhooks::WhatsappController` — verificação Meta (`MetaTokenVerifyConcern`), assinatura HMAC só para `whatsapp_cloud`
 - **Job:** `Webhooks::WhatsappEventsJob` — mutex por contato, echo `smb_message_echoes` (cloud), dispatch:
 
-```79:86:app/jobs/webhooks/whatsapp_events_job.rb
-  def handle_message_events(channel, params)
+```88:97:app/jobs/webhooks/whatsapp_events_job.rb
+  def handle_message_events(channel, params, locked_sender_id = nil)
     case channel.provider
     when 'whatsapp_cloud'
-      Whatsapp::IncomingMessageWhatsappCloudService.new(...).perform
+      service_params = { inbox: channel.inbox, params: params }
+      service_params[:locked_sender_id] = locked_sender_id if locked_sender_id.present?
+      Whatsapp::IncomingMessageWhatsappCloudService.new(**service_params).perform
     else
-      Whatsapp::IncomingMessageService.new(...).perform
+      Whatsapp::IncomingMessageService.new(inbox: channel.inbox, params: params).perform
     end
   end
 ```
+
+Os prepends de `evolution` e `evolution_go` normalizam o envelope do gateway antes desse `else`.
 
 **Enterprise** (`enterprise/app/jobs/enterprise/webhooks/whatsapp_events_job.rb`): intercepta `field=calls` e `call_permission_reply` **antes** de mensagens — 100% formato Meta.
 
@@ -158,7 +170,7 @@ flowchart TB
 
 | Componente | Função |
 |---|---|
-| `Whatsapp.vue` | Seleção: WhatsApp Cloud (embedded/manual) ou Twilio |
+| `Whatsapp.vue` | Cloud, Twilio, 360dialog e, no fork, `Evolution` / `EvolutionGo` |
 | `CloudWhatsapp.vue` | Manual: `provider: 'whatsapp_cloud'` + IDs Meta |
 | `360DialogWhatsapp.vue` | Legado; acesso via `?provider=360dialog` (não no seletor principal) |
 | `WhatsappEmbeddedSignup.vue` | OAuth Meta via `useWhatsappEmbeddedSignup` |
@@ -205,22 +217,22 @@ flowchart TB
 
 ## Extension points no fork (merge-safe)
 
-O diretório `custom/` no fork já contém **`Custom::Whatsapp::Evolution::*`** (Evolution API Node, com fluxo principal de mensagens/operação implementado). **Evolution Go** (`evolution_go`) está documentado, mas ainda sem código — ver [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
+O diretório `custom/` implementa **`Custom::Whatsapp::Evolution::*`** e **`Custom::Whatsapp::EvolutionGo::*`**. A coexistência dos dois está em [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md). Z-API não tem overlay nem plano versionado.
 
 | Mecanismo | Onde aplicar | Exemplo |
 |-----------|--------------|---------|
 | `custom/` overlay | Services, normalizers, Vue wizards | `Custom::Whatsapp::Providers::EvolutionService` |
 | Prepend direto / `prepend_mod_with` | Model, jobs | `Channel::Whatsapp.prepend`, `Webhooks::WhatsappEventsJob.prepend_mod_with` |
-| `# FORK:` mínimo | Constantes, imports UI | `PROVIDERS` (+ `evolution` hoje), import/card do provider em `Whatsapp.vue` |
+| `# FORK:` mínimo | Constantes, imports UI | `PROVIDERS` (`evolution`, `evolution_go`), cards em `Whatsapp.vue` |
 | Registry (novo) | Dispatch provider | `MessagingProvider::Registry` em initializer `custom/` |
 
 Hooks **já presentes** no upstream (usar, não duplicar):
 
-```164:164:app/jobs/webhooks/whatsapp_events_job.rb
+```185:185:app/jobs/webhooks/whatsapp_events_job.rb
 Webhooks::WhatsappEventsJob.prepend_mod_with('Webhooks::WhatsappEventsJob')
 ```
 
-```233:233:app/services/whatsapp/providers/whatsapp_cloud_service.rb
+```284:284:app/services/whatsapp/providers/whatsapp_cloud_service.rb
 Whatsapp::Providers::WhatsappCloudService.prepend_mod_with('Whatsapp::Providers::WhatsappCloudService')
 ```
 

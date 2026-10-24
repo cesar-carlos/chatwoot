@@ -80,6 +80,9 @@
       "SUCCESS": "Sincronização iniciada. Nome e avatar serão atualizados em breve.",
       "ERROR": "Não foi possível sincronizar o contato. Tente novamente."
     },
+    "EVOLUTION_GO_STRUCTURED": {
+      "EMPTY": "Esta mensagem não tem itens."
+    },
     "MESSAGE_SEARCH": {
       "MENU_LABEL": "Pesquisar nesta conversa",
       "MENU_SHORTCUT": "Pesquisar nesta conversa (⌘F / Ctrl+F)",

@@ -79,7 +79,7 @@ Como cada capability do Chatwoot hoje (via Cloud API / 360dialog) se traduz para
 | Cloud API | `wa_id` / BSUID | Como recebido |
 | 360dialog | `contacts[0].wa_id` | Como recebido |
 | Evolution | `remoteJid` | Strip `@s.whatsapp.net` |
-| Z-API | `phone` | E.164 sem `+` ou com — padronizar |
+| Z-API | a confirmar na doc oficial | normalizar uma vez no normalizer, na implementação |
 | LID / parent BSUID | Meta coexistence | `IncomingMessageIdentifierHelper` — avaliar se gateway envia |
 
 **Regra:** normalizar no normalizer **uma vez**; manter consistência outbound/inbound.
@@ -90,7 +90,7 @@ Como cada capability do Chatwoot hoje (via Cloud API / 360dialog) se traduz para
 
 | UI | Cloud | 360dialog | Gateway |
 |----|-------|-----------|---------|
-| Wizard setup | Embedded / manual | `?provider=360dialog` | 🔧 Card Evolution/Z-API |
+| Wizard setup | Embedded / manual | `?provider=360dialog` | ✅ Evolution e Evolution Go; Z-API ainda sem card |
 | QR / conexão | OAuth Meta | — | Polling status + QR |
 | Settings health | Meta health API | Parcial | Gateway status endpoint |
 | Template picker | ✅ | ✅ | ❌ ou simplificado |

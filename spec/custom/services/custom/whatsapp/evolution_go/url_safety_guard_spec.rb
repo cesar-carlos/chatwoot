@@ -32,13 +32,21 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::UrlSafetyGuard do
     end
 
     it 'allows normal public urls' do
+      allow(Resolv).to receive(:getaddresses).with('evogo.example.com').and_return(['1.1.1.1'])
+
       expect(described_class.safe?('https://evogo.example.com')).to be true
     end
 
-    it 'fails open when DNS resolution errors out' do
+    it 'fails closed when a host does not resolve' do
+      allow(Resolv).to receive(:getaddresses).with('missing.example.com').and_return([])
+
+      expect(described_class.safe?('https://missing.example.com')).to be false
+    end
+
+    it 'fails closed when DNS resolution errors out' do
       allow(Resolv).to receive(:getaddresses).and_raise(SocketError, 'boom')
 
-      expect(described_class.safe?('https://unresolvable.example.com')).to be true
+      expect(described_class.safe?('https://unresolvable.example.com')).to be false
     end
   end
 end

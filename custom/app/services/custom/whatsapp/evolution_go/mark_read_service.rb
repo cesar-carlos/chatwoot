@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::EvolutionGo::MarkReadService
+  # /message/markread accepts a list; keep batches small and move them off the
+  # conversation request. Cap the backlog so one open cannot enqueue unbounded work.
+  READ_BATCH_SIZE = 20
+  MAX_UNREAD_IDS = 100
+
   pattr_initialize [:conversation!]
 
   def perform
@@ -10,10 +15,14 @@ class Custom::Whatsapp::EvolutionGo::MarkReadService
     peer = mark_read_peer
     return if peer.blank?
 
-    ids = unread_incoming_source_ids
+    ids = capped_unread_ids
     return if ids.blank?
 
-    api_client.mark_messages_read(number: peer, ids: ids)
+    Custom::Whatsapp::EvolutionGo::MarkReadJob.perform_later(
+      conversation.inbox.channel.id,
+      peer,
+      ids
+    )
   rescue StandardError => e
     Rails.logger.warn "[EVOLUTION_GO] mark read on open failed conversation=#{conversation.id}: #{e.message}"
   end
@@ -26,8 +35,9 @@ class Custom::Whatsapp::EvolutionGo::MarkReadService
   end
 
   def mark_read_on_open?
-    config = conversation.inbox.channel.provider_config || {}
-    ActiveModel::Type::Boolean.new.cast(config['mark_read_on_open'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(
+      conversation.inbox.channel.provider_config, 'mark_read_on_open'
+    )
   end
 
   # Prefer @lid / stored remote JID (WITHOUT-9 PN) over phone/source_id WITH-9.
@@ -44,17 +54,23 @@ class Custom::Whatsapp::EvolutionGo::MarkReadService
     digits.presence || conversation.contact&.phone_number.to_s.gsub(/\D/, '').presence
   end
 
+  def capped_unread_ids
+    ids = unread_incoming_source_ids
+    return ids if ids.size <= MAX_UNREAD_IDS
+
+    Rails.logger.warn(
+      "[EVOLUTION_GO] mark read on open truncated conversation=#{conversation.id} " \
+      "count=#{ids.size} kept=#{MAX_UNREAD_IDS}"
+    )
+    ids.first(MAX_UNREAD_IDS)
+  end
+
   def unread_incoming_source_ids
     conversation.messages
                 .incoming
                 .where.not(source_id: [nil, ''])
                 .where.not(status: Message.statuses[:read])
                 .order(created_at: :asc)
-                .limit(20)
                 .pluck(:source_id)
-  end
-
-  def api_client
-    Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(conversation.inbox.channel)
   end
 end

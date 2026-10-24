@@ -25,7 +25,6 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   ].freeze
 
   UNSUPPORTED_TYPE_PLACEHOLDERS = {
-    'listMessage' => '[List message]',
     # Meta AI / bot rich replies without extractable text (image-only, etc.)
     'richResponseMessage' => '[AI message]'
   }.freeze
@@ -45,6 +44,26 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     richResponseMessage
   ].freeze
 
+  # Drops decrypted inline base64 before a payload is stored in Redis.
+  def self.strip_inline_base64(value)
+    case value
+    when ActionController::Parameters
+      strip_inline_base64(value.to_unsafe_hash)
+    when Hash
+      cleaned = value.is_a?(ActiveSupport::HashWithIndifferentAccess) ? {}.with_indifferent_access : {}
+      value.each do |key, nested|
+        next if key.to_s == 'base64'
+
+        cleaned[key] = strip_inline_base64(nested)
+      end
+      cleaned
+    when Array
+      value.map { |entry| strip_inline_base64(entry) }
+    else
+      value
+    end
+  end
+
   private
 
   def map_message_type(message)
@@ -53,6 +72,7 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     message = message.with_indifferent_access
     # Reactions are handled by MessageReactionSyncService — never create a text placeholder.
     return nil if message['reactionMessage'].present?
+    return nil if blank_poll_update?(message)
 
     MEDIA_MESSAGE_KEYS.each do |key|
       return MESSAGE_TYPE_MAP[key] if message[key].present?
@@ -65,7 +85,7 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
     body = extract_text_body(message)
     return 'text' if body.present?
 
-    # Named placeholders ([List message], [AI message]) stay as text.
+    # Named placeholders ([AI message]) stay as text.
     return 'text' if named_unsupported_placeholder(message).present?
 
     if catch_all_unsupported_keys?(message)
@@ -130,6 +150,7 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
            message.dig('videoMessage', 'caption') ||
            message.dig('documentMessage', 'caption') ||
            interactive_reply_body(message) ||
+           interactive_inbound_body(message) ||
            interactive_template_body(message) ||
            rich_response_body(message)
     return body if body.present?
@@ -393,7 +414,7 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   end
 
   def convert_markdown_inbound?
-    ActiveModel::Type::Boolean.new.cast(config['convert_markdown_inbound'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(config, 'convert_markdown_inbound')
   end
 
   def build_media_payload(data, type)
@@ -418,9 +439,16 @@ module Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
   def evolution_go_message_metadata(data, message)
     {
       'key' => data['key'] || data[:key],
-      'message' => message,
+      'message' => message_without_inline_base64(message),
       'messageTimestamp' => data['messageTimestamp'] || data[:messageTimestamp]
     }
+  end
+
+  # Inline base64 can be many megabytes. The download job calls /message/downloadmedia.
+  def message_without_inline_base64(message)
+    return message unless message.is_a?(Hash)
+
+    Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders.strip_inline_base64(message.deep_dup)
   end
 
   def media_message_key(message, type)

@@ -2,6 +2,7 @@
 
 class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::BaseService
   include Custom::Whatsapp::Providers::EvolutionGoServiceOutbound
+  include Custom::Whatsapp::Providers::EvolutionGoInteractiveDelivery
 
   def send_message(phone_number, message)
     @message = message
@@ -12,6 +13,8 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
       send_location_message(destination, message)
     elsif message.attachments.present?
       send_attachment_message(destination, message)
+    elsif structured_content?(message)
+      send_structured_message(destination, message)
     elsif input_select_items(message).present?
       send_input_select_message(destination, message)
     else
@@ -80,6 +83,7 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
     parsed = response.parsed_response
     source_id = extract_source_id(parsed)
     if response.success? && source_id.present?
+      Custom::Whatsapp::EvolutionGo::OutboundSourceClaim.claim!(message, source_id)
       source_id
     else
       handle_error(response, message)
@@ -139,7 +143,7 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
     items = input_select_items(message)
     quoted = build_quoted_context(phone_number, message)
     delay = outbound_delay
-    title = apply_outbound_text(message.outgoing_content.presence || 'Please choose an option', message)
+    title = apply_outbound_text(message.outgoing_content.presence || interactive_prompt, message)
 
     response = dispatch_input_select(phone_number, title, items, quoted, delay, message)
     message_id = process_response(response, message)
@@ -169,7 +173,7 @@ class Custom::Whatsapp::Providers::EvolutionGoService < Whatsapp::Providers::Bas
   end
 
   def send_templates_as_text?
-    ActiveModel::Type::Boolean.new.cast((whatsapp_channel.provider_config || {})['send_templates_as_text'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(whatsapp_channel.provider_config, 'send_templates_as_text')
   end
 
   def connection_validation_cache_key

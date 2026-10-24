@@ -69,6 +69,20 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService do
     expect(outgoing.content_attributes['deleted_via_evolution_go_webhook']).to be(true)
   end
 
+  it 'soft-deletes when mark_inbound_deleted is missing' do
+    channel.update!(
+      provider_config: channel.provider_config.except('mark_inbound_deleted')
+    )
+    message
+
+    described_class.new(
+      channel: channel,
+      data: { key: { id: 'MSG-DELETE-1', fromMe: false } }
+    ).perform
+
+    expect(message.reload.content_attributes['deleted']).to be(true)
+  end
+
   it 'does nothing when mark_inbound_deleted is disabled' do
     channel.update!(
       provider_config: channel.provider_config.merge('mark_inbound_deleted' => false)

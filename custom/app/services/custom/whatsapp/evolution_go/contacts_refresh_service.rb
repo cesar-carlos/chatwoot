@@ -13,7 +13,9 @@ class Custom::Whatsapp::EvolutionGo::ContactsRefreshService
   ENQUEUE_SPACING = 3.seconds
   # Extra time after the last paced job starts (runtime + queue delay).
   LOCK_TTL_BUFFER = 2.minutes.to_i
-  LOCK_TTL_MAX = 3.hours.to_i
+  # Ceiling only if the release job never runs. The TTL itself follows the paced ETA,
+  # so a large inbox does not unlock while jobs are still queued (the old 3h cap did).
+  LOCK_TTL_MAX = 24.hours.to_i
 
   class AlreadyRunningError < StandardError; end
 
@@ -21,8 +23,11 @@ class Custom::Whatsapp::EvolutionGo::ContactsRefreshService
     format(Redis::RedisKeys::EVOLUTION_GO_CONTACTS_REFRESH_LOCK, channel_id: channel_id)
   end
 
-  def self.release_lock!(channel_id)
-    ::Redis::Alfred.delete(lock_key_for(channel_id))
+  # Blank token is a no-op so an older release job cannot clear a newer refresh.
+  def self.release_lock!(channel_id, refresh_token = nil)
+    return if refresh_token.blank?
+
+    ::Redis::Alfred.delete_if_equals(lock_key_for(channel_id), refresh_token.to_s)
   end
 
   def self.lock_status(channel)
@@ -105,7 +110,8 @@ class Custom::Whatsapp::EvolutionGo::ContactsRefreshService
   end
 
   def acquire_lock!(contact_count)
-    ::Redis::Alfred.set(lock_key, true, nx: true, ex: lock_ttl_for(contact_count))
+    @refresh_token = SecureRandom.hex(16)
+    ::Redis::Alfred.set(lock_key, @refresh_token, nx: true, ex: lock_ttl_for(contact_count))
   end
 
   def lock_ttl_for(contact_count)
@@ -117,11 +123,11 @@ class Custom::Whatsapp::EvolutionGo::ContactsRefreshService
     wait = eta_seconds + LOCK_TTL_BUFFER
     Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob
       .set(wait: wait.seconds)
-      .perform_later(channel.id)
+      .perform_later(channel.id, @refresh_token)
   end
 
   def release_lock!
-    self.class.release_lock!(channel.id)
+    self.class.release_lock!(channel.id, @refresh_token)
   end
 
   def lock_key

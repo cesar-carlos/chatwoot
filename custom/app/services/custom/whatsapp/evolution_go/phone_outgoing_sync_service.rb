@@ -25,7 +25,11 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
 
   private
 
+  # rubocop:disable Metrics/CyclomaticComplexity -- duplicate, blank payload, and in-flight adopt branches
   def process_sync!(canonical, key)
+    source_id = (key['id'] || key[:id]).to_s
+    return release_dedup_lock! if duplicate_message?(source_id)
+
     message_data = normalize_outgoing_message(canonical)
     content = outgoing_content(canonical, message_data)
     return abort_blank_outgoing!(key) if content.blank? && !outgoing_media_message?(message_data)
@@ -33,9 +37,20 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     contact_inbox = find_or_create_contact_inbox(key)
     return release_dedup_lock! if contact_inbox.blank?
 
-    message = create_outgoing_message!(contact_inbox, key, content, canonical)
-    enqueue_outgoing_media_download!(message, message_data) if message_data.present?
+    message = persisted_outgoing_message(contact_inbox, key, content, canonical)
+    enqueue_outgoing_media_download!(message, message_data) if message.present? && message_data.present?
     message
+  end
+  # rubocop:enable Metrics/CyclomaticComplexity
+
+  def persisted_outgoing_message(contact_inbox, key, content, canonical)
+    adopted = Custom::Whatsapp::EvolutionGo::InflightAgentMessage.adopt!(
+      channel: channel, contact_inbox: contact_inbox, key: key, content: content
+    )
+    return adopted if adopted
+    return release_dedup_lock! if duplicate_message?((key['id'] || key[:id]).to_s)
+
+    create_outgoing_message!(contact_inbox, key, content, canonical)
   end
 
   def normalize_outgoing_message(canonical)
@@ -84,7 +99,10 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   end
 
   def duplicate_message?(source_id)
-    inbox.messages.exists?(source_id: source_id)
+    return false if source_id.blank?
+    return true if inbox.messages.exists?(source_id: source_id)
+
+    Custom::Whatsapp::EvolutionGo::OutboundSourceClaim.secondary?(inbox, source_id)
   end
 
   def group_jid?(remote_jid)
@@ -127,7 +145,8 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
   def create_outgoing_message!(contact_inbox, key, content, canonical)
     conversation = resolve_outgoing_conversation(contact_inbox)
     timestamp = outgoing_message_timestamp(canonical)
-    remote_jid = outgoing_remote_jid(key)
+    key_data = key.with_indifferent_access
+    remote_jid = jid_resolver.addressing_jid(key_data).presence || jid_resolver.resolve_message_jid(key_data)
 
     conversation.messages.create!(
       account_id: account.id,
@@ -159,13 +178,6 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
     ).perform
   ensure
     Current.conversation_opened_by = nil
-  end
-
-  # Store the addressing JID (@lid / @g.us), not the phone-rewritten one — otherwise
-  # ChatJid falls back to a stale PN when reacting/editing/deleting this exact echo.
-  def outgoing_remote_jid(key)
-    key_data = key.with_indifferent_access
-    jid_resolver.addressing_jid(key_data).presence || jid_resolver.resolve_message_jid(key_data)
   end
 
   def outgoing_message_timestamp(canonical)

@@ -113,6 +113,16 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     expect(described_class.new(channel, payload).perform).to be_nil
   end
 
+  it 'filters fromMe when ignore_from_me_echo is missing' do
+    config = channel.provider_config.except('ignore_from_me_echo')
+    channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
+    channel.provider_config = config
+    payload = fixture.deep_dup
+    payload['data']['Info']['IsFromMe'] = true
+
+    expect(described_class.new(channel, payload).perform).to be_nil
+  end
+
   it 'allows fromMe when ignore_from_me_echo is false' do
     config = channel.provider_config.merge('ignore_from_me_echo' => false)
     channel.update_columns(provider_config: config) # rubocop:disable Rails/SkipsModelValidations
@@ -247,11 +257,15 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
     image_fixture = JSON.parse(
       Rails.root.join('spec/fixtures/evolution_go/message_inbound_image.json').read
     )
+    image_fixture['data']['message']['base64'] = Base64.strict_encode64('pixel')
     result = described_class.new(channel, image_fixture).perform
 
+    envelope = result[:messages].first[:image][:_evolution_go_message]
     expect(result[:messages].first[:type]).to eq('image')
-    expect(result[:messages].first[:image][:_evolution_go_message]).to be_present
+    expect(envelope).to be_present
     expect(result[:messages].first[:image][:caption]).to eq('Photo caption')
+    expect(envelope.dig('message', 'base64')).to be_nil
+    expect(envelope.dig(:message, :base64)).to be_nil
   end
 
   it 'normalizes documentWithCaptionMessage as document with caption' do
@@ -557,8 +571,8 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
           'Timestamp' => 1_699_999_999
         },
         'Message' => {
-          'pollCreationMessage' => {
-            'name' => 'Lunch?'
+          'orderMessage' => {
+            'orderId' => 'unknown-1'
           }
         }
       }
@@ -571,5 +585,144 @@ RSpec.describe Custom::Whatsapp::Webhooks::EvolutionGoNormalizer do
       expect(result[:messages].first[:text]).to be_nil
       expect(result[:messages].first[:id]).to eq('POLL-1')
     end
+  end
+
+  it 'renders an inbound list as readable text' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'LIST-1'
+        },
+        'message' => {
+          'listMessage' => {
+            'title' => 'Plans',
+            'description' => 'Pick one',
+            'sections' => [
+              { 'rows' => [{ 'title' => 'Basic' }, { 'title' => 'Pro' }] }
+            ]
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    expect(result[:messages].first[:type]).to eq('text')
+    expect(result[:messages].first[:text][:body]).to eq("Plans\n\nPick one\n\n- Basic\n\n- Pro")
+  end
+
+  it 'renders an inbound carousel from an interactive message' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'CAR-1'
+        },
+        'message' => {
+          'interactiveMessage' => {
+            'body' => { 'text' => 'New arrivals' },
+            'carouselMessage' => {
+              'cards' => [
+                {
+                  'header' => { 'title' => 'Shirt' },
+                  'body' => { 'text' => 'Blue' },
+                  'buttons' => [{ 'displayText' => 'Buy' }]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    expect(result[:messages].first[:text][:body]).to eq("New arrivals\n\nShirt\nBlue\n[Buy]")
+  end
+
+  it 'renders a poll question and its options' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'Info' => {
+          'ID' => 'POLL-CREATE-1',
+          'Chat' => '5511999999999@s.whatsapp.net',
+          'IsFromMe' => false,
+          'Timestamp' => 1_699_999_999
+        },
+        'Message' => {
+          'pollCreationMessage' => {
+            'name' => 'Lunch?',
+            'options' => [{ 'optionName' => 'Pizza' }, { 'optionName' => 'Salad' }]
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    expect(result[:messages].first[:type]).to eq('text')
+    expect(result[:messages].first[:text][:body]).to eq("Lunch?\n\n- Pizza\n\n- Salad")
+  end
+
+  it 'skips a poll vote that does not include an option name' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'POLL-VOTE-1'
+        },
+        'message' => {
+          'pollUpdateMessage' => {
+            'vote' => { 'selectedOptions' => [{ 'hash' => 'abc' }] }
+          }
+        }
+      }
+    }
+
+    expect(described_class.new(channel, payload).perform).to be_nil
+  end
+
+  it 'renders a named poll vote' do
+    payload = {
+      'event' => 'MESSAGE',
+      'data' => {
+        'key' => {
+          'remoteJid' => '5511999999999@s.whatsapp.net',
+          'fromMe' => false,
+          'id' => 'POLL-VOTE-2'
+        },
+        'message' => {
+          'pollUpdateMessage' => {
+            'vote' => { 'selectedOptions' => ['Pizza'] }
+          }
+        }
+      }
+    }
+
+    result = described_class.new(channel, payload).perform
+
+    expect(result[:messages].first[:text][:body]).to eq('Pizza')
+  end
+
+  it 'drops status@broadcast when ignore_status is absent' do
+    channel.update!(provider_config: channel.provider_config.except('ignore_status'))
+    normalizer = described_class.new(channel.reload, { 'event' => 'MESSAGE' })
+
+    expect(normalizer.send(:status_broadcast?, 'status@broadcast')).to be(true)
+  end
+
+  it 'keeps status@broadcast eligible when ignore_status is false' do
+    channel.update!(provider_config: channel.provider_config.merge('ignore_status' => false))
+    normalizer = described_class.new(channel.reload, { 'event' => 'MESSAGE' })
+
+    expect(normalizer.send(:status_broadcast?, 'status@broadcast')).to be(false)
   end
 end

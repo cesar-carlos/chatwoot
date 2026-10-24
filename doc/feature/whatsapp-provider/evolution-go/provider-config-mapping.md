@@ -63,7 +63,7 @@ Com `ignore_groups: false`, mensagens `@g.us` criam conversa por grupo (`GroupCo
 | `msg_call` | `msgRejectCall` | `msgRejectCall`, `rejectCallMessage` | `""` |
 | `always_online` | `alwaysOnline` | `alwaysOnline` | `false` |
 | `read_messages` | `readMessages` | `readMessages` | `false` |
-| `ignore_status` | `ignoreStatus` | `ignoreStatus`, `readStatus` (⚠️ semântica diferente — não inverter) | `true` |
+| `ignore_status` | `ignoreStatus` | `ignoreStatus`, `readStatus` (⚠️ semântica diferente — não inverter) | `true` (nil/ausente = ignorar, igual à UI) |
 
 `ConnectionService#sync_settings!` usa `ApiClient#update_advanced_settings` com chaves **OpenAPI create** na escrita; leitura via `dig_field` na resposta GET.
 
@@ -87,7 +87,7 @@ Sem `/proxy/set` — configurar no create ou advanced-settings.
 | Campo | Valor |
 |-------|-------|
 | URL | `{FRONTEND_URL}/webhooks/evolution_go/{instance_name}?token={webhook_token}` |
-| `subscribe` | Lista canônica em `ProviderConfig::WEBHOOK_EVENTS` + `GROUP` quando `ignore_groups: false` — ver [webhook-events.md](./webhook-events.md). Persistido em `webhook_subscribe`; re-sync em reconnect e ao mudar `ignore_groups` / `ignore_from_me_echo` ([decisions.md §23](./decisions.md)) |
+| `subscribe` | Lista canônica em `ProviderConfig::WEBHOOK_EVENTS` + `GROUP` quando `ignore_groups: false` — ver [webhook-events.md](./webhook-events.md). Persistido em `webhook_subscribe`; re-sync em reconnect e ao mudar `ignore_groups` / `ignore_from_me_echo` ([decisions.md §23](./decisions.md)). Voltar `ignore_groups` para `true` remove `GROUP` (evento gerenciado) e mantém extras fora de `MANAGED_EVENTS` |
 
 Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_token`.
 
@@ -105,8 +105,8 @@ Não persiste `webhook_url` separado — derivado de `instance_name` + `webhook_
 | `ignore_from_me_echo` | `true` | Filtrar `fromMe` no normalizer/job (re-sync webhook ao mudar; lista subscribe não muda) |
 | `convert_markdown_inbound` | `true` | WA → markdown no normalizer |
 | `convert_markdown_outbound` | `true` | markdown → WA no outbound |
-| `mark_read_on_reply` | `false` | `POST /message/markread` ao responder |
-| `mark_read_on_open` | `true` | mark read ao abrir conversa |
+| `mark_read_on_reply` | `false` | `POST /message/markread` via `MarkReadJob` (fatias de 20; para no primeiro HTTP fora de 2xx) |
+| `mark_read_on_open` | `true` (nil/ausente = ligado) | Ao abrir, enfileira até 100 IDs não lidos; o request da conversa não espera o HTTP |
 | `send_random_delay` | `false` | Delay aleatório no send (campo `delay`) |
 | `notify_send_errors_private` | `true` | Nota privada no CW quando envio falha |
 | `mark_inbound_deleted` | `true` | Cliente **ou** agente (celular) apaga no WA → marca no CW (mantém texto + destaque deleted) |

@@ -14,6 +14,10 @@ class Custom::Whatsapp::EvolutionGo::JidResolver < Custom::Whatsapp::Evolution::
     remote.presence
   end
 
+  def merge_brazil_contacts?
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(config, 'merge_brazil_contacts')
+  end
+
   def self.merge_addressing_jid(stored, incoming)
     stored = stored.to_s
     incoming = incoming.to_s

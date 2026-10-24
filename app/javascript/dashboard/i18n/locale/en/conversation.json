@@ -89,6 +89,9 @@
       "SUCCESS": "Contact sync started. Name and avatar will update shortly.",
       "ERROR": "Could not sync contact info. Please try again."
     },
+    "EVOLUTION_GO_STRUCTURED": {
+      "EMPTY": "This message has no items."
+    },
     "MESSAGE_SEARCH": {
       "MENU_LABEL": "Search this conversation",
       "MENU_SHORTCUT": "Search this conversation (⌘F / Ctrl+F)",

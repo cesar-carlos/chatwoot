@@ -79,7 +79,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionProvisioner
       'webhook_subscribe' => provider_config['webhook_subscribe'].presence ||
                              Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync.canonical_events(provider_config)
     }
-    connection_service.persist_provider_config!(provider_config.merge(attrs.stringify_keys))
+    connection_service.persist_provider_config!(attrs)
     @api_client = nil
   end
 

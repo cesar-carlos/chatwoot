@@ -1,6 +1,11 @@
 # frozen_string_literal: true
 
 class Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync
+  # Events the fork owns. Stored copies of these are replaced by the canonical
+  # list so turning ignore_groups back on actually unsubscribes GROUP.
+  # Anything else (operator extras) is preserved.
+  MANAGED_EVENTS = (Custom::Whatsapp::EvolutionGo::ProviderConfig::WEBHOOK_EVENTS + %w[GROUP]).freeze
+
   pattr_initialize [:channel!, :connection_service!]
 
   def self.canonical_events(config)
@@ -20,7 +25,8 @@ class Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync
 
   def merge_stored!
     stored = Array.wrap(provider_config['webhook_subscribe']).map { |event| event.to_s.upcase }.grep(/\A[A-Z_]+\z/)
-    (canonical_events + stored).uniq
+    extras = stored - MANAGED_EVENTS
+    (canonical_events + extras).uniq
   end
 
   def sync!
@@ -35,7 +41,9 @@ class Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync
 
     attrs = { 'webhook_subscribe' => events }
     attrs['connection_status'] = 'connecting' unless provider_config['connection_status'] == 'open'
-    connection_service.persist_provider_config!(provider_config.merge(attrs))
+    # Delta only. A full snapshot would roll back webhook/import writes that
+    # landed while POST /instance/connect was in flight.
+    connection_service.persist_provider_config!(attrs)
     events
   end
 

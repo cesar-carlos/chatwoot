@@ -340,6 +340,8 @@ pt_BR:
       deleted: Esta mensagem foi excluída
       whatsapp:
         list_button_label: 'Escolha um item'
+        # FORK: Evolution Go menu body when the agent message has no text
+        choose_option: 'Escolha uma opção'
         call_permission_request_body: 'Gostaríamos de ligar para você em relação à sua conversa.'
         flow_response: 'Enviou uma resposta de um Flow'
         request_contact_info: 'Gostaria de compartilhar seu número de telefone conosco?'

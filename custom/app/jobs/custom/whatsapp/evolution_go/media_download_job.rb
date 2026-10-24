@@ -7,7 +7,9 @@ class Custom::Whatsapp::EvolutionGo::MediaDownloadJob < ApplicationJob
 
   MEDIA_LOCK_TTL = 5.minutes.to_i
 
-  retry_on StandardError, wait: :polynomially_longer, attempts: 5
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5 do |job, error|
+    job.mark_download_exhausted!(error)
+  end
   discard_on ArgumentError
 
   def perform(channel_id, message_id, attachment_payload, message_type)
@@ -30,6 +32,22 @@ class Custom::Whatsapp::EvolutionGo::MediaDownloadJob < ApplicationJob
     ).perform
   ensure
     release_media_lock!(message_id) if message_id.present? && @media_lock_acquired
+  end
+
+  # Last retry still failed. Leave a visible flag instead of a caption with no file and no error.
+  def mark_download_exhausted!(error)
+    message = Message.find_by(id: arguments[1])
+    return if message.blank? || message.attachments.exists?
+
+    attrs = message.content_attributes.to_h.stringify_keys.merge(
+      'evolution_go_media_failed' => true,
+      'evolution_go_media_error' => error.message.to_s.truncate(500)
+    )
+    message.update!(content_attributes: attrs)
+  rescue StandardError => e
+    Rails.logger.warn(
+      "[EVOLUTION_GO] failed to mark media exhausted message_id=#{arguments[1]}: #{e.message}"
+    )
   end
 
   private

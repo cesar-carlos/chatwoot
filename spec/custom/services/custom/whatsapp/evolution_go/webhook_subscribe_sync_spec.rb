@@ -60,6 +60,20 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync do
 
       expect(merged).to include('MESSAGE', 'HISTORY_SYNC', 'CUSTOM_EVENT')
     end
+
+    it 'drops GROUP when ignore_groups is turned back on and keeps custom events' do
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'ignore_groups' => true,
+          'webhook_subscribe' => described_class::MANAGED_EVENTS + ['CUSTOM_EVENT']
+        )
+      )
+
+      merged = sync.merge_stored!
+
+      expect(merged).not_to include('GROUP')
+      expect(merged).to include('CUSTOM_EVENT', 'MESSAGE')
+    end
   end
 
   describe '#sync!' do
@@ -90,6 +104,35 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync do
       sync.sync!
 
       expect(channel.reload.provider_config['connection_status']).to eq('open')
+    end
+
+    it 'does not roll back provider_config keys written while connect is in flight' do
+      channel.update!(
+        provider_config: channel.provider_config.merge(
+          'connection_status' => 'open',
+          'last_webhook_at' => 't1',
+          'import_status' => 'idle'
+        )
+      )
+
+      stub_request(:post, 'https://go.example.com/instance/connect')
+        .to_return do
+          Channel::Whatsapp.where(id: channel.id).update_all( # rubocop:disable Rails/SkipsModelValidations
+            [
+              'provider_config = provider_config || ?::jsonb',
+              { last_webhook_at: 't2', import_status: 'running' }.to_json
+            ]
+          )
+          { status: 200, body: { message: 'success', data: {} }.to_json }
+        end
+
+      sync.sync!
+
+      reloaded = channel.reload.provider_config
+      expect(reloaded['last_webhook_at']).to eq('t2')
+      expect(reloaded['import_status']).to eq('running')
+      expect(reloaded['connection_status']).to eq('open')
+      expect(reloaded['webhook_subscribe']).to include('MESSAGE')
     end
   end
 end

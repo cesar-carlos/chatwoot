@@ -34,6 +34,55 @@
 | 2/ago/2026 | Grupos: `GROUP_INFO`/`JOINED_GROUP` routing, `schedule_metadata_fetch!` dedup, naming `*(GROUP)`, automação/auto-assign skip, Sync contact branch, Vue sender label, fixtures reais |
 | 27/ago/2026 | 1:1 LID vs PN: persistir addressing `@lid`; inbound LID-only; adapter prefere alt de telefone; ADR §37 |
 | 27/ago/2026 (pm) | Dedup lock Evolution Go por inbox (dois canais da mesma conta); Unique ID vs `evolution_go_remote_jid`; ADR §38 |
+| 24/out/2026 | Claim de `source_id` no send, adoção de eco em voo, mark-read em lote, prune de `GROUP`, merge só do delta, pin de DNS no server check |
+| 24/out/2026 (pm) | `ProviderConfig.enabled?` para flags default-on; lock inbound ocupado retenta; histórico não conta registro vazio; settings sync envia boolean ausente; mídia sem base64 no job |
+| 24/out/2026 (noite) | Import preserva `@lid` e nome editado; participante de grupo usa o resolver Go; mídia esgotada marca falha; webhook sem base64; refresh de contatos com token |
+| 24/out/2026 (noite2) | Pairing não vira QR no poll; import `running` retoma com lock livre; history-sync sem fase de contatos; claim de `source_id` só com o lock |
+| 24/out/2026 (noite3) | Timer de 45s não troca pareamento por QR; `user/check` não bloqueia JID; `/send/*` sem retry; diagnóstico sem token da instância |
+| 24/out/2026 (noite4) | `cards` → carrossel, `article` → link, `input_select` com descrição → lista; entrada de lista/carrossel/enquete vira texto; ADR §40 |
+| 24/out/2026 (noite5) | Menu sem título repetido; rótulo e rodapé no locale/nome da instalação; texto do artigo só no primeiro link; eco secundário não abre bolha |
+
+---
+
+## Revisão 24/out/2026 (noite4) — mensagens especiais
+
+| Área | Decisão / código |
+|------|------------------|
+| Saída | `cards` → `POST /send/carousel`. `article` → um `POST /send/link` por item. `input_select` com descrição ou mais de 3 itens → `POST /send/list`; senão botões `reply` |
+| Recusa | Cartão sem mídia, sem descrição ou sem ações, cartão com reply e link juntos, e artigo sem link falham a mensagem sem chamar a API |
+| Entrada | `listMessage`, `buttonsMessage`, carrossel e `pollCreationMessage` viram texto. `pollUpdateMessage` sem nome de opção não cria bolha |
+| Fora | Enquete, Pix, ligação, copiar código e status não saem: o Chatwoot não tem content_type para isso |
+| Dashboard | Bolha só de leitura para `cards` e `article` quando o inbox é Evolution Go |
+| Menu | Corpo = texto da mensagem. Título, botão e seção = `list_button_label`. Rodapé = `INSTALLATION_NAME`. Linha sem descrição omite o campo. `displayText` do carrossel corta em 20 |
+| Artigo | Texto e citação só no primeiro link. Ids seguintes ficam em `evolution_go_secondary_source_ids` |
+
+---
+
+## Revisão 24/out/2026 (noite3) — pareamento, JID e envio
+
+| Área | Decisão / código |
+|------|------------------|
+| Pareamento | `pair!` zera a imagem anterior. Payload omite `qrcode_base64` com código ativo. O modal não arma o refresh de 45s |
+| Enriquecimento | `user/check` falso no telefone não pula `/user/info` quando a query já é `@lid` ou `@s.whatsapp.net` |
+| HTTP | `/send/*` não retenta. Status GET continua com uma retentativa |
+| Diagnóstico | `instance_info` e logs saem sem token, apikey ou password. A URL de webhook do health permanece com o token do operador |
+
+Envio, apagar/editar, reações, metadata de grupo, presença e migração de histórico foram lidos nesta passagem e ficaram sem mudança de contrato.
+
+---
+
+## Revisão 24/out/2026 — corrida, leitura, subscribe e SSRF
+
+**Escopo:** Contratos que o código já cumpria na doc de defaults, mas o caminho operacional tinha mudado.
+
+| Área | Decisão / código |
+|------|------------------|
+| Eco do agente | `OutboundSourceClaim` grava `source_id` na resposta do send. `InflightAgentMessage` adota outgoing pendente (2 min) se o eco chegar antes |
+| Mark-read | `MarkReadJob` em fatias de 20; open limita a 100 IDs; HTTP fora de 2xx para as fatias seguintes. `mark_read_on_open` / `ignore_status` ausentes = ligado |
+| Subscribe | `GROUP` é evento gerenciado: voltar `ignore_groups` para `true` remove `GROUP` e mantém extras |
+| `provider_config` | Connect e subscribe persistem só o delta (`jsonb \|\|`) |
+| SSRF | Host sem DNS falha fechado; `server_ok` conecta no IP validado |
+| Docs | decisions §6, §7, §9, §28, §30, §31; webhook-events, provider-config, inbox-business-rules, troubleshooting, error-handling, status |
 
 ---
 

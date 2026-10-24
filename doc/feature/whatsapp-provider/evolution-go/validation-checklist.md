@@ -154,7 +154,7 @@ Enviar mensagem do celular para o número conectado.
 - [ ] Menu ⋮ → **Sync contact info** / **Sincronizar dados do contato** (só inbox Evolution Go) → toast “started”; nome/avatar atualizam em alguns segundos (`force: true`)
 - [ ] Em conversa de **grupo**: mesmo menu atualiza nome via `/group/info` e avatar via `/user/avatar` `@g.us` (não usa enrichment 1:1)
 - [ ] Echo celular (`SEND_MESSAGE` / `fromMe`) aparece como outgoing no Chatwoot
-- [ ] `evolution_go_server_check` bloqueia URLs internas (SSRF guard)
+- [ ] `evolution_go_server_check` bloqueia link-local / metadata (`169.254.0.0/16`); RFC1918 e localhost passam. Host sem DNS falha. O check conecta no IP já validado
 - [ ] Reação do cliente no WA → chip na mensagem alvo (sem `[Reaction message]`)
 - [ ] Trocar / remover reação do cliente atualiza o chip
 - [ ] Context menu → **Reações** → expandir painel → emoji → aparece no WhatsApp e chip no CW (optimistic UI; rollback se falhar)

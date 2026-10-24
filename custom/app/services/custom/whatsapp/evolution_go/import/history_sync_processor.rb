@@ -32,37 +32,54 @@ class Custom::Whatsapp::EvolutionGo::Import::HistorySyncProcessor
   end
 
   def import_record(record)
-    return true if apply_protocol_mutation!(record)
+    protocol_result = apply_protocol_mutation!(record)
+    return protocol_result unless protocol_result.nil?
 
-    source_id = extract_source_id(record)
-    return false if duplicate_source_id?(source_id)
+    source_id = extract_source_id(record).to_s
+    return false if source_id.blank? || duplicate_source_id?(source_id)
 
     import_record_by_direction!(record)
+    return false unless channel.inbox.messages.exists?(source_id: source_id)
+
     stamp_imported_message!(source_id)
     true
+  rescue MutexApplicationJob::LockAcquisitionError
+    raise
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] history sync import failed: #{e.message}")
     false
   end
 
+  # nil: not a protocol envelope. true/false: consumed, and whether a row changed.
   def apply_protocol_mutation!(record)
     delete_key = Custom::Whatsapp::EvolutionGo::MessageDeletePayloadExtractor.extract_delete_key(record)
-    if delete_key.present?
-      Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService.new(
-        channel: channel,
-        data: { key: delete_key }
-      ).perform
-      return true
-    end
+    return apply_delete_mutation!(delete_key) if delete_key.present?
 
     edit_payload = Custom::Whatsapp::EvolutionGo::MessageEditPayloadExtractor.extract_edit_payload(record)
-    return false if edit_payload.blank?
+    return nil if edit_payload.blank?
 
+    apply_edit_mutation!(edit_payload)
+  end
+
+  def apply_delete_mutation!(delete_key)
+    source_id = (delete_key['id'] || delete_key[:id]).to_s
+    message = channel.inbox.messages.find_by(source_id: source_id)
+    Custom::Whatsapp::EvolutionGo::MessageDeleteSyncService.new(
+      channel: channel,
+      data: { key: delete_key }
+    ).perform
+    message.present? && message.reload.content_attributes.to_h['deleted'] == true
+  end
+
+  def apply_edit_mutation!(edit_payload)
+    key = (edit_payload[:key] || edit_payload['key'] || {}).with_indifferent_access
+    message = channel.inbox.messages.find_by(source_id: key[:id])
+    previous = message&.content
     Custom::Whatsapp::EvolutionGo::MessageEditSyncService.new(
       channel: channel,
       data: edit_payload
     ).perform
-    true
+    message.present? && message.reload.content != previous
   end
 
   def duplicate_source_id?(source_id)

@@ -1,6 +1,6 @@
 # Lacunas e bloqueios no código atual
 
-Inventário de pontos no Chatwoot que **impedem ou dificultam** providers alternativos. Baseado no código em jun/2026.
+Inventário de pontos no Chatwoot que **impedem ou dificultam** providers alternativos. Baseado no código; revisão out/2026.
 
 **Status consolidado:** [STATUS.md](./STATUS.md)
 
@@ -8,14 +8,14 @@ Inventário de pontos no Chatwoot que **impedem ou dificultam** providers altern
 
 ## Resumo executivo
 
-| Severidade | Lacuna | Estado fork (jun/2026) |
+| Severidade | Lacuna | Estado fork (out/2026) |
 |------------|--------|------------------------|
 | 🔴 Bloqueante | `PROVIDERS` whitelist | ✅ **`evolution`**, **`evolution_go`** · ❌ `zapi`, `notificame` pendentes |
-| 🔴 Bloqueante | Dispatch incoming gateway | ✅ prepend job + normalizer para **`evolution`** |
-| 🟠 Alto | Janela 24h forçada | ✅ bypass para **`evolution`** via prepend |
-| 🟠 Alto | `process_response` formato Meta | ✅ override em `EvolutionService` |
-| 🟠 Alto | Formato webhook proprietário | ✅ `EvolutionNormalizer` |
-| 🟡 Médio | Frontend só cloud/default | ⚠️ parcial — wizard Evolution em `custom/` |
+| 🔴 Bloqueante | Dispatch incoming gateway | ✅ prepend + normalizer para **`evolution`** e **`evolution_go`** |
+| 🟠 Alto | Janela 24h forçada | ✅ `MessagingProvider::Capabilities.unlimited_session?` nos dois gateways |
+| 🟠 Alto | `process_response` formato Meta | ✅ override em `EvolutionService` e `EvolutionGoService` |
+| 🟠 Alto | Formato webhook proprietário | ✅ `EvolutionNormalizer` e `EvolutionGoNormalizer` |
+| 🟡 Médio | Frontend só cloud/default | ✅ wizards Evolution e Evolution Go em `Whatsapp.vue` |
 | 🟡 Médio | `phone_number` UNIQUE global | Documentado — 1 inbox/número |
 | 🟢 Baixo | Campanhas, CSAT, health cloud | Gates cloud-only — OK para gateway |
 | 🟠 Alto | Autenticação do webhook `evolution` | ✅ **implementado** — token URL + `apikey` body/header, ver §2.1 (revisão jul/2026 corrigiu a doc, que ainda descrevia como pendente) |
@@ -34,7 +34,7 @@ PROVIDERS = %w[default whatsapp_cloud].freeze
 
 **Fork atual:**
 
-```29:30:app/models/channel/whatsapp.rb
+```37:39:app/models/channel/whatsapp.rb
   # FORK: gateway providers — evolution (Baileys/Node), evolution_go (whatsmeow/Go) (custom/)
   PROVIDERS = %w[default whatsapp_cloud evolution evolution_go].freeze
 ```
@@ -42,11 +42,9 @@ PROVIDERS = %w[default whatsapp_cloud].freeze
 | Provider | Em `PROVIDERS` | Código `custom/` |
 |----------|----------------|------------------|
 | `evolution` | ✅ | ✅ |
-| `evolution_go` | ✅ | ✅ Fase 0–1 (texto + QR + health) |
-| `zapi` | ❌ | ❌ |
+| `evolution_go` | ✅ | ✅ fases 0–2 e operação; E2E real pendente — [evolution-go/status.md](./evolution-go/status.md) |
+| `zapi` | ❌ | ❌ doc local removida; rebaixar na implementação |
 | `notificame` | ❌ | ❌ |
-
-**Próximo `# FORK:`** ao implementar Go: adicionar `'evolution_go'` na mesma linha — [evolution-go/coordination-with-evolution-api.md](./evolution-go/coordination-with-evolution-api.md).
 
 ### 1.2 Dispatch `provider_service`
 
@@ -68,7 +66,7 @@ PROVIDERS = %w[default whatsapp_cloud].freeze
 
 ### 1.4 Índice único em `phone_number`
 
-```32:32:app/models/channel/whatsapp.rb
+```43:43:app/models/channel/whatsapp.rb
   validates :phone_number, presence: true, uniqueness: true
 ```
 
@@ -90,15 +88,20 @@ PROVIDERS = %w[default whatsapp_cloud].freeze
 
 **Impacto:** gateways não passam por HMAC Meta — OK hoje (retorna `false`).
 
-**Mitigação implementada (`evolution`):** `Webhooks::EvolutionController` dedicado (rota própria, não o controller Meta) exige `token` na URL **ou** `apikey` no body/header do webhook, validados com `ActiveSupport::SecurityUtils.secure_compare`; `apikey` é removida do payload antes de ir para o Sidekiq. Rate limit por instância+IP via Rack::Attack. **Ainda em aberto:** IP allowlist e teste explícito da variante via header `apikey` (hoje só body é testado).
+**Mitigação implementada:** controllers dedicados, fora do controller Meta.
+
+- `evolution`: `Webhooks::EvolutionController` exige `token` na URL **ou** `apikey` no body/header, validados com `secure_compare`; `apikey` sai do payload antes do Sidekiq. Rate limit por instância+IP via Rack::Attack. **Ainda em aberto:** IP allowlist e teste explícito da variante via header `apikey` (hoje só body é testado).
+- `evolution_go`: `Webhooks::EvolutionGoController` exige `webhook_token` com `secure_compare`.
 
 ### 2.2 Job — switch de incoming
 
-```79:86:app/jobs/webhooks/whatsapp_events_job.rb
-  def handle_message_events(channel, params)
+```88:97:app/jobs/webhooks/whatsapp_events_job.rb
+  def handle_message_events(channel, params, locked_sender_id = nil)
     case channel.provider
     when 'whatsapp_cloud'
-      Whatsapp::IncomingMessageWhatsappCloudService.new(...).perform
+      service_params = { inbox: channel.inbox, params: params }
+      service_params[:locked_sender_id] = locked_sender_id if locked_sender_id.present?
+      Whatsapp::IncomingMessageWhatsappCloudService.new(**service_params).perform
     else
       Whatsapp::IncomingMessageService.new(inbox: channel.inbox, params: params).perform
     end
@@ -107,9 +110,10 @@ PROVIDERS = %w[default whatsapp_cloud].freeze
 
 **Impacto:** gateway precisa ou (a) normalizar para payload **flat** 360dialog-like antes do `else`, ou (b) novo branch.
 
-**Mitigação preferida (A) — implementada para `evolution`:**
+**Mitigação preferida (A) — implementada para `evolution` e `evolution_go`:**
 
-Ver `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` — normaliza antes de `IncomingMessageService`.
+- `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb`
+- `custom/app/jobs/custom/webhooks/whatsapp_events_job_evolution_go.rb`
 
 ### 2.3 Enterprise — calls intercept
 
@@ -143,7 +147,7 @@ Ver `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` — normaliza antes
       send_template_message
 ```
 
-**Mitigação:** implementada para `evolution` — prepend retorna `nil` (sem janela).
+**Mitigação:** `Custom::Conversations::MessageWindowService` devolve `nil` quando `MessagingProvider::Capabilities.unlimited_session?` é verdadeiro (`evolution` e `evolution_go`).
 
 ### 3.2 `process_response` assume formato Meta
 
@@ -154,7 +158,7 @@ Ver `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` — normaliza antes
 
 **Impacto:** gateways com `{ key: { id: "..." } }` (Evolution) ou `{ messageId: "..." }` (Z-API) falham ao extrair `source_id`.
 
-**Mitigação:** override `process_response` — feito em `Custom::Whatsapp::Providers::EvolutionService`.
+**Mitigação:** override `process_response` em `Custom::Whatsapp::Providers::EvolutionService` e `EvolutionGoService`.
 
 ### 3.3 Campanhas e CSAT
 
@@ -169,9 +173,7 @@ Ver `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` — normaliza antes
 
 ### 4.1 Setup de inbox
 
-`Whatsapp.vue` oferece Cloud, Twilio e **Evolution** (fork). 360dialog via `?provider=360dialog`.
-
-**Pendente:** card **Evolution Go** quando `evolution_go` for implementado.
+`Whatsapp.vue` oferece Cloud, Twilio, **Evolution** e **Evolution Go**. 360dialog via `?provider=360dialog`. Z-API ainda não tem card.
 
 ### 4.2 Gates por provider
 
@@ -256,15 +258,15 @@ Reutilizar **com payload normalizado**:
 
 - [x] Documentação completa
 - [x] `# FORK:` `evolution_go` em PROVIDERS
-- [x] Código `custom/.../evolution_go/` (Fase 0–1)
+- [x] Código `custom/.../evolution_go/` (fases 0–2, grupos, reações, LID, dedup)
 - [x] Gates UI `isGatewayWhatsAppChannel`
 - [x] Health tab + wizard server check
 - [ ] E2E com instância operador — [evolution-go/validation-checklist.md](./evolution-go/validation-checklist.md)
-- [ ] Fase 2 — mídia, READ_RECEIPT, settings sync
+- [ ] Poll/link outbound e edit criptografado residual — [evolution-go/status.md](./evolution-go/status.md)
 
 ### Outros gateways
 
-- [ ] Z-API / NotificaMe — após piloto estável
+- [ ] Z-API / NotificaMe — baixar a doc oficial de novo antes de codar
 
 ---
 

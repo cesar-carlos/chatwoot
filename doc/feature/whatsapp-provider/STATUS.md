@@ -8,8 +8,8 @@ Fonte curta de verdade para o estado da pasta `doc/feature/whatsapp-provider/` e
 |----------|-------|--------------|--------|----------|
 | Evolution API | `evolution` | ✅ | ✅ | Provider alternativo ativo no fork |
 | Evolution Go | `evolution_go` | ✅ | ✅ | Provider alternativo ativo no fork |
-| Z-API | `zapi` | ✅ plano + Postman | ❌ | Documentação em `z-api/`; código após piloto estável |
-| NotificaMe | — | ⚠️ referência cruzada | ❌ | Mantido em pasta própria |
+| Z-API | `zapi` | ❌ removida (estava desatualizada) | ❌ | Baixar [developer.z-api.io](https://developer.z-api.io/) de novo na implementação |
+| NotificaMe | — | ⚠️ só menção cruzada | ❌ | Plano ainda não versionado neste repositório |
 
 ## O que existe hoje em código
 
@@ -72,7 +72,7 @@ Fonte curta de verdade para o estado da pasta `doc/feature/whatsapp-provider/` e
 | E2E final do fluxo Evolution em ambiente estável/CI | ⚠️ ainda operacional |
 | Evolution Go inbound message edit (plaintext no webhook) | ⚠️ código fork OK; Go [#92](https://github.com/evolution-foundation/evolution-go/issues/92) — ver [evolution-go/status.md](./evolution-go/status.md) ADR §35 |
 | Estratégia comum de capabilities para gateways além de `evolution` | ⚠️ parcialmente implícita |
-| Providers Z-API / NotificaMe no mesmo padrão | ❌ |
+| Providers Z-API / NotificaMe no mesmo padrão | ❌ sem código e sem plano local |
 
 ## Ordem de trabalho recomendada
 

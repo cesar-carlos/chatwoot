@@ -1,6 +1,8 @@
 # Plano de implementação — segundo provider WhatsApp
 
-Plano concreto para adicionar um gateway não oficial no fork, reutilizando o máximo do código existente. Atualizado jun/2026 após reanálise do codebase.
+Plano concreto para adicionar um gateway não oficial no fork, reutilizando o máximo do código existente.
+
+**Estado em out/2026:** `evolution` e `evolution_go` já seguem este plano e estão no código. O arquivo continua como molde para o próximo gateway. O plano local da Z-API foi removido; na hora de implementar, baixar a doc oficial de novo.
 
 **Pré-requisitos:** [implementation-decision-tree.md](./implementation-decision-tree.md) · [gaps-and-blockers.md](./gaps-and-blockers.md) · [feature-mapping.md](./feature-mapping.md)
 

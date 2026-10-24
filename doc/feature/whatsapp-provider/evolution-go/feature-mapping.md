@@ -2,7 +2,7 @@
 
 Checklist feature a feature vs código. Complementa [../feature-mapping.md](../feature-mapping.md) com detalhes específicos Evolution Go.
 
-**Última sync código:** 27/ago/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
+**Última sync código:** 24/out/2026 · **Legenda:** ✅ implementado · ⚠️ parcial / E2E · ❌ N/A · 🔧 prepend/FORK
 
 ---
 
@@ -14,19 +14,21 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Mídia | `POST /send/media` | ✅ | `send_attachment_message` |
 | Location | `POST /send/location` | ✅ | `send_location_message` |
 | Contact card | `POST /send/contact` | ✅ | `send_contact_card_message` |
-| Link preview | `POST /send/link` | ❌ | Não wired no service |
+| Article → link | `POST /send/link` | ✅ | um request por item; texto e citação só no primeiro; ids seguintes em `evolution_go_secondary_source_ids` |
 | Sticker | `POST /send/sticker` | ✅ | via attachment path |
-| Poll | `POST /send/poll` | ❌ | Não wired |
+| Poll | `POST /send/poll` | ❌ | Chatwoot não tem content_type de enquete |
+| Pix / call / copy / status | — | ❌ | Sem content_type no Chatwoot |
 | Voice note PTT | — | ❌ | Não documentado Go |
 | Templates WABA | — | ❌ | `send_templates_as_text` → texto |
 | Reply/quote | `quoted: { messageId, participant }` | ✅ | outbound quoted |
-| Input select → buttons/list | `POST /send/button`, `/send/list` | ✅ parcial | `dispatch_input_select` |
+| Input select → buttons/list | `POST /send/button`, `/send/list` | ✅ | corpo = texto da mensagem; título/botão/seção = `list_button_label`; rodapé = `INSTALLATION_NAME`; lista se >3 itens ou algum item tem `description` |
+| Cards → carousel | `POST /send/carousel` | ✅ | `InteractivePayload`; reply e link no mesmo cartão falham |
 | Interativos Meta (CW) | — | ❌ | Sem paridade WABA |
 | CSAT survey | — | ❌ | — |
 | Campanhas | — | ❌ | — |
 | `source_id` | `data.Info.ID` | ✅ | `process_response` |
 | Typing | `POST /message/presence` | ✅ | `TypingListener` → `PresenceSyncJob` → `ApiClient#set_presence` (skip private notes) |
-| Mark read outbound | `POST /message/markread` | ✅ | `mark_read_on_reply`, `mark_read_on_open` |
+| Mark read outbound | `POST /message/markread` | ✅ | `MarkReadJob` — reply e open; fatias de 20; open até 100 IDs |
 | Delete for everyone | `POST /message/delete` | ✅ | `sync_delete_to_whatsapp` + sync WA first no `destroy`; API fail → 422 sem soft-delete |
 | Edit message | `POST /message/edit` | ✅ | `sync_edit_to_whatsapp` + UI context menu + `MessageContentEditService` → `EditSyncService` — ADR §35 |
 | React | `POST /message/react` | ✅ | Context menu + `ReactSyncService` |
@@ -43,6 +45,7 @@ Checklist feature a feature vs código. Complementa [../feature-mapping.md](../f
 | Location | `MESSAGE` locationMessage | ✅ | Normalizer |
 | Contact card | `MESSAGE` contactMessage | ✅ | Normalizer → `contacts` payload |
 | Button/list reply | `buttonsResponseMessage` / `listResponseMessage` | ✅ | texto com label selecionado |
+| List / buttons / carousel / poll | `listMessage`, `buttonsMessage`, `carouselMessage`, `pollCreationMessage` | ✅ | texto legível; voto de enquete sem nome não cria bolha |
 | Status read | `READ_RECEIPT` | ✅ | → `statuses[]` flat (batch) |
 | Dedup | — | ✅ | `lock_message_source_id!` (upstream) |
 | Contato/conversa | — | ✅ | `IncomingMessageEvolutionGo` + enrichment Go |
@@ -147,6 +150,6 @@ Ver [../whatsapp-voice/README.md](../../whatsapp-voice/README.md).
 | **0** | Registry, PROVIDERS, prepends | ✅ |
 | **1** | Texto in/out, QR, connect, webhook, wizard | ✅ |
 | **2** | Mídia, READ_RECEIPT, markread, settings, proxy delete | ✅ |
-| **3** | Location, contact, sticker, input_select→buttons/list, presence typing, reactions | ✅ (poll / link pendentes) |
+| **3** | Location, contact, sticker, input_select→buttons/list, cards→carousel, article→link, presence typing, reactions | ✅ (enquete, Pix, call, copy e status continuam de fora) |
 | **4** | HISTORY_SYNC import | ✅ código · ⚠️ E2E fixture |
 | **UX** | Avisos, diagnóstico, confirmações, grupos, delete/edit sync | ✅ |

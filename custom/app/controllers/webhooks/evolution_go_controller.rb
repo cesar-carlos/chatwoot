@@ -48,7 +48,8 @@ class Webhooks::EvolutionGoController < ActionController::API
   def sanitized_job_payload
     payload = params.to_unsafe_hash.except('controller', 'action', 'instance_name', 'token')
     payload.delete('instance')
-    payload
+    # The events job retries while the dedup lock is busy. Inline base64 would re-enter Redis each time.
+    Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders.strip_inline_base64(payload)
   end
 
   def touch_last_webhook_at!

@@ -2,6 +2,7 @@
 
 class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
   include Custom::Whatsapp::Webhooks::EvolutionGo::PayloadBuilders
+  include Custom::Whatsapp::Webhooks::EvolutionGo::InteractiveInboundText
   include Custom::Whatsapp::Webhooks::EvolutionGo::StatusNormalizer
 
   attr_reader :channel, :envelope
@@ -167,7 +168,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
   end
 
   def ignore_from_me_echo?
-    ActiveModel::Type::Boolean.new.cast(config['ignore_from_me_echo'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(config, 'ignore_from_me_echo')
   end
 
   def ignore_groups?
@@ -185,7 +186,7 @@ class Custom::Whatsapp::Webhooks::EvolutionGoNormalizer
   end
 
   def ignore_status?
-    ActiveModel::Type::Boolean.new.cast(config['ignore_status'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(config, 'ignore_status')
   end
 
   def jid_resolver

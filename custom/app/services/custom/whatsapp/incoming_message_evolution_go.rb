@@ -56,11 +56,17 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
   # create_regular_message races Sidekiq against an uncommitted Message row
   # (MediaDownloadJob then Message.find_by → nil and silently drops the file).
   def process_messages
-    super
-    enqueue_pending_evolution_go_media_download if evolution_go_channel?
-  rescue StandardError
-    release_evolution_go_inbound_dedup_lock!
-    raise
+    return super unless evolution_go_channel?
+
+    begin
+      super
+      enqueue_pending_evolution_go_media_download
+    rescue StandardError
+      release_evolution_go_inbound_dedup_lock!
+      raise
+    ensure
+      release_unpersisted_inbound_dedup_lock!
+    end
   end
 
   def download_attachment_file(attachment_payload)
@@ -86,7 +92,10 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
     return false if source_id.blank?
 
     lock = Custom::Whatsapp::EvolutionGo::MessageDedupLock.build(inbox: inbox, source_id: source_id)
-    return false unless lock.acquire!
+    unless lock.acquire!
+      raise MutexApplicationJob::LockAcquisitionError,
+            "Evolution Go inbound dedup lock busy for source_id=#{source_id}"
+    end
 
     @evolution_go_dedup_lock = lock
     @evolution_go_dedup_lock_acquired = true
@@ -98,6 +107,16 @@ module Custom::Whatsapp::IncomingMessageEvolutionGo
 
     @evolution_go_dedup_lock.release!
     @evolution_go_dedup_lock_acquired = false
+  end
+
+  # A busy lock raises so the webhook job retries. An early return after we
+  # acquired the lock (contact missing) must not keep the key for a day.
+  def release_unpersisted_inbound_dedup_lock!
+    return unless @evolution_go_dedup_lock_acquired
+    return if @message&.persisted?
+    return if @contact&.blocked?
+
+    release_evolution_go_inbound_dedup_lock!
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity -- optional Evolution Go attrs

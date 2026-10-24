@@ -58,12 +58,12 @@
 | Media | `POST` | `/send/media` | [send-a-media-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-media-message) | 2 |
 | Location | `POST` | `/send/location` | [send-a-location-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-location-message) | 3 |
 | Contact | `POST` | `/send/contact` | [send-a-contact-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-contact-message) | 3 |
-| Link | `POST` | `/send/link` | [send-a-link-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-link-message) | 3 |
+| Link | `POST` | `/send/link` | [send-a-link-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-link-message) | 3 ✅ `article` |
 | Sticker | `POST` | `/send/sticker` | [send-a-sticker-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-sticker-message) | 3 |
-| Poll | `POST` | `/send/poll` | [send-a-poll-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-poll-message) | 3 |
-| Button | `POST` | `/send/button` | Postman only — Fase 3+ |
-| List | `POST` | `/send/list` | Postman only — Fase 3+ |
-| Carousel | `POST` | `/send/carousel` | Postman only — Fase 3+ |
+| Poll | `POST` | `/send/poll` | [send-a-poll-message](https://docs.evolutionfoundation.com.br/evolution-go/send-a-poll-message) | 3 ❌ sem content_type |
+| Button | `POST` | `/send/button` | Swagger `/send/button` | 3 ✅ `input_select` reply |
+| List | `POST` | `/send/list` | Swagger `/send/list` | 3 ✅ `input_select` com descrição ou >3 |
+| Carousel | `POST` | `/send/carousel` | Swagger `/send/carousel` | 3 ✅ `cards` |
 
 **Auth Send:** `apikey: {instance_token}` (OpenAPI marca `security: []` mas 401 exige apikey).
 

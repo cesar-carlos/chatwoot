@@ -90,6 +90,8 @@ When `ignore_groups: false`, also include `GROUP`.
 
 Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via health UI **Sync webhook events**, `POST evolution_go_sync_webhook`, reconnect, or `rake evolution_go:sync_webhooks`. Auto-sync also runs when `ignore_from_me_echo` or `ignore_groups` change (`WEBHOOK_SUBSCRIBE_KEYS`).
 
+`GROUP` is a managed event. Turning `ignore_groups` back to `true` (or leaving it unset) drops `GROUP` from the stored list. Events outside `WEBHOOK_EVENTS` + `GROUP` stay. The sync writes only that delta into `provider_config`.
+
 **Legacy MVP (superseded):**
 
 ```json
@@ -106,7 +108,7 @@ Managed by `Custom::Whatsapp::EvolutionGo::WebhookSubscribeSync` — sync via he
 |---------|----------|
 | Protocol revoke/edit on `SEND_MESSAGE` | Always → `MessageDeleteSyncService` / `MessageEditSyncService` (inclui `fromMe`) |
 | `ignore_from_me_echo: true` | Echo de texto/mídia logado e dropado |
-| `ignore_from_me_echo: false` | `PhoneOutgoingSyncService` cria mensagem **outgoing** com `content_attributes.phone_sent: true` + `external_echo: true` (ícone WhatsApp / aviso native app na UI); contato via `PeerContactInboxResolver` |
+| `ignore_from_me_echo: false` | `PhoneOutgoingSyncService` cria mensagem **outgoing** com `content_attributes.phone_sent: true` + `external_echo: true` (ícone WhatsApp / aviso native app na UI); contato via `PeerContactInboxResolver`. Outbound do agente já claimou `source_id` (§6); eco anterior adota a mensagem pendente (`InflightAgentMessage`, 2 min). Eco de link ou anexo extra é ignorado quando o id está em `evolution_go_secondary_source_ids` |
 
 Same path for `MESSAGE` events with `fromMe: true` (delete/edit before echo filter).
 ### Event name aliases (after normalization)
@@ -196,7 +198,7 @@ Lista completa: wiki `events-system.md` § Tipos de Eventos.
 
 **Reply / quote inbound:** `extendedTextMessage.contextInfo.stanzaID` (Evolution Go / whatsmeow — `ID` maiúsculo). Baileys usa `stanzaId`. O normalizer aceita ambos → `messages[].context.id` → `in_reply_to_external_id`. Sem o casing `stanzaID`, a mensagem chega no CW sem preview de resposta ([evolution-go#29](https://github.com/evolution-foundation/evolution-go/issues/29)).
 
-Normalizer tenta, nesta ordem: `conversation` → `extendedTextMessage.text` → caption da mídia → interactive reply/template → **`richResponseMessage` submessages** → placeholder (`[AI message]` / `[Unsupported message type]`).
+Normalizer tenta, nesta ordem: `conversation` → `extendedTextMessage.text` → caption da mídia → interactive reply → **lista, botões, carrossel e enquete** → interactive template → **`richResponseMessage` submessages** → placeholder (`[List message]` / `[Button message]` / `[Carousel]` / `[Poll]` / `[AI message]` / `[Unsupported message type]`). Voto de enquete (`pollUpdateMessage`) sem nome de opção não cria bolha.
 
 ### Meta AI / `richResponseMessage`
 

@@ -34,7 +34,7 @@ class Custom::Whatsapp::EvolutionGo::DiagnosticsService
     response = api_client.instance_info(instance_id)
     return unless response.success?
 
-    api_client.unwrap(response, context: 'instance_info')
+    redact_secrets(api_client.unwrap(response, context: 'instance_info'))
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] instance_info diagnostics failed channel=#{channel.id}: #{e.message}")
     nil
@@ -48,7 +48,8 @@ class Custom::Whatsapp::EvolutionGo::DiagnosticsService
     return unless response.success?
 
     parsed = response.parsed_response
-    parsed.is_a?(Hash) ? (parsed['data'] || parsed) : parsed
+    body = parsed.is_a?(Hash) ? (parsed['data'] || parsed) : parsed
+    redact_secrets(body)
   rescue StandardError => e
     Rails.logger.warn("[EVOLUTION_GO] instance_logs diagnostics failed channel=#{channel.id}: #{e.message}")
     nil
@@ -56,5 +57,22 @@ class Custom::Whatsapp::EvolutionGo::DiagnosticsService
 
   def api_client
     @api_client ||= Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel)
+  end
+
+  def redact_secrets(value)
+    case value
+    when Hash
+      value.each_with_object({}) do |(key, item), redacted|
+        next if key.to_s.match?(/token|apikey|api_key|password|secret/i)
+
+        redacted[key] = redact_secrets(item)
+      end
+    when Array
+      value.map { |item| redact_secrets(item) }
+    when String
+      value.gsub(/([?&]token=)[^&\s]+/i, '\1[redacted]')
+    else
+      value
+    end
   end
 end

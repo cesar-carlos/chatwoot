@@ -67,6 +67,7 @@ class Custom::Whatsapp::EvolutionGo::ConnectionEvents
 
   def handle_qrcode_event(envelope)
     return if provider_config['connection_status'] == 'open'
+    return if connection_service.pairing_code_active?
 
     attrs = qrcode_storage_attrs(envelope[:data])
     return if attrs.blank?

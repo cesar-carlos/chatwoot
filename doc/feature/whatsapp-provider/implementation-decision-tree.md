@@ -27,7 +27,7 @@ flowchart TD
 | Já usa NotificaMe contratualmente | Seguir o plano interno do fornecedor; a documentação local ainda não está versionada neste repositório |
 | Quer self-host Baileys (Node) | Piloto **Evolution API** — [evolution-api/](./evolution-api/README.md) |
 | Quer self-host Go (whatsmeow, performance) | Piloto **Evolution Go** — [evolution-go/](./evolution-go/README.md) |
-| Quer SaaS sem ops | **Z-API** ou NotificaMe |
+| Quer SaaS sem ops | **Z-API** ou NotificaMe — baixar a doc oficial de novo; o plano local da Z-API foi removido |
 | Gateway proprietário interno | Padrão genérico Baileys — [provider-comparison.md](./provider-comparison.md) §4 |
 
 **Regra:** congelar **um** piloto e JSON real de webhook antes de codar.
@@ -104,9 +104,9 @@ Implementação: capability `unlimited_session: true` no provider + prepend `Mes
 | Opção | Quando usar |
 |-------|-------------|
 | **Reutilizar** `/webhooks/whatsapp/:phone_number` | Gateway aceita URL com phone; normalizer identifica provider |
-| **Rota dedicada** `/webhooks/gateway/:instance_id` | Z-API (4 URLs), Evolution por instância, auth diferente |
+| **Rota dedicada** `/webhooks/gateway/:instance_id` | Evolution por instância; Z-API se a doc oficial vigente pedir URL própria |
 
-Z-API: considerar controller único que demux por `type` (`MessageStatusCallback`, etc.).
+Z-API: decidir o formato do webhook só depois de baixar a doc oficial de novo.
 
 ---
 

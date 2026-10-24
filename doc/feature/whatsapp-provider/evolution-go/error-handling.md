@@ -105,12 +105,12 @@ Evolution Go espera **200** rápido. Não retornar 401 após validar — logar e
 | Job | Retry |
 |-----|-------|
 | `WhatsappEventsJob` (Evolution Go) | Sidekiq default — falha real re-enfileira |
-| `MediaDownloadJob` | Sidekiq default + dedup lock |
-| Inbound / `fromMe` echo (Evolution Go) | `MessageDedupLock` **por inbox** (`inbox-{id}-{source_id}`). Lock OSS global por `source_id` **não** vale entre dois canais Go da mesma conta ([decisions.md §38](./decisions.md)) |
-| `MarkReadJob` | **Sem** `retry_on` — best-effort; falha logada apenas |
+| `MediaDownloadJob` | 5 tentativas. Na última, grava `evolution_go_media_failed` se o anexo não existe. O webhook já entra no Sidekiq sem `base64` inline |
+| Inbound / `fromMe` echo (Evolution Go) | `MessageDedupLock` **por inbox** (`inbox-{id}-{source_id}`). Lock ocupado no inbound gera `LockAcquisitionError` e o `WhatsappEventsJob` tenta de novo. Lock solto se o contato não foi criado. Lock OSS global por `source_id` **não** vale entre dois canais Go da mesma conta ([decisions.md §38](./decisions.md)) |
+| `MarkReadJob` | **Sem** `retry_on` — best-effort; fatias de 20 IDs; HTTP fora de 2xx interrompe as fatias seguintes. No open, no máximo 100 IDs não lidos |
 | `ContactEnrichmentJob` | Sidekiq default; lock liberado só se adquirido |
 
-`ApiClient`: `follow_redirects: false` — redirect não contorna SSRF guard (ADR §31).
+`ApiClient`: `follow_redirects: false` — redirect não contorna SSRF guard (ADR §31). `server_ok` falha fechado se o host não resolve e conecta no IP já validado (`PinnedHttpAdapter`), para um DNS que mude entre o check e o socket não apontar para link-local. Paths `/send/*` não são retentados: um 5xx depois que o Go aceitou a mensagem criaria uma segunda cópia. O agente reenvia pela bolha com falha. `GET` de status continua com uma retentativa.
 
 | Resposta CW | Efeito |
 |-------------|--------|

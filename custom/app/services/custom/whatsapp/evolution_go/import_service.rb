@@ -40,8 +40,9 @@ class Custom::Whatsapp::EvolutionGo::ImportService
       return false
     end
 
-    return false if @runtime.import_running? && !force && !@runtime.import_stale?
-
+    # Lock is the concurrency guard. A crashed run leaves status=running and
+    # releases the lock in ensure; the retry must acquire it and resume.
+    # Waiting for the stale heartbeat never re-enqueued that job.
     acquire_import_lock!
   end
 

@@ -61,6 +61,10 @@ apikey: {instance_token}
 
 Campo `phone` obrigatório — E.164 sem `+`.
 
+### Pairing code some sozinho e aparece o QR
+
+O poll do modal pede `include_qr` a cada 3s. Enquanto `last_qr_code` for um código de 8 caracteres, o adapter **não** busca `/instance/qr`, omite `last_qr_base64` no payload e ignora o webhook `QRCODE`. O modal também não dispara o refresh de QR de 45s enquanto o código está na tela. **Reconnect** apaga o código e volta a pedir o QR.
+
 ### `Connected: true` mas `LoggedIn: false`
 
 - Aguardar alguns segundos após scan — o adapter **não** marca `open` até `loggedIn`.
@@ -139,6 +143,14 @@ ADR: [decisions.md §37](./decisions.md). Sem rake de “adivinhar LID”.
 
 ---
 
+## Importação presa em execução
+
+| Sintoma | Causa / ação |
+|---------|----------------|
+| UI fica em `running` e o histórico não anda | O worker morreu depois de marcar `running`. O lock Redis já foi solto. O próximo `ImportJob` (retry ou connect com `import_on_connect`) retoma. Não espera a janela de 2h15 |
+| Connect não dispara import | `import_status: completed`, ou `running` com o lock ainda segurado por um worker vivo |
+| `import_messages` ligado e `import_contacts` desligado termina na hora | A fase de mensagens monta a lista via `GET /user/contacts` e pelos JIDs do inbox antes do `history-sync` |
+
 ## Reconnect
 
 ### Webhook para de funcionar após reconnect manual no painel Go
@@ -178,7 +190,7 @@ Ver [decisions.md §23](./decisions.md).
 | Causa | Ação |
 |-------|------|
 | Echo `fromMe` | Normalizer deve ignorar |
-| `SEND_MESSAGE` + outbound CW | `SEND_MESSAGE` is subscribed; use `ignore_from_me_echo: false` for phone echo sync; dedup by `source_id` |
+| `SEND_MESSAGE` + outbound CW | `SEND_MESSAGE` is subscribed; use `ignore_from_me_echo: false` for phone echo sync; dedup by `source_id`. O send grava o `source_id` só com o lock do inbox (`OutboundSourceClaim`). Se o eco já segurou o lock, o claim não escreve; `InflightAgentMessage` adota a outgoing pendente (2 min, mesmo texto) |
 | Retry Go (5×) | Dedup Redis `source_id` |
 
 ---
@@ -274,8 +286,8 @@ curl -sS -X POST "${BASE_URL}/send/text" \
 | Edit no celular + `sync_edit_to_whatsapp` gera chamadas extras a `/message/edit` | Corrigido 17/jul/2026: anti-loop ignora **qualquer** update com `edited_via_evolution_go_webhook: true` (não só a 1ª transição). Se ainda houver POST extras, checar se algum path limpa o flag indevidamente |
 | Delete no CW marca deleted mas WA não apaga | Com `sync_delete_to_whatsapp`: destroy faz **sync WA first** (`DeleteSyncService raise_errors: true`); falha da API → **HTTP 422** e CW **não** altera a mensagem. Caminho after_commit legado: se soft-delete já ocorreu e API falha, reverte flag + restaura `content` (`content_before_delete`). Checar log `[EVOLUTION_GO] delete sync` e `ChatJid` |
 | Anexo inbound lento ou some após texto | Storm de `NoMethodError` em `process_evolution_go_status` (READ_RECEIPT) saturava fila `:default` junto com `MediaDownloadJob`; corrigido em `IncomingMessageEvolutionGo` |
-| Documento só-arquivo some / caption sem arquivo na UI | Race: `MediaDownloadJob` enfileirado **dentro** da transaction → job rodava antes do commit (`Message.find` nil, 12ms no-op). Corrigido: enqueue em `process_messages` (após transaction) + retry se mensagem ausente. Também: usar `Message.base64` inline do webhook (Go já decripta) e `message.updated` **depois** de criar o attachment |
-| Mensagem sem anexo e sem erro visível | `MediaAttachmentService` marca `evolution_go_media_failed` quando base64 vazio; checar `content_attributes` da mensagem |
+| Documento só-arquivo some / caption sem arquivo na UI | Race: `MediaDownloadJob` enfileirado **dentro** da transaction → job rodava antes do commit (`Message.find` nil, 12ms no-op). Corrigido: enqueue em `process_messages` (após transaction) + retry se mensagem ausente. O arquivo vem de `POST /message/downloadmedia`; o webhook não leva `base64` para o Redis. `message.updated` dispara **depois** de criar o attachment |
+| Mensagem sem anexo e sem erro visível | `evolution_go_media_failed` fica em `content_attributes` quando a resposta vem vazia, o base64 é inválido, ou as 5 tentativas do `MediaDownloadJob` se esgotam |
 | Refresh de contatos não atualiza foto | Preferir `PictureURL`/`PictureID` de `/user/info` (evita `/user/avatar` extra). Avatar query: **LID → PN JID → dígitos do JID** (não priorizar phone BR). Timeout de rede → `evolution_go_avatar_timeout_at` (30 min), **não** cooldown 6h. Cooldown 6h só para sem-foto/privacidade. Relatório: [avatar-failures-report.md](./avatar-failures-report.md). `force: true` / Sync menu / Refresh settings |
 | Contato sem avatar mas tem `evolution_go_picture_id` | Foto existe no WA; `/user/avatar` timeoutou ou usava phone. Sync contact (force) ou aguardar retry (30 min após timeout). Ver relatório account 12 |
 | Sync contact info em conversa de grupo | Menu enfileira `GroupMetadataFetchJob` (`/group/info` + avatar `@g.us`), não o enrichment 1:1. Se nome/avatar não mudarem: conferir Sidekiq `:low` e logs `[EVOLUTION_GO] group` |

@@ -248,12 +248,19 @@ class Custom::Whatsapp::EvolutionGo::ContactEnrichmentService
   end
 
   # /user/check is another usync query — skip on forced refresh to cut API pressure.
+  # A stored @lid / @s.whatsapp.net is already an address. A false user/check on the
+  # phone digits (BR extra 9) must not skip /user/info for that JID.
   def skip_missing_whatsapp_user?(number)
     return false if force
+    return false if addressed_jid_query?
     return false if whatsapp_user_exists?(number)
 
     mark_avatar_attempted! unless contact.avatar.attached?
     true
+  end
+
+  def addressed_jid_query?
+    user_info_query.to_s.include?('@')
   end
 
   def handle_profile_enrichment_error!(error)

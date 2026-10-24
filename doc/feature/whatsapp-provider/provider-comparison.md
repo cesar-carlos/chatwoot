@@ -14,7 +14,7 @@ Notas de alto nível sobre gateways não oficiais comuns e como cada um se encai
 | **360dialog** (`default`) | BSP oficial | API key | Flat Meta-like | ✅ Sync BSP | ❌ | ❌ |
 | **Evolution API** | Self-host / SaaS | QR + instance | Por evento (`MESSAGES_UPSERT`, …) | ❌ (modo Baileys) | ✅ | ⚠️ experimental |
 | **Evolution Go** | Self-host | QR + instance | Por evento (`MESSAGE`, `CONNECTION`, …) | ❌ (whatsmeow) | ✅ | ⚠️ experimental |
-| **Z-API** | SaaS | QR + instance | 4 URLs (receive, delivery, status, disconnected) | ❌ | ✅ | ❌ documentado |
+| **Z-API** | SaaS | QR + instance | a confirmar na doc oficial | ❌ | a confirmar | fora do MVP até revalidar |
 | **NotificaMe** | SaaS BR | API + credenciais | Proprietário | ❌ | ⚠️ | ❌ |
 | **Baileys/WPPConnect** (genérico) | Self-host | QR | Variável por wrapper | ❌ | ✅ | ⚠️ lib-level |
 
@@ -138,50 +138,9 @@ apikey: <instance-token>
 
 ## Z-API
 
-**Site/docs:** [developer.z-api.io](https://developer.z-api.io/en/quickstart/introduction)
+Candidato SaaS, sem código e sem plano versionado neste repositório. O material local (jun/2026) foi removido porque estava desatualizado.
 
-### O que expõe
-
-- **REST** SaaS com `instanceId` + token por instância
-- **Fila interna** de envio — retorna ID imediato, entrega assíncrona
-- **7 webhooks HTTPS** configuráveis (receive, delivery, status, disconnected, connected, presence, sent-by-me) — ver [z-api/webhook-events.md](./z-api/webhook-events.md)
-- **Não armazena mensagens** — mídia em storage Z-API por 30 dias
-
-### Formato típico
-
-**Status webhook:**
-
-```json
-{
-  "instanceId": "instance.id",
-  "status": "READ",
-  "ids": ["999999999999999999999"],
-  "phone": "5544999999999",
-  "type": "MessageStatusCallback",
-  "isGroup": false
-}
-```
-
-### Paridade vs Cloud API
-
-| Feature | Z-API |
-|---------|-------|
-| Texto | ✅ |
-| Mídia | ✅ URLs temporárias 30d |
-| Templates | ❌ |
-| Interativos | ✅ botões, listas, CTA |
-| Grupos | ✅ (Chatwoot não modela) |
-| Rate limit API | Sem limite declarado — risco ban WhatsApp |
-| Chamadas | ⚠️ API documentada (SIP/voice) — fora escopo Chatwoot MVP |
-
-### Notas para Chatwoot
-
-- **4 rotas webhook** ou **1 rota multiplexada** por `type` no JSON
-- Mapear `MessageStatusCallback` → `statuses[]` flat
-- `source_id` = `messageId` / `ids[0]`
-- `provider_config`: `instance_id`, `instance_token`, `client_token` (conforme doc)
-- Bom para **SaaS gerenciado**; menos controle que Evolution self-host
-- Plano completo: [z-api/README.md](./z-api/README.md)
+Na implementação, baixar de novo a doc oficial: [developer.z-api.io](https://developer.z-api.io/). Não reutilizar contratos, payloads ou checklists antigos.
 
 ---
 
@@ -249,12 +208,12 @@ NotificaMe é **referência de implementação já planejada** neste fork — re
 | Self-host / controle | ✅ | ✅ | ❌ SaaS | ❌ SaaS | ✅ |
 | Doc REST estável | ✅ boa | ⚠️ paths divergentes | ✅ boa | ✅ (fork) | ⚠️ varia |
 | Performance / memória | Padrão | ✅ Go | — | — | varia |
-| Setup Chatwoot existente | Integração nativa (referência) | — | — | Plano no fork | — |
-| Interativos | ⚠️ | ✅ | ✅ planejado | ⚠️ |
-| Ops (QR, reconnect) | Médio | Baixo (SaaS) | Baixo | Alto |
-| Risco ToS / ban | Alto | Alto | Alto | Alto |
+| Setup Chatwoot existente | ✅ `evolution` no fork | ✅ `evolution_go` no fork | sem plano local | doc ainda não versionada | — |
+| Interativos | ⚠️ | ✅ | a confirmar | ⚠️ | ⚠️ |
+| Ops (QR, reconnect) | Médio (self-host) | Médio (self-host) | Baixo (SaaS) | Baixo (SaaS) | Alto |
+| Risco ToS / ban | Alto | Alto | Alto | Alto | Alto |
 
-**Recomendação:** escolher **um piloto** (Evolution self-host **ou** NotificaMe se já contratado), congelar contrato webhook, implementar MVP texto+status antes de mídia.
+**Recomendação:** `evolution` e `evolution_go` já estão no fork. Um próximo piloto (Z-API ou NotificaMe) só faz sentido se o operador precisar de SaaS; congele o contrato de webhook antes de codar.
 
 ---
 

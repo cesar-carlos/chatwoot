@@ -49,6 +49,22 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ConnectionEvents do
       expect(channel.reload.provider_config['connection_status']).to eq('open')
     end
 
+    it 'does not replace an active pairing code with a QR webhook' do
+      channel.update!(
+        provider_config: channel.provider_config.merge('last_qr_code' => 'ABCD1234')
+      )
+
+      handler.handle_event(
+        event: 'QRCODE',
+        data: { qrcode: 'data:image/png;base64,abc', code: 'not-a-pairing-token' }
+      )
+
+      channel.reload
+      expect(channel.provider_config['last_qr_code']).to eq('ABCD1234')
+      expect(channel.provider_config['last_qr_base64']).to be_blank
+      expect(ActionCable.server).not_to have_received(:broadcast)
+    end
+
     it 'ignores residual QRCODE after the session is already open' do
       channel.update!(
         provider_config: channel.provider_config.merge('connection_status' => 'open')

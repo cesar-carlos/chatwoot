@@ -23,6 +23,16 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
   end
 
   describe 'retry and non-JSON handling' do
+    it 'does not retry a failed send' do
+      stub_request(:post, 'https://go.example.com/send/text')
+        .to_return(status: 502, body: { error: 'bad gateway' }.to_json, headers: { 'Content-Type' => 'application/json' })
+
+      response = client.send_text(number: '5511999999999', text: 'hi')
+
+      expect(response.code).to eq(502)
+      expect(WebMock).to have_requested(:post, 'https://go.example.com/send/text').once
+    end
+
     it 'retries once on 502 responses' do
       stub_request(:get, 'https://go.example.com/instance/status')
         .to_return(
@@ -36,10 +46,17 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
     end
 
     it 'raises ApiError on non-JSON responses' do
+      allow(Resolv).to receive(:getaddresses).with('go.example.com').and_return(['1.1.1.1'])
       stub_request(:get, 'https://go.example.com/server/ok')
         .to_return(status: 200, body: 'not json', headers: { 'Content-Type' => 'application/json' })
 
       expect { client.server_ok }.to raise_error(Custom::Whatsapp::EvolutionGo::ApiError, /non-JSON/)
+    end
+
+    it 'refuses server_ok when the host resolves to a link-local address' do
+      allow(Resolv).to receive(:getaddresses).with('go.example.com').and_return(['169.254.169.254'])
+
+      expect { client.server_ok }.to raise_error(Custom::Whatsapp::EvolutionGo::ApiError, /unreachable/)
     end
   end
 
@@ -196,6 +213,68 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ApiClient do
       response = client.react(number: '5511999999999', id: 'TARGETMSG1', reaction: '👍')
       expect(response.success?).to be(true)
       expect(WebMock).to have_requested(:post, 'https://go.example.com/message/react').once
+    end
+  end
+
+  describe '#send_carousel' do
+    it 'posts cards, body and formatJid to /send/carousel' do
+      stub_request(:post, 'https://go.example.com/send/carousel')
+        .to_return(status: 200, body: { data: { Info: { ID: 'CAR1' } } }.to_json)
+
+      response = client.send_carousel(
+        number: '5511999999999',
+        body: 'Offers',
+        cards: [
+          {
+            header: { imageUrl: 'https://cdn.example/offer.png', title: 'Day offer' },
+            body: { text: 'Only today' },
+            buttons: [{ type: 'URL', displayText: 'More', id: 'https://example.org/more' }]
+          }
+        ],
+        format_jid: false
+      )
+
+      expect(response.success?).to be(true)
+      expect(WebMock).to have_requested(:post, 'https://go.example.com/send/carousel').with(
+        body: {
+          number: '5511999999999',
+          body: 'Offers',
+          cards: [
+            {
+              header: { imageUrl: 'https://cdn.example/offer.png', title: 'Day offer' },
+              body: { text: 'Only today' },
+              buttons: [{ type: 'URL', displayText: 'More', id: 'https://example.org/more' }]
+            }
+          ],
+          formatJid: false
+        }
+      )
+    end
+  end
+
+  describe '#send_link' do
+    it 'posts the link fields to /send/link' do
+      stub_request(:post, 'https://go.example.com/send/link')
+        .to_return(status: 200, body: { data: { Info: { ID: 'LINK1' } } }.to_json)
+
+      response = client.send_link(
+        number: '5511999999999',
+        url: 'https://example.org/docs',
+        title: 'Docs',
+        description: 'Reference',
+        text: 'Read this'
+      )
+
+      expect(response.success?).to be(true)
+      expect(WebMock).to have_requested(:post, 'https://go.example.com/send/link').with(
+        body: {
+          number: '5511999999999',
+          url: 'https://example.org/docs',
+          title: 'Docs',
+          description: 'Reference',
+          text: 'Read this'
+        }
+      )
     end
   end
 end

@@ -56,7 +56,7 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactsRefreshService do
     expect(Custom::Whatsapp::EvolutionGo::ContactEnrichmentJob).to have_received(:set).twice
     expect(Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob).to have_received(:set)
       .with(wait: (6 + described_class::LOCK_TTL_BUFFER).seconds)
-    expect(release_job).to have_received(:perform_later).with(channel.id)
+    expect(release_job).to have_received(:perform_later).with(channel.id, a_string_matching(/\A[0-9a-f]{32}\z/))
   end
   # rubocop:enable RSpec/MultipleExpectations
 
@@ -87,6 +87,27 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactsRefreshService do
     expect do
       described_class.new(channel: channel).perform
     end.to raise_error(described_class::AlreadyRunningError)
+  end
+
+  it 'keeps the lock for the paced duration past the old three hour cap' do
+    ttl = described_class.new(channel: channel).send(:lock_ttl_for, 4_000)
+
+    expect(ttl).to eq((4_000 * 3) + described_class::LOCK_TTL_BUFFER)
+    expect(ttl).to be > 3.hours.to_i
+  end
+
+  it 'releases the lock only when the refresh token still matches' do
+    key = format(Redis::RedisKeys::EVOLUTION_GO_CONTACTS_REFRESH_LOCK, channel_id: channel.id)
+    Redis::Alfred.set(key, 'current-token', ex: 60)
+
+    described_class.release_lock!(channel.id, 'stale-token')
+    expect(Redis::Alfred.get(key)).to eq('current-token')
+
+    described_class.release_lock!(channel.id, nil)
+    expect(Redis::Alfred.get(key)).to eq('current-token')
+
+    described_class.release_lock!(channel.id, 'current-token')
+    expect(Redis::Alfred.get(key)).to be_nil
   end
 
   it 'exposes lock status with remaining ttl' do

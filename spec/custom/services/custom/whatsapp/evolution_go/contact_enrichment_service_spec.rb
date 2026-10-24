@@ -78,6 +78,21 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ContactEnrichmentService do
     expect(contact.reload.avatar).not_to be_attached
   end
 
+  it 'still looks up the profile when user/check rejects the phone but a LID is stored' do
+    contact.update!(identifier: '279224615219224@lid')
+    stub_user_check(exists: false)
+    allow(api_client).to receive(:user_info).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => { 'Users' => {} } })
+    )
+    allow(api_client).to receive(:user_avatar).and_return(
+      instance_double(HTTParty::Response, success?: true, parsed_response: { 'data' => {} })
+    )
+
+    described_class.new(channel: channel, contact: contact, force: false).perform
+
+    expect(api_client).to have_received(:user_info).with(numbers: ['279224615219224@lid'])
+  end
+
   it 'downloads avatar inline on force when avatar response contains an HTTP URL' do
     stub_user_check(exists: true)
     allow(api_client).to receive(:user_info).and_return(

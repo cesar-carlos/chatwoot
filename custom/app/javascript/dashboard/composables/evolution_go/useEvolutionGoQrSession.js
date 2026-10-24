@@ -68,15 +68,16 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
     if (normalized.connectionStatus) {
       connectionStatus.value = normalized.connectionStatus;
     }
-    if (normalized.qrcodeBase64) {
+    if (normalized.pairingCode) {
+      pairingCode.value = normalized.pairingCode;
+      qrcodeBase64.value = '';
+      clearExpiryTimer();
+    } else if (normalized.qrcodeBase64) {
       qrcodeBase64.value = normalized.qrcodeBase64;
       pairingCode.value = '';
       qrRefreshError.value = false;
       // eslint-disable-next-line no-use-before-define -- re-arm expiry when fresh QR arrives
       armQrExpiryTimer();
-    }
-    if (normalized.pairingCode) {
-      pairingCode.value = normalized.pairingCode;
     }
 
     if (isConnected()) {
@@ -184,7 +185,7 @@ export function useEvolutionGoQrSession({ inboxId, store, onConnected }) {
 
   function armQrExpiryTimer() {
     clearExpiryTimer();
-    if (!sessionActive) return;
+    if (!sessionActive || pairingCode.value) return;
 
     const generation = sessionGeneration;
     expiryTimer = setTimeout(() => {

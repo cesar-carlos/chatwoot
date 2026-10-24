@@ -49,6 +49,23 @@ RSpec.describe Webhooks::EvolutionGoController, type: :request do
       expect(job_args).not_to have_key('instance_name')
     end
 
+    it 'strips inline base64 before enqueueing the webhook job' do
+      media_payload = payload.deep_dup
+      media_payload['data']['Message']['imageMessage'] = {
+        'mimetype' => 'image/jpeg',
+        'url' => 'https://mmg.whatsapp.net/photo',
+        'base64' => 'A' * 80
+      }
+
+      post "/webhooks/evolution_go/#{instance_name}?token=#{webhook_token}", params: media_payload
+
+      job_args = enqueued_jobs.find { |job| job[:job] == Webhooks::WhatsappEventsJob }[:args].first
+      image = job_args.dig('data', 'Message', 'imageMessage')
+      expect(image).not_to have_key('base64')
+      expect(image['mimetype']).to eq('image/jpeg')
+      expect(image['url']).to eq('https://mmg.whatsapp.net/photo')
+    end
+
     it 'returns unauthorized when token does not match' do
       post "/webhooks/evolution_go/#{instance_name}?token=wrong", params: payload
 

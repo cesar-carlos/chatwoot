@@ -275,13 +275,11 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def mark_inbound_deleted?(channel)
-    config = channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
-    ActiveModel::Type::Boolean.new.cast(config['mark_inbound_deleted'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(channel.provider_config, 'mark_inbound_deleted')
   end
 
   def mark_inbound_edited?(channel)
-    config = channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
-    ActiveModel::Type::Boolean.new.cast(config['mark_inbound_edited'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(channel.provider_config, 'mark_inbound_edited')
   end
 
   def process_send_message_event(channel, params)
@@ -339,8 +337,7 @@ module Custom::Webhooks::WhatsappEventsJobEvolutionGo
   end
 
   def ignore_from_me_echo?(channel)
-    config = channel.provider_config || Custom::Whatsapp::EvolutionGo::ProviderConfigDefaults::DEFAULTS
-    ActiveModel::Type::Boolean.new.cast(config['ignore_from_me_echo'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(channel.provider_config, 'ignore_from_me_echo')
   end
 
   def ignore_groups?(channel)

@@ -83,7 +83,7 @@ class Custom::Whatsapp::EvolutionGo::EditSyncService
   end
 
   def convert_markdown_outbound?
-    ActiveModel::Type::Boolean.new.cast((channel.provider_config || {})['convert_markdown_outbound'])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(channel.provider_config, 'convert_markdown_outbound')
   end
 
   def sign_msg?

@@ -6,7 +6,7 @@
 class Custom::Whatsapp::EvolutionGo::ContactsRefreshLockReleaseJob < ApplicationJob
   queue_as :low
 
-  def perform(channel_id)
-    Custom::Whatsapp::EvolutionGo::ContactsRefreshService.release_lock!(channel_id)
+  def perform(channel_id, refresh_token = nil)
+    Custom::Whatsapp::EvolutionGo::ContactsRefreshService.release_lock!(channel_id, refresh_token)
   end
 end

@@ -141,8 +141,9 @@ Evolution GO
 | Contact | `POST /send/contact` | `{ number, vcard: { fullName, organization, phone } }` |
 | Sticker | `POST /send/sticker` | `{ number, sticker }` |
 | Button | `POST /send/button` | `{ number, title, description, footer, buttons[] }` |
-| List | `POST /send/list` | `{ number, title, sections[] }` |
-| Carousel | `POST /send/carousel` | `{ number, text, cards[] }` |
+| List | `POST /send/list` | `{ number, title, description, footerText, buttonText, sections[] }` |
+| Carousel | `POST /send/carousel` | `{ number, body?, cards[] }` — cada cartão exige `header` (imageUrl ou videoUrl) e `body.text` |
+| Link | `POST /send/link` | `{ number, url, title?, description?, text? }` |
 
 **Quoted reply (todos sends):** `{ quoted: { messageId, participant } }`
 

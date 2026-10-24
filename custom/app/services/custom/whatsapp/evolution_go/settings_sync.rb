@@ -39,9 +39,7 @@ module Custom::Whatsapp::EvolutionGo::SettingsSync
   end
 
   def boolean_setting(key)
-    return nil if provider_config[key].nil?
-
-    ActiveModel::Type::Boolean.new.cast(provider_config[key])
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(provider_config, key)
   end
 
   def proxy_enabled?
