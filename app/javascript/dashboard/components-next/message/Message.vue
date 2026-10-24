@@ -51,6 +51,7 @@ import ForwardEmailPanel from './forward/ForwardEmailPanel.vue';
 import ForwardedEmailBanner from './forward/ForwardedEmailBanner.vue';
 import ContextMenu from 'dashboard/modules/conversations/components/MessageContextMenu.vue';
 import { useBranding } from 'shared/composables/useBranding';
+import { useAccount } from 'dashboard/composables/useAccount';
 // FORK: WhatsApp-like message forward
 import { messageCanBeForwarded } from 'customDashboard/composables/useMessageForward';
 import {
@@ -171,6 +172,7 @@ const isForwardSelecting = computed(() =>
 const isForwardSelected = computed(() =>
   Boolean(forwardSelection?.isSelected?.(props.id))
 );
+const { isOnChatwootCloud } = useAccount();
 const autoTranslate = useMapGetter('getAutoTranslate');
 const translationState = useMapGetter('getMessageTranslationState');
 const showingOriginal = ref(false);

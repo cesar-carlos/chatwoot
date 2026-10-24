@@ -11,4 +11,22 @@ module Custom::Account
   def workflow_rules_migrated?
     settings['workflow_rules_migrated_at'].present?
   end
+
+  def selected_feature_flags=(features)
+    if defined?(Accounts::FeatureStore) && Accounts::FeatureStore.jsonb_column_available?
+      Accounts::FeatureStore.new(self).bulk_set(features)
+      sync_assignment_features
+    else
+      super
+    end
+  end
+
+  private
+
+  # FORK: self-hosted enterprise has no Stripe plan_name but should unlock business/enterprise sync rules
+  def business_or_enterprise_plan?
+    return true if ChatwootApp.self_hosted_enterprise?
+
+    super
+  end
 end

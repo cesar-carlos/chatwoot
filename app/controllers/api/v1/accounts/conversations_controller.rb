@@ -3,8 +3,6 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   include DateRangeHelper
   include HmacConcern
   include ConversationCustomAttributesConcern
-  # FORK: current_user_participating? for ChatList applyRoleFilter
-  include Api::V1::ConversationsHelper
   include ConversationAssignmentTargetsConcern
 
   before_action :conversation, except: [:index, :meta, :search, :create, :filter]

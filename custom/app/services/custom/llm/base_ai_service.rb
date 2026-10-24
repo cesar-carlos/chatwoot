@@ -5,15 +5,9 @@ module Custom::Llm::BaseAiService
   def chat(model: @model, temperature: @temperature, thinking: nil, feature: @llm_feature, **)
     options = Captain::ResponsesConfig.options(model: model, temperature: temperature, feature: feature)
     thinking ||= options[:thinking]
-    context = @llm_ruby_context || account_ruby_llm_context
-    llm_chat = if context
-                 # FORK: account OpenAI BYOK uses a keyed RubyLLM context
-                 context.chat(model: model, **options.slice(:protocol), **)
-               else
-                 RubyLLM.chat(model: model, **options.slice(:protocol), **)
-               end
+    llm_chat = open_llm_chat(model: model, options: options, **)
     llm_chat.with_thinking(**thinking) if thinking
-    return llm_chat if options[:temperature].nil? || (thinking && thinking[:effort] != :none)
+    return llm_chat if omit_llm_temperature?(options, thinking)
 
     llm_chat.with_temperature(options[:temperature])
   end
@@ -23,6 +17,19 @@ module Custom::Llm::BaseAiService
   end
 
   private
+
+  def open_llm_chat(model:, options:, **)
+    kwargs = { model: model, **options.slice(:protocol), ** }
+    context = @llm_ruby_context || account_ruby_llm_context
+    # FORK: account OpenAI BYOK uses a keyed RubyLLM context
+    return context.chat(**kwargs) if context
+
+    RubyLLM.chat(**kwargs)
+  end
+
+  def omit_llm_temperature?(options, thinking)
+    options[:temperature].nil? || (thinking && thinking[:effort] != :none)
+  end
 
   def with_account_llm_credential
     @llm_credential, context = Custom::Llm::AccountCredential.build_context(llm_account_for_credential)

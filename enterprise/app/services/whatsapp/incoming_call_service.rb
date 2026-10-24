@@ -127,8 +127,7 @@ class Whatsapp::IncomingCallService
       sdp_answer = payload.dig(:session, :sdp)&.gsub('a=setup:actpass', 'a=setup:active')
       call.update!(meta: (call.meta || {}).merge('sdp_answer' => sdp_answer))
       # FORK: scope outbound_connected to initiating agent pubsub token
-      streams = outbound_connected_streams(call)
-      broadcast(call, 'voice_call.outbound_connected', streams: streams, sdp_answer: sdp_answer)
+      broadcast(call, 'voice_call.outbound_connected', streams: outbound_connected_streams(call), sdp_answer: sdp_answer)
     end
   end
 
@@ -237,12 +236,6 @@ class Whatsapp::IncomingCallService
     User.where(id: user_ids).pluck(:pubsub_token).compact
   end
 
-  # FORK: outbound_connected agent streams + ActionCableCallBroadcaster adapter
-  def outbound_connected_streams(call)
-    token = call.accepted_by_agent&.pubsub_token
-    token ? [token] : account_streams
-  end
-
   def broadcast(call, event, streams: account_streams, **extra)
     cable_broadcaster.broadcast(call, event, streams: streams, **extra)
   end
@@ -258,3 +251,6 @@ class Whatsapp::IncomingCallService
     ["account_#{inbox.account_id}"]
   end
 end
+
+# FORK: disabled-inbound rejection and outbound_connected stream scope
+Whatsapp::IncomingCallService.prepend_mod_with('Whatsapp::IncomingCallService')

@@ -24,11 +24,7 @@ module Enterprise::Account
 
   # Auto-sync advanced_assignment with assignment_v2 when features are bulk-updated via admin UI
   def selected_feature_flags=(features)
-    if defined?(Accounts::FeatureStore) && Accounts::FeatureStore.jsonb_column_available?
-      Accounts::FeatureStore.new(self).bulk_set(features)
-    else
-      super
-    end
+    super
     sync_assignment_features
   end
 
@@ -136,9 +132,6 @@ module Enterprise::Account
   end
 
   def business_or_enterprise_plan?
-    # FORK: Self-hosted enterprise has no Stripe plan_name but should unlock business/enterprise sync rules
-    return true if ChatwootApp.self_hosted_enterprise?
-
     if billing_provider == 'shopify'
       return Enterprise::Billing::PlanConfiguration.current_plan(self)&.fetch('features', [])&.include?('advanced_assignment')
     end

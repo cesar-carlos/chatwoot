@@ -11,6 +11,7 @@ class Api::V1::Accounts::InboxMembersController < Api::V1::Accounts::BaseControl
     # FORK: custom role inbox manage permission — collaborators are not inbox create
     authorize @inbox, :manage_members?
     return render_could_not_create_error('Invalid User IDs') unless valid_member_ids?
+
     ActiveRecord::Base.transaction do
       @inbox.add_members(agents_to_be_added_ids)
     end
@@ -21,6 +22,7 @@ class Api::V1::Accounts::InboxMembersController < Api::V1::Accounts::BaseControl
     # FORK: custom role inbox manage permission
     authorize @inbox, :manage_members?
     return render_could_not_create_error('Invalid User IDs') unless valid_member_ids?
+
     update_agents_list
     fetch_updated_agents
   end

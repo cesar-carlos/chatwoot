@@ -2,6 +2,8 @@
 
 module Custom::Api::V1::Accounts::ConversationsController
   def self.prepended(base)
+    # FORK: current_user_participating? for ChatList applyRoleFilter
+    base.include Api::V1::ConversationsHelper
     base.helper_method :current_user_participating_conversation_ids
   end
 
