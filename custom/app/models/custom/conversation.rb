@@ -5,6 +5,7 @@ module Custom::Conversation
     # FK has no ON DELETE CASCADE — must delete executions before the conversation.
     has_many :conversation_workflow_rule_executions, dependent: :delete_all
     before_save :capture_team_notification_transition
+    before_create :apply_current_opened_by
   end
 
   def public_additional_attributes
@@ -15,6 +16,16 @@ module Custom::Conversation
 
   def capture_team_notification_transition
     Custom::Notification::TeamAssignmentTransition.capture(self)
+  end
+
+  def apply_current_opened_by
+    attrs = (additional_attributes || {}).stringify_keys
+    return if attrs[Custom::Conversations::OpenedByStamper::ATTRIBUTE_KEY].present?
+
+    value = Custom::Conversations::OpenedByStamper.normalize(Current.conversation_opened_by)
+    return if value.blank?
+
+    self.additional_attributes = attrs.merge(Custom::Conversations::OpenedByStamper::ATTRIBUTE_KEY => value)
   end
 
   # FORK: WhatsApp Evolution group chats stay unassigned (no inbox round-robin).

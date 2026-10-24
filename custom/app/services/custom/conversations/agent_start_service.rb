@@ -111,9 +111,16 @@ class Custom::Conversations::AgentStartService
     }
   end
 
-  # rubocop:disable Metrics/AbcSize -- mirrors ConversationBuilder create attrs
+  # The dashboard user is the opener. A client-supplied opened_by must not win,
+  # or an agent create would match welcome rules written for the contact.
+  def agent_additional_attributes
+    raw = params[:additional_attributes]
+    attributes = raw.respond_to?(:permit!) ? raw.permit! : (raw || {})
+    attributes.except(Custom::Conversations::OpenedByStamper::ATTRIBUTE_KEY)
+  end
+
   def conversation_params
-    additional_attributes = params[:additional_attributes]&.permit! || {}
+    additional_attributes = agent_additional_attributes
     custom_attributes = params[:custom_attributes]&.permit! || {}
     status = params[:status].present? ? { status: params[:status] } : {}
 
@@ -129,5 +136,4 @@ class Custom::Conversations::AgentStartService
       team_id: params[:team_id]
     }.merge(status)
   end
-  # rubocop:enable Metrics/AbcSize
 end

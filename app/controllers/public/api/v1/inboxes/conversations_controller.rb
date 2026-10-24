@@ -65,3 +65,6 @@ class Public::Api::V1::Inboxes::ConversationsController < Public::Api::V1::Inbox
     params.permit(custom_attributes: {})
   end
 end
+
+# FORK: stamp opened_by=contact when the public API creates a conversation
+Public::Api::V1::Inboxes::ConversationsController.prepend_mod_with('Public::Api::V1::Inboxes::ConversationsController')

@@ -44,6 +44,18 @@ RSpec.describe Custom::Conversations::OpenedByStamper do
       Current.reset
     end
 
+    it 'restores Current after with_current' do
+      Current.conversation_opened_by = described_class::AGENT
+
+      described_class.with_current(described_class::CONTACT) do
+        expect(Current.conversation_opened_by).to eq('contact')
+      end
+
+      expect(Current.conversation_opened_by).to eq('agent')
+    ensure
+      Current.reset
+    end
+
     it 'keeps an explicit opened_by on params' do
       params = described_class.merge_create_params(
         account_id: account.id,

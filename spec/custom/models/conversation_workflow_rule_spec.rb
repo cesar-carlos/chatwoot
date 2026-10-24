@@ -21,6 +21,13 @@ RSpec.describe ConversationWorkflowRule do
       expect(rule).not_to be_valid
     end
 
+    it 'accepts an opened_by condition' do
+      rule = build_rule(
+        conditions: [{ 'attribute_key' => 'opened_by', 'filter_operator' => 'equal_to', 'values' => ['contact'] }]
+      )
+      expect(rule).to be_valid
+    end
+
     it 'rejects inbox ids outside account' do
       other_inbox = create(:inbox)
       rule = build_rule(inbox_ids: [other_inbox.id])

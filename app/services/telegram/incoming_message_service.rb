@@ -220,3 +220,6 @@ class Telegram::IncomingMessageService
     params[:message] = params[:business_message] if params[:business_message] && !params[:message]
   end
 end
+
+# FORK: stamp opened_by=contact on inbound conversation create
+Telegram::IncomingMessageService.prepend_mod_with('Telegram::IncomingMessageService')

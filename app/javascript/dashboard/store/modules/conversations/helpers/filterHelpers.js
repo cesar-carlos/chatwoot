@@ -89,6 +89,7 @@ const getValueFromConversation = (conversation, attributeKey) => {
       return conversation.meta?.team?.id;
     case 'browser_language':
     case 'referer':
+    case 'opened_by': // FORK: episode origin lives on additional_attributes
       return conversation.additional_attributes?.[attributeKey];
     default:
       return conversation.custom_attributes?.[attributeKey] ?? null;

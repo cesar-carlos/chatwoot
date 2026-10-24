@@ -182,3 +182,6 @@ class Tiktok::MessageService
     !incoming_message?
   end
 end
+
+# FORK: stamp opened_by on inbound or echo conversation create
+Tiktok::MessageService.prepend_mod_with('Tiktok::MessageService')

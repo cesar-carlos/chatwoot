@@ -31,6 +31,16 @@ RSpec.describe Custom::Conversations::AgentStartService do
     expect(conversation.additional_attributes['opened_by']).to eq('agent')
   end
 
+  it 'stamps agent even when the client sends opened_by=contact' do
+    spoofed = ActionController::Parameters.new(
+      additional_attributes: { 'opened_by' => 'contact', 'browser_language' => 'pt_BR' }
+    )
+    conversation = described_class.new(contact_inbox: contact_inbox, user: agent, params: spoofed).perform
+
+    expect(conversation.additional_attributes['opened_by']).to eq('agent')
+    expect(conversation.additional_attributes['browser_language']).to eq('pt_BR')
+  end
+
   it 'reopens a resolved conversation and assigns the initiating agent' do
     existing = create(
       :conversation,

@@ -209,3 +209,6 @@ class Twilio::IncomingMessageService
     end
   end
 end
+
+# FORK: stamp opened_by=contact on inbound conversation create
+Twilio::IncomingMessageService.prepend_mod_with('Twilio::IncomingMessageService')

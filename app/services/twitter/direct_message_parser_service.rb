@@ -124,3 +124,6 @@ class Twitter::DirectMessageParserService < Twitter::WebhooksBaseService
     @message.save!
   end
 end
+
+# FORK: stamp opened_by on inbound or account-authored conversation create
+Twitter::DirectMessageParserService.prepend_mod_with('Twitter::DirectMessageParserService')

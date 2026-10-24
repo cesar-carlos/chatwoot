@@ -276,6 +276,21 @@ export function useConversationFilterContext() {
       filterOperators: containmentOperators.value,
       attributeModel: 'additional',
     },
+    // FORK: who opened the current conversation episode
+    {
+      attributeKey: CONVERSATION_ATTRIBUTES.OPENED_BY,
+      value: CONVERSATION_ATTRIBUTES.OPENED_BY,
+      attributeName: t('FILTER.ATTRIBUTES.OPENED_BY'),
+      label: t('FILTER.ATTRIBUTES.OPENED_BY'),
+      inputType: 'searchSelect',
+      options: ['contact', 'agent', 'phone'].map(id => ({
+        id,
+        name: t(`AUTOMATION.OPENED_BY_TYPES.${id.toUpperCase()}`),
+      })),
+      dataType: 'text',
+      filterOperators: presenceOperators.value,
+      attributeModel: 'additional',
+    },
     {
       attributeKey: CONVERSATION_ATTRIBUTES.CREATED_AT,
       value: CONVERSATION_ATTRIBUTES.CREATED_AT,

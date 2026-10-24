@@ -722,7 +722,12 @@
       "OPEN": "Open",
       "UNATTENDED": "Unattended",
       "UNASSIGNED": "Unassigned",
-      "PENDING": "Pending"
+      "PENDING": "Pending",
+      "OPENED_BY_HEADER": "Opened by",
+      "OPENED_BY_CONTACT": "Contact",
+      "OPENED_BY_AGENT": "Agent",
+      "OPENED_BY_PHONE": "WhatsApp origin",
+      "OPENED_BY_UNSET": "Not set"
     },
     "CONVERSATION_HEATMAP": {
       "HEADER": "Conversation Traffic",

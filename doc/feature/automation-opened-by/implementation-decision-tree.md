@@ -2,7 +2,7 @@
 
 Comparação de abordagens para distinguir **quem iniciou/reabriu** a conversa e expor isso nas condições da Automação.
 
-**Atualizado ago/2026** — MVP implementado.
+**Atualizado out/2026** — MVP implementado. Widget e API pública também gravam `contact` na criação. A leitura de conversa sem stamp continua sem default.
 
 ---
 
@@ -106,4 +106,4 @@ Evita falso positivo em dados legados; admin adiciona a condição só onde prec
 
 ### 5. Fork strategy
 
-**Decisão:** lógica em `custom/` + `prepend_mod_with`; FORK mínimo em `Current`, `filter_keys.yml`, `Conversations::Resolver`, constants FE.
+**Decisão:** lógica em `custom/` + `prepend_mod_with`; FORK mínimo em `Current`, `filter_keys.yml`, `Conversations::Resolver`, constants FE, e uma linha de prepend no widget e na API pública.

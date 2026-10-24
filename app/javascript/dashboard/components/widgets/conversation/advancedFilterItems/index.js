@@ -118,6 +118,15 @@ const filterTypes = [
     filterOperators: OPERATOR_TYPES_5,
     attributeModel: 'standard',
   },
+  // FORK: who opened the current conversation episode
+  {
+    attributeKey: 'opened_by',
+    attributeI18nKey: 'OPENED_BY',
+    inputType: 'search_select',
+    dataType: 'text',
+    filterOperators: OPERATOR_TYPES_1,
+    attributeModel: 'additional',
+  },
 ];
 
 export const filterAttributeGroups = [
@@ -178,6 +187,11 @@ export const filterAttributeGroups = [
       {
         key: 'referer',
         i18nKey: 'REFERER_LINK',
+      },
+      // FORK: who opened the current conversation episode
+      {
+        key: 'opened_by',
+        i18nKey: 'OPENED_BY',
       },
     ],
   },

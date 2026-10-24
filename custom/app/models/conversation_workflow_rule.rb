@@ -35,7 +35,7 @@ class ConversationWorkflowRule < ApplicationRecord
   scope :ordered, -> { order(position: :asc, id: :asc) }
 
   def conditions_attributes
-    %w[assignee_id team_id labels priority]
+    %w[assignee_id team_id labels priority opened_by]
   end
 
   def actions_attributes

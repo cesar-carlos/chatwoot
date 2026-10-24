@@ -100,6 +100,13 @@ export const WORKFLOW_CONDITIONS = [
     inputType: 'multi_select',
     filterOperators: OPERATOR_TYPES_1,
   },
+  // FORK: who opened the current conversation episode
+  {
+    key: 'opened_by',
+    name: 'OPENED_BY',
+    inputType: 'search_select',
+    filterOperators: OPERATOR_TYPES_3,
+  },
 ];
 
 const DISALLOWED_ACTIONS = [

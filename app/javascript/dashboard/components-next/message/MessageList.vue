@@ -111,8 +111,15 @@ watch(
  * @param {Object} next - Next message, absent at a campaign entry or the end
  * @returns {Boolean} - Whether the message should be grouped with next
  */
+// FORK: phone/WhatsApp Web sends must not share a bubble group with bot or agent messages
+const isNativeAppMessage = message => {
+  const attrs = message?.contentAttributes || {};
+  return Boolean(attrs.externalEcho || attrs.phoneSent);
+};
+
 const shouldGroupWithNext = (current, next) => {
   if (!next || next.status === 'failed') return false;
+  if (isNativeAppMessage(current) !== isNativeAppMessage(next)) return false;
 
   const nextSenderId = next.senderId ?? next.sender?.id;
   const currentSenderId = current.senderId ?? current.sender?.id;

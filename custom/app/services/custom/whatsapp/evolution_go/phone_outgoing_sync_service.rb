@@ -144,6 +144,7 @@ class Custom::Whatsapp::EvolutionGo::PhoneOutgoingSyncService
 
   def create_outgoing_message!(contact_inbox, key, content, canonical)
     conversation = resolve_outgoing_conversation(contact_inbox)
+    Custom::Conversations::OpenedByStamper.reopen_as_phone!(conversation)
     timestamp = outgoing_message_timestamp(canonical)
     key_data = key.with_indifferent_access
     remote_jid = jid_resolver.addressing_jid(key_data).presence || jid_resolver.resolve_message_jid(key_data)

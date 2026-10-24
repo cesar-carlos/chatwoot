@@ -19,6 +19,8 @@ export const CONVERSATION_ATTRIBUTES = {
   LABELS: 'labels',
   BROWSER_LANGUAGE: 'browser_language',
   REFERER: 'referer',
+  // FORK: conversation episode origin
+  OPENED_BY: 'opened_by',
   CREATED_AT: 'created_at',
   LAST_ACTIVITY_AT: 'last_activity_at',
 };

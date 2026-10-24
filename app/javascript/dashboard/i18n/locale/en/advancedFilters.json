@@ -69,7 +69,8 @@
       "CUSTOM_ATTRIBUTE_LINK": "Link",
       "CUSTOM_ATTRIBUTE_CHECKBOX": "Checkbox",
       "CREATED_AT": "Created at",
-      "LAST_ACTIVITY": "Last activity"
+      "LAST_ACTIVITY": "Last activity",
+      "OPENED_BY": "Opened by"
     },
     "ERRORS": {
       "VALUE_REQUIRED": "Value is required",

@@ -41,5 +41,24 @@ class Custom::Conversations::OpenedByStamper
       str = value.to_s
       VALUES.include?(str) ? str : nil
     end
+
+    def with_current(value)
+      normalized = normalize(value)
+      previous = Current.conversation_opened_by
+      Current.conversation_opened_by = normalized if normalized
+      yield
+    ensure
+      Current.conversation_opened_by = previous
+    end
+
+    # Phone sync reuses a resolved or snoozed thread when the inbox keeps a single
+    # conversation. Open that episode as phone so conversation_opened can run.
+    def reopen_as_phone!(conversation)
+      return if conversation.blank? || conversation.muted?
+      return unless conversation.resolved? || conversation.snoozed?
+
+      stamp!(conversation, PHONE)
+      conversation.open!
+    end
   end
 end

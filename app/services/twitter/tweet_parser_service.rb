@@ -90,3 +90,6 @@ class Twitter::TweetParserService < Twitter::WebhooksBaseService
     )
   end
 end
+
+# FORK: stamp opened_by on inbound or account-authored conversation create
+Twitter::TweetParserService.prepend_mod_with('Twitter::TweetParserService')

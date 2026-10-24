@@ -65,6 +65,40 @@ RSpec.describe 'Conversation opened_by tracking' do
       expect(conversation.reload).to be_open
       expect(conversation.additional_attributes['opened_by']).to eq('contact')
     end
+
+    it 'keeps opened_by=phone when the contact replies during a pending phone episode' do
+      conversation.update!(status: :pending, additional_attributes: { 'opened_by' => 'phone' })
+
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :incoming,
+        sender: contact,
+        content: 'oi'
+      )
+
+      expect(conversation.reload).to be_pending
+      expect(conversation.additional_attributes['opened_by']).to eq('phone')
+    end
+
+    it 'stamps opened_by=contact when the contact reopens a resolved phone episode' do
+      conversation.update!(additional_attributes: { 'opened_by' => 'phone' })
+
+      create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :incoming,
+        sender: contact,
+        content: 'oi'
+      )
+
+      expect(conversation.reload).to be_open
+      expect(conversation.additional_attributes['opened_by']).to eq('contact')
+    end
   end
 
   describe 'agent toggle_status reopen' do
@@ -113,6 +147,83 @@ RSpec.describe 'Conversation opened_by tracking' do
 
       expect(conversation.reload).to be_open
       expect(conversation.additional_attributes['opened_by']).to eq('agent')
+    end
+  end
+
+  describe 'Evolution pending cycle' do
+    let(:channel) do
+      create(
+        :channel_whatsapp,
+        account: account,
+        provider: 'evolution',
+        sync_templates: false,
+        validate_provider_config: false,
+        provider_config: Custom::Whatsapp::Evolution::ProviderConfig.build(
+          'instance_name' => 'opened-by-instance',
+          'api_key' => 'TEST-KEY',
+          'conversation_pending' => true
+        )
+      )
+    end
+    let(:inbox) { channel.inbox.tap { |record| record.update!(lock_to_single_conversation: true) } }
+
+    it 'keeps opened_by=contact when a resolved conversation reopens as pending' do
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :resolved,
+        additional_attributes: { 'opened_by' => 'agent' }
+      )
+
+      create(:message, account: account, inbox: inbox, conversation: conversation, message_type: :incoming, sender: contact)
+
+      expect(conversation.reload).to be_pending
+      expect(conversation.additional_attributes['opened_by']).to eq('contact')
+      expect(conversation.additional_attributes['evolution_pending_since']).to be_present
+    end
+
+    it 'keeps opened_by=contact when the second incoming message opens the pending cycle' do
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :pending,
+        additional_attributes: {
+          'opened_by' => 'contact',
+          'evolution_pending_since' => 1.hour.ago.utc.iso8601(3)
+        }
+      )
+      create(:message, account: account, inbox: inbox, conversation: conversation, message_type: :incoming, sender: contact)
+      create(:message, account: account, inbox: inbox, conversation: conversation, message_type: :incoming, sender: contact)
+
+      expect(conversation.reload).to be_open
+      expect(conversation.additional_attributes['opened_by']).to eq('contact')
+      expect(conversation.additional_attributes['evolution_pending_since']).to be_blank
+    end
+
+    it 'keeps opened_by=phone when contact replies open a pending phone episode' do
+      conversation = create(
+        :conversation,
+        account: account,
+        inbox: inbox,
+        contact: contact,
+        contact_inbox: contact_inbox,
+        status: :pending,
+        additional_attributes: {
+          'opened_by' => 'phone',
+          'evolution_pending_since' => 1.hour.ago.utc.iso8601(3)
+        }
+      )
+      create(:message, account: account, inbox: inbox, conversation: conversation, message_type: :incoming, sender: contact)
+      create(:message, account: account, inbox: inbox, conversation: conversation, message_type: :incoming, sender: contact)
+
+      expect(conversation.reload).to be_open
+      expect(conversation.additional_attributes['opened_by']).to eq('phone')
     end
   end
 end

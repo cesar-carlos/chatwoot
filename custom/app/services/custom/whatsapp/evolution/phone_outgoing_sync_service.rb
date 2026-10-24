@@ -135,6 +135,7 @@ class Custom::Whatsapp::Evolution::PhoneOutgoingSyncService
 
   def create_outgoing_message!(contact_inbox, key, content)
     conversation = resolve_conversation(contact_inbox)
+    Custom::Conversations::OpenedByStamper.reopen_as_phone!(conversation)
     timestamp = message_timestamp(data['messageTimestamp'])
     conversation.messages.create!(outgoing_message_attributes(key, content, timestamp))
   end

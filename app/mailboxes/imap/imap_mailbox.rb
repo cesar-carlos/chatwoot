@@ -141,3 +141,6 @@ class Imap::ImapMailbox
     sanitize_mailbox_value(Array.wrap(@inbound_mail.references))
   end
 end
+
+# FORK: stamp opened_by=contact when inbound email creates a conversation
+Imap::ImapMailbox.prepend_mod_with('Imap::ImapMailbox')

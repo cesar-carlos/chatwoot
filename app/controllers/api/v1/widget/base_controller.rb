@@ -102,3 +102,6 @@ class Api::V1::Widget::BaseController < ApplicationController
     }
   end
 end
+
+# FORK: stamp opened_by=contact when the widget creates a conversation
+Api::V1::Widget::BaseController.prepend_mod_with('Api::V1::Widget::BaseController')

@@ -77,6 +77,53 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
       expect(contact_inbox.contact.phone_number).to be_nil
     end
 
+    it 'keeps a Chatwoot send as the agent message when its WhatsApp id is already stored' do
+      contact = create(:contact, account: account, phone_number: '+556696971841')
+      contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '556696971841')
+      conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+      agent_message = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        source_id: 'PHONE-SENT-MSG-001',
+        content: 'Oi'
+      )
+
+      expect { service.perform }.not_to change(Message, :count)
+
+      agent_message.reload
+      expect(agent_message.sender).to be_a(User)
+      expect(agent_message.content_attributes['external_echo']).not_to be(true)
+      expect(agent_message.content_attributes['phone_sent']).not_to be(true)
+    end
+
+    it 'creates a phone-identified copy when the Chatwoot send has not stored its WhatsApp id yet' do
+      contact = create(:contact, account: account, phone_number: '+556696971841')
+      contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '556696971841')
+      conversation = create(:conversation, account: account, inbox: inbox, contact: contact, contact_inbox: contact_inbox)
+      agent_message = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        source_id: nil,
+        content: 'Oi'
+      )
+
+      expect { service.perform }.to change(Message, :count).by(1)
+
+      echo = inbox.messages.find_by!(source_id: 'PHONE-SENT-MSG-001')
+      agent_message.reload
+      expect(agent_message.id).not_to eq(echo.id)
+      expect(agent_message.content_attributes['external_echo']).not_to be(true)
+      expect(echo.sender).to be_nil
+      expect(echo.content_attributes['external_echo']).to be(true)
+      expect(echo.content_attributes['phone_sent']).to be(true)
+    end
+
     it 'skips duplicate Chatwoot outbound echoes by source_id' do
       contact = create(:contact, account: account, phone_number: '+5566996971841')
       contact_inbox = create(:contact_inbox, contact: contact, inbox: inbox, source_id: '5566996971841')
@@ -115,6 +162,31 @@ RSpec.describe Custom::Whatsapp::Evolution::PhoneOutgoingSyncService do
       expect do
         media_service.perform
       end.to have_enqueued_job(Custom::Whatsapp::Evolution::MediaDownloadJob)
+    end
+
+    it 'reopens a resolved single-history conversation as phone' do
+      service.perform
+      inbox.update!(lock_to_single_conversation: true)
+      conversation = inbox.conversations.order(:id).last
+      conversation.update!(status: :resolved, additional_attributes: { 'opened_by' => 'contact' })
+      follow_up = data.merge('key' => data['key'].merge('id' => 'PHONE-SENT-MSG-002'))
+
+      described_class.new(channel: channel, data: follow_up).perform
+
+      expect(conversation.reload).to be_open
+      expect(conversation.additional_attributes['opened_by']).to eq('phone')
+    end
+
+    it 'keeps a pending episode origin when the phone sends again' do
+      service.perform
+      conversation = inbox.conversations.order(:id).last
+      conversation.update!(status: :pending, additional_attributes: { 'opened_by' => 'contact' })
+      follow_up = data.merge('key' => data['key'].merge('id' => 'PHONE-SENT-MSG-003'))
+
+      described_class.new(channel: channel, data: follow_up).perform
+
+      expect(conversation.reload).to be_pending
+      expect(conversation.additional_attributes['opened_by']).to eq('contact')
     end
 
     it 'raises LockAcquisitionError when the dedup lock is busy' do

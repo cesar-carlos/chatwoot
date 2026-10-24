@@ -155,3 +155,6 @@ class Messages::Facebook::MessageBuilder < Messages::Messenger::MessageBuilder
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
 end
+
+# FORK: stamp opened_by on inbound or echo conversation create
+Messages::Facebook::MessageBuilder.prepend_mod_with('Messages::Facebook::MessageBuilder')

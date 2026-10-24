@@ -30,10 +30,20 @@ module Custom::Message::OpenedByTracking
     return if conversation.muted?
     return unless incoming?
     return if conversation.open?
+    return if pending_origin_episode?
 
     Custom::Conversations::OpenedByStamper.stamp!(
       conversation,
       Custom::Conversations::OpenedByStamper::CONTACT
     )
+  end
+
+  # Pending phone/agent episodes stay with that opener. A contact reply must
+  # not make conversation_opened look contact-started and send the welcome menu.
+  def pending_origin_episode?
+    return false unless conversation.pending?
+
+    origin = conversation.additional_attributes&.[](Custom::Conversations::OpenedByStamper::ATTRIBUTE_KEY)
+    [Custom::Conversations::OpenedByStamper::PHONE, Custom::Conversations::OpenedByStamper::AGENT].include?(origin)
   end
 end

@@ -680,7 +680,12 @@
       "OPEN": "Abertas",
       "UNATTENDED": "Não atendidas",
       "UNASSIGNED": "Não atribuídas",
-      "PENDING": "Pendentes"
+      "PENDING": "Pendentes",
+      "OPENED_BY_HEADER": "Aberto por",
+      "OPENED_BY_CONTACT": "Contato",
+      "OPENED_BY_AGENT": "Agente",
+      "OPENED_BY_PHONE": "WhatsApp origem",
+      "OPENED_BY_UNSET": "Não definido"
     },
     "CONVERSATION_HEATMAP": {
       "HEADER": "Tráfego de conversa",

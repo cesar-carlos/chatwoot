@@ -55,12 +55,7 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
     end
 
     known_source_ids = existing_source_ids_for(records)
-    records.each do |record|
-      source_id = extract_source_id(record)
-      next if source_id.blank? || known_source_ids.include?(source_id)
-
-      known_source_ids << source_id if import_message_record(record)
-    end
+    records.each { |record| import_or_repair_record!(record, known_source_ids) }
     advance_page_cursor!(parsed, jid_index, page, remote_jids.size)
   end
 
@@ -86,6 +81,45 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
       'phase' => 'messages'
     )
     runtime.mark_completed! if jid_index + 1 >= jid_count
+  end
+
+  def import_or_repair_record!(record, known_source_ids)
+    source_id = extract_source_id(record)
+    return if source_id.blank?
+
+    if known_source_ids.include?(source_id)
+      repair_phone_origin!(record, source_id)
+      return
+    end
+
+    known_source_ids << source_id if import_message_record(record)
+  end
+
+  # Older imports stored fromMe history without the native-app flag, so the
+  # dashboard rendered the bot initial instead of the WhatsApp icon.
+  def repair_phone_origin!(record, source_id)
+    return unless from_me_record?(record)
+
+    message = runtime.inbox.messages.find_by(source_id: source_id)
+    return unless phone_origin_repair_candidate?(message)
+
+    message.update_columns( # rubocop:disable Rails/SkipsModelValidations -- stamp origin on an already imported row
+      content_attributes: message.content_attributes.merge(
+        'phone_sent' => true,
+        'external_echo' => true
+      )
+    )
+  end
+
+  def from_me_record?(record)
+    key = record.is_a?(Hash) ? (record['key'] || record[:key] || {}) : {}
+    ActiveModel::Type::Boolean.new.cast(key['fromMe'] || key[:fromMe])
+  end
+
+  def phone_origin_repair_candidate?(message)
+    return false if message.blank? || message.sender_id.present?
+
+    !ActiveModel::Type::Boolean.new.cast(message.content_attributes['external_echo'])
   end
 
   def import_message_record(record)
@@ -174,6 +208,8 @@ class Custom::Whatsapp::Evolution::Import::MessagesImporter
       source_id: key['id'],
       content_attributes: {
         history_import: true,
+        phone_sent: true,
+        external_echo: true,
         external_created_at: timestamp.iso8601
       },
       created_at: timestamp,

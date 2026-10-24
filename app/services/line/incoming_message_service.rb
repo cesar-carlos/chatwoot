@@ -171,3 +171,6 @@ class Line::IncomingMessageService
     file_type(file_content.content_type)
   end
 end
+
+# FORK: stamp opened_by=contact on inbound conversation create
+Line::IncomingMessageService.prepend_mod_with('Line::IncomingMessageService')

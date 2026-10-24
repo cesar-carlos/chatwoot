@@ -9,7 +9,8 @@ class Api::V2::Accounts::LiveReportsController < Api::V1::Accounts::BaseControll
       open: @conversations.open.count,
       unattended: @conversations.open.unattended.count,
       unassigned: @conversations.open.unassigned.count,
-      pending: @conversations.pending.count
+      pending: @conversations.pending.count,
+      opened_by: Custom::Conversations::OpenedBySummary.counts(@conversations.where(status: [:open, :pending])) # FORK
     }
   end
 

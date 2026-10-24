@@ -39,10 +39,21 @@ const agentStatusMetrics = computed(() => {
 const conversationMetrics = computed(() => {
   let metric = {};
   Object.keys(accountConversationMetric.value).forEach(key => {
+    // FORK: opened_by is a breakdown, rendered in its own card
+    if (key === 'opened_by') return;
     const metricName = t(`${accounti18nKey}.${OVERVIEW_METRICS[key]}`);
     metric[metricName] = accountConversationMetric.value[key];
   });
   return metric;
+});
+const openedByMetrics = computed(() => {
+  const counts = accountConversationMetric.value?.opened_by || {};
+  return {
+    [t(`${accounti18nKey}.OPENED_BY_CONTACT`)]: counts.contact || 0,
+    [t(`${accounti18nKey}.OPENED_BY_AGENT`)]: counts.agent || 0,
+    [t(`${accounti18nKey}.OPENED_BY_PHONE`)]: counts.phone || 0,
+    [t(`${accounti18nKey}.OPENED_BY_UNSET`)]: counts.unset || 0,
+  };
 });
 
 const selectedTeam = ref(null);
@@ -77,7 +88,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="flex flex-col items-center md:flex-row gap-4">
+  <div class="flex flex-col items-center md:flex-row md:flex-wrap gap-4">
     <div
       class="flex-1 w-full max-w-full md:w-[65%] md:max-w-[65%] conversation-metric"
     >
@@ -126,6 +137,26 @@ onMounted(() => {
       <MetricCard :header="$t('OVERVIEW_REPORTS.AGENT_STATUS.HEADER')">
         <div
           v-for="(metric, name, index) in agentStatusMetrics"
+          :key="index"
+          class="flex-1 min-w-0 pb-2"
+        >
+          <h3 class="text-base text-n-slate-11">
+            {{ name }}
+          </h3>
+          <p class="text-n-slate-12 text-3xl mb-0 mt-1">
+            {{ metric }}
+          </p>
+        </div>
+      </MetricCard>
+    </div>
+    <div class="w-full basis-full">
+      <MetricCard
+        :header="t(`${accounti18nKey}.OPENED_BY_HEADER`)"
+        :is-loading="uiFlags.isFetchingAccountConversationMetric"
+        :loading-message="t(`${accounti18nKey}.LOADING_MESSAGE`)"
+      >
+        <div
+          v-for="(metric, name, index) in openedByMetrics"
           :key="index"
           class="flex-1 min-w-0 pb-2"
         >

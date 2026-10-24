@@ -137,3 +137,6 @@ class Sms::IncomingMessageService
     @provider_uri ||= URI.parse(channel.api_base_path)
   end
 end
+
+# FORK: stamp opened_by=contact on inbound conversation create
+Sms::IncomingMessageService.prepend_mod_with('Sms::IncomingMessageService')

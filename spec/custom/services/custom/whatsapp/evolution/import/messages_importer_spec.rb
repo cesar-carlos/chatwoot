@@ -88,6 +88,62 @@ RSpec.describe Custom::Whatsapp::Evolution::Import::MessagesImporter do
       )
     end
 
+    it 'marks a fromMe history message as sent from the phone' do
+      phone_record = incoming_record.merge(
+        'key' => { 'id' => 'IMPORT-PHONE-1', 'fromMe' => true, 'remoteJid' => remote_jid },
+        'message' => { 'conversation' => 'Sent from the phone' }
+      )
+      stub_find_messages([phone_record])
+
+      importer.import_batch!
+
+      message = inbox.messages.find_by!(source_id: 'IMPORT-PHONE-1')
+      expect(message).to be_outgoing
+      expect(message.sender).to be_nil
+      expect(message.content_attributes['phone_sent']).to be(true)
+      expect(message.content_attributes['external_echo']).to be(true)
+    end
+
+    it 'stamps the phone origin on an older fromMe import that has no sender' do
+      conversation = create(:conversation, account: account, inbox: inbox)
+      existing = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        source_id: 'IMPORT-PHONE-OLD',
+        content: 'Already imported',
+        content_attributes: { 'history_import' => true }
+      )
+      existing.update_columns(sender_id: nil, sender_type: nil) # rubocop:disable Rails/SkipsModelValidations
+      agent_message = create(
+        :message,
+        account: account,
+        inbox: inbox,
+        conversation: conversation,
+        message_type: :outgoing,
+        source_id: 'IMPORT-AGENT-ECHO',
+        content_attributes: {}
+      )
+      stub_find_messages(
+        [
+          incoming_record.merge(
+            'key' => { 'id' => 'IMPORT-PHONE-OLD', 'fromMe' => true, 'remoteJid' => remote_jid }
+          ),
+          incoming_record.merge(
+            'key' => { 'id' => 'IMPORT-AGENT-ECHO', 'fromMe' => true, 'remoteJid' => remote_jid }
+          )
+        ]
+      )
+
+      importer.import_batch!
+
+      expect(existing.reload.content_attributes['external_echo']).to be(true)
+      expect(existing.content_attributes['phone_sent']).to be(true)
+      expect(agent_message.reload.content_attributes['external_echo']).not_to be(true)
+    end
+
     it 'advances the cursor and completes when there are no more records' do
       stub_find_messages([])
 

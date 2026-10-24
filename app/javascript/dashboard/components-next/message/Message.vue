@@ -203,6 +203,12 @@ const isCaptainMessage = computed(() => {
   return senderType === SENDER_TYPES.CAPTAIN_ASSISTANT;
 });
 
+// FORK: phone/WhatsApp Web origin — either flag is enough for the channel icon
+const isNativeAppMessage = computed(() => {
+  const attrs = props.contentAttributes || {};
+  return Boolean(attrs.externalEcho || attrs.phoneSent);
+});
+
 /**
  * Computes the message variant based on props
  * @type {import('vue').ComputedRef<'user'|'agent'|'activity'|'private'|'bot'|'template'>}
@@ -230,7 +236,7 @@ const variant = computed(() => {
   if (props.contentAttributes?.isUnsupported)
     return MESSAGE_VARIANTS.UNSUPPORTED;
 
-  if (props.contentAttributes?.externalEcho) {
+  if (isNativeAppMessage.value) {
     return MESSAGE_VARIANTS.AGENT;
   }
 
@@ -612,15 +618,15 @@ function handleReplyTo() {
 }
 
 const avatarInfo = computed(() => {
-  if (props.contentAttributes?.externalEcho) {
-    const { name, avatar_url, channel_type, medium } = inbox.value;
-    const iconName = avatar_url
-      ? null
-      : getInboxIconByType(channel_type, medium);
+  // FORK: always the channel icon (WhatsApp), never the agent initial or inbox photo
+  if (isNativeAppMessage.value) {
+    const record = inbox.value || {};
+    const channelType = record.channel_type || record.channelType;
+    const medium = record.medium;
     return {
-      name: iconName ? '' : name || t('CONVERSATION.NATIVE_APP'),
-      src: avatar_url || '',
-      iconName,
+      name: '',
+      src: '',
+      iconName: getInboxIconByType(channelType, medium),
     };
   }
 
@@ -652,7 +658,7 @@ const avatarInfo = computed(() => {
 });
 
 const avatarTooltip = computed(() => {
-  if (props.contentAttributes?.externalEcho) {
+  if (isNativeAppMessage.value) {
     return replaceInstallationName(t('CONVERSATION.NATIVE_APP_ADVISORY'));
   }
   if (avatarInfo.value.name === '') return '';
@@ -742,7 +748,7 @@ provideMessageContext({
         }"
       >
         <div
-          v-if="!shouldGroupWithNext && shouldShowAvatar"
+          v-if="(isNativeAppMessage || !shouldGroupWithNext) && shouldShowAvatar"
           v-tooltip.left-end="avatarTooltip"
           class="[grid-area:avatar] flex items-end"
         >

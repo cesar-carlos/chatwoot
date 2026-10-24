@@ -55,10 +55,11 @@ class Custom::ConversationWorkflow::SendMessageToContactService
       return
     end
 
-    target_conversation = ConversationBuilder.new(
-      params: {},
-      contact_inbox: contact_inbox
-    ).perform
+    target_conversation = Custom::Conversations::OpenedByStamper.with_current(
+      Custom::Conversations::OpenedByStamper::AGENT
+    ) do
+      ConversationBuilder.new(params: {}, contact_inbox: contact_inbox).perform
+    end
     if target_conversation.blank?
       skip!(
         'conversation_blank',

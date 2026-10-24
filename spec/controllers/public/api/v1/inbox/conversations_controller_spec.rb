@@ -103,7 +103,9 @@ RSpec.describe 'Public Inbox Contact Conversations API', type: :request do
       data = response.parsed_body
       conversation = api_channel.inbox.conversations.find_by(display_id: data['id'])
       expect(conversation.custom_attributes).to eq('test' => 'test')
-      expect(conversation.additional_attributes).to be_empty
+      # FORK: client additional_attributes stay ignored; the server stamps opened_by
+      expect(conversation.additional_attributes).not_to have_key('test')
+      expect(conversation.additional_attributes['opened_by']).to eq('contact')
     end
   end
 

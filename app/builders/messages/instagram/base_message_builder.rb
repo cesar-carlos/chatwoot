@@ -183,3 +183,6 @@ class Messages::Instagram::BaseMessageBuilder < Messages::Messenger::MessageBuil
     raise NotImplementedError
   end
 end
+
+# FORK: stamp opened_by on inbound or echo conversation create
+Messages::Instagram::BaseMessageBuilder.prepend_mod_with('Messages::Instagram::BaseMessageBuilder')
