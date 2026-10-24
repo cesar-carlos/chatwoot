@@ -8,7 +8,7 @@ Revisão de 24/out/2026. Os documentos descrevem o estado do código na `main`; 
 
 | Item | Estado |
 |------|--------|
-| Código | A `origin/main` tem o merge do upstream 4.19.1. A correção de reinstalação, a preferência por usuário, a recuperação, o estado de entrega e a limpeza de inscrições estão na branch `fix/pwa-push-reinstall`, ainda sem merge |
+| Código | Na `origin/main`, commit `f5ac1d6fd2`: correção de reinstalação, preferência por usuário, recuperação, estado de entrega e limpeza de inscrições. Inclui o merge do upstream 4.19.1 |
 | Produção | Último release **documentado**: `f58ca95d4d`, de 01/out/2026. Esta revisão não conseguiu confirmar o release em execução (o domínio público respondeu 403 ao host de desenvolvimento). Ativação guiada, instalação mobile, regra de time, recuperação mobile e o merge 4.19.1 só estão em produção se houve deploy posterior. Confirmar com `bin/fork-pwa-smoke` |
 | Homologação em aparelhos | **Pendente**: instalação Android/iOS e Push com app fechado |
 
