@@ -1,8 +1,8 @@
 # Share Contact Card — Árvore de Decisão
 
-Comparação de abordagens para implementar **envio de contact card pelo agente**, aproveitando o que já existe.
+Decisões do envio de contact card pelo agente. O resultado implementado está em [current-state.md](./current-state.md).
 
-**Atualizado jun/2026** — decisões de produto fechadas; UI detalhada em [ui-design.md](./ui-design.md).
+**Atualizado out/2026.**
 
 ---
 
@@ -23,177 +23,109 @@ flowchart TD
   Q --> C
   Q --> D
 
-  A --> R[✅ Recomendado]
-  B --> X[❌ Descartado para MVP]
-  C --> X2[❌ Descartado]
-  D --> X3[❌ Descartado]
+  A --> R[Adotada]
+  B --> X[Descartada no MVP]
+  C --> X2[Descartada]
+  D --> X3[Descartada]
 ```
 
----
+### Opção A — `Attachment` `file_type: contact`
 
-## Opções avaliadas
+Reusa bubble, preview e o modelo de inbound. O cliente recebe o cartão nativo do canal. Exige telefone e um adapter por provider.
 
-### Opção A — Reusar `Attachment` `file_type: contact` (RECOMENDADA)
+Foi a opção entregue.
 
-**Ideia:** Criar mensagem outgoing com attachment `contact` (sem blob), espelhando o inbound. Estender send services para APIs nativas.
+### Opções B, C e D
 
-| Prós | Contras |
-|------|---------|
-| Reusa bubble `Contact.vue`, preview na lista, modelo `Attachment` | Exige mudanças em MessageBuilder + send services |
-| Simétrico com inbound WhatsApp/Telegram | Gateway providers precisam adapter em `custom/` |
-| UX nativa no app do cliente (card clicável) | Contato precisa ter telefone |
-| `NON_FILE_TYPES` já inclui `contact` | — |
-
-**Veredito:** ✅ única opção para MVP.
+Texto formatado ficou como fallback possível para SMS ou API no futuro. Arquivo `.vcf` e um `content_type` novo foram descartados: `file_type: contact` já é o contrato.
 
 ---
 
-### Opção B — Mensagem de texto formatada
+## Decisões de produto
 
-**Veredito:** ❌ MVP — útil só como fallback futuro para SMS/API.
+### 1. i18n `pt_BR` na mesma entrega
 
-### Opção C — Arquivo `.vcf`
+Sim. Chaves em `en/conversation.json` e `pt_BR/conversation.json`. Os outros idiomas ficam com a comunidade.
 
-**Veredito:** ❌ descartado.
+### 2. Atalho do contato da conversa
 
-### Opção D — Novo `content_type`
+Sim. O card fica no topo do dialog e o ComboBox continua abaixo, com o separador `OR_SEARCH`.
 
-**Veredito:** ❌ descartado — `file_type: contact` já é o contrato.
+Implementação posterior: o card também aparece sem telefone, com `NO_PHONE_CURRENT` e link para editar o contato.
 
----
+### 3. 360dialog junto com Cloud
 
-## Decisões de produto (fechadas)
+Sim. Os dois usam `type: contacts`. O payload compartilhado está em `Whatsapp::ContactMessagePayloadBuilder`.
 
-### 1. i18n: incluir `pt_BR` na mesma entrega?
+### 4. Echo de coexistence
 
-**Decisão: Sim.**
+Sem normalizer extra. O echo de contact que chega do app WhatsApp continua pelo inbound. Duplicata entre um envio do Chatwoot e um reencaminhamento no celular segue como follow-up, se aparecer.
 
-- Fork usa pt_BR ativamente; `SAVE_CONTACT` e `SHARED_ATTACHMENT.CONTACT` já existem em `pt_BR/conversation.json`
-- Adicionar chaves `CONVERSATION.SHARE_CONTACT.*` em **`en.json` + `pt_BR/conversation.json`**
-- Demais idiomas: comunidade (regra do projeto)
+### 5. Permissão — entrou depois do plano
 
----
+`administrator`, `agent` ou `contact_manage`. O backend recusa com `Not authorized to share this contact` quando há usuário sem essas permissões. O botão some no mesmo caso.
 
-### 2. Atalho para compartilhar o contato da conversa atual?
+### 6. Empresa — entrou depois do plano
 
-**Decisão: Sim.**
+`org.company` no WhatsApp e `organization` nos gateways, a partir de `company_name` ou da empresa ligada ao contato.
 
-- Card destacado no topo do `ShareContactDialog` com um clique
-- Fonte: `currentChat.meta.sender` (mesmo contato da conversa)
-- Visível apenas se `phone_number` presente
-- ComboBox abaixo para “outro contato” com separador `OR_SEARCH`
-- **Não** substitui o picker — complementa para o caso mais comum (agente repassa contato de terceiro já cadastrado no CRM)
+### 7. Gateways
+
+Evolution e Evolution Go foram implementados em `custom/`. Z-API não faz parte deste fork.
 
 ---
 
-### 3. 360dialog no MVP ou só WhatsApp Cloud?
-
-**Decisão: Incluir ambos no MVP (Cloud + 360dialog `default`).**
-
-| Argumento | Detalhe |
-|-----------|---------|
-| Inbound 360dialog já trata `type: contacts` | `IncomingMessageService` compartilhado |
-| Outbound usa mesmo endpoint `/messages` | Payload `type: contacts` idêntico à Cloud API |
-| Esforço marginal | Extrair `build_whatsapp_contact_payload` compartilhado entre providers |
-| Risco | Validar em sandbox 360dialog na Fase 2 — se falhar, capability `false` só para `default` |
-
-Telegram permanece canal separado na Fase 3.
-
----
-
-### 4. Echo coexistence WhatsApp — normalizer adicional?
-
-**Decisão: Não no MVP.**
-
-| Fato | Implicação |
-|------|------------|
-| `outgoing_echo` já existe em `IncomingMessageBaseService` | Echo de texto/mídia já tratado |
-| Contact inbound já persiste via `create_contact_messages` | Echo de contact vindo do app WhatsApp funciona |
-| Dedup por `source_id` | Mensagem enviada pelo Chatwoot não deve duplicar se `source_id` coincidir |
-| Risco residual | Agente envia pelo Chatwoot **e** reencaminha pelo celular — edge case raro |
-
-**Follow-up opcional (pós-MVP):** se duplicatas aparecerem, marcar echo com `content_attributes.external_echo` e ignorar reprocessamento.
-
----
-
-## Decisão: escopo de canais (fases revisadas)
+## Canais
 
 ```mermaid
 flowchart LR
-  P1[Fase 1: MessageBuilder + API]
-  P2[Fase 2: WhatsApp Cloud + 360dialog]
-  P3[Fase 3: Telegram]
-  P4[Fase 4: UI]
-  P5[Fase 5: Gateways custom]
+  P1[Backend e API]
+  P2[Cloud e 360dialog]
+  P3[Telegram]
+  P4[UI]
+  P5[Evolution e Evolution Go]
 
   P1 --> P2 --> P3 --> P4
   P2 --> P5
 ```
 
-| Fase | Canais | Notas |
-|------|--------|-------|
-| **1** | — | Backend + contrato `shared_contact_id` |
-| **2** | WhatsApp Cloud + 360dialog | Mesmo payload contacts |
-| **3** | Telegram | `sendContact` |
-| **4** | UI | Ver [ui-design.md](./ui-design.md) |
-| **5** | Evolution, Z-API | `custom/` |
-
-**Fora de escopo:** LINE, Facebook, Instagram, SMS.
+Fora de escopo: LINE, Facebook, Instagram, SMS e inbox API.
 
 ---
 
-## Decisão: UI (revisada após análise do codebase)
+## Onde o código mora
 
-| Escolha | Componente / padrão |
-|---------|---------------------|
-| Modal | `components-next/dialog/Dialog.vue` |
-| Busca | `ComboBox` + `createContactSearcher()` |
-| Botão ReplyBox | `NextButton` `i-ph-address-book` (Phosphor, como barra existente) |
-| Card atalho | Layout de `ContactMergeForm.vue` |
-| Local dos arquivos | `widgets/conversation/ShareContact/` |
-| Bubble resultado | `Contact.vue` existente — sem novo componente |
+| Prioridade | O que foi feito |
+|------------|-----------------|
+| `custom/` | Handler, prepend do `MessageBuilder`, capability, Evolution e Evolution Go |
+| `# FORK:` mínimo | Cloud, 360dialog, Telegram, ReplyBox, preview e pending message |
+| Sem feature flag | Entrega direta |
 
-**Descartado:** `Popover` como container principal, ícones Lucide na barra, CSS custom.
-
-→ Especificação completa: [ui-design.md](./ui-design.md)
+A capability é `ChannelCapabilities::ShareContact.supports?`. Ela não distingue provider: Cloud, 360dialog e os gateways são todos `Channel::Whatsapp`.
 
 ---
 
-## Decisão: onde colocar código (fork strategy)
-
-| Prioridade | Uso nesta feature |
-|------------|-------------------|
-| `custom/` | Gateways Evolution/Z-API; capability `share_contact?` |
-| `# FORK:` upstream mínimo | MessageBuilder, providers WhatsApp, Telegram send, ReplyBox, commons.js |
-| Sem feature flag global | MVP direto |
-
----
-
-## Decisão: contrato API
+## Contrato da API
 
 ```json
 POST /api/v1/accounts/:account_id/conversations/:id/messages
-{
-  "shared_contact_id": 123
-}
+{ "shared_contact_id": 123 }
 ```
 
-- Não combinar com `attachments[]` no MVP
-- Contato deve ter `phone_number`
-- Inbox deve suportar capability
+Não combina com arquivo, texto ou nota privada. O contato precisa de telefone E.164. O inbox precisa ser WhatsApp ou Telegram.
 
 ---
 
-## Resumo final
+## Resumo
 
-| Dimensão | Escolha |
-|----------|---------|
+| Dimensão | Escolha em vigor |
+|----------|------------------|
 | Modelo | `Attachment` `file_type: contact` |
 | API | `shared_contact_id` |
-| Canais MVP | WhatsApp Cloud + 360dialog + Telegram |
-| UI | Dialog + ComboBox + atalho contato atual |
+| Canais | Cloud, 360dialog, Evolution, Evolution Go, Telegram |
+| UI | Dialog + ComboBox + atalho |
+| Permissão | `administrator`, `agent` ou `contact_manage` |
 | i18n | `en` + `pt_BR` |
-| Echo | Sem normalizer extra no MVP |
-| Gateways | Fase 5 em `custom/` |
+| Echo | Sem normalizer extra |
 
 → [implementation-plan.md](./implementation-plan.md)

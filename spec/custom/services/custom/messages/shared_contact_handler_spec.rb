@@ -36,6 +36,24 @@ RSpec.describe Custom::Messages::SharedContactHandler do
       expect(attachment.meta).to include('firstName' => 'Jane', 'lastName' => 'Doe')
     end
 
+    context 'when the contact has a company name' do
+      let(:contact) do
+        create(
+          :contact,
+          account: account,
+          name: 'Jane Doe',
+          phone_number: '+918660944581',
+          additional_attributes: { 'company_name' => 'Acme' }
+        )
+      end
+
+      it 'stores companyName in attachment meta' do
+        attach_shared_contact
+
+        expect(message.attachments.first.meta).to include('companyName' => 'Acme')
+      end
+    end
+
     context 'when shared_contact_id is blank' do
       let(:params) { {} }
 
@@ -114,8 +132,8 @@ RSpec.describe Custom::Messages::SharedContactHandler do
       end
 
       before do
-        account_user = AccountUser.find_by(user: user, account: account)
-        allow(account_user).to receive(:permissions).and_return(['conversation_manage'])
+        custom_role = create(:custom_role, account: account, permissions: ['conversation_manage'])
+        AccountUser.find_by!(user: user, account: account).update!(custom_role: custom_role)
       end
 
       it 'raises an error' do

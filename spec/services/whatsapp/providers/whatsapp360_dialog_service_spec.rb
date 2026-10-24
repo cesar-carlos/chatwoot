@@ -126,4 +126,43 @@ describe Whatsapp::Providers::Whatsapp360DialogService do
       end
     end
   end
+
+  describe '#send_message contact card' do
+    it 'posts a native contacts payload' do
+      contact_message = create(
+        :message,
+        message_type: :outgoing,
+        content: nil,
+        inbox: whatsapp_channel.inbox
+      )
+      contact_message.attachments.create!(
+        account_id: contact_message.account_id,
+        file_type: :contact,
+        fallback_title: '+918660944581',
+        meta: { firstName: 'Jane', lastName: 'Doe', companyName: 'Acme' }
+      )
+
+      stub_request(:post, 'https://waba.360dialog.io/v1/messages')
+        .with(
+          body: {
+            to: '+123456789',
+            type: 'contacts',
+            contacts: [
+              {
+                name: {
+                  formatted_name: 'Jane Doe',
+                  first_name: 'Jane',
+                  last_name: 'Doe'
+                },
+                phones: [{ phone: '+918660944581', type: 'CELL' }],
+                org: { company: 'Acme' }
+              }
+            ]
+          }.to_json
+        )
+        .to_return(status: 200, body: whatsapp_response.to_json, headers: response_headers)
+
+      expect(service.send_message('+123456789', contact_message)).to eq 'message_id'
+    end
+  end
 end

@@ -33,6 +33,17 @@ const searchContacts = createContactSearcher();
 
 const contactOptions = ref([]);
 const isSearching = ref(false);
+const contactsMissingPhoneOnly = ref(false);
+
+const emptyStateMessage = computed(() => {
+  if (isSearching.value) {
+    return t('CONVERSATION.SHARE_CONTACT.MODAL.IS_SEARCHING');
+  }
+  if (contactsMissingPhoneOnly.value) {
+    return t('CONVERSATION.SHARE_CONTACT.MODAL.NO_PHONE');
+  }
+  return t('CONVERSATION.SHARE_CONTACT.MODAL.EMPTY_STATE');
+});
 
 const conversationPhoneNumber = computed(
   () =>
@@ -63,13 +74,16 @@ const mapContactOption = contact => ({
 
 const onSearch = debounce(async query => {
   isSearching.value = true;
+  contactsMissingPhoneOnly.value = false;
   try {
     const results = await searchContacts(query);
     if (results === null) return;
 
-    contactOptions.value = (results || [])
-      .filter(contact => contact.phoneNumber)
-      .map(mapContactOption);
+    const matches = results || [];
+    const withPhone = matches.filter(contact => contact.phoneNumber);
+    contactsMissingPhoneOnly.value =
+      matches.length > 0 && withPhone.length === 0;
+    contactOptions.value = withPhone.map(mapContactOption);
   } catch {
     useAlert(t('CONVERSATION.SHARE_CONTACT.ERROR'));
   } finally {
@@ -128,28 +142,29 @@ const onQuickShare = () => {
           <span class="text-sm leading-4 truncate text-n-slate-12">
             {{ conversationContact.name }}
           </span>
-          <span
-            v-if="conversationPhoneNumber"
-            class="text-sm leading-4 truncate text-n-slate-11"
-          >
-            {{ conversationPhoneNumber }}
+          <span class="text-sm leading-4 truncate text-n-slate-11">
+            {{
+              conversationPhoneNumber ||
+              t('CONVERSATION.SHARE_CONTACT.MODAL.NO_PHONE_CURRENT')
+            }}
           </span>
-          <router-link
-            v-else
-            :to="editContactPath"
-            class="text-sm leading-4 truncate text-n-brand"
-          >
-            {{ t('CONVERSATION.SHARE_CONTACT.MODAL.EDIT_CONTACT') }}
-          </router-link>
         </div>
         <Button
           v-if="conversationPhoneNumber"
           variant="ghost"
           size="xs"
+          type="button"
           :disabled="isSharing"
           :label="t('CONVERSATION.SHARE_CONTACT.MODAL.QUICK_SHARE')"
           @click="onQuickShare"
         />
+        <router-link
+          v-else
+          :to="editContactPath"
+          class="shrink-0 text-sm leading-4 text-n-brand"
+        >
+          {{ t('CONVERSATION.SHARE_CONTACT.MODAL.EDIT_CONTACT') }}
+        </router-link>
       </div>
     </div>
 
@@ -165,11 +180,7 @@ const onQuickShare = () => {
       use-api-results
       :model-value="selectedContactId"
       :options="contactOptions"
-      :empty-state="
-        isSearching
-          ? t('CONVERSATION.SHARE_CONTACT.MODAL.IS_SEARCHING')
-          : t('CONVERSATION.SHARE_CONTACT.MODAL.EMPTY_STATE')
-      "
+      :empty-state="emptyStateMessage"
       :search-placeholder="
         t('CONVERSATION.SHARE_CONTACT.MODAL.SEARCH_PLACEHOLDER')
       "
