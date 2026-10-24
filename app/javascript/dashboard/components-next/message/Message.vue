@@ -748,7 +748,9 @@ provideMessageContext({
         }"
       >
         <div
-          v-if="(isNativeAppMessage || !shouldGroupWithNext) && shouldShowAvatar"
+          v-if="
+            (isNativeAppMessage || !shouldGroupWithNext) && shouldShowAvatar
+          "
           v-tooltip.left-end="avatarTooltip"
           class="[grid-area:avatar] flex items-end"
         >

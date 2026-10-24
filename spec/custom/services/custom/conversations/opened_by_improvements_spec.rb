@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 
+# rubocop:disable RSpec/DescribeClass -- integration coverage across opened_by entry points
 RSpec.describe 'opened_by improvements' do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, account: account) }
@@ -143,3 +144,4 @@ RSpec.describe 'opened_by improvements' do
     end
   end
 end
+# rubocop:enable RSpec/DescribeClass
