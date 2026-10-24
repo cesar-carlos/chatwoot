@@ -54,6 +54,7 @@
     "WATCH_VIDEO": "Assistir ao vídeo"
   },
   "DURATION_INPUT": {
+    "SECONDS": "Segundos",
     "MINUTES": "Minutos",
     "HOURS": "Horas",
     "DAYS": "Dias",

@@ -271,19 +271,22 @@ RSpec.describe AutomationRule do
       expect(rule).to be_valid
     end
 
-    it 'allows delays between 10 minutes and 30 days' do
-      rule.execution_delay = 240
+    it 'allows delays between 1 second and 30 days' do
+      rule.execution_delay = 1
+      expect(rule).to be_valid
+
+      rule.execution_delay = 2_592_000
       expect(rule).to be_valid
     end
 
-    it 'rejects delays below 10 minutes' do
-      rule.execution_delay = 5
+    it 'rejects a zero delay' do
+      rule.execution_delay = 0
       expect(rule).not_to be_valid
       expect(rule.errors[:execution_delay]).to be_present
     end
 
     it 'rejects delays above 30 days' do
-      rule.execution_delay = 43_201
+      rule.execution_delay = 2_592_001
       expect(rule).not_to be_valid
     end
 

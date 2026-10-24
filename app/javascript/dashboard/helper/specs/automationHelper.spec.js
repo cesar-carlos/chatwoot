@@ -601,3 +601,12 @@ describe('getCaptainConditionUsage', () => {
     });
   });
 });
+
+describe('formatDelay', () => {
+  it('keeps day, hour, and minute suffixes and adds seconds', () => {
+    expect(helpers.formatDelay(86400)).toBe('1d');
+    expect(helpers.formatDelay(14400)).toBe('4h');
+    expect(helpers.formatDelay(120)).toBe('2m');
+    expect(helpers.formatDelay(45)).toBe('45s');
+  });
+});

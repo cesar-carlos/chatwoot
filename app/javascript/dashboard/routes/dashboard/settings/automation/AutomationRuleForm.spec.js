@@ -85,7 +85,7 @@ const triggerStub = {
 };
 
 const waitConditionStub = {
-  props: ['isSavedWait'],
+  props: ['isSavedWait', 'delay', 'unit'],
   template: '<div />',
   methods: {
     resetValidation: vi.fn(),
@@ -287,6 +287,35 @@ describe('AutomationRuleForm', () => {
     expect(
       wrapper.findComponent(AutomationWaitCondition).props('isSavedWait')
     ).toBe(true);
+  });
+
+  it('hydrates seconds, minutes, hours, and days from the stored delay', async () => {
+    const automation = buildAutomation({ delayed: true });
+    const wrapper = mountComponent({ mode: 'edit', automation });
+
+    wrapper.vm.open(45);
+    await nextTick();
+    expect(
+      wrapper.findComponent(AutomationWaitCondition).props()
+    ).toMatchObject({ delay: 45, unit: 'seconds' });
+
+    wrapper.vm.open(120);
+    await nextTick();
+    expect(
+      wrapper.findComponent(AutomationWaitCondition).props()
+    ).toMatchObject({ delay: 120, unit: 'minutes' });
+
+    wrapper.vm.open(14400);
+    await nextTick();
+    expect(wrapper.findComponent(AutomationWaitCondition).props('unit')).toBe(
+      'hours'
+    );
+
+    wrapper.vm.open(86400);
+    await nextTick();
+    expect(wrapper.findComponent(AutomationWaitCondition).props('unit')).toBe(
+      'days'
+    );
   });
 
   it('restores saved wait conditions after editing the instant draft', async () => {

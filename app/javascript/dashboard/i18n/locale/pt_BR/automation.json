@@ -60,13 +60,14 @@
           "STATUS_LABEL": "O status é",
           "FOR_LABEL": "Aguardar por",
           "INBOX_LABEL": "Caixa de Entrada",
-          "ERROR": "O período de espera deve ser entre 10 minutos e 30 dias",
+          "ERROR": "O período de espera deve ser entre 1 segundo e 30 dias",
           "OPTIONS": {
             "CONVERSATION_STATUS": "A conversa permanece em um status",
             "CUSTOMER_UNRESPONSIVE": "O cliente não respondeu",
             "AGENT_UNRESPONSIVE": "Nenhum atendente respondeu"
           },
           "DURATION": {
+            "SECONDS": "{count} segundo | {count} segundos",
             "MINUTES": "{count} minuto | {count} minutos",
             "HOURS": "{count} hora | {count} horas",
             "DAYS": "{count} dia | {count} dias"

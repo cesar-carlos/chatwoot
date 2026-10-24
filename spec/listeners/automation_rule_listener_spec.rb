@@ -249,7 +249,7 @@ describe AutomationRuleListener do
   end
 
   describe 'delayed rules' do
-    let!(:automation_rule) { create(:automation_rule, event_name: 'conversation_updated', account: account, execution_delay: 60) }
+    let!(:automation_rule) { create(:automation_rule, event_name: 'conversation_updated', account: account, execution_delay: 3_600) }
     let(:event) do
       Events::Base.new('conversation_updated', Time.zone.now, { conversation: conversation, changed_attributes: {} })
     end

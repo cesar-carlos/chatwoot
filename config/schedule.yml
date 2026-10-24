@@ -19,6 +19,12 @@ trigger_scheduled_items_job:
   class: 'TriggerScheduledItemsJob'
   queue: scheduled_jobs
 
+# FORK: second-level automation waits; the 5-minute sweep stays as a backstop
+trigger_automation_pending_executions_job:
+  cron: '*/30 * * * * *'
+  class: 'Custom::AutomationRules::SweepPendingExecutionsJob'
+  queue: scheduled_jobs
+
 # executed At every 5th minute by default, AUTO_RESOLVE_CRON overrides it
 trigger_conversations_resolution_job:
   cron: <%= ENV.fetch('AUTO_RESOLVE_CRON', '*/5 * * * *').to_json %>

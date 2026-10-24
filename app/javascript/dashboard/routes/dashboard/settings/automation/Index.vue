@@ -21,7 +21,7 @@ import AutomationRuleRow from './AutomationRuleRow.vue';
 import Button from 'dashboard/components-next/button/Button.vue';
 import TabBar from 'dashboard/components-next/tabbar/TabBar.vue';
 import { BaseTable } from 'dashboard/components-next/table';
-import { DEFAULT_DELAY_MINUTES } from './constants';
+import { DEFAULT_DELAY_SECONDS } from './constants';
 
 const getters = useStoreGetters();
 const store = useStore();
@@ -168,7 +168,7 @@ const openAddPopup = (monitorId = null) => {
     isDelayedAutomationsEnabled.value &&
     activeTab.value === 'delayed';
   addDialogRef.value?.open(
-    startsWithWait ? DEFAULT_DELAY_MINUTES : null,
+    startsWithWait ? DEFAULT_DELAY_SECONDS : null,
     monitorId
   );
 };

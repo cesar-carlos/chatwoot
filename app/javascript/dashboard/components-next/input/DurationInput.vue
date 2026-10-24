@@ -8,7 +8,27 @@ const props = defineProps({
   min: { type: Number, default: 0 },
   max: { type: Number, default: Infinity },
   disabled: { type: Boolean, default: false },
+  units: {
+    type: Array,
+    default: () => [
+      DURATION_UNITS.MINUTES,
+      DURATION_UNITS.HOURS,
+      DURATION_UNITS.DAYS,
+    ],
+  },
+  storedUnit: {
+    type: String,
+    default: DURATION_UNITS.MINUTES,
+  },
 });
+
+// FORK: convert through seconds so a caller can store seconds and still offer minutes, hours, and days.
+const SECONDS_PER_UNIT = {
+  [DURATION_UNITS.SECONDS]: 1,
+  [DURATION_UNITS.MINUTES]: 60,
+  [DURATION_UNITS.HOURS]: 60 * 60,
+  [DURATION_UNITS.DAYS]: 24 * 60 * 60,
+};
 
 const { t } = useI18n();
 const duration = defineModel('modelValue', { type: Number, default: null });
@@ -20,33 +40,37 @@ const unit = defineModel('unit', {
   },
 });
 
-const convertToMinutes = newValue => {
-  if (unit.value === DURATION_UNITS.MINUTES) {
-    return Math.floor(newValue);
-  }
-  if (unit.value === DURATION_UNITS.HOURS) {
-    return Math.floor(newValue) * 60;
-  }
-  return Math.floor(newValue) * 24 * 60;
+const secondsPer = unitName => SECONDS_PER_UNIT[unitName] || 0;
+
+const toStored = displayValue => {
+  const displaySeconds = secondsPer(unit.value);
+  const storedSeconds = secondsPer(props.storedUnit);
+  if (!displaySeconds || !storedSeconds) return 0;
+
+  return Math.floor(
+    (Math.floor(displayValue) * displaySeconds) / storedSeconds
+  );
+};
+
+const toDisplay = storedValue => {
+  const displaySeconds = secondsPer(unit.value);
+  const storedSeconds = secondsPer(props.storedUnit);
+  if (!displaySeconds || !storedSeconds) return 0;
+
+  return Math.floor((storedValue * storedSeconds) / displaySeconds);
 };
 
 const transformedValue = computed({
   get() {
     if (duration.value == null) return null;
-    if (unit.value === DURATION_UNITS.MINUTES) return duration.value;
-    if (unit.value === DURATION_UNITS.HOURS)
-      return Math.floor(duration.value / 60);
-    if (unit.value === DURATION_UNITS.DAYS)
-      return Math.floor(duration.value / 24 / 60);
-
-    return 0;
+    return toDisplay(duration.value);
   },
   set(newValue) {
     if (newValue == null || newValue === '') {
       duration.value = null;
       return;
     }
-    duration.value = convertToMinutes(newValue);
+    duration.value = toStored(newValue);
   },
 });
 
@@ -63,7 +87,7 @@ const normalizeDuration = () => {
 // this watcher fixes it by rounding the duration basically, to the nearest unit value
 watch(unit, () => {
   if (duration.value == null) return;
-  let adjustedValue = convertToMinutes(transformedValue.value);
+  const adjustedValue = toStored(transformedValue.value);
   duration.value = Math.min(Math.max(adjustedValue, props.min), props.max);
 });
 </script>
@@ -84,14 +108,8 @@ watch(unit, () => {
     :disabled="disabled"
     class="mb-0 text-sm disabled:outline-n-weak disabled:opacity-40"
   >
-    <option :value="DURATION_UNITS.MINUTES">
-      {{ t('DURATION_INPUT.MINUTES') }}
-    </option>
-    <option :value="DURATION_UNITS.HOURS">
-      {{ t('DURATION_INPUT.HOURS') }}
-    </option>
-    <option :value="DURATION_UNITS.DAYS">
-      {{ t('DURATION_INPUT.DAYS') }}
+    <option v-for="option in units" :key="option" :value="option">
+      {{ t(`DURATION_INPUT.${option.toUpperCase()}`) }}
     </option>
   </select>
 </template>

@@ -289,10 +289,12 @@ export const getCaptainConditionUsage = automation => {
   };
 };
 
-export const formatDelay = minutes => {
-  if (minutes % 1440 === 0) return `${minutes / 1440}d`;
-  if (minutes % 60 === 0) return `${minutes / 60}h`;
-  return `${minutes}m`;
+// FORK: execution_delay is seconds. Whole minutes, hours, and days keep their suffixes.
+export const formatDelay = seconds => {
+  if (seconds % 86400 === 0) return `${seconds / 86400}d`;
+  if (seconds % 3600 === 0) return `${seconds / 3600}h`;
+  if (seconds % 60 === 0) return `${seconds / 60}m`;
+  return `${seconds}s`;
 };
 
 export const isCustomAttribute = (attrs, key) => {

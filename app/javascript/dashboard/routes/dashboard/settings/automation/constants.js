@@ -975,9 +975,10 @@ export const AUTOMATION_ACTION_TYPES = [
   },
 ];
 
-export const DEFAULT_DELAY_MINUTES = 240; // 4 hours
-export const MIN_DELAY_MINUTES = 10;
-export const MAX_DELAY_MINUTES = 43200; // 30 days
+// FORK: execution_delay is stored in seconds. 14400 is the existing 4 hour default.
+export const DEFAULT_DELAY_SECONDS = 14400;
+export const MIN_DELAY_SECONDS = 1;
+export const MAX_DELAY_SECONDS = 2592000; // 30 days
 export const DEFAULT_TRIGGER_STATUS = 'pending';
 
 // A delayed rule is expressed as one meaningful trigger instead of a raw event + conditions. Each

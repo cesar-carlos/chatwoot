@@ -12,8 +12,8 @@ import {
   DELAYED_TRIGGERS,
   DEFAULT_TRIGGER,
   DEFAULT_TRIGGER_STATUS,
-  MIN_DELAY_MINUTES,
-  MAX_DELAY_MINUTES,
+  MIN_DELAY_SECONDS,
+  MAX_DELAY_SECONDS,
 } from '../constants';
 
 const props = defineProps({
@@ -92,21 +92,29 @@ const triggerOptions = computed(() =>
   }))
 );
 
-const MINUTES_PER_UNIT = {
-  [DURATION_UNITS.MINUTES]: 1,
-  [DURATION_UNITS.HOURS]: 60,
-  [DURATION_UNITS.DAYS]: 24 * 60,
+const DELAY_UNITS = [
+  DURATION_UNITS.SECONDS,
+  DURATION_UNITS.MINUTES,
+  DURATION_UNITS.HOURS,
+  DURATION_UNITS.DAYS,
+];
+
+const SECONDS_PER_UNIT = {
+  [DURATION_UNITS.SECONDS]: 1,
+  [DURATION_UNITS.MINUTES]: 60,
+  [DURATION_UNITS.HOURS]: 60 * 60,
+  [DURATION_UNITS.DAYS]: 24 * 60 * 60,
 };
 
 // The input only shows whole units, so the wait has to be at least one of them: without this,
-// switching 4 hours to days shows 0 days while the rule keeps the 10 minute minimum.
+// switching 4 hours to days shows 0 days while the stored delay stays below one day.
 const minDelay = computed(() =>
-  Math.max(MIN_DELAY_MINUTES, MINUTES_PER_UNIT[unit.value])
+  Math.max(MIN_DELAY_SECONDS, SECONDS_PER_UNIT[unit.value])
 );
 
 // "4 hours" in the unit the inputs above are using, so the explanation reads the same.
 const durationLabel = computed(() => {
-  const count = Math.floor((delay.value || 0) / MINUTES_PER_UNIT[unit.value]);
+  const count = Math.floor((delay.value || 0) / SECONDS_PER_UNIT[unit.value]);
   return t(
     `AUTOMATION.ADD.FORM.WAIT.DURATION.${unit.value.toUpperCase()}`,
     { count },
@@ -409,8 +417,10 @@ defineExpose({ validate, resetValidation });
               <DurationInput
                 v-model="delay"
                 v-model:unit="unit"
+                stored-unit="seconds"
+                :units="DELAY_UNITS"
                 :min="minDelay"
-                :max="MAX_DELAY_MINUTES"
+                :max="MAX_DELAY_SECONDS"
               />
             </div>
           </div>

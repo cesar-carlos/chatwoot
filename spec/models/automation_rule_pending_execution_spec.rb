@@ -4,7 +4,7 @@ RSpec.describe AutomationRulePendingExecution do
   let(:account) { create(:account) }
   let(:conversation) { create(:conversation, account: account) }
   let(:rule) do
-    create(:automation_rule, account: account, event_name: 'conversation_updated', execution_delay: 60,
+    create(:automation_rule, account: account, event_name: 'conversation_updated', execution_delay: 3600,
                              actions: [{ 'action_name' => 'add_label', 'action_params' => ['stale'] }])
   end
 
@@ -65,6 +65,16 @@ RSpec.describe AutomationRulePendingExecution do
       row = described_class.last
       expect(row).to have_attributes(account_id: account.id, conversation_id: conversation.id, status: 'pending')
       expect(row.due_at).to be_within(5.seconds).of(60.minutes.from_now)
+    end
+
+    it 'schedules a sub-minute delay from the second count' do
+      short_rule = create(:automation_rule,
+                          account: account, event_name: 'conversation_updated', execution_delay: 45,
+                          actions: [{ 'action_name' => 'add_label', 'action_params' => ['stale'] }])
+
+      described_class.schedule(rule: short_rule, conversation: conversation)
+
+      expect(described_class.last.due_at).to be_within(1.second).of(45.seconds.from_now)
     end
 
     it 'anchors due_at to the event time, not when a backlogged listener runs' do

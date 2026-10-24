@@ -6,6 +6,7 @@ import ConditionRow from 'dashboard/components-next/filter/ConditionRow.vue';
 import FilterSelect from 'dashboard/components-next/filter/inputs/FilterSelect.vue';
 import MultiSelect from 'dashboard/components-next/filter/inputs/MultiSelect.vue';
 import { DURATION_UNITS } from 'dashboard/components-next/input/constants';
+import DurationInput from 'dashboard/components-next/input/DurationInput.vue';
 import AutomationWaitCondition from './AutomationWaitCondition.vue';
 
 vi.mock('vue-i18n', () => ({
@@ -73,7 +74,7 @@ const mountComponent = (props = {}, options = {}) =>
           custom_attribute_type: '',
         },
       ],
-      delay: 240,
+      delay: 14400,
       unit: DURATION_UNITS.HOURS,
       statusOptions,
       inboxOptions: [],
@@ -85,6 +86,20 @@ const mountComponent = (props = {}, options = {}) =>
   });
 
 describe('AutomationWaitCondition', () => {
+  it('offers seconds without dropping minutes, hours, or days', () => {
+    const wrapper = mountComponent();
+    const input = wrapper.findComponent(DurationInput);
+
+    expect(input.props('storedUnit')).toBe('seconds');
+    expect(input.props('units')).toEqual([
+      'seconds',
+      'minutes',
+      'hours',
+      'days',
+    ]);
+    expect(input.props('modelValue')).toBe(14400);
+  });
+
   it('creates a pending status wait by default', async () => {
     const wrapper = mountComponent();
     await nextTick();

@@ -22,7 +22,7 @@ import {
   AUTOMATION_RULE_EVENTS,
   AUTOMATION_ACTION_TYPES,
   CAPTAIN_CONDITION,
-  DEFAULT_DELAY_MINUTES,
+  DEFAULT_DELAY_SECONDS,
 } from './constants';
 import AutomationRunTypeSelector from './components/AutomationRunTypeSelector.vue';
 import AutomationWaitCondition from './components/AutomationWaitCondition.vue';
@@ -126,7 +126,7 @@ const allowsCaptainConditions = computed(() =>
 // types doesn't discard a duration the user already typed in.
 const isDelayed = ref(false);
 const isSavedWait = ref(false);
-const delayMinutes = ref(DEFAULT_DELAY_MINUTES);
+const delaySeconds = ref(DEFAULT_DELAY_SECONDS);
 const delayUnit = ref(DURATION_UNITS.HOURS);
 const instantTriggerDraft = shallowRef(null);
 const waitTriggerDraft = shallowRef(null);
@@ -135,7 +135,7 @@ const isSyncingDelayState = ref(false);
 const waitSectionKey = ref(0);
 
 const executionDelayInvalid = computed(
-  () => isDelayed.value && !Number.isFinite(delayMinutes.value)
+  () => isDelayed.value && !Number.isFinite(delaySeconds.value)
 );
 
 const statusOptions = computed(() =>
@@ -166,18 +166,19 @@ const restoreTriggerDraft = draft => {
   automation.value.conditions = cloneConditions(draft.conditions);
 };
 
-// Show the wait in the largest whole unit (240 min → 4 hours). The delay is passed in by open()
+// Show the wait in the largest whole unit (14400 sec → 4 hours). The delay is passed in by open()
 // rather than read from `automation`, whose model prop only settles a tick later.
 const syncDelayState = executionDelay => {
   isSyncingDelayState.value = true;
   isDelayed.value = Boolean(executionDelay);
   isSyncingDelayState.value = false;
   isSavedWait.value = isEditMode.value && Boolean(executionDelay);
-  const minutes = executionDelay || DEFAULT_DELAY_MINUTES;
-  if (minutes % 1440 === 0) delayUnit.value = DURATION_UNITS.DAYS;
-  else if (minutes % 60 === 0) delayUnit.value = DURATION_UNITS.HOURS;
-  else delayUnit.value = DURATION_UNITS.MINUTES;
-  delayMinutes.value = minutes;
+  const seconds = executionDelay || DEFAULT_DELAY_SECONDS;
+  if (seconds % 86400 === 0) delayUnit.value = DURATION_UNITS.DAYS;
+  else if (seconds % 3600 === 0) delayUnit.value = DURATION_UNITS.HOURS;
+  else if (seconds % 60 === 0) delayUnit.value = DURATION_UNITS.MINUTES;
+  else delayUnit.value = DURATION_UNITS.SECONDS;
+  delaySeconds.value = seconds;
   waitSectionKey.value += 1;
 
   // Drafts are captured when the run type actually changes, so they start empty: seeding them
@@ -205,10 +206,10 @@ watch(
   { flush: 'sync' }
 );
 
-watch([isDelayed, delayMinutes], () => {
+watch([isDelayed, delaySeconds], () => {
   if (!automation.value || !allowsDelayedExecution.value) return;
   automation.value.execution_delay = isDelayed.value
-    ? delayMinutes.value
+    ? delaySeconds.value
     : null;
 });
 
@@ -485,7 +486,7 @@ defineExpose({ open, close });
         ref="waitConditionRef"
         v-model:event-name="automation.event_name"
         v-model:conditions="automation.conditions"
-        v-model:delay="delayMinutes"
+        v-model:delay="delaySeconds"
         v-model:unit="delayUnit"
         :status-options="statusOptions"
         :inbox-options="inboxOptions"
