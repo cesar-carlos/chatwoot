@@ -13,6 +13,8 @@ import { useCallsStore } from 'dashboard/stores/calls';
 import {
   clearActiveCall,
   clearRingingOutgoingCall,
+  endActiveCall,
+  getRingingProviderCallId,
   setActiveCall,
   setRingingOutgoingCall,
 } from '../useWavoipActiveCall';
@@ -122,5 +124,38 @@ describe('useWavoipActiveCall', () => {
     handlers.connectionStatus('disconnected');
 
     expect(store.calls.some(c => c.callSid === 'live_3')).toBe(false);
+  });
+
+  it('cancels a ringing outbound call and keeps it when the callee answers in the same instant', async () => {
+    const ringing = {
+      cancel: vi.fn().mockResolvedValue({ err: 'IS_NOT_OFFER' }),
+      end: vi.fn(),
+    };
+    setRingingOutgoingCall(ringing, { providerCallId: 'ring_keep', inboxId: 4 });
+
+    await endActiveCall('ring_keep');
+
+    expect(ringing.cancel).toHaveBeenCalled();
+    expect(ringing.end).not.toHaveBeenCalled();
+    expect(getRingingProviderCallId()).toBe('ring_keep');
+  });
+
+  it('clears a ringing call after cancel is confirmed', async () => {
+    const ringing = { cancel: vi.fn().mockResolvedValue({ err: null }) };
+    setRingingOutgoingCall(ringing, { providerCallId: 'ring_ok', inboxId: 4 });
+
+    await endActiveCall('ring_ok');
+
+    expect(getRingingProviderCallId()).toBeNull();
+  });
+
+  it('ends an in-progress call with end()', async () => {
+    const active = { end: vi.fn(), cancel: vi.fn(), on: vi.fn(), off: vi.fn() };
+    setActiveCall(active, { providerCallId: 'live_end', inboxId: 1 });
+
+    await endActiveCall('live_end');
+
+    expect(active.end).toHaveBeenCalled();
+    expect(active.cancel).not.toHaveBeenCalled();
   });
 });

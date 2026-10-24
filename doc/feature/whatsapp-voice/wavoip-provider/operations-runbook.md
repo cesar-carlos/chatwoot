@@ -384,7 +384,7 @@ Prerequisite: only one browser client per device token (close Wavoip panel durin
 | **`FRONTEND_URL` ausente** | `wavoip_webhook_url` retorna `nil` na API — inbox fica em setup pendente |
 | **Rotacionar webhook key** | Settings → Chamadas → regenerar; atualizar painel Wavoip com nova URL |
 | **Rotacionar `device_token`** | Recriar bootstrap SDK (`wavoip_sdk_bootstrap`); agentes reconectam automaticamente quando o token muda |
-| **STUN/TURN WebRTC Meta** | Super Admin → Installation configs → `VOICE_CALL_STUN_URLS` (editável). Aceita `stun:` e `turn:` para NAT corporativo |
+| **STUN/TURN WebRTC Meta** | `Custom::Call#default_ice_servers`. Preferir `VOICE_CALL_ICE_SERVERS` (JSON com `urls`, `username`, `credential`). `VOICE_CALL_STUN_URLS` é o fallback sem credencial. A offer outbound do browser ainda usa STUN Google fixo |
 
 ---
 

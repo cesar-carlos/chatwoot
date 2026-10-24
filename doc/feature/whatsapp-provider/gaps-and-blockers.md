@@ -192,14 +192,14 @@ Ver `custom/app/jobs/custom/webhooks/whatsapp_events_job.rb` — normaliza antes
 
 ## 5. Voz (fora do escopo de mensagens)
 
-Documentação completa reanalisada em jun/2026: [whatsapp-voice/README.md](../whatsapp-voice/README.md).
+Documentação reanalisada em out. 2026: [whatsapp-voice/README.md](../whatsapp-voice/README.md).
 
 | Gate | Arquivo | Valor para gateway |
 |------|---------|-------------------|
 | `voice_calling_supported?` | `channel/whatsapp.rb` | `false` (só `whatsapp_cloud`) |
 | `enable_voice_calling!` | idem | raise se não cloud |
 | Enterprise prepend | `WhatsappCloudService` | Graph `/calls` |
-| `useWhatsappCallSession` | frontend (wrapper ~33 linhas) | Core em `useWebRtcCallSession.js` |
+| `useWhatsappCallSession` | frontend (~488 linhas, caminho vivo) | Não delega a `useWebRtcCallSession.js` |
 | `actionCable.js` | frontend | WhatsApp inline; Wavoip via registry |
 | `voice_call.permission_granted` | backend broadcast | ✅ Handler FE (toast jun. 2026) |
 

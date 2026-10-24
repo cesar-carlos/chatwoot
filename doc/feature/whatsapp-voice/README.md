@@ -2,7 +2,7 @@
 
 Análise e referência do suporte a **chamadas de voz WhatsApp** no Chatwoot (Meta Cloud Calling + provider alternativo Wavoip no fork).
 
-**Última consolidação:** 17 jul. 2026 — docs alinhados ao código shipped em `custom/` + Enterprise.
+**Última revisão:** 24 out. 2026 — conferido contra o código após o merge da 4.19.1. O desenho de julho (wrapper WebRTC fino e outbound no builder) não é o caminho que roda hoje.
 
 ---
 
@@ -79,7 +79,7 @@ Modelo compartilhado: `Call` com `provider: { twilio, whatsapp, wavoip }` (`# FO
 | Feature `channel_voice` | Gate em model + UI |
 | Provider `whatsapp_cloud` | 360dialog não tem Calling API |
 | Webhook Meta `calls` | Inscrito quando `calling_enabled` |
-| Navegador | Microfone + WebRTC; STUN via `VOICE_CALL_STUN_URLS` |
+| Navegador | Microfone + WebRTC. ICE em runtime vem de `Custom::Call#default_ice_servers`: `VOICE_CALL_ICE_SERVERS` (JSON com `urls` / `username` / `credential`) ou, se vazio, `VOICE_CALL_STUN_URLS` |
 
 Self-hosted: rake `chatwoot:self_hosted_enterprise:enable` — [enterprise-enablement](../enterprise-enablement/enterprise-enablement-baseline.md).
 
@@ -89,7 +89,9 @@ Self-hosted: rake `chatwoot:self_hosted_enterprise:enable` — [enterprise-enabl
 
 | Área | Estado |
 |------|--------|
-| Meta Cloud Calling + refactors P0/P1 | ✅ (`MetaCloud::Adapter`, `useWebRtcCallSession`, cable registries) |
+| Meta Cloud Calling | ✅ Adapter, rotas e webhook. Inbound desligado rejeita na Meta (`Custom::Whatsapp::IncomingCallService#reject_disabled_inbound`). `outbound_connected` vai ao agente que originou |
+| WebRTC no dashboard | ⚠️ Dois módulos paralelos (~488 e ~525 linhas). O caminho vivo é `useWhatsappCallSession.js`, não um wrapper de `useWebRtcCallSession.js` |
+| Outbound Meta | O controller disca e grava o `Call` inline. `Voice::OutboundWhatsappCallBuilder` existe com spec e não tem chamador em produção |
 | Wavoip (código) | ✅ Inbound/outbound, gravação, device panel/QR, multiagente |
 | Wavoip piloto (ops) | ⚠️ Gates **W1** + browser E2E — [runbook](./wavoip-provider/operations-runbook.md#gates-de-piloto-jul-2026) |
 
@@ -99,8 +101,8 @@ Detalhe Wavoip: [wavoip-provider/README.md](./wavoip-provider/README.md).
 
 | # | Item | Status |
 |---|------|--------|
-| G1 | Registry sessão/eventos por provider | Parcial — cable registries ✅; Twilio ainda brancha no facade |
-| G2–G6 | Adapter Meta, builders, handlers FE, Vitest WebRTC | ✅ Done |
+| G1 | Registry sessão/eventos por provider | Parcial — cable registries ✅; `useCallSession` ainda brancha |
+| G2–G6 | Adapter Meta e handlers de cabo | Parcial — adapter ✅; extração WebRTC do caminho vivo **não** feita; builder de outbound fora do fluxo |
 | G7–G11 | Canal Wavoip + UX | ✅ Done |
 
 Roadmap detalhado: [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas).

@@ -103,8 +103,8 @@ importers:
         specifier: ^12.0.0
         version: 12.0.0(typescript@5.6.2)
       '@wavoip/wavoip-api':
-        specifier: 2.6.3
-        version: 2.6.3
+        specifier: 2.7.0
+        version: 2.7.0
       activestorage:
         specifier: ^5.2.6
         version: 5.2.8
@@ -1631,8 +1631,8 @@ packages:
   '@vueuse/shared@12.0.0':
     resolution: {integrity: sha512-3i6qtcq2PIio5i/vVYidkkcgvmTjCqrf26u+Fd4LhnbBmIT6FN8y6q/GJERp8lfcB9zVEfjdV0Br0443qZuJpw==}
 
-  '@wavoip/wavoip-api@2.6.3':
-    resolution: {integrity: sha512-vsYSa/hf3rFb/FxD6LDIgUxZXe/YN7VhFEHFdFwaemy2dScusZApPT/uMf4Jx+UXsvmEFbVB50Ykwv1roi5LIw==}
+  '@wavoip/wavoip-api@2.7.0':
+    resolution: {integrity: sha512-nM57FYUdPapxE1Oy3KkFOwhCiIc6M8SR+eKDk0eoMt9AWuRJP/9WleISWnLnSV6+G4yY06mpU6hx1TXUSOGz3g==}
 
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
@@ -6651,7 +6651,7 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@wavoip/wavoip-api@2.6.3':
+  '@wavoip/wavoip-api@2.7.0':
     dependencies:
       a18n: 1.12.4
       axios: 1.20.0

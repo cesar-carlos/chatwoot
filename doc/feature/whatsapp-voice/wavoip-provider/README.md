@@ -2,7 +2,7 @@
 
 Integração shipped no fork: canal `Channel::Wavoip` em `custom/`, sem alterar o fluxo Meta Cloud Calling.
 
-**Status (jul. 2026):** código completo (inbound, outbound, histórico, gravação, device panel/QR, multiagente). Piloto de produção aguarda validação ops/browser — ver [operations-runbook.md](./operations-runbook.md#gates-de-piloto-jul-2026).
+**Status (jul. 2026, canal Wavoip):** código de inbound, outbound, histórico, gravação, device panel/QR e multiagente. Piloto de produção aguarda validação ops/browser — ver [operations-runbook.md](./operations-runbook.md#gates-de-piloto-jul-2026). A revisão de out. 2026 do stack Meta está em [../README.md](../README.md); ela não reexecutou os gates W1/O1 deste canal.
 
 ## Comece aqui
 
@@ -42,7 +42,7 @@ flowchart LR
 | `Call.provider` | `wavoip: 2` com `# FORK:` em `enterprise/app/models/call.rb` |
 | Webhook | URL com chave opaca rotacionável; sem telefone no path |
 | Credencial SDK | `device_token` criptografado quando `ACTIVE_RECORD_ENCRYPTION_*` está configurado |
-| Pacote | `@wavoip/wavoip-api@2.6.3` |
+| Pacote | `@wavoip/wavoip-api@2.7.0` |
 
 ## Status da implementação
 

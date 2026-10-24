@@ -153,15 +153,13 @@ Ver também: [official-vs-unofficial-restrictions.md](../whatsapp-provider/offic
 
 ## Assimetria de código (não confundir com produto)
 
-**Atualizado jul. 2026:** o gap de outbound já foi resolvido — `Voice::OutboundWhatsappCallBuilder`
-e `Whatsapp::CallPermissionRequestService` existem desde jun. 2026. A única assimetria restante
-é o adapter de provider:
+**Atualizado out. 2026:** `Whatsapp::CallPermissionRequestService` cobre o opt-in. O outbound de produção está em `WhatsappCallsController#initiate`, não no builder. `Voice::OutboundWhatsappCallBuilder` permanece com spec e sem chamador.
 
 | Padrão | Twilio | WhatsApp Meta |
 |--------|--------|---------------|
-| Adapter | `Voice::Provider::Twilio::Adapter` | `Voice::Provider::MetaCloud::Adapter` ✅ |
-| Outbound | `Voice::OutboundCallBuilder` | `Voice::OutboundWhatsappCallBuilder` ✅ |
-| Permissão outbound | N/A | `Whatsapp::CallPermissionRequestService` ✅ |
+| Adapter | `Voice::Provider::Twilio::Adapter` | `Voice::Provider::MetaCloud::Adapter` |
+| Outbound | `Voice::OutboundCallBuilder` | Controller inline (`#initiate`) |
+| Permissão outbound | N/A | `Whatsapp::CallPermissionRequestService` |
 
 Isso **não** significa que Twilio poderia fazer WA in-app — são produtos diferentes.
 `MetaCloud::Adapter` já existe; o item opcional restante é um contrato formal

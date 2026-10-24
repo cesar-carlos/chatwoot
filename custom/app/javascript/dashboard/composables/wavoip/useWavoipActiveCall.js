@@ -17,7 +17,16 @@ let ringingDiagnosticsUnwire = null;
 let activeConnectionStatusHandler = null;
 let activeEndedHandler = null;
 let activeStatusHandler = null;
-const TERMINAL_SDK_STATUSES = ['ENDED', 'FAILED', 'REJECTED', 'NOT_ANSWERED'];
+const TERMINAL_SDK_STATUSES = [
+  'ENDED',
+  'FAILED',
+  'REJECTED',
+  'NOT_ANSWERED',
+  'CANCELLED',
+];
+// SDK 2.7 keeps the peer connection alive on these cancel() results: the
+// callee may have just answered, or the ack never came back.
+const CANCEL_KEEP_ALIVE_ERRORS = new Set(['IS_NOT_OFFER', 'ACK_TIMEOUT']);
 
 const isMuted = ref(false);
 const mediaConnectionStatus = ref(null);
@@ -151,6 +160,17 @@ export const isWavoipSdkCallOwned = callSid =>
   !!callSid &&
   (activeProviderCallId === callSid || ringingProviderCallId === callSid);
 
+const releaseSdkCall = async sdkCall => {
+  const unanswered = sdkCall === ringingSdkCall && sdkCall !== activeSdkCall;
+  if (unanswered && typeof sdkCall.cancel === 'function') {
+    const result = await sdkCall.cancel();
+    return !CANCEL_KEEP_ALIVE_ERRORS.has(result?.err);
+  }
+
+  await sdkCall.end?.();
+  return true;
+};
+
 export const endActiveCall = async callIdOverride => {
   const targetId =
     callIdOverride || activeProviderCallId || ringingProviderCallId;
@@ -162,12 +182,15 @@ export const endActiveCall = async callIdOverride => {
       (!callIdOverride || ringingProviderCallId === callIdOverride) &&
       ringingSdkCall);
   if (callToEnd) {
+    let released = true;
     try {
-      await callToEnd.end?.();
+      released = await releaseSdkCall(callToEnd);
     } catch (error) {
       // eslint-disable-next-line no-console
       console.debug('[Wavoip] end SDK call failed', error);
     }
+    if (!released) return targetId;
+
     clearActiveCall();
     clearRingingOutgoingCall();
     return targetId;

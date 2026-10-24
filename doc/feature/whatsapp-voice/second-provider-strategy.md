@@ -2,7 +2,7 @@
 
 Plano para adicionar um **segundo provider de chamadas WhatsApp in-app**. **Não** usar padrão Twilio PSTN — ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
 
-**Última reanálise:** jul. 2026 (P0: `MetaCloud::Adapter`, registries cable, Vitest WebRTC).
+**Última reanálise:** 24 out. 2026. A Fase 0 de frontend **não** está concluída no caminho que o dashboard executa.
 
 ---
 
@@ -50,23 +50,23 @@ flowchart TD
 
 | Área | Estado atual | Impacto para segundo provider |
 |------|--------------|-------------------------------|
-| `useWhatsappCallSession.js` | Wrapper fino → `useWebRtcCallSession(callsAPI)` ✅ | Novo CPaaS = novo wrapper + API injetável |
-| `WhatsappCallsController` | API dedicada accept/reject/terminate/initiate/upload | Manter shape ou controller fino compatível |
-| `WhatsappCloudService` | Delega Graph `/calls` a `MetaCloud::Adapter` ✅ | Adapter deve normalizar respostas/erros |
+| `useWhatsappCallSession.js` | Sessão viva (~488 linhas). Não delega a `useWebRtcCallSession` | Um CPaaS SDP hoje copiaria esse arquivo, ou passaria a usar o módulo injetável |
+| `WhatsappCallsController` | `#initiate` inline (~208 linhas); builder de outbound sem chamador | Extrair de novo antes de um segundo provider |
+| `WhatsappCloudService` | Delega Graph `/calls` a `MetaCloud::Adapter` | Adapter deve normalizar respostas/erros |
 | `WhatsappEventsJob` EE | Intercepta `field=calls` formato Meta | Payload diferente → rota/job em `custom/` |
-| `actionCable.js` | `whatsappVoiceCableRegistry` + `voiceCallCableRegistry` (Wavoip) ✅ | Novo provider = entrada no registry |
-| `Call.provider` | Enum `{ twilio, whatsapp, wavoip }` | Novo provider exige enum `# FORK:` ou modelo custom |
-| `getVoiceCallProvider()` | Twilio / WhatsApp / `Channel::Wavoip` → `wavoip` | Novo provider precisa branch/registry |
+| `actionCable.js` | `whatsappVoiceCableRegistry` + `voiceCallCableRegistry` (Wavoip) | Novo provider = entrada no registry |
+| `Call.provider` | Enum `{ twilio: 0, whatsapp: 1, wavoip: 2 }` com `# FORK:` | Novo valor não pode reutilizar `2` |
+| `getVoiceCallProvider()` | Twilio / WhatsApp (exceto Evolution) / Wavoip | Novo provider precisa branch/registry |
 
 Não misturar os eixos: Twilio/PSTN usa `Voice::Provider::Twilio::*` + conferência; WhatsApp in-app usa SDP/WebRTC. Ver [twilio-vs-whatsapp-native.md](./twilio-vs-whatsapp-native.md).
 
-### Assimetria documentada (jul. 2026)
+### Assimetria documentada (out. 2026)
 
 | Padrão | Twilio | WhatsApp Meta |
 |--------|--------|---------------|
-| Provider adapter | `Voice::Provider::Twilio::Adapter` ✅ | `Voice::Provider::MetaCloud::Adapter` ✅ |
-| Outbound builder | `Voice::OutboundCallBuilder` ✅ | `Voice::OutboundWhatsappCallBuilder` ✅ |
-| Permission flow | N/A | `Whatsapp::CallPermissionRequestService` ✅ |
+| Provider adapter | `Voice::Provider::Twilio::Adapter` | `Voice::Provider::MetaCloud::Adapter` |
+| Outbound | `Voice::OutboundCallBuilder` | Controller inline. `Voice::OutboundWhatsappCallBuilder` sem chamador |
+| Permission flow | N/A | `Whatsapp::CallPermissionRequestService` |
 
 **Pendente:** contrato formal `Voice::Provider::WhatsappCalling::Base` (item 0.2.1). Ver [architecture-and-flow.md §13](./architecture-and-flow.md#13-roadmap-de-refatoração-melhorias-sugeridas). O plano Wavoip é independente desta trilha SDP.
 
@@ -86,12 +86,12 @@ sinalização. Registry de sessão/eventos para Wavoip já existe (`voiceSession
 
 | # | Entrega | Arquivo | Done |
 |---|---------|---------|------|
-| 0.1.1 | Extrair `useWebRtcCallSession(callsAPI)` | `composables/useWebRtcCallSession.js` | ✅ Done |
-| 0.1.2 | `useWhatsappCallSession` vira thin wrapper | mesmo path | ✅ Done (~33 linhas) |
-| 0.1.3 | `WEBRTC_PROVIDERS` / browser providers | `browserVoiceProviders.js` | ✅ Done |
-| 0.1.4 | Registry em `useCallSession` | `composables/useCallSession.js` | Parcial — registries cable; facade ainda brancha Twilio |
-| 0.1.5 | Generalizar filtro cable | `whatsappVoiceCableRegistry.js` + `voiceCallCableRegistry.js` | ✅ Done (jul. 2026) |
-| 0.1.6 | Specs Vitest (race, 422, beacon) | `composables/spec/useWebRtcCallSession.spec.js` | ✅ Done (jul. 2026) |
+| 0.1.1 | Módulo `useWebRtcCallSession` | `composables/useWebRtcCallSession.js` | Existe (~525 linhas) e não é o caminho dos botões |
+| 0.1.2 | `useWhatsappCallSession` vira thin wrapper | mesmo path | **Aberto** — ~488 linhas, API WhatsApp direta |
+| 0.1.3 | `BROWSER_VOICE_PROVIDERS` | `custom/.../lib/voice/browserVoiceProviders.js` | Set com `whatsapp` e `wavoip`; não é registry de sessão |
+| 0.1.4 | Registry em `useCallSession` | `composables/useCallSession.js` | Parcial — registries cable; facade ainda brancha |
+| 0.1.5 | Generalizar filtro cable | `whatsappVoiceCableRegistry.js` + `voiceCallCableRegistry.js` | Feito |
+| 0.1.6 | Specs Vitest (race, 422, beacon) | `composables/spec/useWebRtcCallSession.spec.js` | Cobrem o módulo paralelo, não a sessão viva |
 
 ### 0.2 Backend (P1 — ~1 semana, opcional antes de CPaaS)
 
@@ -100,13 +100,13 @@ sinalização. Registry de sessão/eventos para Wavoip já existe (`voiceSession
 | 0.2.1 | Contrato `Voice::Provider::WhatsappCalling::Base` | `enterprise/.../whatsapp_calling/base.rb` | **Pendente** — único item BE Fase 0 restante |
 | 0.2.2 | `Voice::Provider::MetaCloud::Adapter` | `enterprise/.../meta_cloud/adapter.rb` | ✅ Done (jul. 2026) |
 | 0.2.3 | Prepend delega ao adapter | `WhatsappCloudService` EE | ✅ Done (jul. 2026) |
-| 0.2.4 | `Voice::OutboundWhatsappCallBuilder` | `enterprise/.../outbound_whatsapp_call_builder.rb` | ✅ Done (jun. 2026) |
+| 0.2.4 | `Voice::OutboundWhatsappCallBuilder` no `#initiate` | `enterprise/.../outbound_whatsapp_call_builder.rb` | Classe e spec existem; controller não chama |
 | 0.2.5 | `Whatsapp::CallPermissionRequestService` | `enterprise/.../call_permission_request_service.rb` | ✅ Done (jun. 2026) |
 | 0.2.6 | Specs espelhados | `spec/enterprise/services/...` | Builders + permission service |
 
 ### 0.3 Critérios de saída Fase 0
 
-- [x] `useWhatsappCallSession.js` < 80 linhas (wrapper) — ~33 linhas (jun. 2026)
+- [ ] `useWhatsappCallSession.js` < 80 linhas (hoje ~488)
 - [ ] Zero regressão Meta inbound/outbound em staging
 - [ ] `rg isWhatsappCall` — branching reduzido a registry (parcial — registries cable prontos)
 - [ ] Novo provider WebRTC = novo wrapper + entrada no registry (sem copiar WebRTC core)
@@ -255,13 +255,13 @@ Serviços espelhados:
 | Beacon terminate (`pagehide`) | ✅ |
 | Estados `permission_requested` / `permission_pending` | ✅ se CPaaS tiver opt-in |
 
-### Refactor sugerido (após Fase 0)
+### Refactor sugerido (alvo — não é o código de out. 2026)
 
 ```
-composables/useWebRtcCallSession.js      — RTCPeerConnection + callsAPI injetável (~300 linhas)
-composables/useWhatsappCallSession.js    — thin wrapper WhatsappCallsAPI (~50 linhas)
-custom/.../useWavoipCallSession.js       — thin wrapper WavoipCallsAPI
-helper/voiceCallProviders.js             — WEBRTC_PROVIDERS + registry cable/session
+composables/useWebRtcCallSession.js      — único RTCPeerConnection + callsAPI injetável
+composables/useWhatsappCallSession.js    — wrapper WhatsappCallsAPI
+custom/.../useWavoipCallSession.js       — sessão SDK, sem SDP Meta
+helper/voiceCallProviders.js             — registry cable/session
 ```
 
 ### Handler `voice_call.permission_granted` (P2)
@@ -305,7 +305,8 @@ if (!WEBRTC_PROVIDERS.includes(data?.provider)) return;
 
 ```ruby
 # Call enum — enterprise/app/models/call.rb
-enum :provider, { twilio: 0, whatsapp: 1, custom_cpaas: 2 }
+# wavoip: 2 já está ocupado (# FORK:). O próximo valor é 3.
+enum :provider, { twilio: 0, whatsapp: 1, wavoip: 2, custom_cpaas: 3 }
 ```
 
 Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpaas`.
@@ -369,14 +370,14 @@ Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpa
 
 1. Forçar payload diverso no `WhatsappEventsJob` sem normalizer
 2. Reusar `Channel::TwilioSms` para WA Calling
-3. Duplicar 456 linhas de `useWhatsappCallSession` em outro provider SDP sem extrair core
+3. Duplicar as ~488 linhas de `useWhatsappCallSession` em outro provider SDP. O módulo injetável já existe e o caminho vivo não o usa
 4. Editar `enterprise/` upstream sem espelhar em `custom/`
 5. Novo channel model se o contrato ainda for apenas outra variante de `Channel::Whatsapp`
 6. Deixar lógica de permissão outbound no controller — extrair `CallPermissionRequestService`
 7. Integrar um provider ao widget sem antes definir dispatch por provider
 8. Inflar model `Call` upstream com campos de um só provider — usar `meta` jsonb; novos valores de enum exigem alteração explícita e estável
 9. God module FE — misturar WebRTC core com API específica de provider no mesmo arquivo
-10. Ignorar TURN em deploy corporativo — documentar `VOICE_CALL_STUN_URLS` com TURN
+10. Ignorar TURN em deploy corporativo — `VOICE_CALL_ICE_SERVERS` (JSON com credencial) em `Custom::Call`; a offer outbound do browser ainda fixa o STUN do Google
 
 ---
 
@@ -384,9 +385,9 @@ Feature: reusar `channel_voice`; opcional flag rollout `channel_voice_custom_cpa
 
 ### Fase 0 (refactor)
 
-- [x] `useWebRtcCallSession` extraído; `useWhatsappCallSession` < 80 linhas
+- [ ] `useWebRtcCallSession` é o único core; `useWhatsappCallSession` < 80 linhas
 - [x] Registry provider em cable (`whatsappVoiceCableRegistry` + `voiceCallCableRegistry`)
-- [x] Specs Vitest para race buffer e permission 422
+- [ ] Specs Vitest de race buffer e permission 422 na sessão que os botões usam
 - [ ] Sem regressão `whatsapp_cloud` em inbound/outbound/terminate
 
 ### Segundo provider

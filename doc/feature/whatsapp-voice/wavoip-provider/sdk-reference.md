@@ -4,7 +4,9 @@ Mapeamento da documentação oficial do pacote npm para implementação no Chatw
 
 **Índice completo doc oficial:** [official-docs.md](./official-docs.md)
 
-**Versão verificada em 13 ago. 2026:** `2.6.3` (latest no npm; sem versão posterior). Atualizações exigem repetir os testes de contrato.
+**Versão verificada em 24 out. 2026:** `2.7.0`. Atualizações exigem repetir os testes de contrato.
+
+**Delta 2.6.3 → 2.7.0:** desistir antes do atendimento usa `call.cancel()`. `end()` ainda existe e, nesse caso, delega para `cancel()` com um aviso de depreciação. `IS_NOT_OFFER` e `ACK_TIMEOUT` preservam a mídia — o dashboard não limpa a chamada nesses erros. `CallStatus` ganha `CANCELLED`; instâncias antigas do device continuam emitindo `ENDED`.
 
 **Delta 2.6.1 → 2.6.3:** o bundle emite `CallActive` `status` `DISCONNECTED` / `ACTIVE` para queda/restauração da perna de mídia do WhatsApp — **recuperável**, não hangup. `connectionStatus` `"disconnected"` (transporte local após ~30s) continua terminal. O gate SDK `Device.restricted` no `startCall` deixou de bloquear no cliente; o Chatwoot também não bloqueia ligar/atender — o backend decide (contatos conhecidos ainda passam). A UI mostra o badge/banner de restrição.
 
