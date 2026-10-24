@@ -14,6 +14,7 @@ describe('usePwaInstallation', () => {
     vi.restoreAllMocks();
     listeners = {};
     isPwaStandalone.mockReturnValue(false);
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false });
     vi.spyOn(window, 'addEventListener').mockImplementation((name, handler) => {
       listeners[name] = handler;
     });
