@@ -888,6 +888,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_24_120000) do
     t.index ["identifier", "account_id"], name: "uniq_identifier_per_account_contact", unique: true
     t.index ["name", "email", "phone_number", "identifier"], name: "index_contacts_on_name_email_phone_number_identifier", opclass: :gin_trgm_ops, using: :gin
     t.index ["phone_number", "account_id"], name: "index_contacts_on_phone_number_and_account_id"
+    t.index ["account_id", "phone_number"], name: "uniq_phone_per_account_contact", unique: true, where: "((phone_number IS NOT NULL) AND ((phone_number)::text <> ''::text))"
   end
 
   create_table "conversation_monitor_automation_deliveries", force: :cascade do |t|

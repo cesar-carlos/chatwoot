@@ -57,6 +57,31 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::Import::ContactsImporter do
     expect(channel.reload.provider_config.dig('import_stats', 'contacts_imported')).to eq(1)
   end
 
+  it 'skips a contact whose phone is already taken and keeps importing the rest' do
+    create(:contact, account: account, phone_number: '+14155552671', name: 'Keeper')
+    allow_any_instance_of(Contact).to receive(:save!).and_wrap_original do |method, *args|
+      contact = method.receiver
+      if contact.phone_number == '+14155552671'
+        contact.errors.add(:phone_number, :taken)
+        raise ActiveRecord::RecordInvalid, contact
+      end
+
+      method.call(*args)
+    end
+    stub_contacts(
+      [
+        { 'Jid' => '14155552671@s.whatsapp.net', 'PushName' => 'Agenda' },
+        { 'Jid' => '14155552672@s.whatsapp.net', 'PushName' => 'Next' }
+      ]
+    )
+
+    expect { importer.import_batch! }.not_to raise_error
+
+    expect(account.contacts.find_by(phone_number: '+14155552671')&.name).to eq('Keeper')
+    expect(account.contacts.find_by(phone_number: '+14155552672')&.name).to eq('Next')
+    expect(channel.reload.provider_config.dig('import_stats', 'contacts_imported')).to eq(1)
+  end
+
   it 'replaces a phone-number placeholder with the address-book push name' do
     contact = create(
       :contact,

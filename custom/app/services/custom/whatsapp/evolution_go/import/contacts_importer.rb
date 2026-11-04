@@ -96,9 +96,19 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
     link_contact_inbox(contact, source_id)
     enqueue_contact_enrichment(contact, remote_jid, push_name_from_record(record))
     true
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+    # One duplicate phone must not abort the rest of the address book.
+    log_skipped_contact(record, e)
+    false
   end
 
   def upsert_contact(record, remote_jid)
+    persist_import_contact(record, remote_jid)
+  rescue ActiveRecord::RecordNotUnique
+    persist_import_contact(record, remote_jid)
+  end
+
+  def persist_import_contact(record, remote_jid)
     phone = phone_from_contact_record(record)
     contact = runtime.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
     additional = (contact.additional_attributes || {}).stringify_keys
@@ -107,6 +117,14 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
     contact.additional_attributes = additional
     contact.save!
     contact
+  end
+
+  def log_skipped_contact(record, error)
+    phone = phone_from_contact_record(record)
+    Rails.logger.warn(
+      "[EVOLUTION_GO] skipped contact import channel=#{runtime.channel.id} " \
+      "phone=+#{phone}: #{error.message}"
+    )
   end
 
   # Same rule as contact enrichment: keep an agent-edited name. Push name fills a

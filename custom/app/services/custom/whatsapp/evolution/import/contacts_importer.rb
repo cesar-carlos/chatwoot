@@ -65,9 +65,20 @@ class Custom::Whatsapp::Evolution::Import::ContactsImporter
     link_contact_inbox(contact, source_id)
     profile_pic_url = Custom::Whatsapp::Evolution::ContactEnrichmentService.profile_pic_url_from_record(record)
     enqueue_contact_enrichment(contact, remote_jid, record['pushName'], profile_pic_url)
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+    phone = phone_from_contact_record(record)
+    Rails.logger.warn(
+      "[EVOLUTION] skipped contact import channel=#{runtime.channel.id} phone=+#{phone}: #{e.message}"
+    )
   end
 
   def upsert_contact(record, remote_jid)
+    persist_import_contact(record, remote_jid)
+  rescue ActiveRecord::RecordNotUnique
+    persist_import_contact(record, remote_jid)
+  end
+
+  def persist_import_contact(record, remote_jid)
     phone = phone_from_contact_record(record)
     contact = runtime.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
     contact.name = record['pushName'].presence || contact.name || contact.phone_number
