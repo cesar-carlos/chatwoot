@@ -20,6 +20,7 @@ class Custom::Whatsapp::EvolutionGo::ImportService
 
     @runtime.reset_cursor! if force
     @runtime.clear_contacts_cache! if force
+    consolidate_brazil_duplicates!
     @runtime.mark_running! unless @runtime.import_running?
     @runtime.touch_heartbeat!
 
@@ -98,6 +99,26 @@ class Custom::Whatsapp::EvolutionGo::ImportService
 
   def api_client
     @api_client ||= Custom::Whatsapp::EvolutionGo::ApiClient.for_channel(channel)
+  end
+
+  def consolidate_brazil_duplicates!
+    return if @runtime.import_running?
+    return unless brazil_merge_enabled?
+    return unless @runtime.import_contacts? || import_on_connect?
+
+    merged = Custom::Whatsapp::Import::BrazilDuplicateConsolidator.new(
+      account: @runtime.account,
+      inbox: @runtime.inbox
+    ).perform
+    @runtime.update_stats!(contacts_merged: merged) if merged.positive?
+  end
+
+  def brazil_merge_enabled?
+    Custom::Whatsapp::EvolutionGo::ProviderConfig.enabled?(@runtime.config, 'merge_brazil_contacts')
+  end
+
+  def import_on_connect?
+    ActiveModel::Type::Boolean.new.cast(@runtime.config['import_on_connect'])
   end
 
   def requeue_if_pending!

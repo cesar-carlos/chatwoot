@@ -15,6 +15,14 @@ module Custom::ContactInboxBuilder
     @contact.phone_number.delete('+').to_s
   end
 
+  def update_old_contact_inbox
+    # Channel::Whatsapp rejects the Twilio-style source_id the upstream steal writes.
+    # Rewriting it would also detach the contact that already receives this number.
+    raise ActiveRecord::RecordNotUnique if @inbox.whatsapp?
+
+    super
+  end
+
   def allowed_channels?
     super || wavoip_inbox?
   end

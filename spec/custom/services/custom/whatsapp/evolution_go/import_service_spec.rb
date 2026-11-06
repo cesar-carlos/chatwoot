@@ -57,6 +57,74 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::ImportService do
     expect(importer).to have_received(:import_batch!).exactly(5).times
   end
 
+  it 'consolidates Brazil duplicates once before the first import tick' do
+    channel.update!(
+      provider_config: channel.provider_config.merge(
+        'import_contacts' => true,
+        'import_messages' => false,
+        'merge_brazil_contacts' => true,
+        'import_on_connect' => false,
+        'import_status' => 'idle',
+        'import_cursor' => { 'phase' => 'contacts' },
+        'import_stats' => {}
+      )
+    )
+    consolidator = instance_double(Custom::Whatsapp::Import::BrazilDuplicateConsolidator, perform: 2)
+    importer = instance_double(Custom::Whatsapp::EvolutionGo::Import::ContactsImporter, import_batch!: true)
+    expect(Custom::Whatsapp::Import::BrazilDuplicateConsolidator).to receive(:new).ordered.and_return(consolidator)
+    expect(Custom::Whatsapp::EvolutionGo::Import::ContactsImporter).to receive(:new).ordered.and_return(importer)
+    allow(Custom::Whatsapp::EvolutionGo::ImportJob).to receive(:set).and_return(Custom::Whatsapp::EvolutionGo::ImportJob)
+    allow(Custom::Whatsapp::EvolutionGo::ImportJob).to receive(:perform_later)
+
+    described_class.new(channel: channel.reload, force: true).perform
+
+    expect(channel.reload.provider_config.dig('import_stats', 'contacts_merged')).to eq(2)
+  end
+
+  it 'does not consolidate when Brazil merge is off' do
+    channel.update!(
+      provider_config: channel.provider_config.merge(
+        'import_contacts' => true,
+        'import_messages' => false,
+        'merge_brazil_contacts' => false,
+        'import_on_connect' => false,
+        'import_status' => 'idle'
+      )
+    )
+    allow(Custom::Whatsapp::Import::BrazilDuplicateConsolidator).to receive(:new)
+    importer = instance_double(Custom::Whatsapp::EvolutionGo::Import::ContactsImporter, import_batch!: true)
+    allow(Custom::Whatsapp::EvolutionGo::Import::ContactsImporter).to receive(:new).and_return(importer)
+    allow(Custom::Whatsapp::EvolutionGo::ImportJob).to receive(:set).and_return(Custom::Whatsapp::EvolutionGo::ImportJob)
+    allow(Custom::Whatsapp::EvolutionGo::ImportJob).to receive(:perform_later)
+
+    described_class.new(channel: channel.reload, force: true).perform
+
+    expect(Custom::Whatsapp::Import::BrazilDuplicateConsolidator).not_to have_received(:new)
+  end
+
+  it 'does not consolidate again while the import is already running' do
+    channel.update!(
+      provider_config: channel.provider_config.merge(
+        'import_contacts' => true,
+        'import_messages' => false,
+        'merge_brazil_contacts' => true,
+        'import_on_connect' => false,
+        'import_status' => 'running',
+        'import_heartbeat_at' => Time.current.iso8601,
+        'import_cursor' => { 'phase' => 'contacts', 'contacts_offset' => 50 }
+      )
+    )
+    allow(Custom::Whatsapp::Import::BrazilDuplicateConsolidator).to receive(:new)
+    importer = instance_double(Custom::Whatsapp::EvolutionGo::Import::ContactsImporter, import_batch!: true)
+    allow(Custom::Whatsapp::EvolutionGo::Import::ContactsImporter).to receive(:new).and_return(importer)
+    allow(Custom::Whatsapp::EvolutionGo::ImportJob).to receive(:set).and_return(Custom::Whatsapp::EvolutionGo::ImportJob)
+    allow(Custom::Whatsapp::EvolutionGo::ImportJob).to receive(:perform_later)
+
+    described_class.new(channel: channel.reload, force: false).perform
+
+    expect(Custom::Whatsapp::Import::BrazilDuplicateConsolidator).not_to have_received(:new)
+  end
+
   it 'does not start work while another import worker holds the lock' do
     channel.update!(
       provider_config: channel.provider_config.merge(

@@ -1211,6 +1211,7 @@
           "RUN_ERROR": "Não foi possível iniciar a importação histórica.",
           "STATUS_LABEL": "Status da importação",
           "STATS_CONTACTS": "{count} contatos processados",
+          "STATS_MERGED": "{count} contatos unificados",
           "STATS_MESSAGES": "{count} mensagens importadas",
           "STATUS": {
             "IDLE": "Inativo",

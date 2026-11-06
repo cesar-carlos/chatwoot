@@ -48,6 +48,39 @@ RSpec.describe Custom::Whatsapp::Evolution::ImportService do
       expect(account.contacts.find_by(phone_number: '+5511999999999')).to be_present
     end
 
+    it 'keeps an agent-edited name, identifier, and stored lid' do
+      contact = create(
+        :contact,
+        account: account,
+        phone_number: '+5511999999999',
+        name: 'Nome do agente',
+        identifier: 'crm-1',
+        additional_attributes: { 'evolution_remote_jid' => '999@lid' }
+      )
+      allow(api_client).to receive(:find_contacts).and_return(
+        instance_double(
+          HTTParty::Response,
+          success?: true,
+          parsed_response: [
+            {
+              'remoteJid' => '999@lid',
+              'remoteJidAlt' => '5511999999999@s.whatsapp.net',
+              'addressingMode' => 'lid',
+              'pushName' => 'Agenda'
+            }
+          ]
+        )
+      )
+
+      service.perform
+
+      contact.reload
+      expect(contact.name).to eq('Nome do agente')
+      expect(contact.identifier).to eq('crm-1')
+      expect(contact.additional_attributes['evolution_remote_jid']).to eq('999@lid')
+      expect(channel.inbox.contact_inboxes.find_by(contact: contact, source_id: '5511999999999')).to be_present
+    end
+
     it 'enqueues contact enrichment with profile picture during import' do
       allow(api_client).to receive(:find_contacts).and_return(
         instance_double(

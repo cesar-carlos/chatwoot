@@ -78,6 +78,10 @@ class Custom::Whatsapp::Evolution::JidResolver
     jid.to_s.split('@').first if group_jid?(jid)
   end
 
+  def merge_brazil_contacts?
+    ActiveModel::Type::Boolean.new.cast(config['merge_brazil_contacts'])
+  end
+
   private
 
   attr_reader :config
@@ -105,9 +109,5 @@ class Custom::Whatsapp::Evolution::JidResolver
 
   def lid_addressing?(remote_jid, addressing_mode)
     remote_jid.to_s.end_with?('@lid') || addressing_mode.to_s == 'lid'
-  end
-
-  def merge_brazil_contacts?
-    ActiveModel::Type::Boolean.new.cast(config['merge_brazil_contacts'])
   end
 end

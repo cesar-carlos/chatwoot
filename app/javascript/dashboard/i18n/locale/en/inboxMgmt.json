@@ -1287,6 +1287,7 @@
           "ERROR_LABEL": "Import error",
           "STATUS_LABEL": "Import status",
           "STATS_CONTACTS": "{count} contacts processed",
+          "STATS_MERGED": "{count} contacts merged",
           "STATS_MESSAGES": "{count} messages imported",
           "STATUS": {
             "IDLE": "Idle",

@@ -58,16 +58,12 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::Import::ContactsImporter do
   end
 
   it 'skips a contact whose phone is already taken and keeps importing the rest' do
-    create(:contact, account: account, phone_number: '+14155552671', name: 'Keeper')
-    allow_any_instance_of(Contact).to receive(:save!).and_wrap_original do |method, *args|
-      contact = method.receiver
-      if contact.phone_number == '+14155552671'
-        contact.errors.add(:phone_number, :taken)
-        raise ActiveRecord::RecordInvalid, contact
-      end
-
-      method.call(*args)
-    end
+    keeper = create(:contact, account: account, phone_number: '+14155552671', name: 'Keeper')
+    keeper.errors.add(:phone_number, :taken)
+    allow(keeper).to receive(:save!).and_raise(ActiveRecord::RecordInvalid.new(keeper))
+    locator = instance_double(Custom::Whatsapp::Import::ContactLocator)
+    allow(locator).to receive(:find) { |phone| phone == '14155552671' ? keeper : nil }
+    allow(Custom::Whatsapp::Import::ContactLocator).to receive(:new).and_return(locator)
     stub_contacts(
       [
         { 'Jid' => '14155552671@s.whatsapp.net', 'PushName' => 'Agenda' },
@@ -80,6 +76,51 @@ RSpec.describe Custom::Whatsapp::EvolutionGo::Import::ContactsImporter do
     expect(account.contacts.find_by(phone_number: '+14155552671')&.name).to eq('Keeper')
     expect(account.contacts.find_by(phone_number: '+14155552672')&.name).to eq('Next')
     expect(channel.reload.provider_config.dig('import_stats', 'contacts_imported')).to eq(1)
+  end
+
+  it 'attaches the address book row to the contact that already owns the canonical source id' do
+    owner = create(:contact, account: account, phone_number: '+554399845097', name: 'Adelson Soeth')
+    contact_inbox = create(
+      :contact_inbox,
+      contact: owner,
+      inbox: channel.inbox,
+      source_id: '5543999845097'
+    )
+    create(:contact, account: account, phone_number: '+5543999845097', name: 'Adelson Ghizoni Soethe')
+    stub_contacts([{ 'Jid' => '554399845097@s.whatsapp.net', 'PushName' => 'Agenda Nova' }])
+
+    expect { importer.import_batch! }.not_to raise_error
+
+    expect(owner.reload.name).to eq('Adelson Soeth')
+    expect(contact_inbox.reload.source_id).to eq('5543999845097')
+    expect(contact_inbox.contact_id).to eq(owner.id)
+    expect(account.contacts.where(phone_number: '+5543999845097').count).to eq(1)
+    expect(channel.reload.provider_config.dig('import_stats', 'contacts_imported')).to eq(1)
+  end
+
+  it 'does not replace an identifier already stored on the contact' do
+    contact = create(
+      :contact,
+      account: account,
+      phone_number: '+5511888888888',
+      name: 'Nome do agente',
+      identifier: 'crm-1'
+    )
+    stub_contacts(
+      [
+        {
+          'Jid' => '123@lid',
+          'remoteJid' => '5511888888888@s.whatsapp.net',
+          'PushName' => 'Agenda'
+        }
+      ]
+    )
+
+    importer.import_batch!
+
+    expect(contact.reload.identifier).to eq('crm-1')
+    expect(contact.name).to eq('Nome do agente')
+    expect(channel.inbox.contact_inboxes.find_by(contact: contact, source_id: '5511888888888')).to be_present
   end
 
   it 'replaces a phone-number placeholder with the address-book push name' do

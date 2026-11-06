@@ -65,17 +65,27 @@ class Custom::Whatsapp::EvolutionGo::PeerContactInboxResolver
     phone = jid_resolver.phone_from_jid(remote_jid)
     return if phone.blank?
 
-    normalized_phone = jid_resolver.normalize_phone(phone)
-    source_ids = [normalized_phone, phone].uniq
-    by_source = inbox.contact_inboxes.where(source_id: source_ids).first
-    return by_source if by_source.present?
+    source_ids = phone_source_ids(phone)
+    matches = inbox.contact_inboxes.where(source_id: source_ids).to_a
+    return Custom::Whatsapp::ContactInboxPreference.choose(matches) if matches.present?
 
-    phone_numbers = source_ids.map { |value| "+#{value}" }
-    contact = account.contacts
-                     .joins(:contact_inboxes)
+    contact_inbox_for_phone_numbers(source_ids)
+  end
+
+  def phone_source_ids(phone)
+    digits = phone.to_s.gsub(/\D/, '')
+    return [digits] unless jid_resolver.merge_brazil_contacts? && digits.start_with?('55')
+
+    Whatsapp::PhoneNormalizers::BrazilPhoneNormalizer.new.variants(digits)
+  end
+
+  def contact_inbox_for_phone_numbers(source_ids)
+    contact = account.contacts.joins(:contact_inboxes)
                      .where(contact_inboxes: { inbox_id: inbox.id })
-                     .find_by(phone_number: phone_numbers)
-    contact&.contact_inboxes&.find_by(inbox_id: inbox.id)
+                     .find_by(phone_number: source_ids.map { |value| "+#{value}" })
+    return if contact.blank?
+
+    Custom::Whatsapp::ContactInboxPreference.choose(contact.contact_inboxes.where(inbox_id: inbox.id).to_a)
   end
 
   def create_contact_inbox!(key_data)

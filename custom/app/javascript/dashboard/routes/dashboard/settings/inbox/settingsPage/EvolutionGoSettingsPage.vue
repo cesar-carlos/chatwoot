@@ -593,6 +593,13 @@ async function removeProxy() {
           {{ t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.STATUS_LABEL') }}:
           {{ importStatusLabel(importStatus.status) }}
         </p>
+        <p v-if="importStatus.stats?.contacts_merged">
+          {{
+            t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.STATS_MERGED', {
+              count: importStatus.stats.contacts_merged,
+            })
+          }}
+        </p>
         <p v-if="importStatus.stats?.contacts_imported">
           {{
             t('INBOX_MGMT.EVOLUTION.SETTINGS.IMPORT.STATS_CONTACTS', {

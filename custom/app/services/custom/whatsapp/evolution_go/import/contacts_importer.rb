@@ -2,6 +2,7 @@
 
 class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
   include Custom::Whatsapp::EvolutionGo::Import::JidHelpers
+  include Custom::Whatsapp::Import::ContactLookup
 
   BATCH_SIZE = Custom::Whatsapp::EvolutionGo::ImportService::BATCH_SIZE
   RATE_LIMIT_SLEEP = Custom::Whatsapp::EvolutionGo::ImportService::RATE_LIMIT_SLEEP
@@ -110,7 +111,7 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
 
   def persist_import_contact(record, remote_jid)
     phone = phone_from_contact_record(record)
-    contact = runtime.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
+    contact = locate_import_contact(phone) || runtime.account.contacts.find_or_initialize_by(phone_number: "+#{phone}")
     additional = (contact.additional_attributes || {}).stringify_keys
     apply_import_name!(contact, additional, push_name_from_record(record))
     apply_import_addressing!(contact, additional, remote_jid)
@@ -160,7 +161,7 @@ class Custom::Whatsapp::EvolutionGo::Import::ContactsImporter
     additional[key] = Custom::Whatsapp::EvolutionGo::JidResolver.merge_addressing_jid(additional[key], remote_jid)
 
     lid = jid_resolver.lid_identifier_for(remote_jid)
-    return if lid.blank? || !lid_available?(contact, lid)
+    return if lid.blank? || contact.identifier.present? || !lid_available?(contact, lid)
 
     contact.identifier = lid
   end
